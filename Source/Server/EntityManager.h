@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -98,7 +98,7 @@ public:
     void DeleteCustomEntity(string_view entity_class_name, ident_t id);
 
 private:
-    auto LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDoc(hstring collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -96,6 +96,8 @@ EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_v
     _assetPath {asset_path}
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(view_name);
 }
 
 auto EditorAssetView::GetAssetPath() const -> const string&
@@ -209,25 +211,25 @@ void FOEditor::MainLoop()
     }
     _newViews.clear();
 
-    for (auto&& view : _views) {
-        try {
-            view->Draw();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-    }
-
     for (auto it = _views.begin(); it != _views.end();) {
         if (const auto* asset_view = dynamic_cast<EditorAssetView*>(it->get()); asset_view != nullptr && asset_view->IsChanged()) {
             (*it)->_requestClose = false;
         }
 
         if ((*it)->_requestClose) {
-            it = _views.erase(it);
+            it = _views.erase(it); // Free view resources
         }
         else {
             ++it;
+        }
+    }
+
+    for (auto&& view : _views) {
+        try {
+            view->Draw();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
     }
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -108,13 +108,14 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///# ...
-///# param fromFrame ...
-///# param toFrame ...
+///# param animName ...
+///# param looped ...
+///# param reversed ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_Animate(ItemView* self, uint fromFrame, uint toFrame)
+[[maybe_unused]] void Client_Item_Animate(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->PlayAnim(fromFrame, toFrame);
+        hex_item->GetAnim()->Play(animName, looped, reversed);
     }
 }
 

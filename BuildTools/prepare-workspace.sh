@@ -11,6 +11,9 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
+# All packages:
+# clang clang-format build-essential git cmake python3 wget unzip binutils-dev libc++-dev libc++abi-dev libx11-dev freeglut3-dev libssl-dev libevent-dev libxi-dev nodejs default-jre android-sdk openjdk-8-jdk ant
+
 PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=-1"
 
 function install_common_packages()
@@ -20,8 +23,8 @@ function install_common_packages()
 
     echo "Install clang"
     $PACKAGE_MANAGER install clang
-    echo "Install clang-format-12"
-    $PACKAGE_MANAGER install clang-format-12
+    echo "Install clang-format"
+    $PACKAGE_MANAGER install clang-format
     echo "Install build-essential"
     $PACKAGE_MANAGER install build-essential
     echo "Install git"
@@ -120,7 +123,7 @@ function setup_toolset()
     mkdir build-linux-toolset
     cd build-linux-toolset
 
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -DFO_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFO_BUILD_CLIENT=0 -DFO_BUILD_SERVER=0 -DFO_BUILD_SINGLE=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=1 -DFO_BUILD_BAKER=1 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0 "$FO_PROJECT_ROOT"
 }
 
 function verify_workspace_part()
@@ -142,19 +145,21 @@ function verify_workspace_part()
     fi
 }
 
-verify_workspace_part common-packages 7 install_common_packages
-wait_jobs
-if [ ! -z `check_arg linux all` ]; then
-    verify_workspace_part linux-packages 6 install_linux_packages
+if [ ! -z `check_arg packages all` ]; then
+    verify_workspace_part common-packages 7 install_common_packages
     wait_jobs
-fi
-if [ ! -z `check_arg web all` ]; then
-    verify_workspace_part web-packages 2 install_web_packages
-    wait_jobs
-fi
-if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
-    verify_workspace_part android-packages 2 install_android_packages
-    wait_jobs
+    if [ ! -z `check_arg linux all` ]; then
+        verify_workspace_part linux-packages 6 install_linux_packages
+        wait_jobs
+    fi
+    if [ ! -z `check_arg web all` ]; then
+        verify_workspace_part web-packages 2 install_web_packages
+        wait_jobs
+    fi
+    if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+        verify_workspace_part android-packages 2 install_android_packages
+        wait_jobs
+    fi
 fi
 
 if [ ! -z `check_arg toolset all` ]; then

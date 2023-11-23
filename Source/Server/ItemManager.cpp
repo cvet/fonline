@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -124,12 +124,13 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     item->SetContainerId(cont->GetId());
 }
 
-auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*
+auto ItemManager::AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
 
     if (!cont->_innerItems) {
         cont->_innerItems = std::make_unique<vector<Item*>>();
@@ -174,7 +175,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(ident_t {});
-    item->SetContainerStack(0);
+    item->SetContainerStack(ContainerItemStack::Root);
 
     if (cont->_innerItems->empty()) {
         cont->_innerItems.reset();
@@ -214,19 +215,20 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     }
 
     auto* item = new Item(_engine, ident_t {}, proto, props);
+    auto self_destroy_fuse = RefCountHolder(item);
 
-    auto item_holder = RefCountHolder(item);
+    item->SetIsStatic(false);
+    item->SetOwnership(ItemOwnership::Nowhere);
 
     // Reset ownership properties
     if (props != nullptr) {
-        item->SetOwnership(ItemOwnership::Nowhere);
         item->SetMapId(ident_t {});
         item->SetHexX(0);
         item->SetHexY(0);
         item->SetCritterId(ident_t {});
-        item->SetCritterSlot(0);
+        item->SetCritterSlot(CritterItemSlot::Inventory);
         item->SetContainerId(ident_t {});
-        item->SetContainerStack(0);
+        item->SetContainerStack(ContainerItemStack::Root);
         item->SetInnerItemIds({});
     }
 
@@ -371,17 +373,17 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         EraseItemHolder(item, holder);
-        to_map->AddItem(item, to_hx, to_hy);
+        to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
     }
     else {
         auto* item_ = SplitItem(item, count);
         if (item_ != nullptr) {
-            to_map->AddItem(item_, to_hx, to_hy);
+            to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
         }
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks)
 {
     STACK_TRACE_ENTRY();
 
@@ -410,7 +412,7 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id,
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*
+auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -476,7 +478,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
@@ -619,7 +621,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
 
     NON_CONST_METHOD_HINT();
 
-    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
+    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && (broadcast_type < 101 || broadcast_type > 200) /*RADIO_BROADCAST_ZONE*/) {
         return;
     }
     if ((broadcast_type == RADIO_BROADCAST_MAP || broadcast_type == RADIO_BROADCAST_LOCATION) && !from_map_id) {

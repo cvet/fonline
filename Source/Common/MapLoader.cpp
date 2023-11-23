@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     STACK_TRACE_ENTRY();
 
@@ -48,20 +48,25 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Header
-    ConfigFile map_data(_str("{}.fomap", name), buf, &name_resolver);
+    ConfigFile map_data(_str("{}.fomap", name), buf, &hash_resolver);
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
 
     // Automatic id fixier
     unordered_set<ident_t::underlying_type> busy_ids;
-    const auto process_id = [&busy_ids](ident_t::underlying_type id) -> ident_t {
-        if (!busy_ids.insert(id).second) {
-            auto new_id = std::numeric_limits<ident_t::underlying_type>::max();
-            while (!busy_ids.insert(new_id).second) {
+    ident_t::underlying_type last_lowest_id = std::numeric_limits<ident_t::underlying_type>::max();
+    const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
+        if (id < std::numeric_limits<ident_t::underlying_type>::max() / 2 || !busy_ids.emplace(id).second) {
+            auto new_id = last_lowest_id - 1;
+            while (!busy_ids.emplace(new_id).second) {
                 new_id--;
             }
+            last_lowest_id = new_id;
             return ident_t {new_id};
+        }
+        if (id < last_lowest_id) {
+            last_lowest_id = id;
         }
         return ident_t {id};
     };
@@ -70,14 +75,14 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     vector<string> errors;
     for (const auto& pkv : map_data.GetSections("Critter")) {
         auto& kv = *pkv;
-        if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
+        if (kv.count("$Proto") == 0) {
             errors.emplace_back("Proto critter invalid data");
             continue;
         }
 
-        const auto id = process_id(_str(kv["$Id"]).toUInt());
+        const auto id = process_id(kv.count("$Id") != 0 ? _str(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
+        const auto* proto = proto_mngr.GetProtoCritter(hash_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
@@ -89,51 +94,19 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     // Items
     for (const auto& pkv : map_data.GetSections("Item")) {
         auto& kv = *pkv;
-        if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
+        if (kv.count("$Proto") == 0) {
             errors.emplace_back("Proto item invalid data");
             continue;
         }
 
-        const auto id = process_id(_str(kv["$Id"]).toUInt());
+        const auto id = process_id(kv.count("$Id") != 0 ? _str(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
+        const auto* proto = proto_mngr.GetProtoItem(hash_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }
         else if (!item_load(id, proto, kv)) {
             errors.emplace_back(_str("Unable to load item '{}' properties", proto_name));
-        }
-    }
-
-    // Tiles
-    for (const auto& pkv : map_data.GetSections("Tile")) {
-        auto& kv = *pkv;
-        if (kv.count("PicMap") == 0u || kv.count("HexX") == 0u || kv.count("HexY") == 0u) {
-            errors.emplace_back("Tile invalid data");
-            continue;
-        }
-
-        const auto tname = kv["PicMap"];
-        const auto hx = static_cast<int>(_str(kv["HexX"]).toUInt());
-        const auto hy = static_cast<int>(_str(kv["HexY"]).toUInt());
-        const auto ox = static_cast<int>(kv.count("OffsetX") != 0u ? _str(kv["OffsetX"]).toUInt() : 0);
-        const auto oy = static_cast<int>(kv.count("OffsetY") != 0u ? _str(kv["OffsetY"]).toUInt() : 0);
-        const auto layer = static_cast<int>(kv.count("Layer") != 0u ? _str(kv["Layer"]).toUInt() : 0);
-        const auto is_roof = kv.count("IsRoof") != 0u ? _str(kv["IsRoof"]).toBool() : false;
-
-        // if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
-        //     errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
-        //     continue;
-        // }
-        if (layer < 0 || layer > std::numeric_limits<uint8>::max()) {
-            errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
-            continue;
-        }
-
-        const auto htname = name_resolver.ToHashedString(tname);
-
-        if (!tile_load({htname.as_hash(), static_cast<uint16>(hx), static_cast<uint16>(hy), static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer), is_roof})) {
-            errors.emplace_back("Unable to load tile");
         }
     }
 

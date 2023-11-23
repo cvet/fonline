@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,7 @@ FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 FIXED_SETTING(vector<int>, DummyIntVec);
 FIXED_SETTING(string, ImGuiColorStyle, "Light"); // Light, Classic, Dark
+FIXED_SETTING(uint, ScriptOverrunReportTime, 100);
 FIXED_SETTING(bool, DebugBuild, false);
 SETTING_GROUP_END();
 
@@ -84,6 +85,7 @@ FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
+FIXED_SETTING(uint, CritterIdlePeriod, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -149,12 +151,11 @@ FIXED_SETTING(int, MapDirCount);
 FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
 FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
 FIXED_SETTING(int, MapHexLineHeight, 12); // hex/square line height
+FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapTileOffsX, -8); // tile default offsets
 FIXED_SETTING(int, MapTileOffsY, 32); // tile default offsets
-FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
 FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
-FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles
 FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
@@ -182,7 +183,8 @@ VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, Fullscreen, false);
 VARIABLE_SETTING(int, Brightness, 0);
 VARIABLE_SETTING(uint, FPS, 0);
-VARIABLE_SETTING(int, FixedFPS, 100);
+VARIABLE_SETTING(int, Sleep, -1); // -1 to disable, Sleep has priority over FixedFPS if both enabled
+VARIABLE_SETTING(int, FixedFPS, 100); // 0 to disable, Sleep has priority over FixedFPS if both enabled
 FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
@@ -194,6 +196,10 @@ FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 FIXED_SETTING(uint, AnimWalkSpeed, 80);
 FIXED_SETTING(uint, AnimRunSpeed, 160);
 FIXED_SETTING(float, ModelProjFactor, 40.0f);
+FIXED_SETTING(bool, AtlasLinearFiltration, false);
+FIXED_SETTING(int, DefaultParticleDrawWidth, 128);
+FIXED_SETTING(int, DefaultParticleDrawHeight, 128);
+FIXED_SETTING(bool, RecreateClientOnError, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -208,21 +214,22 @@ VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
 FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true, true);
 FIXED_SETTING(vector<bool>, CritterSlotSendData, true, false, true);
+FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
 FIXED_SETTING(uint, CritterFidgetTime, 50000);
-FIXED_SETTING(uint, Anim2CombatBegin, 0);
-FIXED_SETTING(uint, Anim2CombatIdle, 0);
-FIXED_SETTING(uint, Anim2CombatEnd, 0);
+FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
+FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
+FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
 FIXED_SETTING(string, PlayerOffAppendix, "_off");
 VARIABLE_SETTING(bool, ShowCritterName, true);
 VARIABLE_SETTING(bool, ShowCritterHeadText, true);
@@ -241,7 +248,7 @@ FIXED_SETTING(int, ScrollStep, 12);
 FIXED_SETTING(uint, RainTick, 60);
 FIXED_SETTING(int16, RainSpeedX, 0);
 FIXED_SETTING(int16, RainSpeedY, 15);
-FIXED_SETTING(uint, ChosenLightColor, 0);
+FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear);
 FIXED_SETTING(uint8, ChosenLightDistance, 4);
 FIXED_SETTING(int, ChosenLightIntensity, 2500);
 FIXED_SETTING(uint8, ChosenLightFlags, 0);
@@ -321,7 +328,12 @@ FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(bool, CollapseLogOnStart, false);
-FIXED_SETTING(int, ServerSleep, 0);
+FIXED_SETTING(int, ServerSleep, -1);
+FIXED_SETTING(int, LoopsPerSecondCap, 1000);
+FIXED_SETTING(uint, LockMaxWaitTime, 100);
+FIXED_SETTING(uint, DataBaseCommitPeriod, 10);
+FIXED_SETTING(uint, DataBaseMaxCommitJobs, 100);
+FIXED_SETTING(uint, LoopAverageTimeInterval, 1000);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

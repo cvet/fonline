@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,12 +47,16 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+
     const auto player_id = server->MakePlayerId(name);
-    if (!server->DbStorage.Get("Players", player_id).empty()) {
+    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).empty()) {
         throw ScriptException("Player already registered", name);
     }
 
-    server->DbStorage.Insert("Players", player_id, {{"_Name", string(name)}, {"Password", string(password)}});
+    server->DbStorage.Insert(server->PlayersCollectionName, player_id, {{"_Name", string(name)}, {"Password", string(password)}});
 
     return player_id;
 }
@@ -60,31 +64,37 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void> func)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, value);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
+{
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, values);
 }
 
 ///@ ExportMethod
@@ -98,7 +108,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -108,27 +118,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, value);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, values);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -150,22 +140,14 @@
 }
 
 ///# ...
-///# param pid ...
-///# param props ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] ProtoItem* Server_Game_GetProtoItem(FOServer* server, hstring pid)
-{
-    return const_cast<ProtoItem*>(server->ProtoMngr.GetProtoItem(pid));
-}
-
-///# ...
 ///# param cr1 ...
 ///# param cr2 ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
+    UNUSED_VARIABLE(server);
+
     if (cr1 == nullptr) {
         throw ScriptException("Critter1 arg is null");
     }
@@ -176,7 +158,7 @@
         throw ScriptException("Differernt maps");
     }
 
-    const auto dist = server->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
     return static_cast<int>(dist);
 }
 
@@ -324,7 +306,7 @@
 ///# param toCont ...
 ///# param stackId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, uint stackId)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -351,7 +333,7 @@
 ///# param stackId ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, uint stackId, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId, bool skipChecks)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -464,7 +446,7 @@
 ///# param toCont ...
 ///# param stackId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, uint stackId)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId)
 {
     if (toCont == nullptr) {
         throw ScriptException("Container arg is null");
@@ -485,7 +467,7 @@
 ///# param stackId ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, uint stackId, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId, bool skipChecks)
 {
     if (toCont == nullptr) {
         throw ScriptException("Container arg is null");
@@ -798,8 +780,8 @@
             cr->Send_AutomapsInfo(nullptr, loc);
         }
 
-        const uint16 zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
-        const uint16 zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
+        const auto zx = static_cast<uint16>(loc->GetWorldX() / server->Settings.GlobalMapZoneLength);
+        const auto zy = static_cast<uint16>(loc->GetWorldY() / server->Settings.GlobalMapZoneLength);
 
         auto gmap_fog = cr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
@@ -859,15 +841,19 @@
 ///@ ExportMethod ExcludeInSingleplayer PassOwnership
 [[maybe_unused]] Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+
     // Check existence
     const auto id = server->MakePlayerId(name);
-    const auto doc = server->DbStorage.Get("Players", id);
+    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
     if (doc.empty()) {
         return nullptr;
     }
 
     // Find online
-    auto* player = server->CrMngr.GetPlayerById(id);
+    auto* player = server->EntityMngr.GetPlayer(id);
     if (player != nullptr) {
         player->AddRef();
         return player;
@@ -881,7 +867,7 @@
 
     dummy_net_conn->Release();
 
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
         player->MarkAsDestroyed();
         player->Release();
         throw ScriptException("Player data db read failed");
@@ -930,6 +916,42 @@
 }
 
 ///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Map*> Server_Game_GetMaps(FOServer* server)
+{
+    vector<Map*> maps;
+    maps.reserve(server->MapMngr.GetLocationsCount());
+
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+        maps.push_back(map);
+    }
+
+    return maps;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
+{
+    vector<Map*> maps;
+
+    if (!pid) {
+        maps.reserve(server->MapMngr.GetLocationsCount());
+    }
+
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+        if (!pid || pid == map->GetProtoId()) {
+            maps.push_back(map);
+        }
+    }
+
+    return maps;
+}
+
+///# ...
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
@@ -946,7 +968,7 @@
 ///# param locPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid)
+[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid)
 {
     if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
@@ -960,13 +982,49 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid, uint skipCount)
+[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid, uint skipCount)
 {
     if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
     }
 
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server)
+{
+    vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
+
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+        locations.push_back(loc);
+    }
+
+    return locations;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, hstring pid)
+{
+    vector<Location*> locations;
+
+    if (!pid) {
+        locations.reserve(server->MapMngr.GetLocationsCount());
+    }
+
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+        if (!pid || pid == loc->GetProtoId()) {
+            locations.push_back(loc);
+        }
+    }
+
+    return locations;
 }
 
 ///# ...
@@ -1134,6 +1192,14 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFunc<void, Critter*, string> func)
 {
+    UNUSED_VARIABLE(server);
+    UNUSED_VARIABLE(sayType);
+    UNUSED_VARIABLE(firstStr);
+    UNUSED_VARIABLE(parameter);
+    UNUSED_VARIABLE(func);
+
+    throw NotImplementedException(LINE_STR);
+
     /*uint func_id = server->ScriptSys.BindByFunc(func, false);
     if (!func_id)
         throw ScriptException("Unable to bind script function");
@@ -1154,6 +1220,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_EraseTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
 {
+    UNUSED_VARIABLE(server);
+    UNUSED_VARIABLE(sayType);
+    UNUSED_VARIABLE(firstStr);
+    UNUSED_VARIABLE(parameter);
+
+    throw NotImplementedException(LINE_STR);
+
     /*for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
     {
         TextListener& tl = *it;
@@ -1209,7 +1282,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ident_t> Server_Game_GetRegisteredPlayerIds(FOServer* server)
 {
-    return server->DbStorage.GetAllIds("Players");
+    return server->DbStorage.GetAllIds(server->PlayersCollectionName);
 }
 
 ///# ...
@@ -1238,48 +1311,6 @@
 }
 
 ///# ...
-///# param pid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server, hstring pid)
-{
-    vector<Map*> maps;
-
-    if (!pid) {
-        maps.reserve(server->MapMngr.GetLocationsCount());
-    }
-
-    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
-        if (!pid || pid == map->GetProtoId()) {
-            maps.push_back(map);
-        }
-    }
-
-    return maps;
-}
-
-///# ...
-///# param pid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetAllLocations(FOServer* server, hstring pid)
-{
-    vector<Location*> locations;
-
-    if (!pid) {
-        locations.reserve(server->MapMngr.GetLocationsCount());
-    }
-
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
-        if (!pid || pid == loc->GetProtoId()) {
-            locations.push_back(loc);
-        }
-    }
-
-    return locations;
-}
-
-///# ...
 ///# param year ...
 ///# param month ...
 ///# param day ...
@@ -1291,6 +1322,8 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_GetTime(FOServer* server, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
+    UNUSED_VARIABLE(server);
+
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
     month = cur_time.Month;
@@ -1325,9 +1358,39 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, int param)
 {
+    UNUSED_VARIABLE(server);
+
     if (!staticItem->SceneryScriptFunc) {
         return false;
     }
 
     return staticItem->SceneryScriptFunc(cr, staticItem, usedItem, param) && staticItem->SceneryScriptFunc.GetResult();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<hstring> Server_Game_GetDialogs(FOServer* server)
+{
+    const auto& dlg_packs = server->DlgMngr.GetDialogs();
+
+    vector<hstring> result;
+    result.reserve(dlg_packs.size());
+
+    for (const auto* dlg_pack : dlg_packs) {
+        result.emplace_back(dlg_pack->PackId);
+    }
+
+    return result;
+}
+
+///# ...
+///# param proto ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer* server, ProtoMap* proto)
+{
+    const auto* static_map = server->MapMngr.GetStaticMap(proto);
+
+    return static_map->StaticItems;
 }

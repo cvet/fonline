@@ -31,7 +31,7 @@ struct MicroArchUx
 };
 
 static constexpr MicroArchUx s_uArchUx[] = {
-    { "AMD Zen 4", "Ryzen 9 7950X", "ZEN4" },
+    { "AMD Zen 4", "Ryzen 5 7600X", "ZEN4" },
     { "AMD Zen 3", "Ryzen 5 5600X", "ZEN3" },
     { "AMD Zen 2", "Ryzen 7 3700X", "ZEN2" },
     { "AMD Zen+", "Ryzen 5 2600", "ZEN+" },
@@ -257,7 +257,6 @@ SourceView::SourceView()
     , m_asmBytes( false )
     , m_asmShowSourceLocation( true )
     , m_calcInlineStats( true )
-    , m_atnt( false )
     , m_hwSamples( true )
     , m_hwSamplesRelative( true )
     , m_childCalls( false )
@@ -505,6 +504,7 @@ static constexpr CpuIdMap s_cpuIdMap[] = {
     { PackCpuInfo( 0xA40F41 ), "ZEN3" },
     { PackCpuInfo( 0xA50F00 ), "ZEN3" },
     { PackCpuInfo( 0xA60F12 ), "ZEN4" },
+    { PackCpuInfo( 0xA10F11 ), "ZEN4" },
     { PackCpuInfo( 0x090672 ), "ADL-P" },
     { PackCpuInfo( 0x090675 ), "ADL-P" },
     { PackCpuInfo( 0x0906A2 ), "ADL-P" },
@@ -607,7 +607,7 @@ void SourceView::OpenSource( const char* fileName, int line, const View& view, c
     assert( !m_source.empty() );
 }
 
-void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view )
+void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view, bool updateHistory )
 {
     m_targetLine = line;
     m_targetAddr = symAddr;
@@ -624,6 +624,19 @@ void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, 
     SelectViewMode();
 
     if( !worker.GetInlineSymbolList( baseAddr, m_codeLen ) ) m_calcInlineStats = false;
+
+    if( updateHistory )
+    {
+        m_history.erase( m_history.begin() + m_historyCursor, m_history.end() );
+
+        History entry = { fileName, line, baseAddr, symAddr };
+        if( m_history.empty() || memcmp( &m_history.back(), &entry, sizeof( History ) ) != 0 )
+        {
+            m_history.emplace_back( entry );
+            if( m_history.size() > 100 ) m_history.erase( m_history.begin() );
+            m_historyCursor = m_history.size();
+        }
+    }
 }
 
 void SourceView::SelectViewMode()
@@ -706,7 +719,7 @@ bool SourceView::Disassemble( uint64_t symAddr, const Worker& worker )
     }
     if( rval != CS_ERR_OK ) return false;
     cs_option( handle, CS_OPT_DETAIL, CS_OPT_ON );
-    cs_option( handle, CS_OPT_SYNTAX, m_atnt ? CS_OPT_SYNTAX_ATT : CS_OPT_SYNTAX_INTEL );
+    cs_option( handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_INTEL );
     cs_insn* insn;
     size_t cnt = cs_disasm( handle, (const uint8_t*)code, len, symAddr, 0, &insn );
     if( cnt > 0 )
@@ -714,6 +727,7 @@ bool SourceView::Disassemble( uint64_t symAddr, const Worker& worker )
         if( insn[cnt-1].address - symAddr + insn[cnt-1].size < len ) m_disasmFail = insn[cnt-1].address - symAddr;
         int bytesMax = 0;
         int mLenMax = 0;
+        int oLenMax = 0;
         m_asm.reserve( cnt );
         for( size_t i=0; i<cnt; i++ )
         {
@@ -878,9 +892,8 @@ bool SourceView::Disassemble( uint64_t symAddr, const Worker& worker )
             if( ( m_cpuArch == CpuArchX64 || m_cpuArch == CpuArchX86 ) && op.id == X86_INS_LEA )
             {
                 assert( op.detail->x86.op_count == 2 );
-                const auto opidx = m_atnt ? 0 : 1;
-                assert( op.detail->x86.operands[opidx].type == X86_OP_MEM );
-                auto& mem = op.detail->x86.operands[opidx].mem;
+                assert( op.detail->x86.operands[1].type == X86_OP_MEM );
+                auto& mem = op.detail->x86.operands[1].mem;
                 if( mem.base == X86_REG_INVALID )
                 {
                     if( mem.index == X86_REG_INVALID )
@@ -944,6 +957,8 @@ bool SourceView::Disassemble( uint64_t symAddr, const Worker& worker )
 
             const auto mLen = (int)strlen( op.mnemonic );
             if( mLen > mLenMax ) mLenMax = mLen;
+            const auto oLen = (int)strlen( op.op_str );
+            if( oLen > oLenMax ) oLenMax = oLen;
             if( op.size > bytesMax ) bytesMax = op.size;
 
             uint32_t mLineMax = 0;
@@ -962,6 +977,7 @@ bool SourceView::Disassemble( uint64_t symAddr, const Worker& worker )
         }
         cs_free( insn, cnt );
         m_maxMnemonicLen = mLenMax + 1;
+        m_maxOperandLen = oLenMax + 1;
         m_maxAsmBytes = bytesMax;
         if( !m_jumpTable.empty() )
         {
@@ -1131,6 +1147,22 @@ void SourceView::RenderSymbolView( Worker& worker, View& view )
     auto sym = worker.GetSymbolData( m_symAddr );
     assert( sym );
     ImGui::PushFont( m_bigFont );
+    ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
+    if( ButtonDisablable( " " ICON_FA_CARET_LEFT " ", m_historyCursor <= 1 ) )
+    {
+        m_historyCursor--;
+        const auto& entry = m_history[m_historyCursor-1];
+        OpenSymbol( entry.fileName, entry.line, entry.baseAddr, entry.symAddr, worker, view, false );
+    }
+    ImGui::SameLine( 0, 0 );
+    if( ButtonDisablable( " " ICON_FA_CARET_RIGHT " ", m_historyCursor == m_history.size() ) )
+    {
+        m_historyCursor++;
+        const auto& entry = m_history[m_historyCursor-1];
+        OpenSymbol( entry.fileName, entry.line, entry.baseAddr, entry.symAddr, worker, view, false );
+    }
+    ImGui::PopStyleVar();
+    ImGui::SameLine();
     if( sym->isInline )
     {
         auto parent = worker.GetSymbolData( m_baseAddr );
@@ -2359,63 +2391,55 @@ uint64_t SourceView::RenderSymbolAsmView( const AddrStatData& as, Worker& worker
         ImGui::SameLine();
         ImGui::Spacing();
         ImGui::SameLine();
-        if( SmallCheckbox( "AT&T", &m_atnt ) ) Disassemble( m_baseAddr, worker );
-
-        if( !m_atnt )
+        float mw = 0;
+        for( auto& v : s_uArchUx )
         {
-            ImGui::SameLine();
-            ImGui::Spacing();
-            ImGui::SameLine();
-            float mw = 0;
+            const auto w = ImGui::CalcTextSize( v.uArch ).x;
+            if( w > mw ) mw = w;
+        }
+        if( m_selMicroArch == m_profileMicroArch )
+        {
+            TextColoredUnformatted( ImVec4( 0.4f, 0.8f, 0.4f, 1.f ), ICON_FA_MICROCHIP );
+            TooltipIfHovered( "Selected microarchitecture is the same as the profiled application was running on" );
+        }
+        else
+        {
+            TextColoredUnformatted( ImVec4( 1.f, 0.3f, 0.3f, 1.f ), ICON_FA_MICROCHIP );
+            if( ImGui::IsItemHovered() )
+            {
+                const bool clicked = ImGui::IsItemClicked();
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted( "Selected microarchitecture does not match the one profiled application was running on" );
+                if( m_profileMicroArch >= 0 )
+                {
+                    ImGui::Text( "Measurements were performed on the %s microarchitecture", s_uArchUx[m_profileMicroArch].uArch );
+                    if( clicked ) SelectMicroArchitecture( s_uArchUx[m_profileMicroArch].moniker );
+                }
+                else
+                {
+                    ImGui::TextUnformatted( "Measurements were performed on an unknown microarchitecture" );
+                }
+                ImGui::EndTooltip();
+            }
+        }
+        ImGui::SameLine( 0, 0 );
+        ImGui::TextUnformatted( " \xce\xbc""arch:" );
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth( mw + ImGui::GetTextLineHeight() );
+        ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
+        if( ImGui::BeginCombo( "##uarch", s_uArchUx[m_selMicroArch].uArch, ImGuiComboFlags_HeightLarge ) )
+        {
+            int idx = 0;
             for( auto& v : s_uArchUx )
             {
-                const auto w = ImGui::CalcTextSize( v.uArch ).x;
-                if( w > mw ) mw = w;
+                if( ImGui::Selectable( v.uArch, idx == m_selMicroArch ) ) SelectMicroArchitecture( v.moniker );
+                ImGui::SameLine();
+                TextDisabledUnformatted( v.cpuName );
+                idx++;
             }
-            if( m_selMicroArch == m_profileMicroArch )
-            {
-                TextColoredUnformatted( ImVec4( 0.4f, 0.8f, 0.4f, 1.f ), ICON_FA_MICROCHIP );
-                TooltipIfHovered( "Selected microarchitecture is the same as the profiled application was running on" );
-            }
-            else
-            {
-                TextColoredUnformatted( ImVec4( 1.f, 0.3f, 0.3f, 1.f ), ICON_FA_MICROCHIP );
-                if( ImGui::IsItemHovered() )
-                {
-                    const bool clicked = ImGui::IsItemClicked();
-                    ImGui::BeginTooltip();
-                    ImGui::TextUnformatted( "Selected microarchitecture does not match the one profiled application was running on" );
-                    if( m_profileMicroArch >= 0 )
-                    {
-                        ImGui::Text( "Measurements were performed on the %s microarchitecture", s_uArchUx[m_profileMicroArch].uArch );
-                        if( clicked ) SelectMicroArchitecture( s_uArchUx[m_profileMicroArch].moniker );
-                    }
-                    else
-                    {
-                        ImGui::TextUnformatted( "Measurements were performed on an unknown microarchitecture" );
-                    }
-                    ImGui::EndTooltip();
-                }
-            }
-            ImGui::SameLine( 0, 0 );
-            ImGui::TextUnformatted( " \xce\xbc""arch:" );
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth( mw + ImGui::GetTextLineHeight() );
-            ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
-            if( ImGui::BeginCombo( "##uarch", s_uArchUx[m_selMicroArch].uArch, ImGuiComboFlags_HeightLarge ) )
-            {
-                int idx = 0;
-                for( auto& v : s_uArchUx )
-                {
-                    if( ImGui::Selectable( v.uArch, idx == m_selMicroArch ) ) SelectMicroArchitecture( v.moniker );
-                    ImGui::SameLine();
-                    TextDisabledUnformatted( v.cpuName );
-                    idx++;
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::PopStyleVar();
+            ImGui::EndCombo();
         }
+        ImGui::PopStyleVar();
     }
 
     ImGui::SameLine();
@@ -3564,11 +3588,11 @@ void SourceView::RenderAsmLine( AsmLine& line, const AddrStat& ipcnt, const Addr
 
                 if( hw ) PrintHwSampleTooltip( cycles, retired, cacheRef, cacheMiss, branchRetired, branchMiss, false );
 
-                const auto& stats = *worker.GetSymbolStats( symAddrParents );
-                if( !stats.parents.empty() )
+                const auto stats = worker.GetSymbolStats( symAddrParents );
+                if( stats && !stats->parents.empty() )
                 {
                     ImGui::Separator();
-                    TextFocused( "Entry call stacks:", RealToString( stats.parents.size() ) );
+                    TextFocused( "Entry call stacks:", RealToString( stats->parents.size() ) );
                     ImGui::SameLine();
                     TextDisabledUnformatted( "(middle click to view)" );
                 }
@@ -3628,7 +3652,7 @@ void SourceView::RenderAsmLine( AsmLine& line, const AddrStat& ipcnt, const Addr
                     m_asmSampleSelect.clear();
                     m_asmGroupSelect = -1;
                 }
-                else if( !stats.parents.empty() && ImGui::IsMouseClicked( 2 ) )
+                else if( stats && !stats->parents.empty() && ImGui::IsMouseClicked( 2 ) )
                 {
                     view.ShowSampleParents( symAddrParents, false );
                 }
@@ -3932,7 +3956,7 @@ void SourceView::RenderAsmLine( AsmLine& line, const AddrStat& ipcnt, const Addr
 
     int opdesc = 0;
     const AsmVar* asmVar = nullptr;
-    if( !m_atnt && ( m_cpuArch == CpuArchX64 || m_cpuArch == CpuArchX86 ) )
+    if( m_cpuArch == CpuArchX64 || m_cpuArch == CpuArchX86 )
     {
         auto uarch = MicroArchitectureData[m_idxMicroArch];
         char tmp[32];
@@ -5564,8 +5588,8 @@ void SourceView::Save( const Worker& worker, size_t start, size_t stop )
         {
             symName = worker.GetString( sym->name );
         }
-        fprintf( f, "; Tracy Profiler disassembly of symbol %s [%s]\n\n", symName, worker.GetCaptureProgram().c_str() );
-        if( !m_atnt ) fprintf( f, ".intel_syntax\n\n" );
+        fprintf( f, "# Tracy Profiler disassembly of symbol %s [%s]\n\n", symName, worker.GetCaptureProgram().c_str() );
+        fprintf( f, ".intel_syntax\n\n" );
 
         const auto end = m_asm.size() < stop ? m_asm.size() : stop;
         for( size_t i=start; i<end; i++ )
@@ -5577,12 +5601,13 @@ void SourceView::Save( const Worker& worker, size_t start, size_t stop )
                 fprintf( f, ".L%" PRIu32 ":\n", it->second );
             }
             bool hasJump = false;
+            int psz = 0;
             if( v.jumpAddr != 0 )
             {
                 auto lit = m_locMap.find( v.jumpAddr );
                 if( lit != m_locMap.end() )
                 {
-                    fprintf( f, "\t%-*s.L%" PRIu32 "\n", m_maxMnemonicLen, v.mnemonic.c_str(), lit->second );
+                    psz = fprintf( f, "\t%-*s.L%" PRIu32, m_maxMnemonicLen, v.mnemonic.c_str(), lit->second );
                     hasJump = true;
                 }
             }
@@ -5590,12 +5615,24 @@ void SourceView::Save( const Worker& worker, size_t start, size_t stop )
             {
                 if( v.operands.empty() )
                 {
-                    fprintf( f, "\t%s\n", v.mnemonic.c_str() );
+                    psz = fprintf( f, "\t%s", v.mnemonic.c_str() );
                 }
                 else
                 {
-                    fprintf( f, "\t%-*s%s\n", m_maxMnemonicLen, v.mnemonic.c_str(), v.operands.c_str() );
+                    psz = fprintf( f, "\t%-*s%s", m_maxMnemonicLen, v.mnemonic.c_str(), v.operands.c_str() );
                 }
+            }
+            uint32_t srcline;
+            const auto srcidx = worker.GetLocationForAddress( v.addr, srcline );
+            if( srcline != 0 && psz > 0 )
+            {
+                int spaces = std::max( m_maxMnemonicLen + m_maxOperandLen - psz, 0 ) + 1;
+                while( spaces-- ) fputc( ' ', f );
+                fprintf( f, "# %s:%i\n", worker.GetString( srcidx ), srcline );
+            }
+            else
+            {
+                fputc( '\n', f );
             }
         }
         fclose( f );

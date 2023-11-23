@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-
 DECLARE_EXCEPTION(LanguagePackException);
 
 static constexpr auto TEXTMSG_TEXT = 0;
@@ -50,6 +48,8 @@ static constexpr auto TEXTMSG_HOLO = 7;
 static constexpr auto TEXTMSG_INTERNAL = 8;
 static constexpr auto TEXTMSG_LOCATIONS = 9;
 static constexpr auto TEXTMSG_COUNT = 10;
+
+class FileSystem;
 
 class FOMsg final
 {
@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
-    auto LoadFromString(string_view str, NameResolver& name_resolver) -> bool;
+    auto LoadFromString(string_view str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(uint num, string_view str);
     void AddBinary(uint num, const uint8* binary, uint len);
@@ -101,7 +101,7 @@ public:
     auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
-    void ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name);
+    void ParseTexts(FileSystem& resources, HashResolver& hash_resolver, string_view lang_name);
     void SaveTextsToDisk(string_view dir) const;
     void LoadTexts(FileSystem& resources, string_view lang_name);
 

@@ -32,16 +32,16 @@ void View::CalcZoneTimeData( unordered_flat_map<int16_t, ZoneTimeData>& data, in
     const auto& children = m_worker.GetZoneChildren( zone.Child() );
     if( children.is_magic() )
     {
-        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), data, ztime );
     }
     else
     {
-        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, data, ztime );
     }
 }
 
 template<typename Adapter, typename V>
-void View::CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone )
+void View::CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime )
 {
     Adapter a;
     if( m_timeDist.exclusiveTime )
@@ -78,16 +78,16 @@ void View::CalcZoneTimeData( const ContextSwitch* ctx, unordered_flat_map<int16_
     const auto& children = m_worker.GetZoneChildren( zone.Child() );
     if( children.is_magic() )
     {
-        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), ctx, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), ctx, data, ztime );
     }
     else
     {
-        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, ctx, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, ctx, data, ztime );
     }
 }
 
 template<typename Adapter, typename V>
-void View::CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone )
+void View::CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime )
 {
     Adapter a;
     if( m_timeDist.exclusiveTime )
@@ -848,7 +848,7 @@ void View::DrawZoneInfoWindow()
 
                             ListMemData( v, []( auto v ) {
                                 ImGui::Text( "0x%" PRIx64, v->Ptr() );
-                                }, nullptr, m_allocTimeRelativeToZone ? ev.Start() : -1, m_zoneInfoMemPool );
+                                }, m_allocTimeRelativeToZone ? ev.Start() : -1, m_zoneInfoMemPool );
                             ImGui::TreePop();
                         }
                     }
@@ -1239,8 +1239,8 @@ void View::DrawZoneInfoChildren( const V& children, int64_t ztime )
             ImGui::NextColumn();
             if( expandGroup )
             {
-                auto ctt = std::make_unique<uint64_t[]>( cgr.v.size() );
-                auto cti = std::make_unique<uint32_t[]>( cgr.v.size() );
+                auto ctt = std::unique_ptr<uint64_t[]>( new uint64_t[cgr.v.size()] );
+                auto cti = std::unique_ptr<uint32_t[]>( new uint32_t[cgr.v.size()] );
                 for( size_t i=0; i<cgr.v.size(); i++ )
                 {
                     const auto& child = a(children[cgr.v[i]]);
@@ -1293,8 +1293,8 @@ void View::DrawZoneInfoChildren( const V& children, int64_t ztime )
     }
     else
     {
-        auto ctt = std::make_unique<uint64_t[]>( children.size() );
-        auto cti = std::make_unique<uint32_t[]>( children.size() );
+        auto ctt = std::unique_ptr<uint64_t[]>( new uint64_t[children.size()] );
+        auto cti = std::unique_ptr<uint32_t[]>( new uint32_t[children.size()] );
         uint64_t ctime = 0;
         for( size_t i=0; i<children.size(); i++ )
         {
@@ -1506,7 +1506,7 @@ void View::DrawGpuInfoWindow()
             ImGui::TextDisabled( "%i.", fidx++ );
             ImGui::SameLine();
             const auto& srcloc = m_worker.GetSourceLocation( v->SrcLoc() );
-            const auto txt = m_worker.GetZoneName( *v, srcloc );
+            const auto txt = m_worker.GetZoneName( srcloc );
             ImGui::PushID( idx++ );
             auto sel = ImGui::Selectable( txt, false );
             auto hover = ImGui::IsItemHovered();
@@ -1691,8 +1691,8 @@ void View::DrawGpuInfoChildren( const V& children, int64_t ztime )
             ImGui::NextColumn();
             if( expandGroup )
             {
-                auto ctt = std::make_unique<uint64_t[]>( cgr.v.size() );
-                auto cti = std::make_unique<uint32_t[]>( cgr.v.size() );
+                auto ctt = std::unique_ptr<uint64_t[]>( new uint64_t[cgr.v.size()] );
+                auto cti = std::unique_ptr<uint32_t[]>( new uint32_t[cgr.v.size()] );
                 for( size_t i=0; i<cgr.v.size(); i++ )
                 {
                     const auto& child = a(children[cgr.v[i]]);
@@ -1740,8 +1740,8 @@ void View::DrawGpuInfoChildren( const V& children, int64_t ztime )
     }
     else
     {
-        auto ctt = std::make_unique<uint64_t[]>( children.size() );
-        auto cti = std::make_unique<uint32_t[]>( children.size() );
+        auto ctt = std::unique_ptr<uint64_t[]>( new uint64_t[children.size()] );
+        auto cti = std::unique_ptr<uint32_t[]>( new uint32_t[children.size()] );
         uint64_t ctime = 0;
         for( size_t i=0; i<children.size(); i++ )
         {

@@ -38,7 +38,7 @@ parser.add_argument('-respack', dest='respack', required=True, action='append', 
 parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
-parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')
+parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 parser.add_argument('-output', dest='output', required=True, help='output dir')
 parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()
@@ -222,11 +222,16 @@ def build():
 			for binType in [''] + \
 					(['Headless'] if 'Headless' in args.pack else []) + \
 					(['Service'] if 'Service' in args.pack else []) + \
+					(['Profiling'] if 'Profiling' in args.pack else []) + \
 					(['OGL'] if 'OGL' in args.pack else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
-				binOutName = (binName if args.target != 'Client' else args.nicename) + ('_OpenGL' if binType == 'OGL' else '')
+				binOutName = (binName if args.target != 'Client' else args.nicename) + \
+						('_Profiling' if binType == 'Profiling' else '') + \
+						('_OpenGL' if binType == 'OGL' else '')
 				log('Setup', arch, binName)
-				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binEntry = args.target + '-' + args.platform + '-' + arch + \
+						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
@@ -325,11 +330,17 @@ def build():
 	elif args.platform == 'Linux':
 		# Raw files
 		for arch in args.arch.split('+'):
-			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Daemon'] if 'Daemon' in args.pack else []):
+			for binType in [''] + \
+					(['Headless'] if 'Headless' in args.pack else []) + \
+					(['Daemon'] if 'Daemon' in args.pack else []) + \
+					(['Profiling'] if 'Profiling' in args.pack else []):
 				binName = args.devname + '_' + args.target + binType
-				binOutName = binName if args.target != 'Client' else args.nicename
+				binOutName = (binName if args.target != 'Client' else args.nicename) + \
+						('_Profiling' if binType == 'Profiling' else '')
 				log('Setup', arch, binName)
-				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binEntry = args.target + '-' + args.platform + '-' + arch + \
+						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))

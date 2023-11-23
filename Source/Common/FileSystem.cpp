@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -131,10 +131,10 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
     if (make_copy) {
         auto* buf_copy = new uint8[buf.size()];
         std::memcpy(buf_copy, buf.data(), buf.size());
-        _fileBuf = {buf_copy, [](auto* p) { delete[] p; }};
+        _fileBuf = {buf_copy, [](const auto* p) { delete[] p; }};
     }
     else {
-        _fileBuf = {buf.data(), [](auto* p) {}};
+        _fileBuf = {buf.data(), [](const auto* p) { UNUSED_VARIABLE(p); }};
     }
 }
 
@@ -285,7 +285,7 @@ auto File::GetStrNT() -> string
     }
 
     uint len = 0;
-    while (*(_fileBuf.get() + _curPos + len) != 0u) {
+    while (*(_fileBuf.get() + _curPos + len) != 0) {
         len++;
     }
 
@@ -454,7 +454,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
     }
 
     if (_nameToIndex.empty()) {
-        size_t index = 0u;
+        size_t index = 0;
         for (const auto& fh : _allFiles) {
             _nameToIndex.emplace(fh.GetName(), index);
             ++index;
@@ -482,7 +482,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
     }
 
     if (_pathToIndex.empty()) {
-        size_t index = 0u;
+        size_t index = 0;
         for (const auto& fh : _allFiles) {
             _pathToIndex.emplace(fh.GetPath(), index);
             ++index;
@@ -549,8 +549,8 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
                 continue;
             }
 
-            size_t size = 0u;
-            uint64 write_time = 0u;
+            size_t size = 0;
+            uint64 write_time = 0;
             const auto ok = ds->IsFilePresent(fname, size, write_time);
             RUNTIME_ASSERT(ok);
             const string name = _str(fname).extractFileName().eraseFileExtension();
@@ -569,13 +569,11 @@ auto FileSystem::ReadFile(string_view path) const -> File
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
-    const string name = _str(path).extractFileName().eraseFileExtension();
-
     for (auto&& ds : _dataSources) {
-        size_t size = 0u;
-        uint64 write_time = 0u;
+        size_t size = 0;
+        uint64 write_time = 0;
         if (auto&& buf = ds->OpenFile(path, size, write_time)) {
-            return {name, path, size, write_time, ds.get(), std::move(buf)};
+            return {_str(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf)};
         }
     }
 
@@ -597,13 +595,11 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
-    const string name = _str(path).extractFileName().eraseFileExtension();
-
     for (auto&& ds : _dataSources) {
-        size_t size = 0u;
-        uint64 write_time = 0u;
+        size_t size = 0;
+        uint64 write_time = 0;
         if (ds->IsFilePresent(path, size, write_time)) {
-            return {name, path, size, write_time, ds.get()};
+            return {_str(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get()};
         }
     }
 

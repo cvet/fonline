@@ -37,7 +37,7 @@
  *
  * BSON minor version component (e.g. 2 if %BSON_VERSION is 1.2.3)
  */
-#define BSON_MINOR_VERSION (23)
+#define BSON_MINOR_VERSION (24)
 
 
 /**
@@ -45,7 +45,7 @@
  *
  * BSON micro version component (e.g. 3 if %BSON_VERSION is 1.2.3)
  */
-#define BSON_MICRO_VERSION (0)
+#define BSON_MICRO_VERSION (4)
 
 
 /**
@@ -60,7 +60,7 @@
  *
  * BSON version.
  */
-#define BSON_VERSION (1.23.0)
+#define BSON_VERSION (1.24.4)
 
 
 /**
@@ -69,7 +69,7 @@
  * BSON version, encoded as a string, useful for printing and
  * concatenation.
  */
-#define BSON_VERSION_S "1.23.0"
+#define BSON_VERSION_S "1.24.4"
 
 
 /**
@@ -90,7 +90,7 @@
  * @micro: required micro version
  *
  * Compile-time version checking. Evaluates to %TRUE if the version
- * of BSON is greater than the required one.
+ * of BSON is greater than or equal to the required one.
  */
 #define BSON_CHECK_VERSION(major,minor,micro)   \
         (BSON_MAJOR_VERSION > (major) || \

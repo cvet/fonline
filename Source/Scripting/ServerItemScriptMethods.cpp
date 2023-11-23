@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -68,20 +68,24 @@
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, uint stackId)
+[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
     if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
         throw ScriptException("Invalid proto '{}' arg.", pid);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count > 0 ? count : 1, stackId);
+    if (count == 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
 }
 
 ///# ...
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, uint stackId)
+[[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
 {
     return self->GetInnerItems(stackId);
 }
@@ -145,24 +149,26 @@
 }
 
 ///# ...
-///# param fromFrm ...
-///# param toFrm ...
+///# param animName ...
+///# param looped ...
+///# param reversed ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Item_Animate(Item* self, uint8 fromFrm, uint8 toFrm)
+[[maybe_unused]] void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        // Critter* cr=CrMngr.GetCrit(self->ACC_CRITTER.Id);
-        // if(cr) cr->Send_AnimateItem(self,from_frm,to_frm);
+        if (auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
+            cr->Send_AnimateItem(self, animName, looped, reversed);
+        }
     } break;
     case ItemOwnership::MapHex: {
         if (auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId()); map != nullptr) {
-            map->AnimateItem(self, fromFrm, toFrm);
+            map->AnimateItem(self, animName, looped, reversed);
         }
     } break;
     case ItemOwnership::ItemContainer:
         break;
     default:
-        throw ScriptException("Unknown accessory");
+        break;
     }
 }

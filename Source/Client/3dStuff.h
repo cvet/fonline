@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,6 +48,8 @@
 
 // Todo: remove unnecessary allocations from 3d
 
+static constexpr size_t MODEL_LAYERS_COUNT = 30;
+
 constexpr uint ANIMATION_STAY = 0x01;
 constexpr uint ANIMATION_ONE_TIME = 0x02;
 constexpr auto ANIMATION_PERIOD(uint proc) -> uint
@@ -72,7 +74,7 @@ struct MeshTexture
 
 struct MeshData
 {
-    void Load(DataReader& reader, NameResolver& name_resolver);
+    void Load(DataReader& reader, HashResolver& hash_resolver);
 
     ModelBone* Owner {};
     vector<Vertex3D> Vertices {};
@@ -98,7 +100,7 @@ struct MeshInstance
 
 struct ModelBone
 {
-    void Load(DataReader& reader, NameResolver& name_resolver);
+    void Load(DataReader& reader, HashResolver& hash_resolver);
     void FixAfterLoad(ModelBone* root_bone);
     auto Find(hstring bone_name) -> ModelBone*;
 
@@ -157,7 +159,7 @@ struct ModelAnimationData
 struct ModelParticleSystem
 {
     uint Id {};
-    unique_ptr<ParticleSystem> Particles {};
+    unique_ptr<ParticleSystem> Particle {};
     const ModelBone* Bone {};
     vec3 Move {};
     float Rot {};
@@ -165,8 +167,8 @@ struct ModelParticleSystem
 
 struct ModelAnimationCallback
 {
-    uint Anim1 {};
-    uint Anim2 {};
+    CritterStateAnim StateAnim {};
+    CritterActionAnim ActionAnim {};
     float NormalizedTime {};
     std::function<void()> Callback {};
 };
@@ -181,7 +183,7 @@ public:
     using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -190,7 +192,7 @@ public:
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
 
-    [[nodiscard]] auto CreateModel(string_view name) -> ModelInstance*;
+    [[nodiscard]] auto CreateModel(string_view name) -> unique_ptr<ModelInstance>;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
     [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*;
 
@@ -205,6 +207,7 @@ private:
     FileSystem& _resources;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
+    HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
     TextureLoader _textureLoader;
@@ -217,7 +220,7 @@ private:
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
-    uint _animDelay {};
+    uint _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
@@ -242,11 +245,12 @@ public:
 
     [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
-    [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
-    [[nodiscard]] auto GetAnim1() const -> uint;
-    [[nodiscard]] auto GetAnim2() const -> uint;
-    [[nodiscard]] auto GetMovingAnim2() const -> uint;
-    [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
+    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
+    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
+    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto GetMovingAnim2() const -> CritterActionAnim;
+    [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
+    [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
@@ -259,7 +263,8 @@ public:
 
     void SetupFrame();
     void StartMeshGeneration();
-    auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
+    void PrewarmParticles();
+    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
@@ -272,10 +277,9 @@ public:
     void MoveModel(int ox, int oy);
     void SetMoving(bool enabled, uint speed = 0);
     void SetCombatMode(bool enabled);
-    void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
+    void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
-    uint SprId {};
-    int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
+    // Todo: incapsulate model animation callbacks
     vector<ModelAnimationCallback> AnimationCallbacks {};
 
 private:
@@ -314,10 +318,10 @@ private:
     ModelManager& _modelMngr;
     int _frameWidth {};
     int _frameHeight {};
-    mat44 _frameProjRowMaj {};
+    mat44 _frameProj {};
     mat44 _frameProjColMaj {};
-    uint _curAnim1 {};
-    uint _curAnim2 {};
+    CritterStateAnim _curStateAnim {};
+    CritterActionAnim _curActionAnim {};
     vector<CombinedMesh*> _combinedMeshes {};
     size_t _combinedMeshesSize {};
     bool _disableCulling {};
@@ -326,7 +330,7 @@ private:
     ModelInformation* _modelInfo {};
     ModelAnimationController* _bodyAnimController {};
     ModelAnimationController* _moveAnimController {};
-    int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
+    int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     time_point _lastDrawTime {};
     time_point _endTime {};
@@ -352,7 +356,7 @@ private:
     bool _isMoving {};
     bool _isMovingBack {};
     int _curMovingAnimIndex {-1};
-    uint _curMovingAnim2 {};
+    CritterActionAnim _curMovingAnim {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
@@ -360,12 +364,12 @@ private:
     bool _isRunning {};
     bool _noRotate {};
     float _deferredLookDirAngle {};
-    vector<ModelParticleSystem> _particleSystems {};
+    vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
-    bool _forceRedraw {};
+    bool _forceDraw {};
 
     // Derived animations
-    vector<ModelInstance*> _children {};
+    vector<unique_ptr<ModelInstance>> _children {};
     ModelInstance* _parent {};
     ModelBone* _parentBone {};
     mat44 _parentMatrix {};
@@ -393,8 +397,8 @@ public:
     ~ModelInformation() = default;
 
 private:
-    [[nodiscard]] auto GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int;
-    [[nodiscard]] auto GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;
@@ -406,15 +410,15 @@ private:
     ModelHierarchy* _hierarchy {};
     unique_ptr<ModelAnimationController> _animController {};
     uint _numAnimationSets {};
-    map<int, int> _anim1Equals {};
-    map<int, int> _anim2Equals {};
-    map<int, int> _animIndexes {};
-    map<int, float> _animSpeed {};
-    map<uint, vector<pair<int, int>>> _animLayerValues {};
-    set<hstring> _fastTransitionBones {};
+    unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
+    unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
+    unordered_map<uint, int> _animIndexes {};
+    unordered_map<uint, float> _animSpeed {};
+    unordered_map<uint, vector<pair<int, int>>> _animLayerValues {};
+    unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    int _renderAnim {};
+    uint _renderAnim {};
     int _renderAnimProcFrom {};
     int _renderAnimProcTo {100};
     int _renderAnimDir {};

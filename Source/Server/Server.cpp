@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
-    ProtoMngr(this),
     ServerDeferredCalls(this),
     EntityMngr(this),
     MapMngr(this),
@@ -63,104 +62,113 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     WriteLog("Start server");
 
-    WriteLog("Mount data packs");
+    _starter.SetExceptionHandler([this](const std::exception& ex) {
+        UNUSED_VARIABLE(ex);
 
-    Resources.AddDataSource(Settings.EmbeddedResources);
-    Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+        _startingError = true;
 
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerProtos"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
-    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerAngelScript"));
-    }
+        // Clear jobs
+        return true;
+    });
 
-    for (const auto& entry : Settings.ServerResourceEntries) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
-    }
+    // Mount resources
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
+
+        WriteLog("Mount data packs");
+
+        Resources.AddDataSource(Settings.EmbeddedResources);
+        Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerProtos"));
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+            Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerAngelScript"));
+        }
+
+        for (const auto& entry : Settings.ServerResourceEntries) {
+            Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+        }
+
+        return std::nullopt;
+    });
+
+    // Script system
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
 
 #if !FO_SINGLEPLAYER
-    WriteLog("Initialize script system");
+        WriteLog("Initialize script system");
 
-    extern void Server_RegisterData(FOEngineBase*);
-    Server_RegisterData(this);
+        extern void Server_RegisterData(FOEngineBase*);
+        Server_RegisterData(this);
 
-    ScriptSys = new ServerScriptSystem(this);
-    ScriptSys->InitSubsystems();
+        ScriptSys = new ServerScriptSystem(this);
+        ScriptSys->InitSubsystems();
 #endif
+
+        return std::nullopt;
+    });
 
     // Network
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
+
 #if !FO_SINGLEPLAYER
-    WriteLog("Start networking");
+        WriteLog("Start networking");
 
-    if (auto* server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
-        _connectionServers.emplace_back(server);
-    }
+        if (auto* conn_server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
+            _connectionServers.emplace_back(conn_server);
+        }
 
-    if (auto* server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
-        _connectionServers.emplace_back(server);
-    }
-    if (auto* server = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
-        _connectionServers.emplace_back(server);
-    }
+        if (auto* conn_server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
+            _connectionServers.emplace_back(conn_server);
+        }
+
+        if (auto* conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
+            _connectionServers.emplace_back(conn_server);
+        }
 #endif
 
+        return std::nullopt;
+    });
+
     // Data base
-    DbStorage = ConnectToDataBase(Settings.DbStorage);
-    if (!DbStorage) {
-        throw ServerInitException("Can't init storage data base", Settings.DbStorage);
-    }
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
-    WriteLog("Setup engine data");
-
-    // Properties that saving to data base
-    for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
-        const auto count = static_cast<int>(registrator->GetCount());
-        for (auto i = 0; i < count; i++) {
-            const auto* prop = registrator->GetByIndex(i);
-
-            if (prop->IsDisabled()) {
-                continue;
-            }
-            if (prop->IsTemporary()) {
-                continue;
-            }
-
-            switch (prop->GetAccess()) {
-            case Property::AccessType::PrivateCommon:
-                [[fallthrough]];
-            case Property::AccessType::PrivateServer:
-                [[fallthrough]];
-            case Property::AccessType::Public:
-                [[fallthrough]];
-            case Property::AccessType::PublicModifiable:
-                [[fallthrough]];
-            case Property::AccessType::PublicFullModifiable:
-                [[fallthrough]];
-            case Property::AccessType::Protected:
-                [[fallthrough]];
-            case Property::AccessType::ProtectedModifiable:
-                break;
-            default:
-                continue;
-            }
-
-            prop->AddPostSetter([this](Entity* entity, const Property* prop_) { OnSaveEntityValue(entity, prop_); });
+        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage);
+        if (!DbStorage) {
+            throw ServerInitException("Can't init storage data base", Settings.DbStorage);
         }
-    }
 
-    // Properties that sending to clients
-    {
-        const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-            const auto count = static_cast<int>(registrator->GetCount());
-            for (auto i = 0; i < count; i++) {
-                const auto* prop = registrator->GetByIndex(i);
+        return std::nullopt;
+    });
+
+    // Engine data
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitEngineDataJob");
+
+        WriteLog("Setup engine data");
+
+        // Properties that saving to data base
+        for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
+            for (size_t i = 0; i < registrator->GetCount(); i++) {
+                const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
                 }
+                if (prop->IsTemporary()) {
+                    continue;
+                }
 
                 switch (prop->GetAccess()) {
+                case Property::AccessType::PrivateCommon:
+                    [[fallthrough]];
+                case Property::AccessType::PrivateServer:
+                    [[fallthrough]];
                 case Property::AccessType::Public:
                     [[fallthrough]];
                 case Property::AccessType::PublicModifiable:
@@ -175,403 +183,628 @@ FOServer::FOServer(GlobalSettings& settings) :
                     continue;
                 }
 
-                prop->AddPostSetter(callback);
+                prop->AddPostSetter([this](Entity* entity, const Property* prop_) { OnSaveEntityValue(entity, prop_); });
             }
-        };
+        }
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
-    }
+        // Properties that sending to clients
+        {
+            const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
+                for (size_t i = 0; i < registrator->GetCount(); i++) {
+                    const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
-    // Properties with custom behaviours
-    {
-        const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
-            const auto* prop = registrator->GetByIndex(prop_index);
-            prop->AddSetter(std::move(callback));
-        };
-        const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
-            const auto* prop = registrator->GetByIndex(prop_index);
-            prop->AddPostSetter(std::move(callback));
-        };
+                    if (prop->IsDisabled()) {
+                        continue;
+                    }
 
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
-    }
+                    switch (prop->GetAccess()) {
+                    case Property::AccessType::Public:
+                        [[fallthrough]];
+                    case Property::AccessType::PublicModifiable:
+                        [[fallthrough]];
+                    case Property::AccessType::PublicFullModifiable:
+                        [[fallthrough]];
+                    case Property::AccessType::Protected:
+                        [[fallthrough]];
+                    case Property::AccessType::ProtectedModifiable:
+                        break;
+                    default:
+                        continue;
+                    }
 
-    WriteLog("Load dialogs data");
-    DlgMngr.LoadFromResources();
+                    prop->AddPostSetter(callback);
+                }
+            };
 
-    WriteLog("Load protos data");
-    ProtoMngr.LoadFromResources();
+            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+        }
 
-    WriteLog("Load maps data");
-    MapMngr.LoadFromResources();
+        // Properties with custom behaviours
+        {
+            const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
+                const auto* prop = registrator->GetByIndex(prop_index);
+                prop->AddSetter(std::move(callback));
+            };
+            const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
+                const auto* prop = registrator->GetByIndex(prop_index);
+                prop->AddPostSetter(std::move(callback));
+            };
+
+            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
+        }
+
+        return std::nullopt;
+    });
+
+    // Dialogs
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitDialogsJob");
+
+        WriteLog("Load dialogs data");
+
+        DlgMngr.LoadFromResources();
+
+        return std::nullopt;
+    });
+
+    // Protos
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitProtosJob");
+
+        WriteLog("Load protos data");
+
+        ProtoMngr.LoadFromResources();
+
+        return std::nullopt;
+    });
+
+    // Maps
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitMapsJob");
+
+        WriteLog("Load maps data");
+
+        MapMngr.LoadFromResources();
+
+        return std::nullopt;
+    });
 
     // Resource packs for client
-    if (Settings.DataSynchronization) {
-        WriteLog("Load client data packs for synchronization");
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
-        FileSystem client_resources;
-        client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
+        if (Settings.DataSynchronization) {
+            WriteLog("Load client data packs for synchronization");
 
-        auto writer = DataWriter(_updateFilesDesc);
+            FileSystem client_resources;
+            client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
 
-        const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
-            const auto file = client_resources.ReadFile(path);
-            if (!file) {
-                throw ServerInitException("Resource pack for client not found", path);
+            auto writer = DataWriter(_updateFilesDesc);
+
+            const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
+                const auto file = client_resources.ReadFile(path);
+                if (!file) {
+                    throw ServerInitException("Resource pack for client not found", path);
+                }
+
+                const auto data = file.GetData();
+                _updateFilesData.push_back(data);
+
+                writer.Write<int16>(static_cast<int16>(file.GetPath().length()));
+                writer.WritePtr(file.GetPath().data(), file.GetPath().length());
+                writer.Write<uint>(static_cast<uint>(data.size()));
+                writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+            };
+
+            add_sync_file("EngineData.zip");
+            add_sync_file("Core.zip");
+            add_sync_file("Texts.zip");
+            add_sync_file("ClientProtos.zip");
+            add_sync_file("StaticMaps.zip");
+            if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+                add_sync_file("ClientAngelScript.zip");
             }
 
-            const auto data = file.GetData();
-            _updateFilesData.push_back(data);
+            for (const auto& resource_entry : Settings.ClientResourceEntries) {
+                add_sync_file(_str("{}.zip", resource_entry));
+            }
 
-            writer.Write<int16>(static_cast<int16>(file.GetPath().length()));
-            writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-            writer.Write<uint>(static_cast<uint>(data.size()));
-            writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
-        };
-
-        add_sync_file("EngineData.zip");
-        add_sync_file("Core.zip");
-        add_sync_file("Texts.zip");
-        add_sync_file("ClientProtos.zip");
-        add_sync_file("StaticMaps.zip");
-        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-            add_sync_file("ClientAngelScript.zip");
+            // Complete files list
+            writer.Write<int16>(-1);
         }
 
-        for (const auto& resource_entry : Settings.ClientResourceEntries) {
-            add_sync_file(_str("{}.zip", resource_entry));
-        }
-
-        // Complete files list
-        writer.Write<int16>(-1);
-    }
+        return std::nullopt;
+    });
 
     // Admin manager
-    if (Settings.AdminPanelPort != 0u) {
-        WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitAdminPanelJob");
 
-        InitAdminManager(this, static_cast<uint16>(Settings.AdminPanelPort));
-    }
-}
+        if (Settings.AdminPanelPort != 0) {
+            WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
 
-void FOServer::Start()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Start game logic");
-
-    DbStorage.StartChanges();
-
-    // Globals
-    const auto globals_doc = DbStorage.Get("Game", ident_t {1});
-    if (globals_doc.empty()) {
-        DbStorage.Insert("Game", ident_t {1}, {});
-    }
-    else {
-        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
-            throw ServerInitException("Failed to load globals document");
+            InitAdminManager(this, static_cast<uint16>(Settings.AdminPanelPort));
         }
 
-        GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
-    }
+        return std::nullopt;
+    });
 
-    GameTime.FrameAdvance();
+    // Game logic
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
 
-    // Scripting
-    WriteLog("Init script modules");
+        WriteLog("Start game logic");
 
-    ScriptSys->InitModules();
-
-    if (!OnInit.Fire()) {
-        throw ServerInitException("Initialization script failed");
-    }
-
-    // Init world
-    if (globals_doc.empty()) {
-        WriteLog("Generate world");
-
-        if (!OnGenerateWorld.Fire()) {
-            throw ServerInitException("Generate world script failed");
+        // Globals
+        const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
+        if (globals_doc.empty()) {
+            DbStorage.Insert(GameCollectionName, ident_t {1}, {});
         }
-    }
-    else {
-        WriteLog("Restore world");
+        else {
+            if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
+                throw ServerInitException("Failed to load globals document");
+            }
 
-        int errors = 0;
-
-        try {
-            ServerDeferredCalls.LoadDeferredCalls();
-        }
-        catch (std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
+            GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
         }
 
-        try {
-            EntityMngr.LoadEntities();
+        GameTime.FrameAdvance();
+
+        // Scripting
+        WriteLog("Init script modules");
+
+        extern void InitServerEngine(FOServer * server);
+        InitServerEngine(this);
+
+        ScriptSys->InitModules();
+
+        if (!OnInit.Fire()) {
+            throw ServerInitException("Initialization script failed");
         }
-        catch (std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
+
+        // Init world
+        if (globals_doc.empty()) {
+            WriteLog("Generate world");
+
+            if (!OnGenerateWorld.Fire()) {
+                throw ServerInitException("Generate world script failed");
+            }
+        }
+        else {
+            WriteLog("Restore world");
+
+            int errors = 0;
+
+            try {
+                ServerDeferredCalls.LoadDeferredCalls();
+            }
+            catch (std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
+
+            try {
+                EntityMngr.LoadEntities();
+            }
+            catch (std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
+
+            if (errors != 0) {
+                throw ServerInitException("Something went wrong during world restoring");
+            }
         }
 
-        if (errors != 0) {
-            throw ServerInitException("Something went wrong during world restoring");
+        WriteLog("Start world");
+
+        // Start script
+        if (!OnStart.Fire()) {
+            throw ServerInitException("Start script failed");
         }
-    }
 
-    WriteLog("Start world");
+        // Commit initial data base changes
+        DbStorage.CommitChanges(true);
 
-    // Start script
-    if (!OnStart.Fire()) {
-        throw ServerInitException("Start script failed");
-    }
+        // Advance time after initialization
+        GameTime.FrameAdvance();
 
-    // Commit initial data base changes
-    DbStorage.CommitChanges();
+        return std::nullopt;
+    });
 
-    GameTime.FrameAdvance();
-    _stats.ServerStartTime = GameTime.FrameTime();
-    _fpsTime = GameTime.FrameTime();
-    _started = true;
+    // Done, fill regular jobs
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitDoneJob");
 
-    WriteLog("Start server complete!");
+        WriteLog("Start server complete!");
+
+        _started = true;
+
+        _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
+        _loopBalancer.StartLoop();
+
+        _stats.LoopCounterBegin = Timer::CurTime();
+        _stats.ServerStartTime = Timer::CurTime();
+
+        // Sync point
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("SyncPointJob");
+
+            SyncPoint();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Advance time
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
+
+            if (GameTime.FrameAdvance()) {
+                const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
+                SetYear(st.Year);
+                SetMonth(st.Month);
+                SetDay(st.Day);
+                SetHour(st.Hour);
+                SetMinute(st.Minute);
+                SetSecond(st.Second);
+            }
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Script subsystems update
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
+
+            ScriptSys->Process();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Process unlogined players
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
+
+            {
+                std::lock_guard locker(_newConnectionsLocker);
+
+                if (!_newConnections.empty()) {
+                    for (auto* conn : _newConnections) {
+                        _unloginedPlayers.emplace_back(new Player(this, ident_t {}, conn));
+                    }
+                    _newConnections.clear();
+                }
+            }
+
+            for (auto* player : copy_hold_ref(_unloginedPlayers)) {
+                try {
+                    ProcessConnection(player->Connection);
+                    ProcessUnloginedPlayer(player);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
+
+            _stats.CurOnline = _unloginedPlayers.size() + CrMngr.PlayersInGame();
+            _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Process players
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("PlayersJob");
+
+            for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
+                try {
+                    RUNTIME_ASSERT(!player->IsDestroyed());
+
+                    ProcessConnection(player->Connection);
+                    ProcessPlayer(player);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Process critters
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("CrittersJob");
+
+            for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
+                if (cr->IsDestroyed()) {
+                    continue;
+                }
+
+                try {
+                    ProcessCritter(cr);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Process maps
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("MapsJob");
+
+            for (auto* map : copy_hold_ref(EntityMngr.GetMaps())) {
+                if (map->IsDestroyed()) {
+                    continue;
+                }
+
+                try {
+                    map->Process();
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Location garbager
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("LocationGarbageJob");
+
+            MapMngr.LocationGarbager();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Deferred calls
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("DeferredCallsJob");
+
+            ServerDeferredCalls.ProcessDeferredCalls();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Script game loop
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("ScriptLoopJob");
+
+            OnLoop.Fire();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Commit data to storage
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
+
+            DbStorage.CommitChanges(false);
+
+            return std::chrono::milliseconds {Settings.DataBaseCommitPeriod};
+        });
+
+        // Clients log
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
+
+            DispatchLogToClients();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        // Loop stats
+        _mainWorker.AddJob([this] {
+            STACK_TRACE_ENTRY_NAMED("LoopJob");
+
+            _loopBalancer.EndLoop();
+            _loopBalancer.StartLoop();
+
+            const auto cur_time = Timer::CurTime();
+            const auto loop_duration = _loopBalancer.GetLoopDuration();
+
+            // Calculate loop average time
+            _stats.LoopTimeStamps.emplace_back(cur_time, loop_duration);
+            _stats.LoopWholeAvgTime += loop_duration;
+
+            while (cur_time - _stats.LoopTimeStamps.front().first > std::chrono::milliseconds {Settings.LoopAverageTimeInterval}) {
+                _stats.LoopWholeAvgTime -= _stats.LoopTimeStamps.front().second;
+                _stats.LoopTimeStamps.pop_front();
+            }
+
+            _stats.LoopAvgTime = _stats.LoopWholeAvgTime / _stats.LoopTimeStamps.size();
+
+            // Calculate loops per second
+            if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
+                _stats.LoopsPerSecond = _stats.LoopCounter;
+                _stats.LoopCounter = 0;
+                _stats.LoopCounterBegin = cur_time;
+            }
+            else {
+                _stats.LoopCounter++;
+            }
+
+            // Fill statistics
+            _stats.LoopsCount++;
+            _stats.LoopMaxTime = _stats.LoopMaxTime != time_duration() ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
+            _stats.LoopMinTime = _stats.LoopMinTime != time_duration() ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
+            _stats.LoopLastTime = loop_duration;
+            _stats.Uptime = cur_time - _stats.ServerStartTime;
+
+#if FO_TRACY
+            TracyPlot("Server loops per second", static_cast<int64>(_stats.LoopsPerSecond));
+#endif
+
+            return std::chrono::milliseconds {0};
+        });
+
+        return std::nullopt;
+    });
 }
 
 FOServer::~FOServer()
 {
     STACK_TRACE_ENTRY();
 
-    for (const auto* server : _connectionServers) {
-        delete server;
-    }
-    _connectionServers.clear();
+    try {
+        WriteLog("Stop server");
 
-    delete ScriptSys;
-}
+        _willFinishDispatcher();
 
-void FOServer::Shutdown()
-{
-    STACK_TRACE_ENTRY();
+        // Finish logic
+        _starter.Clear();
+        _mainWorker.Clear();
 
-    _willFinishDispatcher();
+        if (_started) {
+            _mainWorker.AddJob([this] {
+                OnFinish.Fire();
+                EntityMngr.FinalizeEntities();
+                DbStorage.CommitChanges(true);
 
-    // Finish logic
-    DbStorage.StartChanges();
+                return std::nullopt;
+            });
 
-    OnFinish.Fire();
-    EntityMngr.FinalizeEntities();
-
-    DbStorage.CommitChanges();
-
-    // Shutdown servers
-    for (auto* server : _connectionServers) {
-        server->Shutdown();
-        delete server;
-    }
-    _connectionServers.clear();
-
-    // Logging clients
-    SetLogCallback("LogToClients", nullptr);
-    for (const auto* cl : _logClients) {
-        cl->Release();
-    }
-    _logClients.clear();
-
-    // Logined players
-    for (auto&& [id, player] : copy(EntityMngr.GetPlayers())) {
-        player->Connection->HardDisconnect();
-    }
-
-    // Unlogined players
-    for (auto* player : _unloginedPlayers) {
-        player->Connection->HardDisconnect();
-        player->MarkAsDestroyed();
-        player->Release();
-    }
-    _unloginedPlayers.clear();
-
-    // New connections
-    {
-        std::lock_guard locker(_newConnectionsLocker);
-
-        for (auto* conn : _newConnections) {
-            conn->HardDisconnect();
-            delete conn;
+            _mainWorker.Wait();
         }
-        _newConnections.clear();
-    }
 
-    // Stats
-    WriteLog("Server stopped");
-    WriteLog("Stats:");
-    WriteLog("Traffic:");
-    WriteLog("Bytes Send: {}", _stats.BytesSend);
-    WriteLog("Bytes Recv: {}", _stats.BytesRecv);
-    WriteLog("Loops count: {}", _stats.LoopsCount);
-    WriteLog("Approx loop time: {}", _stats.LoopsCount != 0 ? time_duration_to_ms<size_t>(_stats.WholeLoopsTime) / _stats.LoopsCount : 0);
-    WriteLog("Last loop time: {}", _stats.LastLoopTime);
-    WriteLog("Min loop time: {}", _stats.LoopMinTime);
-    WriteLog("Max loop time: {}", _stats.LoopMaxTime);
+        _started = false;
 
-    _didFinishDispatcher();
-}
+        // Shutdown script system
+        delete ScriptSys;
 
-void FOServer::MainLoop()
-{
-    STACK_TRACE_ENTRY();
+        // Shutdown servers
+        for (auto* conn_server : _connectionServers) {
+            conn_server->Shutdown();
+            delete conn_server;
+        }
+        _connectionServers.clear();
 
-    // Cycle time
-    const auto frame_begin = Timer::CurTime();
+        // Logging clients
+        SetLogCallback("LogToClients", nullptr);
+        for (const auto* cl : _logClients) {
+            cl->Release();
+        }
+        _logClients.clear();
 
-    // Begin data base changes
-    DbStorage.StartChanges();
+        // Logined players
+        for (auto&& [id, player] : copy(EntityMngr.GetPlayers())) {
+            player->Connection->HardDisconnect();
+        }
 
-    // Advance time
-    if (GameTime.FrameAdvance()) {
-        const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
-        SetYear(st.Year);
-        SetMonth(st.Month);
-        SetDay(st.Day);
-        SetHour(st.Hour);
-        SetMinute(st.Minute);
-        SetSecond(st.Second);
-    }
+        // Unlogined players
+        for (auto* player : _unloginedPlayers) {
+            player->Connection->HardDisconnect();
+            player->MarkAsDestroyed();
+            player->Release();
+        }
+        _unloginedPlayers.clear();
 
-    // Script subsystems update
-    ScriptSys->Process();
-
-    // Process unlogined players
-    {
+        // New connections
         {
             std::lock_guard locker(_newConnectionsLocker);
 
-            if (!_newConnections.empty()) {
-                for (auto* conn : _newConnections) {
-                    _unloginedPlayers.emplace_back(new Player(this, ident_t {}, conn));
-                }
-                _newConnections.clear();
+            for (auto* conn : _newConnections) {
+                conn->HardDisconnect();
+                delete conn;
             }
+            _newConnections.clear();
         }
 
-        for (auto* player : copy_hold_ref(_unloginedPlayers)) {
-            try {
-                ProcessConnection(player->Connection);
-                ProcessUnloginedPlayer(player);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-        }
+        // Done
+        WriteLog("Server stopped!");
 
-        _stats.CurOnline = _unloginedPlayers.size() + CrMngr.PlayersInGame();
-        _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
-    }
-
-    // Process players
-    {
-        for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
-            try {
-                RUNTIME_ASSERT(!player->IsDestroyed());
-
-                ProcessConnection(player->Connection);
-                ProcessPlayer(player);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-        }
-    }
-
-    // Process critters
-    {
-        for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
-            if (cr->IsDestroyed()) {
-                continue;
-            }
-
-            try {
-                ProcessCritter(cr);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-        }
-    }
-
-    // Process maps
-    {
-        for (auto* map : copy_hold_ref(EntityMngr.GetMaps())) {
-            if (map->IsDestroyed()) {
-                continue;
-            }
-
-            try {
-                map->Process();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-        }
-    }
-
-    try {
-        MapMngr.LocationGarbager();
+        _didFinishDispatcher();
     }
     catch (const std::exception& ex) {
+        WriteLog("Server stopped with error!");
+
         ReportExceptionAndContinue(ex);
     }
+}
 
-    ServerDeferredCalls.Process();
+auto FOServer::Lock(optional<time_duration> max_wait_time) -> bool
+{
+    STACK_TRACE_ENTRY();
 
-    // Script game loop
-    OnLoop.Fire();
-
-    // Commit changed to data base
-    DbStorage.CommitChanges();
-
-    // Clients log
-    DispatchLogToClients();
-
-    // Fill statistics
-    const auto loop_duration = Timer::CurTime() - frame_begin;
-    _stats.WholeLoopsTime += loop_duration;
-    _stats.LoopsCount++;
-    _stats.LoopMaxTime = std::max(loop_duration, _stats.LoopMaxTime);
-    _stats.LoopMaxTime = std::min(loop_duration, _stats.LoopMaxTime);
-    _stats.LastLoopTime = loop_duration;
-    _stats.Uptime = GameTime.FrameTime() - _stats.ServerStartTime;
-
-    // Calculate fps
-    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
-        _stats.Fps = _fpsCounter;
-        _fpsCounter = 0;
-        _fpsTime = GameTime.FrameTime();
-    }
-    else {
-        _fpsCounter++;
+    while (!_started) {
+        std::this_thread::yield();
     }
 
-    // Sleep
-    if (Settings.ServerSleep >= 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(Settings.ServerSleep));
+    if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
+        std::unique_lock locker {_syncLocker};
+
+        _syncRequest++;
+
+        while (!_syncPointReady) {
+            if (max_wait_time.has_value()) {
+                if (_syncWaitSignal.wait_for(locker, max_wait_time.value()) == std::cv_status::timeout) {
+                    _syncRequest--;
+                    return false;
+                }
+            }
+            else {
+                _syncWaitSignal.wait(locker);
+            }
+        }
+    }
+
+    return true;
+}
+
+void FOServer::Unlock()
+{
+    STACK_TRACE_ENTRY();
+
+    if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
+        std::unique_lock locker {_syncLocker};
+
+        RUNTIME_ASSERT(_syncRequest > 0);
+
+        _syncRequest--;
+
+        locker.unlock();
+        _syncRunSignal.notify_one();
+    }
+}
+
+void FOServer::SyncPoint()
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker {_syncLocker};
+
+    if (_syncRequest > 0) {
+        _syncPointReady = true;
+
+        locker.unlock();
+        _syncWaitSignal.notify_all();
+        locker.lock();
+
+        while (_syncRequest > 0) {
+            _syncRunSignal.wait(locker);
+        }
+
+        _syncPointReady = false;
     }
 }
 
@@ -586,54 +819,82 @@ void FOServer::DrawGui(string_view server_name)
     buf.reserve(default_buf_size);
 
     if (ImGui::Begin(string(server_name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        // Info
-        ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-        if (ImGui::TreeNode("Info")) {
-            buf = "";
-            const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
-            buf += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
-            buf += _str("Connections: {}\n", _stats.CurOnline);
-            buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-            buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
-            buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-            buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
-            buf += _str("Loops per second: {}\n", _stats.Fps);
-            buf += _str("Loop time: {}\n", _stats.LastLoopTime);
-            const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime) / 1000;
-            buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
-            buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
-            buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-            buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-            ImGui::TreePop();
+        if (!_started) {
+            if (!_startingError) {
+                ImGui::TextUnformatted("Server is starting...");
+            }
+            else {
+                ImGui::TextUnformatted("Server starting error, see log");
+            }
         }
+        else {
+            if (Settings.LockMaxWaitTime != 0) {
+                const auto max_wait_time = time_duration {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+                if (!Lock(max_wait_time)) {
+                    ImGui::TextUnformatted(_str("Server hanged (no response more than {})", max_wait_time).c_str());
+                    WriteLog("Server hanged (no response more than {})", max_wait_time);
+                    return;
+                }
+            }
+            else {
+                Lock(std::nullopt);
+            }
 
-        // Players
-        if (ImGui::TreeNode("Players")) {
-            buf = GetIngamePlayersStatistics();
-            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-            ImGui::TreePop();
-        }
+            auto unlocker = ScopeCallback([this] { Unlock(); });
 
-        // Locations and maps
-        if (ImGui::TreeNode("Locations and maps")) {
-            buf = MapMngr.GetLocationAndMapsStatistics();
-            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-            ImGui::TreePop();
-        }
+            // Info
+            ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+            if (ImGui::TreeNode("Info")) {
+                buf = "";
+                const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
+                buf += _str("Cur time: {}\n", Timer::CurTime());
+                buf += _str("Uptime: {}\n", _stats.Uptime);
+                buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
+                buf += _str("Connections: {}\n", _stats.CurOnline);
+                buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
+                buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
+                buf += _str("Locations: {}\n", MapMngr.GetLocationsCount());
+                buf += _str("Maps: {}\n", MapMngr.GetMapsCount());
+                buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
+                buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
+                buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
+                buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
+                buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
+                buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
+                buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
+                buf += _str("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+                buf += _str("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
+                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                ImGui::TreePop();
+            }
 
-        // Items count
-        if (ImGui::TreeNode("Items count")) {
-            buf = ItemMngr.GetItemsStatistics();
-            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-            ImGui::TreePop();
-        }
+            // Players
+            if (ImGui::TreeNode("Players")) {
+                buf = GetIngamePlayersStatistics();
+                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                ImGui::TreePop();
+            }
 
-        // Profiler
-        if (ImGui::TreeNode("Profiler")) {
-            buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
-            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-            ImGui::TreePop();
+            // Locations and maps
+            if (ImGui::TreeNode("Locations and maps")) {
+                buf = MapMngr.GetLocationAndMapsStatistics();
+                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                ImGui::TreePop();
+            }
+
+            // Items count
+            if (ImGui::TreeNode("Items count")) {
+                buf = ItemMngr.GetItemsStatistics();
+                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                ImGui::TreePop();
+            }
+
+            // Profiler
+            if (ImGui::TreeNode("Profiler")) {
+                buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                ImGui::TreePop();
+            }
         }
     }
     ImGui::End();
@@ -884,7 +1145,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         connection->LastActivityTime = GameTime.FrameTime();
     }
 
-    if (Settings.InactivityDisconnectTime != 0u && GameTime.FrameTime() - connection->LastActivityTime >= std::chrono::milliseconds {Settings.InactivityDisconnectTime}) {
+    if (Settings.InactivityDisconnectTime != 0 && GameTime.FrameTime() - connection->LastActivityTime >= std::chrono::milliseconds {Settings.InactivityDisconnectTime}) {
         WriteLog("Connection activity timeout from ip '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
@@ -983,7 +1244,7 @@ void FOServer::Process_Text(Player* player)
     } break;
     case SAY_SOCIAL: {
         return;
-    } break;
+    }
     case SAY_RADIO: {
         if (cr->GetMapId()) {
             cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_WHISP, true);
@@ -1004,7 +1265,7 @@ void FOServer::Process_Text(Player* player)
 
     // Text listen
     vector<pair<ScriptFunc<void, Critter*, string>, string>> listen_callbacks;
-    listen_callbacks.reserve(100u);
+    listen_callbacks.reserve(100);
 
     if (how_say == SAY_RADIO) {
         for (auto& tl : _textListeners) {
@@ -1043,16 +1304,16 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 {
     STACK_TRACE_ENTRY();
 
-    auto* cl_ = player->GetOwnedCritter();
+    auto* player_cr = player->GetOwnedCritter();
 
     [[maybe_unused]] const auto msg_len = buf.Read<uint>();
     const auto cmd = buf.Read<uint8>();
 
-    auto sstr = string(cl_ != nullptr ? "" : admin_panel);
+    auto sstr = string(player_cr != nullptr ? "" : admin_panel);
     auto allow_command = OnPlayerAllowCommand.Fire(player, sstr, cmd);
 
-    if (!allow_command && (cl_ == nullptr)) {
-        logcb("Command refused by script.");
+    if (!allow_command && (player_cr == nullptr)) {
+        logcb("Command refused by script");
         return;
     }
 
@@ -1065,8 +1326,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
 #define CHECK_ADMIN_PANEL() \
     do { \
-        if (!cl_) { \
-            logcb("Can't execute this command in admin panel."); \
+        if (player_cr == nullptr) { \
+            logcb("Can't execute this command in admin panel"); \
             return; \
         } \
     } while (0)
@@ -1082,19 +1343,19 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        string istr = _str("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", cl_->GetName(), cl_->GetId());
+        string istr = _str("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", player_cr->GetName(), player_cr->GetId());
         switch (player->Access) {
         case ACCESS_CLIENT:
-            istr += "|0xFFFF0000 Client|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Client|0xFF00FF00";
             break;
         case ACCESS_TESTER:
-            istr += "|0xFFFF0000 Tester|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Tester|0xFF00FF00";
             break;
         case ACCESS_MODER:
-            istr += "|0xFFFF0000 Moderator|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Moderator|0xFF00FF00";
             break;
         case ACCESS_ADMIN:
-            istr += "|0xFFFF0000 Administrator|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Administrator|0xFF00FF00";
             break;
         default:
             break;
@@ -1143,11 +1404,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
 
         const auto player_id = MakePlayerId(name);
-        if (DbStorage.Valid("Players", player_id)) {
-            logcb(_str("Player id is {}.", player_id));
+
+        if (DbStorage.Valid(PlayersCollectionName, player_id)) {
+            logcb(_str("Player id is {}", player_id));
         }
         else {
-            logcb("Client not found.");
+            logcb("Client not found");
         }
     } break;
     case CMD_MOVECRIT: {
@@ -1159,26 +1421,26 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* cr = CrMngr.GetCritter(cr_id);
         if (cr == nullptr) {
-            logcb("Critter not found.");
+            logcb("Critter not found");
             break;
         }
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if (map == nullptr) {
-            logcb("Critter is on global.");
+            logcb("Critter is on global");
             break;
         }
 
         if (hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
-            logcb("Invalid hex position.");
+            logcb("Invalid hex position");
             break;
         }
 
         if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, ident_t {})) {
-            logcb("Critter move success.");
+            logcb("Critter move success");
         }
         else {
-            logcb("Critter move fail.");
+            logcb("Critter move fail");
         }
     } break;
     case CMD_DISCONCRIT: {
@@ -1186,45 +1448,45 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        if (cl_ != nullptr && cl_->GetId() == cr_id) {
+        if (player_cr != nullptr && player_cr->GetId() == cr_id) {
             logcb("To kick yourself type <~exit>");
             return;
         }
 
         auto* cr = CrMngr.GetCritter(cr_id);
         if (cr == nullptr) {
-            logcb("Critter not found.");
+            logcb("Critter not found");
             return;
         }
 
         if (!cr->IsOwnedByPlayer()) {
-            logcb("Founded critter is not owned by player.");
+            logcb("Founded critter is not owned by player");
             return;
         }
 
         if (auto* owner = cr->GetOwner()) {
-            owner->Send_Text(nullptr, "You are kicked from game.", SAY_NETMSG);
+            owner->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
             owner->Connection->GracefulDisconnect();
-            logcb("Player disconnected.");
+            logcb("Player disconnected");
         }
         else {
-            logcb("Player is not in a game.");
+            logcb("Player is not in a game");
         }
     } break;
     case CMD_TOGLOBAL: {
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (!cl_->IsAlive()) {
-            logcb("To global fail, only life none.");
+        if (!player_cr->IsAlive()) {
+            logcb("To global fail, only life none");
             break;
         }
 
-        if (MapMngr.TransitToGlobal(cl_, ident_t {})) {
-            logcb("To global success.");
+        if (MapMngr.TransitToGlobal(player_cr, ident_t {})) {
+            logcb("To global success");
         }
         else {
-            logcb("To global fail.");
+            logcb("To global fail");
         }
     } break;
     case CMD_PROPERTY: {
@@ -1234,23 +1496,23 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        auto* cr = !cr_id ? cl_ : CrMngr.GetCritter(cr_id);
+        auto* cr = !cr_id ? player_cr : CrMngr.GetCritter(cr_id);
         if (cr != nullptr) {
             const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
             if (prop == nullptr) {
-                logcb("Property not found.");
+                logcb("Property not found");
                 return;
             }
             if (!prop->IsPlainData()) {
-                logcb("Property is not plain data type.");
+                logcb("Property is not plain data type");
                 return;
             }
 
             cr->SetValueAsInt(prop, property_value);
-            logcb("Done.");
+            logcb("Done");
         }
         else {
-            logcb("Critter not found.");
+            logcb("Critter not found");
         }
     } break;
     case CMD_GETACCESS: {
@@ -1281,12 +1543,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!allow) {
-            logcb("Access denied.");
+            logcb("Access denied");
             break;
         }
 
         player->Access = static_cast<uint8>(wanted_access);
-        logcb("Access changed.");
+        logcb("Access changed");
     } break;
     case CMD_ADDITEM: {
         const auto hex_x = buf.Read<uint16>();
@@ -1297,17 +1559,17 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         if ((map == nullptr) || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
-            logcb("Wrong hexes or critter on global map.");
+            logcb("Wrong hexes or critter on global map");
             return;
         }
 
-        if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, true) == nullptr) {
-            logcb("Item(s) not added.");
+        if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, false) == nullptr) {
+            logcb("Item(s) not added");
         }
         else {
-            logcb("Item(s) added.");
+            logcb("Item(s) added");
         }
     } break;
     case CMD_ADDITEM_SELF: {
@@ -1317,11 +1579,11 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (ItemMngr.AddItemCritter(cl_, pid, count) != nullptr) {
-            logcb("Item(s) added.");
+        if (ItemMngr.AddItemCritter(player_cr, pid, count) != nullptr) {
+            logcb("Item(s) added");
         }
         else {
-            logcb("Item(s) added fail.");
+            logcb("Item(s) added fail");
         }
     } break;
     case CMD_ADDNPC: {
@@ -1333,13 +1595,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         auto* npc = CrMngr.CreateCritter(pid, nullptr, map, hex_x, hex_y, dir, true);
         if (npc == nullptr) {
-            logcb("Npc not created.");
+            logcb("Npc not created");
         }
         else {
-            logcb("Npc created.");
+            logcb("Npc created");
         }
     } break;
     case CMD_ADDLOCATION: {
@@ -1351,31 +1613,54 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* loc = MapMngr.CreateLocation(pid, wx, wy);
         if (loc == nullptr) {
-            logcb("Location not created.");
+            logcb("Location not created");
         }
         else {
-            logcb("Location created.");
+            logcb("Location created");
         }
     } break;
     case CMD_RUNSCRIPT: {
-        const auto func_name = buf.Read<string>();
-        const auto param0 = buf.Read<int>();
-        const auto param1 = buf.Read<int>();
-        const auto param2 = buf.Read<int>();
+        const auto func_name = any_t {buf.Read<string>()};
+        const auto param0_str = any_t {buf.Read<string>()};
+        const auto param1_str = any_t {buf.Read<string>()};
+        const auto param2_str = any_t {buf.Read<string>()};
 
         CHECK_ALLOW_COMMAND();
 
         if (func_name.empty()) {
-            logcb("Fail, length is zero.");
+            logcb("Fail, length is zero");
             break;
         }
 
-        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), static_cast<Critter*>(cl_), param0, param1, param2) || //
-            ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2)) {
-            logcb("Run script success.");
+        const auto param0 = ResolveGenericValue(param0_str);
+        const auto param1 = ResolveGenericValue(param1_str);
+        const auto param2 = ResolveGenericValue(param2_str);
+
+        if (ScriptSys->CallFunc<void, Player*>(ToHashedString(func_name), player) || //
+            ScriptSys->CallFunc<void, Player*, int>(ToHashedString(func_name), player, param0) || //
+            ScriptSys->CallFunc<void, Player*, any_t>(ToHashedString(func_name), player, param0_str) || //
+            ScriptSys->CallFunc<void, Player*, int, int>(ToHashedString(func_name), player, param0, param1) || //
+            ScriptSys->CallFunc<void, Player*, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2) || //
+            ScriptSys->CallFunc<void, Player*, any_t, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
+            ScriptSys->CallFunc<void, Critter*>(ToHashedString(func_name), player_cr) || //
+            ScriptSys->CallFunc<void, Critter*, int>(ToHashedString(func_name), player_cr, param0) || //
+            ScriptSys->CallFunc<void, Critter*, any_t>(ToHashedString(func_name), player_cr, param0_str) || //
+            ScriptSys->CallFunc<void, Critter*, int, int>(ToHashedString(func_name), player_cr, param0, param1) || //
+            ScriptSys->CallFunc<void, Critter*, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), player_cr, param0, param1, param2) || //
+            ScriptSys->CallFunc<void, Critter*, any_t, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
+            ScriptSys->CallFunc<void>(ToHashedString(func_name)) || //
+            ScriptSys->CallFunc<void, int>(ToHashedString(func_name), param0) || //
+            ScriptSys->CallFunc<void, any_t>(ToHashedString(func_name), param0_str) || //
+            ScriptSys->CallFunc<void, int, int>(ToHashedString(func_name), param0, param1) || //
+            ScriptSys->CallFunc<void, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, int, int, int>(ToHashedString(func_name), param0, param1, param2) || //
+            ScriptSys->CallFunc<void, any_t, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str, param2_str)) {
+            logcb("Run script success");
         }
         else {
-            logcb("Run script failed.");
+            logcb("Run script failed");
         }
     } break;
     case CMD_REGENMAP: {
@@ -1383,25 +1668,25 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         // Check global
-        if (!cl_->GetMapId()) {
-            logcb("Only on local map.");
+        if (!player_cr->GetMapId()) {
+            logcb("Only on local map");
             return;
         }
 
         // Find map
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         if (map == nullptr) {
-            logcb("Map not found.");
+            logcb("Map not found");
             return;
         }
 
         // Regenerate
-        auto hx = cl_->GetHexX();
-        auto hy = cl_->GetHexY();
-        auto dir = cl_->GetDir();
+        auto hx = player_cr->GetHexX();
+        auto hy = player_cr->GetHexY();
+        auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(cl_, map, hx, hy, dir, 5, ident_t {});
-        logcb("Regenerate map complete.");
+        MapMngr.Transit(player_cr, map, hx, hy, dir, 5, ident_t {});
+        logcb("Regenerate map complete");
     } break;
     case CMD_SETTIME: {
         const auto multiplier = buf.Read<int>();
@@ -1415,7 +1700,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
 
         SetGameTime(multiplier, year, month, day, hour, minute, second);
-        logcb("Time changed.");
+        logcb("Time changed");
     } break;
     case CMD_LOG: {
         char flags[16];
@@ -1429,19 +1714,19 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto it = std::find(_logClients.begin(), _logClients.end(), player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
-            logcb("Detached.");
+            logcb("Detached");
             player->Release();
             _logClients.erase(it);
         }
         else if (flags[0] == '+' && flags[1] == '\0' && it == _logClients.end()) // Attach current
         {
-            logcb("Attached.");
+            logcb("Attached");
             player->AddRef();
             _logClients.push_back(player);
         }
         else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
         {
-            logcb("Detached all.");
+            logcb("Detached all");
             for (auto* acc : _logClients) {
                 acc->Release();
             }
@@ -1453,7 +1738,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     default:
-        logcb("Unknown command.");
+        logcb("Unknown command");
         break;
     }
 
@@ -1474,15 +1759,15 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     RUNTIME_ASSERT(minute >= 0 && minute <= 59);
     RUNTIME_ASSERT(second >= 0 && second <= 59);
 
-    SetTimeMultiplier(multiplier);
-    SetYear(year);
-    SetMonth(month);
-    SetDay(day);
-    SetHour(hour);
-    SetMinute(minute);
-    SetSecond(second);
+    SetTimeMultiplier(static_cast<uint16>(multiplier));
+    SetYear(static_cast<uint16>(year));
+    SetMonth(static_cast<uint16>(month));
+    SetDay(static_cast<uint16>(day));
+    SetHour(static_cast<uint16>(hour));
+    SetMinute(static_cast<uint16>(minute));
+    SetSecond(static_cast<uint16>(second));
 
-    GameTime.Reset(year, month, day, hour, minute, second, multiplier);
+    GameTime.Reset(static_cast<uint16>(year), static_cast<uint16>(month), static_cast<uint16>(day), static_cast<uint16>(hour), static_cast<uint16>(minute), static_cast<uint16>(second), multiplier);
 
     for (auto&& [id, player] : EntityMngr.GetPlayers()) {
         player->Send_TimeSync();
@@ -1550,24 +1835,37 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    // Idle functions
-    OnCritterIdle.Fire(cr);
-
-    if (cr->IsDestroyed()) {
-        return;
+    // Idling
+    auto idle_period = cr->GetIdlePeriod();
+    if (idle_period == 0) {
+        idle_period = Settings.CritterIdlePeriod;
     }
 
+    if (cr->LastIdleCall == time_point {}) {
+        cr->LastIdleCall = GameTime.GameplayTime() - std::chrono::milliseconds {GenericUtils::Random(0u, idle_period)};
+    }
+
+    if (GameTime.GameplayTime() - cr->LastIdleCall >= std::chrono::milliseconds {idle_period}) {
+        OnCritterIdle.Fire(cr);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        cr->OnIdle.Fire();
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        cr->LastIdleCall = GameTime.GameplayTime();
+    }
+
+    // Talking
     CrMngr.ProcessTalk(cr, false);
 
     if (cr->IsDestroyed()) {
         return;
-    }
-
-    // Cache look distance
-    // Todo: disable look distance caching
-    if (GameTime.GameplayTime() >= cr->CacheValuesNextTime) {
-        cr->LookCacheValue = cr->GetLookDistance();
-        cr->CacheValuesNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {3000};
     }
 
     // Time events
@@ -1589,7 +1887,7 @@ void FOServer::LogoutCritter(Critter* cr)
 
     WriteLog("Logout critter {}", cr->GetName());
 
-    cr->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
+    cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto* map = MapMngr.GetMap(cr->GetMapId());
     MapMngr.EraseCrFromMap(cr, map);
@@ -1734,7 +2032,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->InBuf.SetEncryptKey(encrypt_key);
     connection->OutBuf.SetEncryptKey(encrypt_key);
 
-    vector<uint8*>* global_vars_data = nullptr;
+    vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
@@ -1838,6 +2136,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
+    WriteLog("Register player");
+
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();
     const auto password = unlogined_player->Connection->InBuf.Read<string>();
@@ -1861,14 +2161,14 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check for exist
     const auto player_id = MakePlayerId(name);
-    if (DbStorage.Valid("Players", player_id)) {
+    if (DbStorage.Valid(PlayersCollectionName, player_id)) {
         unlogined_player->Send_TextMsg(nullptr, STR_NET_PLAYER_ALREADY, SAY_NETMSG, TEXTMSG_GAME);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check brute force registration
-    if (Settings.RegistrationTimeout != 0u) {
+    if (Settings.RegistrationTimeout != 0) {
         auto ip = unlogined_player->Connection->GetIp();
         const auto reg_tick = std::chrono::milliseconds {Settings.RegistrationTimeout * 1000};
         if (const auto it = _regIp.find(ip); it != _regIp.end()) {
@@ -1893,7 +2193,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     string lexems;
     const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
-        if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
+        if (disallow_msg_num < TEXTMSG_COUNT && disallow_str_num != 0) {
             unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
         }
         else {
@@ -1910,7 +2210,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     auto reg_port = AnyData::Array();
     reg_port.emplace_back(static_cast<int>(unlogined_player->Connection->GetPort()));
 
-    DbStorage.Insert("Players", player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
     WriteLog("Registered player {} with id {}", name, player_id);
 
@@ -1926,6 +2226,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 void FOServer::Process_Login(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
+
+    WriteLog("Login player");
 
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();
@@ -1963,8 +2265,8 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check password
     const auto player_id = MakePlayerId(name);
-    auto player_doc = DbStorage.Get("Players", player_id);
-    if (player_doc.count("Password") == 0u || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
+    auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
+    if (player_doc.count("Password") == 0 || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
         unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
         unlogined_player->Connection->GracefulDisconnect();
         return;
@@ -1977,7 +2279,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         uint disallow_str_num = 0;
         string lexems;
         if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
-            if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
+            if (disallow_msg_num < TEXTMSG_COUNT && disallow_str_num != 0) {
                 unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
             }
             else {
@@ -1996,7 +2298,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     if (player == nullptr) {
         player_reconnected = false;
 
-        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this, *this)) {
             unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
             unlogined_player->Connection->GracefulDisconnect();
             return;
@@ -2071,11 +2373,11 @@ void FOServer::Process_Login(Player* unlogined_player)
     // Login ok
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
-    vector<uint8*>* global_vars_data = nullptr;
+    vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
-    vector<uint8*>* player_data = nullptr;
+    vector<const uint8*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
     player->StoreData(true, &player_data, &player_data_sizes);
 
@@ -2104,6 +2406,13 @@ void FOServer::Process_Login(Player* unlogined_player)
             cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
                 RUNTIME_ASSERT(cr->IsOwnedByPlayer());
+
+                if (cr->GetOwner() != nullptr) {
+                    player->Send_TextMsg(nullptr, STR_NET_PLAYER_IN_GAME, SAY_NETMSG, TEXTMSG_GAME);
+                    player->Connection->GracefulDisconnect();
+                    return;
+                }
+
                 cr->AttachPlayer(player);
                 player->SetOwnedCritter(cr);
                 critter_reconnected = true;
@@ -2186,7 +2495,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
         cr->Send_LoadMap(map);
-        cr->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
+        cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
         if (!cr->GetMapId()) {
             RUNTIME_ASSERT(cr->GlobalMapGroup);
@@ -2529,9 +2838,9 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            auto* cr = CrMngr.GetCritter(cr_id);
-            if (cr != nullptr) {
-                entity = cr->GetInvItem(item_id, true);
+            auto* cr_ = CrMngr.GetCritter(cr_id);
+            if (cr_ != nullptr) {
+                entity = cr_->GetInvItem(item_id, true);
             }
         }
         break;
@@ -2636,14 +2945,18 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         entry_id = ident_t {1};
     }
 
-    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
+
+    hstring collection_name;
 
     if (server_entity != nullptr) {
-        DbStorage.Update(_str("{}s", server_entity->GetClassName()), entry_id, prop->GetName(), value);
+        collection_name = ToHashedString(_str("{}s", server_entity->GetClassName()));
     }
     else {
-        DbStorage.Update(entity->GetClassName(), entry_id, prop->GetName(), value);
+        collection_name = ToHashedString(entity->GetClassName());
     }
+
+    DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
 
     if (prop->IsHistorical()) {
         const auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
@@ -2660,13 +2973,15 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
 
-        DbStorage.Insert("History", history_id, doc);
+        DbStorage.Insert(HistoryCollectionName, history_id, doc);
     }
 }
 
 void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(entity);
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto&& [id, player] : EntityMngr.GetPlayers()) {
@@ -2705,7 +3020,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->IsStatic() && item->GetId()) {
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
@@ -2797,6 +3112,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
+
             if (prop == item->GetPropertyIsTrap()) {
                 map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
             }
@@ -2811,7 +3127,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             else {
                 cr->Send_AddItem(item);
             }
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+            cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
     }
 }
@@ -2837,10 +3153,12 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(prop);
+
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
+        const auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
@@ -2851,6 +3169,8 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
 
@@ -2866,6 +3186,8 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(prop);
+
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetIsRadio()) {
@@ -2879,6 +3201,8 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
 
@@ -2933,9 +3257,9 @@ void FOServer::ProcessMove(Critter* cr)
     // Check for path recalculation
     auto recalculate = false;
 
-    if (cr->IsMoving() && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0u || cr->TargetMoving.HexY != 0u)) {
+    if (cr->IsMoving() && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0 || cr->TargetMoving.HexY != 0)) {
         const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
-        if (targ != nullptr && !Geometry.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
+        if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
             recalculate = true;
         }
     }
@@ -3093,7 +3417,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -3131,7 +3455,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             auto hy2 = next_start_hy;
 
             for (auto j2 = control_step_begin; j2 < step_index; j2++) {
-                const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
+                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
                 RUNTIME_ASSERT(move_ok);
             }
 
@@ -3139,7 +3463,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             const auto old_hy = cr->GetHexY();
 
             if (old_hx != hx2 || old_hy != hy2) {
-                const uint8 dir = Geometry.GetFarDir(old_hx, old_hy, hx2, hy2);
+                const uint8 dir = GeometryHelper::GetFarDir(old_hx, old_hy, hx2, hy2);
                 const uint multihex = cr->GetMultihex();
 
                 if (map->IsMovePassed(cr, hx2, hy2, multihex)) {
@@ -3263,7 +3587,7 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, const vector<uint8>& steps
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -3352,7 +3676,8 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
     Critter* slave = nullptr;
 
     for (auto it = answer.Demands.begin(), end = answer.Demands.end(); it != end; ++it) {
-        auto& demand = *it;
+        const auto& demand = *it;
+
         if (recheck && demand.NoRecheck) {
             continue;
         }
@@ -3389,7 +3714,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 entity = master;
             }
             else if (demand.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(1);
+                entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
@@ -3518,7 +3843,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
     Critter* master = nullptr;
     Critter* slave = nullptr;
 
-    for (auto& result : answer.Results) {
+    for (const auto& result : answer.Results) {
         switch (result.Who) {
         case DR_WHO_PLAYER:
             master = cl;
@@ -3551,7 +3876,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 entity = master;
             }
             else if (result.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(1);
+                entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
@@ -3592,7 +3917,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
             continue;
         case DR_ITEM: {
             const auto pid = result.ParamHash;
-            const int cur_count = master->CountInvItemPid(pid);
+            const int cur_count = static_cast<int>(master->CountInvItemPid(pid));
             auto need_count = cur_count;
 
             switch (result.Op) {
@@ -3676,8 +4001,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
             }
 
             auto talk_distance = npc->GetTalkDistance();
-            talk_distance = (talk_distance != 0u ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-            if (!Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
+            talk_distance = (talk_distance != 0 ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
+            if (!GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
                 cl->Send_Position(cl);
                 cl->Send_Position(npc);
                 cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
@@ -3729,8 +4054,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
         }
 
         if (!ignore_distance) {
-            const auto dir = Geometry.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
-            npc->ChangeDir(Geometry.ReverseDir(dir));
+            const auto dir = GeometryHelper::GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
+            npc->ChangeDir(GeometryHelper::ReverseDir(dir));
             npc->Broadcast_Dir();
             cl->ChangeDir(dir);
             cl->Broadcast_Dir();
@@ -3739,7 +4064,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     }
     // Talk with hex
     else {
-        if (!ignore_distance && !Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
+        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Position(cl);
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
@@ -3773,7 +4098,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
     // Use result
     const auto force_dialog = DialogUseResult(npc, cl, (*it_a));
-    if (force_dialog != 0u) {
+    if (force_dialog != 0) {
         if (force_dialog == static_cast<uint>(-1)) {
             return;
         }
@@ -3983,7 +4308,7 @@ void FOServer::Process_Dialog(Player* player)
             return;
         case static_cast<uint>(-2):
         case DIALOG_BACK:
-            if (cr->Talk.LastDialogId != 0u) {
+            if (cr->Talk.LastDialogId != 0) {
                 next_dlg_id = cr->Talk.LastDialogId;
                 break;
             }
@@ -4092,25 +4417,35 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
         return nullptr;
     }
 
-    if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
-        return nullptr;
-    }
+    const auto add_item = [&, this]() -> Item* {
+        if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
+            return nullptr;
+        }
 
-    auto* item = ItemMngr.CreateItem(pid, count, props);
-    if (item == nullptr) {
-        return nullptr;
-    }
+        auto* item = ItemMngr.CreateItem(pid, proto_item->GetStackable() ? count : 1, props);
+        if (item == nullptr) {
+            return nullptr;
+        }
 
-    if (!map->AddItem(item, hx, hy)) {
-        ItemMngr.DeleteItem(item);
-        return nullptr;
-    }
+        if (!map->AddItem(item, hx, hy, nullptr)) {
+            ItemMngr.DeleteItem(item);
+            return nullptr;
+        }
 
-    // Recursive for non-stacked items
-    if (!proto_item->GetStackable() && count > 1) {
-        // Todo: reowrk non-stacked items creation from recursive to loop
-        RUNTIME_ASSERT(count < 10000);
-        return CreateItemOnHex(map, hx, hy, pid, count - 1, props, true);
+        return item;
+    };
+
+    auto* item = add_item();
+
+    // Non-stacked items
+    if (item != nullptr && !proto_item->GetStackable() && count > 1) {
+        RUNTIME_ASSERT(count < 1000);
+
+        for (uint i = 0; i < count; i++) {
+            if (add_item() == nullptr) {
+                break;
+            }
+        }
     }
 
     return item;
@@ -4151,32 +4486,32 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
     switch (result.ValuesCount) {
     case 0:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
-            return func(master, slave) ? func.GetResult() : 0u;
+            return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0u;
+            return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0u;
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0u;
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0u;
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
         if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0u;
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;
     default:
@@ -4186,39 +4521,39 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
     switch (result.ValuesCount) {
     case 0:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
-            return 0u;
+            return 0;
         }
         break;
     case 1:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
-            return 0u;
+            return 0;
         }
         break;
     case 2:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
-            return 0u;
+            return 0;
         }
         break;
     case 3:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
-            return 0u;
+            return 0;
         }
         break;
     case 4:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
-            return 0u;
+            return 0;
         }
         break;
     case 5:
         if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
-            return 0u;
+            return 0;
         }
         break;
     default:
         throw UnreachablePlaceException(LINE_STR);
     }
 
-    return 0u;
+    return 0;
 }
 
 auto FOServer::MakePlayerId(string_view player_name) const -> ident_t

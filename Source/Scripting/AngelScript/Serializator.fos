@@ -84,7 +84,7 @@ class Serializator
         dataSize = 0;
     }
 
-    Serializator SetcurPos(uint pos)
+    Serializator SetCurPos(uint pos)
     {
         GrowBuffer(pos);
         curPos = pos;
@@ -237,6 +237,21 @@ class Serializator
         return Set(value.str);
     }
 
+    Serializator Set(const ident& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializator Set(const tick_t& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializator Set(const any& value)
+    {
+        return Set(string(value));
+    }
+
     Serializator Set(const int64[] values)
     {
         uint valuesLen = values.length();
@@ -348,7 +363,7 @@ class Serializator
         uint len = 4 + valuesLen;
         GrowBuffer(curPos + len);
         Set(valuesLen);
-        for (uint i = 0, j = valuesLen; i < valuesLen; i++) {
+        for (uint i = 0; i < valuesLen; i++) {
             Set(values[i]);
         }
         if (curPos > dataSize) {
@@ -363,7 +378,7 @@ class Serializator
         uint len = 4 + valuesLen;
         GrowBuffer(curPos + len);
         Set(valuesLen);
-        for (uint i = 0, j = valuesLen; i < valuesLen; i++) {
+        for (uint i = 0; i < valuesLen; i++) {
             Set(values[i]);
         }
         if (curPos > dataSize) {
@@ -397,6 +412,21 @@ class Serializator
         for (uint i = 0; i < valuesLen; i++) {
             len += values[i].str.length();
         }
+        GrowBuffer(curPos + len);
+        Set(valuesLen);
+        for (uint i = 0; i < valuesLen; i++) {
+            Set(values[i]);
+        }
+        if (curPos > dataSize) {
+            dataSize = curPos;
+        }
+        return this;
+    }
+
+    Serializator Set(const ident[] values)
+    {
+        uint valuesLen = values.length();
+        uint len = 4 + valuesLen;
         GrowBuffer(curPos + len);
         Set(valuesLen);
         for (uint i = 0; i < valuesLen; i++) {
@@ -541,11 +571,31 @@ class Serializator
         return this;
     }
 
-    Serializator Get(hstring& hstr)
+    Serializator Get(hstring& value)
     {
         string str;
         Get(str);
-        hstr = hstring(str);
+        value = hstring(str);
+        return this;
+    }
+
+    Serializator Get(ident& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializator Get(tick_t& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializator Get(any& value)
+    {
+        string str;
+        Get(str);
+        value = str;
         return this;
     }
 
@@ -660,6 +710,17 @@ class Serializator
     }
 
     Serializator Get(hstring[] values)
+    {
+        uint valuesLen = 0;
+        Get(valuesLen);
+        values.resize(valuesLen);
+        for (uint i = 0; i < valuesLen; i++) {
+            Get(values[i]);
+        }
+        return this;
+    }
+
+    Serializator Get(ident[] values)
     {
         uint valuesLen = 0;
         Get(valuesLen);

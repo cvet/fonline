@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,13 +40,9 @@
 #include "StringUtils.h"
 
 #if FO_HAVE_FBXSDK
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wunknown-warning-option"
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#pragma clang diagnostic ignored "-Wuninitialized-const-reference"
-#pragma clang diagnostic ignored "-Wdeprecated-builtins"
-#endif
+DISABLE_WARNINGS_PUSH()
 #include "fbxsdk.h"
+DISABLE_WARNINGS_POP()
 #endif
 
 // Linker errors workaround

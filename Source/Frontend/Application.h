@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -299,7 +299,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
 
     void SetRenderTarget(RenderTexture* tex);
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
     void EnableScissor(int x, int y, int width, int height);
     void DisableScissor();
 
@@ -321,7 +321,7 @@ public:
 
     void ClearEvents();
     void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
-    void PushEvent(const InputEvent& ev);
+    void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
     void SetClipboardText(string_view text);
 
 private:
@@ -421,9 +421,9 @@ class MessageBox final
 public:
     MessageBox() = delete;
 
-    static void ShowErrorMessage(string_view title, string_view message, string_view traceback);
+    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
 };
 
 extern Application* App;
 extern void InitApp(int argc, char** argv, bool client_mode = false);
-[[noreturn]] extern void ExitApp(bool success);
+[[noreturn]] extern void ExitApp(bool success) noexcept;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -293,8 +293,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint map_id
-// uint cr_id
+// ident_t map_id
+// ident_t cr_id
 // uint16 speed
 // uint16 start_hx
 // uint16 start_hy
@@ -325,7 +325,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint cr_id
+// ident_t cr_id
 // uint whole_time
 // uint offset_time
 // uint16 speed
@@ -344,7 +344,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 start_hx
 // uint16 start_hy
 // int16 hex_ox
@@ -357,7 +357,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 hex_x
 // uint16 hex_y
 // int16 hex_ox
@@ -381,7 +381,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 to_hx
 // uint16 to_hy
 // ////////////////////////////////////////////////////////////////////////
@@ -401,18 +401,18 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint id
-// hash pid
+// ident_t id
+// hstring pid
 // uint8 slot
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REMOVE_ITEM MAKE_NETMSG_HEADER(66)
-#define NETMSG_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(uint))
+#define NETMSG_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
+// ident_t item_id
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ALL_ITEMS_SEND MAKE_NETMSG_HEADER(69)
@@ -434,27 +434,26 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // hash item_pid
 // uint16 item_x
 // uint16 item_y
-// uint8 is_added
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ERASE_ITEM_FROM_MAP MAKE_NETMSG_HEADER(74)
-#define NETMSG_ERASE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint8))
+#define NETMSG_ERASE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
-// uint8 is_deleted
+// ident_t item_id
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ANIMATE_ITEM MAKE_NETMSG_HEADER(75)
-#define NETMSG_ANIMATE_ITEM_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint8) * 2)
+#define NETMSG_ANIMATE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(bool) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
-// uint8 from_frm
-// uint8 to_frm
+// ident_t item_id
+// hstring anim_name
+// bool looped
+// bool reversed
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -469,8 +468,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // int param
 // bool is_null
 // uint count
-//	uint item_id
-//	hash item_pid
+//	ident_t item_id
+//	hstring item_pid
 //	Properties data
 // ////////////////////////////////////////////////////////////////////////
 
@@ -483,20 +482,20 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint item_id
-// hash item_pid
+// ident_t item_id
+// hstring item_pid
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ACTION MAKE_NETMSG_HEADER(91)
-#define NETMSG_CRITTER_ACTION_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(int) * 2 + sizeof(bool))
+#define NETMSG_CRITTER_ACTION_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterAction) + sizeof(int) + sizeof(bool))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
 // int action
 // int action_ext
-// bool is_item
+// bool is_context_item
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_MOVE_ITEM MAKE_NETMSG_HEADER(93)
@@ -505,27 +504,27 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ANIMATE MAKE_NETMSG_HEADER(95)
-#define NETMSG_CRITTER_ANIMATE_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint) * 2 + sizeof(bool) + sizeof(bool) * 2)
+#define NETMSG_CRITTER_ANIMATE_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterStateAnim) + sizeof(CritterActionAnim) + sizeof(bool) + sizeof(bool) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
-// uint ind1
-// uint ind2
-// bool is_item
+// CritterStateAnim state_anim
+// CritterActionAnim action_anim
+// bool is_context_item
 // bool clear_sequence
 // bool delay_play
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_SET_ANIMS MAKE_NETMSG_HEADER(96)
-#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(uint) * 2)
+#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(CritterStateAnim) + sizeof(CritterActionAnim))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
 // CritterCondition cond
-// uint ind1
-// uint ind2
+// CritterStateAnim state_anim
+// CritterActionAnim action_anim
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)
@@ -533,7 +532,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // explode
 // Params:
-// hash eff_pid
+// hstring eff_pid
 // uint16 hex_x
 // uint16 hex_y
 // uint16 radius
@@ -619,8 +618,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint mag_len
-// uint loc_id
-// uint map_id
+// ident_t loc_id
+// ident_t map_id
 // hstring loc_pid
 // hstring map_pid
 // uint8 map_index_in_loc
@@ -666,11 +665,11 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // bool clear_list
 // uint16 locations_count
 //  for locations_count
-//  uint location_id
-//  hash location_pid
+//  ident_t location_id
+//  hstring location_pid
 //  uint16 maps_count
 //   for maps_count
-//   hash map_pid
+//   hstring map_pid
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

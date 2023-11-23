@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -606,7 +606,7 @@ static string ScriptString_TrimEnd(const string& str, const string& chars)
     return str.substr(0, last + 1);
 }
 
-static CScriptArray* ScriptString_Split(const string& str, const string& delim)
+static CScriptArray* ScriptString_SplitExt(const string& str, const string& delim, bool remove_empty_entries)
 {
     const asIScriptEngine* engine = asGetActiveContext()->GetEngine();
     CScriptArray* array = CScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("string[]")));
@@ -615,19 +615,29 @@ static CScriptArray* ScriptString_Split(const string& str, const string& delim)
     int pos = 0, prev = 0, count = 0;
     while ((pos = static_cast<int>(str.find(delim, prev))) != static_cast<int>(string::npos)) {
         // Add the part to the array
-        array->Resize(array->GetSize() + 1);
-        static_cast<string*>(array->At(count))->assign(&str[prev], pos - prev);
+        if (pos - prev > 0 || !remove_empty_entries) {
+            array->Resize(array->GetSize() + 1);
+            static_cast<string*>(array->At(count))->assign(&str[prev], pos - prev);
+
+            count++;
+        }
 
         // Find the next part
-        count++;
         prev = pos + static_cast<int>(delim.length());
     }
 
     // Add the remaining part
-    array->Resize(array->GetSize() + 1);
-    static_cast<string*>(array->At(count))->assign(&str[prev]);
+    if (str.size() - prev > 0 || !remove_empty_entries) {
+        array->Resize(array->GetSize() + 1);
+        static_cast<string*>(array->At(count))->assign(&str[prev]);
+    }
 
     return array;
+}
+
+static CScriptArray* ScriptString_Split(const string& str, const string& delim)
+{
+    return ScriptString_SplitExt(str, delim, false);
 }
 
 static string ScriptString_Join(const CScriptArray* array, const string& delim)
@@ -724,6 +734,42 @@ void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine
 
     r = engine->RegisterObjectMethod("string", "array<string>@ split(const string &in) const", SCRIPT_FUNC_THIS(ScriptString_Split), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "array<string>@ split(const string &in, bool removeEmptyEntries) const", SCRIPT_FUNC_THIS(ScriptString_SplitExt), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterGlobalFunction("string join(const array<string>@+, const string &in)", SCRIPT_FUNC(ScriptString_Join), SCRIPT_FUNC_CONV);
+    RUNTIME_ASSERT(r >= 0);
+}
+
+static string& ScriptString_AssignAny(string& str, const any_t& other)
+{
+    str = other;
+    return str;
+}
+
+static string& ScriptString_AddAssignAny(string& str, const any_t& other)
+{
+    str += other;
+    return str;
+}
+
+static string ScriptString_AddAny(const string& str, const any_t& other)
+{
+    return str + other;
+}
+
+static string ScriptString_AddAnyR(const string& str, const any_t& other)
+{
+    return other + str;
+}
+
+void ScriptExtensions::RegisterScriptStdStringAnyExtensions(asIScriptEngine* engine)
+{
+    int r = engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AssignAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string opAdd(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string opAdd_r(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAnyR), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
 }

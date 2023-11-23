@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);

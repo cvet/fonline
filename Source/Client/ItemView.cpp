@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,15 +70,16 @@ auto ItemView::EvaluateLightHash() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
+    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor().underlying_value() : 0;
 }
 
-auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const Properties* props) -> ItemView*
+auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = new ItemView(_engine, id, proto, props);
 
+    item->SetIsStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
@@ -90,13 +91,18 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, c
     return item;
 }
 
-auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
+auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = AddInnerItem(id, proto, stack_id, nullptr);
 
     item->RestoreData(props_data);
+
+    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
+    RUNTIME_ASSERT(item->GetContainerId() == GetId());
+    RUNTIME_ASSERT(item->GetContainerStack() == stack_id);
 
     std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -113,7 +119,7 @@ void ItemView::DeleteInnerItem(ItemView* item)
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(ident_t {});
-    item->SetContainerStack(0);
+    item->SetContainerStack(ContainerItemStack::Root);
 
     item->MarkAsDestroyed();
     item->Release();

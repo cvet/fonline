@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    FOServer* Server {};
+    unique_ptr<FOServer> Server {};
     std::thread ServerThread {};
     uint LastState {};
     uint CheckPoint {};
@@ -62,38 +62,16 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
-        try {
-            Data->Server = new FOServer(App->Settings);
-            Data->Server->Start();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
+        Data->Server = std::make_unique<FOServer>(App->Settings);
 
         while (!App->Settings.Quit) {
-            try {
-                Data->Server->MainLoop();
-            }
-            catch (const GenericException& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {100});
         }
 
-        try {
-            auto* server = Data->Server;
-            Data->Server = nullptr;
-            server->Shutdown();
-            delete server;
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
+        Data->Server.reset();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -112,7 +90,7 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
             // Start
-            const SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
+            constexpr SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
         else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
@@ -163,6 +141,7 @@ int main(int argc, char** argv)
 
             // Change executable path, if changed
             if (service != nullptr) {
+                // ReSharper disable once CppLocalVariableMayBeConst
                 uint8 service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
@@ -171,7 +150,7 @@ int main(int argc, char** argv)
                     error = true;
                 }
                 else if (path != service_cfg->lpBinaryPathName) {
-                    if (!::ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)) {
+                    if (::ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) == FALSE) {
                         error = true;
                     }
                 }
@@ -219,6 +198,8 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
         // Todo: convert argv from wchar_t** to char**
+        UNUSED_VARIABLE(argc);
+        UNUSED_VARIABLE(argv);
         InitApp(0, nullptr);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
@@ -229,8 +210,9 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         SetFOServiceStatus(SERVICE_START_PENDING);
 
         Data->ServerThread = std::thread(ServerEntry);
-        while (Data->Server == nullptr || !Data->Server->IsStarted()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+
+        while (!Data->Server && !Data->Server->IsStarted() && !Data->Server->IsStartingError()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         if (Data->Server->IsStarted()) {
@@ -289,7 +271,7 @@ static void SetFOServiceStatus(uint state)
     if (state == SERVICE_RUNNING) {
         status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
     }
-    if (!(state == SERVICE_RUNNING || state == SERVICE_STOPPED)) {
+    if (state != SERVICE_RUNNING && state != SERVICE_STOPPED) {
         status.dwCheckPoint = ++Data->CheckPoint;
     }
 

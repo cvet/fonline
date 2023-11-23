@@ -1,64 +1,210 @@
-cmake_minimum_required (VERSION 3.1)
-
-set (ENABLE_SSL AUTO CACHE STRING
-   "Enable TLS connections and SCRAM-SHA-1 authentication. Options are
-   \"DARWIN\" to use Apple's Secure Transport, \"WINDOWS\" to use Windows
-   Secure Channel, \"OPENSSL\", \"LIBRESSL\", \"AUTO\",\ or \"OFF\". These options are
-   case-sensitive. The default is \"AUTO\". Note\ that SCRAM-SHA-1 is
-   required for authenticating to MongoDB 3.0 and later.")
-
-set_property(CACHE ENABLE_SSL PROPERTY STRINGS "DARWIN;WINDOWS;OPENSSL;LIBRESSL;AUTO;OFF")
-
-set (ENABLE_SASL AUTO CACHE STRING
-   "Enable SASL authentication (Kerberos). Options are \"CYRUS\" to use Cyrus
-   SASL, \"SSPI\" to use Windows Native SSPI, \"AUTO\",\ or \"OFF\". These options are case-sensitive.")
-
-set_property(CACHE ENABLE_SASL PROPERTY STRINGS "CYRUS|SSPI|AUTO|OFF")
-
-set (ENABLE_STATIC AUTO CACHE STRING "Build and install static libbson/libmongoc. Set to ON/AUTO/OFF/BUILD_ONLY/DONT_INSTALL, default AUTO.")
-option (ENABLE_TESTS "Build MongoDB C Driver tests." ON)
-option (ENABLE_EXAMPLES "Build MongoDB C Driver examples." ON)
-set (ENABLE_SRV AUTO CACHE STRING "Support mongodb+srv URIs. Set to ON/AUTO/OFF, default AUTO.")
-option (ENABLE_MAINTAINER_FLAGS "Use strict compiler checks" OFF)
-option (ENABLE_AUTOMATIC_INIT_AND_CLEANUP "Enable automatic init and cleanup (GCC only)" ON)
-option (ENABLE_CRYPTO_SYSTEM_PROFILE "Use system crypto profile (OpenSSL only)" OFF)
-option (ENABLE_TRACING "Turn on verbose debug output" OFF)
-option (ENABLE_COVERAGE "Turn on compile options for lcov" OFF)
-set (ENABLE_SHM_COUNTERS AUTO CACHE STRING "Enable memory performance counters that use shared memory on Linux. Set to ON/AUTO/OFF, default AUTO.")
-set (ENABLE_MONGOC ON CACHE STRING "Whether to build libmongoc. Set to ON/OFF, default ON.")
-set (ENABLE_BSON AUTO CACHE STRING "Whether to build libbson. Set to ON/AUTO/SYSTEM, default AUTO.")
-set (ENABLE_SNAPPY AUTO CACHE STRING "Enable snappy support. Set to ON/AUTO/OFF, default AUTO.")
-set (ENABLE_ZLIB AUTO CACHE STRING "Enable zlib support")
-set (ENABLE_ZSTD AUTO CACHE STRING "Enable zstd support. Set to ON/AUTO/OFF, default AUTO.")
-option (ENABLE_MAN_PAGES "Build MongoDB C Driver manual pages." OFF)
-option (ENABLE_HTML_DOCS "Build MongoDB C Driver HTML documentation." OFF)
-option (ENABLE_EXTRA_ALIGNMENT
-   "Turn on extra alignment of libbson types. Set to ON/OFF, default ON.\
- Required for the 1.0 ABI but better disabled."
-   ON
-)
-option (ENABLE_RDTSCP
-   "Fast performance counters on Intel using the RDTSCP instruction"
-   OFF
-)
-option (ENABLE_APPLE_FRAMEWORK "Build libraries as frameworks on darwin platforms" OFF)
-set (ENABLE_ICU AUTO CACHE STRING "Enable ICU support, necessary to use non-ASCII usernames or passwords, default AUTO.")
-option (ENABLE_UNINSTALL "Enable creation of uninstall script and associated uninstall build target." ON)
-set (ENABLE_CLIENT_SIDE_ENCRYPTION AUTO CACHE STRING "Enable Client-Side Field Level Encryption support. Requires libmongocrypt. Set to ON/AUTO/OFF, default AUTO.")
-set (ENABLE_MONGODB_AWS_AUTH AUTO CACHE STRING "Enable support for MONGODB-AWS authentication mechanism. Set to ON/AUTO/OFF, default AUTO. (also requires ENABLE_SSL not set to OFF)")
-option (ENABLE_PIC
-   "Enables building of position independent code for static library components."
-   ON
-)
-option (ENABLE_DEBUG_ASSERTIONS "Turn on runtime debug assertions" OFF)
+cmake_minimum_required (VERSION 3.15)
 
 project (mongo-c-driver C)
+
+list (APPEND CMAKE_MODULE_PATH
+      "${PROJECT_SOURCE_DIR}/build/cmake"
+      "${PROJECT_SOURCE_DIR}/build/cmake/make_dist"
+      )
+
+include (MongoSettings)
+
+# Subcomponents:
+mongo_bool_setting(ENABLE_MONGOC "Enable the build of libmongoc libraries (The MongoDB C database driver)")
+mongo_bool_setting(
+   USE_SYSTEM_LIBBSON [[Use an existing libbson library (via find_package()) instead of building one from source]]
+   DEFAULT VALUE OFF
+   ADVANCED
+)
+
+# Deprecated option "ENABLE_BSON" is gone, but old caches may rely on SYSTEM to
+# disable the libbson build. Allow ENABLE_BSON=SYSTEM only if USE_SYSTEM_LIBBSON
+# is also true, to allow both ENABLE_BSON=SYSTEM and USE_SYSTEM_LIBBSON=TRUE to
+# simplify downstream build scripts
+if(ENABLE_BSON STREQUAL "SYSTEM" AND NOT USE_SYSTEM_LIBBSON)
+   # User set ENABLE_BSON=SYSTEM, so they intend for us to build against an external
+   # libbson, but they didn't set USE_SYSTEM_LIBBSON=ON, so they are probably
+   # unaware of this change. Rather than miscompile, stop what we're doing:
+   message(FATAL_ERROR "ENABLE_BSON=SYSTEM is no longer supported. Use USE_SYSTEM_LIBBSON=ON for the same effect.")
+endif()
+
+# Static libraries:
+mongo_setting(
+   ENABLE_STATIC "Enable building and installing static library archive artifacts"
+   OPTIONS ON OFF BUILD_ONLY
+   DEFAULT VALUE "ON"
+)
+if(NOT WIN32)
+   mongo_bool_setting(ENABLE_PIC "Enable position-independent code when building static libraries (Not applicable on Windows)")
+elseif(DEFINED ENABLE_PIC)
+   # We are on Windows, and ENABLE_PIC is defined.
+   message(STATUS "ENABLE_PIC=“${ENABLE_PIC}” has no effect on Windows (All Windows code is position-independent)")
+else()
+   # We are on Windows, and ENABLE_PIC is not defined, which is normal
+endif()
+
+# Dev mode checks:
+mongo_bool_setting(
+   ENABLE_MAINTAINER_FLAGS "Enable stricter build-time checks"
+   DEFAULT VALUE OFF
+      DEVEL EVAL [[
+         if(MSVC)
+            set(DEFAULT OFF)
+         else()
+            set(DEFAULT ON)
+         endif()
+      ]])
+
+# Toggle instrumentation:
+mongo_bool_setting(ENABLE_TRACING "Enable runtime tracing output in the built libmongoc (Very noisy!)"
+                   DEFAULT VALUE OFF)
+mongo_bool_setting(ENABLE_COVERAGE "Build code with coverage instrumentation"
+                   DEFAULT VALUE OFF DEVEL VALUE ON)
+mongo_bool_setting(ENABLE_DEBUG_ASSERTIONS "Build library with runtime debug assertions enabled"
+                   DEFAULT VALUE OFF DEVEL VALUE ON)
+# for MONGO_SANITIZE:
+include(Sanitizers)
+
+# Toggle optional components:
+mongo_bool_setting(ENABLE_TESTS "Build MongoDB C Driver tests")
+mongo_bool_setting(ENABLE_EXAMPLES "Build MongoDB C Driver examples")
+mongo_bool_setting(ENABLE_MAN_PAGES "Build the manual pages" DEFAULT VALUE OFF)
+mongo_bool_setting(ENABLE_HTML_DOCS "Build the HTML documentation" DEFAULT VALUE OFF)
+mongo_bool_setting(ENABLE_UNINSTALL "Generate an 'uninstall' script and an 'uninstall' build target")
+
+# Optional features that are ENABLED when necessary dependencies are found:
+mongo_setting(ENABLE_SRV "Enable support for mongodb+srv URIs."
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO)
+mongo_setting(ENABLE_SNAPPY "Enable Snappy compression support"
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO)
+mongo_setting(ENABLE_ZSTD "Enable zstd compression support"
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO)
+mongo_setting(ENABLE_ZLIB "Enable zlib compression support"
+              OPTIONS BUNDLED SYSTEM OFF
+              DEFAULT VALUE BUNDLED)
+mongo_setting(
+   ENABLE_SSL [[Enable TLS connection and SCRAM authentication.]]
+   OPTIONS WINDOWS DARWIN OPENSSL LIBRESSL OFF AUTO
+   DEFAULT VALUE AUTO
+   VALIDATE CODE [[
+      if(ENABLE_SSL STREQUAL "DARWIN" AND NOT APPLE)
+         message(WARNING "ENABLE_SSL=DARWIN is only supported on Apple platforms")
+      elseif(ENABLE_SSL STREQUAL "WINDOWS" AND NOT WIN32)
+         message(WARNING "ENABLE_SSL=WINDOWS is only supported on Windows platforms")
+      endif()
+   ]]
+)
+mongo_bool_setting(
+   ENABLE_SHM_COUNTERS "Enable memory performance counters"
+   DEFAULT EVAL [[
+      set(DEFAULT OFF)
+      if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64"))
+         set(DEFAULT ON)
+      endif()
+   ]]
+   VALIDATE CODE [[
+      if(ENABLE_SHM_COUNTERS
+         AND NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux"
+         AND NOT (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64"))
+         message(WARNING "ENABLE_SHM_COUNTERS=ON is only supported on Linux or ARM Darwin")
+      endif()
+   ]]
+)
+
+mongo_setting(
+   ENABLE_SASL "Enable SASL authentication (Kerberos)"
+   OPTIONS CYRUS SSPI OFF AUTO
+   DEFAULT VALUE AUTO
+   VALIDATE CODE [[
+      if(ENABLE_SASL STREQUAL "SSPI" AND NOT WIN32)
+         message(WARNING "ENABLE_SASL=SSPI is only supported on Windows platforms")
+      endif()
+   ]]
+)
+
+mongo_setting(ENABLE_ICU "Enable ICU support, needed for non-ASCII usernames and passwords"
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO)
+mongo_setting(ENABLE_CLIENT_SIDE_ENCRYPTION "Enable In-Use Encryption support. Requires additional support libraries."
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO)
+mongo_setting(ENABLE_MONGODB_AWS_AUTH "Enable support for the MONGODB-AWS authentication mechanism"
+              OPTIONS ON OFF AUTO
+              DEFAULT VALUE AUTO
+              VALIDATE CODE [[
+                  if(NOT ENABLE_MONGODB_AWS_AUTH STREQUAL "ON")
+                     return()
+                  endif()
+                  if(MSVC AND MSVC_VERSION LESS 1900)
+                     message(FATAL_ERROR "Visual Studio 2015 or newer is required for ENABLE_MONGODB_AWS_AUTH=ON")
+                  elseif(ENABLE_SSL STREQUAL "OFF")
+                     message(FATAL_ERROR "ENABLE_MONGODB_AWS_AUTH=ON requires that ENABLE_SSL not be 'OFF'")
+                  endif()
+              ]])
+
+# Optional features that are DISABLED by default:
+mongo_bool_setting(ENABLE_RDTSCP "Enable fast performance counters using the Intel RDTSCP instruction"
+                   DEFAULT VALUE OFF)
+mongo_bool_setting(ENABLE_APPLE_FRAMEWORK "Build libraries as Apple Frameworks on Darwin platforms"
+                   DEFAULT VALUE OFF)
+mongo_bool_setting(
+   ENABLE_CRYPTO_SYSTEM_PROFILE "Use system crypto profile"
+   DEFAULT VALUE OFF
+   VALIDATE CODE [[
+      if(ENABLE_CRYPTO_SYSTEM_PROFILE AND NOT ENABLE_SSL STREQUAL "OPENSSL")
+         message(WARNING "ENABLE_CRYPTO_SYSTEM_PROFILE=TRUE is only applicable when ENABLE_SSL=OPENSSL")
+      endif()
+   ]]
+)
+
+# Deprecated options:
+mongo_bool_setting(
+   ENABLE_AUTOMATIC_INIT_AND_CLEANUP
+      "[Deprecated] Enable automatic initialization of the C driver library"
+   DEFAULT EVAL [[
+         set(DEFAULT OFF)
+         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            message(VERBOSE "For backwards compatibility, when using GCC the default of "
+                            "ENABLE_AUTOMATIC_INIT_AND_CLEANUP is ON")
+            set(DEFAULT ON)
+         endif()
+      ]]
+      DEVEL VALUE OFF
+   VALIDATE CODE [[
+      if(ENABLE_AUTOMATIC_INIT_AND_CLEANUP)
+         if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            message(WARNING "ENABLE_AUTOMATIC_INIT_AND_CLEANUP is only supported on GCC.")
+         endif()
+         message(DEPRECATION
+                  "Enabling ENABLE_AUTOMATIC_INIT_AND_CLEANUP is deprecated and "
+                  "may be removed in a future release")
+      endif()
+   ]]
+)
+mongo_bool_setting(
+   ENABLE_EXTRA_ALIGNMENT
+      "[Deprecated] Enable extra alignment on libbson types"
+   DEFAULT VALUE ON
+      DEVEL VALUE OFF
+   VALIDATE CODE [[
+      if(ENABLE_EXTRA_ALIGNMENT AND MONGO_SANITIZE MATCHES "undefined")
+         message(WARNING "ENABLE_EXTRA_ALIGNMENT=“${ENABLE_EXTRA_ALIGNMENT}” will create conflicts with UndefinedBehaviorSanitizer")
+      endif()
+   ]]
+)
 
 # Optionally enable C++ to do some C++-specific tests
 include (CheckLanguage)
 check_language (CXX)
 if (CMAKE_CXX_COMPILER)
    enable_language (CXX)
+   if (NOT CMAKE_CXX_STANDARD)
+      # Default to C++11 for purposes of testing.
+      set (CMAKE_CXX_STANDARD 11)
+   endif ()
 else ()
    message (STATUS "No CXX support")
 endif ()
@@ -69,12 +215,6 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STATUS "No CMAKE_BUILD_TYPE selected, defaulting to ${CMAKE_BUILD_TYPE}"
    )
 endif ()
-
-set (CMAKE_MODULE_PATH
-   ${CMAKE_MODULE_PATH}
-   ${PROJECT_SOURCE_DIR}/build/cmake
-   ${PROJECT_SOURCE_DIR}/build/cmake/make_dist
-)
 
 include (InstallRequiredSystemLibraries)
 include (GNUInstallDirs)
@@ -89,8 +229,6 @@ include (CCache)
 if (NOT MSVC)
    include (LLDLinker)
 endif ()
-# Enable sanitizers
-include (Sanitizers)
 
 set (BUILD_VERSION "0.0.0" CACHE STRING "Library version (for both libbson and libmongoc)")
 
@@ -100,7 +238,7 @@ include (ParseVersion)
 if (BUILD_VERSION STREQUAL "0.0.0")
    if (EXISTS ${PROJECT_SOURCE_DIR}/VERSION_CURRENT)
       file (STRINGS ${PROJECT_SOURCE_DIR}/VERSION_CURRENT BUILD_VERSION)
-      message ("file VERSION_CURRENT contained BUILD_VERSION ${BUILD_VERSION}")
+      message (STATUS "file VERSION_CURRENT contained BUILD_VERSION ${BUILD_VERSION}")
    else ()
       find_package (PythonInterp)
       if (PYTHONINTERP_FOUND)
@@ -119,7 +257,7 @@ if (BUILD_VERSION STREQUAL "0.0.0")
             )
          else ()
             set (BUILD_VERSION ${CALC_RELEASE_VERSION})
-            message ("calculated BUILD_VERSION ${BUILD_VERSION}")
+            message (STATUS "calculated BUILD_VERSION ${BUILD_VERSION}")
          endif ()
       else ()
          message (FATAL_ERROR
@@ -127,11 +265,11 @@ if (BUILD_VERSION STREQUAL "0.0.0")
  (Python was not found on the system); specify in CMake command, -DBUILD_VERSION=<version>"
          )
       endif ()
-      message ("storing BUILD_VERSION ${BUILD_VERSION} in file VERSION_CURRENT for later use")
+      message (STATUS "storing BUILD_VERSION ${BUILD_VERSION} in file VERSION_CURRENT for later use")
       file (WRITE ${PROJECT_SOURCE_DIR}/VERSION_CURRENT ${BUILD_VERSION})
    endif ()
 else ()
-   message ("storing BUILD_VERSION ${BUILD_VERSION} in file VERSION_CURRENT for later use")
+   message (STATUS "storing BUILD_VERSION ${BUILD_VERSION} in file VERSION_CURRENT for later use")
    file (WRITE ${PROJECT_SOURCE_DIR}/VERSION_CURRENT ${BUILD_VERSION})
 endif ()
 
@@ -146,47 +284,15 @@ if ( (ENABLE_BUILD_DEPENDECIES STREQUAL OFF) AND (NOT CMAKE_CURRENT_SOURCE_DIR S
    set (ENABLE_BUILD_DEPENDECIES ON)
 endif ()
 
-if (ENABLE_EXTRA_ALIGNMENT STREQUAL ON)
-   set (BSON_EXTRA_ALIGN 1)
-else ()
-   set (BSON_EXTRA_ALIGN 0)
-endif ()
+_mongo_pick(BSON_EXTRA_ALIGN 1 0 ENABLE_EXTRA_ALIGNMENT)
 
-if (ENABLE_RDTSCP)
-   set (MONGOC_ENABLE_RDTSCP 1)
-else ()
-   set (MONGOC_ENABLE_RDTSCP 0)
-endif ()
+_mongo_pick(MONGOC_ENABLE_RDTSCP 1 0 ENABLE_RDTSCP)
 
-if (NOT ENABLE_MONGOC MATCHES "ON|OFF")
-   message (FATAL_ERROR "ENABLE_MONGOC option must be ON or OFF")
-endif ()
+_mongo_pick(MONGOC_ENABLE_STATIC_BUILD 1 0 ENABLE_STATIC)
+_mongo_pick(MONGOC_ENABLE_STATIC_INSTALL 1 0
+            [[ENABLE_STATIC AND NOT ENABLE_STATIC STREQUAL "BUILD_ONLY"]])
 
-if (NOT ENABLE_BSON MATCHES "ON|AUTO|SYSTEM")
-   message (FATAL_ERROR "ENABLE_BSON option must be ON, AUTO, or SYSTEM")
-endif ()
-
-if (NOT ENABLE_STATIC MATCHES "^(ON|OFF|AUTO|BUILD_ONLY|DONT_INSTALL)$")
-   message (FATAL_ERROR
-      "ENABLE_STATIC option must be ON, OFF, AUTO, BUILD_ONLY, or DONT_INSTALL"
-   )
-endif ()
-
-set (MONGOC_ENABLE_STATIC_BUILD 0)
-set (MONGOC_ENABLE_STATIC_INSTALL 0)
-
-if (ENABLE_STATIC MATCHES "^(ON|AUTO)$")
-   message (STATUS "Build and install static libraries")
-   set (MONGOC_ENABLE_STATIC_BUILD 1)
-   set (MONGOC_ENABLE_STATIC_INSTALL 1)
-elseif (ENABLE_STATIC MATCHES "^(BUILD_ONLY|DONT_INSTALL)$")
-   message (STATUS "Build only static libraries")
-   set (MONGOC_ENABLE_STATIC_BUILD 1)
-else ()
-   message (STATUS "Don't build static libraries")
-endif()
-
-if (ENABLE_BSON STREQUAL SYSTEM)
+if (USE_SYSTEM_LIBBSON)
    # The input variable BSON_ROOT_DIR is respected for backwards compatibility,
    # but you should use the standard CMAKE_PREFIX_PATH instead.
    message (STATUS "Searching for libbson CMake packages")
@@ -199,8 +305,8 @@ if (ENABLE_BSON STREQUAL SYSTEM)
       message (FATAL_ERROR "System libbson not found")
    endif ()
 
-   message ("--   libbson found version \"${bson-1.0_VERSION}\"")
-   message ("--   disabling test-libmongoc since using system libbson")
+   message (STATUS "libbson found version \"${bson-1.0_VERSION}\"")
+   message (STATUS "disabling test-libmongoc since using system libbson")
    SET (ENABLE_TESTS OFF)
 
    set (USING_SYSTEM_BSON TRUE)
@@ -223,6 +329,9 @@ include (MakeDistFiles)
 
 # Enable CTest
 include (CTest)
+if (BUILD_TESTING)
+   include (TestFixtures)
+endif ()
 
 # Ensure the default behavior: don't ignore RPATH settings.
 set (CMAKE_SKIP_BUILD_RPATH OFF)
@@ -243,14 +352,32 @@ set (CMAKE_MACOSX_RPATH ON)
 # silence a CMake 3.11 warning that the old behavior is deprecated.
 cmake_policy (SET CMP0042 NEW)
 
+# By default, ensure conformance with a minimum C standard.
+# Required extensions to the language (i.e. POSIX) are (re)enabled further below.
+if (NOT DEFINED CMAKE_C_STANDARD)
+   set (CMAKE_C_STANDARD 99)
+endif ()
+if (NOT DEFINED CMAKE_C_STANDARD_REQUIRED)
+   set (CMAKE_C_STANDARD_REQUIRED ON)
+endif ()
+if (NOT DEFINED CMAKE_C_EXTENSIONS)
+   set (CMAKE_C_EXTENSIONS OFF)
+endif ()
+
 # https://man7.org/linux/man-pages/man7/feature_test_macros.7.html
 # https://pubs.opengroup.org/onlinepubs/7908799/xsh/compilation.html
 # Enable POSIX features up to POSIX.1-2008 plus the XSI extension and BSD-derived definitions.
 # Both _BSD_SOURCE and _DEFAULT_SOURCE are defined for backwards-compatibility with glibc 2.19 and earlier.
 # _BSD_SOURCE and _DEFAULT_SOURCE are required by `getpagesize`, `h_errno`, etc.
-# _XOPEN_SOURCE=700 is required by `strnlen`, etc.
+# _XOPEN_SOURCE=700 is required by `strnlen`, `strerror_l`, etc.
 add_definitions (-D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_DEFAULT_SOURCE)
 list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_DEFAULT_SOURCE)
+
+# Enable non-standard features on FreeBSD with __BSD_VISIBLE=1
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+   add_definitions (-D__BSD_VISIBLE=1)
+   list (APPEND CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
+endif ()
 
 # https://opensource.apple.com/source/Libc/Libc-1439.40.11/gen/compat.5.auto.html
 # Non-POSIX extensions are required by `_SC_NPROCESSORS_ONLN`.
@@ -262,7 +389,7 @@ endif ()
 add_subdirectory (src/common)
 
 if (NOT USING_SYSTEM_BSON)
-   message ("  -- Using bundled libbson")
+   message (STATUS "Using bundled libbson")
 
    add_subdirectory (src/libbson)
    # Defined in src/libbson/CMakeLists.txt
@@ -278,7 +405,6 @@ if (MSVC)
 endif ()
 
 if (ENABLE_MONGOC)
-
    if (ENABLE_TESTS AND NOT MONGOC_ENABLE_STATIC_BUILD)
       message (FATAL_ERROR "ENABLE_TESTS requires ENABLE_STATIC or ENABLE_STATIC_BUILD")
    endif ()
@@ -291,21 +417,21 @@ if (ENABLE_MONGOC)
    set (SOURCE_DIR "${PROJECT_SOURCE_DIR}/")
 
    set (ZLIB_SOURCES
-      ${SOURCE_DIR}/src/zlib-1.2.12/adler32.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/crc32.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/deflate.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/infback.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/inffast.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/inflate.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/inftrees.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/trees.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/zutil.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/compress.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/uncompr.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/gzclose.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/gzlib.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/gzread.c
-      ${SOURCE_DIR}/src/zlib-1.2.12/gzwrite.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/adler32.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/crc32.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/deflate.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/infback.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/inffast.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/inflate.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/inftrees.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/trees.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/zutil.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/compress.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/uncompr.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/gzclose.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/gzlib.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/gzread.c
+      ${SOURCE_DIR}/src/zlib-1.2.13/gzwrite.c
    )
 
    set (MONGOC_ENABLE_ICU 0)
@@ -380,8 +506,8 @@ if (ENABLE_MONGOC)
       add_custom_target (doc
          ALL
          DEPENDS
-            $<$<STREQUAL:"${ENABLE_BSON}","ON">:bson-doc>
-            $<$<STREQUAL:"${ENABLE_MONGOC}","ON">:mongoc-doc>
+            $<$<NOT:$<BOOL:${USE_SYSTEM_LIBBSON}>>:bson-doc>
+            $<$<BOOL:${ENABLE_MONGOC}>:mongoc-doc>
       )
    endif ()
 
@@ -443,7 +569,7 @@ if (ENABLE_MONGOC)
          ${ALL_DIST} ${dist_generated_depends}
    )
 
-   if (ENABLE_BSON MATCHES "ON|AUTO" AND ENABLE_MAN_PAGES STREQUAL ON AND ENABLE_HTML_DOCS STREQUAL ON)
+   if (NOT USE_SYSTEM_LIBBSON AND ENABLE_MAN_PAGES STREQUAL ON AND ENABLE_HTML_DOCS STREQUAL ON)
       # Since our 'dist' implementation does not add top-level targets for every
       # file to be included, we declare a dependency on the 'mongo-doc' target so
       # that documentation is built before the distribution tarball is generated.
@@ -460,7 +586,7 @@ if (ENABLE_MONGOC)
       )
    else ()
       string (CONCAT DISTERRMSG
-         "The dist and distcheck targets are disabled. Set ENABLE_BSON=ON, "
+         "The dist and distcheck targets are disabled. Set USE_SYSTEM_LIBBSON=OFF, "
          "ENABLE_MAN_PAGES=ON, ENABLE_HTML_DOCS=ON, and generate VERSION_CURRENT "
          "to enable."
       )

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,27 +39,13 @@
 
 DECLARE_EXCEPTION(MapLoaderException);
 
-struct MapTile
-{
-    hstring::hash_t NameHash {};
-    uint16 HexX {};
-    uint16 HexY {};
-    int16 OffsX {};
-    int16 OffsY {};
-    uint8 Layer {};
-    bool IsRoof {};
-    bool IsSelected {}; // Todo: remove mapper specific IsSelected from MapTile
-};
-static_assert(std::is_standard_layout_v<MapTile>);
-
 class MapLoader final
 {
 public:
     using CrLoadFunc = std::function<bool(ident_t id, const ProtoCritter* proto, const map<string, string>& kv)>;
     using ItemLoadFunc = std::function<bool(ident_t id, const ProtoItem* proto, const map<string, string>& kv)>;
-    using TileLoadFunc = std::function<bool(MapTile&& tile)>;
 
     MapLoader() = delete;
 
-    static void Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static void Load(string_view name, const string& buf, ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
 };

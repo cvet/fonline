@@ -1,4 +1,4 @@
-project('tracy', ['cpp'])
+project('tracy', ['cpp'], version: '0.10.0')
 
 if get_option('tracy_enable')
   add_project_arguments('-DTRACY_ENABLE', language : 'cpp')
@@ -62,6 +62,10 @@ endif
 
 if get_option('tracy_no_system_tracing')
   add_project_arguments('-DTRACY_NO_SYSTEM_TRACING', language : 'cpp')
+endif
+
+if get_option('tracy_patchable_nopsleds')
+  add_project_arguments('-DTRACY_PATCHABLE_NOPSLEDS', language : 'cpp')
 endif
 
 if get_option('tracy_delayed_init')

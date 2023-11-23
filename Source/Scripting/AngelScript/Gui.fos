@@ -3,9 +3,24 @@
 ///@ Enum CursorType Default = 0
 
 ///@ Setting Client CursorType Cursor
-///@ Setting Client uint CursorData
+///@ Setting Client any CursorData
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
+
+// Anchor styles
+///@ Enum AnchorStyle None = 0
+///@ Enum AnchorStyle Left = 1
+///@ Enum AnchorStyle Right = 2
+///@ Enum AnchorStyle Top = 4
+///@ Enum AnchorStyle Bottom = 8
+
+// Dock styles
+///@ Enum DockStyle None = 0
+///@ Enum DockStyle Left = 1
+///@ Enum DockStyle Right = 2
+///@ Enum DockStyle Top = 3
+///@ Enum DockStyle Bottom = 4
+///@ Enum DockStyle Fill = 5
 
 interface IDropMenu
 {
@@ -40,7 +55,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void OnConstruct()
 //   void OnInit()
 //   void OnShow()
-//   void OnShow( dict<string, string> params )
+//   void OnShow( dict<string, any> params )
 //   void OnHide()
 //   void OnAppear()
 //   void OnDisappear()
@@ -89,8 +104,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   int AbsolutePosY
 //   int Width
 //   int Height
-//   int Anchor
-//   int Dock
+//   AnchorStyle Anchor
+//   DockStyle Dock
 //   bool IsDraggable
 //   bool IsNotHittable
 //   bool IsNotCatchable
@@ -110,9 +125,9 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetPosition( int x, int y )
 //   void SetPosition( string iniKey )
 //   void SetSize( int w, int h )
-//   void SetAnchor( int anchorStyles )
-//   void SetDock( int dockStyle )
-//   void SetColor( uint color )
+//   void SetAnchor( AnchorStyle anchorStyles )
+//   void SetDock( DockStyle dockStyle )
+//   void SetColor( ucolor color )
 //   void SetDraggable( bool enabled )
 //   void SetNotHittable( bool enabled )
 //   void SetNotCatchable( bool enabled )
@@ -135,9 +150,9 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   Object GetChild( uint index )
 // Panel : Object
 //   Sprite::Sprite BackgroundImage
-//   int BackgroundImageLayout
-//   void SetBackgroundImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetBackgroundImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+//   SpriteLayout BackgroundImageLayout
+//   void SetBackgroundImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetBackgroundImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
 //   void SetCropContent( bool enabled )
 //   void SetAutoScroll( bool ver, bool hor )
 //   void ModifyScroll( int ver, int hor )
@@ -145,16 +160,16 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 // Text : Object
 //   string Text (overridable)
 //   int TextFont
-//   uint TextColor
-//   uint TextColorFocused
+//   ucolor TextColor
+//   ucolor TextColorFocused
 //   int TextFlags
 //   void SetText( string text, int font, int flags )
 //   void SetText( string text )
 //   void SetTextWithResize( string text )
 //   void SetTextFont( int font )
 //   void SetTextFlags( int flags )
-//   void SetTextColor( uint color )
-//   void SetTextFocusedColor( uint color )
+//   void SetTextColor( ucolor color )
+//   void SetTextFocusedColor( ucolor color )
 // TextInput : Text : Object
 //   uint InputLength
 //   bool IsTextPassword
@@ -164,17 +179,17 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetCarriage( bool enable )
 // Button : Panel : Object
 //   Sprite::Sprite PressedImage
-//   int PressedImageLayout
+//   SpriteLayout PressedImageLayout
 //   Sprite::Sprite HoverImage
-//   int HoverImageLayout
+//   SpriteLayout HoverImageLayout
 //   bool IsSwitched
 //   bool IsDisabled
-//   void SetPressedImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetPressedImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetHoverImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetHoverImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetDisabledImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetDisabledImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetPressedImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetPressedImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetHoverImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetHoverImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetDisabledImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetDisabledImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
 //   void SetSwitch( bool enabled )
 //   void SetCondition( bool enabled )
 // CheckBox : Button : Panel : Object
@@ -278,15 +293,15 @@ class Object
     {
         return _Height;
     }
-    int get_Anchor() final
+    AnchorStyle get_Anchor() final
     {
         return _Anchor;
     }
-    int get_Dock() final
+    DockStyle get_Dock() final
     {
         return _Dock;
     }
-    int get_Color() final
+    ucolor get_Color() final
     {
         return _Color;
     }
@@ -353,9 +368,9 @@ class Object
     int _AbsolutePosY;
     int _Width;
     int _Height;
-    int _Anchor;
-    int _Dock;
-    uint _Color;
+    AnchorStyle _Anchor;
+    DockStyle _Dock;
+    ucolor _Color;
     bool _IsDragged;
     bool _IsDraggable;
     bool _IsNotHittable;
@@ -383,7 +398,7 @@ class Object
     void OnShow()
     {
     }
-    void OnShow(dict<string, string> params)
+    void OnShow(dict<string, any> params)
     {
     }
     void OnHide()
@@ -530,7 +545,7 @@ class Object
         _RefreshPosition();
     }
 
-    void _Show(dict<string, string> params)
+    void _Show(dict<string, any> params)
     {
         OnShow();
         OnShow(params);
@@ -1027,28 +1042,28 @@ class Object
         // Dock
         int newPosX;
         int newPosY;
-        if (_Dock != 0) {
-            if (_Dock == DOCK_LEFT) {
+        if (_Dock != DockStyle::None) {
+            if (_Dock == DockStyle::Left) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if (_Dock == DOCK_RIGHT) {
+            else if (_Dock == DockStyle::Right) {
                 newPosX = parentAbsolutePosX + parentWidth - _Width;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if (_Dock == DOCK_TOP) {
+            else if (_Dock == DockStyle::Top) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
             }
-            else if (_Dock == DOCK_BOTTOM) {
+            else if (_Dock == DockStyle::Bottom) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY + parentHeight - _Height;
                 _Width = parentWidth;
             }
-            else if (_Dock == DOCK_FILL) {
+            else if (_Dock == DockStyle::Fill) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
@@ -1061,20 +1076,20 @@ class Object
         }
         // Anchor
         else {
-            if ((_Anchor & ANCHOR_LEFT) != 0) {
+            if ((_Anchor & AnchorStyle::Left) != 0) {
                 newPosX = parentAbsolutePosX + _BasePosX;
             }
-            else if ((_Anchor & ANCHOR_RIGHT) != 0) {
+            else if ((_Anchor & AnchorStyle::Right) != 0) {
                 newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth);
             }
             else {
                 newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth) / 2;
             }
 
-            if ((_Anchor & ANCHOR_TOP) != 0) {
+            if ((_Anchor & AnchorStyle::Top) != 0) {
                 newPosY = parentAbsolutePosY + _BasePosY;
             }
-            else if ((_Anchor & ANCHOR_BOTTOM) != 0) {
+            else if ((_Anchor & AnchorStyle::Bottom) != 0) {
                 newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight);
             }
             else {
@@ -1138,7 +1153,7 @@ class Object
         _SizeChanged();
     }
 
-    void SetAnchor(int anchorStyles)
+    void SetAnchor(AnchorStyle anchorStyles)
     {
         if (_Anchor == anchorStyles) {
             return;
@@ -1148,7 +1163,7 @@ class Object
         _RefreshPosition();
     }
 
-    void SetDock(int dockStyle)
+    void SetDock(DockStyle dockStyle)
     {
         if (_Dock == dockStyle) {
             return;
@@ -1158,7 +1173,7 @@ class Object
         _RefreshPosition();
     }
 
-    void SetColor(uint color)
+    void SetColor(ucolor color)
     {
         _Color = color;
     }
@@ -1195,9 +1210,9 @@ class Panel : Object
     {
         return _BackgroundImage;
     }
-    int get_BackgroundImageLayout() final
+    SpriteLayout get_BackgroundImageLayout() final
     {
-        return _BackgroundImage != null ? _BackgroundImage.Layout : IMAGE_LAYOUT_NONE;
+        return _BackgroundImage != null ? _BackgroundImage.Layout : SpriteLayout::None;
     }
     bool get_IsVerticalScroll() final
     {
@@ -1229,7 +1244,7 @@ class Panel : Object
     {
         if (Object::IsHit(x, y)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null) {
-                return Game.IsSpriteHit(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY);
+                return Game.IsSpriteHit(_BackgroundImage.Id, x - _AbsolutePosX, y - _AbsolutePosY);
             }
             return true;
         }
@@ -1268,33 +1283,33 @@ class Panel : Object
     void _DrawImage(Sprite::Sprite image)
     {
         if (_Width > 0 && _Height > 0) {
-            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, -1, _Color);
+            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, SpriteLayout::None, _Color);
         }
     }
 
-    void SetBackgroundImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void SetBackgroundImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void _SetImage(Sprite::Sprite& curImage, string imageName, int imageLayout)
+    void _SetImage(Sprite::Sprite& curImage, string imageName, SpriteLayout imageLayout)
     {
         _SetImage(curImage, hstring(imageName), imageLayout);
     }
 
-    void _SetImage(Sprite::Sprite& curImage, hstring imageName, int imageLayout)
+    void _SetImage(Sprite::Sprite& curImage, hstring imageName, SpriteLayout imageLayout)
     {
         if (curImage != null && curImage.LoadedName == imageName) {
             return;
         }
 
         curImage = null;
-        if (imageName != hstring()) {
+        if (imageName != EMPTY_HSTRING) {
             Sprite::Sprite spr = Sprite::Sprite();
             if (spr.Load(imageName)) {
                 curImage = spr;
@@ -1305,7 +1320,7 @@ class Panel : Object
             curImage.Layout = imageLayout;
         }
 
-        if (curImage != null && (imageLayout == IMAGE_LAYOUT_NONE || (_BaseWidth == 0 && _BaseHeight == 0))) {
+        if (curImage != null && (imageLayout == SpriteLayout::None || (_BaseWidth == 0 && _BaseHeight == 0))) {
             SetSize(curImage.Width, curImage.Height);
         }
     }
@@ -1457,11 +1472,11 @@ class Text : Object
     {
         return _TextFont;
     }
-    uint get_TextColor() final
+    ucolor get_TextColor() final
     {
         return _TextColor;
     }
-    uint get_TextColorFocused() final
+    ucolor get_TextColorFocused() final
     {
         return _TextColorFocused;
     }
@@ -1472,8 +1487,8 @@ class Text : Object
 
     string _Text;
     int _TextFont;
-    uint _TextColor;
-    uint _TextColorFocused;
+    ucolor _TextColor;
+    ucolor _TextColorFocused;
     int _TextFlags;
 
     void _Construct() override
@@ -1493,7 +1508,7 @@ class Text : Object
         // Text
         string text = Text;
         if (text.length() > 0) {
-            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
             Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
@@ -1545,12 +1560,12 @@ class Text : Object
         _TextFlags = flags;
     }
 
-    void SetTextColor(uint color)
+    void SetTextColor(ucolor color)
     {
         _TextColor = color;
     }
 
-    void SetTextFocusedColor(uint color)
+    void SetTextFocusedColor(ucolor color)
     {
         _TextColorFocused = color;
     }
@@ -1630,7 +1645,7 @@ class TextInput : Text
             text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         }
         if (text.length() > 0) {
-            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
             Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
@@ -1766,25 +1781,25 @@ class Button : Panel
     {
         return _PressedImage;
     }
-    int get_PressedImageLayout() final
+    SpriteLayout get_PressedImageLayout() final
     {
-        return _PressedImage != null ? _PressedImage.Layout : IMAGE_LAYOUT_NONE;
+        return _PressedImage != null ? _PressedImage.Layout : SpriteLayout::None;
     }
     Sprite::Sprite get_HoverImage() final
     {
         return _HoverImage;
     }
-    int get_HoverImageLayout() final
+    SpriteLayout get_HoverImageLayout() final
     {
-        return _HoverImage != null ? _HoverImage.Layout : IMAGE_LAYOUT_NONE;
+        return _HoverImage != null ? _HoverImage.Layout : SpriteLayout::None;
     }
     Sprite::Sprite get_DisabledImage() final
     {
         return _DisabledImage;
     }
-    int get_DisabledImageLayout() final
+    SpriteLayout get_DisabledImageLayout() final
     {
-        return _DisabledImage != null ? _DisabledImage.Layout : IMAGE_LAYOUT_NONE;
+        return _DisabledImage != null ? _DisabledImage.Layout : SpriteLayout::None;
     }
 
     bool _IsDisabled;
@@ -1857,32 +1872,32 @@ class Button : Panel
         Panel::_MousePressed(button);
     }
 
-    void SetPressedImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetPressedImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetPressedImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetPressedImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetHoverImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetHoverImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetHoverImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetHoverImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetDisabledImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_DisabledImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetDisabledImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_DisabledImage, imageName, imageLayout);
     }
@@ -2040,7 +2055,7 @@ class Screen : Panel
         Panel::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         // Make screen active
         _ActiveSelf = true;
@@ -2477,7 +2492,7 @@ class MessageBox : Text
         Text::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         Text::_Show(params);
 
@@ -2583,7 +2598,7 @@ class MessageBox : Text
         // Set text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
-            uint[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
+            ucolor[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
             messageText = "|" + sayColors[type] + " " + Game.EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
         else {
@@ -2786,7 +2801,7 @@ class Console : TextInput
         TextInput::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         CurConsole = this;
 
@@ -3425,7 +3440,7 @@ void EngineCallback_Start()
     CreateHardcodedScreen(CLIENT_SCREEN_TOWN_VIEW);
 }
 
-void EngineCallback_ShowScreen(int screenIndex, dict<string, string> params)
+void EngineCallback_ShowScreen(int screenIndex, dict<string, any> params)
 {
     Settings.ScrollMouseUp = false;
     Settings.ScrollMouseRight = false;
@@ -3858,7 +3873,7 @@ void UnregisterScreen(int screenIndex)
     }
 }
 
-void ShowHideScreen(Screen screen, dict<string, string> params, bool show, Screen appearScreen = null)
+void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen appearScreen = null)
 {
     // Clean hovered/focused/pressed objects
     if (HoveredObject != null) {

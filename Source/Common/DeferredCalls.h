@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
+#include "ScriptSystem.h"
 
 DECLARE_EXCEPTION(DeferredCallException);
 
@@ -45,12 +46,12 @@ struct DeferredCall
 {
     ident_t Id {};
     tick_t FireFullSecond {};
+    tick_t Delay {};
     ScriptFunc<void> EmptyFunc {};
-    ScriptFunc<void, int> SignedIntFunc {};
-    ScriptFunc<void, uint> UnsignedIntFunc {};
-    ScriptFunc<void, vector<int>> SignedIntArrayFunc {};
-    ScriptFunc<void, vector<uint>> UnsignedIntArrayFunc {};
-    variant<int, uint, vector<int>, vector<uint>> FuncValue {};
+    ScriptFunc<void, any_t> AnyFunc {};
+    ScriptFunc<void, vector<any_t>> AnyArrayFunc {};
+    vector<any_t> FuncValue {};
+    bool Repeating {};
 };
 
 class DeferredCallManager
@@ -66,17 +67,15 @@ public:
 
     [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
 
-    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
+    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void> func) -> ident_t;
+    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
+    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
     auto CancelDeferredCall(ident_t id) -> bool;
-    void Process();
+    void ProcessDeferredCalls();
 
 protected:
     virtual auto GetNextCallId() -> ident_t;
-    virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
+    virtual void OnDeferredCallRemoved(const DeferredCall& call);
 
     FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};

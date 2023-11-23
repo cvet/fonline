@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 //
 
 #include "NetBuffer.h"
+#include "Entity.h"
 #include "GenericUtils.h"
 
 static auto GetMsgSize(uint msg) -> uint
@@ -486,7 +487,7 @@ void NetInBuffer::ShrinkReadBuf()
     }
 }
 
-auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
+auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
 
@@ -496,7 +497,7 @@ auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 
     if (!_isError) {
         bool failed = false;
-        result = name_resolver.ResolveHash(h, &failed);
+        result = hash_resolver.ResolveHash(h, &failed);
         if (failed) {
             _isError = true;
         }

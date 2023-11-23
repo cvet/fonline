@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +50,10 @@ struct EffectCollection
     RenderEffect* ImGuiDefault {};
     RenderEffect* Font {};
     RenderEffect* FontDefault {};
-    RenderEffect* ContourSprite {};
-    RenderEffect* ContourSpriteDefault {};
+    RenderEffect* ContourStrictSprite {};
+    RenderEffect* ContourStrictSpriteDefault {};
+    RenderEffect* ContourDynamicSprite {};
+    RenderEffect* ContourDynamicSpriteDefault {};
     RenderEffect* Generic {};
     RenderEffect* GenericDefault {};
     RenderEffect* Critter {};
@@ -75,7 +77,7 @@ struct EffectCollection
     RenderEffect* FlushPrimitive {};
     RenderEffect* FlushPrimitiveDefault {};
     RenderEffect* FlushMap {};
-    RenderEffect* FlushMapDefault {};
+    RenderEffect* FlushMapDefault {}; // Null by default
     RenderEffect* FlushLight {};
     RenderEffect* FlushLightDefault {};
     RenderEffect* FlushFog {};
@@ -83,8 +85,6 @@ struct EffectCollection
 #if FO_ENABLE_3D
     RenderEffect* SkinnedModel {};
     RenderEffect* SkinnedModelDefault {};
-    RenderEffect* ContourModelSprite {};
-    RenderEffect* ContourModelSpriteDefault {};
 #endif
 };
 

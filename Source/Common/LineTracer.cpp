@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,13 +32,11 @@
 //
 
 #include "LineTracer.h"
-
 #include "GeometryHelper.h"
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(GeometryHelper& geometry, uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle) :
-    _geometry {geometry}
+LineTracer::LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle)
 {
     STACK_TRACE_ENTRY();
 
@@ -128,8 +126,8 @@ auto LineTracer::GetNextHex(uint16& cx, uint16& cy) const -> uint8
     auto t1_y = cy;
     auto t2_y = cy;
 
-    _geometry.MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
-    _geometry.MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
+    GeometryHelper::MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
+    GeometryHelper::MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
 
     auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_y) - static_cast<float>(t1_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_x));
     auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_y) - static_cast<float>(t2_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_x));

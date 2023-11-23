@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,27 +50,29 @@ public:
     auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
     ~GeometryHelper();
 
-    [[nodiscard]] auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
-    [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uint8;
-    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uint8;
-    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uint8;
-    [[nodiscard]] auto GetDirAngle(int x1, int y1, int x2, int y2) const -> float;
-    [[nodiscard]] auto GetDirAngleDiff(float a1, float a2) const -> float;
-    [[nodiscard]] auto GetDirAngleDiffSided(float a1, float a2) const -> float;
-    [[nodiscard]] auto GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float;
+    // Todo: move all geometry helper methods to static
     [[nodiscard]] auto GetYProj() const -> float;
-    [[nodiscard]] auto DirToAngle(uint8 dir) const -> int16;
-    [[nodiscard]] auto AngleToDir(int16 dir_angle) const -> uint8;
-    [[nodiscard]] auto NormalizeAngle(int16 dir_angle) const -> int16;
-    [[nodiscard]] auto CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) const -> bool;
-    [[nodiscard]] auto ReverseDir(uint8 dir) const -> uint8;
+    [[nodiscard]] auto GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float;
     [[nodiscard]] auto GetHexOffsets(bool odd) const -> tuple<const int16*, const int16*>;
     [[nodiscard]] auto GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>;
 
-    auto MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool;
-    auto MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool;
-    void MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) const;
-    void ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work) const;
+    [[nodiscard]] static auto DistGame(int x1, int y1, int x2, int y2) -> uint;
+    [[nodiscard]] static auto GetNearDir(int x1, int y1, int x2, int y2) -> uint8;
+    [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2) -> uint8;
+    [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2, float offset) -> uint8;
+    [[nodiscard]] static auto GetDirAngle(int x1, int y1, int x2, int y2) -> float;
+    [[nodiscard]] static auto GetDirAngleDiff(float a1, float a2) -> float;
+    [[nodiscard]] static auto GetDirAngleDiffSided(float a1, float a2) -> float;
+    [[nodiscard]] static auto DirToAngle(uint8 dir) -> int16;
+    [[nodiscard]] static auto AngleToDir(int16 dir_angle) -> uint8;
+    [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;
+    [[nodiscard]] static auto CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) -> bool;
+    [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
+
+    static auto MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) -> bool;
+    static auto MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) -> bool;
+    static void MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir);
+    static void ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work);
 
 private:
     void InitializeHexOffsets() const;

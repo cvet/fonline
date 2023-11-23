@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@
 #include "DataSource.h"
 #include "DiskFileSystem.h"
 #include "EmbeddedResources-Include.h"
-#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 
@@ -78,11 +77,11 @@ public:
     auto operator=(DummySpace&&) noexcept = delete;
     ~DummySpace() override = default;
 
-    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return "Dummy"; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override { return false; }
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override { return nullptr; }
-    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return {}; }
+    [[nodiscard]] auto IsDiskDir() const -> bool override;
+    [[nodiscard]] auto GetPackName() const -> string_view override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 };
 
 class NonCachedDir final : public DataSource
@@ -305,6 +304,53 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     }
 }
 
+auto DummySpace::IsDiskDir() const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return false;
+}
+
+auto DummySpace::GetPackName() const -> string_view
+{
+    STACK_TRACE_ENTRY();
+
+    return "Dummy";
+}
+
+auto DummySpace::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(write_time);
+
+    return false;
+}
+
+auto DummySpace::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(write_time);
+
+    return nullptr;
+}
+
+auto DummySpace::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(include_subdirs);
+    UNUSED_VARIABLE(ext);
+
+    return {};
+}
+
 NonCachedDir::NonCachedDir(string_view fname)
 {
     STACK_TRACE_ENTRY();
@@ -338,6 +384,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     }
 
     size = file.GetSize();
+
     auto* buf = new uint8[static_cast<size_t>(size) + 1];
     if (!file.Read(buf, size)) {
         delete[] buf;
@@ -346,7 +393,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 
     write_time = file.GetWriteTime();
     buf[size] = 0;
-    return {buf, [](auto* p) { delete[] p; }};
+    return {buf, [](const auto* p) { delete[] p; }};
 }
 
 auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -358,7 +405,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 
-        fnames.push_back(string(path2));
+        fnames.emplace_back(path2);
     });
 
     return GetFileNamesGeneric(fnames, path, include_subdirs, ext);
@@ -379,7 +426,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
         fe.WriteTime = write_time;
 
         _filesTree.insert(std::make_pair(string(path), fe));
-        _filesTreeNames.push_back(string(path));
+        _filesTreeNames.emplace_back(path);
     });
 }
 
@@ -424,7 +471,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](auto* p) { delete[] p; }};
+    return {buf, [](const auto* p) { delete[] p; }};
 }
 
 auto CachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -511,7 +558,7 @@ auto FalloutDat::ReadTree() -> bool
             uint type = 0;
             std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
-            if (fnsz != 0u && type != 0x400) // Not folder
+            if (fnsz != 0 && type != 0x400) // Not folder
             {
                 string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
 
@@ -584,18 +631,22 @@ auto FalloutDat::ReadTree() -> bool
     auto* ptr = _memTree;
     const auto* end_ptr = _memTree + tree_size;
 
-    while (ptr < end_ptr) {
-        uint fnsz = 0;
-        std::memcpy(&fnsz, ptr, sizeof(fnsz));
+    while (ptr < end_ptr + 4) {
+        uint name_len = 0;
+        std::memcpy(&name_len, ptr, 4);
 
-        if (fnsz != 0u) {
-            string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
+        if (ptr + 4 + name_len >= end_ptr) {
+            return false;
+        }
 
-            _filesTree.insert(std::make_pair(name, ptr + 4 + fnsz));
+        if (name_len != 0) {
+            string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
+
+            _filesTree.insert(std::make_pair(name, ptr + 4 + name_len));
             _filesTreeNames.push_back(name);
         }
 
-        ptr += static_cast<size_t>(fnsz) + 17;
+        ptr += static_cast<size_t>(4) + name_len + 13;
     }
 
     return true;
@@ -650,7 +701,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     size = real_size;
     auto* buf = new uint8[static_cast<size_t>(size) + 1];
 
-    if (type == 0u) {
+    if (type == 0) {
         // Plane data
         if (!_datFile.Read(buf, size)) {
             delete[] buf;
@@ -674,8 +725,8 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
         stream.avail_out = real_size;
 
         auto left = packed_size;
-        while (stream.avail_out != 0u) {
-            if (stream.avail_in == 0u && left > 0) {
+        while (stream.avail_out != 0) {
+            if (stream.avail_in == 0 && left > 0) {
                 stream.next_in = _readBuf.data();
                 const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
                 if (!_datFile.Read(_readBuf.data(), len)) {
@@ -701,7 +752,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     write_time = _writeTime;
     buf[size] = 0;
-    return {buf, [](auto* p) { delete[] p; }};
+    return {buf, [](const auto* p) { delete[] p; }};
 }
 
 ZipFile::ZipFile(string_view fname)
@@ -879,7 +930,7 @@ auto ZipFile::ReadTree() -> bool
             return false;
         }
 
-        if ((info.external_fa & 0x10) == 0u) // Not folder
+        if ((info.external_fa & 0x10) == 0) // Not folder
         {
             string name = _str(buf).normalizePathSlashes();
 
@@ -943,7 +994,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
     write_time = _writeTime;
     size = info.UncompressedSize;
     buf[size] = 0;
-    return {buf, [](auto* p) { delete[] p; }};
+    return {buf, [](const auto* p) { delete[] p; }};
 }
 
 AndroidAssets::AndroidAssets()
@@ -1029,7 +1080,7 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](auto* p) { delete[] p; }};
+    return {buf, [](const auto* p) { delete[] p; }};
 }
 
 auto AndroidAssets::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>

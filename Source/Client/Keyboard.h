@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ public:
 
     void Lost();
     void FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const;
-    void EraseInvalidChars(string& str, int flags) const;
+    void EraseInvalidChars(string& str, uint flags) const;
 
     bool ShiftDwn {};
     bool CtrlDwn {};

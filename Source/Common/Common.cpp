@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -58,11 +58,10 @@
 #endif
 #endif
 
-time_point steady_clock_since_program_start::start = std::chrono::steady_clock::now();
-
-static std::thread::id MainThreadId;
-
 static bool ExceptionMessageBox = false;
+
+// ReSharper disable once CppInconsistentNaming
+const ucolor ucolor::clear;
 
 hstring::entry hstring::_zeroEntry;
 
@@ -80,21 +79,7 @@ struct StackTraceData
     array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> CallTree = {};
 };
 
-static StackTraceData StackTrace;
-
-void SetMainThread() noexcept
-{
-    NO_STACK_TRACE_ENTRY();
-
-    MainThreadId = std::this_thread::get_id();
-}
-
-auto IsMainThread() noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return MainThreadId == std::this_thread::get_id();
-}
+static thread_local StackTraceData StackTrace;
 
 void CreateGlobalData()
 {
@@ -137,59 +122,69 @@ static auto InsertCatchedMark(const string& st) -> string
     return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
 }
 
-void ReportExceptionAndExit(const std::exception& ex)
+void ReportExceptionAndExit(const std::exception& ex) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+    try {
+        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
-    if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
-    }
-    else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
-    }
+        if (ex_info != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        }
+        else {
+            WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
+        }
 
-    if (BreakIntoDebugger(ex.what())) {
-        ExitApp(false);
-    }
+        if (BreakIntoDebugger(ex.what())) {
+            ExitApp(false);
+        }
 
-    CreateDumpMessage("FatalException", ex.what());
+        CreateDumpMessage("FatalException", ex.what());
 
-    if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        if (ex_info != nullptr) {
+            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), true);
+        }
+        else {
+            MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), true);
+        }
     }
-    else {
-        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+    catch (...) {
+        BreakIntoDebugger();
     }
 
     ExitApp(false);
 }
 
-void ReportExceptionAndContinue(const std::exception& ex)
+void ReportExceptionAndContinue(const std::exception& ex) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+    try {
+        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
-    if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
-    }
-    else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
-    }
-
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-    if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
         }
         else {
-            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+            WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
         }
+
+        if (BreakIntoDebugger(ex.what())) {
+            return;
+        }
+
+        if (ExceptionMessageBox) {
+            if (ex_info != nullptr) {
+                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), false);
+            }
+            else {
+                MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), false);
+            }
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
     }
 }
 
@@ -205,15 +200,13 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return;
+    auto& st = StackTrace;
+
+    if (st.CallsCount < STACK_TRACE_MAX_SIZE) {
+        st.CallTree[st.CallsCount] = &loc;
     }
 
-    if (StackTrace.CallsCount < STACK_TRACE_MAX_SIZE) {
-        StackTrace.CallTree[StackTrace.CallsCount] = &loc;
-    }
-
-    StackTrace.CallsCount++;
+    st.CallsCount++;
 #endif
 }
 
@@ -222,12 +215,10 @@ void PopStackTrace() noexcept
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return;
-    }
+    auto& st = StackTrace;
 
-    if (StackTrace.CallsCount > 0) {
-        StackTrace.CallsCount--;
+    if (st.CallsCount > 0) {
+        st.CallsCount--;
     }
 #endif
 }
@@ -237,23 +228,21 @@ auto GetStackTrace() -> string
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return "Stack trace disabled for non main thread";
-    }
-
     std::stringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
-    for (int i = std::min(static_cast<int>(StackTrace.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
-        const auto& entry = StackTrace.CallTree[i];
+    const auto& st = StackTrace;
+
+    for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto& entry = st.CallTree[i];
 
         ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().str() << " line " << entry->line << ")\n";
     }
 
-    if (StackTrace.CallsCount > STACK_TRACE_MAX_SIZE) {
+    if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
         ss << "- ..."
-           << "and " << (StackTrace.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
+           << "and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
     }
 
     auto st_str = ss.str();
@@ -367,7 +356,7 @@ auto IsRunInDebugger() noexcept -> bool
     return RunInDebugger;
 }
 
-auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
+auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -414,11 +403,24 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-FrameBalancer::FrameBalancer(bool enabled, int fixed_fps) :
-    _enabled {enabled},
+RefCounter::~RefCounter()
+{
+    WriteLog("Some of pointers still alive ({})", _ptrCounter.load());
+}
+
+FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
+    _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
+    _sleep {sleep},
     _fixedFps {fixed_fps}
 {
     STACK_TRACE_ENTRY();
+}
+
+auto FrameBalancer::GetLoopDuration() const -> time_duration
+{
+    STACK_TRACE_ENTRY();
+
+    return _loopDuration;
 }
 
 void FrameBalancer::StartLoop()
@@ -440,17 +442,246 @@ void FrameBalancer::EndLoop()
         return;
     }
 
-    if (_fixedFps > 0) {
-        const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - _loopStart).count()) / 1000000.0;
-        const auto need_elapsed = 1000.0 / static_cast<double>(_fixedFps);
-        if (need_elapsed > elapsed_ms) {
-            const auto sleep = need_elapsed - elapsed_ms + _balance;
-            _balance = std::fmod(sleep, 1.0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+    _loopDuration = Timer::CurTime() - _loopStart;
+
+    if (_sleep >= 0) {
+        if (_sleep == 0) {
+            std::this_thread::yield();
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
         }
     }
-    else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(-_fixedFps));
+    else if (_fixedFps > 0) {
+        const auto target_time = time_duration {std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)}};
+        const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
+
+        if (idle_time > std::chrono::milliseconds {0}) {
+            const auto sleep_start = Timer::CurTime();
+
+            std::this_thread::sleep_for(idle_time);
+
+            const auto sleep_duration = Timer::CurTime() - sleep_start;
+
+            _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
+        }
+        else {
+            _idleTimeBalance += target_time - _loopDuration;
+
+            if (_idleTimeBalance < -std::chrono::milliseconds {1000}) {
+                _idleTimeBalance = -std::chrono::milliseconds {1000};
+            }
+        }
+    }
+}
+
+WorkThread::WorkThread(string_view name)
+{
+    STACK_TRACE_ENTRY();
+
+    _name = name;
+    _thread = std::thread(&WorkThread::ThreadEntry, this);
+}
+
+WorkThread::~WorkThread()
+{
+    STACK_TRACE_ENTRY();
+
+    {
+        std::unique_lock locker(_dataLocker);
+
+        _finish = true;
+    }
+
+    _workSignal.notify_one();
+    _thread.join();
+}
+
+auto WorkThread::GetJobsCount() const -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    return _jobs.size() + (_jobActive ? 1 : 0);
+}
+
+void WorkThread::SetExceptionHandler(ExceptionHandler handler)
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    _exceptionHandler = std::move(handler);
+}
+
+void WorkThread::AddJob(Job job)
+{
+    STACK_TRACE_ENTRY();
+
+    AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
+}
+
+void WorkThread::AddJob(time_duration delay, Job job)
+{
+    STACK_TRACE_ENTRY();
+
+    AddJobInternal(delay, std::move(job), false);
+}
+
+void WorkThread::AddJobInternal(time_duration delay, Job job, bool no_notify)
+{
+    STACK_TRACE_ENTRY();
+
+    {
+        std::unique_lock locker(_dataLocker);
+
+        const auto fire_time = Timer::CurTime() + delay;
+
+        if (_jobs.empty() || fire_time >= _jobs.back().first) {
+            _jobs.emplace_back(fire_time, std::move(job));
+        }
+        else {
+            for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                if (fire_time < it->first) {
+                    _jobs.emplace(it, fire_time, std::move(job));
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!no_notify) {
+        _workSignal.notify_one();
+    }
+}
+
+void WorkThread::Clear()
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    _clearJobs = true;
+
+    locker.unlock();
+    _workSignal.notify_one();
+    locker.lock();
+
+    while (_clearJobs) {
+        _doneSignal.wait(locker);
+    }
+}
+
+void WorkThread::Wait()
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    while (!_jobs.empty() || _jobActive) {
+        _doneSignal.wait(locker);
+    }
+}
+
+void WorkThread::ThreadEntry() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+#if FO_WINDOWS
+        ::SetThreadDescription(::GetCurrentThread(), _str(_name).toWideChar().c_str());
+#endif
+#if FO_TRACY
+        tracy::SetThreadName(_name.c_str());
+#endif
+
+        while (true) {
+            Job job;
+
+            {
+                std::unique_lock locker(_dataLocker);
+
+                _jobActive = false;
+
+                if (_clearJobs) {
+                    _jobs.clear();
+                    _clearJobs = false;
+                }
+
+                if (_jobs.empty()) {
+                    locker.unlock();
+                    _doneSignal.notify_all();
+                    locker.lock();
+                }
+
+                if (_jobs.empty()) {
+                    if (_clearJobs) {
+                        _clearJobs = false;
+                    }
+
+                    if (_finish) {
+                        break;
+                    }
+
+                    _workSignal.wait(locker);
+                }
+
+                if (!_jobs.empty()) {
+                    const auto cur_time = Timer::CurTime();
+
+                    for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                        if (cur_time >= it->first) {
+                            job = std::move(it->second);
+                            _jobs.erase(it);
+                            _jobActive = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (job) {
+                try {
+                    const auto next_call_delay = job();
+
+                    // Schedule repeat
+                    if (next_call_delay.has_value()) {
+                        AddJobInternal(next_call_delay.value(), std::move(job), true);
+                    }
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+
+                    // Exception handling
+                    {
+                        std::unique_lock locker(_dataLocker);
+
+                        if (_exceptionHandler) {
+                            try {
+                                if (_exceptionHandler(ex)) {
+                                    _jobs.clear();
+                                }
+                            }
+                            catch (const std::exception& ex2) {
+                                ReportExceptionAndContinue(ex2);
+                            }
+                        }
+                    }
+
+                    // Todo: schedule job repeat with last duration?
+                    try {
+                        // AddJobInternal(next_call_duration.value(), std::move(job), true);
+                    }
+                    catch (const std::exception& ex2) {
+                        ReportExceptionAndContinue(ex2);
+                    }
+                }
+            }
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
     }
 }
 
@@ -483,4 +714,173 @@ void emscripten_sleep(unsigned int ms)
 
     throw UnreachablePlaceException(LINE_STR);
 }
+#endif
+
+// Replace memory allocator
+#if FO_HAVE_RPMALLOC
+
+#include "rpmalloc.h"
+
+#include <new>
+
+#if FO_WINDOWS
+#define CRTDECL __CRTDECL
+#else
+#define CRTDECL
+#endif
+
+extern void CRTDECL operator delete(void* p) noexcept
+{
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void CRTDECL operator delete[](void* p) noexcept
+{
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void* CRTDECL operator new(std::size_t size) noexcept(false)
+{
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
+{
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+#if (__cplusplus >= 201402L || _MSC_VER >= 1916)
+extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
+{
+    UNUSED_VARIABLE(size);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
+{
+    UNUSED_VARIABLE(size);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+#endif
+
+#if (__cplusplus > 201402L || defined(__cpp_aligned_new))
+extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
+{
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
+{
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+#endif
+
+#undef CRTDECL
+
 #endif

@@ -42,25 +42,3 @@
 #define DRAW_PRIMITIVE_LINESTRIP     (2)
 #define DRAW_PRIMITIVE_TRIANGLELIST  (3)
 #define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
-
-// Anchor styles
-#define ANCHOR_NONE   (0x0)
-#define ANCHOR_LEFT   (0x1)
-#define ANCHOR_RIGHT  (0x2)
-#define ANCHOR_TOP    (0x4)
-#define ANCHOR_BOTTOM (0x8)
-
-// Dock styles
-#define DOCK_NONE   (0)
-#define DOCK_LEFT   (1)
-#define DOCK_RIGHT  (2)
-#define DOCK_TOP    (3)
-#define DOCK_BOTTOM (4)
-#define DOCK_FILL   (5)
-
-// Image layouts
-#define IMAGE_LAYOUT_NONE    (0)
-#define IMAGE_LAYOUT_TILE    (1)
-#define IMAGE_LAYOUT_CENTER  (2)
-#define IMAGE_LAYOUT_STRETCH (3)
-#define IMAGE_LAYOUT_ZOOM    (4)

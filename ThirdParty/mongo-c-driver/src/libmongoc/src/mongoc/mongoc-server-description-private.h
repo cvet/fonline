@@ -125,7 +125,7 @@ struct _mongoc_server_description_t {
     * service IDs. The only server generation is mapped from kZeroServiceID */
    mongoc_generation_map_t *_generation_map_;
    bson_oid_t service_id;
-   int32_t server_connection_id;
+   int64_t server_connection_id;
 };
 
 /** Get a mutable pointer to the server's generation map */
@@ -240,11 +240,5 @@ extern const bson_oid_t kZeroServiceId;
 bool
 mongoc_server_description_has_service_id (
    const mongoc_server_description_t *description);
-
-/* mongoc_global_mock_service_id is only used for testing. The test runner sets
- * this to true when testing against a load balanced deployment to mock the
- * presence of a serviceId field in the "hello" response. The purpose of this is
- * further described in the Load Balancer test README. */
-extern bool mongoc_global_mock_service_id;
 
 #endif

@@ -116,6 +116,7 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 	operations/composed_3$(EXEEXT) operations/composed_4$(EXEEXT) \
 	operations/composed_5$(EXEEXT) operations/composed_6$(EXEEXT) \
 	operations/composed_7$(EXEEXT) operations/composed_8$(EXEEXT) \
+	parallel_group/ranged_wait_for_all$(EXEEXT) \
 	parallel_group/wait_for_all$(EXEEXT) \
 	parallel_group/wait_for_one$(EXEEXT) \
 	parallel_group/wait_for_one_error$(EXEEXT) \
@@ -124,8 +125,9 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 	timeouts/blocking_tcp_client$(EXEEXT) \
 	timeouts/blocking_token_tcp_client$(EXEEXT) \
 	timeouts/blocking_udp_client$(EXEEXT) timeouts/server$(EXEEXT) \
-	timers/time_t_timer$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2) \
-	$(am__EXEEXT_3)
+	timers/time_t_timer$(EXEEXT) \
+	type_erasure/type_erasure$(EXEEXT) $(am__EXEEXT_1) \
+	$(am__EXEEXT_2) $(am__EXEEXT_3)
 @WINDOWS_TARGET_FALSE@am__append_2 = \
 @WINDOWS_TARGET_FALSE@	fork/daemon \
 @WINDOWS_TARGET_FALSE@	fork/process_per_connection \
@@ -451,6 +453,13 @@ operations_composed_8_OBJECTS = $(am_operations_composed_8_OBJECTS)
 operations_composed_8_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@operations_composed_8_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_parallel_group_ranged_wait_for_all_OBJECTS =  \
+	parallel_group/ranged_wait_for_all.$(OBJEXT)
+parallel_group_ranged_wait_for_all_OBJECTS =  \
+	$(am_parallel_group_ranged_wait_for_all_OBJECTS)
+parallel_group_ranged_wait_for_all_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@parallel_group_ranged_wait_for_all_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_parallel_group_wait_for_all_OBJECTS =  \
 	parallel_group/wait_for_all.$(OBJEXT)
 parallel_group_wait_for_all_OBJECTS =  \
@@ -542,6 +551,14 @@ timers_time_t_timer_OBJECTS = $(am_timers_time_t_timer_OBJECTS)
 timers_time_t_timer_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@timers_time_t_timer_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_type_erasure_type_erasure_OBJECTS = type_erasure/main.$(OBJEXT) \
+	type_erasure/stdin_line_reader.$(OBJEXT) \
+	type_erasure/sleep.$(OBJEXT)
+type_erasure_type_erasure_OBJECTS =  \
+	$(am_type_erasure_type_erasure_OBJECTS)
+type_erasure_type_erasure_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@type_erasure_type_erasure_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -606,6 +623,7 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	operations/$(DEPDIR)/composed_6.Po \
 	operations/$(DEPDIR)/composed_7.Po \
 	operations/$(DEPDIR)/composed_8.Po \
+	parallel_group/$(DEPDIR)/ranged_wait_for_all.Po \
 	parallel_group/$(DEPDIR)/wait_for_all.Po \
 	parallel_group/$(DEPDIR)/wait_for_one.Po \
 	parallel_group/$(DEPDIR)/wait_for_one_error.Po \
@@ -616,7 +634,9 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	timeouts/$(DEPDIR)/blocking_tcp_client.Po \
 	timeouts/$(DEPDIR)/blocking_token_tcp_client.Po \
 	timeouts/$(DEPDIR)/blocking_udp_client.Po \
-	timeouts/$(DEPDIR)/server.Po timers/$(DEPDIR)/time_t_timer.Po
+	timeouts/$(DEPDIR)/server.Po timers/$(DEPDIR)/time_t_timer.Po \
+	type_erasure/$(DEPDIR)/main.Po type_erasure/$(DEPDIR)/sleep.Po \
+	type_erasure/$(DEPDIR)/stdin_line_reader.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -667,6 +687,7 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(operations_composed_6_SOURCES) \
 	$(operations_composed_7_SOURCES) \
 	$(operations_composed_8_SOURCES) \
+	$(parallel_group_ranged_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
@@ -677,7 +698,8 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(timeouts_blocking_tcp_client_SOURCES) \
 	$(timeouts_blocking_token_tcp_client_SOURCES) \
 	$(timeouts_blocking_udp_client_SOURCES) \
-	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES)
+	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES) \
+	$(type_erasure_type_erasure_SOURCES)
 DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(allocation_server_SOURCES) \
 	$(buffers_reference_counted_SOURCES) \
@@ -718,6 +740,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(operations_composed_6_SOURCES) \
 	$(operations_composed_7_SOURCES) \
 	$(operations_composed_8_SOURCES) \
+	$(parallel_group_ranged_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
@@ -730,7 +753,8 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(timeouts_blocking_tcp_client_SOURCES) \
 	$(timeouts_blocking_token_tcp_client_SOURCES) \
 	$(timeouts_blocking_udp_client_SOURCES) \
-	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES)
+	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES) \
+	$(type_erasure_type_erasure_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -914,6 +938,7 @@ operations_composed_5_SOURCES = operations/composed_5.cpp
 operations_composed_6_SOURCES = operations/composed_6.cpp
 operations_composed_7_SOURCES = operations/composed_7.cpp
 operations_composed_8_SOURCES = operations/composed_8.cpp
+parallel_group_ranged_wait_for_all_SOURCES = parallel_group/ranged_wait_for_all.cpp
 parallel_group_wait_for_all_SOURCES = parallel_group/wait_for_all.cpp
 parallel_group_wait_for_one_SOURCES = parallel_group/wait_for_one.cpp
 parallel_group_wait_for_one_error_SOURCES = parallel_group/wait_for_one_error.cpp
@@ -925,6 +950,7 @@ timeouts_blocking_token_tcp_client_SOURCES = timeouts/blocking_token_tcp_client.
 timeouts_blocking_udp_client_SOURCES = timeouts/blocking_udp_client.cpp
 timeouts_server_SOURCES = timeouts/server.cpp
 timers_time_t_timer_SOURCES = timers/time_t_timer.cpp
+type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_line_reader.cpp type_erasure/sleep.cpp
 @WINDOWS_TARGET_FALSE@fork_daemon_SOURCES = fork/daemon.cpp
 @WINDOWS_TARGET_FALSE@fork_process_per_connection_SOURCES = fork/process_per_connection.cpp
 @WINDOWS_TARGET_FALSE@local_connect_pair_SOURCES = local/connect_pair.cpp
@@ -953,7 +979,10 @@ EXTRA_DIST = \
 	ssl/README \
 	ssl/ca.pem \
 	ssl/server.pem \
-	ssl/dh4096.pem
+	ssl/dh4096.pem \
+	type_erasure/line_reader.hpp \
+	type_erasure/stdin_line_reader.hpp \
+	type_erasure/sleep.hpp
 
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in
@@ -1399,6 +1428,13 @@ parallel_group/$(am__dirstamp):
 parallel_group/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) parallel_group/$(DEPDIR)
 	@: > parallel_group/$(DEPDIR)/$(am__dirstamp)
+parallel_group/ranged_wait_for_all.$(OBJEXT):  \
+	parallel_group/$(am__dirstamp) \
+	parallel_group/$(DEPDIR)/$(am__dirstamp)
+
+parallel_group/ranged_wait_for_all$(EXEEXT): $(parallel_group_ranged_wait_for_all_OBJECTS) $(parallel_group_ranged_wait_for_all_DEPENDENCIES) $(EXTRA_parallel_group_ranged_wait_for_all_DEPENDENCIES) parallel_group/$(am__dirstamp)
+	@rm -f parallel_group/ranged_wait_for_all$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(parallel_group_ranged_wait_for_all_OBJECTS) $(parallel_group_ranged_wait_for_all_LDADD) $(LIBS)
 parallel_group/wait_for_all.$(OBJEXT): parallel_group/$(am__dirstamp) \
 	parallel_group/$(DEPDIR)/$(am__dirstamp)
 
@@ -1521,6 +1557,23 @@ timers/time_t_timer.$(OBJEXT): timers/$(am__dirstamp) \
 timers/time_t_timer$(EXEEXT): $(timers_time_t_timer_OBJECTS) $(timers_time_t_timer_DEPENDENCIES) $(EXTRA_timers_time_t_timer_DEPENDENCIES) timers/$(am__dirstamp)
 	@rm -f timers/time_t_timer$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(timers_time_t_timer_OBJECTS) $(timers_time_t_timer_LDADD) $(LIBS)
+type_erasure/$(am__dirstamp):
+	@$(MKDIR_P) type_erasure
+	@: > type_erasure/$(am__dirstamp)
+type_erasure/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) type_erasure/$(DEPDIR)
+	@: > type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/main.$(OBJEXT): type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/stdin_line_reader.$(OBJEXT):  \
+	type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/sleep.$(OBJEXT): type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+
+type_erasure/type_erasure$(EXEEXT): $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_DEPENDENCIES) $(EXTRA_type_erasure_type_erasure_DEPENDENCIES) type_erasure/$(am__dirstamp)
+	@rm -f type_erasure/type_erasure$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1548,6 +1601,7 @@ mostlyclean-compile:
 	-rm -f ssl/*.$(OBJEXT)
 	-rm -f timeouts/*.$(OBJEXT)
 	-rm -f timers/*.$(OBJEXT)
+	-rm -f type_erasure/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1605,6 +1659,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_7.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_8.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/ranged_wait_for_all.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_all.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one_error.Po@am__quote@ # am--include-marker
@@ -1620,6 +1675,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@timeouts/$(DEPDIR)/blocking_udp_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@timeouts/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@timers/$(DEPDIR)/time_t_timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/sleep.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/stdin_line_reader.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1805,6 +1863,8 @@ distclean-generic:
 	-rm -f timeouts/$(am__dirstamp)
 	-rm -f timers/$(DEPDIR)/$(am__dirstamp)
 	-rm -f timers/$(am__dirstamp)
+	-rm -f type_erasure/$(DEPDIR)/$(am__dirstamp)
+	-rm -f type_erasure/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -1869,6 +1929,7 @@ distclean: distclean-am
 	-rm -f operations/$(DEPDIR)/composed_6.Po
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
+	-rm -f parallel_group/$(DEPDIR)/ranged_wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po
@@ -1884,6 +1945,9 @@ distclean: distclean-am
 	-rm -f timeouts/$(DEPDIR)/blocking_udp_client.Po
 	-rm -f timeouts/$(DEPDIR)/server.Po
 	-rm -f timers/$(DEPDIR)/time_t_timer.Po
+	-rm -f type_erasure/$(DEPDIR)/main.Po
+	-rm -f type_erasure/$(DEPDIR)/sleep.Po
+	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1982,6 +2046,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f operations/$(DEPDIR)/composed_6.Po
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
+	-rm -f parallel_group/$(DEPDIR)/ranged_wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po
@@ -1997,6 +2062,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f timeouts/$(DEPDIR)/blocking_udp_client.Po
 	-rm -f timeouts/$(DEPDIR)/server.Po
 	-rm -f timers/$(DEPDIR)/time_t_timer.Po
+	-rm -f type_erasure/$(DEPDIR)/main.Po
+	-rm -f type_erasure/$(DEPDIR)/sleep.Po
+	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

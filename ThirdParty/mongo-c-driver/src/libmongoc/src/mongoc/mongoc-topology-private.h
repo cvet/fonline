@@ -618,7 +618,7 @@ _mongoc_topology_invalidate_server (mongoc_topology_t *td, uint32_t server_id)
  */
 const mongoc_host_list_t **
 _mongoc_apply_srv_max_hosts (const mongoc_host_list_t *hl,
-                             int32_t max_hosts,
+                             size_t max_hosts,
                              size_t *hl_array_size);
 
 
@@ -626,5 +626,11 @@ _mongoc_apply_srv_max_hosts (const mongoc_host_list_t *hl,
  * false. */
 bool
 mongoc_topology_uses_server_api (const mongoc_topology_t *topology);
+
+
+/* Returns true if load balancing mode has been seelected, otherwise returns
+ * false. */
+bool
+mongoc_topology_uses_loadbalanced (const mongoc_topology_t *topology);
 
 #endif

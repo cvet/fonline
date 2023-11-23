@@ -9,7 +9,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 
-set(CMAKE_CONFIGURATION_TYPES "Release;Debug;MinSizeRel;RelWithDebInfo")
+#! set(CMAKE_CONFIGURATION_TYPES "Release;Debug;MinSizeRel;RelWithDebInfo")
 
 project(libpng C)
 enable_testing()
@@ -24,7 +24,7 @@ set(PNGLIB_VERSION ${PNGLIB_MAJOR}.${PNGLIB_MINOR}.${PNGLIB_RELEASE})
 find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIR})
 
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE) #!
   find_library(M_LIBRARY
     NAMES m
     PATHS /usr/lib /usr/local/lib

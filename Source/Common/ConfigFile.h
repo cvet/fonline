@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ enum class ConfigFileOption
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(string_view fname_hint, const string& str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
@@ -72,7 +72,7 @@ private:
     [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const -> const string*;
 
     string _fileNameHint;
-    NameResolver* _nameResolver;
+    HashResolver* _hashResolver;
     ConfigFileOption _options;
     multimap<string, map<string, string>> _sectionKeyValues {};
     const string _emptyStr {};

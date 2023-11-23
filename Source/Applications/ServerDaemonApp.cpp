@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,19 +51,13 @@ int main(int argc, char** argv)
 
         InitApp(argc, argv);
 
-        auto* server = new FOServer(App->Settings);
-        server->Start();
+        {
+            auto server = std::make_unique<FOServer>(App->Settings);
 
-        while (!App->Settings.Quit) {
-            try {
-                server->MainLoop();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+            while (!App->Settings.Quit) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {100});
             }
         }
-
-        delete server;
 
         ExitApp(true);
     }

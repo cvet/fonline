@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -209,6 +209,11 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     }
 
     if (_interthreadCommunication) {
+        if (_interthreadDisconnect) {
+            Disconnect();
+            return false;
+        }
+
         return for_write ? true : !_interthreadReceived.empty();
     }
 
@@ -292,7 +297,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
             }
             else {
                 _interthreadSend = nullptr;
-                Disconnect();
+                _interthreadDisconnect = true;
             }
         });
 
@@ -588,6 +593,7 @@ void ServerConnection::Disconnect()
 
     if (_interthreadCommunication) {
         _interthreadCommunication = false;
+        _interthreadDisconnect = false;
 
         if (_interthreadSend) {
             _interthreadSend({});
@@ -812,13 +818,17 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 #if FO_WINDOWS
     const auto error_code = ::WSAGetLastError();
     wchar_t* ws = nullptr;
-    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
-    const string error_str = _str().parseWideChar(ws);
+    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
+        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
+    const string error_str = _str().parseWideChar(ws).trim();
     ::LocalFree(ws);
 
     return _str("{} ({})", error_str, error_code);
+
 #else
-    return _str("{} ({})", strerror(errno), errno);
+    const string error_str = _str(::strerror(errno)).trim();
+
+    return _str("{} ({})", error_str, errno);
 #endif
 }
 

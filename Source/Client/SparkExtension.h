@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,9 @@
 
 #include "Rendering.h"
 
+DISABLE_WARNINGS_PUSH()
 #include "SPARK.h"
+DISABLE_WARNINGS_POP()
 
 class ParticleManager;
 
@@ -65,6 +67,7 @@ namespace SPK::FO
 
         SPK_START_DESCRIPTION
         SPK_PARENT_ATTRIBUTES(Renderer)
+        SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
         SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
@@ -83,11 +86,15 @@ namespace SPK::FO
 
         void Setup(string_view path, ParticleManager& particle_mngr);
 
+        auto GetDrawWidth() const -> int;
+        auto GetDrawHeight() const -> int;
+        void SetDrawSize(int width, int height);
+
         auto GetEffectName() const -> const string&;
-        void SetEffectName(const string& name);
+        void SetEffectName(const string& effect_name);
 
         auto GetTextureName() const -> const string&;
-        void SetTextureName(const string& name);
+        void SetTextureName(const string& tex_name);
 
     private:
         SparkQuadRenderer() :
@@ -111,6 +118,9 @@ namespace SPK::FO
         RenderEffect* _effect {};
         RenderTexture* _texture {};
         FRect _textureAtlasOffsets {};
+
+        int _drawWidth {};
+        int _drawHeight {};
 
         string _effectName {};
         string _textureName {};

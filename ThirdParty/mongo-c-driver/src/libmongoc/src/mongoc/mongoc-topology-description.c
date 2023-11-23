@@ -121,7 +121,6 @@ _mongoc_topology_description_copy_to (const mongoc_topology_description_t *src,
                                       mongoc_topology_description_t *dst)
 {
    size_t nitems;
-   size_t i;
    const mongoc_server_description_t *sd;
    uint32_t id;
 
@@ -139,9 +138,9 @@ _mongoc_topology_description_copy_to (const mongoc_topology_description_t *src,
 
    nitems = bson_next_power_of_two (mc_tpld_servers_const (src)->items_len);
    dst->_servers_ = mongoc_set_new (nitems, _mongoc_topology_server_dtor, NULL);
-   for (i = 0; i < mc_tpld_servers_const (src)->items_len; i++) {
-      sd = mongoc_set_get_item_and_id_const (
-         mc_tpld_servers_const (src), (int) i, &id);
+   for (size_t i = 0u; i < mc_tpld_servers_const (src)->items_len; i++) {
+      sd =
+         mongoc_set_get_item_and_id_const (mc_tpld_servers_const (src), i, &id);
       mongoc_set_add (
          mc_tpld_servers (dst), id, mongoc_server_description_new_copy (sd));
    }
@@ -310,6 +309,33 @@ _mongoc_topology_description_has_primary (
                               &primary);
 
    return primary;
+}
+
+/*
+ *--------------------------------------------------------------------------
+ *
+ * _mongoc_server_description_primary_is_not_stale --
+ *
+ *       Checks if a primary server is not stale by comparing the electionId and
+ *       setVersion.
+ *
+ * Returns:
+ *       True if the server's electionId is larger or the server's version is
+ *       later than the topology max version.
+ *
+ * Side effects:
+ *       None
+ *
+ *--------------------------------------------------------------------------
+ */
+static bool
+_mongoc_server_description_primary_is_not_stale (
+   mongoc_topology_description_t *td, const mongoc_server_description_t *sd)
+{
+   /* initially max_set_version is -1 and max_election_id is zeroed */
+   return (bson_oid_compare (&sd->election_id, &td->max_election_id) > 0) ||
+          ((bson_oid_compare (&sd->election_id, &td->max_election_id) == 0) &&
+           sd->set_version >= td->max_set_version);
 }
 
 /*
@@ -488,7 +514,7 @@ _mongoc_try_mode_secondary (mongoc_array_t *set, /* OUT */
                             const mongoc_topology_description_t *topology,
                             const mongoc_read_prefs_t *read_pref,
                             bool *must_use_primary,
-                            size_t local_threshold_ms)
+                            int64_t local_threshold_ms)
 {
    mongoc_read_prefs_t *secondary;
 
@@ -541,11 +567,10 @@ int32_t
 mongoc_topology_description_lowest_max_wire_version (
    const mongoc_topology_description_t *td)
 {
-   int i;
    int32_t ret = INT32_MAX;
    const mongoc_set_t *servers = mc_tpld_servers_const (td);
 
-   for (i = 0; (size_t) i < servers->items_len; i++) {
+   for (size_t i = 0u; (size_t) i < servers->items_len; i++) {
       const mongoc_server_description_t *sd =
          mongoc_set_get_item_const (servers, i);
       if (sd->type != MONGOC_SERVER_UNKNOWN &&
@@ -576,8 +601,8 @@ bool
 mongoc_topology_description_all_sds_have_write_date (
    const mongoc_topology_description_t *td)
 {
-   int i;
-   for (i = 0; (size_t) i < mc_tpld_servers_const (td)->items_len; i++) {
+   for (size_t i = 0u; (size_t) i < mc_tpld_servers_const (td)->items_len;
+        i++) {
       const mongoc_server_description_t *sd =
          mongoc_set_get_item_const (mc_tpld_servers_const (td), i);
 
@@ -740,13 +765,11 @@ mongoc_topology_description_suitable_servers (
    const mongoc_topology_description_t *topology,
    const mongoc_read_prefs_t *read_pref,
    bool *must_use_primary,
-   size_t local_threshold_ms)
+   int64_t local_threshold_ms)
 {
    mongoc_suitable_data_t data;
 
    const mongoc_set_t *td_servers = mc_tpld_servers_const (topology);
-   int64_t nearest = -1;
-   int i;
    const mongoc_read_mode_t given_read_mode =
       mongoc_read_prefs_get_mode (read_pref);
    const bool override_use_primary =
@@ -832,7 +855,7 @@ mongoc_topology_description_suitable_servers (
          }
 
          if (data.read_mode == MONGOC_READ_SECONDARY) {
-            for (i = 0; i < data.candidates_len; i++) {
+            for (size_t i = 0u; i < data.candidates_len; i++) {
                if (data.candidates[i] &&
                    data.candidates[i]->type != MONGOC_SERVER_RS_SECONDARY) {
                   TRACE ("Rejected [%s] [%s] for mode [%s] with RS topology",
@@ -894,18 +917,25 @@ mongoc_topology_description_suitable_servers (
     *   - primary_preferred and no primary read
     *   - sharded anything
     * Find the nearest, then select within the window */
-
-   for (i = 0; i < data.candidates_len; i++) {
-      if (data.candidates[i] &&
-          (nearest == -1 ||
-           nearest > data.candidates[i]->round_trip_time_msec)) {
-         nearest = data.candidates[i]->round_trip_time_msec;
+   int64_t nearest = INT64_MAX;
+   bool found = false;
+   for (size_t i = 0u; i < data.candidates_len; i++) {
+      if (data.candidates[i]) {
+         nearest = BSON_MIN (nearest, data.candidates[i]->round_trip_time_msec);
+         found = true;
       }
    }
 
-   for (i = 0; i < data.candidates_len; i++) {
-      if (data.candidates[i] && (data.candidates[i]->round_trip_time_msec <=
-                                 nearest + local_threshold_ms)) {
+   // No candidates remaining.
+   if (!found) {
+      goto DONE;
+   }
+
+   const int64_t rtt_limit = nearest + local_threshold_ms;
+
+   for (size_t i = 0u; i < data.candidates_len; i++) {
+      if (data.candidates[i] &&
+          (data.candidates[i]->round_trip_time_msec <= rtt_limit)) {
          _mongoc_array_append_val (set, data.candidates[i]);
       }
    }
@@ -930,10 +960,9 @@ bool
 mongoc_topology_description_has_data_node (
    const mongoc_topology_description_t *td)
 {
-   int i;
    const mongoc_set_t *servers = mc_tpld_servers_const (td);
 
-   for (i = 0; i < (int) servers->items_len; i++) {
+   for (size_t i = 0u; i < servers->items_len; i++) {
       const mongoc_server_description_t *sd =
          mongoc_set_get_item_const (servers, i);
       if (_is_data_node (sd)) {
@@ -1510,7 +1539,6 @@ _mongoc_topology_description_remove_unreported_servers (
    const mongoc_server_description_t *primary)
 {
    mongoc_array_t to_remove;
-   int i;
 
    _mongoc_array_init (&to_remove, sizeof (mongoc_server_description_t *));
 
@@ -1519,7 +1547,7 @@ _mongoc_topology_description_remove_unreported_servers (
     * mongoc_server_description_cleanup on the primary itself if it
     * doesn't report its own connection_address in its hosts list.
     * See hosts_differ_from_seeds.json */
-   for (i = 0; i < mc_tpld_servers_const (topology)->items_len; i++) {
+   for (size_t i = 0u; i < mc_tpld_servers_const (topology)->items_len; i++) {
       const mongoc_server_description_t *member =
          mongoc_set_get_item_const (mc_tpld_servers_const (topology), i);
       const char *address = member->connection_address;
@@ -1530,7 +1558,7 @@ _mongoc_topology_description_remove_unreported_servers (
 
    /* now it's safe to call _mongoc_topology_description_remove_server,
     * even on the primary */
-   for (i = 0; i < to_remove.len; i++) {
+   for (size_t i = 0u; i < to_remove.len; i++) {
       const mongoc_server_description_t *member =
          _mongoc_array_index (&to_remove, mongoc_server_description_t *, i);
 
@@ -1631,15 +1659,13 @@ _mongoc_topology_description_update_rs_from_primary (
          return;
       }
    }
+   if (server->max_wire_version >= WIRE_VERSION_6_0) {
+      /* MongoDB 6.0+ */
+      if (_mongoc_server_description_primary_is_not_stale (topology, server)) {
+         _mongoc_topology_description_set_max_election_id (topology, server);
+         _mongoc_topology_description_set_max_set_version (topology, server);
 
-   if (mongoc_server_description_has_set_version (server) &&
-       mongoc_server_description_has_election_id (server)) {
-      /* Server Discovery And Monitoring Spec: "The client remembers the
-       * greatest electionId reported by a primary, and distrusts primaries
-       * with lesser electionIds. This prevents the client from oscillating
-       * between the old and new primary during a split-brain period."
-       */
-      if (_mongoc_topology_description_later_election (topology, server)) {
+      } else {
          bson_set_error (&error,
                          MONGOC_ERROR_STREAM,
                          MONGOC_ERROR_STREAM_CONNECT,
@@ -1649,17 +1675,37 @@ _mongoc_topology_description_update_rs_from_primary (
          _update_rs_type (topology);
          return;
       }
+   } else {
+      // old comparison rules, namely setVersion is checked before electionId
+      if (mongoc_server_description_has_set_version (server) &&
+          mongoc_server_description_has_election_id (server)) {
+         /* Server Discovery And Monitoring Spec: "The client remembers the
+          * greatest electionId reported by a primary, and distrusts primaries
+          * with lesser electionIds. This prevents the client from oscillating
+          * between the old and new primary during a split-brain period."
+          */
+         if (_mongoc_topology_description_later_election (topology, server)) {
+            // stale primary code return:
+            bson_set_error (&error,
+                            MONGOC_ERROR_STREAM,
+                            MONGOC_ERROR_STREAM_CONNECT,
+                            "member's setVersion or electionId is stale");
+            mongoc_topology_description_invalidate_server (
+               topology, server->id, &error);
+            _update_rs_type (topology);
+            return;
+         }
 
-      /* server's electionId >= topology's max electionId */
-      _mongoc_topology_description_set_max_election_id (topology, server);
+         /* server's electionId >= topology's max electionId */
+         _mongoc_topology_description_set_max_election_id (topology, server);
+      }
+
+      if (mongoc_server_description_has_set_version (server) &&
+          (!_mongoc_topology_description_has_set_version (topology) ||
+           server->set_version > topology->max_set_version)) {
+         _mongoc_topology_description_set_max_set_version (topology, server);
+      }
    }
-
-   if (mongoc_server_description_has_set_version (server) &&
-       (!_mongoc_topology_description_has_set_version (topology) ||
-        server->set_version > topology->max_set_version)) {
-      _mongoc_topology_description_set_max_set_version (topology, server);
-   }
-
    /* 'Server' is the primary! Invalidate other primaries if found */
    data.primary = server;
    data.topology = topology;
@@ -2031,15 +2077,14 @@ _mongoc_topology_description_update_session_timeout (
    mongoc_topology_description_t *td)
 {
    mongoc_set_t *set;
-   size_t i;
    mongoc_server_description_t *sd;
 
    set = mc_tpld_servers (td);
 
    td->session_timeout_minutes = MONGOC_NO_SESSIONS;
 
-   for (i = 0; i < set->items_len; i++) {
-      sd = (mongoc_server_description_t *) mongoc_set_get_item (set, (int) i);
+   for (size_t i = 0; i < set->items_len; i++) {
+      sd = (mongoc_server_description_t *) mongoc_set_get_item (set, i);
       if (!_is_data_node (sd)) {
          continue;
       }
@@ -2073,14 +2118,13 @@ static void
 _mongoc_topology_description_check_compatible (
    mongoc_topology_description_t *td)
 {
-   size_t i;
    mongoc_set_t const *const servers = mc_tpld_servers_const (td);
 
    memset (&td->compatibility_error, 0, sizeof (bson_error_t));
 
-   for (i = 0; i < servers->items_len; i++) {
+   for (size_t i = 0; i < servers->items_len; i++) {
       mongoc_server_description_t const *const sd =
-         mongoc_set_get_item_const (servers, (int) i);
+         mongoc_set_get_item_const (servers, i);
       if (sd->type == MONGOC_SERVER_UNKNOWN ||
           sd->type == MONGOC_SERVER_POSSIBLE_PRIMARY) {
          continue;
@@ -2372,7 +2416,6 @@ mongoc_server_description_t **
 mongoc_topology_description_get_servers (
    const mongoc_topology_description_t *td, size_t *n /* OUT */)
 {
-   size_t i;
    const mongoc_set_t *const set =
       mc_tpld_servers_const (BSON_ASSERT_PTR_INLINE (td));
    /* enough room for all descriptions, even if some are unknown  */
@@ -2383,9 +2426,9 @@ mongoc_topology_description_get_servers (
 
    *n = 0;
 
-   for (i = 0; i < set->items_len; ++i) {
+   for (size_t i = 0; i < set->items_len; ++i) {
       const mongoc_server_description_t *sd =
-         mongoc_set_get_item_const (set, (int) i);
+         mongoc_set_get_item_const (set, i);
 
       if (sd->type != MONGOC_SERVER_UNKNOWN) {
          sds[*n] = mongoc_server_description_new_copy (sd);

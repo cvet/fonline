@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,18 +44,22 @@
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 
-class Direct3D_Texture : public RenderTexture
+class Direct3D_Texture final : public RenderTexture
 {
 public:
     Direct3D_Texture(int width, int height, bool linear_filtered, bool with_depth) :
         RenderTexture(width, height, linear_filtered, with_depth)
     {
     }
+    Direct3D_Texture(const Direct3D_Texture&) = delete;
+    Direct3D_Texture(Direct3D_Texture&&) noexcept = delete;
+    auto operator=(const Direct3D_Texture&) -> Direct3D_Texture& = delete;
+    auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
-    void UpdateTextureRegion(const IRect& r, const uint* data) override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
+    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -64,13 +68,17 @@ public:
     ID3D11ShaderResourceView* ShaderTexView {};
 };
 
-class Direct3D_DrawBuffer : public RenderDrawBuffer
+class Direct3D_DrawBuffer final : public RenderDrawBuffer
 {
 public:
     explicit Direct3D_DrawBuffer(bool is_static) :
         RenderDrawBuffer(is_static)
     {
     }
+    Direct3D_DrawBuffer(const Direct3D_DrawBuffer&) = delete;
+    Direct3D_DrawBuffer(Direct3D_DrawBuffer&&) noexcept = delete;
+    auto operator=(const Direct3D_DrawBuffer&) -> Direct3D_DrawBuffer& = delete;
+    auto operator=(Direct3D_DrawBuffer&&) noexcept -> Direct3D_DrawBuffer& = delete;
     ~Direct3D_DrawBuffer() override;
 
     void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
@@ -81,7 +89,7 @@ public:
     size_t IndexBufSize {};
 };
 
-class Direct3D_Effect : public RenderEffect
+class Direct3D_Effect final : public RenderEffect
 {
     friend class Direct3D_Renderer;
 
@@ -90,6 +98,10 @@ public:
         RenderEffect(usage, name, loader)
     {
     }
+    Direct3D_Effect(const Direct3D_Effect&) = delete;
+    Direct3D_Effect(Direct3D_Effect&&) noexcept = delete;
+    auto operator=(const Direct3D_Effect&) -> Direct3D_Effect& = delete;
+    auto operator=(Direct3D_Effect&&) noexcept -> Direct3D_Effect& = delete;
     ~Direct3D_Effect() override;
 
     void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
@@ -250,9 +262,9 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         }
 
         const auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
-        if (!SUCCEEDED(d3d_hardware_create_device)) {
+        if (FAILED(d3d_hardware_create_device)) {
             const auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
-            if (!SUCCEEDED(d3d_warp_create_device)) {
+            if (FAILED(d3d_warp_create_device)) {
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
             }
 
@@ -275,7 +287,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     {
         IDXGIFactory* factory = nullptr;
         const auto d3d_create_factory = ::CreateDXGIFactory(IID_IDXGIFactory, reinterpret_cast<void**>(&factory));
-        if (!SUCCEEDED(d3d_create_factory)) {
+        if (FAILED(d3d_create_factory)) {
             throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
         }
 
@@ -297,19 +309,19 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
             swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
             const auto d3d_create_swap_chain = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-            if (!SUCCEEDED(d3d_create_swap_chain)) {
+            if (FAILED(d3d_create_swap_chain)) {
                 swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
                 const auto d3d_create_swap_chain_2 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-                if (!SUCCEEDED(d3d_create_swap_chain_2)) {
+                if (FAILED(d3d_create_swap_chain_2)) {
                     swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
                     const auto d3d_create_swap_chain_3 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-                    if (!SUCCEEDED(d3d_create_swap_chain_3)) {
+                    if (FAILED(d3d_create_swap_chain_3)) {
                         swap_chain_desc.BufferCount = 1;
 
                         const auto d3d_create_swap_chain_4 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-                        if (!SUCCEEDED(d3d_create_swap_chain_4)) {
+                        if (FAILED(d3d_create_swap_chain_4)) {
                             throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
                         }
                         else {
@@ -329,11 +341,11 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
             swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
             const auto d3d_create_swap_chain = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-            if (!SUCCEEDED(d3d_create_swap_chain)) {
+            if (FAILED(d3d_create_swap_chain)) {
                 swap_chain_desc.BufferCount = 1;
 
                 const auto d3d_create_swap_chain_2 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
-                if (!SUCCEEDED(d3d_create_swap_chain_2)) {
+                if (FAILED(d3d_create_swap_chain_2)) {
                     throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
                 }
                 else {
@@ -363,7 +375,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
             ID3D11SamplerState* sampler = nullptr;
             const auto d3d_create_sampler = D3DDevice->CreateSamplerState(&sampler_desc, &sampler);
-            if (!SUCCEEDED(d3d_create_sampler)) {
+            if (FAILED(d3d_create_sampler)) {
                 throw EffectLoadException("Failed to create sampler", d3d_create_sampler);
             }
 
@@ -432,7 +444,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_one_pix_staging_tex));
 
     // Dummy texture
-    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
     DummyTexture = CreateTexture(1, 1, false, false);
     DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 
@@ -559,7 +571,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
 
             const auto d3d_create_vertex_shader = D3DDevice->CreateVertexShader(vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), nullptr, &d3d_effect->VertexShader[pass]);
-            if (!SUCCEEDED(d3d_create_vertex_shader)) {
+            if (FAILED(d3d_create_vertex_shader)) {
                 throw EffectLoadException("Failed to create Vertex Shader from binary", d3d_create_vertex_shader, vertex_shader_fname, vertex_shader_content);
             }
 
@@ -580,7 +592,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                 };
 
                 const auto d3d_create_input_layout = D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout[pass]);
-                if (!SUCCEEDED(d3d_create_input_layout)) {
+                if (FAILED(d3d_create_input_layout)) {
                     throw EffectLoadException("Failed to create Vertex Shader 3D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
                 }
             }
@@ -588,14 +600,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 #endif
             {
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, EggTexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
                 const auto d3d_create_input_layout = D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout[pass]);
-                if (!SUCCEEDED(d3d_create_input_layout)) {
+                if (FAILED(d3d_create_input_layout)) {
                     throw EffectLoadException("Failed to create Vertex Shader 2D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
                 }
             }
@@ -627,7 +639,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
 
             const auto d3d_create_pixel_shader = D3DDevice->CreatePixelShader(pixel_shader_blob->GetBufferPointer(), pixel_shader_blob->GetBufferSize(), nullptr, &d3d_effect->PixelShader[pass]);
-            if (!SUCCEEDED(d3d_create_pixel_shader)) {
+            if (FAILED(d3d_create_pixel_shader)) {
                 throw EffectLoadException("Failed to create Pixel Shader from binary", d3d_create_pixel_shader, pixel_shader_fname, pixel_shader_content);
             }
         }
@@ -645,7 +657,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
             const auto d3d_create_blend_state = D3DDevice->CreateBlendState(&blend_desc, &d3d_effect->BlendState[pass]);
-            if (!SUCCEEDED(d3d_create_blend_state)) {
+            if (FAILED(d3d_create_blend_state)) {
                 throw EffectLoadException("Failed to call CreateBlendState", d3d_create_blend_state, name);
             }
         }
@@ -660,7 +672,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             rasterizer_desc.DepthBiasClamp = 0;
 
             const auto d3d_create_rasterized_state = D3DDevice->CreateRasterizerState(&rasterizer_desc, &d3d_effect->RasterizerState[pass]);
-            if (!SUCCEEDED(d3d_create_rasterized_state)) {
+            if (FAILED(d3d_create_rasterized_state)) {
                 throw EffectLoadException("Failed to call CreateRasterizerState", d3d_create_rasterized_state, name);
             }
 
@@ -670,7 +682,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             rasterizer_desc.FrontCounterClockwise = TRUE;
 
             const auto d3d_create_rasterized_state_culling = D3DDevice->CreateRasterizerState(&rasterizer_culling_desc, &d3d_effect->RasterizerState_Culling[pass]);
-            if (!SUCCEEDED(d3d_create_rasterized_state_culling)) {
+            if (FAILED(d3d_create_rasterized_state_culling)) {
                 throw EffectLoadException("Failed to call CreateRasterizerState", d3d_create_rasterized_state_culling, name);
             }
 #endif
@@ -689,7 +701,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 #endif
 
             const auto d3d_create_depth_stencil_state = D3DDevice->CreateDepthStencilState(&depth_stencil_desc, &d3d_effect->DepthStencilState[pass]);
-            if (!SUCCEEDED(d3d_create_depth_stencil_state)) {
+            if (FAILED(d3d_create_depth_stencil_state)) {
                 throw EffectLoadException("Failed to call CreateDepthStencilState", d3d_create_depth_stencil_state, name);
             }
         }
@@ -753,7 +765,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     int screen_height;
 
     if (tex != nullptr) {
-        const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex);
+        const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
         CurRenderTarget = d3d_tex->RenderTargetView;
         CurDepthStencil = d3d_tex->DepthStencilView;
 
@@ -806,16 +818,15 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     TargetHeight = screen_height;
 }
 
-void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
-        const auto color_value = color.value();
-        const auto a = static_cast<float>((color_value >> 24) & 0xFF) / 255.0f;
-        const auto r = static_cast<float>((color_value >> 16) & 0xFF) / 255.0f;
-        const auto g = static_cast<float>((color_value >> 8) & 0xFF) / 255.0f;
-        const auto b = static_cast<float>((color_value >> 0) & 0xFF) / 255.0f;
+        const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
+        const auto g = static_cast<float>(color.value().comp.g) / 255.0f;
+        const auto b = static_cast<float>(color.value().comp.b) / 255.0f;
+        const auto a = static_cast<float>(color.value().comp.a) / 255.0f;
         const float color_rgba[] {r, g, b, a};
 
         D3DDeviceContext->ClearRenderTargetView(CurRenderTarget, color_rgba);
@@ -917,7 +928,7 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
+auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -940,14 +951,14 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(OnePixStagingTex, 0, D3D11_MAP_READ, 0, &tex_resource);
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
-    const auto result = *static_cast<uint*>(tex_resource.pData);
+    const auto result = *static_cast<ucolor*>(tex_resource.pData);
 
     D3DDeviceContext->Unmap(OnePixStagingTex, 0);
 
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
+auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
@@ -958,8 +969,8 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     RUNTIME_ASSERT(x + width <= Width);
     RUNTIME_ASSERT(y + height <= Height);
 
-    vector<uint> result;
-    result.resize(width * height);
+    vector<ucolor> result;
+    result.resize(static_cast<size_t>(width) * height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
     staging_desc.Width = width;
@@ -993,7 +1004,8 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     for (int i = 0; i < height; i++) {
-        std::memcpy(&result[i * width], static_cast<uint8*>(tex_resource.pData) + tex_resource.RowPitch * i, width * 4);
+        const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
+        std::memcpy(&result[static_cast<size_t>(i) * width], src, static_cast<size_t>(width) * 4);
     }
 
     D3DDeviceContext->Unmap(staging_tex, 0);
@@ -1002,7 +1014,7 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
+void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 
@@ -1052,17 +1064,18 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        RUNTIME_ASSERT(Vertices2D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices3D.size() : custom_vertices_size;
+        RUNTIME_ASSERT(Vertices.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex3D);
     }
     else {
         RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex2D);
     }
 #else
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+    UNUSED_VARIABLE(usage);
+    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
     vert_size = sizeof(Vertex2D);
 #endif
 
@@ -1094,98 +1107,43 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         std::memcpy(vertices_resource.pData, Vertices3D.data(), upload_vertices * vert_size);
     }
     else {
-        std::memcpy(vertices_resource.pData, Vertices2D.data(), upload_vertices * vert_size);
+        std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
     }
 #else
-    std::memcpy(vertices_resource.pData, Vertices2D.data(), upload_vertices * vert_size);
+    std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
 #endif
 
     D3DDeviceContext->Unmap(VertexBuf, 0);
 
-    // Auto generate indices
-    bool need_upload_indices = false;
-    if (!IsStatic) {
-        switch (usage) {
-#if FO_ENABLE_3D
-        case EffectUsage::Model:
-#endif
-        case EffectUsage::ImGui: {
-            // Nothing, indices generated manually
-            need_upload_indices = true;
-        } break;
-        case EffectUsage::QuadSprite: {
-            // Sprite quad
-            RUNTIME_ASSERT(upload_vertices % 4 == 0);
-            auto& indices = Indices;
-            const auto need_size = upload_vertices / 4 * 6;
-            if (indices.size() < need_size) {
-                const auto prev_size = indices.size();
-                indices.resize(need_size);
-                for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
-                    indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
-                    indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 3);
-                    indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 2);
-                    indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 3);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        case EffectUsage::Primitive: {
-            // One to one
-            auto& indices = Indices;
-            if (indices.size() < upload_vertices) {
-                const auto prev_size = indices.size();
-                indices.resize(upload_vertices);
-                for (size_t i = prev_size; i < indices.size(); i++) {
-                    indices[i] = static_cast<uint16>(i);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        }
-    }
-    else {
-        need_upload_indices = true;
-    }
-
     // Fill index buffer
-    if (need_upload_indices) {
-        const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? Indices.size() : custom_indices_size;
+    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
 
-        if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
-            if (IndexBuf != nullptr) {
-                IndexBuf->Release();
-                IndexBuf = nullptr;
-            }
-
-            IndexBufSize = upload_indices + 1024;
-
-            D3D11_BUFFER_DESC ibuf_desc = {};
-            ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-            ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
-            ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            ibuf_desc.MiscFlags = 0;
-
-            const auto d3d_create_index_buffer = D3DDevice->CreateBuffer(&ibuf_desc, nullptr, &IndexBuf);
-            RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
+    if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
+        if (IndexBuf != nullptr) {
+            IndexBuf->Release();
+            IndexBuf = nullptr;
         }
 
-        D3D11_MAPPED_SUBRESOURCE indices_resource;
-        const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
+        IndexBufSize = upload_indices + 1024;
 
-        std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
+        D3D11_BUFFER_DESC ibuf_desc = {};
+        ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
+        ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
+        ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        ibuf_desc.MiscFlags = 0;
 
-        D3DDeviceContext->Unmap(IndexBuf, 0);
+        const auto d3d_create_index_buffer = D3DDevice->CreateBuffer(&ibuf_desc, nullptr, &IndexBuf);
+        RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
     }
-    else {
-        RUNTIME_ASSERT(IndexBuf);
-    }
+
+    D3D11_MAPPED_SUBRESOURCE indices_resource;
+    const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
+
+    std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
+
+    D3DDeviceContext->Unmap(IndexBuf, 0);
 }
 
 Direct3D_Effect::~Direct3D_Effect()
@@ -1225,12 +1183,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 {
     STACK_TRACE_ENTRY();
 
-    const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf);
+    const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #else
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture)); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #endif
 
     auto draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1316,8 +1274,8 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
 #undef CBUF_UPLOAD_BUFFER
 
-    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
-    const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->Indices.size() : indices_to_draw);
+    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->IndCount : indices_to_draw);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
@@ -1382,7 +1340,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         if (NeedModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture);
+                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
                     D3DDeviceContext->PSSetShaderResources(_posModelTex[pass][i], 1, &model_tex->ShaderTexView);
                     D3DDeviceContext->PSSetSamplers(_posModelTex[pass][i], 1, find_tex_sampler(model_tex));
                 }

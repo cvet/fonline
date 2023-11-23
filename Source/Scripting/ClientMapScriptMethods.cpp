@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +34,31 @@
 #include "Common.h"
 
 #include "Client.h"
-#include "GenericUtils.h"
+#include "MapSprite.h"
 
 // ReSharper disable CppInconsistentNaming
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_DrawMap(MapView* self)
+{
+    if (!self->GetEngine()->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    self->DrawMap();
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_DrawMapTexts(MapView* self)
+{
+    if (!self->GetEngine()->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    self->DrawMapTexts();
+}
 
 ///# ...
 ///# param text ...
@@ -48,7 +70,7 @@
 ///# param endOx ...
 ///# param endOy ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, uint color, bool fade, int endOx, int endOy)
+[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, ucolor color, bool fade, int endOx, int endOy)
 {
     self->AddMapText(text, hx, hy, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
 }
@@ -56,7 +78,7 @@
 ///# ...
 ///# param mapSpr ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSprite* mapSpr)
+[[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr)
 {
     if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
@@ -69,8 +91,8 @@
         return;
     }
 
-    const auto* anim = self->GetEngine()->AnimGetFrames(mapSpr->SprId);
-    if (anim == nullptr || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = self->GetEngine()->AnimGetSpr(mapSpr->SprId);
+    if (anim == nullptr) {
         return;
     }
 
@@ -89,22 +111,20 @@
             return;
         }
 
-        color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
+        color = proto_item->GetIsColorize() ? proto_item->GetLightColor() : ucolor::clear;
         is_flat = proto_item->GetIsFlat();
         const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
-        no_light = (is_flat && !is_item);
-        draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
-        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        no_light = is_flat && !is_item;
+        draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
+        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto_item->GetDrawOrderOffsetHexY()));
         corner = proto_item->GetCorner();
         disable_egg = proto_item->GetDisableEgg();
-        contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
+        contour_color = proto_item->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
-    auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& tree = self->GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
-        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+    const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
+    auto& spr = self->GetDrawList().InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
+        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, anim, nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
@@ -134,12 +154,12 @@
         spr.SetEggAppearence(egg_appearence);
     }
 
-    if (color != 0u) {
-        spr.SetColor(color & 0xFFFFFF);
-        spr.SetFixedAlpha(color >> 24);
+    if (color != ucolor::clear) {
+        spr.SetColor(ucolor {color, 0});
+        spr.SetFixedAlpha(color.comp.a);
     }
 
-    if (contour_color != 0u) {
+    if (contour_color != ucolor::clear) {
         spr.SetContour(ContourType::Custom, contour_color);
     }
 }
@@ -195,7 +215,7 @@
     items.reserve(all_items.size());
 
     for (auto* item : all_items) {
-        if (!item->IsFinishing()) {
+        if (!item->IsFinishing() && !item->GetIsTile()) {
             items.emplace_back(item);
         }
     }
@@ -302,14 +322,14 @@
     vector<CritterView*> critters;
 
     for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
             critters.push_back(cr);
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](const CritterView* cr1, const CritterView* cr2) {
+    std::sort(critters.begin(), critters.end(), [&hx, &hy](const CritterView* cr1, const CritterView* cr2) {
         //
-        return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
 
     return critters;
@@ -396,9 +416,9 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
-        if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
-            return {self->GetEngine()->Geometry.GetFarDir(fromHx, fromHy, to_hx, to_hy)};
+    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+        if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
+            return {GeometryHelper::GetFarDir(fromHx, fromHy, to_hx, to_hy)};
         }
         return {};
     }
@@ -410,7 +430,7 @@
         return {};
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return {};
     }
 
@@ -443,9 +463,9 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
-        if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
-            return {self->GetEngine()->Geometry.GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
+    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+        if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
         }
         return {};
     }
@@ -457,7 +477,7 @@
         return {};
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
@@ -489,7 +509,7 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -500,7 +520,7 @@
         return 0;
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return 0;
     }
 
@@ -533,7 +553,7 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -544,7 +564,7 @@
         return 0;
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 
@@ -638,11 +658,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
         }
     }
     else {
-        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
     }
 
     hx = hx_;
@@ -654,10 +674,9 @@
 ///# param hx ...
 ///# param hy ...
 ///# param roof ...
-///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hstring Client_Map_GetTileName(MapView* self, uint16 hx, uint16 hy, bool roof, int layer)
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof)
 {
     if (hx >= self->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
@@ -666,43 +685,51 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* simply_tile = self->GetField(hx, hy).SimpleTile[roof ? 1 : 0];
-    if (simply_tile != nullptr && layer == 0) {
-        return simply_tile->Name;
-    }
-
-    const auto* tiles = self->GetField(hx, hy).Tiles[roof ? 1 : 0];
-    if (tiles == nullptr || tiles->empty()) {
-        return {};
-    }
-
-    for (const auto& tile : *tiles) {
-        if (tile.Layer == layer) {
-            return tile.Anim->Name;
-        }
-    }
-    return {};
+    return self->GetTile(hx, hy, roof, -1);
 }
 
 ///# ...
-///# param onlyTiles ...
-///# param onlyRoof ...
-///# param onlyLight ...
+///# param hx ...
+///# param hy ...
+///# param roof ...
+///# param layer ...
+///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_RedrawMap(MapView* self, bool onlyTiles, bool onlyRoof, bool onlyLight)
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof, uint8 layer)
 {
-    if (onlyTiles) {
-        self->RebuildTiles();
+    if (hx >= self->GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
     }
-    else if (onlyRoof) {
-        self->RebuildRoof();
+    if (hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
     }
-    else if (onlyLight) {
-        self->RebuildLight();
+
+    return self->GetTile(hx, hy, roof, layer);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param roof ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ItemView*> Client_Map_GetTiles(MapView* self, uint16 hx, uint16 hy, bool roof)
+{
+    if (hx >= self->GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
     }
-    else {
-        self->RefreshMap();
+    if (hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
     }
+
+    return vec_cast<ItemView*>(self->GetTiles(hx, hy, roof));
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_RedrawMap(MapView* self)
+{
+    self->RefreshMap();
 }
 
 ///# ...
@@ -710,7 +737,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_ChangeZoom(MapView* self, float targetZoom)
 {
-    if (Math::FloatCompare(targetZoom, self->GetSpritesZoom())) {
+    if (is_float_equal(targetZoom, self->GetSpritesZoom())) {
         return;
     }
 
@@ -725,7 +752,7 @@
 
             self->ChangeZoom(1);
 
-            if (Math::FloatCompare(self->GetSpritesZoom(), old_zoom)) {
+            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
                 break;
             }
         }
@@ -736,13 +763,13 @@
 
             self->ChangeZoom(-1);
 
-            if (Math::FloatCompare(self->GetSpritesZoom(), old_zoom)) {
+            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
                 break;
             }
         }
     }
 
-    if (!Math::FloatCompare(init_zoom, self->GetSpritesZoom())) {
+    if (!is_float_equal(init_zoom, self->GetSpritesZoom())) {
         self->RebuildFog();
     }
 }
@@ -893,4 +920,26 @@
 [[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled)
 {
     self->SetShootBorders(enabled);
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, uint spriteCount)
+{
+    if (spriteCount < 1) {
+        throw ScriptException("Invalid sprite count");
+    }
+
+    return self->RunSpritePattern(spriteName, spriteCount);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_SetCursorPos(MapView* self, CritterView* cr, int mouseX, int mouseY, bool showSteps, bool forceRefresh)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->SetCursorPos(hex_cr, mouseX, mouseY, showSteps, forceRefresh);
 }

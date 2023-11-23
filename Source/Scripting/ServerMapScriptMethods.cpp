@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -92,11 +92,11 @@
         throw ScriptException("No place for item");
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
 }
 
 ///# ...
@@ -121,7 +121,7 @@
         throw ScriptException("No place for item");
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
@@ -133,10 +133,10 @@
             props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, true);
+        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, false);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
 }
 
 ///# ...
@@ -146,7 +146,7 @@
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, ident_t itemId)
 {
     if (!itemId) {
-        throw ScriptException("Item id arg is zero");
+        return nullptr;
     }
 
     return self->GetItem(itemId);
@@ -456,6 +456,15 @@
 }
 
 ///# ...
+///# param id ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] StaticItem* Server_Map_GetStaticItem(Map* self, ident_t id)
+{
+    return self->GetStaticItem(id);
+}
+
+///# ...
 ///# param hx ...
 ///# param hy ...
 ///# param pid ...
@@ -635,7 +644,7 @@
     }
 
     auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     return critters;
 }
 
@@ -829,6 +838,8 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, CritterFindType findType)
 {
+    UNUSED_VARIABLE(self);
+
     vector<Critter*> result_critters;
     for (auto* cr : critters) {
         for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
@@ -986,7 +997,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
@@ -1013,13 +1024,45 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
     Properties props_(proto->GetProperties());
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int>(key), value);
+    }
+
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
+    if (npc == nullptr) {
+        throw ScriptException("Create npc failed");
+    }
+
+    return npc;
+}
+
+///# ...
+///# param protoId ...
+///# param hx ...
+///# param hy ...
+///# param dir ...
+///# param props ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, uint16 hx, uint16 hy, uint8 dir, const map<CritterProperty, any_t>& props)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
+    if (proto == nullptr) {
+        throw ScriptException("Proto '{}' not found.", protoId);
+    }
+
+    Properties props_(proto->GetProperties());
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int>(key), value);
     }
 
     Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
@@ -1173,7 +1216,7 @@
 [[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, uint16 hx, uint16 hy, hstring pid)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
-    if (!proto_item) {
+    if (proto_item == nullptr) {
         throw ScriptException("Proto item not found");
     }
 
@@ -1234,7 +1277,7 @@
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
+        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->GetLookDistance() : radius)) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }
@@ -1260,7 +1303,7 @@
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
-    if (steps == 0u) {
+    if (steps == 0) {
         throw ScriptException("Steps arg is zero");
     }
 
@@ -1272,11 +1315,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
 
     hx = hx_;
@@ -1301,7 +1344,7 @@
 
     auto from_hx = hx;
     auto from_hy = hy;
-    if (self->GetEngine()->Geometry.MoveHexByDir(from_hx, from_hy, self->GetEngine()->Geometry.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
+    if (GeometryHelper::MoveHexByDir(from_hx, from_hy, GeometryHelper::ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
         self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
     }
 }

@@ -107,7 +107,8 @@ noinst_PROGRAMS = operations/c_callback_wrapper$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server_with_as_single_default \
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server_with_as_tuple_default \
 @HAVE_COROUTINES_TRUE@	coroutines/refactored_echo_server \
-@HAVE_COROUTINES_TRUE@	coroutines/timeout
+@HAVE_COROUTINES_TRUE@	coroutines/timeout \
+@HAVE_COROUTINES_TRUE@	type_erasure/type_erasure
 
 subdir = src/examples/cpp20
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -128,7 +129,8 @@ CONFIG_CLEAN_VPATH_FILES =
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server_with_as_single_default$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server_with_as_tuple_default$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	coroutines/refactored_echo_server$(EXEEXT) \
-@HAVE_COROUTINES_TRUE@	coroutines/timeout$(EXEEXT)
+@HAVE_COROUTINES_TRUE@	coroutines/timeout$(EXEEXT) \
+@HAVE_COROUTINES_TRUE@	type_erasure/type_erasure$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -278,6 +280,17 @@ operations_composed_8_OBJECTS = $(am_operations_composed_8_OBJECTS)
 operations_composed_8_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@operations_composed_8_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am__type_erasure_type_erasure_SOURCES_DIST = type_erasure/main.cpp \
+	type_erasure/stdin_line_reader.cpp type_erasure/sleep.cpp
+@HAVE_COROUTINES_TRUE@am_type_erasure_type_erasure_OBJECTS =  \
+@HAVE_COROUTINES_TRUE@	type_erasure/main.$(OBJEXT) \
+@HAVE_COROUTINES_TRUE@	type_erasure/stdin_line_reader.$(OBJEXT) \
+@HAVE_COROUTINES_TRUE@	type_erasure/sleep.$(OBJEXT)
+type_erasure_type_erasure_OBJECTS =  \
+	$(am_type_erasure_type_erasure_OBJECTS)
+type_erasure_type_erasure_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@type_erasure_type_erasure_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -314,7 +327,9 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	operations/$(DEPDIR)/composed_5.Po \
 	operations/$(DEPDIR)/composed_6.Po \
 	operations/$(DEPDIR)/composed_7.Po \
-	operations/$(DEPDIR)/composed_8.Po
+	operations/$(DEPDIR)/composed_8.Po \
+	type_erasure/$(DEPDIR)/main.Po type_erasure/$(DEPDIR)/sleep.Po \
+	type_erasure/$(DEPDIR)/stdin_line_reader.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -348,7 +363,8 @@ SOURCES = $(libasio_a_SOURCES) $(channels_throttling_proxy_SOURCES) \
 	$(operations_composed_5_SOURCES) \
 	$(operations_composed_6_SOURCES) \
 	$(operations_composed_7_SOURCES) \
-	$(operations_composed_8_SOURCES)
+	$(operations_composed_8_SOURCES) \
+	$(type_erasure_type_erasure_SOURCES)
 DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__channels_throttling_proxy_SOURCES_DIST) \
 	$(am__coroutines_chat_server_SOURCES_DIST) \
@@ -369,7 +385,8 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(operations_composed_5_SOURCES) \
 	$(operations_composed_6_SOURCES) \
 	$(operations_composed_7_SOURCES) \
-	$(operations_composed_8_SOURCES)
+	$(operations_composed_8_SOURCES) \
+	$(am__type_erasure_type_erasure_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -523,6 +540,12 @@ operations_composed_8_SOURCES = operations/composed_8.cpp
 @HAVE_COROUTINES_TRUE@coroutines_echo_server_with_as_tuple_default_SOURCES = coroutines/echo_server_with_as_tuple_default.cpp
 @HAVE_COROUTINES_TRUE@coroutines_refactored_echo_server_SOURCES = coroutines/refactored_echo_server.cpp
 @HAVE_COROUTINES_TRUE@coroutines_timeout_SOURCES = coroutines/timeout.cpp
+@HAVE_COROUTINES_TRUE@type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_line_reader.cpp type_erasure/sleep.cpp
+EXTRA_DIST = \
+	type_erasure/line_reader.hpp \
+	type_erasure/stdin_line_reader.hpp \
+	type_erasure/sleep.hpp
+
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in
 
@@ -724,6 +747,23 @@ operations/composed_8.$(OBJEXT): operations/$(am__dirstamp) \
 operations/composed_8$(EXEEXT): $(operations_composed_8_OBJECTS) $(operations_composed_8_DEPENDENCIES) $(EXTRA_operations_composed_8_DEPENDENCIES) operations/$(am__dirstamp)
 	@rm -f operations/composed_8$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(operations_composed_8_OBJECTS) $(operations_composed_8_LDADD) $(LIBS)
+type_erasure/$(am__dirstamp):
+	@$(MKDIR_P) type_erasure
+	@: > type_erasure/$(am__dirstamp)
+type_erasure/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) type_erasure/$(DEPDIR)
+	@: > type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/main.$(OBJEXT): type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/stdin_line_reader.$(OBJEXT):  \
+	type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+type_erasure/sleep.$(OBJEXT): type_erasure/$(am__dirstamp) \
+	type_erasure/$(DEPDIR)/$(am__dirstamp)
+
+type_erasure/type_erasure$(EXEEXT): $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_DEPENDENCIES) $(EXTRA_type_erasure_type_erasure_DEPENDENCIES) type_erasure/$(am__dirstamp)
+	@rm -f type_erasure/type_erasure$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -731,6 +771,7 @@ mostlyclean-compile:
 	-rm -f channels/*.$(OBJEXT)
 	-rm -f coroutines/*.$(OBJEXT)
 	-rm -f operations/*.$(OBJEXT)
+	-rm -f type_erasure/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -757,6 +798,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_7.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_8.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/sleep.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/stdin_line_reader.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -902,6 +946,8 @@ distclean-generic:
 	-rm -f coroutines/$(am__dirstamp)
 	-rm -f operations/$(DEPDIR)/$(am__dirstamp)
 	-rm -f operations/$(am__dirstamp)
+	-rm -f type_erasure/$(DEPDIR)/$(am__dirstamp)
+	-rm -f type_erasure/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -935,6 +981,9 @@ distclean: distclean-am
 	-rm -f operations/$(DEPDIR)/composed_6.Po
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
+	-rm -f type_erasure/$(DEPDIR)/main.Po
+	-rm -f type_erasure/$(DEPDIR)/sleep.Po
+	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1002,6 +1051,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f operations/$(DEPDIR)/composed_6.Po
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
+	-rm -f type_erasure/$(DEPDIR)/main.Po
+	-rm -f type_erasure/$(DEPDIR)/sleep.Po
+	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

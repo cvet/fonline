@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -109,77 +109,83 @@ void SetLogCallback(string_view key, LogFunc callback)
     }
 }
 
-void WriteLogMessage(LogType type, string_view message)
+void WriteLogMessage(LogType type, string_view message) noexcept
 {
     STACK_TRACE_ENTRY();
 
-    // Avoid recursive calls
-    if (Data->LogFunctionsInProcess) {
-        return;
-    }
-
-    std::lock_guard locker(Data->LogLocker);
-
-    // Make message
-    string result;
-    if (!Data->LogDisableTimestamp) {
-        const auto now = std::time(nullptr);
-        const auto* t = std::localtime(&now);
-        result += _str("[{:02}:{:02}:{:02}] ", t->tm_hour, t->tm_min, t->tm_sec);
-    }
-
-    result.reserve(result.size() + message.length() + 1u);
-    result += message;
-    result += '\n';
-
-    // Write logs
-    if (Data->LogFileHandle) {
-        Data->LogFileHandle->Write(result);
-    }
-
-    if (!Data->LogFunctions.empty()) {
-        Data->LogFunctionsInProcess = true;
-        for (auto&& [func_name, func] : Data->LogFunctions) {
-            func(result);
+    try {
+        // Avoid recursive calls
+        if (Data->LogFunctionsInProcess) {
+            return;
         }
-        Data->LogFunctionsInProcess = false;
-    }
+
+        std::lock_guard locker(Data->LogLocker);
+
+        // Make message
+        string result;
+
+        if (!Data->LogDisableTimestamp) {
+            const auto now = time_point::clock::now();
+            const auto now_desc = time_point_desc(now);
+            result += _str("[{:02}:{:02}:{:02}] ", now_desc.tm_hour, now_desc.tm_min, now_desc.tm_sec);
+        }
+
+        result.reserve(result.size() + message.length() + 1u);
+        result += message;
+        result += '\n';
+
+        // Write logs
+        if (Data->LogFileHandle) {
+            Data->LogFileHandle->Write(result);
+        }
+
+        if (!Data->LogFunctions.empty()) {
+            Data->LogFunctionsInProcess = true;
+            auto reset_in_process = ScopeCallback([]() noexcept { Data->LogFunctionsInProcess = false; });
+
+            for (auto&& [func_name, func] : Data->LogFunctions) {
+                func(result);
+            }
+        }
 
 #if FO_WINDOWS
-    ::OutputDebugStringW(_str(result).toWideChar().c_str());
+        ::OutputDebugStringW(_str(result).toWideChar().c_str());
 #endif
 
 #if FO_ANDROID
-    __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
+        __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
 #endif
 
-#ifdef TRACY_ENABLE
-    TracyMessage(result.c_str(), result.length());
+#if FO_TRACY
+        TracyMessage(result.c_str(), result.length());
 #endif
 
-    // Todo: colorize log texts
-    const char* color = nullptr;
-    switch (type) {
-    case LogType::InfoSection:
-        color = "\033[32m"; // Green
-        break;
-    case LogType::Warning:
-        color = "\033[33m"; // Yellow
-        break;
-    case LogType::Error:
-        color = "\031[31m"; // Red
-        break;
-    default:
-        break;
-    }
+        // Todo: colorize log texts
+        const char* color = nullptr;
+        switch (type) {
+        case LogType::InfoSection:
+            color = "\033[32m"; // Green
+            break;
+        case LogType::Warning:
+            color = "\033[33m"; // Yellow
+            break;
+        case LogType::Error:
+            color = "\031[31m"; // Red
+            break;
+        default:
+            break;
+        }
 
-    if (color != nullptr) {
-        // std::cout << color << result << "\033[39m";
-        std::cout << result;
-    }
-    else {
-        std::cout << result;
-    }
+        if (color != nullptr) {
+            // std::cout << color << result << "\033[39m";
+            std::cout << result;
+        }
+        else {
+            std::cout << result;
+        }
 
-    std::cout.flush();
+        std::cout.flush();
+    }
+    catch (...) {
+    }
 }

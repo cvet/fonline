@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,15 +38,17 @@
 #if !FO_SINGLEPLAYER
 
 #include "ClientScripting.h"
+#include "DefaultSprites.h"
 #include "Log.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {settings},
-    _conn(settings),
+    _conn(_settings),
+    _gameTime(_settings),
     _effectMngr(_settings, _resources),
-    _sprMngr(_settings, window, _resources, _effectMngr)
+    _sprMngr(_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
 {
     STACK_TRACE_ENTRY();
 
@@ -61,25 +63,26 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _effectMngr.LoadMinimalEffects();
 
+    _sprMngr.RegisterSpriteFactory(std::make_unique<DefaultSpriteFactory>(_sprMngr));
+
     // Wait screen
     if (!_settings.DefaultSplash.empty()) {
-        _sprMngr.PushAtlasType(AtlasType::Splash, true);
-        _splashPic = _sprMngr.LoadAnimation(_settings.DefaultSplash, false);
-        _sprMngr.PopAtlasType();
+        _splashPic.reset();
+        _splashPic = _sprMngr.LoadSprite(_settings.DefaultSplash, AtlasType::OneImage);
+
+        if (_splashPic) {
+            _splashPic->PlayDefault();
+        }
     }
 
-    _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-    if (_splashPic != nullptr) {
-        _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+    _sprMngr.BeginScene({0, 0, 0});
+    if (_splashPic) {
+        _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
     }
     _sprMngr.EndScene();
 
     // Load font
-    _sprMngr.PushAtlasType(AtlasType::Static);
-    _sprMngr.LoadFontFO(0, "Default", false, true);
-    _sprMngr.PopAtlasType();
-    _sprMngr.BuildFonts();
-    _sprMngr.SetDefaultFont(0, COLOR_TEXT);
+    _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -163,10 +166,10 @@ auto Updater::Process() -> bool
         update_text += ".";
     }
 
-    _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    _sprMngr.BeginScene({0, 0, 0});
     {
-        if (_splashPic != nullptr) {
-            _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+        if (_splashPic) {
+            _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
         }
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {
@@ -198,6 +201,8 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 void Updater::AddText(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(str_num);
 
     _messages.emplace_back(num_str_str);
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,9 +63,9 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-static const int MAX_ATLAS_WIDTH_ = 1024;
-static const int MAX_ATLAS_HEIGHT_ = 1024;
-static const int MAX_BONES_ = 32;
+static constexpr int MAX_ATLAS_WIDTH_ = 1024;
+static constexpr int MAX_ATLAS_HEIGHT_ = 1024;
+static constexpr int MAX_BONES_ = 32;
 const int& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
 const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
 const int& AppRender::MAX_BONES {MAX_BONES_};
@@ -109,13 +109,17 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-    {
+    if (!IsRunInDebugger()) {
         [[maybe_unused]] static backward::SignalHandling sh;
         assert(sh.loaded());
     }
 #endif
 
     CreateGlobalData();
+
+#if FO_TRACY
+    TracySetProgramName(FO_GAME_NAME);
+#endif
 
 #if !FO_WEB
     if (const auto exe_path = DiskFileSystem::GetExePath()) {
@@ -142,7 +146,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 #endif
 }
 
-void ExitApp(bool success)
+void ExitApp(bool success) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -178,6 +182,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
     UNUSED_VARIABLE(_imguiEffect);
     UNUSED_VARIABLE(_nonConstHelper);
     UNUSED_VARIABLE(MainWindow._windowHandle);
+    UNUSED_VARIABLE(MainWindow._grabbed);
 
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
@@ -239,7 +244,7 @@ void Application::EndFrame()
 
     _onFrameEndDispatcher();
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
     FrameMark;
 #endif
 }
@@ -375,7 +380,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
     return nullptr;
 }
 
-void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 
@@ -455,6 +460,7 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(relative_to);
 }
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
@@ -471,11 +477,12 @@ void AppInput::ClearEvents()
     STACK_TRACE_ENTRY();
 }
 
-void AppInput::PushEvent(const InputEvent& ev)
+void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(ev);
+    UNUSED_VARIABLE(push_to_this_frame);
 }
 
 void AppInput::SetClipboardText(string_view text)
@@ -505,7 +512,7 @@ auto AppAudio::GetStreamSize() -> uint
 
     RUNTIME_ASSERT(IsEnabled());
 
-    return 0u;
+    return 0;
 }
 
 auto AppAudio::GetSilence() -> uint8
@@ -514,14 +521,14 @@ auto AppAudio::GetSilence() -> uint8
 
     RUNTIME_ASSERT(IsEnabled());
 
-    return 0u;
+    return 0;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(stream_callback);
+    [[maybe_unused]] auto unused = std::move(stream_callback);
 
     RUNTIME_ASSERT(IsEnabled());
 }
@@ -565,11 +572,11 @@ void AppAudio::UnlockDevice()
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(title);
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(traceback);
+    UNUSED_VARIABLE(fatal_error);
 }

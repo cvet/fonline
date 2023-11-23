@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -151,25 +151,22 @@ namespace utf8
     auto Upper(uint ucs) -> uint;
 }
 
-namespace fmt
+template<>
+struct fmt::formatter<_str>
 {
     // ReSharper disable CppInconsistentNaming
 
-    template<>
-    struct formatter<_str>
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
     {
-        template<typename ParseContext>
-        constexpr auto parse(ParseContext& ctx)
-        {
-            return ctx.begin();
-        }
+        return ctx.begin();
+    }
 
-        template<typename FormatContext>
-        auto format(const _str& s, FormatContext& ctx)
-        {
-            return format_to(ctx.out(), "{}", s.strv());
-        }
-    };
+    template<typename FormatContext>
+    auto format(const _str& s, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", s.strv());
+    }
 
     // ReSharper restore CppInconsistentNaming
-}
+};

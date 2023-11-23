@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(Tracy LANGUAGES CXX)
+# Run version helper script
+include(version.cmake)
+
+set(TRACY_VERSION_MAJOR ${major})
+set(TRACY_VERSION_MINOR ${minor})
+set(TRACY_VERSION_PATCH ${patch})
+set(TRACY_VERSION_STRING "${TRACY_VERSION_MAJOR}.${TRACY_VERSION_MINOR}.${TRACY_VERSION_PATCH}")
+
+project(Tracy LANGUAGES CXX VERSION ${TRACY_VERSION_STRING})
 
 if(${BUILD_SHARED_LIBS})
 	set(DEFAULT_STATIC OFF)
@@ -70,6 +78,7 @@ set_option(TRACY_NO_VERIFY "Disable zone validation for C API" OFF)
 set_option(TRACY_NO_VSYNC_CAPTURE "Disable capture of hardware Vsync events" OFF)
 set_option(TRACY_NO_FRAME_IMAGE  "Disable the frame image support and its thread" OFF)
 set_option(TRACY_NO_SYSTEM_TRACING  "Disable systrace sampling" OFF)
+set_option(TRACY_PATCHABLE_NOPSLEDS  "Enable nopsleds for efficient patching by system-level tools (e.g. rr)" OFF)
 set_option(TRACY_DELAYED_INIT "Enable delayed initialization of the library (init on first call)" OFF)
 set_option(TRACY_MANUAL_LIFETIME "Enable the manual lifetime management of the profile" OFF)
 set_option(TRACY_FIBERS "Enable fibers support" OFF)
@@ -83,6 +92,8 @@ endif()
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
+
+set_target_properties(TracyClient PROPERTIES VERSION ${PROJECT_VERSION})
 
 set(tracy_includes
     ${TRACY_PUBLIC_DIR}/tracy/TracyC.h
@@ -101,6 +112,7 @@ set(client_includes
     ${TRACY_PUBLIC_DIR}/client/TracyArmCpuTable.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyCallstack.h
     ${TRACY_PUBLIC_DIR}/client/TracyCallstack.hpp
+    ${TRACY_PUBLIC_DIR}/client/TracyCpuid.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyDebug.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyDxt1.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyFastVector.hpp
@@ -109,6 +121,7 @@ set(client_includes
     ${TRACY_PUBLIC_DIR}/client/TracyRingBuffer.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyScoped.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyStringHelpers.hpp
+    ${TRACY_PUBLIC_DIR}/client/TracySysPower.hpp
     ${TRACY_PUBLIC_DIR}/client/TracySysTime.hpp
     ${TRACY_PUBLIC_DIR}/client/TracySysTrace.hpp
     ${TRACY_PUBLIC_DIR}/client/TracyThread.hpp)
@@ -143,5 +156,11 @@ install(FILES ${common_includes}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/common)
 install(EXPORT TracyConfig
         NAMESPACE Tracy::
-        FILE TracyConfig.cmake
-        DESTINATION share/Tracy)
+        FILE TracyTargets.cmake
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/Tracy)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/TracyConfig.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/Tracy)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/TracyConfig.cmake
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/Tracy)

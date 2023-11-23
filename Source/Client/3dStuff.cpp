@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
+void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -62,14 +62,14 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
-        SkinBoneNames[i] = name_resolver.ToHashedString(tmp);
+        SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
     }
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
     reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
 }
 
-void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
+void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -78,12 +78,12 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
     string tmp;
     tmp.resize(len);
     reader.ReadPtr(tmp.data(), len);
-    Name = name_resolver.ToHashedString(tmp);
+    Name = hash_resolver.ToHashedString(tmp);
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
     if (reader.Read<uint8>() != 0) {
         AttachedMesh = std::make_unique<MeshData>();
-        AttachedMesh->Load(reader, name_resolver);
+        AttachedMesh->Load(reader, hash_resolver);
         AttachedMesh->Owner = this;
     }
     else {
@@ -92,12 +92,13 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
     reader.ReadPtr(&len, sizeof(len));
     for (uint i = 0; i < len; i++) {
         auto child = std::make_unique<ModelBone>();
-        child->Load(reader, name_resolver);
+        child->Load(reader, hash_resolver);
         Children.push_back(std::move(child));
     }
     CombinedTransformationMatrix = mat44();
 }
 
+// ReSharper disable once CppMemberFunctionMayBeConst
 void ModelBone::FixAfterLoad(ModelBone* root_bone)
 {
     STACK_TRACE_ENTRY();
@@ -136,16 +137,17 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
     _resources {resources},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
+    _hashResolver {hash_resolver},
     _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _geometry(settings),
-    _particleMngr(settings, effect_mngr, resources, std::move(tex_loader))
+    _particleMngr(settings, effect_mngr, resources, game_time, std::move(tex_loader))
 {
     STACK_TRACE_ENTRY();
 
@@ -154,8 +156,8 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
         _moveTransitionTime = 0.001f;
     }
 
-    if (_settings.Animation3dFPS != 0u) {
-        _animDelay = 1000 / _settings.Animation3dFPS;
+    if (_settings.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
     }
 
     _headBone = GetBoneHashedString(settings.HeadBone);
@@ -169,7 +171,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     STACK_TRACE_ENTRY();
 
-    return _nameResolver.ToHashedString(name);
+    return _hashResolver.ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> ModelBone*
@@ -177,7 +179,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _nameResolver.ToHashedString(fname);
+    auto name_hashed = _hashResolver.ToHashedString(fname);
     for (auto&& root_bone : _loadedModels) {
         if (root_bone->Name == name_hashed) {
             return root_bone.get();
@@ -185,7 +187,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     }
 
     // Add to already processed
-    if (_processedFiles.count(name_hashed) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0) {
         return nullptr;
     }
     _processedFiles.emplace(name_hashed);
@@ -201,14 +203,14 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     auto root_bone = std::make_unique<ModelBone>();
     auto reader = DataReader({file.GetBuf(), file.GetSize()});
 
-    root_bone->Load(reader, _nameResolver);
+    root_bone->Load(reader, _hashResolver);
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
     const auto anim_sets_count = reader.Read<uint>();
     for (uint i = 0; i < anim_sets_count; i++) {
         auto anim_set = std::make_unique<ModelAnimation>();
-        anim_set->Load(reader, _nameResolver);
+        anim_set->Load(reader, _hashResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
 
@@ -226,7 +228,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
 
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
-    const auto name_hashed = _nameResolver.ToHashedString(anim_fname);
+    const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
     for (auto&& anim_set : _loadedAnimSets) {
         if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
@@ -234,7 +236,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     }
 
     // Check maybe file already processed and nothing founded
-    if (_processedFiles.count(name_hashed) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0) {
         return nullptr;
     }
 
@@ -265,7 +267,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     auto* mesh_tex = new MeshTexture();
-    mesh_tex->Name = _nameResolver.ToHashedString(texture_name);
+    mesh_tex->Name = _hashResolver.ToHashedString(texture_name);
     mesh_tex->MainTex = tex;
     mesh_tex->AtlasOffsetData[0] = tex_data[0];
     mesh_tex->AtlasOffsetData[1] = tex_data[1];
@@ -275,7 +277,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     return mesh_tex;
 }
 
-auto ModelManager::CreateModel(string_view name) -> ModelInstance*
+auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
 {
     STACK_TRACE_ENTRY();
 
@@ -296,14 +298,15 @@ auto ModelManager::CreateModel(string_view name) -> ModelInstance*
         auto* mesh_instance = model->_allMeshes[i] = new MeshInstance();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         mesh_instance->Mesh = mesh;
-        const auto* tex_name = (mesh->DiffuseTexture.length() != 0u ? mesh->DiffuseTexture.c_str() : nullptr);
+        const auto* tex_name = (mesh->DiffuseTexture.length() != 0 ? mesh->DiffuseTexture.c_str() : nullptr);
         mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
         mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
     }
 
     // Set default data
-    model->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
-    return model;
+    model->SetAnimation(CritterStateAnim::None, CritterActionAnim::None, nullptr, ANIMATION_INIT);
+
+    return unique_ptr<ModelInstance>(model);
 }
 
 void ModelManager::PreloadModel(string_view name)
@@ -375,6 +378,8 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) :
     _childChecker = true;
     _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
+    _forceDraw = true;
+    _lastDrawTime = GetTime();
 }
 
 ModelInstance::~ModelInstance()
@@ -384,9 +389,6 @@ ModelInstance::~ModelInstance()
     delete _bodyAnimController;
     delete _moveAnimController;
 
-    for (const auto* anim : _children) {
-        delete anim;
-    }
     for (const auto* mesh : _allMeshes) {
         delete mesh;
     }
@@ -415,8 +417,8 @@ void ModelInstance::SetupFrame()
     const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    _frameProjRowMaj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    _frameProjColMaj = _frameProjRowMaj;
+    _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    _frameProjColMaj = _frameProj;
     _frameProjColMaj.Transpose();
 }
 
@@ -453,12 +455,23 @@ void ModelInstance::StartMeshGeneration()
     }
 }
 
-auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool
+void ModelInstance::PrewarmParticles()
 {
     STACK_TRACE_ENTRY();
 
-    _curAnim1 = anim1;
-    _curAnim2 = anim2;
+    NON_CONST_METHOD_HINT();
+
+    for (auto&& model_particle : _modelParticles) {
+        model_particle.Particle->Prewarm();
+    }
+}
+
+auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    _curStateAnim = state_anim;
+    _curActionAnim = action_anim;
 
     // Restore rotation
     if (const auto no_rotate = IsBitSet(flags, ANIMATION_NO_ROTATE); no_rotate != _noRotate) {
@@ -467,52 +480,54 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         if (_noRotate) {
             _deferredLookDirAngle = _lookDirAngle;
         }
-        else if (!Math::FloatCompare(_deferredLookDirAngle, _lookDirAngle)) {
+        else if (!is_float_equal(_deferredLookDirAngle, _lookDirAngle)) {
             _lookDirAngle = _deferredLookDirAngle;
             RefreshMoveAnimation();
         }
     }
 
     // Get animation index
-    const auto anim_pair = static_cast<int>((anim1 << 16) | anim2);
-    auto speed = 1.0f;
-    auto index = 0;
-    auto period_proc = 0.0f;
+    const uint anim_pair = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
+    float speed = 1.0f;
+    int index = 0;
+    float period_proc = 0.0f;
+
     if (!IsBitSet(flags, ANIMATION_INIT)) {
-        if (anim1 == 0u) {
-            index = _modelInfo->_renderAnim;
-            period_proc = static_cast<float>(anim2) / 10.0f;
+        if (state_anim == CritterStateAnim::None) {
+            index = static_cast<int>(_modelInfo->_renderAnim);
+            period_proc = static_cast<float>(action_anim) / 10.0f;
         }
         else {
-            index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
+            index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
         }
     }
 
     if (IsBitSet(flags, ANIMATION_PERIOD(0))) {
         period_proc = static_cast<float>(flags >> 16);
     }
+
     period_proc = std::clamp(period_proc, 0.0f, 99.9f);
 
     // Check animation changes
-    int new_layers[LAYERS3D_COUNT];
+    int new_layers[MODEL_LAYERS_COUNT];
     if (layers != nullptr) {
-        std::memcpy(new_layers, layers, sizeof(int) * LAYERS3D_COUNT);
+        std::memcpy(new_layers, layers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
     else {
-        std::memcpy(new_layers, _currentLayers, sizeof(int) * LAYERS3D_COUNT);
+        std::memcpy(new_layers, _currentLayers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
 
     // Animation layers
-    if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
-        for (auto&& [index, value] : it->second) {
-            new_layers[index] = value;
+    if (const auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
+        for (auto&& [layer_index, value] : it->second) {
+            new_layers[layer_index] = value;
         }
     }
 
     // Check for change
     auto layer_changed = IsBitSet(flags, ANIMATION_INIT);
     if (!layer_changed) {
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
             if (new_layers[i] != _currentLayers[i]) {
                 layer_changed = true;
                 break;
@@ -521,19 +536,19 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     }
 
     // Is not one time play and same anim
-    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[LAYERS3D_COUNT] == anim_pair && !layer_changed) {
+    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[MODEL_LAYERS_COUNT] == static_cast<int>(anim_pair) && !layer_changed) {
         return false;
     }
 
-    std::memcpy(_currentLayers, new_layers, sizeof(int) * LAYERS3D_COUNT);
-    _currentLayers[LAYERS3D_COUNT] = anim_pair;
+    std::memcpy(_currentLayers, new_layers, sizeof(int) * MODEL_LAYERS_COUNT);
+    _currentLayers[MODEL_LAYERS_COUNT] = static_cast<int>(anim_pair);
 
     auto mesh_changed = false;
     vector<hstring> fast_transition_bones;
 
     if (layer_changed) {
         // Store previous cuts
-        auto old_cuts = _allCuts;
+        const auto old_cuts = _allCuts;
 
         // Store disabled meshes
         for (size_t i = 0; i < _allMeshes.size(); i++) {
@@ -549,20 +564,20 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         // Mark animations as unused
-        for (auto* child_anim : _children) {
-            child_anim->_childChecker = false;
+        for (auto&& child : _children) {
+            child->_childChecker = false;
         }
 
         // Get unused layers and meshes
-        bool unused_layers[LAYERS3D_COUNT] = {};
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        bool unused_layers[MODEL_LAYERS_COUNT] = {};
+        for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
             if (new_layers[i] == 0) {
                 continue;
             }
 
             for (const auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty()) {
-                    for (auto j : link.DisabledLayer) {
+                    for (const auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
                     }
                     for (const auto disabled_mesh_name : link.DisabledMesh) {
@@ -577,7 +592,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         if (_parentBone != nullptr) {
-            for (auto j : _animLink.DisabledLayer) {
+            for (const auto j : _animLink.DisabledLayer) {
                 unused_layers[j] = true;
             }
             for (auto disabled_mesh_name : _animLink.DisabledMesh) {
@@ -592,7 +607,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         // Append animations
         set<uint> keep_alive_particles;
 
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
                 continue;
             }
@@ -607,8 +622,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                     if (link.IsParticles) {
                         bool available = false;
 
-                        for (auto&& particle_system : _particleSystems) {
-                            if (particle_system.Id == link.Id) {
+                        for (auto&& model_particle : _modelParticles) {
+                            if (model_particle.Id == link.Id) {
                                 available = true;
                                 break;
                             }
@@ -616,8 +631,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
                         if (!available) {
                             if (const auto* to_bone = FindBone(link.LinkBone)) {
-                                if (auto&& particles = _modelMngr._particleMngr.CreateParticles(link.ChildName)) {
-                                    _particleSystems.push_back({link.Id, std::move(particles), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                                if (auto&& particle = _modelMngr._particleMngr.CreateParticle(link.ChildName)) {
+                                    _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                                 }
                             }
                         }
@@ -627,40 +642,38 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                     else {
                         bool available = false;
 
-                        for (auto* model : _children) {
-                            if (model->_animLink.Id == link.Id) {
-                                model->_childChecker = true;
+                        for (auto&& child : _children) {
+                            if (child->_animLink.Id == link.Id) {
+                                child->_childChecker = true;
                                 available = true;
                                 break;
                             }
                         }
 
                         if (!available) {
-                            ModelInstance* model = nullptr;
-
                             // Link to main bone
                             if (link.LinkBone) {
                                 auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
                                 if (to_bone != nullptr) {
-                                    model = _modelMngr.CreateModel(link.ChildName);
-                                    if (model != nullptr) {
+                                    auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                    if (model) {
                                         mesh_changed = true;
                                         model->_parent = this;
                                         model->_parentBone = to_bone;
                                         model->_animLink = link;
                                         model->SetAnimData(link, false);
-                                        _children.push_back(model);
+                                        _children.push_back(std::move(model));
                                     }
 
-                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0u) {
+                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0) {
                                         fast_transition_bones.push_back(link.LinkBone);
                                     }
                                 }
                             }
                             // Link all bones
                             else {
-                                model = _modelMngr.CreateModel(link.ChildName);
-                                if (model != nullptr) {
+                                auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                if (model) {
                                     for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
                                         auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
                                         if (root_bone != nullptr) {
@@ -674,7 +687,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                                     model->_parentBone = _modelInfo->_hierarchy->_rootBone;
                                     model->_animLink = link;
                                     model->SetAnimData(link, false);
-                                    _children.push_back(model);
+                                    _children.push_back(std::move(model));
                                 }
                             }
                         }
@@ -685,10 +698,9 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
         // Erase unused animations
         for (auto it = _children.begin(); it != _children.end();) {
-            auto* model = *it;
-            if (!model->_childChecker) {
+            auto&& child = *it;
+            if (!child->_childChecker) {
                 mesh_changed = true;
-                delete model;
                 it = _children.erase(it);
             }
             else {
@@ -696,9 +708,9 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
             }
         }
 
-        for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
-            if (it->Id != 0u && keep_alive_particles.count(it->Id) == 0u) {
-                _particleSystems.erase(it);
+        for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
+            if (it->Id != 0 && keep_alive_particles.count(it->Id) == 0) {
+                it = _modelParticles.erase(it);
             }
             else {
                 ++it;
@@ -730,7 +742,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
         // Affect cut
         if (!mesh_changed) {
-            mesh_changed = (_allCuts != old_cuts);
+            mesh_changed = _allCuts != old_cuts;
         }
     }
 
@@ -741,7 +753,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         const auto* set = _bodyAnimController->GetAnimationSet(index);
 
         // Alternate tracks
-        uint new_track = (_currentTrack == 0 ? 1 : 0);
+        const uint new_track = (_currentTrack == 0 ? 1 : 0);
         auto period = set->GetDuration();
         _animPosPeriod = period;
         if (IsBitSet(flags, ANIMATION_INIT)) {
@@ -801,12 +813,12 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         // Force redraw
-        _lastDrawTime = time_point {};
+        _forceDraw = true;
     }
 
     // Set animation for children
-    for (auto* child : _children) {
-        if (child->SetAnimation(anim1, anim2, layers, flags)) {
+    for (auto&& child : _children) {
+        if (child->SetAnimation(state_anim, action_anim, layers, flags)) {
             mesh_changed = true;
         }
     }
@@ -828,7 +840,7 @@ void ModelInstance::MoveModel(int ox, int oy)
     const vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
-    _forceRedraw = true;
+    _forceDraw = true;
 }
 
 void ModelInstance::SetMoving(bool enabled, uint speed)
@@ -879,18 +891,18 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
 
-    uint anim1 = ANIM1_UNARMED;
-    uint anim2 = ANIM2_IDLE;
+    auto state_anim = CritterStateAnim::Unarmed;
+    auto action_anim = CritterActionAnim::Idle;
 
     if (_isMoving) {
-        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
         if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
-            anim2 = _isRunning ? ANIM2_RUN : ANIM2_WALK;
+            action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
         }
         else {
             _isMovingBack = true;
-            anim2 = _isRunning ? ANIM2_RUN_BACK : ANIM2_WALK_BACK;
+            action_anim = _isRunning ? CritterActionAnim::RunBack : CritterActionAnim::WalkBack;
         }
 
         _playTurnAnimation = false;
@@ -900,10 +912,10 @@ void ModelInstance::RefreshMoveAnimation()
             _moveDirAngle = _targetMoveDirAngle = _lookDirAngle;
         }
 
-        anim1 = _curAnim1;
+        state_anim = _curStateAnim;
         _isMovingBack = false;
 
-        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+        const auto angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
         if (std::abs(angle_diff) > _modelMngr._settings.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
@@ -911,7 +923,7 @@ void ModelInstance::RefreshMoveAnimation()
                 return;
             }
 
-            anim2 = angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT;
+            action_anim = angle_diff < 0.0f ? CritterActionAnim::TurnRight : CritterActionAnim::TurnLeft;
             _playTurnAnimation = true;
         }
         else if (_playTurnAnimation) {
@@ -920,13 +932,13 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     float speed = 1.0f;
-    const auto index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
+    const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
     if (index == _curMovingAnimIndex) {
         return;
     }
 
     _curMovingAnimIndex = index;
-    _curMovingAnim2 = anim2;
+    _curMovingAnim = action_anim;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
@@ -966,45 +978,46 @@ void ModelInstance::RefreshMoveAnimation()
     }
 }
 
-auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
+auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto index = static_cast<int>((anim1 << 16) | anim2);
+    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
     const auto it = _modelInfo->_animIndexes.find(index);
+
     return it != _modelInfo->_animIndexes.end();
 }
 
-auto ModelInstance::ResolveAnimation(uint& anim1, uint& anim2) const -> bool
+auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, _isCombatMode) != -1;
+    return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr, _isCombatMode) != -1;
 }
 
-auto ModelInstance::GetAnim1() const -> uint
+auto ModelInstance::GetStateAnim() const -> CritterStateAnim
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[LAYERS3D_COUNT] >> 16;
+    return static_cast<CritterStateAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) >> 16);
 }
 
-auto ModelInstance::GetAnim2() const -> uint
+auto ModelInstance::GetActionAnim() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
+    return static_cast<CritterActionAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) & 0xFFFF);
 }
 
-auto ModelInstance::GetMovingAnim2() const -> uint
+auto ModelInstance::GetMovingAnim2() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
     if (_curMovingAnimIndex != -1) {
-        return _curMovingAnim2;
+        return _curMovingAnim;
     }
     else {
-        return _isRunning ? ANIM2_RUN : ANIM2_WALK;
+        return _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
     }
 }
 
@@ -1216,7 +1229,7 @@ void ModelInstance::SetDir(uint8 dir, bool smooth_rotation)
 {
     STACK_TRACE_ENTRY();
 
-    const auto dir_angle = _modelMngr._geometry.DirToAngle(dir);
+    const auto dir_angle = GeometryHelper::DirToAngle(dir);
 
     SetMoveDirAngle(dir_angle, smooth_rotation);
     SetLookDirAngle(dir_angle);
@@ -1229,7 +1242,7 @@ void ModelInstance::SetLookDirAngle(int dir_angle)
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
     if (!_noRotate) {
-        if (!Math::FloatCompare(new_angle, _lookDirAngle)) {
+        if (!is_float_equal(new_angle, _lookDirAngle)) {
             _lookDirAngle = new_angle;
             RefreshMoveAnimation();
         }
@@ -1245,7 +1258,7 @@ void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
-    if (!Math::FloatCompare(new_angle, _targetMoveDirAngle)) {
+    if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
 
         if (!smooth_rotation) {
@@ -1314,7 +1327,9 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshVertices.clear();
         combined_mesh->MeshAnimLayers.clear();
         combined_mesh->MeshBuf->Vertices3D.clear();
+        combined_mesh->MeshBuf->VertCount = 0;
         combined_mesh->MeshBuf->Indices.clear();
+        combined_mesh->MeshBuf->IndCount = 0;
     }
     _combinedMeshesSize = 0;
 
@@ -1341,8 +1356,8 @@ void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
     }
 
     // Fill child
-    for (const auto* child_anim : cur->_children) {
-        FillCombinedMeshes(child_anim);
+    for (auto&& child : cur->_children) {
+        FillCombinedMeshes(child.get());
     }
 }
 
@@ -1465,6 +1480,9 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Increment mesh count
     combined_mesh->EncapsulatedMeshCount++;
+
+    combined_mesh->MeshBuf->VertCount = combined_mesh->MeshBuf->Vertices3D.size();
+    combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
 }
 
 void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
@@ -1482,8 +1500,8 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
     }
 
     // Fill child
-    for (const auto* child_anim : cur->_children) {
-        CutCombinedMeshes(child_anim);
+    for (auto&& child : cur->_children) {
+        CutCombinedMeshes(child.get());
     }
 }
 
@@ -1553,6 +1571,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
+
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<uint16> result_indices;
@@ -1780,37 +1799,34 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
             }
         }
     }
+
+    combined_mesh->MeshBuf->VertCount = combined_mesh->MeshBuf->Vertices3D.size();
+    combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
 }
 
 auto ModelInstance::NeedDraw() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (_forceRedraw) {
-        return true;
-    }
-
-    return _combinedMeshesSize != 0 && (_lastDrawTime == time_point {} || GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animDelay});
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animUpdateThreshold};
 }
 
 void ModelInstance::Draw()
 {
     STACK_TRACE_ENTRY();
 
-    _forceRedraw = false;
-
-    // Move timer
     const auto time = GetTime();
-    const auto elapsed = _lastDrawTime != time_point {} ? 0.001f * time_duration_to_ms<float>(time - _lastDrawTime) : 0.0f;
+    const auto dt = 0.001f * time_duration_to_ms<float>(time - _lastDrawTime);
 
     _lastDrawTime = time;
+    _forceDraw = false;
 
     // Move animation
     const auto w = _frameWidth / FRAME_SCALE;
     const auto h = _frameHeight / FRAME_SCALE;
-    ProcessAnimation(elapsed, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
+    ProcessAnimation(dt, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
 
-    if (_combinedMeshesSize != 0u) {
+    if (_combinedMeshesSize != 0) {
         for (size_t i = 0; i < _combinedMeshesSize; i++) {
             DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
         }
@@ -1839,8 +1855,8 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Rotate body
-    if (!Math::FloatCompare(_moveDirAngle, _targetMoveDirAngle)) {
-        const auto diff = _modelMngr._geometry.GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
+    if (!is_float_equal(_moveDirAngle, _targetMoveDirAngle)) {
+        const auto diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
         _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
     }
 
@@ -1881,29 +1897,29 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     // Update linked matrices
     if ((_parentBone != nullptr) && !_linkBones.empty()) {
         for (uint i = 0, j = static_cast<uint>(_linkBones.size()) / 2; i < j; i++) {
-            _linkBones[i * 2 + 1]->CombinedTransformationMatrix = _linkBones[i * 2]->CombinedTransformationMatrix;
+            _linkBones[static_cast<size_t>(i) * 2 + 1]->CombinedTransformationMatrix = _linkBones[static_cast<size_t>(i) * 2]->CombinedTransformationMatrix;
         }
     }
 
     // Update world matrices for children
-    for (auto* child : _children) {
+    for (auto&& child : _children) {
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
     // Particles
-    for (auto&& particle_system : _particleSystems) {
-        if (particle_system.Id == 0u) {
-            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot, _moveOffset);
+    for (auto&& model_particle : _modelParticles) {
+        if (model_particle.Id == 0) {
+            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
         }
         else {
-            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
         }
     }
 
-    for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
-        if (!it->Particles->IsActive()) {
-            it = _particleSystems.erase(it);
+    for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
+        if (!it->Particle->IsActive()) {
+            it = _modelParticles.erase(it);
         }
         else {
             ++it;
@@ -1911,14 +1927,14 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Move child animations
-    for (auto* child_anim : _children) {
-        child_anim->ProcessAnimation(elapsed, x, y, 1.0f);
+    for (auto&& child : _children) {
+        child->ProcessAnimation(elapsed, x, y, 1.0f);
     }
 
     // Animation callbacks
     if (_bodyAnimController != nullptr && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
-            if (((callback.Anim1 == 0u) || callback.Anim1 == _curAnim1) && ((callback.Anim2 == 0u) || callback.Anim2 == _curAnim2)) {
+            if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 const auto fire_track_pos2 = floorf(new_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
@@ -1933,14 +1949,14 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 {
     STACK_TRACE_ENTRY();
 
-    if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+    if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
-    else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+    else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -2016,11 +2032,11 @@ void ModelInstance::DrawAllParticles()
 
     NON_CONST_METHOD_HINT();
 
-    for (auto&& particle_system : _particleSystems) {
-        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset, _modelMngr._settings.MapCameraAngle);
+    for (auto&& model_particle : _modelParticles) {
+        model_particle.Particle->Draw();
     }
 
-    for (auto* child : _children) {
+    for (auto&& child : _children) {
         child->DrawAllParticles();
     }
 }
@@ -2031,7 +2047,7 @@ auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
 
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
-        for (const auto* child : _children) {
+        for (auto&& child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
             if (bone != nullptr) {
                 break;
@@ -2068,13 +2084,13 @@ auto ModelInstance::GetAnimDuration() const -> time_duration
     return std::chrono::milliseconds {static_cast<uint>(_animPosPeriod * 1000.0f)};
 }
 
-void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
+void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
     STACK_TRACE_ENTRY();
 
     if (const auto* to_bone = FindBone(bone_name)) {
-        if (auto&& particles = _modelMngr._particleMngr.CreateParticles(particles_name)) {
-            _particleSystems.push_back({0u, std::move(particles), to_bone, move, _lookDirAngle});
+        if (auto&& particle = _modelMngr._particleMngr.CreateParticle(particle_name)) {
+            _modelParticles.push_back({0u, std::move(particle), to_bone, move, _lookDirAngle});
         }
     }
 }
@@ -2132,7 +2148,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         struct AnimEntry
         {
-            int Index;
+            uint Index;
             string FileName;
             string Name;
         };
@@ -2286,7 +2302,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Link") {
                 (*istr) >> buf;
-                if (link->Id != 0u) {
+                if (link->Id != 0) {
                     link->LinkBone = _modelMngr.GetBoneHashedString(buf);
                 }
             }
@@ -2309,7 +2325,7 @@ auto ModelInformation::Load(string_view name) -> bool
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
-                            for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+                            for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
                                 if (i != layer) {
                                     cut->Layers.push_back(i);
                                 }
@@ -2496,7 +2512,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 for (const auto& disabled_layer_name : disabled_layers) {
                     const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
-                    if (disabled_layer >= 0 && disabled_layer < LAYERS3D_COUNT) {
+                    if (disabled_layer >= 0 && disabled_layer < static_cast<int>(MODEL_LAYERS_COUNT)) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
                 }
@@ -2524,7 +2540,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
-                if (index >= 0 && index < MODEL_MAX_TEXTURES) {
+                if (index >= 0 && index < static_cast<int>(MODEL_MAX_TEXTURES)) {
                     link->TextureInfo.emplace_back(buf, mesh, index);
                 }
             }
@@ -2546,11 +2562,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     string a1;
                     string a2;
                     (*istr) >> a1 >> a2;
-                    anims.push_back({(ind1 << 16) | ind2, a1, a2});
+                    anims.push_back({(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
 
                     if (token == "AnimExt") {
                         (*istr) >> a1 >> a2;
-                        anims.push_back({(ind1 << 16) | (ind2 | 0x8000), a1, a2});
+                        anims.push_back({(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
                     }
                 }
                 else {
@@ -2575,7 +2591,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
-                if (_animLayerValues.count(index) == 0u) {
+                if (_animLayerValues.count(index) == 0) {
                     _animLayerValues.emplace(index, vector<pair<int, int>>());
                 }
                 _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
@@ -2595,10 +2611,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (valuei == 1) {
-                    _anim1Equals.emplace(ind1, ind2);
+                    _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
                 }
                 else if (valuei == 2) {
-                    _anim2Equals.emplace(ind1, ind2);
+                    _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
@@ -2675,7 +2691,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.push_back({-1, render_fname, render_anim});
+            anims.push_back({static_cast<uint>(-1), render_fname, render_anim});
         }
 
         // Create animation controller
@@ -2699,7 +2715,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     _animController->RegisterAnimationSet(set);
                     auto set_index = _animController->GetNumAnimationSets() - 1;
 
-                    if (anim.Index == -1) {
+                    if (anim.Index == static_cast<uint>(-1)) {
                         _renderAnim = static_cast<int>(set_index);
                     }
                     else if (anim.Index != 0) {
@@ -2754,35 +2770,36 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int
 {
     STACK_TRACE_ENTRY();
 
     // Find index
     auto index = -1;
     if (combat_first) {
-        index = GetAnimationIndexEx(anim1, anim2 | 0x8000, speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
     }
     if (index == -1) {
-        index = GetAnimationIndexEx(anim1, anim2, speed);
+        index = GetAnimationIndexEx(state_anim, action_anim, speed);
     }
     if (!combat_first && index == -1) {
-        index = GetAnimationIndexEx(anim1, anim2 | 0x8000, speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
     }
     if (index != -1) {
         return index;
     }
 
     // Find substitute animation
-    const auto base_model_name = _modelMngr._nameResolver.ToHashedString(_fileName);
-    const auto anim1_base = anim1;
-    const auto anim2_base = anim2;
+    const auto base_model_name = _modelMngr._hashResolver.ToHashedString(_fileName);
+    const auto base_state_anim = state_anim;
+    const auto base_action_anim = action_anim;
+
     while (index == -1) {
         auto model_name = base_model_name;
-        const auto anim1_ = anim1;
-        const auto anim2_ = anim2;
-        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
-            index = GetAnimationIndexEx(anim1, anim2, speed);
+        const auto state_anim_ = state_anim;
+        const auto action_anim_ = action_anim;
+        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
+            index = GetAnimationIndexEx(state_anim, action_anim, speed);
         }
         else {
             break;
@@ -2792,22 +2809,23 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
     return index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int
 {
     STACK_TRACE_ENTRY();
 
     // Check equals
-    const auto it1 = _anim1Equals.find(anim1);
-    if (it1 != _anim1Equals.end()) {
-        anim1 = (*it1).second;
+    const auto it1 = _stateAnimEquals.find(state_anim);
+    if (it1 != _stateAnimEquals.end()) {
+        state_anim = it1->second;
     }
-    const auto it2 = _anim2Equals.find(anim2 & 0x7FFF);
-    if (it2 != _anim2Equals.end()) {
-        anim2 = ((*it2).second | (anim2 & 0x8000));
+
+    const auto it2 = _actionAnimEquals.find(static_cast<CritterActionAnim>(static_cast<uint>(action_anim) & 0x7FFF));
+    if (it2 != _actionAnimEquals.end()) {
+        action_anim = static_cast<CritterActionAnim>(static_cast<uint>(it2->second) | (static_cast<uint>(action_anim) & 0x8000));
     }
 
     // Make index
-    const auto index = static_cast<int>((anim1 << 16) | anim2);
+    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
 
     // Speed
     if (speed != nullptr) {

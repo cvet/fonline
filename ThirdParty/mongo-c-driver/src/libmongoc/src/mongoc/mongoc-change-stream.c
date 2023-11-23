@@ -129,6 +129,11 @@ _make_command (mongoc_change_stream_t *stream, bson_t *command)
    if (stream->full_document_before_change) {
       bson_concat (&change_stream_doc, stream->full_document_before_change);
    }
+   if (stream->show_expanded_events) {
+      BSON_APPEND_BOOL (&change_stream_doc,
+                        "showExpandedEvents",
+                        stream->show_expanded_events);
+   }
 
    if (stream->resumed) {
       /* Change stream spec: Resume Process */
@@ -289,13 +294,8 @@ _make_cursor (mongoc_change_stream_t *stream)
       goto cleanup;
    }
 
-   server_stream =
-      mongoc_cluster_stream_for_reads (&stream->client->cluster,
-                                       stream->read_prefs,
-                                       cs,
-                                       &reply,
-                                       /* Not aggregate-with-write */ false,
-                                       &stream->err);
+   server_stream = mongoc_cluster_stream_for_reads (
+      &stream->client->cluster, stream->read_prefs, cs, &reply, &stream->err);
    if (!server_stream) {
       bson_destroy (&stream->err_doc);
       bson_copy_to (&reply, &stream->err_doc);
@@ -433,6 +433,7 @@ _change_stream_init (mongoc_change_stream_t *stream,
 
    stream->batch_size = stream->opts.batchSize;
    stream->max_await_time_ms = stream->opts.maxAwaitTimeMS;
+   stream->show_expanded_events = stream->opts.showExpandedEvents;
 
    /* Accept two forms of user pipeline:
     * 1. A document like: { "pipeline": [...] }

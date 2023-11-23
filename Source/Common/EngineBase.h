@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,19 +36,18 @@
 #include "Common.h"
 
 #include "EntityProperties.h"
+#include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
+#include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "Timer.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
 DECLARE_EXCEPTION(EnumResolveException);
-DECLARE_EXCEPTION(HashResolveException);
-DECLARE_EXCEPTION(HashInsertException);
-DECLARE_EXCEPTION(HashCollisionException);
 
-class FOEngineBase : public NameResolver, public Entity, public GameProperties
+class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
 {
 public:
     FOEngineBase(const FOEngineBase&) = delete;
@@ -63,8 +62,6 @@ public:
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string override;
-    [[nodiscard]] auto ToHashedString(string_view s, bool mustExists = false) const -> hstring override;
-    [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
@@ -76,8 +73,10 @@ public:
     GlobalSettings& Settings;
     GeometryHelper Geometry;
     GameTimer GameTime;
+    ProtoManager ProtoMngr;
     ScriptSystem* ScriptSys {};
     FileSystem Resources {};
+    unique_del_ptr<void> UserData {};
 
 protected:
     FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);
@@ -91,5 +90,4 @@ private:
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
-    mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };

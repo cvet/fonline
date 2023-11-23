@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,9 @@
 #include "EntityProtos.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
+#include "MapSprite.h"
+#include "ScriptSystem.h"
 #include "SpriteManager.h"
-#include "Sprites.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -67,7 +68,7 @@ struct LightSource
 {
     uint16 HexX {};
     uint16 HexY {};
-    uint ColorRGB {};
+    ucolor ColorRGB {};
     int Distance {};
     uint8 Flags {};
     int Intensity {};
@@ -83,55 +84,55 @@ struct FindPathResult
     vector<uint16> ControlSteps {};
 };
 
+struct FieldFlags
+{
+    bool ScrollBlock {};
+    bool IsWall {};
+    bool IsWallTransp {};
+    bool IsScen {};
+    bool IsMoveBlocked {};
+    bool IsShootBlocked {};
+    bool IsLightBlocked {};
+};
+
 struct Field
 {
-    struct Tile
-    {
-        AnyFrames* Anim {};
-        int16 OffsX {};
-        int16 OffsY {};
-        uint8 Layer {};
-    };
-
-    struct FlagsType
-    {
-        bool ScrollBlock : 1;
-        bool IsWall : 1;
-        bool IsWallTransp : 1;
-        bool IsScen : 1;
-        bool IsMoveBlocked : 1;
-        bool IsShootBlocked : 1;
-        bool IsLightBlocked : 1;
-        bool IsMultihex : 1;
-    };
-
-    [[nodiscard]] auto GetActiveCritter() -> CritterHexView*;
-    [[nodiscard]] auto GetTilesCount(bool is_roof) -> uint;
-    [[nodiscard]] auto GetTile(uint index, bool is_roof) -> Tile&;
-
-    void AddCritter(CritterHexView* cr);
-    void EraseCritter(CritterHexView* cr);
-    void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
-    void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
-    auto AddTile(AnyFrames* anim, int16 ox, int16 oy, uint8 layer, bool is_roof) -> Tile&;
-    void EraseTile(uint index, bool is_roof);
-    void ProcessCache();
-    void AddSpriteToChain(Sprite* spr);
-    void UnvalidateSpriteChain() const;
-
     bool IsView {};
     int ScrX {};
     int ScrY {};
-    Sprite* SpriteChain {};
-    AnyFrames* SimpleTile[2] {};
-    Tile SimpleTileStub {};
-    vector<Tile>* Tiles[2] {};
-    vector<CritterHexView*>* Critters {};
-    vector<ItemHexView*>* Items {};
-    vector<ItemHexView*>* BlockLinesItems {};
+    MapSprite* SpriteChain {};
+    vector<CritterHexView*> Critters {};
+    vector<CritterHexView*> MultihexCritters {};
+    vector<ItemHexView*> Items {};
+    vector<ItemHexView*> BlockLineItems {};
+    vector<ItemHexView*> GroundTiles {};
+    vector<ItemHexView*> RoofTiles {};
     int16 RoofNum {};
-    FlagsType Flags {};
     CornerType Corner {};
+    FieldFlags Flags {};
+};
+
+///@ ExportObject Client
+struct SpritePattern
+{
+    SCRIPTABLE_OBJECT_BEGIN();
+
+    bool Finished {};
+    string SprName {};
+    uint SprCount {};
+    uint16 EveryHexX {1};
+    uint16 EveryHexY {1};
+    bool InteractWithRoof {};
+    bool CheckTileProperty {};
+    ItemProperty TileProperty {};
+    int ExpectedTilePropertyValue {};
+
+    void Finish() { NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
+
+    SCRIPTABLE_OBJECT_END();
+
+    std::function<void()> FinishCallback {};
+    vector<shared_ptr<Sprite>> Sprites {};
 };
 
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
@@ -161,24 +162,25 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField[hy * _width + hx]; }
     [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[hy * _width + hx].IsView; }
     [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _width + hx]; }
     [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _width * 3 + hx * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
-    [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
+    [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
     void MarkAsDestroyed() override;
     void EnableMapperMode();
+    void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
     void Process();
+
     void DrawMap();
+    void DrawMapTexts();
 
-    void AddTile(const MapTile& tile);
-
-    void AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy);
+    void AddMapText(string_view str, uint16 hx, uint16 hy, ucolor color, time_duration show_time, bool fade, int ox, int oy);
     auto GetRectForText(uint16 hx, uint16 hy) -> IRect;
 
     auto FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16& end_x, uint16& end_y, int cut) -> optional<FindPathResult>;
@@ -200,9 +202,10 @@ public:
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
     void SetShootBorders(bool enabled);
-    auto MeasureMapBorders(uint spr_id, int ox, int oy) -> bool;
+    auto MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
-    auto MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool;
+    void EvaluateFieldFlags(uint16 hx, uint16 hy);
+    void EvaluateFieldFlags(Field& field);
     void Resize(uint16 width, uint16 height);
 
     auto Scroll() -> bool;
@@ -213,9 +216,9 @@ public:
 
     // Critters
     auto AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
-    auto AddMapperCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
     auto AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
+    auto GetActiveCritter(uint16 hx, uint16 hy) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, uint16 hx, uint16 hy, bool smoothly);
@@ -223,21 +226,20 @@ public:
 
     void SetCritterContour(ident_t cr_id, ContourType contour);
     void SetCrittersContour(ContourType contour);
-    void SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set);
 
     // Items
     auto AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*;
-    auto AddMapperItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
     auto AddMapperItem(hstring pid, uint16 hx, uint16 hy, const Properties* props) -> ItemHexView*;
+    auto AddMapperTile(hstring pid, uint16 hx, uint16 hy, uint8 layer, bool is_roof) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
     auto GetItems() -> const vector<ItemHexView*>&;
     auto GetItems(uint16 hx, uint16 hy) -> const vector<ItemHexView*>&;
+    auto GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexView*;
+    auto GetTiles(uint16 hx, uint16 hy, bool is_roof) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, uint16 hx, uint16 hy);
     void DestroyItem(ItemHexView* item);
-
-    void SkipItemsFade();
 
     auto GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_ox, int* hex_oy) const -> bool;
     auto GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
@@ -246,26 +248,21 @@ public:
 
     void RebuildLight() { _requestRebuildLight = _requestRenderLight = true; }
 
-    void RebuildTiles();
-    void RebuildRoof();
     void SetSkipRoof(uint16 hx, uint16 hy);
     void MarkRoofNum(int hxi, int hyi, int16 num);
 
     void RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
 
+    auto RunSpritePattern(string_view name, uint count) -> SpritePattern*;
+
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
-    void DrawCursor(uint spr_id);
+    void DrawCursor(const Sprite* spr);
     void DrawCursor(string_view text);
 
-    [[nodiscard]] auto GetTiles(uint16 hx, uint16 hy, bool is_roof) -> vector<MapTile>&;
     [[nodiscard]] auto IsFastPid(hstring pid) const -> bool;
     [[nodiscard]] auto IsIgnorePid(hstring pid) const -> bool;
     [[nodiscard]] auto GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint16>>;
 
-    void ClearSelTiles();
-    void ParseSelTiles();
-    void SetTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof, bool select);
-    void EraseTile(uint16 hx, uint16 hy, uint8 layer, bool is_roof, uint skip_index);
     void AddFastPid(hstring pid);
     void ClearFastPids();
     void AddIgnorePid(hstring pid);
@@ -279,7 +276,6 @@ public:
     auto SaveToText() const -> string;
 
     AutoScrollInfo AutoScroll {};
-    uint8 SelectAlpha {100};
 
 private:
     struct MapText
@@ -289,13 +285,14 @@ private:
         time_point StartTime {};
         time_duration Duration {};
         string Text {};
-        uint Color {};
+        ucolor Color {};
         bool Fade {};
         IRect Pos {};
         IRect EndPos {};
     };
 
-    [[nodiscard]] auto IsVisible(uint spr_id, int ox, int oy) const -> bool;
+    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
+    [[nodiscard]] auto IsVisible(const Sprite* spr, int ox, int oy) const -> bool;
     [[nodiscard]] auto GetViewWidth() const -> int;
     [[nodiscard]] auto GetViewHeight() const -> int;
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
@@ -304,16 +301,18 @@ private:
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
+    void SetMultihexCritter(CritterHexView* cr, bool set);
 
     auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
 
-    void DrawMapTexts();
-
     void PrepareFogToDraw();
     void InitView(int screen_hx, int screen_hy);
     void ResizeView();
+
+    void AddSpriteToChain(Field& field, MapSprite* mspr);
+    void InvalidateSpriteChain(Field& field);
 
     // Lighting
     void PrepareLightToDraw();
@@ -331,6 +330,7 @@ private:
     EventUnsubscriber _eventUnsubscriber {};
 
     bool _mapperMode {};
+    bool _mapLoading {};
     uint16 _width {};
     uint16 _height {};
 
@@ -339,25 +339,24 @@ private:
     vector<ItemHexView*> _allItems {};
     vector<ItemHexView*> _staticItems {};
     vector<ItemHexView*> _dynamicItems {};
+    vector<ItemHexView*> _nonTileItems {};
+    vector<ItemHexView*> _processingItems {};
     unordered_map<ident_t, ItemHexView*> _itemsMap {};
 
     vector<MapText> _mapTexts {};
 
-    vector<Sprite*> _spritesPool {};
     vector<Field> _hexField {};
     vector<int16> _findPathGrid {};
 
-    Sprites _mainTree;
-    Sprites _tilesTree;
-    Sprites _roofTree;
+    MapSpriteList _mapSprites;
 
     time_point _scrollLastTime {};
 
-    AnyFrames* _picTrack1 {};
-    AnyFrames* _picTrack2 {};
-    AnyFrames* _picHexMask {};
-    vector<uint> _picHexMaskData {};
-    AnyFrames* _picHex[3] {};
+    shared_ptr<Sprite> _picTrack1 {};
+    shared_ptr<Sprite> _picTrack2 {};
+    shared_ptr<Sprite> _picHexMask {};
+    vector<ucolor> _picHexMaskData {};
+    shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
 
@@ -398,10 +397,10 @@ private:
 
     int _prevMapDayTime {};
     int _prevGlobalDayTime {};
-    uint _prevMapDayColor {};
-    uint _prevGlobalDayColor {};
-    uint _mapDayColor {};
-    uint _globalDayColor {};
+    ucolor _prevMapDayColor {};
+    ucolor _prevGlobalDayColor {};
+    ucolor _mapDayColor {};
+    ucolor _globalDayColor {};
     int _mapDayLightCapacity {};
     int _globalDayLightCapacity {};
 
@@ -423,20 +422,18 @@ private:
     int _roofSkip {};
 
     int _drawCursorX {};
-    AnyFrames* _cursorPrePic {};
-    AnyFrames* _cursorPostPic {};
-    AnyFrames* _cursorXPic {};
+    shared_ptr<Sprite> _cursorPrePic {};
+    shared_ptr<Sprite> _cursorPostPic {};
+    shared_ptr<Sprite> _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
     int _lastCurX {};
     uint16 _lastCurHx {};
     uint16 _lastCurHy {};
 
-    set<hstring> _fastPids {};
-    set<hstring> _ignorePids {};
+    unordered_set<hstring> _fastPids {};
+    unordered_set<hstring> _ignorePids {};
     vector<char> _hexTrack {};
-    vector<vector<MapTile>> _tilesField {};
-    vector<vector<MapTile>> _roofsField {};
 
-    const vector<ItemHexView*> _emptyList {};
+    vector<unique_release_ptr<SpritePattern>> _spritePatterns {};
 };

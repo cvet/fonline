@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -57,21 +57,19 @@ public:
     [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _ownedByPlayer; }
     [[nodiscard]] auto IsChosen() const -> bool { return _isChosen; }
     [[nodiscard]] auto IsPlayerOffline() const -> bool { return _isPlayerOffline; }
-    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == CritterCondition::Alive; }
-    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
-    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
+    [[nodiscard]] auto IsAlive() const -> bool { return GetCondition() == CritterCondition::Alive; }
+    [[nodiscard]] auto IsKnockout() const -> bool { return GetCondition() == CritterCondition::Knockout; }
+    [[nodiscard]] auto IsDead() const -> bool { return GetCondition() == CritterCondition::Dead; }
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) -> ItemView*;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> ItemView*;
     [[nodiscard]] auto GetInvItems() -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
-    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
 
-    virtual void Init();
-    virtual void Finish();
     void MarkAsDestroyed() override;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
+    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
     virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllInvItems();
     void SetName(string_view name);

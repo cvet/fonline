@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -78,12 +78,12 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     if (send) {
         cr->Send_AddItem(item);
-        if (item->GetCritterSlot() != 0) {
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+        if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
+            cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
     }
 
-    _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uint8>(-1));
+    _engine->OnCritterMoveItem.Fire(cr, item, CritterItemSlot::Outside);
 
     return item;
 }
@@ -110,14 +110,14 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     if (send) {
         cr->Send_EraseItem(item);
     }
-    if (item->GetCritterSlot() != 0) {
-        cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+    if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
+        cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
     const auto prev_slot = item->GetCritterSlot();
 
     item->SetCritterId(ident_t {});
-    item->SetCritterSlot(0);
+    item->SetCritterSlot(CritterItemSlot::Inventory);
 
     auto item_ids = cr->GetItemIds();
     const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
@@ -155,8 +155,8 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             return nullptr;
         }
 
-        int16 hx_ = hx;
-        int16 hy_ = hy;
+        int hx_ = hx;
+        int hy_ = hy;
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
@@ -173,7 +173,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
                 continue;
             }
-            if (!map->IsHexesPassed(hx_ + sx[pos], hy_ + sy[pos], multihex)) {
+            if (!map->IsHexesPassed(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
                 continue;
             }
             break;
@@ -181,8 +181,10 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
 
         hx_ += sx[pos];
         hy_ += sy[pos];
-        hx = hx_;
-        hy = hy_;
+        hx = static_cast<uint16>(hx_);
+        hy = static_cast<uint16>(hy_);
+        RUNTIME_ASSERT(hx < map->GetWidth());
+        RUNTIME_ASSERT(hy < map->GetHeight());
     }
 
     auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);
@@ -349,25 +351,6 @@ auto CritterManager::GetCritter(ident_t cr_id) const -> const Critter*
     return const_cast<CritterManager*>(this)->GetCritter(cr_id);
 }
 
-auto CritterManager::GetPlayerById(ident_t id) -> Player*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine->EntityMngr.GetPlayer(id);
-}
-
-auto CritterManager::GetPlayerByName(string_view name) -> Player*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto player_id = _engine->MakePlayerId(name);
-    return _engine->EntityMngr.GetPlayer(player_id);
-}
-
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
     STACK_TRACE_ENTRY();
@@ -390,7 +373,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
         Item* another_slot = nullptr;
         for (auto* item : cr->_invItems) {
             if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == 0) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
                 }
                 another_slot = item;
@@ -407,15 +390,15 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     NON_CONST_METHOD_HINT();
 
+    if (cr->Talk.Type == TalkType::None) {
+        return;
+    }
+
     if (!force && _engine->GameTime.GameplayTime() < cr->_talkNextTime) {
         return;
     }
 
     cr->_talkNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME};
-
-    if (cr->Talk.Type == TalkType::None) {
-        return;
-    }
 
     // Check time of talk
     if (cr->Talk.TalkTime != time_duration {} && _engine->GameTime.GameplayTime() - cr->Talk.StartTime >= cr->Talk.TalkTime) {
@@ -461,7 +444,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
+        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
             cr->Send_TextMsg(cr, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cr);
         }

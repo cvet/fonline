@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "AnyData.h"
+#include "Settings.h"
 
 DECLARE_EXCEPTION(DataBaseException);
 
@@ -43,12 +44,12 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
+    friend auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;
 
 public:
     using Collection = unordered_map<ident_t, AnyData::Document>;
-    using Collections = unordered_map<string, Collection>;
-    using RecordsState = unordered_map<string, unordered_set<ident_t>>;
+    using Collections = unordered_map<hstring, Collection>;
+    using RecordsState = unordered_map<hstring, unordered_set<ident_t>>;
 
     DataBase();
     DataBase(const DataBase&) = delete;
@@ -58,20 +59,21 @@ public:
     explicit operator bool() const;
     ~DataBase();
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<ident_t>;
-    [[nodiscard]] auto Get(string_view collection_name, ident_t id) const -> AnyData::Document;
-    [[nodiscard]] auto Valid(string_view collection_name, ident_t id) const -> bool;
+    [[nodiscard]] auto GetCommitJobsCount() const -> size_t;
+    [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<ident_t>;
+    [[nodiscard]] auto Get(hstring collection_name, ident_t id) const -> AnyData::Document;
+    [[nodiscard]] auto Valid(hstring collection_name, ident_t id) const -> bool;
 
-    void StartChanges();
-    void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
-    void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, ident_t id);
-    void CommitChanges();
+    void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
+    void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
+    void Delete(hstring collection_name, ident_t id);
+    void CommitChanges(bool wait_commit_complete);
 
 private:
     explicit DataBase(DataBaseImpl* impl);
+
     unique_ptr<DataBaseImpl> _impl {};
     bool _nonConstHelper {};
 };
 
-extern auto ConnectToDataBase(string_view connection_info) -> DataBase;
+extern auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;

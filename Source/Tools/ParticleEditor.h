@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,12 +52,6 @@ private:
 
     struct Impl;
     unique_ptr<Impl> _impl;
-    std::chrono::time_point<std::chrono::high_resolution_clock> _frameStart {};
-    int _frameWidth {200};
-    int _frameHeight {200};
-    float _speed {1.0f};
     float _dirAngle {};
-    float _cameraAngle {};
-    float _projFactor {};
     bool _autoReplay {};
 };

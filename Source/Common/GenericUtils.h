@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,19 @@
 
 #include "Common.h"
 
-class Math final
+DECLARE_EXCEPTION(HashResolveException);
+DECLARE_EXCEPTION(HashInsertException);
+DECLARE_EXCEPTION(HashCollisionException);
+
+class HashStorage : public HashResolver
 {
 public:
-    Math() = delete;
+    auto ToHashedString(string_view s) -> hstring override;
+    auto ToHashedStringMustExists(string_view s) const -> hstring override;
+    auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
 
-    [[nodiscard]] static auto FloatCompare(float f1, float f2) -> bool;
+private:
+    unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };
 
 class Hashing final
@@ -72,13 +79,14 @@ public:
     [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
     [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
-    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> uint;
+    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
     [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
     [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
 
     static void SetRandomSeed(int seed);
     static void ForkProcess();
+    static void WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data);
 };
 
 class MatrixHelper final

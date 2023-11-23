@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,10 +47,10 @@
 
 struct ServerAppData
 {
-    FOServer* Server {};
-    vector<FOClient*> Clients {};
+    unique_ptr<FOServer> Server {};
+    vector<unique_ptr<FOClient>> Clients {};
+    bool AutoStartTriggered {};
     bool HideControls {};
-    size_t ServerStartCycles {100};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -60,39 +60,26 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv);
 
         list<vector<string>> log_buffer;
-        SetLogCallback("ServerApp", [&log_buffer](string_view str) {
+        std::mutex log_buffer_locker;
+        SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
             if (auto&& lines = _str(str).split('\n'); !lines.empty()) {
+                auto locker = std::unique_lock {log_buffer_locker};
                 log_buffer.emplace_back(std::move(lines));
             }
         });
 
         const auto start_server = [] {
-            try {
-                Data->Server = new FOServer(App->Settings);
-                Data->Server->Start();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                Data->Server = nullptr;
-            }
+            // Server actually started in separate thread
+            Data->Server = std::make_unique<FOServer>(App->Settings);
         };
 
-        const auto stop_server = [] {
-            try {
-                Data->Server->Shutdown();
-                Data->Server->Release();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-            Data->Server = nullptr;
-        };
+        const auto stop_server = [] { Data->Server.reset(); };
 
         if (!App->Settings.NoStart) {
             WriteLog("Auto start server");
@@ -103,7 +90,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             App->BeginFrame();
 
             // Autostart
-            if (!App->Settings.NoStart && Data->ServerStartCycles > 0 && --Data->ServerStartCycles == 0) {
+            if (!App->Settings.NoStart && !Data->Server && !Data->AutoStartTriggered) {
+                Data->AutoStartTriggered = true;
                 start_server();
             }
 
@@ -129,18 +117,19 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         ImGui::PopStyleColor();
                     };
 
-                    if (ImGui::Button("Start server", control_btn_size)) {
+                    if (!Data->Server && ImGui::Button("Start server", control_btn_size)) {
                         start_server();
                     }
-                    if (ImGui::Button("Stop server", control_btn_size)) {
+
+                    if (Data->Server && ImGui::Button("Stop server", control_btn_size)) {
                         stop_server();
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         ShowExceptionMessageBox(true);
                         try {
-                            auto* client = new FOClient(App->Settings, &App->MainWindow, false);
-                            Data->Clients.emplace_back(client);
+                            auto&& client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
+                            Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }
                         catch (const std::exception& ex) {
@@ -152,11 +141,16 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     if (ImGui::Button("Create dump", control_btn_size)) {
                         CreateDumpMessage("ManualDump", "Manual");
                     }
+
                     if (ImGui::Button("Save log", control_btn_size)) {
                         string log_lines;
-                        for (auto&& lines : log_buffer) {
-                            for (auto&& line : lines) {
-                                log_lines += line + '\n';
+
+                        {
+                            auto locker = std::unique_lock {log_buffer_locker};
+                            for (auto&& lines : log_buffer) {
+                                for (auto&& line : lines) {
+                                    log_lines += line + '\n';
+                                }
                             }
                         }
 
@@ -178,14 +172,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             // Main loop
-            if (Data->Server != nullptr) {
-                try {
-                    Data->Server->MainLoop();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-
+            if (Data->Server) {
                 if (!Data->HideControls) {
                     try {
                         ImGui::SetNextWindowPos(ImVec2(10, 0), ImGuiCond_FirstUseEver);
@@ -203,6 +190,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
+                    auto locker = std::unique_lock {log_buffer_locker};
                     for (auto&& lines : log_buffer) {
                         if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                             for (size_t i = 1; i < lines.size(); i++) {
@@ -219,19 +207,35 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             // Clients loop
-            if (ImGui::IsAnyItemHovered()) {
-                App->Input.ClearEvents();
+            vector<InputEvent> events;
+
+            {
+                InputEvent ev;
+                while (App->Input.PollEvent(ev)) {
+                    events.emplace_back(ev);
+                }
             }
 
-            for (auto* client : Data->Clients) {
+            for (auto&& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
+
                 try {
-                    App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
+                    App->Input.ClearEvents();
+
+                    if (client == Data->Clients.back() && !ImGui::IsAnyItemHovered()) {
+                        for (const auto& ev : events) {
+                            App->Input.PushEvent(ev, true);
+                        }
+                    }
+
+                    App->Render.ClearRenderTarget(ucolor::clear);
+
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+
                 ShowExceptionMessageBox(false);
             }
 
@@ -239,13 +243,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->Settings.Quit) {
-                for (auto* client : Data->Clients) {
+                for (auto&& client : Data->Clients) {
                     client->Shutdown();
-                    client->Release();
                 }
                 Data->Clients.clear();
 
-                if (Data->Server != nullptr) {
+                if (Data->Server) {
                     stop_server();
                 }
 

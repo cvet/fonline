@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,9 +35,7 @@
 
 #if FO_ENABLE_3D
 
-#include "GenericUtils.h"
-
-void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
+void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -61,7 +59,7 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
             reader.ReadPtr(&len, sizeof(len));
             tmp.resize(len);
             reader.ReadPtr(tmp.data(), len);
-            _bonesHierarchy[i][k] = name_resolver.ToHashedString(tmp);
+            _bonesHierarchy[i][k] = hash_resolver.ToHashedString(tmp);
         }
     }
 
@@ -73,7 +71,7 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
-        o.BoneName = name_resolver.ToHashedString(tmp);
+        o.BoneName = hash_resolver.ToHashedString(tmp);
         reader.ReadPtr(&len, sizeof(len));
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);
@@ -371,7 +369,7 @@ void ModelAnimationController::AdvanceTime(float time)
         for (auto it = track.Events.begin(); it != track.Events.end();) {
             auto& e = *it;
             if (_curTime >= e.StartTime) {
-                if (e.SmoothTime > 0.0f && Math::FloatCompare(e.ValueFrom, -1.0f)) {
+                if (e.SmoothTime > 0.0f && is_float_equal(e.ValueFrom, -1.0f)) {
                     if (e.Type == Track::EventType::Speed) {
                         e.ValueFrom = track.Speed;
                     }

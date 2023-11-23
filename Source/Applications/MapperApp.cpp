@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ struct MapperAppData
 };
 GLOBAL_DATA(MapperAppData, Data);
 
-static void MapperEntry(void*)
+static void MapperEntry([[maybe_unused]] void* data)
 {
     STACK_TRACE_ENTRY();
 
@@ -89,7 +89,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);
@@ -113,7 +113,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!App->Settings.VSync && App->Settings.FixedFPS != 0, App->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
 
         while (!App->Settings.Quit) {
             balancer.StartLoop();

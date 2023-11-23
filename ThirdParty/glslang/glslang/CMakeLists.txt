@@ -33,7 +33,7 @@
 
 if(WIN32)
     add_subdirectory(OSDependent/Windows)
-elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia")
+elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia" OR ANDROID)
     add_subdirectory(OSDependent/Unix)
 else()
     message("unknown platform")
@@ -57,7 +57,6 @@ set_property(TARGET GenericCodeGen PROPERTY FOLDER glslang)
 # MachineIndependent
 ################################################################################
 set(MACHINEINDEPENDENT_SOURCES
-    MachineIndependent/glslang.m4
     MachineIndependent/glslang.y
     MachineIndependent/glslang_tab.cpp
     MachineIndependent/attribute.cpp
@@ -149,8 +148,6 @@ set(GLSLANG_SOURCES
 
 set(GLSLANG_HEADERS
     Public/ShaderLang.h
-    Public/ResourceLimits.h
-    Public/resource_limits_c.h
     Include/arrays.h
     Include/BaseTypes.h
     Include/Common.h
@@ -186,6 +183,30 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 ################################################################################
+# ResourceLimits
+################################################################################
+set(RESOURCELIMITS_SOURCES
+    ResourceLimits/ResourceLimits.cpp
+    ResourceLimits/resource_limits_c.cpp
+)
+
+set(RESOURCELIMITS_HEADERS
+  Public/ResourceLimits.h
+  Public/resource_limits_c.h
+)
+
+add_library(glslang-default-resource-limits STATIC ${RESOURCELIMITS_SOURCES} ${RESOURCELIMITS_HEADERS})
+set_target_properties(glslang-default-resource-limits PROPERTIES
+    VERSION "${GLSLANG_VERSION}"
+    SOVERSION "${GLSLANG_VERSION_MAJOR}"
+    FOLDER glslang
+    POSITION_INDEPENDENT_CODE ON)
+
+target_include_directories(glslang-default-resource-limits PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+################################################################################
 # source_groups
 ################################################################################
 if(WIN32)
@@ -212,7 +233,7 @@ if(ENABLE_GLSLANG_INSTALL)
             message(WARNING \"Using `glslangTargets.cmake` is deprecated: use `find_package(glslang)` to find glslang CMake targets.\")
 
             if (NOT TARGET glslang::glslang)
-                include(\"\${CMAKE_CURRENT_LIST_DIR}/../../${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/glslang-targets.cmake\")
+                include(\"${CMAKE_INSTALL_FULL_LIBDIR}/cmake/${PROJECT_NAME}/glslang-targets.cmake\")
             endif()
 
             if(${BUILD_SHARED_LIBS})
@@ -228,7 +249,8 @@ if(ENABLE_GLSLANG_INSTALL)
 
     set(ALL_HEADERS
         ${GLSLANG_HEADERS}
-        ${MACHINEINDEPENDENT_HEADERS})
+        ${MACHINEINDEPENDENT_HEADERS}
+        ${RESOURCELIMITS_HEADERS})
 
     foreach(file ${ALL_HEADERS})
         get_filename_component(dir ${file} DIRECTORY)
@@ -236,5 +258,19 @@ if(ENABLE_GLSLANG_INSTALL)
     endforeach()
 
     install(FILES ${GLSLANG_BUILD_INFO_H} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/glslang)
+
+    install(TARGETS glslang-default-resource-limits EXPORT glslang-targets)
+
+    # Backward compatibility
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/glslang-default-resource-limitsTargets.cmake" "
+        message(WARNING \"Using `glslang-default-resource-limitsTargets.cmake` is deprecated: use `find_package(glslang)` to find glslang CMake targets.\")
+
+        if (NOT TARGET glslang::glslang-default-resource-limits)
+            include(\"\${CMAKE_INSTALL_FULL_LIBDIR}/cmake/${PROJECT_NAME}/glslang-targets.cmake\")
+        endif()
+
+        add_library(glslang-default-resource-limits ALIAS glslang::glslang-default-resource-limits)
+    ")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/glslang-default-resource-limitsTargets.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
 
 endif()

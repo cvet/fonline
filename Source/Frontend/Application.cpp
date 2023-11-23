@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -143,6 +143,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     CreateGlobalData();
 
+#if FO_TRACY
+    TracySetProgramName(FO_GAME_NAME);
+#endif
+
 #if !FO_WEB
     if (const auto exe_path = DiskFileSystem::GetExePath()) {
         LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
@@ -157,7 +161,7 @@ void InitApp(int argc, char** argv, bool client_mode)
     App = new Application(argc, argv, client_mode);
 }
 
-void ExitApp(bool success)
+void ExitApp(bool success) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -343,8 +347,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
             AudioStreamWriter = new AppAudio::AudioStreamCallback();
 
-            SDL_AudioSpec desired;
-            std::memset(&desired, 0, sizeof(desired));
+            SDL_AudioSpec desired = {};
 #if FO_WEB
             desired.format = AUDIO_F32;
             desired.freq = 48000;
@@ -499,6 +502,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (fixed_h) {
             Settings.ScreenHeight = fixed_h;
         }
+
+        Settings.Fullscreen = false;
 #endif
 
         MainWindow._windowHandle = CreateInternalWindow(Settings.ScreenWidth, Settings.ScreenHeight);
@@ -565,7 +570,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         RUNTIME_ASSERT(bytes_per_pixel == 4);
 
         auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
-        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const uint*>(pixels));
+        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const ucolor*>(pixels));
         io.Fonts->TexID = font_tex;
 
         // Default effect
@@ -616,13 +621,16 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+
     throw NotImplementedException(LINE_STR);
 
-    auto* sdl_window = CreateInternalWindow(width, height);
+    /*auto* sdl_window = CreateInternalWindow(width, height);
     auto* window = new AppWindow();
     window->_windowHandle = sdl_window;
     _allWindows.emplace_back(window);
-    return window;
+    return window;*/
 }
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
@@ -707,7 +715,7 @@ void Application::BeginFrame()
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
-    ActiveRenderer->ClearRenderTarget(COLOR_RGB(150, 150, 150));
+    ActiveRenderer->ClearRenderTarget(ucolor {150, 150, 150});
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -805,10 +813,10 @@ void Application::BeginFrame()
             }
 
             const auto sdl_key_mods = static_cast<SDL_Keymod>(sdl_event.key.keysym.mod);
-            io.AddKeyEvent(ImGuiKey_ModCtrl, (sdl_key_mods & KMOD_CTRL) != 0);
-            io.AddKeyEvent(ImGuiKey_ModShift, (sdl_key_mods & KMOD_SHIFT) != 0);
-            io.AddKeyEvent(ImGuiKey_ModAlt, (sdl_key_mods & KMOD_ALT) != 0);
-            io.AddKeyEvent(ImGuiKey_ModSuper, (sdl_key_mods & KMOD_GUI) != 0);
+            io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & KMOD_CTRL) != 0);
+            io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & KMOD_SHIFT) != 0);
+            io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & KMOD_ALT) != 0);
+            io.AddKeyEvent(ImGuiMod_Super, (sdl_key_mods & KMOD_GUI) != 0);
 
             ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.keysym.sym);
             io.AddKeyEvent(key, sdl_event.type == SDL_KEYDOWN);
@@ -997,18 +1005,20 @@ void Application::EndFrame()
         for (int cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
             const auto* cmd_list = draw_data->CmdLists[cmd];
 
-            _imguiDrawBuf->Vertices2D.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
             for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-                auto& v = _imguiDrawBuf->Vertices2D[i];
+                auto& v = _imguiDrawBuf->Vertices[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
                 v.PosX = iv.pos.x;
                 v.PosY = iv.pos.y;
                 v.TexU = iv.uv.x;
                 v.TexV = iv.uv.y;
-                v.Color = iv.col;
+                v.Color = ucolor {iv.col};
             }
 
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
+            _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
             for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
                 _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
             }
@@ -1038,7 +1048,7 @@ void Application::EndFrame()
 
     _onFrameEndDispatcher();
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
     FrameMark;
 #endif
 }
@@ -1113,7 +1123,7 @@ auto AppWindow::IsFocused() const -> bool
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     return true;
@@ -1135,7 +1145,7 @@ auto AppWindow::IsFullscreen() const -> bool
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
     }
 
     return false;
@@ -1251,7 +1261,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
     return RenderTargetTex;
 }
 
-void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 
@@ -1357,11 +1367,16 @@ void AppInput::ClearEvents()
     EventsQueue->clear();
 }
 
-void AppInput::PushEvent(const InputEvent& ev)
+void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
 
-    NextFrameEventsQueue->push_back(ev);
+    if (push_to_this_frame) {
+        EventsQueue->emplace_back(ev);
+    }
+    else {
+        NextFrameEventsQueue->emplace_back(ev);
+    }
 }
 
 void AppInput::SetClipboardText(string_view text)
@@ -1495,12 +1510,14 @@ void AppAudio::UnlockDevice()
     SDL_UnlockAudioDevice(AudioDeviceId);
 }
 
-void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     STACK_TRACE_ENTRY();
 
+    const char* title = fatal_error ? "Fatal Error" : "Error";
+
 #if FO_WEB || FO_ANDROID || FO_IOS
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, string(title).c_str(), string(message).c_str(), nullptr);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, string(message).c_str(), nullptr);
 
 #else
     auto verb_message = string(message);
@@ -1509,32 +1526,64 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
         verb_message += _str("\n\n{}", traceback);
     }
 
+    static unordered_set<string> ignore_entries;
+    static std::mutex ignore_entries_locker;
+
+    if (!fatal_error) {
+        auto locker = std::unique_lock {ignore_entries_locker};
+        if (ignore_entries.count(verb_message) != 0) {
+            return;
+        }
+    }
+
     SDL_MessageBoxButtonData copy_button;
     SDL_zero(copy_button);
     copy_button.buttonid = 0;
     copy_button.text = "Copy";
 
-    SDL_MessageBoxButtonData close_button;
-    SDL_zero(close_button);
-    close_button.buttonid = 1;
-    close_button.text = "Close";
-    close_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
-    close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+    SDL_MessageBoxButtonData ignore_all_button;
+    SDL_zero(ignore_all_button);
+    ignore_all_button.buttonid = 1;
+    ignore_all_button.text = "Ignore All";
 
-    const auto title_str = string(title);
+    SDL_MessageBoxButtonData ignore_button;
+    SDL_zero(ignore_button);
+    ignore_button.buttonid = 2;
+    ignore_button.text = "Ignore";
+    ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
 
-    const SDL_MessageBoxButtonData buttons[] = {close_button, copy_button};
+    SDL_MessageBoxButtonData exit_button;
+    SDL_zero(exit_button);
+    exit_button.buttonid = 2;
+    exit_button.text = "Exit";
+    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+
+    const SDL_MessageBoxButtonData buttons_with_ignore[] = {copy_button, ignore_all_button, ignore_button};
+    const SDL_MessageBoxButtonData buttons_with_exit[] = {copy_button, exit_button};
+
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    data.title = title_str.c_str();
+    data.title = title;
     data.message = verb_message.c_str();
-    data.numbuttons = 2;
-    data.buttons = buttons;
+    data.numbuttons = fatal_error ? 2 : 3;
+    data.buttons = fatal_error ? buttons_with_exit : buttons_with_ignore;
 
-    auto buttonid = 0;
-    while (SDL_ShowMessageBox(&data, &buttonid) == 0 && buttonid == 0) {
-        SDL_SetClipboardText(verb_message.c_str());
+    int buttonid = 0;
+    while (SDL_ShowMessageBox(&data, &buttonid) == 0) {
+        if (buttonid == 0) {
+            SDL_SetClipboardText(verb_message.c_str());
+        }
+        else if (buttonid == 1) {
+            auto locker = std::unique_lock {ignore_entries_locker};
+            ignore_entries.emplace(verb_message);
+            break;
+        }
+        else {
+            break;
+        }
     }
 #endif
 }

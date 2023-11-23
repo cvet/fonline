@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,12 +77,14 @@
 #include <climits>
 #include <clocale>
 #include <cmath>
+#include <condition_variable>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <deque>
+#include <forward_list>
 #include <functional>
 #include <future>
 #include <iostream>
@@ -98,6 +100,7 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -114,8 +117,23 @@
 #include <emscripten/html5.h>
 #endif
 
+// Compiler warnings disable helper
+#if defined(_MSC_VER)
+#define DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
+#define DISABLE_WARNINGS_POP() __pragma(warning(pop))
+#elif defined(__clang__)
+#define DISABLE_WARNINGS_PUSH() _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#else
+#define DISABLE_WARNINGS_PUSH()
+#define DISABLE_WARNINGS_POP()
+#endif
+
 // String formatting lib
+DISABLE_WARNINGS_PUSH()
+#include "fmt/chrono.h"
 #include "fmt/format.h"
+DISABLE_WARNINGS_POP()
 
 // Todo: improve named enums
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
@@ -158,6 +176,7 @@ static_assert(CHAR_BIT == 8);
 // Bind to global scope frequently used types
 using std::array;
 using std::deque;
+using std::forward_list;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -174,48 +193,85 @@ using std::type_index;
 using std::type_info;
 using std::unique_ptr;
 using std::unordered_map;
+using std::unordered_multimap;
 using std::unordered_set;
 using std::variant;
 using std::vector;
+using std::weak_ptr;
 using tcb::span;
 
 template<typename T>
-using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
-template<typename T>
 using const_span = span<const T>;
+
+template<typename T>
+using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
+
+template<class T>
+struct release_delete
+{
+    constexpr release_delete() noexcept = default;
+    void operator()(T* p) const noexcept
+    {
+        if (p != nullptr) {
+            p->Release();
+        }
+    }
+};
+
+template<typename T>
+using unique_release_ptr = unique_ptr<T, release_delete<T>>;
+
+template<typename T, typename U>
+std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
+{
+    if (T* casted = dynamic_cast<T*>(p.get())) {
+        (void)p.release();
+        return std::unique_ptr<T> {casted};
+    }
+    return {};
+}
+
+struct pair_hash
+{
+    template<typename T, typename U>
+    std::size_t operator()(const std::pair<T, U>& p) const
+    {
+        return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
+    }
+};
 
 // Strong types
 template<typename T>
 struct strong_type
 {
-    using underlying_type = T;
+    using underlying_type = typename T::type;
+    static constexpr bool is_strong_type = true;
+    static constexpr const char* type_name = T::name;
 
     constexpr strong_type() noexcept :
         _value {}
     {
     }
 
-    constexpr explicit strong_type(T v) noexcept :
+    constexpr explicit strong_type(underlying_type v) noexcept :
         _value {v}
     {
     }
 
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != T {}; }
-
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != underlying_type {}; }
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
-
-    [[nodiscard]] constexpr auto underlying_value() noexcept -> T& { return _value; }
-    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const T& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
 private:
-    T _value;
+    underlying_type _value;
 };
 
 template<typename T>
-struct std::hash<strong_type<T>>
+struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
 {
-    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<T>()(t.underlying_value()); }
+    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
 };
 
 template<typename T>
@@ -234,47 +290,67 @@ struct fmt::formatter<strong_type<T>>
     }
 };
 
-template<typename T>
-constexpr bool is_strong_type_func(const strong_type<T>*)
-{
-    return true;
-}
-constexpr bool is_strong_type_func(...)
-{
-    return false;
-}
-template<typename T>
-struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_cast<T*>(nullptr))>
+template<typename T, typename = int>
+struct has_is_strong_type : std::false_type
 {
 };
+template<typename T>
+struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_type
+{
+};
+template<typename T>
+constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
-///@ ExportType ident_t uint RelaxedStrong
-using ident_t = strong_type<uint>;
+///@ ExportType ident ident_t uint HardStrong
+#define IDENT_T_NAME "ident"
+struct ident_t_traits
+{
+    static constexpr const char* name = IDENT_T_NAME;
+    using type = uint;
+};
+using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
+static_assert(std::is_standard_layout_v<ident_t>);
 
-///@ ExportType tick_t uint RelaxedStrong
-using tick_t = strong_type<uint>;
-static_assert(sizeof(tick_t) == sizeof(uint));
-
-// Game clock (since program start)
-struct steady_clock_since_program_start
+///@ ExportType tick_t tick_t uint RelaxedStrong
+#define TICK_T_NAME "tick_t"
+struct tick_t_traits
 {
-    using rep = long long;
-    using period = std::nano;
-    using duration = std::chrono::nanoseconds;
-    using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-    static constexpr bool is_steady = true;
+    static constexpr const char* name = TICK_T_NAME;
+    using type = uint;
+};
+using tick_t = strong_type<tick_t_traits>;
+static_assert(sizeof(tick_t) == sizeof(uint));
+static_assert(std::is_standard_layout_v<tick_t>);
 
-    static time_point start;
-
-    [[nodiscard]] static time_point now() noexcept { return time_point {std::chrono::steady_clock::now() - start}; }
+// Custom any as string
+class any_t : public string
+{
 };
 
-using time_point = steady_clock_since_program_start::time_point;
-using time_duration = steady_clock_since_program_start::duration;
+// Game clock
+using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+using time_duration = time_point::clock::duration;
+static_assert(sizeof(time_point::clock::rep) >= 8);
+static_assert(std::ratio_less_equal_v<time_point::clock::period, std::micro>);
+
+static inline auto time_point_to_unix_time(const time_point& t) -> time_t
+{
+    const auto system_clock_now = std::chrono::system_clock::now();
+    const auto system_clock_time = system_clock_now + std::chrono::duration_cast<std::chrono::system_clock::duration>(t - time_point::clock::now());
+    const auto unix_time = std::chrono::system_clock::to_time_t(system_clock_time);
+    return unix_time;
+}
+
+static inline auto time_point_desc(const time_point& t) -> std::tm
+{
+    const auto unix_time = time_point_to_unix_time(t);
+    const auto tm_struct = fmt::localtime(unix_time);
+    return tm_struct;
+}
 
 template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-inline static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
+static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
 {
     return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 }
@@ -291,7 +367,34 @@ struct fmt::formatter<time_duration>
     template<typename FormatContext>
     auto format(const time_duration& t, FormatContext& ctx)
     {
-        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t));
+        if (t < std::chrono::milliseconds {1}) {
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} us", us, ns);
+        }
+        else if (t < std::chrono::seconds {1}) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} ms", ms, us);
+        }
+        else if (t < std::chrono::minutes {1}) {
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count();
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} sec", sec, ms);
+        }
+        else if (t < std::chrono::hours {24}) {
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count();
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
+            return format_to(ctx.out(), "{:02}:{:02}:{:02} sec", hour, min, sec);
+        }
+        else {
+            const auto day = std::chrono::duration_cast<std::chrono::hours>(t).count() / 24;
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count() % 24;
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
+            return format_to(ctx.out(), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+        }
     }
 };
 
@@ -307,17 +410,22 @@ struct fmt::formatter<time_point>
     template<typename FormatContext>
     auto format(const time_point& t, FormatContext& ctx)
     {
-        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t.time_since_epoch()));
+        const auto td = time_point_desc(t);
+        return format_to(ctx.out(), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
     }
 };
 
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
 #include "assimp/types.h"
-using vec3 = aiVector3D;
-using mat44 = aiMatrix4x4;
-using quaternion = aiQuaternion;
-using color4 = aiColor4D;
+using vec3 = aiVector3t<float>;
+using dvec3 = aiVector3t<double>;
+using mat44 = aiMatrix4x4t<float>;
+using dmat44 = aiMatrix4x4t<double>;
+using quaternion = aiQuaterniont<float>;
+using dquaternion = aiQuaterniont<double>;
+using color4 = aiColor4t<float>;
+using dcolor4 = aiColor4t<double>;
 
 // Template helpers
 template<typename T>
@@ -363,24 +471,26 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 #endif
 
 // Todo: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
-#ifdef TRACY_ENABLE
+#if FO_TRACY
+#ifndef TRACY_ENABLE
+#error TRACY_ENABLE not defined
+#endif
+
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
 
 using tracy::SourceLocationData;
 
 #if !FO_NO_MANUAL_STACK_TRACE
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_NAMED(name) \
+    ZoneScopedN(name); \
+    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
 #else
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() ZoneScoped
+#define STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)
 #endif
 #define NO_STACK_TRACE_ENTRY()
 
@@ -394,21 +504,19 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 };
 
 #if !FO_NO_MANUAL_STACK_TRACE
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_NAMED(name) \
+    static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, name, __FILE__, (uint32_t)__LINE__}; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
 #else
-#define STACK_TRACE_FIRST_ENTRY() SetMainThread()
 #define STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY_NAMED(name)
 #endif
 #define NO_STACK_TRACE_ENTRY()
 #endif
 
-extern void SetMainThread() noexcept;
-extern auto IsMainThread() noexcept -> bool;
 extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
@@ -427,10 +535,10 @@ struct StackTraceScopeEntry
 // Engine exception handling
 extern auto GetRealStackTrace() -> string;
 extern auto IsRunInDebugger() noexcept -> bool;
-extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
+extern auto BreakIntoDebugger(string_view error_message = "") noexcept -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
+extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void ShowExceptionMessageBox(bool enabled);
 
 class ExceptionInfo
@@ -463,7 +571,7 @@ struct ExceptionStackTraceData
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
             for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n  - ").append(param); \
+                _exceptionMessage.append("\n- ").append(param); \
             } \
             _stackTrace = GetStackTrace(); \
         } \
@@ -474,7 +582,7 @@ struct ExceptionStackTraceData
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
             for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n  - ").append(param); \
+                _exceptionMessage.append("\n- ").append(param); \
             } \
             _stackTrace = std::move(data.StackTrace); \
         } \
@@ -656,22 +764,9 @@ public:
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
     auto operator=(RefCounter&&) -> RefCounter& = delete;
-
-    virtual ~RefCounter()
-    {
-        if (_ptrCounter != 0) {
-            ThrowException();
-        }
-    }
+    virtual ~RefCounter();
 
 private:
-    void ThrowException() const
-    {
-        if (std::uncaught_exceptions() == 0) {
-            throw GenericException("Some of pointer still alive", _ptrCounter.load());
-        }
-    }
-
     std::atomic_int _ptrCounter {};
 };
 
@@ -751,13 +846,14 @@ private:
 };
 
 // C-strings literal helpers
-constexpr uint const_hash(const char* input)
+constexpr auto const_hash(const char* input) -> uint
 {
     return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
 auto constexpr operator""_hash(const char* str, size_t size) -> uint
 {
+    (void)size;
     return const_hash(str);
 }
 
@@ -768,7 +864,7 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 }
 
 // Scriptable object class decorator
-#define SCRIPTABLE_OBJECT() \
+#define SCRIPTABLE_OBJECT_BEGIN() \
     void AddRef() \
     { \
         ++RefCounter; \
@@ -782,6 +878,10 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
     int RefCounter \
     { \
         1 \
+    }
+#define SCRIPTABLE_OBJECT_END() \
+    bool _nonConstHelper \
+    { \
     }
 
 // Ref counted objects scope holder
@@ -819,63 +919,63 @@ template<typename T>
 class [[nodiscard]] ScopeCallback
 {
 public:
-    static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
-    explicit ScopeCallback(T safe_callback) :
-        _safeCallback {std::move(safe_callback)}
+    explicit ScopeCallback(T callback) :
+        _callback {std::move(callback)}
     {
     }
-    ScopeCallback(ScopeCallback&& other) noexcept = default;
+
     ScopeCallback(const ScopeCallback& other) = delete;
+    ScopeCallback(ScopeCallback&& other) noexcept = default;
     auto operator=(const ScopeCallback& other) = delete;
-    auto operator=(ScopeCallback&& other) = delete;
-    ~ScopeCallback() noexcept { _safeCallback(); }
+    auto operator=(ScopeCallback&& other) noexcept = delete;
 
-private:
-    T _safeCallback;
-};
-
-template<typename T, typename T2>
-class [[nodiscard]] ScopeCallbackExt
-{
-public:
-    static_assert(std::is_invocable_v<T>, "T must be invocable");
-    static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
-    static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
-    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) :
-        _unsafeCallback {std::move(unsafe_callback)},
-        _safeCallback {std::move(safe_callback)}
+    ~ScopeCallback()
     {
-    }
-    ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
-    ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
-    auto operator=(const ScopeCallbackExt& other) = delete;
-    auto operator=(ScopeCallbackExt&& other) = delete;
-    ~ScopeCallbackExt() noexcept(false)
-    {
-        if (std::uncaught_exceptions() == 0) {
-            _unsafeCallback(); // May throw
+        if constexpr (std::is_nothrow_invocable_v<T>) {
+            _callback();
         }
         else {
-            _safeCallback();
+            try {
+                _callback();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
     }
 
 private:
-    T _unsafeCallback;
-    T2 _safeCallback;
+    T _callback;
 };
 
+// Float safe comparator
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+[[nodiscard]] constexpr auto float_abs(T f) noexcept -> float
+{
+    return f < 0 ? -f : f;
+}
+
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+[[nodiscard]] constexpr auto is_float_equal(T f1, T f2) noexcept -> bool
+{
+    if (float_abs(f1 - f2) <= 1.0e-5f) {
+        return true;
+    }
+    return float_abs(f1 - f2) <= 1.0e-5f * std::max(float_abs(f1), float_abs(f2));
+}
+
 // Generic helpers
+template<typename... T>
+FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
+{
+}
+
 #define STRINGIFY(x) STRINGIFY2(x)
 #define STRINGIFY2(x) #x
 #define LINE_STR STRINGIFY(__LINE__)
-#define UNUSED_VARIABLE(x) (void)(x)
+#define UNUSED_VARIABLE(...) ignore_unused(__VA_ARGS__)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
-#define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
-#define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
-#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
 
 // Bits
 #define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
@@ -907,66 +1007,6 @@ constexpr bool IsEnumSet(T value, T check) noexcept
 {
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
-
-// Float constants
-constexpr auto PI_FLOAT = 3.14159265f;
-constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
-constexpr auto SQRT3_FLOAT = 1.732050807f;
-constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
-constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
-
-// Memory pool
-template<typename T, int ChunkSize>
-class MemoryPool final
-{
-public:
-    MemoryPool(const MemoryPool&) = delete;
-    MemoryPool(MemoryPool&&) noexcept = default;
-    auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool&&) noexcept -> MemoryPool& = delete;
-
-    MemoryPool()
-    {
-        _freePtrs.reserve(ChunkSize);
-        Grow();
-    }
-
-    ~MemoryPool()
-    {
-        for (const auto* chunk : _chunks) {
-            delete[] chunk;
-        }
-    }
-
-    auto Get() -> T*
-    {
-        if (_freePtrs.empty()) {
-            Grow();
-        }
-
-        T* result = _freePtrs.back();
-        _freePtrs.pop_back();
-        return result;
-    }
-
-    void Put(T* ptr) //
-    {
-        _freePtrs.emplace_back(ptr);
-    }
-
-private:
-    void Grow()
-    {
-        auto* new_chunk = new T[ChunkSize]();
-        _chunks.emplace_back(new_chunk);
-        for (auto i = 0; i < ChunkSize; i++) {
-            _freePtrs.emplace_back(&new_chunk[i]);
-        }
-    }
-
-    vector<T*> _chunks {};
-    vector<T*> _freePtrs {};
-};
 
 // Data serialization helpers
 DECLARE_EXCEPTION(DataReadingException);
@@ -1084,6 +1124,7 @@ struct TRect
     {
     }
     template<typename T2>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
     TRect(const TRect<T2>& fr) :
         Left(static_cast<T>(fr.Left)),
         Top(static_cast<T>(fr.Top)),
@@ -1191,6 +1232,7 @@ struct TPoint
     {
     }
     template<typename T2>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
     TPoint(const TPoint<T2>& r) :
         X(static_cast<T>(r.X)),
         Y(static_cast<T>(r.Y))
@@ -1221,9 +1263,9 @@ struct TPoint
         Y = 0;
     }
 
-    auto IsZero() const -> bool { return !X && !Y; }
+    [[nodiscard]] auto IsZero() const -> bool { return !X && !Y; }
 
-    auto operator[](int index) -> T&
+    [[nodiscard]] auto operator[](int index) -> T&
     {
         switch (index) {
         case 0:
@@ -1236,7 +1278,7 @@ struct TPoint
         return X;
     }
 
-    auto operator()(T x, T y) -> TPoint&
+    [[nodiscard]] auto operator()(T x, T y) -> TPoint&
     {
         X = x;
         Y = y;
@@ -1248,6 +1290,83 @@ struct TPoint
 };
 using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
+
+// Color type
+///@ ExportType ucolor ucolor uint HardStrong
+struct ucolor
+{
+    using underlying_type = uint;
+    static constexpr bool is_strong_type = true;
+
+    constexpr ucolor() noexcept :
+        rgba {}
+    {
+    }
+    explicit constexpr ucolor(uint rgba_) noexcept :
+        rgba {rgba_}
+    {
+    }
+    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_) noexcept :
+        comp {r_, g_, b_, 255}
+    {
+    }
+    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_, uint8 a_) noexcept :
+        comp {r_, g_, b_, a_}
+    {
+    }
+    explicit constexpr ucolor(const ucolor& other, uint8 a_) noexcept :
+        rgba {other.rgba}
+    {
+        comp.a = a_;
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ucolor& other) const noexcept { return rgba == other.rgba; }
+    [[nodiscard]] constexpr auto operator!=(const ucolor& other) const noexcept { return rgba != other.rgba; }
+    [[nodiscard]] constexpr auto operator<(const ucolor& other) const noexcept { return rgba < other.rgba; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return rgba; }
+
+    struct components
+    {
+        uint8 r;
+        uint8 g;
+        uint8 b;
+        uint8 a;
+    };
+
+    union
+    {
+        uint rgb : 24;
+        uint rgba;
+        components comp;
+    };
+
+    static const ucolor clear;
+};
+static_assert(sizeof(ucolor) == sizeof(uint));
+static_assert(std::is_standard_layout_v<ucolor>);
+
+template<>
+struct std::hash<ucolor>
+{
+    size_t operator()(const ucolor& s) const noexcept { return std::hash<uint>()(s.rgba); }
+};
+
+template<>
+struct fmt::formatter<ucolor>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const ucolor& c, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "0x{:x}", c.rgba);
+    }
+};
 
 // Hashing
 struct hstring
@@ -1261,25 +1380,25 @@ struct hstring
     };
 
     hstring() = default;
-    explicit hstring(entry* static_storage_entry) :
+    constexpr explicit hstring(const entry* static_storage_entry) :
         _entry {static_storage_entry}
     {
     }
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const { return _entry->Str; }
-    explicit operator bool() const { return !(_entry->Hash == 0u); }
-    auto operator==(const hstring& other) const { return _entry->Hash == other._entry->Hash; }
-    auto operator!=(const hstring& other) const { return _entry->Hash != other._entry->Hash; }
-    auto operator<(const hstring& other) const { return _entry->Hash < other._entry->Hash; }
-    [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
-    [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
-    [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
-    [[nodiscard]] auto as_str() const -> const string& { return _entry->Str; }
+    [[nodiscard]] operator string_view() const noexcept { return _entry->Str; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->Hash != 0; }
+    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept { return _entry->Hash == other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator!=(const hstring& other) const noexcept { return _entry->Hash != other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
+    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_int() const noexcept -> int { return static_cast<int>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_uint() const noexcept -> uint { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
 
 private:
     static entry _zeroEntry;
 
-    entry* _entry {&_zeroEntry};
+    const entry* _entry {&_zeroEntry};
 };
 static_assert(sizeof(hstring::hash_t) == 4);
 static_assert(std::is_standard_layout_v<hstring>);
@@ -1313,9 +1432,15 @@ static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
-static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+
+// Float constants
+constexpr auto PI_FLOAT = 3.14159265f;
+constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
+constexpr auto SQRT3_FLOAT = 1.732050807f;
+constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
+constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
@@ -1327,20 +1452,6 @@ static constexpr float MAX_ZOOM = 20.0f;
 #define ITEM_STR_ID(item_pid, idx) (((item_pid)&ITEMPID_MASK) | ((idx) & ~ITEMPID_MASK))
 #define CRPID_MASK (0xFFFFFFF0)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
-
-///@ ExportEnum
-enum class CritterFindType : uint8
-{
-    Any = 0,
-    Alive = 0x01,
-    Dead = 0x02,
-    Players = 0x10,
-    Npc = 0x20,
-    AlivePlayers = 0x11,
-    DeadPlayers = 0x12,
-    AliveNpc = 0x21,
-    DeadNpc = 0x22,
-};
 
 // Ping
 static constexpr uint8 PING_SERVER = 0;
@@ -1369,7 +1480,7 @@ static constexpr uint8 SAY_FLASH_WINDOW = 41;
 // Global map
 static constexpr int GM_MAXZONEX = 100;
 static constexpr int GM_MAXZONEY = 100;
-static constexpr size_t GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
+static constexpr size_t GM_ZONES_FOG_SIZE = ((static_cast<size_t>(GM_MAXZONEX) / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
 static constexpr uint8 GM_FOG_FULL = 0;
 static constexpr uint8 GM_FOG_HALF = 1;
 static constexpr uint8 GM_FOG_NONE = 3;
@@ -1410,24 +1521,6 @@ static constexpr uint8 ANSWER_BEGIN = 0xF0;
 static constexpr uint8 ANSWER_END = 0xF1;
 static constexpr uint8 ANSWER_BARTER = 0xF2;
 
-// Critter actions
-// Flags for chosen:
-// l - hardcoded local call
-// s - hardcoded server call
-// for all others critters actions call only server
-//  flags actionExt item
-static constexpr int ACTION_MOVE_ITEM = 2; // l s from slot +
-static constexpr int ACTION_MOVE_ITEM_SWAP = 3; // l s from slot +
-static constexpr int ACTION_DROP_ITEM = 5; // l s from slot +
-static constexpr int ACTION_KNOCKOUT = 16; // s 0 - knockout anim2begin
-static constexpr int ACTION_STANDUP = 17; // s 0 - knockout anim2end
-static constexpr int ACTION_FIDGET = 18; // l
-static constexpr int ACTION_DEAD = 19; // s dead type anim2 (see Anim2 in _animation.fos)
-static constexpr int ACTION_CONNECT = 20;
-static constexpr int ACTION_DISCONNECT = 21;
-static constexpr int ACTION_RESPAWN = 22; // s
-static constexpr int ACTION_REFRESH = 23; // s
-
 // Look checks
 static constexpr uint LOOK_CHECK_DIR = 0x01;
 static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;
@@ -1435,22 +1528,6 @@ static constexpr uint LOOK_CHECK_TRACE = 0x08;
 static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
-
-// Anims
-static constexpr uint ANIM1_UNARMED = 1;
-static constexpr uint ANIM2_IDLE = 1;
-static constexpr uint ANIM2_WALK = 3;
-static constexpr uint ANIM2_WALK_BACK = 15;
-static constexpr uint ANIM2_LIMP = 4;
-static constexpr uint ANIM2_RUN = 5;
-static constexpr uint ANIM2_RUN_BACK = 16;
-static constexpr uint ANIM2_TURN_RIGHT = 17;
-static constexpr uint ANIM2_TURN_LEFT = 18;
-static constexpr uint ANIM2_PANIC_RUN = 6;
-static constexpr uint ANIM2_SNEAK_WALK = 7;
-static constexpr uint ANIM2_SNEAK_RUN = 8;
-static constexpr uint ANIM2_IDLE_PRONE_FRONT = 86;
-static constexpr uint ANIM2_DEAD_FRONT = 102;
 
 // Property type in network interaction
 enum class NetProperty : uint8
@@ -1465,75 +1542,6 @@ enum class NetProperty : uint8
     ChosenItem, // One extra arg: item_id
     Map, // No extra args
     Location, // No extra args
-};
-
-///@ ExportEnum
-enum class EffectType : uint
-{
-    None = 0,
-    GenericSprite = 0x00000001,
-    CritterSprite = 0x00000002,
-    TileSprite = 0x00000004,
-    RoofSprite = 0x00000008,
-    RainSprite = 0x00000010,
-    SkinnedMesh = 0x00000400,
-    Interface = 0x00001000,
-    Contour = 0x00002000,
-    Font = 0x00010000,
-    Primitive = 0x00100000,
-    Light = 0x00200000,
-    Fog = 0x00400000,
-    FlushRenderTarget = 0x01000000,
-    FlushPrimitive = 0x04000000,
-    FlushMap = 0x08000000,
-    FlushLight = 0x10000000,
-    FlushFog = 0x20000000,
-    Offscreen = 0x40000000,
-};
-
-///@ ExportEnum
-enum class ItemOwnership : uint8
-{
-    Nowhere = 0,
-    CritterInventory = 1,
-    MapHex = 2,
-    ItemContainer = 3,
-};
-
-///@ ExportEnum
-enum class CornerType : uint8
-{
-    NorthSouth = 0,
-    West = 1,
-    East = 2,
-    South = 3,
-    North = 4,
-    EastWest = 5,
-};
-
-///@ ExportEnum
-enum class CritterCondition : uint8
-{
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
-};
-
-///@ ExportEnum
-enum class MovingState : uint8
-{
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    InternalError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    HexBusyRing = 9,
-    Deadlock = 10,
-    TraceFailed = 11,
 };
 
 // Generic fixed game settings
@@ -1596,16 +1604,6 @@ static constexpr auto CMD_RUNSCRIPT = 20;
 static constexpr auto CMD_REGENMAP = 25;
 static constexpr auto CMD_SETTIME = 32;
 static constexpr auto CMD_LOG = 37;
-
-// Client anim flags
-static constexpr uint16 ANIMRUN_TO_END = 0x0001;
-static constexpr uint16 ANIMRUN_FROM_END = 0x0002;
-static constexpr uint16 ANIMRUN_CYCLE = 0x0004;
-static constexpr uint16 ANIMRUN_STOP = 0x0008;
-static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
-{
-    return static_cast<uint>(frm + 1) << 16;
-}
 
 // Todo: rework built-in string messages
 #define STR_CRNORM (100)
@@ -1825,6 +1823,15 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+class HashResolver
+{
+public:
+    virtual ~HashResolver() = default;
+    [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
+    [[nodiscard]] virtual auto ToHashedStringMustExists(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
+};
+
 class NameResolver
 {
 public:
@@ -1832,33 +1839,79 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
-    [[nodiscard]] virtual auto ToHashedString(string_view s, bool mustExists = false) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
-};
-
-class AnimationResolver
-{
-public:
-    virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
 class FrameBalancer
 {
 public:
-    FrameBalancer(bool enabled, int fixed_fps);
+    FrameBalancer() = default;
+    FrameBalancer(bool enabled, int sleep, int fixed_fps);
+
+    [[nodiscard]] auto GetLoopDuration() const -> time_duration;
 
     void StartLoop();
     void EndLoop();
 
 private:
     bool _enabled {};
+    int _sleep {};
     int _fixedFps {};
     time_point _loopStart {};
-    double _balance {};
+    time_duration _loopDuration {};
+    time_duration _idleTimeBalance {};
+};
+
+class [[nodiscard]] TimeMeter
+{
+public:
+    TimeMeter() noexcept :
+        _startTime {time_point::clock::now()}
+    {
+    }
+
+    [[nodiscard]] auto GetDuration() const noexcept { return time_point::clock::now() - _startTime; }
+
+private:
+    time_point _startTime;
+};
+
+class WorkThread
+{
+public:
+    using Job = std::function<optional<time_duration>()>;
+    using ExceptionHandler = std::function<bool(const std::exception&)>; // Return true to clear jobs
+
+    explicit WorkThread(string_view name);
+    WorkThread(const WorkThread&) = delete;
+    WorkThread(WorkThread&&) noexcept = delete;
+    auto operator=(const WorkThread&) -> WorkThread& = delete;
+    auto operator=(WorkThread&&) noexcept -> WorkThread& = delete;
+    ~WorkThread();
+
+    [[nodiscard]] auto GetThreadId() const -> std::thread::id { return _thread.get_id(); }
+    [[nodiscard]] auto GetJobsCount() const -> size_t;
+
+    void SetExceptionHandler(ExceptionHandler handler);
+    void AddJob(Job job);
+    void AddJob(time_duration delay, Job job);
+    void Clear();
+    void Wait();
+
+private:
+    void AddJobInternal(time_duration delay, Job job, bool no_notify);
+    void ThreadEntry() noexcept;
+
+    string _name {};
+    ExceptionHandler _exceptionHandler {};
+    std::thread _thread {};
+    vector<pair<time_point, Job>> _jobs {};
+    bool _jobActive {};
+    mutable std::mutex _dataLocker {};
+    std::condition_variable _workSignal {};
+    std::condition_variable _doneSignal {};
+    bool _clearJobs {};
+    bool _finish {};
 };
 
 // Interthread communication between server and client

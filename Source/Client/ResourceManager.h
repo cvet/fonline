@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@
 #include "Common.h"
 
 #include "3dStuff.h"
+#include "DefaultSprites.h"
+#include "ModelSprites.h"
 #include "SpriteManager.h"
 
 class ResourceManager final
@@ -49,50 +51,36 @@ public:
     auto operator=(ResourceManager&&) noexcept = delete;
     ~ResourceManager() = default;
 
-    [[nodiscard]] auto GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*;
-    [[nodiscard]] auto GetIfaceAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
-    [[nodiscard]] auto GetInvAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
-    [[nodiscard]] auto GetSkDxAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
-    [[nodiscard]] auto GetItemAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Dynamic); }
-    [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uint8 dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> uint;
-    [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
-    [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
-#if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelInstance*;
-#endif
+    [[nodiscard]] auto GetItemDefaultSpr() -> const shared_ptr<Sprite>&;
+    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*;
+    [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
+    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*;
+    [[nodiscard]] auto GetRandomSplash() -> shared_ptr<Sprite>;
+    [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
-    void FreeResources(AtlasType atlas_type);
-    void ReinitializeDynamicAtlas();
-
-    AnyFrames* ItemHexDefaultAnim {};
-    AnyFrames* CritterDefaultAnim {};
+    void CleanupCritterFrames();
 
 private:
-    struct LoadedAnim
-    {
-        AtlasType ResType {};
-        AnyFrames* Anim {};
-    };
+    [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> const SpriteSheet*;
+#if FO_ENABLE_3D
+    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*;
+#endif
 
-    [[nodiscard]] auto LoadFalloutAnim(hstring model_name, uint anim1, uint anim2) -> AnyFrames*;
-    [[nodiscard]] auto LoadFalloutAnimSpr(hstring model_name, uint anim1, uint anim2) -> AnyFrames*;
-
-    void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
-    void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
+    void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
+    void FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
 
     FileSystem& _resources;
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
-    map<uint, string> _namesHash {};
-    map<hstring, LoadedAnim> _loadedAnims {};
-    map<uint, AnyFrames*> _critterFrames {};
+    unordered_map<uint, shared_ptr<SpriteSheet>> _critterFrames {};
+    shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
+    shared_ptr<Sprite> _itemHexDummyAnim {};
     vector<string> _splashNames {};
     map<string, string> _soundNames {};
-    AnyFrames* _splash {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
-    unordered_map<hstring, unique_del_ptr<ModelInstance>> _critterModels {};
+    unordered_map<hstring, shared_ptr<ModelSprite>> _critterModels {};
 #endif
 };

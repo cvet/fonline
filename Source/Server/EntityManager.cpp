@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -177,7 +177,7 @@ void EntityManager::LoadEntities()
 
     bool is_error = false;
 
-    const auto loc_ids = _engine->DbStorage.GetAllIds("Locations");
+    const auto loc_ids = _engine->DbStorage.GetAllIds(_engine->LocationsCollectionName);
     for (const auto loc_id : loc_ids) {
         LoadLocation(ident_t {loc_id}, is_error);
     }
@@ -215,7 +215,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [loc_doc, loc_pid] = LoadEntityDoc("Locations", loc_id, is_error);
+    auto&& [loc_doc, loc_pid] = LoadEntityDoc(_engine->LocationsCollectionName, loc_id, is_error);
     if (!loc_pid) {
         return {};
     }
@@ -228,7 +228,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     }
 
     auto* loc = new Location(_engine, loc_id, loc_proto);
-    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return {};
@@ -262,7 +262,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [map_doc, map_pid] = LoadEntityDoc("Maps", map_id, is_error);
+    auto&& [map_doc, map_pid] = LoadEntityDoc(_engine->MapsCollectionName, map_id, is_error);
     if (!map_pid) {
         return {};
     }
@@ -277,7 +277,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
 
     auto* map = new Map(_engine, map_id, map_proto, nullptr, static_map);
-    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return {};
@@ -320,7 +320,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) ->
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [cr_doc, cr_pid] = LoadEntityDoc("Critters", cr_id, is_error);
+    auto&& [cr_doc, cr_pid] = LoadEntityDoc(_engine->CrittersCollectionName, cr_id, is_error);
     if (!cr_pid) {
         return {};
     }
@@ -333,7 +333,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) ->
     }
 
     auto* cr = new Critter(_engine, cr_id, owner, proto);
-    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return {};
@@ -356,7 +356,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [item_doc, item_pid] = LoadEntityDoc("Items", item_id, is_error);
+    auto&& [item_doc, item_pid] = LoadEntityDoc(_engine->ItemsCollectionName, item_id, is_error);
     if (!item_pid) {
         return {};
     }
@@ -369,11 +369,13 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     }
 
     auto* item = new Item(_engine, item_id, proto);
-    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return {};
     }
+
+    item->SetIsStatic(false);
 
     if (item->GetIsRadio()) {
         _engine->ItemMngr.RegisterRadio(item);
@@ -392,11 +394,17 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     return item;
 }
 
-auto EntityManager::LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>
+auto EntityManager::LoadEntityDoc(hstring collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>
 {
     STACK_TRACE_ENTRY();
 
     auto doc = _engine->DbStorage.Get(collection_name, id);
+
+    if (doc.empty()) {
+        WriteLog("{} document {} not found", collection_name, id);
+        is_error = true;
+        return {};
+    }
 
     const auto proto_it = doc.find("_Proto");
     if (proto_it == doc.end()) {
@@ -404,6 +412,7 @@ auto EntityManager::LoadEntityDoc(string_view collection_name, ident_t id, bool&
         is_error = true;
         return {};
     }
+
     if (proto_it->second.index() != AnyData::STRING_VALUE) {
         WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
         is_error = true;
@@ -652,6 +661,7 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
     if (!entity->GetId()) {
         const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
         const auto id = ident_t {id_num};
+        const auto collection_name = _engine->ToHashedString(_str("{}s", entity->GetClassName()));
 
         _engine->SetLastEntityId(id);
 
@@ -659,13 +669,16 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
         if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
             const auto* proto = entity_with_proto->GetProto();
-            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine);
+            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
+
             doc["_Proto"] = string(proto->GetName());
-            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+
+            _engine->DbStorage.Insert(collection_name, id, doc);
         }
         else {
-            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine);
-            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
+
+            _engine->DbStorage.Insert(collection_name, id, doc);
         }
     }
 }
@@ -679,7 +692,9 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
     RUNTIME_ASSERT(entity->GetId());
 
     if (delete_from_db) {
-        _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
+        const auto collection_name = _engine->ToHashedString(_str("{}s", entity->GetClassName()));
+
+        _engine->DbStorage.Delete(collection_name, entity->GetId());
     }
 
     entity->SetId(ident_t {});
@@ -725,14 +740,15 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -
 
     // Load if not exists
     if (it == all_entities.end()) {
-        const auto doc = _engine->DbStorage.Get(_str("{}s", entity_class_name), id);
+        const auto collection_name = _engine->ToHashedString(_str("{}s", entity_class_name));
+        const auto doc = _engine->DbStorage.Get(collection_name, id);
         if (doc.empty()) {
             return nullptr;
         }
 
         const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
         auto props = Properties(registrator);
-        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine)) {
+        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine, *_engine)) {
             return nullptr;
         }
 

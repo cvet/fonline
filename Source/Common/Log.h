@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,16 +46,16 @@ enum class LogType
 };
 
 // Write formatted text
-extern void WriteLogMessage(LogType type, string_view message);
+extern void WriteLogMessage(LogType type, string_view message) noexcept;
 
 template<typename... Args>
-void WriteLog(string_view message, Args... args)
+void WriteLog(string_view message, Args... args) noexcept
 {
     WriteLogMessage(LogType::Info, fmt::format(message, std::forward<Args>(args)...));
 }
 
 template<typename... Args>
-void WriteLog(LogType type, string_view message, Args... args)
+void WriteLog(LogType type, string_view message, Args... args) noexcept
 {
     WriteLogMessage(type, fmt::format(message, std::forward<Args>(args)...));
 }

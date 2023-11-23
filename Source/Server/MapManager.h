@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -177,7 +177,7 @@ public:
     void EraseKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
-    [[nodiscard]] auto GridAt(int x, int y) -> int16& { return _mapGrid[((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)]; }
+    [[nodiscard]] FORCE_INLINE auto GridAt(int x, int y) -> int16&;
 
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);

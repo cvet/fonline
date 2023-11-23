@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 
 #include "GenericUtils.h"
 #include "Application.h"
+#include "DiskFileSystem.h"
 #include "Log.h"
 
 #include "zlib.h"
@@ -45,27 +46,102 @@
 #include <unistd.h>
 #endif
 
-auto Math::FloatCompare(float f1, float f2) -> bool
+auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     STACK_TRACE_ENTRY();
 
-    if (std::abs(f1 - f2) <= 1.0e-5f) {
-        return true;
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+
+    if (s.empty()) {
+        return {};
     }
-    return std::abs(f1 - f2) <= 1.0e-5f * std::max(std::abs(f1), std::abs(f2));
+
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
+    RUNTIME_ASSERT(hash_value != 0);
+
+    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+        const auto collision_detected = (s != it->second.Str);
+#else
+        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+#endif
+        if (collision_detected) {
+            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+        }
+
+        return hstring(&it->second);
+    }
+
+    // Add new entry
+    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+    RUNTIME_ASSERT(inserted);
+
+    return hstring(&it->second);
+}
+
+auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
+{
+    STACK_TRACE_ENTRY();
+
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+
+    if (s.empty()) {
+        return {};
+    }
+
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
+    RUNTIME_ASSERT(hash_value != 0);
+
+    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+        const auto collision_detected = (s != it->second.Str);
+#else
+        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+#endif
+        if (collision_detected) {
+            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+        }
+
+        return hstring(&it->second);
+    }
+
+    throw HashInsertException("String value is not in hash storage", s);
+}
+
+auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (h == 0) {
+        return {};
+    }
+
+    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        return hstring(&it->second);
+    }
+
+    BreakIntoDebugger("Can't resolve hash");
+
+    if (failed != nullptr) {
+        WriteLog("Can't resolve hash {}", h);
+        *failed = true;
+        return {};
+    }
+
+    throw HashResolveException("Can't resolve hash", h);
 }
 
 auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0u) {
-        return 0u;
+    if (len == 0) {
+        return 0;
     }
 
     constexpr uint seed = 0;
-    const uint m = 0x5BD1E995;
-    const auto r = 24;
+    constexpr uint m = 0x5BD1E995;
+    constexpr auto r = 24;
     const auto* pdata = static_cast<const uint8*>(data);
     auto h = seed ^ static_cast<uint>(len);
 
@@ -111,13 +187,13 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0u) {
-        return 0u;
+    if (len == 0) {
+        return 0;
     }
 
     constexpr uint seed = 0;
-    const auto m = 0xc6a4a7935bd1e995ULL;
-    const auto r = 47;
+    constexpr auto m = 0xc6a4a7935bd1e995ULL;
+    constexpr auto r = 47;
     const auto* pdata = static_cast<const uint8*>(data);
     const auto* pdata2 = reinterpret_cast<const uint64*>(pdata);
     const auto* end = pdata2 + len / 8;
@@ -210,7 +286,7 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
     return buf;
 }
 
-void GenericUtils::ForkProcess()
+void GenericUtils::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
 {
     STACK_TRACE_ENTRY();
 
@@ -234,6 +310,21 @@ void GenericUtils::ForkProcess()
 #else
     throw InvalidCallException(LINE_STR);
 #endif
+}
+
+void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data)
+{
+    STACK_TRACE_ENTRY();
+
+    auto file = DiskFileSystem::OpenFile(fname, true);
+    RUNTIME_ASSERT(file);
+
+    const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+        static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
+        static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
+    file.Write(header);
+
+    file.Write(data.data(), data.size() * sizeof(uint));
 }
 
 // Default randomizer
@@ -277,11 +368,11 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (full == 0u) {
-        return 0u;
+    if (full == 0) {
+        return 0;
     }
 
-    const auto percent = peace * 100u / full;
+    const auto percent = peace * 100 / full;
     return std::clamp(percent, 0u, 100u);
 }
 
@@ -289,7 +380,7 @@ auto GenericUtils::NumericalNumber(uint num) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if ((num & 1) != 0u) {
+    if (num % 2 != 0) {
         return num * (num / 2 + 1);
     }
 
@@ -318,7 +409,7 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> uint
+auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -376,7 +467,7 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
         *light = std::clamp(*light, 0, 100);
     }
 
-    return 0xFFu << 24 | static_cast<uint>(result[0]) << 16 | static_cast<uint>(result[1]) << 8 | static_cast<uint>(result[2]);
+    return ucolor {result[0], result[1], result[2], 255};
 }
 
 auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint

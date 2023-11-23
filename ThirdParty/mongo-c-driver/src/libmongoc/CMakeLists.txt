@@ -7,7 +7,7 @@ include (MongoC-Warnings)
 include (InstallRequiredSystemLibraries)
 include (CheckStructHasMember)
 
-message ("libmongoc version (from VERSION_CURRENT file): ${MONGOC_VERSION}")
+message (STATUS "libmongoc version (from VERSION_CURRENT file): ${MONGOC_VERSION}")
 
 # Defaults.
 set (MONGOC_ENABLE_SSL 0)
@@ -31,10 +31,6 @@ set (MONGOC_ENABLE_COMPRESSION_ZSTD 0)
 
 set (MONGOC_OUTPUT_BASENAME "mongoc" CACHE STRING "Output mongoc library base name")
 
-if (ENABLE_COVERAGE)
-   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g --coverage")
-endif ()
-
 if (NOT ENABLE_ZLIB MATCHES "SYSTEM|AUTO|BUNDLED|OFF")
    message (FATAL_ERROR
       "ENABLE_ZLIB option must be SYSTEM, BUNDLED, AUTO, or OFF"
@@ -48,8 +44,8 @@ endif ()
 # Copy zconf.h.in to zconf.h; even when using system zlib, the 'dist' target
 # will look for zconf.h in that location.
 configure_file (
-   "${SOURCE_DIR}/src/zlib-1.2.12/zconf.h.in"
-   "${CMAKE_BINARY_DIR}/src/zlib-1.2.12/zconf.h"
+   "${SOURCE_DIR}/src/zlib-1.2.13/zconf.h.in"
+   "${CMAKE_BINARY_DIR}/src/zlib-1.2.13/zconf.h"
    COPYONLY
 )
 set (ZLIB_INCLUDE_DIRS "")
@@ -57,9 +53,9 @@ if (ENABLE_ZLIB MATCHES "SYSTEM|AUTO")
    message (STATUS "Searching for zlib CMake packages")
    include (FindZLIB)
    if (ZLIB_FOUND)
-      message ("--   zlib found version \"${ZLIB_VERSION_STRING}\"")
-      message ("--   zlib include path \"${ZLIB_INCLUDE_DIRS}\"")
-      message ("--   zlib libraries \"${ZLIB_LIBRARIES}\"")
+      message (STATUS "   zlib found version \"${ZLIB_VERSION_STRING}\"")
+      message (STATUS "   zlib include path \"${ZLIB_INCLUDE_DIRS}\"")
+      message (STATUS "   zlib libraries \"${ZLIB_LIBRARIES}\"")
    else ()
       if (ENABLE_ZLIB STREQUAL "SYSTEM")
          message (FATAL_ERROR
@@ -80,8 +76,8 @@ if ( (ENABLE_ZLIB STREQUAL "BUNDLED")
    # This tells the bundled zlib where to find its generated headers
    target_include_directories (zlib_obj
       BEFORE PUBLIC
-      "${SOURCE_DIR}/src/zlib-1.2.12"
-      "${CMAKE_BINARY_DIR}/src/zlib-1.2.12"
+      "${SOURCE_DIR}/src/zlib-1.2.13"
+      "${CMAKE_BINARY_DIR}/src/zlib-1.2.13"
    )
    # Disable all warnings for compiling Zlib
    target_compile_options (zlib_obj PRIVATE -w)
@@ -89,8 +85,8 @@ if ( (ENABLE_ZLIB STREQUAL "BUNDLED")
    # This tells mongoc_shared/mongoc_static where to find generated zlib headers
    set (
       ZLIB_INCLUDE_DIRS
-      "${SOURCE_DIR}/src/zlib-1.2.12"
-      "${CMAKE_BINARY_DIR}/src/zlib-1.2.12"
+      "${SOURCE_DIR}/src/zlib-1.2.13"
+      "${CMAKE_BINARY_DIR}/src/zlib-1.2.13"
    )
 endif ()
 
@@ -154,11 +150,11 @@ if (NOT ENABLE_SSL STREQUAL OFF)
    endif ()
 
    if (ENABLE_SSL STREQUAL LIBRESSL)
-      #!include (FindPkgConfig)
-      #!message ("-- Searching for LibreSSL/libtls")
-      #!pkg_check_modules (LIBRESSL libtls)
+      #! include (FindPkgConfig)
+      #! message (STATUS " Searching for LibreSSL/libtls")
+      #! pkg_check_modules (LIBRESSL libtls)
       if (LIBRESSL_FOUND)
-         #!message ("--   Found ${LIBRESSL_LIBRARIES}")
+         #! message (STATUS "   Found ${LIBRESSL_LIBRARIES}")
          set (SSL_LIBRARIES ${LIBRESSL_LIBRARIES})
          if (LIBRESSL_INCLUDE_DIRS)
            include_directories ("${LIBRESSL_INCLUDE_DIRS}")
@@ -166,7 +162,7 @@ if (NOT ENABLE_SSL STREQUAL OFF)
          link_directories ("${LIBRESSL_LIBRARY_DIRS}")
          set (LIBRESSL 1)
       else ()
-         message ("--   Not found")
+         message (STATUS "   Not found")
       endif ()
    endif ()
 
@@ -244,11 +240,6 @@ endif ()
 
 if (MONGOC_ENABLE_MONGODB_AWS_AUTH AND ENABLE_SSL STREQUAL OFF)
    message (FATAL_ERROR "ENABLE_MONGODB_AWS_AUTH but no SSL library was found")
-endif ()
-
-if (NOT ENABLE_SASL MATCHES "CYRUS|SSPI|AUTO|OFF")
-   message (FATAL_ERROR
-      "ENABLE_SASL option must be CYRUS, SSPI, AUTO, or OFF")
 endif ()
 
 # Defaults.
@@ -372,25 +363,7 @@ endif ()
 
 set (MONGOC_ENABLE_SHM_COUNTERS 0)
 
-if (NOT ENABLE_SHM_COUNTERS MATCHES "ON|OFF|AUTO")
-   message (FATAL_ERROR "ENABLE_SHM_COUNTERS option must be ON, OFF, or AUTO")
-endif ()
-
-if (ENABLE_SHM_COUNTERS STREQUAL "AUTO")
-   if (UNIX AND NOT APPLE)
-      set (ENABLE_SHM_COUNTERS ON)
-   endif ()
-   if (APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64")
-      set (ENABLE_SHM_COUNTERS ON)
-   endif ()
-endif ()
-
-if (ENABLE_SHM_COUNTERS STREQUAL "ON")
-   if (( NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64" AND APPLE ) OR NOT UNIX)
-      message (
-         FATAL_ERROR
-	 "Shared memory performance counters only supported on arm64 Mac and Linux")
-   endif ()
+if (ENABLE_SHM_COUNTERS)
    set (MONGOC_ENABLE_SHM_COUNTERS 1)
    find_library(RT_LIBRARY rt HINTS /usr/lib32)
    if (RT_LIBRARY)
@@ -420,7 +393,7 @@ if (NOT ENABLE_ICU STREQUAL OFF)
    endif()
 endif()
 
-# Configure client side encryption.
+# Configure In-Use Encryption
 set (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION 0)
 if (NOT ENABLE_CLIENT_SIDE_ENCRYPTION MATCHES "AUTO|ON|OFF")
    message (FATAL_ERROR, "ENABLE_CLIENT_SIDE_ENCRYPTION option must be AUTO, ON, or OFF")
@@ -433,7 +406,7 @@ if (NOT MONGOC_ENABLE_SSL)
       message (STATUS "SSL disabled. Configuring without Client-Side Field Level Encryption support.")
    endif ()
 elseif (NOT ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL OFF)
-   message ("Searching for libmongocrypt")
+   message (STATUS "Searching for libmongocrypt")
    if (ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL ON)
       # do not suppress log output if find_package cannot find libmongocrypt
       find_package (mongocrypt)
@@ -441,10 +414,10 @@ elseif (NOT ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL OFF)
       find_package (mongocrypt QUIET)
    endif ()
 
-   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.5.2)
-      message ("--   libmongocrypt found at ${mongocrypt_DIR}")
-      message ("--   libmongocrypt version ${mongocrypt_VERSION} found")
-      message ("--   libmongocrypt version 1.5.2 is required to enable Client-Side Field Level Encryption Support.")
+   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.8.0)
+      message (STATUS "  libmongocrypt found at ${mongocrypt_DIR}")
+      message (STATUS "  libmongocrypt version ${mongocrypt_VERSION} found")
+      message (STATUS "  libmongocrypt version 1.8.0 is required to enable Client-Side Field Level Encryption Support.")
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND OFF)
    elseif (mongocrypt_FOUND)
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND ON)
@@ -458,9 +431,9 @@ elseif (NOT ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL OFF)
       get_filename_component(LIBMONGOCRYPT_LIBRARY_LOCATION ${LIBMONGOCRYPT_RUNTIME_LIBRARY} DIRECTORY)
       find_library (LIBMONGOCRYPT_LIBRARY NAMES mongocrypt PATHS ${LIBMONGOCRYPT_LIBRARY_LOCATION})
       get_target_property (LIBMONGOCRYPT_INCLUDE_DIRECTORIES mongo::mongocrypt INTERFACE_INCLUDE_DIRECTORIES)
-      message ("--   libmongocrypt found at ${LIBMONGOCRYPT_LIBRARY}")
-      message ("--   libmongocrypt include path ${LIBMONGOCRYPT_INCLUDE_DIRECTORIES}")
-      message ("--   libmongocrypt version ${mongocrypt_VERSION}")
+      message (STATUS "  libmongocrypt found at ${LIBMONGOCRYPT_LIBRARY}")
+      message (STATUS "  libmongocrypt include path ${LIBMONGOCRYPT_INCLUDE_DIRECTORIES}")
+      message (STATUS "  libmongocrypt version ${mongocrypt_VERSION}")
       set (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION 1)
    elseif (ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL ON)
       message (FATAL_ERROR "Required library (libmongocrypt) not found.")
@@ -494,6 +467,8 @@ if (ENABLE_APPLE_FRAMEWORK)
 endif ()
 
 set (SOURCES ${SOURCES}
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mcd-azure.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mcd-rpc.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-aggregate.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-apm.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-array.c
@@ -524,6 +499,7 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-array.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-database.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-error.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-flags.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-find-and-modify.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-generation-map.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-init.c
@@ -547,6 +523,7 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-matcher-op.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-memcmp.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cmd.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opcode.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-optional.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opts-helpers.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opts.c
@@ -564,7 +541,6 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-socket.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-buffered.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-buffered.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-file.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-gridfs.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-gridfs-download.c
@@ -581,8 +557,8 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-util.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-version-functions.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-write-command.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-write-command-legacy.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-write-concern.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/service-gcp.c
    ${PROJECT_SOURCE_DIR}/../../src/common/common-b64.c
    ${PROJECT_SOURCE_DIR}/../../src/common/common-md5.c
    ${PROJECT_SOURCE_DIR}/../../src/common/common-thread.c
@@ -759,12 +735,28 @@ if (MONGOC_ENABLE_MONGODB_AWS_AUTH)
 endif ()
 
 if(FALSE) #!
+if (MONGOC_ENABLE_STATIC_BUILD)
+   add_library (mcd_rpc STATIC EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/src/mongoc/mcd-rpc.c)
+   target_include_directories (mcd_rpc PUBLIC ${PROJECT_SOURCE_DIR}/src)
+   target_link_libraries (mcd_rpc PUBLIC ${BSON_STATIC_LIBRARIES})
+   if (NOT WIN32 AND ENABLE_PIC)
+      target_compile_options (mcd_rpc PUBLIC -fPIC)
+   endif ()
+   target_compile_definitions (mcd_rpc PUBLIC ${BSON_STATIC_PUBLIC_DEFINITIONS})
+   set_target_properties (mcd_rpc PROPERTIES OUTPUT_NAME "mcd-rpc")
+endif ()
+endif() #!
+
+if(FALSE) #!
 add_library (mongoc_shared SHARED ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
 set_target_properties (mongoc_shared PROPERTIES CMAKE_CXX_VISIBILITY_PRESET hidden)
 target_link_libraries (mongoc_shared PRIVATE ${LIBRARIES} PUBLIC ${BSON_LIBRARIES})
-target_include_directories (mongoc_shared BEFORE PUBLIC ${MONGOC_INTERNAL_INCLUDE_DIRS})
 target_include_directories (mongoc_shared PRIVATE ${ZLIB_INCLUDE_DIRS})
 target_include_directories (mongoc_shared PRIVATE ${LIBMONGOCRYPT_INCLUDE_DIRECTORIES})
+if(ENABLE_COVERAGE)
+   target_compile_options(mongoc_shared PRIVATE --coverage)
+   target_link_options(mongoc_shared PUBLIC --coverage)
+endif()
 if (MONGOC_ENABLE_MONGODB_AWS_AUTH)
    target_include_directories (mongoc_shared PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../kms-message/src")
    if (APPLE)
@@ -800,12 +792,15 @@ endif() #!
 
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (mongoc_static STATIC ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
+   if(ENABLE_COVERAGE)
+      target_compile_options(mongoc_static PRIVATE --coverage)
+      target_link_options(mongoc_static PUBLIC --coverage)
+   endif()
    target_link_libraries (mongoc_static PUBLIC ${STATIC_LIBRARIES} ${BSON_STATIC_LIBRARIES})
    if (NOT WIN32 AND ENABLE_PIC)
       target_compile_options (mongoc_static PUBLIC -fPIC)
-      message ("Adding -fPIC to compilation of mongoc_static components")
+      message (STATUS "Adding -fPIC to compilation of mongoc_static components")
    endif ()
-   target_include_directories (mongoc_static BEFORE PUBLIC ${MONGOC_INTERNAL_INCLUDE_DIRS})
    target_include_directories (mongoc_static PRIVATE ${ZLIB_INCLUDE_DIRS})
    target_include_directories (mongoc_static PRIVATE ${LIBMONGOCRYPT_INCLUDE_DIRECTORIES})
    if (MONGOC_ENABLE_MONGODB_AWS_AUTH)
@@ -854,91 +849,11 @@ target_link_libraries (mongoc-stat mongoc_shared ${LIBRARIES})
 endif() #!
 
 # mongoc-stat works if shared memory performance counters are enabled.
-if (ENABLE_SHM_COUNTERS STREQUAL "ON")
-   install (PROGRAMS ${PROJECT_BINARY_DIR}/mongoc-stat
-      DESTINATION ${CMAKE_INSTALL_BINDIR}
-   )
+if (ENABLE_SHM_COUNTERS)
+   install (TARGETS mongoc-stat
+            EXPORT mongoc_targets
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif ()
-
-cmake_dependent_option (
-   MONGOC_TEST_USE_CRYPT_SHARED "If TRUE, download and use a crypt_shared library for client-side-encryption testing. Otherwise will rely on mongocryptd"
-   TRUE ENABLE_TESTS FALSE
-)
-
-if (MONGOC_TEST_USE_CRYPT_SHARED)
-   find_program (_PYTHON3_EXE NAMES python3 py python)
-   mark_as_advanced (_PYTHON3_EXE)
-   if (NOT _PYTHON3_EXE)
-      message (SEND_ERROR
-         "MONGOC_TEST_USE_CRYPT_SHARED is enabled, but we were unable to find a Python 3 interpreter to use mongodl.py. "
-         "Install a Python 3 or set MONGOC_TEST_USE_CRYPT_SHARED to FALSE"
-      )
-   endif ()
-
-   get_filename_component (crypt_shared_dest "${CMAKE_CURRENT_BINARY_DIR}/mongo_crypt_v1${CMAKE_SHARED_LIBRARY_SUFFIX}" ABSOLUTE)
-   # If updating the "--version" for crypt_shared, update the version in compile-unix.sh to match.
-   add_custom_command (
-      OUTPUT "${crypt_shared_dest}"
-      COMMAND
-         "${_PYTHON3_EXE}" -u "${mongo-c-driver_SOURCE_DIR}/build/mongodl.py"
-            --component crypt_shared
-            --version 6.0.0-rc8
-            --edition enterprise
-            --out "${CMAKE_CURRENT_BINARY_DIR}"
-            --only "**/mongo_crypt_v1.*"
-            --strip-path-components 1
-      COMMENT "Downloading crypt_shared"
-      VERBATIM
-   )
-   add_custom_target (get-crypt_shared ALL DEPENDS "${crypt_shared_dest}")
-endif ()
-
-function (mongoc_add_test test use_shared)
-   if (ENABLE_TESTS)
-      add_executable (${test} ${ARGN})
-      target_link_libraries (${test}
-         PRIVATE
-            $<$<C_COMPILER_ID:MSVC>:DbgHelp.dll>
-            $<$<PLATFORM_ID:Windows>:shlwapi>
-            $<$<BOOL:${use_shared}>:mongoc_shared>
-            $<$<NOT:$<BOOL:${use_shared}>>:mongoc_static>
-            ${LIBRARIES}
-            ${RESOLV_LIBRARIES}
-      )
-      # We have tests that test our deprecated api.
-      target_compile_options (${test}
-         PRIVATE $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
-      )
-      target_include_directories (${test}
-         PRIVATE
-            ${PROJECT_SOURCE_DIR}/tests
-            ${MONGOC_INTERNAL_INCLUDE_DIRS}
-            $<$<BOOL:${use_shared}>:${BSON_INCLUDE_DIRS}>
-            $<$<NOT:$<BOOL:${use_shared}>>:${BSON_STATIC_INCLUDE_DIRS}>
-      )
-      target_compile_definitions (${test}
-         PUBLIC
-            "MONGOC_COMPILATION"
-            "BSON_COMPILATION"
-            "MCOMMON_NAME_PREFIX=_mongoc_mcommon"
-      )
-   endif ()
-endfunction ()
-
-function (mongoc_add_example example use_shared)
-   if (ENABLE_EXAMPLES)
-      add_executable (${example} ${ARGN})
-      if (${use_shared})
-         target_link_libraries (${example} mongoc_shared ${LIBRARIES})
-      else ()
-         target_link_libraries (${example} mongoc_static ${LIBRARIES})
-      endif ()
-      if (WIN32)
-         target_link_libraries (${example} shlwapi)
-      endif ()
-      set (EXAMPLES ${EXAMPLES} ${example})
-   endif ()
-endfunction ()
 
 set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/corpus-test.c
@@ -1065,6 +980,10 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-with-transaction.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-write-commands.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-write-concern.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mcd-azure-imds.c
+   ${PROJECT_SOURCE_DIR}/tests/test-service-gcp.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mcd-integer.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mcd-rpc.c
    ${PROJECT_SOURCE_DIR}/tests/TestSuite.c
    ${PROJECT_SOURCE_DIR}/tests/unified/operation.c
    ${PROJECT_SOURCE_DIR}/tests/unified/entity-map.c
@@ -1091,11 +1010,68 @@ if (MONGOC_ENABLE_SASL_CYRUS)
    )
 endif ()
 
-mongoc_add_test (test-libmongoc FALSE ${test-libmongoc-sources})
-mongoc_add_test (test-mongoc-gssapi FALSE ${PROJECT_SOURCE_DIR}/tests/test-mongoc-gssapi.c)
-mongoc_add_test (test-mongoc-cache FALSE ${PROJECT_SOURCE_DIR}/tests/test-mongoc-cache.c)
-
 if (ENABLE_TESTS)
+   add_library (test-libmongoc-lib STATIC ${test-libmongoc-sources})
+   if (MSVC AND MSVC_VERSION VERSION_LESS 1900)
+      message (STATUS "Disabling warning C4756 for VS 2013 and older")
+      # Macro constant INFINITY triggers constant arithmetic overflow warnings in
+      # VS 2013, but VS 2013 doesn't support inline warning suppression.
+      # Remove once support for VS 2013 is dropped.
+      target_compile_options(test-libmongoc-lib PRIVATE /wd4756)
+   endif ()
+   target_link_libraries (test-libmongoc-lib PUBLIC mongoc_static)
+   # We have tests that test our deprecated api.
+   target_compile_options (test-libmongoc-lib
+      PRIVATE $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
+   )
+   target_include_directories (test-libmongoc-lib
+      PRIVATE
+         ${PROJECT_SOURCE_DIR}/tests
+         ${BSON_STATIC_INCLUDE_DIRS}
+   )
+   target_compile_definitions (test-libmongoc-lib
+      PUBLIC
+         "MONGOC_COMPILATION"
+         "BSON_COMPILATION"
+         "MCOMMON_NAME_PREFIX=_mongoc_mcommon"
+   )
+
+   function (mongoc_add_test test)
+      add_executable (${test} ${ARGN})
+      target_link_libraries (${test}
+         PUBLIC
+            $<$<C_COMPILER_ID:MSVC>:DbgHelp.dll>
+            mongoc_static
+      )
+      # We have tests that test our deprecated api.
+      target_compile_options (${test}
+         PRIVATE $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
+      )
+      target_include_directories (${test}
+         PRIVATE
+            ${PROJECT_SOURCE_DIR}/tests
+            ${BSON_STATIC_INCLUDE_DIRS}
+      )
+      target_compile_definitions (${test}
+         PUBLIC
+            "MONGOC_COMPILATION"
+            "BSON_COMPILATION"
+            "MCOMMON_NAME_PREFIX=_mongoc_mcommon"
+      )
+   endfunction ()
+
+   mongoc_add_test (test-libmongoc ${PROJECT_SOURCE_DIR}/tests/test-libmongoc-main.c)
+   target_link_libraries (test-libmongoc PUBLIC test-libmongoc-lib)
+
+   mongoc_add_test (test-atlas-executor ${PROJECT_SOURCE_DIR}/tests/test-atlas-executor.c)
+   target_link_libraries (test-atlas-executor PUBLIC test-libmongoc-lib)
+
+   mongoc_add_test (test-mongoc-gssapi ${PROJECT_SOURCE_DIR}/tests/test-mongoc-gssapi.c)
+   mongoc_add_test (test-mongoc-cache ${PROJECT_SOURCE_DIR}/tests/test-mongoc-cache.c)
+   mongoc_add_test (test-azurekms ${PROJECT_SOURCE_DIR}/tests/test-azurekms.c)
+   mongoc_add_test (test-gcpkms ${PROJECT_SOURCE_DIR}/tests/test-gcpkms.c)
+   mongoc_add_test (test-awsauth ${PROJECT_SOURCE_DIR}/tests/test-awsauth.c)
+
    # "make test" doesn't compile tests, so we create "make check" which compiles
    # and runs tests: https://gitlab.kitware.com/cmake/cmake/issues/8774
    add_custom_target (check COMMAND ${CMAKE_CTEST_COMMAND} -V
@@ -1103,66 +1079,81 @@ if (ENABLE_TESTS)
    )
 endif ()
 
-# examples/
-mongoc_add_example (example-client TRUE ${PROJECT_SOURCE_DIR}/examples/example-client.c)
-mongoc_add_example (example-collection-watch TRUE ${PROJECT_SOURCE_DIR}/examples/example-collection-watch.c)
-if (NOT WIN32)
-   mongoc_add_example (example-resume TRUE ${PROJECT_SOURCE_DIR}/examples/example-resume.c)
-endif()
-mongoc_add_example (example-start-at-optime TRUE ${PROJECT_SOURCE_DIR}/examples/example-start-at-optime.c)
-mongoc_add_example (example-command-monitoring TRUE ${PROJECT_SOURCE_DIR}/examples/example-command-monitoring.c)
-mongoc_add_example (example-command-with-opts TRUE ${PROJECT_SOURCE_DIR}/examples/example-command-with-opts.c)
-mongoc_add_example (example-create-indexes TRUE ${PROJECT_SOURCE_DIR}/examples/example-create-indexes.c)
-mongoc_add_example (example-gridfs TRUE ${PROJECT_SOURCE_DIR}/examples/example-gridfs.c)
-mongoc_add_example (example-gridfs-bucket TRUE ${PROJECT_SOURCE_DIR}/examples/example-gridfs-bucket.c)
-if (NOT WIN32 AND ENABLE_EXAMPLES)
-   mongoc_add_example (example-pool TRUE ${PROJECT_SOURCE_DIR}/examples/example-pool.c)
-   target_link_libraries (example-pool Threads::Threads)
+if (ENABLE_EXAMPLES)
+   function (mongoc_add_example example)
+      add_executable (${example} ${ARGN})
+      target_link_libraries (${example} mongoc_shared ${LIBRARIES})
+      if (WIN32)
+         target_link_libraries (${example} shlwapi)
+      endif ()
+      set (EXAMPLES ${EXAMPLES} ${example})
+   endfunction ()
+
+   # examples/
+   mongoc_add_example (example-client ${PROJECT_SOURCE_DIR}/examples/example-client.c)
+   mongoc_add_example (example-collection-watch ${PROJECT_SOURCE_DIR}/examples/example-collection-watch.c)
+   if (NOT WIN32)
+      mongoc_add_example (example-resume ${PROJECT_SOURCE_DIR}/examples/example-resume.c)
+   endif()
+   mongoc_add_example (example-start-at-optime ${PROJECT_SOURCE_DIR}/examples/example-start-at-optime.c)
+   mongoc_add_example (example-command-monitoring ${PROJECT_SOURCE_DIR}/examples/example-command-monitoring.c)
+   mongoc_add_example (example-command-with-opts ${PROJECT_SOURCE_DIR}/examples/example-command-with-opts.c)
+   mongoc_add_example (example-manage-collection-indexes ${PROJECT_SOURCE_DIR}/examples/example-manage-collection-indexes.c)
+   mongoc_add_example (example-gridfs ${PROJECT_SOURCE_DIR}/examples/example-gridfs.c)
+   mongoc_add_example (example-gridfs-bucket ${PROJECT_SOURCE_DIR}/examples/example-gridfs-bucket.c)
+   if (NOT WIN32 AND ENABLE_EXAMPLES)
+      mongoc_add_example (example-pool ${PROJECT_SOURCE_DIR}/examples/example-pool.c)
+      target_link_libraries (example-pool Threads::Threads)
+   endif ()
+   mongoc_add_example (example-scram ${PROJECT_SOURCE_DIR}/examples/example-scram.c)
+   mongoc_add_example (example-sdam-monitoring ${PROJECT_SOURCE_DIR}/examples/example-sdam-monitoring.c)
+   mongoc_add_example (example-session ${PROJECT_SOURCE_DIR}/examples/example-session.c)
+   mongoc_add_example (example-transaction ${PROJECT_SOURCE_DIR}/examples/example-transaction.c)
+   mongoc_add_example (example-update ${PROJECT_SOURCE_DIR}/examples/example-update.c)
+   mongoc_add_example (find-and-modify ${PROJECT_SOURCE_DIR}/examples/find-and-modify.c)
+   mongoc_add_example (hello_mongoc ${PROJECT_SOURCE_DIR}/examples/hello_mongoc.c)
+   mongoc_add_example (mongoc-dump ${PROJECT_SOURCE_DIR}/examples/mongoc-dump.c)
+   mongoc_add_example (mongoc-ping ${PROJECT_SOURCE_DIR}/examples/mongoc-ping.c)
+   mongoc_add_example (mongoc-tail ${PROJECT_SOURCE_DIR}/examples/mongoc-tail.c)
+   mongoc_add_example (example-collection-command ${PROJECT_SOURCE_DIR}/examples/example-collection-command.c)
+
+   # examples/aggregation/
+   mongoc_add_example (aggregation1 ${PROJECT_SOURCE_DIR}/examples/aggregation/aggregation1.c)
+
+   # examples/basic_aggregation/
+   mongoc_add_example (basic-aggregation ${PROJECT_SOURCE_DIR}/examples/basic_aggregation/basic-aggregation.c)
+
+   # examples/bulk/
+   mongoc_add_example (bulk-collation ${PROJECT_SOURCE_DIR}/examples/bulk/bulk-collation.c)
+   mongoc_add_example (bulk1 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk1.c)
+   mongoc_add_example (bulk2 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk2.c)
+   mongoc_add_example (bulk3 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk3.c)
+   mongoc_add_example (bulk4 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk4.c)
+   mongoc_add_example (bulk5 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk5.c)
+   mongoc_add_example (bulk6 ${PROJECT_SOURCE_DIR}/examples/bulk/bulk6.c)
+
+   # examples/common_operations/
+   mongoc_add_example (common-operations ${PROJECT_SOURCE_DIR}/examples/common_operations/common-operations.c)
+
+   # examples/find_and_modify_with_opts/
+   mongoc_add_example (fam ${PROJECT_SOURCE_DIR}/examples/find_and_modify_with_opts/fam.c)
+
+   if (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION)
+      mongoc_add_example (client-side-encryption-schema-map ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-schema-map.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+      mongoc_add_example (client-side-encryption-server-schema ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-server-schema.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+      mongoc_add_example (client-side-encryption-explicit ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-explicit.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+      mongoc_add_example (client-side-encryption-auto-decryption ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-auto-decryption.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+      mongoc_add_example (client-side-encryption-doc-snippets ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-doc-snippets.c)
+   endif ()
+
+   # examples/tutorial
+   mongoc_add_example (executing ${PROJECT_SOURCE_DIR}/examples/tutorial/executing.c)
 endif ()
-mongoc_add_example (example-scram TRUE ${PROJECT_SOURCE_DIR}/examples/example-scram.c)
-mongoc_add_example (example-sdam-monitoring TRUE ${PROJECT_SOURCE_DIR}/examples/example-sdam-monitoring.c)
-mongoc_add_example (example-session TRUE ${PROJECT_SOURCE_DIR}/examples/example-session.c)
-mongoc_add_example (example-transaction TRUE ${PROJECT_SOURCE_DIR}/examples/example-transaction.c)
-mongoc_add_example (example-update TRUE ${PROJECT_SOURCE_DIR}/examples/example-update.c)
-mongoc_add_example (find-and-modify TRUE ${PROJECT_SOURCE_DIR}/examples/find-and-modify.c)
-mongoc_add_example (hello_mongoc TRUE ${PROJECT_SOURCE_DIR}/examples/hello_mongoc.c)
-mongoc_add_example (mongoc-dump TRUE ${PROJECT_SOURCE_DIR}/examples/mongoc-dump.c)
-mongoc_add_example (mongoc-ping TRUE ${PROJECT_SOURCE_DIR}/examples/mongoc-ping.c)
-mongoc_add_example (mongoc-tail TRUE ${PROJECT_SOURCE_DIR}/examples/mongoc-tail.c)
 
-# examples/aggregation/
-mongoc_add_example (aggregation1 TRUE ${PROJECT_SOURCE_DIR}/examples/aggregation/aggregation1.c)
-
-# examples/basic_aggregation/
-mongoc_add_example (basic-aggregation TRUE ${PROJECT_SOURCE_DIR}/examples/basic_aggregation/basic-aggregation.c)
-
-# examples/bulk/
-mongoc_add_example (bulk-collation TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk-collation.c)
-mongoc_add_example (bulk1 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk1.c)
-mongoc_add_example (bulk2 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk2.c)
-mongoc_add_example (bulk3 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk3.c)
-mongoc_add_example (bulk4 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk4.c)
-mongoc_add_example (bulk5 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk5.c)
-mongoc_add_example (bulk6 TRUE ${PROJECT_SOURCE_DIR}/examples/bulk/bulk6.c)
-
-# examples/common_operations/
-mongoc_add_example (common-operations TRUE ${PROJECT_SOURCE_DIR}/examples/common_operations/common-operations.c)
-
-# examples/find_and_modify_with_opts/
-mongoc_add_example (fam TRUE ${PROJECT_SOURCE_DIR}/examples/find_and_modify_with_opts/fam.c)
-
-if (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION)
-   mongoc_add_example (client-side-encryption-schema-map TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-schema-map.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-   mongoc_add_example (client-side-encryption-server-schema TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-server-schema.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-   mongoc_add_example (client-side-encryption-explicit TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-explicit.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-   mongoc_add_example (client-side-encryption-auto-decryption TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-auto-decryption.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-   mongoc_add_example (client-side-encryption-doc-snippets TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-doc-snippets.c)
-endif ()
-
-file (COPY ${PROJECT_SOURCE_DIR}/tests/binary DESTINATION ${PROJECT_BINARY_DIR}/tests)
-file (COPY ${PROJECT_SOURCE_DIR}/tests/json DESTINATION ${PROJECT_BINARY_DIR}/tests)
-file (COPY ${PROJECT_SOURCE_DIR}/tests/x509gen DESTINATION ${PROJECT_BINARY_DIR}/tests)
-file (COPY ${PROJECT_SOURCE_DIR}/tests/release_files DESTINATION ${PROJECT_BINARY_DIR}/tests)
+#! file (COPY ${PROJECT_SOURCE_DIR}/tests/binary DESTINATION ${PROJECT_BINARY_DIR}/tests)
+#! file (COPY ${PROJECT_SOURCE_DIR}/tests/json DESTINATION ${PROJECT_BINARY_DIR}/tests)
+#! file (COPY ${PROJECT_SOURCE_DIR}/tests/x509gen DESTINATION ${PROJECT_BINARY_DIR}/tests)
+#! file (COPY ${PROJECT_SOURCE_DIR}/tests/release_files DESTINATION ${PROJECT_BINARY_DIR}/tests)
 
 if (MONGOC_ENABLE_STATIC_INSTALL)
    set (TARGETS_TO_INSTALL mongoc_shared mongoc_static)
@@ -1174,7 +1165,6 @@ set (MONGOC_HEADER_INSTALL_DIR
    "${CMAKE_INSTALL_INCLUDEDIR}/libmongoc-${MONGOC_API_VERSION}"
 )
 
-if(FALSE) #!
 install (
    TARGETS ${TARGETS_TO_INSTALL} ${EXAMPLES}
    EXPORT mongoc-targets
@@ -1201,7 +1191,6 @@ if (ENABLE_APPLE_FRAMEWORK)
       DESTINATION "${CMAKE_INSTALL_BINDIR}/mongoc.framework/Modules/"
    )
 endif ()
-endif() #!
 
 # Define pkg-config files
 set (VERSION "${MONGOC_VERSION}")
@@ -1277,18 +1266,27 @@ export (EXPORT mongoc-targets
 )
 endif() #!
 
+if(FALSE) #!
+if (TARGET mcd_rpc)
+   # Note: the (mongo::)bson_static target must be included separately via find_package or include.
+   export (
+      TARGETS mcd_rpc
+      NAMESPACE mongo::
+      FILE "${CMAKE_CURRENT_BINARY_DIR}/mongoc/mcd-rpc-targets.cmake"
+   )
+endif ()
+endif() #!
+
 configure_file (src/mongoc-config.cmake
    "${CMAKE_CURRENT_BINARY_DIR}/mongoc/mongoc-${MONGOC_API_VERSION}-config.cmake"
    @ONLY
 )
 
-if(FALSE) #!
 install (EXPORT mongoc-targets
    NAMESPACE mongo::
    FILE mongoc-targets.cmake
    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mongoc-${MONGOC_API_VERSION}
 )
-endif() #!
 
 install (
    FILES
@@ -1315,9 +1313,9 @@ endif ()
 
 add_subdirectory (build)
 # sub-directory 'doc' was already included above
-add_subdirectory (examples)
+#! add_subdirectory (examples)
 add_subdirectory (src)
-add_subdirectory (tests)
+#! add_subdirectory (tests)
 
 set_local_dist (src_libmongoc_DIST_local
    CMakeLists.txt

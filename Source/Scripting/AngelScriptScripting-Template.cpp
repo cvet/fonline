@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 // ReSharper disable CppUseAuto
 // ReSharper disable CppMemberFunctionMayBeConst
 // ReSharper disable CppClangTidyClangDiagnosticOldStyleCast
+// ReSharper disable CppJoinDeclarationAndAssignment
 
 ///@ CodeGen Template AngelScript
 
@@ -84,7 +85,6 @@
 #include "as_context.h"
 #include "datetime/datetime.h"
 #include "preprocessor.h"
-#include "scriptany/scriptany.h"
 #include "scriptarray.h"
 #include "scriptarray/scriptarray.h"
 #include "scriptdictionary/scriptdictionary.h"
@@ -306,7 +306,8 @@ struct ASContextExtendedData
     std::string Info {};
     asIScriptContext* Parent {};
     time_point SuspendEndTime {};
-#ifdef TRACY_ENABLE
+    Entity* ValidCheck {};
+#if FO_TRACY
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
 };
@@ -333,7 +334,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         static_cast<asCContext*>(ctx)->Ext = new ASContextExtendedData();
         auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.ScriptCallCacheEntries = &ScriptCallCacheEntries;
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         ctx_ext.TracyExecutionCalls.reserve(64);
 #endif
 
@@ -389,6 +390,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         ctx_ext.Parent = nullptr;
         ctx_ext.Info.clear();
         ctx_ext.SuspendEndTime = {};
+        ctx_ext.ValidCheck = {};
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -420,7 +422,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         {
             ctx_ext.ExecutionActive = true;
             ctx_ext.ExecutionCalls = 0;
-#ifdef TRACY_ENABLE
+#if FO_TRACY
             ctx_ext.TracyExecutionCalls.clear();
 #endif
 
@@ -432,9 +434,22 @@ struct SCRIPTING_CLASS::AngelScriptImpl
                 }
             });
 
+            const auto is_suspended_execution = ctx->GetState() == asEXECUTION_SUSPENDED;
+            const auto execution_time = TimeMeter();
+
             exec_result = ctx->Execute();
 
-#ifdef TRACY_ENABLE
+            const auto execution_duration = execution_time.GetDuration();
+
+            if (execution_duration >= std::chrono::milliseconds {GameEngine->Settings.ScriptOverrunReportTime}) {
+#if !FO_DEBUG
+                WriteLog("Script execution overrun: {} ({}{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended at start" : "");
+#else
+                UNUSED_VARIABLE(is_suspended_execution);
+#endif
+            }
+
+#if FO_TRACY
             while (!ctx_ext.TracyExecutionCalls.empty()) {
                 ___tracy_emit_zone_end(ctx_ext.TracyExecutionCalls.back());
                 ctx_ext.TracyExecutionCalls.pop_back();
@@ -487,12 +502,18 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
 
         vector<asIScriptContext*> resume_contexts;
+        vector<asIScriptContext*> finish_contexts;
         const auto time = GameEngine->GameTime.FrameTime();
 
         for (auto* ctx : BusyContexts) {
             auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
             if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && time >= ctx_ext.SuspendEndTime) {
-                resume_contexts.push_back(ctx);
+                if (ctx_ext.ValidCheck != nullptr && ctx_ext.ValidCheck->IsDestroyed()) {
+                    finish_contexts.emplace_back(ctx);
+                }
+                else {
+                    resume_contexts.emplace_back(ctx);
+                }
             }
         }
 
@@ -505,6 +526,10 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+        }
+
+        for (auto* ctx : finish_contexts) {
+            ReturnContext(ctx);
         }
     }
 
@@ -554,7 +579,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         PushStackTrace(storage.SrcLoc);
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
@@ -565,7 +590,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         PushStackTrace(storage.SrcLoc);
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
@@ -587,7 +612,7 @@ static void AngelScriptEndCall(asIScriptContext* ctx)
 
         ctx_ext.ExecutionCalls--;
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         ___tracy_emit_zone_end(ctx_ext.TracyExecutionCalls.back());
         ctx_ext.TracyExecutionCalls.pop_back();
 #endif
@@ -648,7 +673,7 @@ template<typename T, typename T2 = T>
 
     UNUSED_VARIABLE(as_engine);
 
-    if (as_array == nullptr || as_array->GetSize() == 0u) {
+    if (as_array == nullptr || as_array->GetSize() == 0) {
         return {};
     }
 
@@ -669,6 +694,8 @@ template<typename T, typename T2 = T>
 [[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, CScriptArray* as_array)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(as_engine);
 
     as_array->Resize(0);
 
@@ -721,10 +748,12 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    UNUSED_VARIABLE(as_engine);
 
-    if (as_dict == nullptr || as_dict->GetSize() == 0u) {
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
+
+    if (as_dict == nullptr || as_dict->GetSize() == 0) {
         return {};
     }
 
@@ -747,8 +776,10 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    UNUSED_VARIABLE(as_engine);
+
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
 
     as_dict->Clear();
 
@@ -766,8 +797,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
 
     auto* as_dict = CreateASDict(as_engine, type);
 
@@ -825,11 +856,20 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     if (type_name == "hstring") {
         return _str("{}", *static_cast<hstring*>(ptr));
     }
+    if (type_name == "any") {
+        return _str("{}", *static_cast<any_t*>(ptr));
+    }
+    if (type_name == IDENT_T_NAME) {
+        return _str("{}", *static_cast<ident_t*>(ptr));
+    }
+    if (type_name == TICK_T_NAME) {
+        return _str("{}", *static_cast<tick_t*>(ptr));
+    }
     return _str("{}", type_name);
 }
 #endif
 
-[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, NameResolver& name_resolver) -> hstring
+[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
 
@@ -849,11 +889,11 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
         func_name = _str("{}::{}", func->GetNamespace(), func->GetName()).str();
     }
 
-    return name_resolver.ToHashedString(func_name);
+    return hash_resolver.ToHashedString(func_name);
 }
 
 #if !COMPILER_MODE
-static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -882,8 +922,14 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(double*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
         {type_index(typeid(hstring)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
         {type_index(typeid(string)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
+        {type_index(typeid(any_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
+        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
+        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
         {type_index(typeid(hstring*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
         {type_index(typeid(string*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
+        {type_index(typeid(any_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<any_t*>(ptr)); }},
+        {type_index(typeid(ident_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ident_t*>(ptr)); }},
+        {type_index(typeid(tick_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<tick_t*>(ptr)); }},
 #if SERVER_SCRIPTING
         {type_index(typeid(Player*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
         {type_index(typeid(Item*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
@@ -920,6 +966,11 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(vector<uint64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
         {type_index(typeid(vector<float>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
         {type_index(typeid(vector<double>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
+        {type_index(typeid(vector<string>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
+        {type_index(typeid(vector<hstring>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
+        {type_index(typeid(vector<any_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "any[]", *static_cast<vector<any_t>*>(ptr))); }},
+        {type_index(typeid(vector<ident_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), IDENT_T_NAME "[]", *static_cast<vector<ident_t>*>(ptr))); }},
+        {type_index(typeid(vector<tick_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), TICK_T_NAME "[]", *static_cast<vector<tick_t>*>(ptr))); }},
     };
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
@@ -934,6 +985,11 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(uint64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
         {type_index(typeid(float)), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
         {type_index(typeid(double)), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
+        {type_index(typeid(string)), [](asIScriptContext* ctx, void* ptr) { *static_cast<string*>(ptr) = *static_cast<string*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(hstring)), [](asIScriptContext* ctx, void* ptr) { *static_cast<hstring*>(ptr) = *static_cast<hstring*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(any_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<any_t*>(ptr) = *static_cast<any_t*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<ident_t*>(ptr) = *static_cast<ident_t*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<tick_t*>(ptr) = *static_cast<tick_t*>(ctx->GetReturnObject()); }},
     };
 
     try {
@@ -953,7 +1009,7 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
 
         auto* ctx = script_sys->PrepareContext(func);
 
-        if (args.size() != 0u) {
+        if (args.size() != 0) {
             auto it = args.begin();
             for (asUINT i = 0; i < args.size(); i++, it++) {
                 CtxSetValueMap[type_index(*func_desc->ArgsType[i])](ctx, i, *it);
@@ -988,7 +1044,7 @@ template<typename TRet, typename... Args>
     func_desc->ArgsType = {&typeid(Args)...};
     func_desc->Delegate = func->GetDelegateObject() != nullptr;
     func_desc->Call = [script_sys, func_desc, func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
-        return ASScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
+        return AngelScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
     };
     return ScriptFunc<TRet, Args...>(func_desc);
 }
@@ -1030,11 +1086,11 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
-            (*static_cast<hstring*>(construct_addr)).~hstring();
+            static_cast<hstring*>(construct_addr)->~hstring();
         }
     }
     else if (prop->IsString()) {
-        (*static_cast<string*>(construct_addr)).~string();
+        static_cast<string*>(construct_addr)->~string();
     }
     else if (prop->IsArray()) {
         (*static_cast<CScriptArray**>(construct_addr))->Release();
@@ -1053,8 +1109,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
-        const auto& name_resolver = prop->GetRegistrator()->GetNameResolver();
-        return name_resolver.ResolveHash(hash);
+        const auto& hash_resolver = prop->GetRegistrator()->GetHashResolver();
+        return hash_resolver.ResolveHash(hash);
     };
     const auto resolve_enum = [](const void* eptr, size_t elen) -> int {
         int result = 0;
@@ -1088,7 +1144,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         auto* arr = CreateASArray(as_engine, prop->GetFullTypeName().c_str());
 
         if (prop->IsArrayOfString()) {
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
@@ -1108,13 +1164,13 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else if (prop->IsBaseTypeHash()) {
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
-                for (const auto i : xrange(count)) {
+                for (uint i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
                     arr->SetValue(i, (void*)&hvalue);
 
@@ -1123,25 +1179,36 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else if (prop->IsBaseTypeEnum()) {
-            if (data_size != 0u) {
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
                 if (prop->GetBaseSize() == 4) {
                     std::memcpy(arr->At(0), data, data_size);
                 }
                 else {
                     auto* dest = static_cast<int*>(arr->At(0));
-                    for (const auto i : xrange(count)) {
+                    for (uint i = 0; i < arr_size; i++) {
                         std::memcpy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
                 }
             }
         }
+        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    std::memcpy(arr->At(i), data, prop->GetBaseSize());
+                    data += prop->GetBaseSize();
+                }
+            }
+        }
         else {
-            if (data_size != 0u) {
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
                 std::memcpy(arr->At(0), data, data_size);
             }
@@ -1152,7 +1219,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
     else if (prop->IsDict()) {
         CScriptDict* dict = CreateASDict(as_engine, prop->GetFullTypeName().c_str());
 
-        if (data_size != 0u) {
+        if (data_size != 0) {
             if (prop->IsDictOfArray()) {
                 const auto* data_end = data + data_size;
 
@@ -1166,7 +1233,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                     auto* arr = CreateASArray(as_engine, _str("{}[]", prop->GetBaseTypeName()).c_str());
 
-                    if (arr_size != 0u) {
+                    if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
                             arr->Resize(arr_size);
 
@@ -1185,7 +1252,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                             arr->Resize(arr_size);
 
-                            for (const auto i : xrange(arr_size)) {
+                            for (uint i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
                                 arr->SetValue(i, (void*)&hvalue);
 
@@ -1200,12 +1267,20 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                             else {
                                 auto* dest = static_cast<int*>(arr->At(0));
-                                for (const auto i : xrange(arr_size)) {
+                                for (uint i = 0; i < arr_size; i++) {
                                     std::memcpy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
 
                             data += arr_size * prop->GetBaseSize();
+                        }
+                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                            arr->Resize(arr_size);
+
+                            for (uint i = 0; i < arr_size; i++) {
+                                std::memcpy(arr->At(i), data, prop->GetBaseSize());
+                                data += prop->GetBaseSize();
+                            }
                         }
                         else {
                             arr->Resize(arr_size);
@@ -1332,7 +1407,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         if (prop->IsArrayOfString()) {
             const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
 
-            if (arr_size != 0u) {
+            if (arr_size != 0) {
                 // Calculate size
                 size_t data_size = sizeof(uint);
 
@@ -1347,14 +1422,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 std::memcpy(buf, &arr_size, sizeof(arr_size));
                 buf += sizeof(uint);
 
-                for (const auto i : xrange(arr_size)) {
+                for (uint i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
                     uint str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
-                    if (str_size != 0u) {
+                    if (str_size != 0) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1362,13 +1437,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else {
-            size_t data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
+            const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (const auto i : xrange(arr->GetSize())) {
+                    for (uint i = 0; i < arr_size; i++) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                         std::memcpy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
@@ -1381,11 +1457,19 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
-                        for (const auto i : xrange(arr->GetSize())) {
+                        for (uint i = 0; i < arr_size; i++) {
                             const auto e = *static_cast<const int*>(arr->At(i));
                             std::memcpy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
+                    }
+                }
+                else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                    auto* buf = prop_data.Alloc(data_size);
+
+                    for (uint i = 0; i < arr_size; i++) {
+                        std::memcpy(buf, arr->At(i), prop->GetBaseSize());
+                        buf += prop->GetBaseSize();
                     }
                 }
                 else {
@@ -1397,15 +1481,15 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     else if (prop->IsDict()) {
         const auto* dict = *static_cast<CScriptDict**>(as_obj);
         if (prop->IsDictOfArray()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
+            if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
-                size_t data_size = 0u;
+                size_t data_size = 0;
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += prop->GetDictKeySize() + sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
@@ -1437,11 +1521,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
                     buf += prop->GetDictKeySize();
 
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     std::memcpy(buf, &arr_size, sizeof(uint));
                     buf += sizeof(arr_size);
 
-                    if (arr_size != 0u) {
+                    if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto& str = *static_cast<const string*>(arr->At(i));
@@ -1450,9 +1534,9 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 std::memcpy(buf, &str_size, sizeof(uint));
                                 buf += sizeof(str_size);
 
-                                if (str_size != 0u) {
+                                if (str_size != 0) {
                                     std::memcpy(buf, str.c_str(), str_size);
-                                    buf += arr_size;
+                                    buf += str_size;
                                 }
                             }
                         }
@@ -1476,6 +1560,12 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 }
                             }
                         }
+                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                std::memcpy(buf, arr->At(i), prop->GetBaseSize());
+                                buf += prop->GetBaseSize();
+                            }
+                        }
                         else {
                             std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
                             buf += arr_size * prop->GetBaseSize();
@@ -1485,9 +1575,9 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else if (prop->IsDictOfString()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
+            if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
-                size_t data_size = 0u;
+                size_t data_size = 0;
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
@@ -1520,7 +1610,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     std::memcpy(buf, &str_size, sizeof(uint));
                     buf += sizeof(str_size);
 
-                    if (str_size != 0u) {
+                    if (str_size != 0) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1533,7 +1623,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             const auto whole_element_size = key_element_size + value_element_size;
             const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
 
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
 
                 vector<pair<void*, void*>> dict_map;
@@ -1572,12 +1662,12 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     return prop_data;
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
         RUNTIME_ASSERT(value.length() <= 0xFFFF);
         out_buf.Write(static_cast<uint16>(value.length()));
         out_buf.Push(value.data(), value.length());
@@ -1585,12 +1675,15 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     else if constexpr (std::is_same_v<T, hstring>) {
         out_buf.Write(value);
     }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T>) {
         out_buf.Write(value);
+    }
+    else if constexpr (is_strong_type_v<T>) {
+        out_buf.Write(value.underlying_value());
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
@@ -1604,8 +1697,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
@@ -1620,26 +1713,29 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolver)
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
         const auto len = in_buf.Read<uint16>();
         value.resize(len);
         in_buf.Pop(value.data(), len);
     }
     else if constexpr (std::is_same_v<T, hstring>) {
-        value = in_buf.Read<hstring>(name_resolver);
+        value = in_buf.Read<hstring>(hash_resolver);
     }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T>) {
         value = in_buf.Read<T>();
+    }
+    else if constexpr (is_strong_type_v<T>) {
+        value = T {in_buf.Read<typename T::underlying_type>()};
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name_resolver)
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -1648,16 +1744,16 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name
 
     for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value;
-        ReadNetBuf(in_buf, inner_value, name_resolver);
+        ReadNetBuf(in_buf, inner_value, hash_resolver);
         value.emplace_back(inner_value);
     }
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name_resolver)
+static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -1665,9 +1761,9 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 
     for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
-        ReadNetBuf(in_buf, inner_value_first, name_resolver);
+        ReadNetBuf(in_buf, inner_value_first, hash_resolver);
         U inner_value_second;
-        ReadNetBuf(in_buf, inner_value_second, name_resolver);
+        ReadNetBuf(in_buf, inner_value_second, hash_resolver);
         value.emplace(inner_value_first, inner_value_second);
     }
 }
@@ -1691,7 +1787,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 template<typename T>
 static void Entity_AddRef(const T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->AddRef();
@@ -1704,7 +1800,7 @@ static void Entity_AddRef(const T* self)
 template<typename T>
 static void Entity_Release(const T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->Release();
@@ -1717,7 +1813,7 @@ static void Entity_Release(const T* self)
 template<typename T>
 static auto Entity_IsDestroyed(const T* self) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -1731,7 +1827,7 @@ static auto Entity_IsDestroyed(const T* self) -> bool
 template<typename T>
 static auto Entity_IsDestroying(const T* self) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -1831,6 +1927,7 @@ static void Global_Assert_0(bool condition)
         throw ScriptException("Assertion failed");
     }
 #else
+    UNUSED_VARIABLE(condition);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1845,6 +1942,9 @@ static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
         throw ScriptException("Assertion failed", obj_info1);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1860,6 +1960,11 @@ static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1876,6 +1981,13 @@ static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1893,6 +2005,15 @@ static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1911,6 +2032,17 @@ static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1930,6 +2062,19 @@ static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1950,6 +2095,21 @@ static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1971,6 +2131,23 @@ static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1993,6 +2170,25 @@ static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2016,6 +2212,27 @@ static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
+    UNUSED_VARIABLE(obj10Ptr);
+    UNUSED_VARIABLE(obj10);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2027,6 +2244,7 @@ static void Global_ThrowException_0(string message)
 #if !COMPILER_MODE
     throw ScriptException(message);
 #else
+    UNUSED_VARIABLE(message);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2039,6 +2257,9 @@ static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
     throw ScriptException(message, obj_info1);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2052,6 +2273,11 @@ static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
     throw ScriptException(message, obj_info1, obj_info2);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2066,6 +2292,13 @@ static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2081,6 +2314,15 @@ static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2097,6 +2339,17 @@ static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2114,6 +2367,19 @@ static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2132,6 +2398,21 @@ static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2151,6 +2432,23 @@ static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2171,6 +2469,25 @@ static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2192,6 +2509,27 @@ static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, vo
     auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
+    UNUSED_VARIABLE(obj10Ptr);
+    UNUSED_VARIABLE(obj10);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2208,6 +2546,7 @@ static void Global_Yield(uint time)
     ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 #else
+    UNUSED_VARIABLE(time);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2290,6 +2629,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         return prop_data;
     });
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2371,6 +2711,9 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         ENTITY_VERIFY(entity);
 
         auto* ctx = script_sys->PrepareContext(func);
+        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+
+        ctx_ext.ValidCheck = entity;
 
         if constexpr (std::is_standard_layout_v<T>) {
             auto* actual_entity = dynamic_cast<BaseEntity*>(entity);
@@ -2412,9 +2755,11 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         else {
             // Will be run from scheduler
             UNUSED_VARIABLE(has_value_ref);
+            UNUSED_VARIABLE(prop_data);
         }
     });
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2422,12 +2767,13 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 template<typename T>
 static void Global_Get(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* ptr = *static_cast<T**>(gen->GetAuxiliary());
-    *(T**)gen->GetAddressOfReturnLocation() = ptr;
+    const auto& value = *static_cast<T*>(gen->GetAuxiliary());
+    *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2435,13 +2781,14 @@ static void Global_Get(asIScriptGeneric* gen)
 template<typename T>
 static auto Entity_GetSelfForEvent(T* entity) -> T*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // Don't verify entity for destroying
     ENTITY_VERIFY_NULL(entity);
     return entity;
 #else
+    UNUSED_VARIABLE(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2515,7 +2862,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 }
 
 template<typename T>
-static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
+static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 {
     STACK_TRACE_ENTRY();
 
@@ -2537,7 +2884,7 @@ static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
         throw ScriptException("Property is disabled");
     }
 
-    return entity->GetValueAsFloat(prop);
+    return entity->GetValueAsAny(prop);
 
 #else
     UNUSED_VARIABLE(entity);
@@ -2547,7 +2894,7 @@ static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 }
 
 template<typename T>
-static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
+static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
 {
     STACK_TRACE_ENTRY();
 
@@ -2572,7 +2919,7 @@ static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
         throw ScriptException("Property is read only");
     }
 
-    entity->SetValueAsFloat(prop, value);
+    entity->SetValueAsAny(prop, value);
 
 #else
     UNUSED_VARIABLE(entity);
@@ -2585,7 +2932,7 @@ static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 template<typename T>
 static void Property_GetComponent(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
@@ -2677,7 +3024,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 template<typename T>
 static auto EntityDownCast(T* a) -> Entity*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -2691,7 +3038,7 @@ static auto EntityDownCast(T* a) -> Entity*
 template<typename T>
 static auto EntityUpCast(Entity* a) -> T*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -2718,18 +3065,24 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
-static void HashedString_CreateFromString(asIScriptGeneric* gen)
+static void HashedString_IsValidHash(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
+    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    auto hstr = engine->ToHashedString(*str);
-    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+    bool failed = false;
+    auto hstr = engine->ResolveHash(hash, &failed);
+    UNUSED_VARIABLE(hstr);
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2742,6 +3095,8 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2808,6 +3163,96 @@ static auto HashedString_GetUHash(const hstring& self) -> uint
     return self.as_uint();
 }
 
+static void Any_Construct(any_t* self)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    new (self) any_t();
+}
+
+static void Any_Destruct(any_t* self)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self->~any_t();
+}
+
+template<typename T>
+static void Any_ConstructFrom(any_t* self, const T& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) any_t {_str("{}", other).str()};
+}
+
+static void Any_ConstructCopy(any_t* self, const any_t& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) any_t(other);
+}
+
+static void Any_Assign(any_t& self, const any_t& other)
+{
+    STACK_TRACE_ENTRY();
+
+    self = other;
+}
+
+static auto Any_Equals(const any_t& self, const any_t& other) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return self == other;
+}
+
+template<typename T>
+static auto Any_Conv(const any_t& self) -> T
+{
+    STACK_TRACE_ENTRY();
+
+    if constexpr (std::is_same_v<T, bool>) {
+        return _str(self).toBool();
+    }
+    else if constexpr (is_strong_type_v<T>) {
+        return T {static_cast<typename T::underlying_type>(_str(self).toInt64())};
+    }
+    else if constexpr (std::is_integral_v<T>) {
+        return static_cast<T>(_str(self).toInt64());
+    }
+    else if constexpr (std::is_floating_point_v<T>) {
+        return static_cast<T>(_str(self).toDouble());
+    }
+    else if constexpr (std::is_same_v<T, string>) {
+        return self;
+    }
+}
+
+template<typename T>
+static void Any_ConvGen(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    if constexpr (std::is_same_v<T, hstring>) {
+        auto* self = static_cast<any_t*>(gen->GetObject());
+        auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+        auto hstr = engine->ToHashedString(*self);
+        new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+    }
+#else
+    UNUSED_VARIABLE(gen);
+#endif
+}
+
+template<typename T>
+static auto Any_ConvFrom(const T& self) -> any_t
+{
+    STACK_TRACE_ENTRY();
+
+    return any_t {_str("{}", self).str()};
+}
+
 template<typename T>
 static void StrongType_Construct(T* self)
 {
@@ -2841,27 +3286,62 @@ static auto StrongType_Equals(const T& self, const T& other) -> bool
 }
 
 template<typename T>
-static auto StrongType_EqualsUnderlying(const T& self, const typename T::underlying_type& other) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return self.underlying_value() == other;
-}
-
-template<typename T>
 static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_type
 {
+    NO_STACK_TRACE_ENTRY();
+
+    return self.underlying_value();
+}
+
+template<typename T>
+static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
+{
     STACK_TRACE_ENTRY();
 
     return self.underlying_value();
 }
 
 template<typename T>
-static auto StrongType_GetUnderlying(const T& self) -> typename T::underlying_type
+static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 {
     STACK_TRACE_ENTRY();
 
-    return self.underlying_value();
+    self.underlying_value() = value;
+}
+
+template<typename T>
+static auto StrongType_GetStr(const T& self) -> string
+{
+    STACK_TRACE_ENTRY();
+
+    return _str("{}", self).str();
+}
+
+template<typename T>
+static auto StrongType_AnyConv(const T& self) -> any_t
+{
+    STACK_TRACE_ENTRY();
+
+    return any_t {_str("{}", self).str()};
+}
+
+static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) ucolor {rgba};
+}
+
+static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
+    const auto clamped_g = static_cast<uint8>(std::clamp(g, 0, 255));
+    const auto clamped_b = static_cast<uint8>(std::clamp(b, 0, 255));
+    const auto clamped_a = static_cast<uint8>(std::clamp(a, 0, 255));
+
+    new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 }
 
 template<typename T, typename U>
@@ -2873,6 +3353,8 @@ static void CustomEntity_Create(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     T* entity = engine->EntityMngr.CreateCustomEntity(U::ENTITY_CLASS_NAME);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2887,6 +3369,8 @@ static void CustomEntity_Get(asIScriptGeneric* gen)
     T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
     ENTITY_VERIFY(entity);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2899,6 +3383,8 @@ static void CustomEntity_DeleteById(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
     engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2914,6 +3400,8 @@ static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
     if (entity != nullptr) {
         engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity->GetId());
     }
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2939,6 +3427,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
 
     new (gen->GetAddressOfReturnLocation()) int(enum_value);
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2965,6 +3454,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
 
     new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2987,7 +3477,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 
 #if COMPILER_MODE
     extern unordered_set<string> CompilerPassedMessages;
-    if (CompilerPassedMessages.count(formatted_message) == 0u) {
+    if (CompilerPassedMessages.count(formatted_message) == 0) {
         CompilerPassedMessages.insert(formatted_message);
     }
     else {
@@ -3007,6 +3497,10 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
     STACK_TRACE_ENTRY();
+
+#if COMPILER_VALIDATION_MODE
+    UNUSED_VARIABLE(resources);
+#endif
 
 #if !COMPILER_MODE
     FOEngine* game_engine = _engine;
@@ -3052,7 +3546,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ScriptExtensions::RegisterScriptArrayExtensions(engine);
     RegisterStdString(engine);
     ScriptExtensions::RegisterScriptStdStringExtensions(engine);
-    RegisterScriptAny(engine);
     RegisterScriptDictionary(engine);
     RegisterScriptDict(engine);
     ScriptExtensions::RegisterScriptDictExtensions(engine);
@@ -3092,10 +3585,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_GENERIC(HashedString_ConstructFromString), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromString(const string &in)", SCRIPT_GENERIC(HashedString_CreateFromString), SCRIPT_GENERIC_CONV, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", SCRIPT_GENERIC(HashedString_IsValidHash), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring& opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
@@ -3103,6 +3595,44 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
+    static hstring EMPTY_hstring;
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", SCRIPT_GENERIC((Global_Get<hstring>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(EMPTY_hstring)));
+
+    // Register any
+    AS_VERIFY(engine->RegisterObjectType("any", sizeof(any_t), asOBJ_VALUE | asGetTypeTraits<string>()));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Construct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const any &in)", SCRIPT_FUNC_THIS(Any_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const bool &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, game_engine));
+
+    AS_VERIFY(engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
+    ScriptExtensions::RegisterScriptStdStringAnyExtensions(engine);
 
     // Global functions
     AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_FUNC(Global_Assert_0), SCRIPT_FUNC_CONV));
@@ -3129,19 +3659,40 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_FUNC(Global_ThrowException_10), SCRIPT_FUNC_CONV));
     AS_VERIFY(engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
-    // Strong type registrator
-#define REGISTER_HARD_STRONG_TYPE(type, underlying_type) \
-    AS_VERIFY(engine->RegisterObjectType(#type, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #type " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #underlying_type " &in) const", SCRIPT_FUNC_THIS((StrongType_EqualsUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV))
+    // Strong type registrators
+#define REGISTER_HARD_STRONG_TYPE(name, type, underlying_type) \
+    if (strong_type_registered.count(name) == 0) { \
+        strong_type_registered.emplace(name); \
+        AS_VERIFY(engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
+        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, #underlying_type " get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, "void set_value(" #underlying_type ")", SCRIPT_FUNC_THIS(StrongType_SetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
+        static type ZERO_##type; \
+        AS_VERIFY(engine->RegisterGlobalFunction(_str(name " get_ZERO_{}()", _str(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
+    }
 
-#define REGISTER_RELAXED_STRONG_TYPE(type, underlying_type) \
-    REGISTER_HARD_STRONG_TYPE(type, underlying_type); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_RELAXED_STRONG_TYPE(name, type, underlying_type) \
+    if (strong_type_registered.count(name) == 0) { \
+        REGISTER_HARD_STRONG_TYPE(name, type, underlying_type); \
+        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    }
+
+    unordered_set<string> strong_type_registered;
+
+    // Register ucolor
+    REGISTER_HARD_STRONG_TYPE("ucolor", ucolor, uint);
+    AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(uint rgba)", SCRIPT_FUNC_THIS(Ucolor_ConstructRawRgba), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(int r, int g, int b, int a = 255)", SCRIPT_FUNC_THIS(Ucolor_ConstructRgba), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 red", offsetof(ucolor, comp.r)));
+    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 green", offsetof(ucolor, comp.g)));
+    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
+    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name, real_class) \
@@ -3164,8 +3715,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define REGISTER_GETSET_ENTITY(class_name, prop_class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property prop, int value)", SCRIPT_FUNC_THIS((Property_SetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property prop, float value)", SCRIPT_FUNC_THIS((Property_SetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "any GetAsAny(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsAny(" prop_class_name "Property prop, any value)", SCRIPT_FUNC_THIS((Property_SetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_PROPS(class_name, real_class) \
     AS_VERIFY(engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, game_engine)); \
@@ -3186,7 +3737,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "ident_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3197,10 +3748,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", SCRIPT_GENERIC((CustomEntity_Create<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(ident_t id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(ident_t id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(" IDENT_T_NAME " id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" IDENT_T_NAME " id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", SCRIPT_GENERIC((CustomEntity_DeleteByRef<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "ident_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3218,7 +3769,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Proto" class_name, proto_real_class); \
     REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Proto" class_name, class_name, proto_real_class); \
-    if (entity_has_abstract.count(class_name) != 0u) { \
+    if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Abstract" class_name); \
     } \
     AS_VERIFY(engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -3232,10 +3783,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    if (entity_has_abstract.count(class_name) != 0u) { \
+    AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, IDENT_T_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \
-    if (entity_has_protos.count(class_name) != 0u) { \
+    if (entity_has_protos.count(class_name) != 0) { \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
@@ -3291,7 +3843,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
-    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0u); \
+    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
     if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
         _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(static_cast<PLAYER_ENTITY*>(entity), func.get()); }); \
     } \
@@ -3304,10 +3856,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     // Register properties
     for (auto&& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
-        const auto is_global = entity_is_global.count(reg_name) != 0u;
-        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0u;
-        const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
-        const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
+        const auto is_global = entity_is_global.count(reg_name) != 0;
+        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0;
+        const auto is_has_protos = entity_has_protos.count(reg_name) != 0;
+        const auto is_has_statics = entity_has_statics.count(reg_name) != 0;
         const auto class_name = is_global ? reg_name + "Singleton" : reg_name;
         const auto abstract_class_name = "Abstract" + class_name;
         const auto proto_class_name = "Proto" + class_name;
@@ -3346,7 +3898,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         }
 
         for (const auto i : xrange(registrator->GetCount())) {
-            const auto* prop = registrator->GetByIndex(i);
+            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 
@@ -3385,12 +3937,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(engine->RegisterGlobalFunction(_str("const {}Property[]@+ get_{}()", registrator->GetClassName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(engine->RegisterGlobalFunction(_str("const {}Property[]@+ get_{}()", registrator->GetClassName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(engine->SetDefaultNamespace(""));
         }
     }
 
-    AS_VERIFY(engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<FOEngine>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine)));
+    AS_VERIFY(engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<FOEngine*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine)));
 
 #if SERVER_SCRIPTING
     AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
@@ -3398,10 +3950,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ServerCall", 0));
 #endif
 
+#if CLIENT_SCRIPTING || MAPPER_SCRIPTING
+    AS_VERIFY(engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_Get<MapView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->CurMap)));
+#endif
 #if CLIENT_SCRIPTING
-    AS_VERIFY(engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_Get<MapView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->CurMap)));
-    AS_VERIFY(engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_Get<LocationView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curLocation)));
-    AS_VERIFY(engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_Get<PlayerView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curPlayer)));
+    AS_VERIFY(engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_Get<LocationView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curLocation)));
+    AS_VERIFY(engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_Get<PlayerView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curPlayer)));
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
@@ -3490,6 +4044,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
                 CHECK_CLASS("string", string*);
                 CHECK_CLASS("hstring", hstring*);
+                CHECK_CLASS("any", any_t*);
+                CHECK_CLASS(IDENT_T_NAME, ident_t*);
+                CHECK_CLASS(TICK_T_NAME, tick_t*);
 
                 return nullptr;
             }
@@ -3526,6 +4083,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             CHECK_CLASS("string", string);
             CHECK_CLASS("hstring", hstring);
+            CHECK_CLASS("any", any_t);
+            CHECK_CLASS(IDENT_T_NAME, ident_t);
+            CHECK_CLASS(TICK_T_NAME, tick_t);
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0) {
 #if SERVER_SCRIPTING
@@ -3574,7 +4134,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if !COMPILER_VALIDATION_MODE
             func_desc.Call = [script_sys = AngelScriptData.get(), gen = &func_desc, func](initializer_list<void*> args, void* ret) { //
-                return ASScriptFuncCall(script_sys, gen, func, args, ret);
+                return AngelScriptFuncCall(script_sys, gen, func, args, ret);
             };
 #endif
 
@@ -3629,7 +4189,7 @@ public:
 
     void Write(const void* ptr, asUINT size) override
     {
-        if (!ptr || size == 0u) {
+        if (!ptr || size == 0) {
             return;
         }
 
@@ -3640,7 +4200,7 @@ public:
 
     void Read(void* ptr, asUINT size) override
     {
-        if (!ptr || size == 0u) {
+        if (!ptr || size == 0) {
             return;
         }
 

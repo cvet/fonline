@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "DeferredCalls.h"
+#include "ScriptSystem.h"
 
 DECLARE_EXCEPTION(DeferredCallsLoadException);
 
@@ -56,10 +57,8 @@ public:
 
     void LoadDeferredCalls();
     auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
 
 private:
     auto GetNextCallId() -> ident_t override;

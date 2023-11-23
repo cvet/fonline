@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,7 @@ public:
     PropertyRawData(PropertyRawData&&) noexcept = default;
     auto operator=(const PropertyRawData&) = delete;
     auto operator=(PropertyRawData&& other) noexcept -> PropertyRawData& = default;
+    ~PropertyRawData() = default;
 
     [[nodiscard]] auto GetPtr() -> void*;
     [[nodiscard]] auto GetSize() const -> uint;
@@ -279,7 +280,7 @@ public:
     Properties(Properties&&) noexcept = default;
     auto operator=(const Properties& other) -> Properties&;
     auto operator=(Properties&&) noexcept = delete;
-    ~Properties();
+    ~Properties() = default;
 
     [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetEntity() -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
@@ -287,9 +288,9 @@ public:
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uint8*;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uint8*;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
-    [[nodiscard]] auto GetPlainDataValueAsFloat(const Property* prop) const -> float;
+    [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
-    [[nodiscard]] auto GetValueAsFloat(int property_index) const -> float;
+    [[nodiscard]] auto GetValueAsAny(int property_index) const -> any_t;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
 
@@ -297,18 +298,19 @@ public:
     void SetEntity(Entity* entity) { _entity = entity; }
     auto ApplyFromText(const map<string, string>& key_values) -> bool;
     auto ApplyPropertyFromText(const Property* prop, string_view text) -> bool;
-    void StoreAllData(vector<uint8>& all_data) const;
+    void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
-    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
+    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
     void SetRawData(const Property* prop, const uint8* data, uint data_size);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int value);
-    void SetPlainDataValueAsFloat(const Property* prop, float value);
+    void SetPlainDataValueAsAny(const Property* prop, const any_t& value);
     void SetValueAsInt(int property_index, int value);
-    void SetValueAsFloat(int property_index, float value);
+    void SetValueAsAny(int property_index, const any_t& value);
     void SetValueAsIntProps(int property_index, int value);
+    void SetValueAsAnyProps(int property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
@@ -331,11 +333,11 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-        auto result = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
+        auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         return T {GetValue<typename T::underlying_type>(prop)};
@@ -363,12 +365,12 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-        const auto hash = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -387,8 +389,8 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-        const auto data_size = _complexDataSizes[prop->_complexDataIndex];
-        auto result = data_size != 0u ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
+        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
         return result;
     }
 
@@ -408,7 +410,8 @@ public:
         }
         else {
             RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-            prop_data.Pass(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
+            const auto& complex_data = _complexData[prop->_complexDataIndex];
+            prop_data.Pass(complex_data.data(), complex_data.size());
         }
 
         const auto* data = prop_data.GetPtrAs<uint8>();
@@ -417,7 +420,7 @@ public:
         T result;
 
         if (data_size != 0u) {
-            if constexpr (std::is_same_v<T, vector<string>>) {
+            if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
                 RUNTIME_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
@@ -429,7 +432,12 @@ public:
                     uint str_size;
                     std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
-                    result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    if constexpr (std::is_same_v<T, vector<string>>) {
+                        result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    }
+                    else {
+                        result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
+                    }
                     data += str_size;
                 }
             }
@@ -474,6 +482,7 @@ public:
         }
         else {
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
@@ -497,7 +506,7 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
         SetValue<typename T::underlying_type>(prop, new_value.underlying_value());
@@ -546,7 +555,7 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     void SetValue(const Property* prop, const T& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -592,7 +601,7 @@ public:
 
         PropertyRawData prop_data;
 
-        if constexpr (std::is_same_v<T, string>) {
+        if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
             if (!new_value.empty()) {
                 size_t data_size = sizeof(uint);
                 for (const auto& str : new_value) {
@@ -667,10 +676,9 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    uint8* _podData {};
-    vector<uint8*> _complexData {};
-    vector<uint> _complexDataSizes {};
-    mutable vector<uint8*> _storeData {};
+    vector<uint8> _podData {};
+    vector<vector<uint8>> _complexData {};
+    mutable vector<const uint8*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
     mutable vector<uint16> _storeDataComplexIndices {};
     Entity* _entity {};
@@ -685,7 +693,7 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver);
+    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
@@ -693,7 +701,7 @@ public:
     ~PropertyRegistrator();
 
     [[nodiscard]] auto GetClassName() const -> const string&;
-    [[nodiscard]] auto GetCount() const -> uint;
+    [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
     [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }
@@ -701,232 +709,34 @@ public:
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
     [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
+    [[nodiscard]] auto GetHashResolver() const -> const HashResolver& { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const -> const NameResolver& { return _nameResolver; }
 
     void RegisterComponent(string_view name);
+    void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }
+    void RegisterProperty(const const_span<string_view>& flags);
 
 private:
     const string _className;
     const PropertiesRelationType _relation;
+    HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};
+    unordered_map<string_view, Property::AccessType> _accessMap {};
+    unordered_map<string_view, Property::DataType> _dataTypeMap {};
 
     // PlainData info
     uint _wholePodDataSize {};
     vector<bool> _publicPodDataSpace {};
     vector<bool> _protectedPodDataSpace {};
     vector<bool> _privatePodDataSpace {};
-    mutable vector<uint8*> _podDataPool {};
 
     // Complex types info
     vector<Property*> _complexProperties {};
     vector<uint16> _publicComplexDataProps {};
     vector<uint16> _protectedComplexDataProps {};
     vector<uint16> _publicProtectedComplexDataProps {};
-
-public:
-    template<typename T>
-    void Register(Property::AccessType access, string_view name, const vector<string_view>& flags)
-    {
-        RegisterEx<T>(access, name, flags);
-    }
-
-    template<typename T>
-    void Register(Property::AccessType access, string_view name, const initializer_list<string_view>& flags)
-    {
-        RegisterEx<T>(access, name, {flags.begin(), flags.end()});
-    }
-
-    template<typename T>
-    void RegisterEx(Property::AccessType access, string_view name, const const_span<string_view>& flags)
-    {
-        auto* prop = new Property(this);
-
-        prop->_propName = name;
-        prop->_accessType = access;
-        prop->_dataType = TypeInfo<T>::DATA_TYPE;
-
-        using base_type = typename TypeInfo<T>::BaseType::Type;
-
-        if constexpr (!std::is_same_v<base_type, string>) {
-            static_assert(sizeof(base_type) == 1u || sizeof(base_type) == 2u || sizeof(base_type) == 4u || sizeof(base_type) == 8u);
-            prop->_baseSize = sizeof(base_type);
-            prop->_isHashBase = TypeInfo<T>::BaseType::IS_HASH;
-            prop->_isEnumBase = TypeInfo<T>::BaseType::IS_ENUM;
-
-            prop->_isInt = (std::is_integral_v<base_type> && !std::is_same_v<base_type, bool>);
-            prop->_isSignedInt = (prop->_isInt && std::is_signed_v<base_type>);
-            prop->_isFloat = std::is_floating_point_v<base_type>;
-            prop->_isBool = std::is_same_v<base_type, bool>;
-
-            prop->_isInt8 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 1u);
-            prop->_isInt16 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 2u);
-            prop->_isInt32 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 4u);
-            prop->_isInt64 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 8u);
-            prop->_isUInt8 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1u);
-            prop->_isUInt16 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2u);
-            prop->_isUInt32 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4u);
-            prop->_isUInt64 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8u);
-
-            prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
-            prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
-
-            if (prop->_isHashBase) {
-                prop->_baseTypeName = "hstring";
-            }
-            else if (prop->_isInt) {
-                prop->_baseTypeName = "int";
-                if (prop->_baseSize == 1u) {
-                    prop->_baseTypeName += "8";
-                }
-                else if (prop->_baseSize == 2u) {
-                    prop->_baseTypeName += "16";
-                }
-                else if (prop->_baseSize == 8u) {
-                    prop->_baseTypeName += "64";
-                }
-                if (!prop->_isSignedInt) {
-                    prop->_baseTypeName = "u" + prop->_baseTypeName;
-                }
-            }
-            else if (prop->_isFloat) {
-                if (prop->_isSingleFloat) {
-                    prop->_baseTypeName = "float";
-                }
-                else if (prop->_isDoubleFloat) {
-                    prop->_baseTypeName = "double";
-                }
-            }
-            else if (prop->_isBool) {
-                prop->_baseTypeName = "bool";
-            }
-        }
-        else {
-            prop->_baseTypeName = "string";
-        }
-
-        if constexpr (is_specialization<T, vector>::value) {
-            prop->_isArrayOfString = std::is_same_v<base_type, string>;
-        }
-
-        if constexpr (is_specialization<T, map>::value) {
-            using key_type = typename TypeInfo<T>::KeyType::Type;
-            static_assert(std::is_integral_v<key_type>);
-            static_assert(!std::is_same_v<key_type, bool>);
-            static_assert(sizeof(key_type) == 1u || sizeof(key_type) == 2u || sizeof(key_type) == 4u || sizeof(key_type) == 8u);
-            prop->_isDictOfArray = TypeInfo<T>::IS_DICT_OF_ARRAY;
-            prop->_isDictOfString = !prop->_isDictOfArray && std::is_same_v<base_type, string>;
-            prop->_isDictOfArrayOfString = prop->_isDictOfArray && std::is_same_v<base_type, string>;
-            prop->_dictKeySize = sizeof(key_type);
-            prop->_isDictKeyHash = TypeInfo<T>::KeyType::IS_HASH;
-            prop->_isDictKeyEnum = TypeInfo<T>::KeyType::IS_ENUM;
-
-            if (prop->_isDictKeyHash) {
-                prop->_dictKeyTypeName = "hstring";
-            }
-            else {
-                prop->_dictKeyTypeName = "int";
-                if (sizeof(key_type) == 1u) {
-                    prop->_dictKeyTypeName += "8";
-                }
-                else if (sizeof(key_type) == 2u) {
-                    prop->_dictKeyTypeName += "16";
-                }
-                else if (sizeof(key_type) == 8u) {
-                    prop->_dictKeyTypeName += "64";
-                }
-                if (std::is_unsigned_v<key_type>) {
-                    prop->_dictKeyTypeName = "u" + prop->_dictKeyTypeName;
-                }
-            }
-        }
-
-        prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
-
-        AppendProperty(prop, {flags.begin(), flags.end()});
-    }
-
-private:
-    template<typename T, typename Enable = void>
-    struct BaseTypeInfo;
-
-    template<typename T>
-    struct BaseTypeInfo<T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T, string>>>
-    {
-        using Type = T;
-        static constexpr auto IS_HASH = false;
-        static constexpr auto IS_ENUM = false;
-    };
-
-    template<typename T>
-    struct BaseTypeInfo<T, std::enable_if_t<is_strong_type<T>::value>>
-    {
-        using Type = typename T::underlying_type;
-        static constexpr auto IS_HASH = BaseTypeInfo<typename T::underlying_type>::IS_HASH;
-        static constexpr auto IS_ENUM = BaseTypeInfo<typename T::underlying_type>::IS_ENUM;
-    };
-
-    template<typename T>
-    struct BaseTypeInfo<T, std::enable_if_t<std::is_same_v<T, hstring>>>
-    {
-        using Type = hstring::hash_t;
-        static constexpr auto IS_HASH = true;
-        static constexpr auto IS_ENUM = false;
-    };
-
-    template<typename T>
-    struct BaseTypeInfo<T, std::enable_if_t<std::is_enum_v<T>>>
-    {
-        using Type = std::underlying_type_t<T>;
-        static constexpr auto IS_HASH = false;
-        static constexpr auto IS_ENUM = true;
-        static_assert(std::is_same_v<Type, uint8> || std::is_same_v<Type, uint16> || std::is_same_v<Type, int> || std::is_same_v<Type, uint>);
-    };
-
-    template<typename T, typename Enable = void>
-    struct TypeInfo;
-
-    template<typename T>
-    struct TypeInfo<T, std::enable_if_t<!std::is_same_v<T, string> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value>>
-    {
-        using BaseType = BaseTypeInfo<T>;
-        static constexpr auto DATA_TYPE = Property::DataType::PlainData;
-    };
-
-    template<typename T>
-    struct TypeInfo<T, std::enable_if_t<std::is_same_v<T, string>>>
-    {
-        using BaseType = BaseTypeInfo<T>;
-        static constexpr auto DATA_TYPE = Property::DataType::String;
-    };
-
-    template<typename T>
-    struct TypeInfo<T, std::enable_if_t<is_specialization<T, vector>::value>>
-    {
-        using BaseType = BaseTypeInfo<typename T::value_type>;
-        static constexpr auto DATA_TYPE = Property::DataType::Array;
-    };
-
-    template<typename T>
-    struct TypeInfo<T, std::enable_if_t<is_specialization<T, map>::value && is_specialization<typename T::mapped_type, vector>::value>>
-    {
-        using BaseType = BaseTypeInfo<typename T::mapped_type::value_type>;
-        using KeyType = BaseTypeInfo<typename T::key_type>;
-        static constexpr auto DATA_TYPE = Property::DataType::Dict;
-        static constexpr auto IS_DICT_OF_ARRAY = true;
-    };
-
-    template<typename T>
-    struct TypeInfo<T, std::enable_if_t<is_specialization<T, map>::value && !is_specialization<typename T::mapped_type, vector>::value>>
-    {
-        using BaseType = BaseTypeInfo<typename T::mapped_type>;
-        using KeyType = BaseTypeInfo<typename T::key_type>;
-        static constexpr auto DATA_TYPE = Property::DataType::Dict;
-        static constexpr auto IS_DICT_OF_ARRAY = false;
-    };
-
-    void AppendProperty(Property* prop, const const_span<string_view>& flags);
 };

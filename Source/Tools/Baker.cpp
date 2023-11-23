@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -140,7 +140,7 @@ void Baker::BakeAll()
 
     WriteLog("Start bakering");
 
-    const auto start_time = Timer::CurTime();
+    const auto bake_time = TimeMeter();
 
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
     RUNTIME_ASSERT(build_hash_deleted);
@@ -282,7 +282,7 @@ void Baker::BakeAll()
                 DiskFileSystem::IterateDir(MakeOutputPath(pack_name), "", true, [this, &pack_name, &pack_resource_names, &exclude_all_ext](string_view path, size_t size, uint64 write_time) {
                     UNUSED_VARIABLE(size);
                     UNUSED_VARIABLE(write_time);
-                    if (pack_resource_names.count(exclude_all_ext(path)) == 0u) {
+                    if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
                         const auto path_in_pack = _str(pack_name).combinePath(path).str();
                         DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
                         WriteLog("Delete outdated file {}", path_in_pack);
@@ -514,8 +514,8 @@ void Baker::BakeAll()
                         config_content += _str("{}={}\n", key, resolved_value);
 
 #if !FO_SINGLEPLAYER
-                        const auto is_server_setting = server_settings.count(key) != 0u;
-                        const auto is_client_setting = client_settings.count(key) != 0u;
+                        const auto is_server_setting = server_settings.count(key) != 0;
+                        const auto is_client_setting = client_settings.count(key) != 0;
                         if (is_server_setting) {
                             server_settings.erase(key);
                         }
@@ -630,7 +630,7 @@ void Baker::BakeAll()
                     const auto& map_protos = proto_mngr.GetProtoMaps();
                     for (auto&& [pid, proto] : loc_protos) {
                         for (auto map_pid : proto->GetMapProtos()) {
-                            if (map_protos.count(map_pid) == 0u) {
+                            if (map_protos.count(map_pid) == 0) {
                                 WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
                                 proto_errors++;
                             }
@@ -678,19 +678,17 @@ void Baker::BakeAll()
                     }
 
                     vector<uint8> props_data;
-                    uint map_cr_count = 0u;
-                    uint map_item_count = 0u;
-                    uint map_scen_count = 0u;
-                    uint map_tile_count = 0u;
+                    uint map_cr_count = 0;
+                    uint map_item_count = 0;
+                    uint map_client_item_count = 0;
                     vector<uint8> map_cr_data;
                     vector<uint8> map_item_data;
-                    vector<uint8> map_scen_data;
-                    vector<uint8> map_tile_data;
-                    set<hstring> tile_hstrings;
+                    vector<uint8> map_client_item_data;
                     auto map_cr_data_writer = DataWriter(map_cr_data);
                     auto map_item_data_writer = DataWriter(map_item_data);
-                    auto map_scen_data_writer = DataWriter(map_scen_data);
-                    auto map_tile_data_writer = DataWriter(map_tile_data);
+                    auto map_client_item_data_writer = DataWriter(map_client_item_data);
+                    set<hstring> str_hashes;
+                    set<hstring> client_str_hashes;
                     auto map_errors = 0;
 
                     try {
@@ -705,7 +703,7 @@ void Baker::BakeAll()
                                     map_cr_count++;
                                     map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data);
+                                    props.StoreAllData(props_data, str_hashes);
                                     map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
                                 }
@@ -725,21 +723,24 @@ void Baker::BakeAll()
                                     map_item_count++;
                                     map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data);
+                                    props.StoreAllData(props_data, str_hashes);
                                     map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                    if (proto->GetIsStatic() && !proto->GetIsHidden()) {
+                                    const auto is_static = props.GetValue<bool>(proto->GetPropertyIsStatic());
+                                    const auto is_hidden = props.GetValue<bool>(proto->GetPropertyIsHidden());
+
+                                    if (is_static && !is_hidden) {
                                         const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
                                         auto client_props = copy(client_proto->GetProperties());
 
                                         if (client_props.ApplyFromText(kv)) {
-                                            map_scen_count++;
-                                            map_scen_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                            map_scen_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
-                                            client_props.StoreAllData(props_data);
-                                            map_scen_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                            map_scen_data_writer.WritePtr(props_data.data(), props_data.size());
+                                            map_client_item_count++;
+                                            map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                                            map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                                            client_props.StoreAllData(props_data, client_str_hashes);
+                                            map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                            map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
                                         }
                                         else {
                                             WriteLog("Invalid item (client side) {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
@@ -749,20 +750,6 @@ void Baker::BakeAll()
                                 }
                                 else {
                                     WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                    map_errors++;
-                                }
-
-                                return true;
-                            },
-                            [&](MapTile&& tile) -> bool {
-                                const auto tile_name = server_engine.ResolveHash(tile.NameHash);
-                                if (resource_hashes.count(tile_name) != 0u) {
-                                    map_tile_count++;
-                                    map_tile_data_writer.WritePtr<MapTile>(&tile);
-                                    tile_hstrings.emplace(tile_name);
-                                }
-                                else {
-                                    WriteLog("Invalid tile {} on map {} at hex {} {}", tile_name, proto_map->GetName(), tile.HexX, tile.HexY);
                                     map_errors++;
                                 }
 
@@ -780,6 +767,12 @@ void Baker::BakeAll()
                         {
                             vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
+                            final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+                            for (const auto& hstr : str_hashes) {
+                                const auto& str = hstr.as_str();
+                                final_writer.Write<uint>(static_cast<uint>(str.length()));
+                                final_writer.WritePtr(str.c_str(), str.length());
+                            }
                             final_writer.Write<uint>(map_cr_count);
                             final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
                             final_writer.Write<uint>(map_item_count);
@@ -794,16 +787,14 @@ void Baker::BakeAll()
                         {
                             vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
-                            final_writer.Write<uint>(map_scen_count);
-                            final_writer.WritePtr(map_scen_data.data(), map_scen_data.size());
-                            final_writer.Write<uint>(static_cast<uint>(tile_hstrings.size()));
-                            for (const auto& hstr : tile_hstrings) {
+                            final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
+                            for (const auto& hstr : client_str_hashes) {
                                 const auto& str = hstr.as_str();
                                 final_writer.Write<uint>(static_cast<uint>(str.length()));
                                 final_writer.WritePtr(str.c_str(), str.length());
                             }
-                            final_writer.Write<uint>(map_tile_count);
-                            final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
+                            final_writer.Write<uint>(map_client_item_count);
+                            final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
                             auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
                             RUNTIME_ASSERT(map_bin_file);
@@ -817,8 +808,6 @@ void Baker::BakeAll()
                         final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
                         final_writer.Write<uint>(map_item_count);
                         final_writer.WritePtr(map_item_data.data(), map_item_data.size());
-                        final_writer.Write<uint>(map_tile_count);
-                        final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
 
                         auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Maps/{}.fomapb", proto_map->GetName())), true);
                         RUNTIME_ASSERT(map_bin_file);
@@ -1056,7 +1045,7 @@ void Baker::BakeAll()
         errors++;
     }
 
-    WriteLog("Time {:.3f} seconds", time_duration_to_ms<double>(Timer::CurTime() - start_time) / 1000.0);
+    WriteLog("Time {}", bake_time.GetDuration());
 
     // Finalize
     if (errors != 0) {
@@ -1074,39 +1063,49 @@ void Baker::BakeAll()
     }
 }
 
+static unordered_map<string, std::function<bool(hstring, ScriptSystem*)>> ScriptFuncVerify = {
+    {"ItemInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
+    {"ItemScenery", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+    {"ItemTrigger", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
+    {"CritterInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
+    {"MapInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
+    {"LocationInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
+    {"LocationEntrance", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
+};
+
 auto Baker::ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
     STACK_TRACE_ENTRY();
-
-    unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
-        {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
-        {"ItemScenery", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-        {"ItemTrigger", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-        {"CritterInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
-        {"MapInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
-        {"LocationInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
-    };
 
     int errors = 0;
 
     const auto* registrator = props.GetRegistrator();
 
-    for (uint i = 0; i < registrator->GetCount(); i++) {
-        const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+    for (size_t i = 0; i < registrator->GetCount(); i++) {
+        const auto* prop = registrator->GetByIndexFast(static_cast<int>(i));
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
+                uint hash_data_size;
+                const auto* hash_data = props.GetRawData(prop, hash_data_size);
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                    continue;
+                }
+
                 const auto h = props.GetValue<hstring>(prop);
-                if (h && resource_hashes.count(h) == 0u) {
+                if (h && resource_hashes.count(h) == 0) {
                     WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
                     errors++;
                 }
             }
             else if (prop->IsArray()) {
+                if (props.GetRawDataSize(prop) == 0) {
+                    continue;
+                }
+
                 const auto hashes = props.GetValue<vector<hstring>>(prop);
                 for (const auto h : hashes) {
-                    if (h && resource_hashes.count(h) == 0u) {
+                    if (h && resource_hashes.count(h) == 0) {
                         WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
                         errors++;
                     }
@@ -1120,12 +1119,18 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
         if (prop->IsBaseScriptFuncType()) {
             if (prop->IsPlainData()) {
+                uint hash_data_size;
+                const auto* hash_data = props.GetRawData(prop, hash_data_size);
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                    continue;
+                }
+
                 const auto func_name = props.GetValue<hstring>(prop);
-                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0u) {
+                if (ScriptFuncVerify.count(prop->GetBaseScriptFuncType()) == 0) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
-                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
+                else if (func_name && !ScriptFuncVerify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
                     WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
@@ -1217,7 +1222,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
-        return {file->GetBuf(), [](auto* p) {}};
+        return {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};
     }
     return nullptr;
 }
@@ -1225,6 +1230,10 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
 auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(include_subdirs);
+    UNUSED_VARIABLE(ext);
 
     throw NotImplementedException(LINE_STR);
 }

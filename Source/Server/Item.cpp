@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -109,7 +109,7 @@ auto Item::GetAllInnerItems(bool skip_hidden) -> vector<Item*>
     return items;
 }
 
-auto Item::GetInnerItemByPid(hstring pid, uint stack_id) -> Item*
+auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -120,14 +120,14 @@ auto Item::GetInnerItemByPid(hstring pid, uint stack_id) -> Item*
     }
 
     for (auto* item : *_innerItems) {
-        if (item->GetProtoId() == pid && (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id)) {
+        if (item->GetProtoId() == pid && (stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id)) {
             return item;
         }
     }
     return nullptr;
 }
 
-auto Item::GetInnerItems(uint stack_id) -> vector<Item*>
+auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -139,7 +139,7 @@ auto Item::GetInnerItems(uint stack_id) -> vector<Item*>
 
     vector<Item*> items;
     for (auto* item : *_innerItems) {
-        if (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id) {
+        if (stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id) {
             items.push_back(item);
         }
     }

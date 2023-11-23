@@ -32,99 +32,77 @@ Other scripts and files in `BuildTools` dir are not part of reliable public API.
 
 ### Environment variables
 
-These environment variables affected only on build scripts described above.  
-You must set at least `FO_CMAKE_CONTRIBUTION` before run scripts.
+These environment variables affected only on build scripts described above.
 
 `FO_WORKSPACE (default: Workspace)`
 
 Path where all intermediate build files will be stored.  
 In most cases you don't need to specify this variable if you run build scripts from one directory.
 
-`FO_CMAKE_CONTRIBUTION (default: *empty*)`
-
-Path to file with CMake contribution settings.  
-Read more at `FONLINE_CMAKE_CONTRIBUTION` below.
-
 ### CMake options
 
 These options managed by build scripts (described above) automatically but if you use CMake directly then you can tweak their manually.
 
-`FONLINE_VERBOSE_BUILD (default: NO)`
+`FO_VERBOSE_BUILD (default: NO)`
 
 By default all non-fonline related output are hidden but with enabling this option you will see whole output from CMake.  
 Also some of additional information will be printed during configuration.  
 This option can help if something goes wrong during CMake configuration processing.
 
-`FONLINE_OUTPUT_PATH (default: *cmake binary dir*)`
+`FO_OUTPUT_PATH (default: *cmake binary dir*)`
 
 Path where resulted binaries will be placed.  
 This option allow to redirect output from different CMake build trees to one place.  
 I.e. build win/linux/mac/etc binaries in different places but collect output in single place.
 
-`FONLINE_BUILD_CLIENT (default: NO)`
+`FO_BUILD_CLIENT (default: NO)`
 
 Produce multiplayer client binaries.  
 Binaries will be placed in `output/Client` directory in separate directory named as `platform-arch-configuration` (i.e. Windows-win64-Debug).  
 These binaries later will be consumed by packager.
 
-`FONLINE_BUILD_SERVER (default: NO)`
+`FO_BUILD_SERVER (default: NO)`
 
 Produce multiplayer server binaries.  
 Binaries will be placed in `output/Server` directory in separate directory named as `platform-arch-configuration` (i.e. Linux-x64-Release).
 These binaries later will be consumed by packager.
 
-`FONLINE_BUILD_SINGLE (default: NO)`
+`FO_BUILD_SINGLE (default: NO)`
 
 Produce singleplayer binaries.  
 Binaries will be placed in `output/Single` directory in separate directory named as `platform-arch-configuration` (i.e. Web-wasm-Release).
 These binaries later will be consumed by packager.
 
-`FONLINE_BUILD_MAPPER (default: NO)`
+`FO_BUILD_MAPPER (default: NO)`
 
 Produce mapper binaries.  
 Binaries will be placed in `output/Tools` directory.
 
-`FONLINE_BUILD_ASCOMPILER (default: NO)`
+`FO_BUILD_ASCOMPILER (default: NO)`
 
 Produce AngelScript compiler.  
 Binaries will be placed in `output/Tools` directory and later used for AngelScript scripts compilation.
 
-`FONLINE_BUILD_BAKER (default: NO)`
+`FO_BUILD_BAKER (default: NO)`
 
 Produce baker binaries.  
 Binaries will be placed in `output/Tools` directory and later used for baking resources.
 
-`FONLINE_UNIT_TESTS (default: YES)`
+`FO_UNIT_TESTS (default: YES)`
 
 Create binaries for unit testing.  
 Binaries will be placed in `output/Tests` directory.
 
-`FONLINE_CODE_COVERAGE (default: NO)`
+`FO_CODE_COVERAGE (default: NO)`
 
 Create binaries for code coverage calculation.  
 Binaries will be placed in `output/Tests` directory.
 
-`FONLINE_CMAKE_CONTRIBUTION (default: *empty*)`
-
-Path to CMake contribution file where developers can contribute different kind of things like:
-* tweak build configuration and game settings
-* append scripts for all provided script layers
-* append different content and resources to your game
-
-This is main connection point between engine and game based on it.  
-So during development engine source stayed untouched and development processed in separate space.  
-Also you able to disable unnecessary stuff in your game (like AngelScript supporting for new projects or Mono for old) and produce binaries with zero overhead for this stuff.
-
-`FONLINE_INFO_MARKDOWN_OUTPUT (default: *empty*)`
+`FO_INFO_MARKDOWN_OUTPUT (default: *empty*)`
 
 Path where different infrormational files in markdown format will be stored.  
 Actual script API, resources descriptions, package information and etc.  
 No output generated if variable is empty.
-
-Full list of output files:
-- MULTIPLAYER_SCRIPT_API.md
-- SINGLEPLAYER_SCRIPT_API.md
-- MAPPER_SCRIPT_API.md
 
 ### CMake contribution
 

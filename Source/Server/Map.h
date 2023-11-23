@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,6 +54,7 @@ struct StaticMap
     vector<pair<uint, const Item*>> HexItemBillets {};
     vector<pair<uint, const Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
+    unordered_map<ident_t, StaticItem*> StaticItemsById {};
     vector<StaticItem*> TriggerItems {};
     vector<uint8> HexFlags {};
 };
@@ -108,6 +109,7 @@ public:
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
+    [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
     [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;
@@ -124,12 +126,12 @@ public:
     void SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
-    auto AddItem(Item* item, uint16 hx, uint16 hy) -> bool;
+    auto AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool;
     void SetItem(Item* item, uint16 hx, uint16 hy);
     void EraseItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
-    void AnimateItem(Item* item, uint8 from_frm, uint8 to_frm);
+    void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);
     void SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void SetHexFlag(uint16 hx, uint16 hy, uint8 flag);

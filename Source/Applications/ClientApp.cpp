@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ struct ClientAppData
 };
 GLOBAL_DATA(ClientAppData, Data);
 
-static void MainEntry(void*)
+static void MainEntry([[maybe_unused]] void* data)
 {
     STACK_TRACE_ENTRY();
 
@@ -122,13 +122,15 @@ static void MainEntry(void*)
             ReportExceptionAndContinue(ex);
 
             // Recreate client on unhandled error
-            try {
-                Data->Client->Shutdown();
-                Data->Client->Release();
-                Data->Client = nullptr;
-            }
-            catch (const std::exception& ex2) {
-                ReportExceptionAndExit(ex2);
+            if (App->Settings.RecreateClientOnError) {
+                try {
+                    Data->Client->Shutdown();
+                    Data->Client->Release();
+                    Data->Client = nullptr;
+                }
+                catch (const std::exception& ex2) {
+                    ReportExceptionAndExit(ex2);
+                }
             }
         }
 
@@ -145,7 +147,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);
@@ -161,6 +163,15 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 assert(!err);
                 Module.syncfsDone = 1;
             }););
+
+        emscripten_set_click_callback("#fullscreen", nullptr, 1, [](int event_type, const EmscriptenMouseEvent* mouse_event, void* user_data) -> EM_BOOL {
+            UNUSED_VARIABLE(event_type, mouse_event, user_data);
+            if (Data->Client != nullptr) {
+                Data->Client->SprMngr.ToggleFullscreen();
+            }
+            return 1;
+        });
+
         emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
@@ -169,7 +180,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!App->Settings.VSync && App->Settings.FixedFPS != 0, App->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
 
         while (!App->Settings.Quit) {
             balancer.StartLoop();

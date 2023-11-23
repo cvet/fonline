@@ -1,5 +1,5 @@
 //      __________        ___               ______            _
-//     / ____/ __ \____  / (_);___  ___     / ____/___  ____ _(_);___  ___
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
@@ -10,10 +10,10 @@
 //
 // MIT License
 //
-// Copyright (c); 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software");, to deal
+// of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
@@ -116,11 +116,11 @@ public:
     ///@ ExportProperty ReadOnly Alias = CritId
     ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
     ///@ ExportProperty ReadOnly Alias = CritSlot Alias = Slot
-    ENTITY_PROPERTY(PrivateCommon, uint8, CritterSlot);
+    ENTITY_PROPERTY(PrivateCommon, CritterItemSlot, CritterSlot);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, ContainerId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
+    ENTITY_PROPERTY(PrivateCommon, ContainerItemStack, ContainerStack);
     ///@ ExportProperty ReadOnly Alias = SubItemIds
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);
     ///@ ExportProperty Resource
@@ -148,24 +148,6 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitBase);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitRndMin);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitRndMax);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimStay0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimStay1);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimShow0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimShow1);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimHide0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimHide1);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, int8, DrawOrderOffsetHexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);
@@ -175,6 +157,12 @@ public:
     ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsWall);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsTile);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsRoofTile);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsCanOpen);
     ///@ ExportProperty ReadOnly
@@ -228,17 +216,13 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PublicModifiable, int16, SortValue);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint8, Info);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PublicModifiable, uint8, Mode);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, int8, LightIntensity);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint8, LightDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint8, LightFlags);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, LightColor);
+    ENTITY_PROPERTY(Public, ucolor, LightColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, Count);
     ///@ ExportProperty
@@ -309,20 +293,20 @@ public:
     ENTITY_PROPERTY(PrivateCommon, int16, DirAngle);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
-    ///@ ExportProperty ReadOnly Alias = Anim1Life
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead);
-    ///@ ExportProperty ReadOnly Alias = Anim2Life
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Alive);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead);
+    ///@ ExportProperty ReadOnly Alias = Cond
+    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
+    ///@ ExportProperty ReadOnly Alias = Anim1Life Alias = Anim1Alive
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, AliveStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim1Knockout
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, KnockoutStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim1Dead
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, DeadStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Life Alias = Anim2Alive
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, AliveActionAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Knockout
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, KnockoutActionAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Dead
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
     ///@ ExportProperty ReadOnly
@@ -382,11 +366,11 @@ public:
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, uint, NameColor);
+    ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, uint, ContourColor);
+    ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier);
+    ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
     ///@ ExportProperty
@@ -397,6 +381,8 @@ public:
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
+    ///@ ExportProperty Temporary
+    ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
 };
 
 class MapProperties : public EntityProperties
@@ -493,7 +479,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, ToGarbage);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, Color);
+    ENTITY_PROPERTY(PrivateServer, ucolor, Color);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, IsEncounter);
 };

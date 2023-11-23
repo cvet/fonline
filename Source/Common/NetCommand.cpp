@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ static constexpr CmdDef CMD_LIST[] = {
     {"log", CMD_LOG},
 };
 
-auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, NameResolver& name_resolver) -> bool
+auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& hash_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -105,7 +105,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_GAMEINFO: {
         auto type = 0;
         if (!(args_str >> type)) {
-            logcb("Invalid arguments. Example: gameinfo type.");
+            logcb("Invalid arguments. Example: gameinfo type");
             break;
         }
 
@@ -117,7 +117,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_CRITID: {
         string cr_name;
         if (!(args_str >> cr_name)) {
-            logcb("Invalid arguments. Example: id name.");
+            logcb("Invalid arguments. Example: id name");
             break;
         }
 
@@ -131,7 +131,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         uint16 hex_x = 0;
         uint16 hex_y = 0;
         if (!(args_str >> cr_id >> hex_x >> hex_y)) {
-            logcb("Invalid arguments. Example: move cr_id hx hy.");
+            logcb("Invalid arguments. Example: move cr_id hx hy");
             break;
         }
 
@@ -145,7 +145,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_DISCONCRIT: {
         uint cr_id = 0;
         if (!(args_str >> cr_id)) {
-            logcb("Invalid arguments. Example: disconnect cr_id.");
+            logcb("Invalid arguments. Example: disconnect cr_id");
             break;
         }
 
@@ -164,7 +164,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         string property_name;
         auto property_value = 0;
         if (!(args_str >> cr_id >> property_name >> property_value)) {
-            logcb("Invalid arguments. Example: prop cr_id prop_name value.");
+            logcb("Invalid arguments. Example: prop cr_id prop_name value");
             break;
         }
 
@@ -179,7 +179,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         string name_access;
         string pasw_access;
         if (!(args_str >> name_access >> pasw_access)) {
-            logcb("Invalid arguments. Example: getaccess name password.");
+            logcb("Invalid arguments. Example: getaccess name password");
             break;
         }
         name_access = _str(name_access).replace('*', ' ');
@@ -197,10 +197,10 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         string proto_name;
         uint count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
-            logcb("Invalid arguments. Example: additem hx hy name count.");
+            logcb("Invalid arguments. Example: additem hx hy name count");
             break;
         }
-        auto pid = name_resolver.ToHashedString(proto_name);
+        auto pid = hash_resolver.ToHashedString(proto_name);
 
         buf.StartMsg(msg);
         buf.Write(cmd);
@@ -214,11 +214,11 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         string proto_name;
         uint count = 0;
         if (!(args_str >> proto_name >> count)) {
-            logcb("Invalid arguments. Example: additemself name count.");
+            logcb("Invalid arguments. Example: additemself name count");
             break;
         }
 
-        const auto pid = name_resolver.ToHashedString(proto_name);
+        const auto pid = hash_resolver.ToHashedString(proto_name);
 
         buf.StartMsg(msg);
         buf.Write(cmd);
@@ -232,11 +232,11 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         uint8 dir = 0;
         string proto_name;
         if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
-            logcb("Invalid arguments. Example: addnpc hx hy dir name.");
+            logcb("Invalid arguments. Example: addnpc hx hy dir name");
             break;
         }
 
-        const auto pid = name_resolver.ToHashedString(proto_name);
+        const auto pid = hash_resolver.ToHashedString(proto_name);
 
         buf.StartMsg(msg);
         buf.Write(cmd);
@@ -251,11 +251,11 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         uint16 wy = 0;
         string proto_name;
         if (!(args_str >> wx >> wy >> proto_name)) {
-            logcb("Invalid arguments. Example: addloc wx wy name.");
+            logcb("Invalid arguments. Example: addloc wx wy name");
             break;
         }
 
-        const auto pid = name_resolver.ToHashedString(proto_name);
+        const auto pid = hash_resolver.ToHashedString(proto_name);
 
         buf.StartMsg(msg);
         buf.Write(cmd);
@@ -266,13 +266,17 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_RUNSCRIPT: {
         string func_name;
-        uint param0 = 0;
-        uint param1 = 0;
-        uint param2 = 0;
-        if (!(args_str >> func_name >> param0 >> param1 >> param2)) {
-            logcb("Invalid arguments. Example: runscript module::func param0 param1 param2.");
+        if (!(args_str >> func_name)) {
+            logcb("No function name provided. Example: runscript module::func param0 param1 param2");
             break;
         }
+
+        string param0;
+        string param1;
+        string param2;
+        args_str >> param0;
+        args_str >> param1;
+        args_str >> param2;
 
         buf.StartMsg(msg);
         buf.Write(cmd);
@@ -296,7 +300,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         auto minute = 0;
         auto second = 0;
         if (!(args_str >> multiplier >> year >> month >> day >> hour >> minute >> second)) {
-            logcb("Invalid arguments. Example: settime tmul year month day hour minute second.");
+            logcb("Invalid arguments. Example: settime tmul year month day hour minute second");
             break;
         }
 
@@ -314,7 +318,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_LOG: {
         string flags;
         if (!(args_str >> flags) || flags.length() > 2) {
-            logcb("Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all.");
+            logcb("Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all");
             break;
         }
 

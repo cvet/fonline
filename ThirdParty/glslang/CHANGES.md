@@ -3,6 +3,59 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 12.3.1 2023-07-20
+
+### Other changes
+* Improve backward compatibility for glslangValidator rename on Windows
+
+## 12.3.0 2023-07-19
+
+### Other changes
+* Rename glslangValidator to glslang and create glslangValidator symlink
+* Support HLSL binary literals
+* Add missing initialization members for web
+* Improve push_constant upgrading
+* Fix race condition in spirv remap
+* Support pre and post HLSL qualifier validation
+* Force generateDebugInfo when non-semantic debug info is enabled
+* Exit with error if output file cannot be written
+* Fix struct member buffer reference decorations
+
+## 12.2.0 2023-05-17
+
+### Other changes
+* Support GLSL_EXT_shader_tile_image
+* Support GL_EXT_ray_tracing_position_fetch
+* Support custom include callbacks via the C API
+* Add preamble-text command-line option
+* Accept variables as parameters of spirv_decorate_id
+* Fix generation of conditionals with a struct result
+* Fix double expansion of macros
+* Fix DebugCompilationUnit scope
+* Improve line information
+
+## 12.1.0 2023-03-21
+
+### Other changes
+* Reject non-float inputs/outputs for version less than 120
+* Fix invalid BufferBlock decoration for SPIR-V 1.3 and above
+* Add HLSL relaxed-precision float/int matrix expansions
+* Block decorate Vulkan structs with RuntimeArrays
+* Support InterlockedAdd on float types
+
+## 12.0.0 2023-01-18
+
+### Breaking changes
+* An ABI was accidentally broken in #3014. Consequently, we have incremented the major revision number.
+
+### Other changes
+* Add support for ARB_bindless_texture.
+* Add support for GL_NV_shader_invocation_reorder.
+* Fix const parameter debug types when using NonSemantic.Shader.DebugInfo.100.
+* Fix NonSemantic.Shader.DebugInfo.100 disassembly.
+* Fix MaxDualSourceDrawBuffersEXT usage.
+* Fix structure member reference crash.
+
 ## 11.13.0 2022-12-06
 
 ### Other changes

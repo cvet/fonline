@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,21 @@
 #include "sha2.h"
 
 // ReSharper disable CppInconsistentNaming
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine)
+{
+    BreakIntoDebugger();
+}
+
+///# ...
+///# param message ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine, string_view message)
+{
+    BreakIntoDebugger(message);
+}
 
 ///# ...
 ///# param text ...
@@ -239,8 +254,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
-    const auto str = string(text);
-    return utf8::Decode(str.c_str(), &length);
+    return utf8::Decode(text, &length);
 }
 
 ///# ...
@@ -251,7 +265,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
-    return string(buf, len);
+    return {buf, len};
 }
 
 ///# ...
@@ -272,7 +286,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
 
-    return string(hex_digest, sizeof(hex_digest));
+    return {hex_digest, sizeof(hex_digest)};
 }
 
 ///# ...
@@ -318,7 +332,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
 {
-    return engine->Geometry.DistGame(hx1, hy1, hx2, hy2);
+    return GeometryHelper::DistGame(hx1, hy1, hx2, hy2);
 }
 
 ///# ...
@@ -330,7 +344,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy);
+    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy);
 }
 
 ///# ...
@@ -343,7 +357,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 {
-    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
+    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
 
 ///# ...
@@ -355,7 +369,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return static_cast<int16>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
+    return static_cast<int16>(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy));
 }
 
 ///# ...
@@ -376,7 +390,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int16 dirAngle)
 {
-    return engine->Geometry.AngleToDir(dirAngle);
+    return GeometryHelper::AngleToDir(dirAngle);
 }
 
 ///# ...
@@ -385,7 +399,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uint8 dir)
 {
-    return engine->Geometry.DirToAngle(dir);
+    return GeometryHelper::DirToAngle(dir);
 }
 
 ///# ...
@@ -450,4 +464,276 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 [[maybe_unused]] string Common_Game_GetGameVersion([[maybe_unused]] FOEngineBase* engine)
 {
     return FO_GAME_VERSION;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ProtoItem* Common_Game_GetProtoItem(FOEngineBase* engine, hstring pid)
+{
+    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItem(pid));
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoItems();
+
+    vector<ProtoItem*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        result.emplace_back(const_cast<ProtoItem*>(proto));
+    }
+
+    return result;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemComponent component)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoItems();
+
+    vector<ProtoItem*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.emplace_back(const_cast<ProtoItem*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
+    const auto& protos = engine->ProtoMngr.GetProtoItems();
+
+    vector<ProtoItem*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->GetValueAsInt(prop) == propertyValue) {
+            result.emplace_back(const_cast<ProtoItem*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ProtoCritter* Common_Game_GetProtoCritter(FOEngineBase* engine, hstring pid)
+{
+    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritter(pid));
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoCritters();
+
+    vector<ProtoCritter*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        result.emplace_back(const_cast<ProtoCritter*>(proto));
+    }
+
+    return result;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterComponent component)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoCritters();
+
+    vector<ProtoCritter*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.emplace_back(const_cast<ProtoCritter*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
+    const auto& protos = engine->ProtoMngr.GetProtoCritters();
+
+    vector<ProtoCritter*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->GetValueAsInt(prop) == propertyValue) {
+            result.emplace_back(const_cast<ProtoCritter*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ProtoMap* Common_Game_GetProtoMap(FOEngineBase* engine, hstring pid)
+{
+    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMap(pid));
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoMaps();
+
+    vector<ProtoMap*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        result.emplace_back(const_cast<ProtoMap*>(proto));
+    }
+
+    return result;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapComponent component)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoMaps();
+
+    vector<ProtoMap*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.emplace_back(const_cast<ProtoMap*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
+    const auto& protos = engine->ProtoMngr.GetProtoMaps();
+
+    vector<ProtoMap*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->GetValueAsInt(prop) == propertyValue) {
+            result.emplace_back(const_cast<ProtoMap*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ProtoLocation* Common_Game_GetProtoLocation(FOEngineBase* engine, hstring pid)
+{
+    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocation(pid));
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoLocations();
+
+    vector<ProtoLocation*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        result.emplace_back(const_cast<ProtoLocation*>(proto));
+    }
+
+    return result;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationComponent component)
+{
+    const auto& protos = engine->ProtoMngr.GetProtoLocations();
+
+    vector<ProtoLocation*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.emplace_back(const_cast<ProtoLocation*>(proto));
+        }
+    }
+
+    return result;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
+    const auto& protos = engine->ProtoMngr.GetProtoLocations();
+
+    vector<ProtoLocation*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        if (proto->GetValueAsInt(prop) == propertyValue) {
+            result.emplace_back(const_cast<ProtoLocation*>(proto));
+        }
+    }
+
+    return result;
 }

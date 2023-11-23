@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,12 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this), nullptr),
+    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this, *this), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),
     GameTime(settings),
+    ProtoMngr(this),
     _propsRelation {props_relation}
 {
     STACK_TRACE_ENTRY();
@@ -64,7 +65,7 @@ auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> Pro
         return const_cast<PropertyRegistrator*>(it->second);
     }
 
-    auto* registrator = new PropertyRegistrator(class_name, _propsRelation, *this);
+    auto* registrator = new PropertyRegistrator(class_name, _propsRelation, *this, *this);
     _registrators.emplace(class_name, registrator);
     return registrator;
 }
@@ -189,63 +190,6 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     }
 
     return value_it->second;
-}
-
-auto FOEngineBase::ToHashedString(string_view s, bool mustExists) const -> hstring
-{
-    STACK_TRACE_ENTRY();
-
-    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
-
-    if (s.empty()) {
-        return {};
-    }
-
-    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
-    RUNTIME_ASSERT(hash_value != 0u);
-
-    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
-#if FO_DEBUG
-        const auto collision_detected = (s != it->second.Str);
-#else
-        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
-#endif
-        if (collision_detected) {
-            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
-        }
-
-        return hstring(&it->second);
-    }
-
-    if (mustExists) {
-        throw HashInsertException("String value is not in hash storage", s);
-    }
-
-    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
-    RUNTIME_ASSERT(inserted);
-
-    return hstring(&it->second);
-}
-
-auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
-{
-    STACK_TRACE_ENTRY();
-
-    if (h == 0u) {
-        return {};
-    }
-
-    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        return hstring(&it->second);
-    }
-
-    if (failed != nullptr) {
-        WriteLog("Can't resolve hash {}", h);
-        *failed = true;
-        return {};
-    }
-
-    throw HashResolveException("Can't resolve hash", h);
 }
 
 auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int

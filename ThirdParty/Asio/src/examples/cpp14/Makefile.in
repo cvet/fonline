@@ -114,6 +114,7 @@ noinst_PROGRAMS = deferred/deferred_1$(EXEEXT) \
 	operations/composed_6$(EXEEXT) operations/composed_7$(EXEEXT) \
 	operations/composed_8$(EXEEXT) \
 	parallel_group/parallel_sort$(EXEEXT) \
+	parallel_group/ranged_wait_for_all$(EXEEXT) \
 	parallel_group/wait_for_all$(EXEEXT) \
 	parallel_group/wait_for_one$(EXEEXT) \
 	parallel_group/wait_for_one_error$(EXEEXT) \
@@ -330,6 +331,13 @@ parallel_group_parallel_sort_OBJECTS =  \
 parallel_group_parallel_sort_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@parallel_group_parallel_sort_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_parallel_group_ranged_wait_for_all_OBJECTS =  \
+	parallel_group/ranged_wait_for_all.$(OBJEXT)
+parallel_group_ranged_wait_for_all_OBJECTS =  \
+	$(am_parallel_group_ranged_wait_for_all_OBJECTS)
+parallel_group_ranged_wait_for_all_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@parallel_group_ranged_wait_for_all_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_parallel_group_wait_for_all_OBJECTS =  \
 	parallel_group/wait_for_all.$(OBJEXT)
 parallel_group_wait_for_all_OBJECTS =  \
@@ -406,6 +414,7 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	operations/$(DEPDIR)/composed_7.Po \
 	operations/$(DEPDIR)/composed_8.Po \
 	parallel_group/$(DEPDIR)/parallel_sort.Po \
+	parallel_group/$(DEPDIR)/ranged_wait_for_all.Po \
 	parallel_group/$(DEPDIR)/wait_for_all.Po \
 	parallel_group/$(DEPDIR)/wait_for_one.Po \
 	parallel_group/$(DEPDIR)/wait_for_one_error.Po \
@@ -452,6 +461,7 @@ SOURCES = $(libasio_a_SOURCES) $(deferred_deferred_1_SOURCES) \
 	$(operations_composed_7_SOURCES) \
 	$(operations_composed_8_SOURCES) \
 	$(parallel_group_parallel_sort_SOURCES) \
+	$(parallel_group_ranged_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
@@ -485,6 +495,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(operations_composed_7_SOURCES) \
 	$(operations_composed_8_SOURCES) \
 	$(parallel_group_parallel_sort_SOURCES) \
+	$(parallel_group_ranged_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_all_SOURCES) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
@@ -655,6 +666,7 @@ operations_composed_6_SOURCES = operations/composed_6.cpp
 operations_composed_7_SOURCES = operations/composed_7.cpp
 operations_composed_8_SOURCES = operations/composed_8.cpp
 parallel_group_parallel_sort_SOURCES = parallel_group/parallel_sort.cpp
+parallel_group_ranged_wait_for_all_SOURCES = parallel_group/ranged_wait_for_all.cpp
 parallel_group_wait_for_all_SOURCES = parallel_group/wait_for_all.cpp
 parallel_group_wait_for_one_SOURCES = parallel_group/wait_for_one.cpp
 parallel_group_wait_for_one_error_SOURCES = parallel_group/wait_for_one_error.cpp
@@ -951,6 +963,13 @@ parallel_group/parallel_sort.$(OBJEXT):  \
 parallel_group/parallel_sort$(EXEEXT): $(parallel_group_parallel_sort_OBJECTS) $(parallel_group_parallel_sort_DEPENDENCIES) $(EXTRA_parallel_group_parallel_sort_DEPENDENCIES) parallel_group/$(am__dirstamp)
 	@rm -f parallel_group/parallel_sort$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(parallel_group_parallel_sort_OBJECTS) $(parallel_group_parallel_sort_LDADD) $(LIBS)
+parallel_group/ranged_wait_for_all.$(OBJEXT):  \
+	parallel_group/$(am__dirstamp) \
+	parallel_group/$(DEPDIR)/$(am__dirstamp)
+
+parallel_group/ranged_wait_for_all$(EXEEXT): $(parallel_group_ranged_wait_for_all_OBJECTS) $(parallel_group_ranged_wait_for_all_DEPENDENCIES) $(EXTRA_parallel_group_ranged_wait_for_all_DEPENDENCIES) parallel_group/$(am__dirstamp)
+	@rm -f parallel_group/ranged_wait_for_all$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(parallel_group_ranged_wait_for_all_OBJECTS) $(parallel_group_ranged_wait_for_all_LDADD) $(LIBS)
 parallel_group/wait_for_all.$(OBJEXT): parallel_group/$(am__dirstamp) \
 	parallel_group/$(DEPDIR)/$(am__dirstamp)
 
@@ -1026,6 +1045,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_7.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_8.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/parallel_sort.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/ranged_wait_for_all.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_all.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one_error.Po@am__quote@ # am--include-marker
@@ -1227,6 +1247,7 @@ distclean: distclean-am
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
 	-rm -f parallel_group/$(DEPDIR)/parallel_sort.Po
+	-rm -f parallel_group/$(DEPDIR)/ranged_wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po
@@ -1311,6 +1332,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f operations/$(DEPDIR)/composed_7.Po
 	-rm -f operations/$(DEPDIR)/composed_8.Po
 	-rm -f parallel_group/$(DEPDIR)/parallel_sort.Po
+	-rm -f parallel_group/$(DEPDIR)/ranged_wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_all.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po

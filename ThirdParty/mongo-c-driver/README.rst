@@ -15,11 +15,11 @@ If libmongoc is not needed, it is possible to build and install only libbson.
 Documentation / Support / Feedback
 ==================================
 
-The documentation is available at http://mongoc.org/.
+The documentation is available at `MongoDB C Driver Docs <https://www.mongodb.com/docs/drivers/c/>`_ and https://www.mongoc.org.
 For issues with, questions about, or feedback for libmongoc, please look into
 our `support channels <http://www.mongodb.org/about/support>`_. Please
 do not email any of the libmongoc developers directly with issues or
-questions - you're more likely to get an answer on the `MongoDB Community Forums`_.
+questions - you're more likely to get an answer on the `MongoDB Community Forums`_ or `StackOverflow <https://stackoverflow.com/questions/tagged/mongodb+c>`_.
 
 Bugs / Feature Requests
 =======================
@@ -44,9 +44,10 @@ information:
 - The version of the driver you are trying to build (branch or tag).
     - Examples: ``r1.17`` (branch), ``1.9.5`` (tag)
 - Host OS, version, and architecture.
-    - Examples: Windows 10 64-bit x86, Ubuntu 16.04 64-bit x86, macOS 10.13
+    - Examples: Windows 10 64-bit x86, Ubuntu 16.04 64-bit x86, macOS 11.0
 - C Compiler and version.
     - Examples: GCC 7.3.0, Visual Studio Community 2017, clang 3.9, XCode 9.3
+- Run CMake with ``--log-level=debug`` and ``--log-context`` for more verbose output.
 - The output of any ``cmake``, ``make``, or other commands executed during the build.
 - The text of the error you encountered.
 
@@ -79,11 +80,19 @@ Security Vulnerabilities
 
 If you’ve identified a security vulnerability in a driver or any other
 MongoDB project, please report it according to the `instructions here
-<https://docs.mongodb.org/manual/tutorial/create-a-vulnerability-report>`_.
+<https://www.mongodb.com/docs/manual/tutorial/create-a-vulnerability-report>`_.
 
 
 Installation
 ============
 
 Detailed installation instructions are in the manual:
-http://mongoc.org/libmongoc/current/installing.html
+https://www.mongoc.org/libmongoc/current/installing.html
+
+
+Resources
+============
+
+* `Getting Started Tutorial <https://mongoc.org/libmongoc/current/tutorial.html>`_.
+* `MongoDB C Driver Examples <https://github.com/mongodb/mongo-c-driver/tree/master/src/libmongoc/examples>`_.
+* Tutorials, videos, and code examples using the MongoDB C Driver can also be found in the `MongoDB Developer Center <https://www.mongodb.com/developer/languages/c/>`_.

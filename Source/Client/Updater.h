@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "ServerConnection.h"
 #include "Settings.h"
 #include "SpriteManager.h"
@@ -81,7 +82,9 @@ private:
     ClientSettings& _settings;
     ServerConnection _conn;
     FileSystem _resources {};
+    GameTimer _gameTime;
     EffectManager _effectMngr;
+    HashStorage _hashStorage {};
     SpriteManager _sprMngr;
     time_point _startTime {};
     bool _aborted {};
@@ -91,7 +94,7 @@ private:
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     vector<uint8> _updateFileBuf {};
-    AnyFrames* _splashPic {};
+    shared_ptr<Sprite> _splashPic {};
     vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };

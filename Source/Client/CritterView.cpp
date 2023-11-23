@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,16 +44,13 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
     STACK_TRACE_ENTRY();
 
     _name = _str("{}_{}", proto->GetName(), id);
-}
 
-void CritterView::Init()
-{
-    STACK_TRACE_ENTRY();
-}
-
-void CritterView::Finish()
-{
-    STACK_TRACE_ENTRY();
+#if FO_ENABLE_3D
+    if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {
+        layers.resize(MODEL_LAYERS_COUNT);
+        SetModelLayers(layers);
+    }
+#endif
 }
 
 void CritterView::MarkAsDestroyed()
@@ -94,12 +91,13 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto);
+    auto* item = new ItemView(_engine, id, proto, props);
 
+    item->SetIsStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
@@ -111,13 +109,18 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
     return item;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = AddInvItem(id, proto, slot, nullptr);
 
     item->RestoreData(props_data);
+
+    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
+    RUNTIME_ASSERT(item->GetCritterId() == GetId());
+    RUNTIME_ASSERT(item->GetCritterSlot() == slot);
 
     std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -128,13 +131,15 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(animate);
+
     const auto it = std::find(_invItems.begin(), _invItems.end(), item);
     RUNTIME_ASSERT(it != _invItems.end());
     _invItems.erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetCritterId(ident_t {});
-    item->SetCritterSlot(0);
+    item->SetCritterSlot(CritterItemSlot::Inventory);
 
     item->MarkAsDestroyed();
     item->Release();
@@ -215,17 +220,18 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
     return true;
 }
 
-auto CritterView::GetAnim1() const -> uint
+auto CritterView::GetStateAnim() const -> CritterStateAnim
 {
     STACK_TRACE_ENTRY();
 
-    switch (GetCond()) {
+    switch (GetCondition()) {
     case CritterCondition::Alive:
-        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
+        return GetAliveStateAnim() != CritterStateAnim::None ? GetAliveStateAnim() : CritterStateAnim::Unarmed;
     case CritterCondition::Knockout:
-        return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
+        return GetKnockoutStateAnim() != CritterStateAnim::None ? GetKnockoutStateAnim() : CritterStateAnim::Unarmed;
     case CritterCondition::Dead:
-        return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
+        return GetDeadStateAnim() != CritterStateAnim::None ? GetDeadStateAnim() : CritterStateAnim::Unarmed;
     }
-    return ANIM1_UNARMED;
+
+    return CritterStateAnim::Unarmed;
 }

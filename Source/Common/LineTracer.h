@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ class LineTracer final
 {
 public:
     LineTracer() = delete;
-    LineTracer(GeometryHelper& geometry, uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle);
+    LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle);
     LineTracer(const LineTracer&) = delete;
     LineTracer(LineTracer&&) noexcept = default;
     auto operator=(const LineTracer&) -> LineTracer& = delete;
@@ -54,7 +54,6 @@ public:
 private:
     void NormalizeDir();
 
-    GeometryHelper& _geometry;
     uint16 _maxHx {};
     uint16 _maxHy {};
     float _x1 {};

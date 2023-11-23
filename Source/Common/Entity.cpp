@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,14 +49,14 @@ Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) 
 
 void Entity::AddRef() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ++_refCounter;
 }
 
 void Entity::Release() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (--_refCounter == 0) {
         delete this;
@@ -65,7 +65,7 @@ void Entity::Release() const noexcept
 
 auto Entity::GetClassName() const -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _props.GetRegistrator()->GetClassName();
 }
@@ -195,14 +195,14 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
 
 auto Entity::IsDestroying() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isDestroying;
 }
 
 auto Entity::IsDestroyed() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isDestroyed;
 }
@@ -227,7 +227,7 @@ void Entity::MarkAsDestroyed()
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const
+void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
     STACK_TRACE_ENTRY();
 
@@ -262,18 +262,18 @@ auto Entity::GetValueAsInt(int prop_index) const -> int
     return _props.GetValueAsInt(prop_index);
 }
 
-auto Entity::GetValueAsFloat(const Property* prop) const -> float
+auto Entity::GetValueAsAny(const Property* prop) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
-    return _props.GetPlainDataValueAsFloat(prop);
+    return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsFloat(int prop_index) const -> float
+auto Entity::GetValueAsAny(int prop_index) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
-    return _props.GetValueAsFloat(prop_index);
+    return _props.GetValueAsAny(prop_index);
 }
 
 void Entity::SetValueAsInt(const Property* prop, int value)
@@ -290,18 +290,18 @@ void Entity::SetValueAsInt(int prop_index, int value)
     _props.SetValueAsInt(prop_index, value);
 }
 
-void Entity::SetValueAsFloat(const Property* prop, float value)
+void Entity::SetValueAsAny(const Property* prop, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    _props.SetPlainDataValueAsFloat(prop, value);
+    _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsFloat(int prop_index, float value)
+void Entity::SetValueAsAny(int prop_index, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    _props.SetValueAsFloat(prop_index, value);
+    _props.SetValueAsAny(prop_index, value);
 }
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
@@ -315,14 +315,14 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
 
 auto ProtoEntity::GetName() const -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _protoId;
 }
@@ -337,14 +337,14 @@ void ProtoEntity::EnableComponent(hstring component)
 
 auto ProtoEntity::HasComponent(hstring name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _components.count(name) != 0u;
 }
 
 auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _componentHashes.count(hash) != 0u;
 }
@@ -368,14 +368,14 @@ EntityWithProto::~EntityWithProto()
 
 auto EntityWithProto::GetProtoId() const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _proto->GetProtoId();
 }
 
 auto EntityWithProto::GetProto() const -> const ProtoEntity*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _proto;
 }

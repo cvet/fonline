@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -116,8 +116,8 @@ void EffectManager::LoadMinimalEffects()
     auto effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/Font_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/Interface_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
 
     if (effect_errors != 0) {
@@ -132,19 +132,18 @@ void EffectManager::LoadDefaultEffects()
     auto effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/Font_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Roof, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::QuadSprite, "Effects/2D_WithoutEgg.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/Interface_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Primitive, EffectUsage::Primitive, "Effects/Primitive_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Light, EffectUsage::Primitive, "Effects/Primitive_Light.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Fog, EffectUsage::Primitive, "Effects/Primitive_Fog.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::QuadSprite, "Effects/2D_WithoutEgg.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::QuadSprite, "Effects/Flush_Primitive.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::QuadSprite, "Effects/Flush_Map.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::QuadSprite, "Effects/Flush_Light.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, "Effects/Flush_Fog.fofx");
 #if FO_ENABLE_3D
@@ -155,10 +154,8 @@ void EffectManager::LoadDefaultEffects()
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.ContourSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
-#if FO_ENABLE_3D
-    LOAD_DEFAULT_EFFECT(Effects.ContourModelSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
-#endif
+    LOAD_DEFAULT_EFFECT(Effects.ContourStrictSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.ContourDynamicSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
 
     UNUSED_VARIABLE(effect_errors);
 }

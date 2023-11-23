@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -60,8 +60,12 @@ public:
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
+    [[nodiscard]] auto GetTime(bool gameplay_timer) const -> time_point;
+    [[nodiscard]] auto GetDeltaTime(bool gameplay_timer) const -> time_duration;
     [[nodiscard]] auto FrameTime() const -> time_point;
+    [[nodiscard]] auto FrameDeltaTime() const -> time_duration;
     [[nodiscard]] auto GameplayTime() const -> time_point;
+    [[nodiscard]] auto GameplayDeltaTime() const -> time_duration;
 
     [[nodiscard]] auto GetFullSecond() const -> tick_t;
     [[nodiscard]] auto EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> tick_t;
@@ -82,8 +86,10 @@ private:
     TimerSettings& _settings;
 
     time_point _frameTime {};
+    time_duration _frameDeltaTime {};
     time_point _gameplayTimeBase {};
     time_point _gameplayTimeFrame {};
+    time_duration _gameplayDeltaTime {};
     time_duration _debuggingOffset {};
 
     uint64 _yearStartFullTime {};
@@ -96,7 +102,7 @@ private:
 #endif
 };
 
-class Timer final
+class Timer final // Todo: remove Timer class, use directly std::chrono instead
 {
 public:
     Timer() = delete;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,312 +42,150 @@
 
 #include "imgui.h"
 
-static void SetEntry(string& entry, string_view value, bool append)
+template<typename T>
+static void SetEntry(T& entry, string_view value, bool append)
+{
+    STACK_TRACE_ENTRY();
+
+    if (!append) {
+        entry = {};
+    }
+
+    if constexpr (std::is_same_v<T, string>) {
+        if (append && !entry.empty()) {
+            entry += " ";
+        }
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
+        entry += std::get<AnyData::STRING_VALUE>(any_value);
+    }
+    else if constexpr (std::is_same_v<T, bool>) {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::BOOL_VALUE);
+        entry |= std::get<AnyData::BOOL_VALUE>(any_value);
+    }
+    else if constexpr (std::is_floating_point_v<T>) {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
+        entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
+    }
+    else if constexpr (std::is_enum_v<T>) {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+        entry = static_cast<T>(static_cast<int>(entry) | std::get<AnyData::INT_VALUE>(any_value));
+    }
+    else if constexpr (is_strong_type_v<T>) {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+        entry = T {static_cast<T>(std::get<AnyData::INT_VALUE>(any_value))};
+    }
+    else {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+        entry += static_cast<T>(std::get<AnyData::INT_VALUE>(any_value));
+    }
+}
+
+template<typename T>
+static void SetEntry(vector<T>& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
     if (!append) {
         entry.clear();
     }
-    if (append && !entry.empty()) {
-        entry += " ";
-    }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
-    entry += std::get<AnyData::STRING_VALUE>(any_value);
-}
-static void SetEntry(uint8& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
 
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry += static_cast<uint8>(std::get<AnyData::INT_VALUE>(any_value));
-}
-static void SetEntry(int16& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry = 0;
+    if constexpr (std::is_same_v<T, string>) {
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::STRING_VALUE);
+        auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+        for (const auto& str : arr) {
+            entry.emplace_back(std::get<AnyData::STRING_VALUE>(str));
+        }
     }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = static_cast<int16>(entry + std::get<AnyData::INT_VALUE>(any_value));
-}
-static void SetEntry(int& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry = 0;
+    else if constexpr (std::is_same_v<T, bool>) {
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::BOOL_VALUE);
+        auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+        for (const auto& str : arr) {
+            entry.emplace_back(std::get<AnyData::BOOL_VALUE>(str));
+        }
     }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry += std::get<AnyData::INT_VALUE>(any_value);
-}
-static void SetEntry(uint& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry = 0u;
+    else if constexpr (std::is_floating_point_v<T>) {
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::DOUBLE_VALUE);
+        auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+        for (const auto& str : arr) {
+            entry.emplace_back(static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(str)));
+        }
     }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry += std::get<AnyData::INT_VALUE>(any_value);
-}
-static void SetEntry(bool& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry = false;
+    else if constexpr (std::is_enum_v<T>) {
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+        auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+        for (const auto& str : arr) {
+            entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+        }
     }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::BOOL_VALUE);
-    entry |= std::get<AnyData::BOOL_VALUE>(any_value);
-}
-static void SetEntry(float& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry = 0.0f;
-    }
-    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
-    entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
-}
-static void SetEntry(vector<string>& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry.clear();
-    }
-    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::STRING_VALUE);
-    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
-    for (const auto& str : arr) {
-        entry.emplace_back(std::get<AnyData::STRING_VALUE>(str));
-    }
-}
-static void SetEntry(vector<int>& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry.clear();
-    }
-    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
-    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
-    for (const auto& str : arr) {
-        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
-    }
-}
-static void SetEntry(vector<uint>& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry.clear();
-    }
-    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
-    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
-    for (const auto& str : arr) {
-        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
-    }
-}
-static void SetEntry(vector<float>& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry.clear();
-    }
-    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::DOUBLE_VALUE);
-    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
-    for (const auto& str : arr) {
-        entry.emplace_back(static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(str)));
-    }
-}
-static void SetEntry(vector<bool>& entry, string_view value, bool append)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!append) {
-        entry.clear();
-    }
-    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::BOOL_VALUE);
-    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
-    for (const auto& str : arr) {
-        entry.emplace_back(std::get<AnyData::BOOL_VALUE>(str));
+    else {
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+        auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+        for (const auto& str : arr) {
+            entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+        }
     }
 }
 
-static void DrawEntry(string_view name, string_view entry)
+template<typename T>
+static void DrawEntry(string_view name, const T& entry)
 {
     STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEntry(string_view name, const uint8& entry)
+
+template<typename T>
+static void DrawEntry(string_view name, const vector<T>& entry)
 {
     STACK_TRACE_ENTRY();
 
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const int16& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const int& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const uint& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const bool& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const float& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEntry(string_view name, const vector<string>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    string value;
-    for (const auto& e : entry) {
-        value += e;
+    if constexpr (std::is_same_v<T, string>) {
+        string value;
+        for (const auto& e : entry) {
+            value += e + " ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
     }
-    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
-}
-static void DrawEntry(string_view name, const vector<int>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    string value;
-    for (const auto& e : entry) {
-        value += std::to_string(e);
+    else if constexpr (std::is_same_v<T, bool>) {
+        string value;
+        for (const auto e : entry) {
+            value += e ? "True " : "False ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
     }
-    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
-}
-static void DrawEntry(string_view name, const vector<uint>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    string value;
-    for (const auto& e : entry) {
-        value += std::to_string(e);
+    else {
+        string value;
+        for (const auto& e : entry) {
+            value += std::to_string(e) + " ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
     }
-    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
-static void DrawEntry(string_view name, const vector<float>& entry)
+
+template<typename T>
+static void DrawEditableEntry(string_view name, T& entry)
 {
     STACK_TRACE_ENTRY();
 
-    string value;
-    for (const auto& e : entry) {
-        value += std::to_string(e);
-    }
-    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
+    // Todo: improve editable entries
+    DrawEntry(name, entry);
 }
-static void DrawEntry(string_view name, const vector<bool>& entry)
+
+template<typename T>
+static void DrawEditableEntry(string_view name, vector<T>& entry)
 {
     STACK_TRACE_ENTRY();
 
-    string value;
-    for (const auto& e : entry) {
-        value += e ? "True" : "False";
-    }
-    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
-}
-
-static void DrawEditableEntry(string_view name, string& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, uint8& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, int16& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, int& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, uint& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, bool& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, float& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
-}
-static void DrawEditableEntry(string_view name, vector<string>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    // Todo: improve editable entry for arrays
-    UNUSED_VARIABLE(entry);
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
-}
-static void DrawEditableEntry(string_view name, vector<int>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(entry);
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
-}
-static void DrawEditableEntry(string_view name, vector<uint>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(entry);
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
-}
-static void DrawEditableEntry(string_view name, vector<float>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(entry);
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
-}
-static void DrawEditableEntry(string_view name, vector<bool>& entry)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(entry);
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    DrawEntry(name, entry);
 }
 
 GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
@@ -367,7 +205,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Debugging config
     if (IsRunInDebugger()) {
-        static const volatile char DEBUG_CONFIG[] =
+        static volatile constexpr char DEBUG_CONFIG[] =
 #include "DebugSettings-Include.h"
             ;
 
@@ -379,57 +217,57 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Injected config
     {
-        static const volatile char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-                                                            "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
+        static volatile constexpr char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                                                                "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
 
         const auto config = ConfigFile("InternalConfig.focfg", volatile_char_to_string(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)));
         for (auto&& [key, value] : config.GetSection("")) {

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+// ReSharper disable once CppUnusedIncludeDirective
 #include "NetProtocol-Include.h"
 
 class NetBuffer
@@ -100,7 +101,7 @@ public:
         Push(&value, sizeof(T));
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     void Write(T value)
     {
         Push(&value.underlying_value(), sizeof(typename T::underlying_type));
@@ -163,7 +164,7 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto Read() -> T
     {
         T result = {};
@@ -183,13 +184,13 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
-    [[nodiscard]] auto Read(const NameResolver& name_resolver) -> hstring
+    [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
     {
-        return ReadHashedString(name_resolver);
+        return ReadHashedString(hash_resolver);
     }
 
 private:
-    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
 
     size_t _bufReadPos {};
 };

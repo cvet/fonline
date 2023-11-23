@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -99,7 +99,7 @@ void Player::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto is_chosen = cr == GetOwnedCritter();
     cr->StoreData(is_chosen, &data, &data_sizes);
@@ -108,29 +108,29 @@ void Player::Send_AddCritter(const Critter* cr)
 
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
     Connection->OutBuf.Write(cr->GetId());
+    Connection->OutBuf.Write(cr->GetProtoId());
     Connection->OutBuf.Write(cr->GetHexX());
     Connection->OutBuf.Write(cr->GetHexY());
     Connection->OutBuf.Write(cr->GetHexOffsX());
     Connection->OutBuf.Write(cr->GetHexOffsY());
     Connection->OutBuf.Write(cr->GetDirAngle());
-    Connection->OutBuf.Write(cr->GetCond());
-    Connection->OutBuf.Write(cr->GetAnim1Alive());
-    Connection->OutBuf.Write(cr->GetAnim1Knockout());
-    Connection->OutBuf.Write(cr->GetAnim1Dead());
-    Connection->OutBuf.Write(cr->GetAnim2Alive());
-    Connection->OutBuf.Write(cr->GetAnim2Knockout());
-    Connection->OutBuf.Write(cr->GetAnim2Dead());
+    Connection->OutBuf.Write(cr->GetCondition());
+    Connection->OutBuf.Write(cr->GetAliveStateAnim());
+    Connection->OutBuf.Write(cr->GetKnockoutStateAnim());
+    Connection->OutBuf.Write(cr->GetDeadStateAnim());
+    Connection->OutBuf.Write(cr->GetAliveActionAnim());
+    Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
+    Connection->OutBuf.Write(cr->GetDeadActionAnim());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
     Connection->OutBuf.Write(is_chosen);
-    Connection->OutBuf.Write(cr->GetProtoId());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
 
     CONNECTION_OUTPUT_END(Connection);
 
     if (!is_chosen) {
-        Send_MoveItem(cr, nullptr, ACTION_REFRESH, 0);
+        Send_MoveItem(cr, nullptr, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
     if (cr->IsMoving()) {
@@ -175,9 +175,9 @@ void Player::Send_LoadMap(const Map* map)
         map_index_in_loc = static_cast<uint8>(loc->GetMapIndex(pid_map));
     }
 
-    vector<uint8*>* map_data = nullptr;
+    vector<const uint8*>* map_data = nullptr;
     vector<uint>* map_data_sizes = nullptr;
-    vector<uint8*>* loc_data = nullptr;
+    vector<const uint8*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
         map->StoreData(false, &map_data, &map_data_sizes);
@@ -333,25 +333,25 @@ void Player::Send_Dir(const Critter* from_cr)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item)
+void Player::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
-    if (item != nullptr) {
-        Send_SomeItem(item);
+    if (context_item != nullptr) {
+        Send_SomeItem(context_item);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ACTION);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(action);
-    Connection->OutBuf.Write(action_ext);
-    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(action_data);
+    Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot)
+void Player::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -362,7 +362,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     }
 
     vector<const Item*> items;
-    vector<vector<uint8*>*> items_data;
+    vector<vector<const uint8*>*> items_data;
     vector<vector<uint>*> items_data_sizes;
 
     if (!is_chosen) {
@@ -370,8 +370,8 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
         items.reserve(inv_items.size());
         for (const auto* item_ : inv_items) {
             const auto slot = item_->GetCritterSlot();
-            if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && //
-                slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
+            if (static_cast<size_t>(slot) < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[static_cast<size_t>(slot)] && //
+                static_cast<size_t>(slot) < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[static_cast<size_t>(slot)]) {
                 items.push_back(item_);
             }
         }
@@ -391,7 +391,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     Connection->OutBuf.Write(action);
     Connection->OutBuf.Write(prev_slot);
     Connection->OutBuf.Write(item != nullptr);
-    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : uint8());
+    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : CritterItemSlot::Inventory);
     Connection->OutBuf.Write(static_cast<uint16>(items.size()));
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
@@ -404,27 +404,27 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
+void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
-    if (item != nullptr) {
-        Send_SomeItem(item);
+    if (context_item != nullptr) {
+        Send_SomeItem(context_item);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ANIMATE);
     Connection->OutBuf.Write(from_cr->GetId());
-    Connection->OutBuf.Write(anim1);
-    Connection->OutBuf.Write(anim2);
-    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(state_anim);
+    Connection->OutBuf.Write(action_anim);
+    Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.Write(clear_sequence);
     Connection->OutBuf.Write(delay_play);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
+void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
 {
     STACK_TRACE_ENTRY();
 
@@ -434,8 +434,8 @@ void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint a
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_SET_ANIMS);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(cond);
-    Connection->OutBuf.Write(anim1);
-    Connection->OutBuf.Write(anim2);
+    Connection->OutBuf.Write(state_anim);
+    Connection->OutBuf.Write(action_anim);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -446,9 +446,7 @@ void Player::Send_AddItemOnMap(const Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    const auto is_added = item->ViewPlaceOnMap;
-
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(false, &data, &data_sizes);
 
@@ -458,7 +456,6 @@ void Player::Send_AddItemOnMap(const Item* item)
     Connection->OutBuf.Write(item->GetProtoId());
     Connection->OutBuf.Write(item->GetHexX());
     Connection->OutBuf.Write(item->GetHexY());
-    Connection->OutBuf.Write(is_added);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -473,12 +470,11 @@ void Player::Send_EraseItemFromMap(const Item* item)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ERASE_ITEM_FROM_MAP);
     Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(item->ViewPlaceOnMap);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
+void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
 {
     STACK_TRACE_ENTRY();
 
@@ -487,8 +483,9 @@ void Player::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ANIMATE_ITEM);
     Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(from_frm);
-    Connection->OutBuf.Write(to_frm);
+    Connection->OutBuf.Write(anim_name);
+    Connection->OutBuf.Write(looped);
+    Connection->OutBuf.Write(reversed);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -503,7 +500,7 @@ void Player::Send_AddItem(const Item* item)
         return;
     }
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(true, &data, &data_sizes);
 
@@ -663,7 +660,7 @@ void Player::Send_AllProperties()
 
     NON_CONST_METHOD_HINT();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     StoreData(true, &data, &data_sizes);
 
@@ -1075,7 +1072,7 @@ void Player::Send_SomeItem(const Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(false, &data, &data_sizes);
 
@@ -1146,7 +1143,7 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
 
     NON_CONST_METHOD_HINT();
 
-    vector<vector<uint8*>*> items_data(items != nullptr ? items->size() : 0);
+    vector<vector<const uint8*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0; i < items_data.size(); i++) {
         items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);

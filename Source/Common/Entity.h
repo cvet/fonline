@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -69,6 +69,121 @@
     { \
         this, #event_name \
     }
+
+///@ ExportEnum
+enum class CritterItemSlot : uint8
+{
+    Inventory = 0,
+    Main = 1,
+    Outside = 255,
+};
+
+///@ ExportEnum
+enum class CritterCondition : uint8
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
+
+// Critter actions
+// Flags for chosen:
+// l - hardcoded local call
+// s - hardcoded server call
+// for all others critters actions call only server
+//  flags actionExt item
+///@ ExportEnum
+enum class CritterAction : uint16
+{
+    None = 0,
+    MoveItem = 2,
+    SwapItems = 3,
+    DropItem = 5,
+    Knockout = 16,
+    StandUp = 17,
+    Fidget = 18,
+    Dead = 19,
+    Connect = 20,
+    Disconnect = 21,
+    Respawn = 22,
+    Refresh = 23,
+};
+
+///@ ExportEnum
+enum class CritterStateAnim : uint16
+{
+    None = 0,
+    Unarmed = 1,
+};
+
+///@ ExportEnum
+enum class CritterActionAnim : uint16
+{
+    None = 0,
+    Idle = 1,
+    Walk = 3,
+    WalkBack = 15,
+    Limp = 4,
+    Run = 5,
+    RunBack = 16,
+    TurnRight = 17,
+    TurnLeft = 18,
+    PanicRun = 6,
+    SneakWalk = 7,
+    SneakRun = 8,
+    IdleProneFront = 86,
+    DeadFront = 102,
+};
+
+///@ ExportEnum
+enum class CritterFindType : uint8
+{
+    Any = 0,
+    Alive = 0x01,
+    Dead = 0x02,
+    Players = 0x10,
+    Npc = 0x20,
+    AlivePlayers = 0x11,
+    DeadPlayers = 0x12,
+    AliveNpc = 0x21,
+    DeadNpc = 0x22,
+};
+
+///@ ExportEnum
+enum class ItemOwnership : uint8
+{
+    MapHex = 0,
+    CritterInventory = 1,
+    ItemContainer = 2,
+    Nowhere = 3,
+};
+
+///@ ExportEnum
+enum class ContainerItemStack : uint
+{
+    Root = 0,
+    Any = 0xFFFFFFFF,
+};
+
+///@ ExportEnum
+enum class CornerType : uint8
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
+
+class AnimationResolver
+{
+public:
+    virtual ~AnimationResolver() = default;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool = 0;
+};
 
 class EntityProperties
 {
@@ -129,16 +244,16 @@ public:
     [[nodiscard]] auto IsDestroyed() const -> bool;
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
-    [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
-    [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
+    [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
+    [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
 
-    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
+    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
-    void SetValueAsFloat(const Property* prop, float value);
-    void SetValueAsFloat(int prop_index, float value);
+    void SetValueAsAny(const Property* prop, const any_t& value);
+    void SetValueAsAny(int prop_index, const any_t& value);
     void SubscribeEvent(const string& event_name, EventCallbackData callback);
     void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
     void UnsubscribeAllEvent(const string& event_name);

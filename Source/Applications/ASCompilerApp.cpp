@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,29 +34,32 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 
 #if !FO_SINGLEPLAYER
-struct ASCompiler_ServerScriptSystem : public ScriptSystem
+// ReSharper disable CppInconsistentNaming
+struct ASCompiler_ServerScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
-struct ASCompiler_ClientScriptSystem : public ScriptSystem
+struct ASCompiler_ClientScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
 #else
-struct ASCompiler_SingleScriptSystem : public ScriptSystem
+struct ASCompiler_SingleScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
 #endif
-struct ASCompiler_MapperScriptSystem : public ScriptSystem
+struct ASCompiler_MapperScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
+// ReSharper restore CppInconsistentNaming
 
 unordered_set<string> CompilerPassedMessages;
 
@@ -66,7 +69,7 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv);

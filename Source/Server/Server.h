@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -76,12 +76,12 @@ public:
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
+    [[nodiscard]] auto IsStartingError() const -> bool { return _startingError; }
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
 
-    void Start();
-    void Shutdown();
-    void MainLoop();
+    auto Lock(optional<time_duration> max_wait_time) -> bool;
+    void Unlock();
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
@@ -146,9 +146,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
@@ -166,7 +166,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemStackChanged, Item* /*item*/, int /*countDiff*/);
 
-    ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;
 
     EntityManager EntityMngr;
@@ -176,6 +175,14 @@ public:
     DialogManager DlgMngr;
 
     DataBase DbStorage {};
+    const hstring GameCollectionName = ToHashedString("Game");
+    const hstring PlayersCollectionName = ToHashedString("Players");
+    const hstring LocationsCollectionName = ToHashedString("Locations");
+    const hstring MapsCollectionName = ToHashedString("Maps");
+    const hstring CrittersCollectionName = ToHashedString("Critters");
+    const hstring ItemsCollectionName = ToHashedString("Items");
+    const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
+    const hstring HistoryCollectionName = ToHashedString("History");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -185,19 +192,28 @@ private:
     {
         time_point ServerStartTime {};
         time_duration Uptime {};
+
         int64 BytesSend {};
         int64 BytesRecv {};
         int64 DataReal {1};
         int64 DataCompressed {1};
         float CompressRatio {};
+
         size_t MaxOnline {};
         size_t CurOnline {};
-        size_t Fps {};
+
         size_t LoopsCount {};
-        time_duration LastLoopTime {};
-        time_duration WholeLoopsTime {};
+        time_duration LoopLastTime {};
         time_duration LoopMinTime {};
         time_duration LoopMaxTime {};
+
+        deque<pair<time_point, time_duration>> LoopTimeStamps {};
+        time_duration LoopWholeAvgTime {};
+        time_duration LoopAvgTime {};
+
+        time_point LoopCounterBegin {};
+        size_t LoopCounter {};
+        size_t LoopsPerSecond {};
     };
 
     struct TextListener
@@ -207,6 +223,8 @@ private:
         string FirstStr {};
         uint64 Parameter {};
     };
+
+    void SyncPoint();
 
     void OnNewConnection(NetConnection* net_connection);
 
@@ -262,11 +280,20 @@ private:
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
+    WorkThread _starter {"ServerStarter"};
+    WorkThread _mainWorker {"ServerWorker"};
+
+    std::mutex _syncLocker {};
+    std::condition_variable _syncWaitSignal {};
+    std::condition_variable _syncRunSignal {};
+    int _syncRequest {};
+    bool _syncPointReady {};
+
     std::atomic_bool _started {};
+    std::atomic_bool _startingError {};
+    FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     map<uint, time_point> _regIp {};
-    time_point _fpsTime {};
-    size_t _fpsCounter {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};

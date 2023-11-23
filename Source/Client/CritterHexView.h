@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,15 +36,16 @@
 #include "Common.h"
 
 #include "3dStuff.h"
-#include "Application.h"
 #include "CritterView.h"
+#include "DefaultSprites.h"
 #include "EntityProtos.h"
+#include "HexView.h"
+#include "ModelSprites.h"
 #include "SpriteManager.h"
 
-class MapView;
 class ItemView;
 
-class CritterHexView final : public CritterView
+class CritterHexView final : public CritterView, public HexView
 {
 public:
     CritterHexView() = delete;
@@ -55,42 +56,38 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
-    [[nodiscard]] auto GetAnim2() const -> uint;
-    [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
+    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != time_point {}; }
-    [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto IsNameVisible() const -> bool;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
 #endif
 
-    void Init() override;
-    void Finish() override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
+    void Init();
+    void MarkAsDestroyed() override;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView* override;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
-    void Animate(uint anim1, uint anim2, Entity* context_item);
+    void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
     void AnimateStay();
-    void Action(int action, int action_ext, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int action_data, Entity* context_item, bool local_call);
     void Process();
     void ResetOk();
     void ClearAnim();
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
-    void SetText(string_view str, uint color, time_duration text_delay);
+    void SetText(string_view str, ucolor color, time_duration text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
@@ -98,17 +95,6 @@ public:
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
-
-    uint SprId {};
-    int SprOx {};
-    int SprOy {};
-    uint8 Alpha {};
-
-    RenderEffect* DrawEffect {};
-    bool Visible {true};
-    Sprite* SprDraw {};
-    bool SprDrawValid {};
-    time_point FadingTime {};
 
     struct
     {
@@ -134,27 +120,24 @@ public:
 private:
     struct CritterAnim
     {
-        AnyFrames* Anim {};
+        const SpriteSheet* AnimFrames {};
         time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
-        uint IndAnim1 {};
-        uint IndAnim2 {};
+        CritterStateAnim StateAnim {};
+        CritterActionAnim ActionAnim {};
         Entity* ContextItem {};
     };
 
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetModelLayersData() const -> const int*;
 #endif
-    [[nodiscard]] auto GetFadeAlpha() -> uint8;
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
-    void SetFade(bool fade_up);
+    void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
-    void SetAnimSpr(const AnyFrames* anim, uint frm_index);
-
-    MapView* _map;
+    void SetAnimSpr(const SpriteSheet* anim, uint frm_index);
 
     bool _needReset {};
     time_point _resetTime {};
@@ -164,16 +147,12 @@ private:
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    time_point _finishingTime {};
-    bool _fadingEnabled {};
-    bool _fadeUp {};
-
     time_point _fidgetTime {};
 
     string _strTextOnHead {};
     time_point _startTextTime {};
     time_duration _textShowDuration {};
-    uint _textOnHeadColor {COLOR_TEXT};
+    ucolor _textOnHeadColor {COLOR_TEXT};
 
     int _oxAnim {};
     int _oyAnim {};
@@ -184,6 +163,7 @@ private:
     time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D
-    unique_del_ptr<ModelInstance> _model {};
+    shared_ptr<ModelSprite> _modelSpr {};
+    ModelInstance* _model {};
 #endif
 };

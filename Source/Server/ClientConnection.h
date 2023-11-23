@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@
 
 #define CONNECTION_OUTPUT_BEGIN(conn) \
     { \
-        std::lock_guard locker((conn)->OutBufLocker)
+        std::lock_guard conn_locker__((conn)->OutBufLocker)
 #define CONNECTION_OUTPUT_END(conn) \
     } \
     (conn)->Dispatch()

@@ -82,8 +82,7 @@ Reference project:
 
 ### Package dependencies
 
-Following Linux packages will help us build our game for target platforms.  
-These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
+Following Linux packages will help us build game for target platforms.  
 * Common:  
 `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux:  
@@ -93,7 +92,7 @@ These packages will automatically installed during workspace preparing (i.e. `pr
 * Building for Android:  
 `android-sdk` `openjdk-8-jdk` `ant`
 
-Also our build scripts download and install following packages:
+Build scripts download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
@@ -140,6 +139,7 @@ They are located in ThirdParty directory.
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
+* [rpmalloc](https://github.com/mjansson/rpmalloc) - General purpose memory allocator
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
@@ -162,26 +162,22 @@ Please follow these instructions to understand how to use this engine by design:
 
 ### Roadmap
 
-**Near releases:**
-
-* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game
-* Code refactoring
+* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game [done]
+* Code refactoring [85%]
   + Clean up errors handling (error code based + exception based)
   + Preprocessor defines to constants and enums
   + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
   + Fix all warnings from PVS Studio and other static analyzer tools
-* Native C++ and AngelScript scripting layers
-* Documentation for public API
-* API freezing and continuing development with it's backward compatibility
-
-**Futher releases:**
-
-* Improve more unit tests and gain code coverage to at least 80%
-* C#/Mono scripting layer
-* DirectX rendering with Universal Windows Platform
-* Singleplayer mode
-* Particle system
-* Metal rendering for macOS/iOS
+* AngelScript scripting layer [done]
+* Documentation for public API [10%]
+* API freezing and continuing development with it's backward compatibility [80%]
+* Native C++ scripting layer [20%]
+* Improve more unit tests and gain code coverage to at least 80% [10%]
+* C#/Mono scripting layer [10%]
+* DirectX rendering [done]
+* Singleplayer mode [70%]
+* Particle system [done]
+* Metal rendering for macOS/iOS [1%]
 
 ### Todo list *(generated from source code)*
 
@@ -230,7 +226,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: fix soft scroll if critter teleports
 * CritterHexView: fidget animation to scripts
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
-* MapView: rework smooth item re-appearing before same item still on map
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
 * SparkExtension: improve particles in 2D
@@ -244,6 +239,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Sprites: : incapsulate all sprite data
 * Updater: support restoring file downloading from interrupted position
 * Updater: add update file files checking by hashes
+* VideoClip: allow video playing in back direction
 * VisualParticles: improve particles in 2D
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
@@ -259,14 +255,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Log: add timestamps and process id and thread id to file logs
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
-* MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
 * Properties: validate property name identifier
 * Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* PropertiesSerializator: maybe need some optional warning for unknown properties
+* PropertiesSerializator: maybe need some optional warning for unknown/wrong properties
 * Settings-Include: rework global Quit setting
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
@@ -285,7 +280,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * EntityManager: load global map critters
-* Item: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
 * Location: EntranceScriptBindId
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
@@ -309,6 +303,7 @@ Please follow these instructions to understand how to use this engine by design:
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * EffectBaker: enable auto map bindings
 * ImageBaker: swap colors of fo palette once in header
+* ImageBaker: move png lib setjmp to exceptions
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet
@@ -325,8 +320,7 @@ Please follow these instructions to understand how to use this engine by design:
 
 ## Frequently Asked Questions
 
-Following document contains some issues thats give additional information about this engine:
-* [FAQ document](https://fonline.ru/FAQ)
+*Todo: write FAQ*
 
 ## About
 

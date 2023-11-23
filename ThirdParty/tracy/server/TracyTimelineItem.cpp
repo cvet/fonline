@@ -2,63 +2,72 @@
 
 #include "TracyImGui.hpp"
 #include "TracyMouse.hpp"
+#include "TracyTimelineContext.hpp"
 #include "TracyTimelineItem.hpp"
 #include "TracyView.hpp"
 
 namespace tracy
 {
 
-TimelineItem::TimelineItem( View& view, Worker& worker )
+TimelineItem::TimelineItem( View& view, Worker& worker, const void* key, bool wantPreprocess )
     : m_visible( true )
     , m_showFull( true )
     , m_height( 0 )
-    , m_offset( 0 )
+    , m_wantPreprocess( wantPreprocess )
+    , m_key( key )
     , m_view( view )
     , m_worker( worker )
 {
 }
 
-void TimelineItem::Draw( bool firstFrame, double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax )
+void TimelineItem::Draw( bool firstFrame, const TimelineContext& ctx, int yOffset )
 {
+    const auto yBegin = yOffset;
+    auto yEnd = yOffset;
+
     if( !IsVisible() )
     {
-        m_height = 0;
-        m_offset = 0;
+        DrawFinished();
+        if( m_height != 0 ) AdjustThreadHeight( firstFrame, yBegin, yEnd );
         return;
     }
-    if( IsEmpty() ) return;
+    if( IsEmpty() )
+    {
+        DrawFinished();
+        return;
+    }
 
-    const auto w = ImGui::GetContentRegionAvail().x - 1;
-    const auto ty = ImGui::GetTextLineHeight();
+    const auto w = ctx.w;
+    const auto ty = ctx.ty;
     const auto ostep = ty + 1;
-    const auto yPos = AdjustThreadPosition( wpos.y, offset );
+    const auto& wpos = ctx.wpos;
+    const auto yPos = wpos.y + yBegin;
     const auto dpos = wpos + ImVec2( 0.5f, 0.5f );
-    const auto oldOffset = offset;
     auto draw = ImGui::GetWindowDrawList();
 
     ImGui::PushID( this );
-    ImGui::PushClipRect( wpos + ImVec2( 0, offset ), wpos + ImVec2( w, offset + m_height ), true );
+    ImGui::PushClipRect( wpos + ImVec2( 0, yBegin ), wpos + ImVec2( w, yBegin + m_height ), true );
 
-    offset += ostep;
+    yEnd += ostep;
     if( m_showFull )
     {
-        if( !DrawContents( pxns, offset, wpos, hover, yMin, yMax ) && !m_view.GetViewData().drawEmptyLabels )
+        if( !DrawContents( ctx, yEnd ) && !m_view.GetViewData().drawEmptyLabels )
         {
-            m_height = 0;
-            m_offset = 0;
-            offset = oldOffset;
+            DrawFinished();
+            yEnd = yBegin;
+            AdjustThreadHeight( firstFrame, yBegin, yEnd );
             ImGui::PopClipRect();
             ImGui::PopID();
             return;
         }
     }
 
-    DrawOverlay( wpos + ImVec2( 0, oldOffset ), wpos + ImVec2( w, offset ) );
+    DrawOverlay( wpos + ImVec2( 0, yBegin ), wpos + ImVec2( w, yEnd ) );
     ImGui::PopClipRect();
 
     float labelWidth;
-    const auto hdrOffset = oldOffset;
-    const bool drawHeader = yPos + ty >= yMin && yPos <= yMax;
+    const auto hdrOffset = yBegin;
+    const bool drawHeader = yPos + ty >= ctx.yMin && yPos <= ctx.yMax;
     if( drawHeader )
     {
         const auto color = HeaderColor();
@@ -78,10 +87,10 @@ void TimelineItem::Draw( bool firstFrame, double pxns, int& offset, const ImVec2
         if( m_showFull )
         {
             DrawLine( draw, dpos + ImVec2( 0, hdrOffset + ty - 1 ), dpos + ImVec2( w, hdrOffset + ty - 1 ), HeaderLineColor() );
-            HeaderExtraContents( hdrOffset, wpos, labelWidth, pxns, hover );
+            HeaderExtraContents( ctx, hdrOffset, labelWidth );
         }
 
-        if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( 0, hdrOffset ), wpos + ImVec2( ty + labelWidth, hdrOffset + ty ) ) )
+        if( ctx.hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( 0, hdrOffset ), wpos + ImVec2( ty + labelWidth, hdrOffset + ty ) ) )
         {
             HeaderTooltip( label );
 
@@ -115,52 +124,39 @@ void TimelineItem::Draw( bool firstFrame, double pxns, int& offset, const ImVec2
         ImGui::EndPopup();
     }
 
-    offset += 0.2f * ostep;
-    AdjustThreadHeight( firstFrame, oldOffset, offset );
+    yEnd += 0.2f * ostep;
+    AdjustThreadHeight( firstFrame, yBegin, yEnd );
+    DrawFinished();
 
     ImGui::PopID();
 }
 
-void TimelineItem::AdjustThreadHeight( bool firstFrame, int oldOffset, int& offset )
+void TimelineItem::AdjustThreadHeight( bool firstFrame, int yBegin, int yEnd )
 {
-    const auto h = offset - oldOffset;
-    if( m_height > h )
+    const auto speed = 4.0;
+    const auto baseMove = 1.0;
+
+    const auto newHeight = yEnd - yBegin;
+    if( firstFrame )
     {
-        m_height = h;
-        offset = oldOffset + m_height;
+        m_height = newHeight;
     }
-    else if( m_height < h )
+    else if( m_height != newHeight )
     {
-        if( firstFrame )
+        const auto diff = newHeight - m_height;
+        const auto preClampMove = diff * speed * ImGui::GetIO().DeltaTime;
+        if( diff > 0 )
         {
-            m_height = h;
-            offset = oldOffset + h;
+            const auto move = preClampMove + baseMove;
+            m_height = int( std::min<double>( m_height + move, newHeight ) );
         }
         else
         {
-            const auto diff = h - m_height;
-            const auto move = std::max( 2.0, diff * 10.0 * ImGui::GetIO().DeltaTime );
-            m_height = int( std::min<double>( m_height + move, h ) );
-            offset = oldOffset + m_height;
-            s_wasActive = true;
+            const auto move = preClampMove - baseMove;
+            m_height = int( std::max<double>( m_height + move, newHeight ) );
         }
-    }
-}
-
-float TimelineItem::AdjustThreadPosition( float wy, int& offset )
-{
-    if( m_offset < offset )
-    {
-        m_offset = offset;
-    }
-    else if( m_offset > offset )
-    {
-        const auto diff = m_offset - offset;
-        const auto move = std::max( 2.0, diff * 10.0 * ImGui::GetIO().DeltaTime );
-        offset = m_offset = int( std::max<double>( m_offset - move, offset ) );
         s_wasActive = true;
     }
-    return offset + wy;
 }
 
 void TimelineItem::VisibilityCheckbox()

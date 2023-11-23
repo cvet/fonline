@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,14 +70,39 @@ DECLARE_EXCEPTION(ResourcesOutdatedException);
 ///@ ExportObject Client
 struct VideoPlayback
 {
-    SCRIPTABLE_OBJECT();
+    SCRIPTABLE_OBJECT_BEGIN();
 
     bool Stopped {};
 
-    // Next line is special comment for code generation, to strip fields below
-    // private:
+    SCRIPTABLE_OBJECT_END();
+
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
+};
+
+///@ ExportEnum
+enum class EffectType : uint
+{
+    None = 0,
+    GenericSprite = 0x00000001,
+    CritterSprite = 0x00000002,
+    TileSprite = 0x00000004,
+    RoofSprite = 0x00000008,
+    RainSprite = 0x00000010,
+    SkinnedMesh = 0x00000400,
+    Interface = 0x00001000,
+    ContourStrict = 0x00002000,
+    ContourDynamic = 0x00004000,
+    Font = 0x00010000,
+    Primitive = 0x00100000,
+    Light = 0x00200000,
+    Fog = 0x00400000,
+    FlushRenderTarget = 0x01000000,
+    FlushPrimitive = 0x04000000,
+    FlushMap = 0x08000000,
+    FlushLight = 0x10000000,
+    FlushFog = 0x20000000,
+    Offscreen = 0x40000000,
 };
 
 // Screens
@@ -110,9 +135,9 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool override;
 
     [[nodiscard]] auto IsConnecting() const -> bool;
     [[nodiscard]] auto IsConnected() const -> bool;
@@ -131,28 +156,24 @@ public:
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
-    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
-    void ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back);
+    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}, false); }
+    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}, false); }
+    void ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
-    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
+    auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
     void AnimFree(uint anim_id);
-    auto AnimGetCurSpr(uint anim_id) const -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) const -> uint;
-    auto AnimGetSprCount(uint anim_id) const -> uint;
-    auto AnimGetFrames(uint anim_id) -> AnyFrames*;
-    void AnimRun(uint anim_id, uint flags);
+    auto AnimGetSpr(uint anim_id) -> Sprite*;
 
-    void ShowMainScreen(int new_screen, map<string, string> params);
+    void ShowMainScreen(int new_screen, map<string, any_t> params);
     auto GetMainScreen() const -> int { return _screenModeMain; }
     auto IsMainScreen(int check_screen) const -> bool { return check_screen == _screenModeMain; }
-    void ShowScreen(int screen, map<string, string> params);
+    void ShowScreen(int screen, map<string, any_t> params);
     void HideScreen(int screen);
     auto GetActiveScreen(vector<int>* screens) -> int;
     auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, map<string, string> params);
+    void RunScreenScript(bool show, int screen, map<string, any_t> params);
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
@@ -173,7 +194,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnGetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
+    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, any_t> /*data*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
@@ -217,7 +238,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, uint& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, ucolor& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, ident_t /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
@@ -227,23 +248,22 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
+    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, uint /*anim1*/, uint /*anim2*/, AbstractItem* /*item*/);
+    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
+    ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*pass*/, uint& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, CritterStateAnim& /*stateAnimEx*/, CritterActionAnim& /*actionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uint8 /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, CritterItemSlot /*toSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
 
-    ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;
@@ -263,28 +283,26 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
-    vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
-#endif
+    vector<shared_ptr<ModelSprite>> DrawCritterModel {};
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
-    int DrawCritterModelLayers[LAYERS3D_COUNT] {};
+    int DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};
+#endif
 
 protected:
+    // Todo: make IfaceAnim scriptable object
     struct IfaceAnim
     {
-        AnyFrames* Frames {};
-        AtlasType ResType {};
-        time_point LastUpdateTime {};
-        uint16 Flags {};
-        uint CurSpr {};
+        hstring Name {};
+        shared_ptr<Sprite> Anim {};
     };
 
     struct ScreenFadingData
     {
         time_point BeginTime {};
         time_duration Duration {};
-        uint StartColor {};
-        uint EndColor {};
+        ucolor StartColor {};
+        ucolor EndColor {};
     };
 
     struct GmapLocation
@@ -294,7 +312,7 @@ protected:
         uint16 LocWx {};
         uint16 LocWy {};
         uint16 Radius {};
-        uint Color {};
+        ucolor Color {};
         uint8 Entrances {};
     };
 
@@ -310,9 +328,9 @@ protected:
     void TryExit();
     void FlashGameWindow();
     void WaitDraw();
+    void CleanupSpriteCache();
 
     void ProcessInputEvents();
-    void ProcessAnim();
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
     void ProcessVideo();
@@ -376,7 +394,7 @@ protected:
     void Net_OnRemoteCall();
 
     void OnText(string_view str, ident_t cr_id, int how_say);
-    void OnMapText(string_view str, uint16 hx, uint16 hy, uint color);
+    void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
@@ -424,7 +442,9 @@ protected:
     vector<vector<uint8>> _tempPropertiesData {};
     vector<vector<uint8>> _tempPropertiesDataExt {};
 
-    vector<IfaceAnim*> _ifaceAnimations {};
+    uint _ifaceAnimIndex {};
+    unordered_map<uint, unique_ptr<IfaceAnim>> _ifaceAnimations {};
+    unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 
     vector<ScreenFadingData> _screenFadingEffects {};
 
@@ -435,7 +455,7 @@ protected:
 
     int _screenModeMain {SCREEN_WAIT};
 
-    AnyFrames* _waitPic {};
+    shared_ptr<Sprite> _waitPic {};
 
     uint8 _pupTransferType {};
     uint _pupContId {};

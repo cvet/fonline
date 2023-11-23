@@ -15,13 +15,7 @@ The mongo-c-driver has a few guidelines that help direct the process.
 ### Portability
 
 mongo-c-driver is portable software. It needs to run on a multitude of
-operating systems and architectures.
-
- * Linux (RHEL 5 and newer)
- * FreeBSD (10 and newer)
- * Windows (Vista and newer)
- * macOS (10.8 and newer)
- * ARM/SPARC/x86/x86_64
+[Supported Platforms](https://mongoc.org/libmongoc/current/installing.html#supported-platforms).
 
 
 ### Licensing
@@ -116,6 +110,22 @@ a block comment like the following:
 
 Public functions do not need these comment blocks, since they are documented in
 the .rst files.
+
+To build the documentation, it is recommended to use the Poetry-managed Python
+project to ensure that the exact tooling versions match. If you do not have
+Poetry installed, you can use the `poetry.sh` or `poetry.ps1` scripts in the
+`tools/` directory. First, install dependencies:
+
+```sh
+./tools/poetry.sh install --with=docs
+```
+
+Then, execute `sphinx-build` in the Python environment, using the paths to the
+documentation to be generated:
+
+```sh
+./tools/poetry.sh run sphinx-build -WEn -bhtml src/libmongoc/doc/ src/libmongoc/doc/html
+```
 
 
 ### Testing
@@ -247,6 +257,14 @@ For GCP:
 
 * `MONGOC_TEST_GCP_EMAIL=<string>`
 * `MONGOC_TEST_GCP_PRIVATEKEY=<string>`
+
+Tests of Client-Side Field Level Encryption also require temporary credentials to external KMS providers.
+
+For AWS:
+
+* `MONGOC_TEST_AWS_TEMP_SECRET_ACCESS_KEY=<string>`
+* `MONGOC_TEST_AWS_TEMP_ACCESS_KEY_ID=<string>`
+* `MONGOC_TEST_AWS_TEMP_SESSION_TOKEN=<string>`
 
 Tests of Client-Side Field Level Encryption spawn an extra process, "mongocryptd", by default. To bypass this spawning,
 start mongocryptd on port 27020 and set the following:

@@ -153,6 +153,14 @@ private:
         unordered_flat_map<uint64_t, AddrStat> hwCountSrc, hwCountAsm;
     };
 
+    struct History
+    {
+        const char* fileName;
+        int64_t line;
+        uint64_t baseAddr;
+        uint64_t symAddr;
+    };
+
 public:
     SourceView();
 
@@ -160,7 +168,7 @@ public:
     void SetCpuId( uint32_t cpuid );
 
     void OpenSource( const char* fileName, int line, const View& view, const Worker& worker );
-    void OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view );
+    void OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view, bool updateHistory = true );
     void Render( Worker& worker, View& view );
 
     void CalcInlineStats( bool val ) { m_calcInlineStats = val; }
@@ -235,7 +243,6 @@ private:
     bool m_asmShowSourceLocation;
     bool m_calcInlineStats;
     uint8_t m_maxAsmBytes;
-    bool m_atnt;
     uint64_t m_jumpPopupAddr;
     const CallstackFrameData* m_localCallstackPopup;
     bool m_hwSamples, m_hwSamplesRelative;
@@ -263,6 +270,7 @@ private:
 
     uint32_t m_maxLine;
     int m_maxMnemonicLen;
+    int m_maxOperandLen;
 
     unordered_flat_map<const char*, int, charutil::Hasher, charutil::Comparator> m_microArchOpMap;
     CpuArchitecture m_cpuArch;
@@ -287,6 +295,9 @@ private:
         size_t sel;
         std::vector<uint64_t> target;
     } m_asmTarget;
+
+    std::vector<History> m_history;
+    size_t m_historyCursor = 0;
 };
 
 }

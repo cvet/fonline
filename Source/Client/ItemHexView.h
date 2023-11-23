@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,11 @@
 
 #include "Common.h"
 
+#include "HexView.h"
 #include "ItemView.h"
-#include "ResourceManager.h"
+#include "SpriteManager.h"
 
-class MapView;
-
-class ItemHexView final : public ItemView
+class ItemHexView final : public ItemView, public HexView
 {
 public:
     ItemHexView() = delete;
@@ -51,59 +50,22 @@ public:
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
-    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
+    [[nodiscard]] auto IsDrawContour() const -> bool { return !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
-    [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isAnimLooped || (_isDynamicEffect && !_finishing) || _fading; }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return (_isEffect && !IsFinishing()) || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
+    [[nodiscard]] auto GetAnim() -> Sprite* { NON_CONST_METHOD_HINT_ONELINE() return _anim.get(); }
 
     void Init();
-    void RefreshAnim();
-    void RestoreAlpha();
-    void RefreshAlpha();
-    void SetSprite(Sprite* spr);
-    void Finish();
-    void StopFinishing();
     void Process();
+    void RefreshAlpha();
+    void RefreshAnim();
     void SetEffect(uint16 to_hx, uint16 to_hy);
-    void SkipFade();
-    void PlayAnimFromEnd();
-    void PlayAnimFromStart();
-    void PlayAnim(uint beg, uint end);
-    void PlayStayAnim();
-    void PlayShowAnim();
-    void PlayHideAnim();
     void RefreshOffs();
 
-    uint SprId {};
-    int ScrX {};
-    int ScrY {};
-    uint8 Alpha {};
-
-    RenderEffect* DrawEffect {};
-    Sprite* SprDraw {};
-    bool SprDrawValid {};
-
 private:
-    void SetFade(bool fade_up);
-    void SetCurSpr(uint num_spr);
+    void SetupSprite(MapSprite* mspr) override;
 
-    MapView* _map;
-
-    AnyFrames* _anim {};
-    uint _curFrm {};
-    uint _begFrm {};
-    uint _endFrm {};
-    uint _animBegFrm {};
-    uint _animEndFrm {};
-    time_point _animTime {};
-    uint8 _maxAlpha {0xFF};
-    bool _isAnimLooped {};
-    time_point _animStartTime {};
+    shared_ptr<Sprite> _anim {};
 
     bool _isEffect {};
     bool _isDynamicEffect {};
@@ -117,11 +79,4 @@ private:
     time_point _effUpdateLastTime {};
     int _effDir {};
     vector<pair<uint16, uint16>> _effSteps {};
-
-    bool _fading {};
-    time_point _fadingEndTime {};
-    bool _fadeUp {};
-
-    bool _finishing {};
-    time_point _finishingTime {};
 };
