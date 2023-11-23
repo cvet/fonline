@@ -139,7 +139,7 @@ They are located in ThirdParty directory.
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
-* [rpmalloc](https://github.com/mjansson/rpmalloc) - General purpose memory allocator
+* [rpmalloc](https://github.com/mjansson/rpmalloc) - general purpose memory allocator
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
@@ -212,6 +212,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: rework built-in string messages
 * Common: optimize copy() to pass placement storage for value
+* Common: schedule job repeat with last duration?
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: move texcoord offset calculation to gpu
@@ -219,28 +220,33 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
 * 3dStuff: remove unnecessary allocations from 3d
-* 3dStuff: fix AtlasType referencing in 3dStuff
+* 3dStuff: incapsulate model animation callbacks
 * Client: slowly move to stop hex
 * Client: synchronize effects showing (for example shot and kill)
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
+* Client: make IfaceAnim scriptable object
 * CritterHexView: fidget animation to scripts
+* DefaultSprites: incapsulate sprite sheet data
+* DefaultSprites: Spr.size()
+* HexView: incapsulate hex view fileds
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
+* MapSprite: : incapsulate all sprite data
+* ParticleSprites: optimize sprite atlas filling
+* RenderTarget: optimize sprite atlas filling
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
-* SparkExtension: improve particles in 2D
-* SpriteManager: improve DirectX rendering
 * SpriteManager: optimize sprite atlas filling
 * SpriteManager: convert FT_ font flags to enum
 * SpriteManager: fix FT_CENTERY_ENGINE workaround
+* SpriteManager: incapsulate sprite data
 * SpriteManager: move fonts stuff to separate module
 * SpriteManager: optimize text formatting - cache previous results
-* Sprites: MapSprite releasing
-* Sprites: : incapsulate all sprite data
+* TextureAtlas: optimize sprite atlas filling
+* TextureAtlas: incapsulate texture atlas & atlas space node data
 * Updater: support restoring file downloading from interrupted position
 * Updater: add update file files checking by hashes
 * VideoClip: allow video playing in back direction
-* VisualParticles: improve particles in 2D
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
@@ -251,23 +257,28 @@ Please follow these instructions to understand how to use this engine by design:
 * Entity: improve entity event Deferred
 * EntityProperties: implement Location InitScript
 * GeometryHelper: remove hex offset limit
+* GeometryHelper: move all geometry helper methods to static
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
 * MsgFiles: pass default to fomsg gets
+* Properties: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
 * Properties: validate property name identifier
 * Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
 * PropertiesSerializator: maybe need some optional warning for unknown/wrong properties
+* PropertiesSerializator: check if converted value fits to target bounds
+* PropertiesSerializator: validate integer value to fit in enum range
 * Settings-Include: rework global Quit setting
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
 * Settings-Include: move LegBones to fo3d settings
 * Settings-Include: move resource files control (include/exclude/pack rules) to cmake
-* Settings: improve editable entry for arrays
+* Settings: improve editable entries
+* Timer: remove Timer class, use directly std::chrono instead
 * Application: move all these statics to App class fields
 * Rendering-OpenGL: make workarounds for work without ARB_uniform_buffer_object
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
@@ -288,7 +299,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Networking: catch exceptions in network servers
 * Player: restore automaps
 * Player: allow attach many critters to sigle player
-* Server: disable look distance caching
 * Server: validate player moving path
 * Server: validate stop position and place critter in it
 * Server: control max size explicitly, add option to property registration
@@ -296,7 +306,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: don't remeber but need check (IsPlaneNoTalk)
-* Server: reowrk non-stacked items creation from recursive to loop
 * Server: improve ban system
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ServerDeferredCalls: improve deferred calls
