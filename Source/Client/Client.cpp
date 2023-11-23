@@ -487,8 +487,10 @@ void FOClient::MainLoop()
     // Render
     EffectMngr.UpdateEffects(GameTime);
 
-    SprMngr.BeginScene({0, 0, 0});
     {
+        SprMngr.BeginScene({0, 0, 0});
+        auto end_scene = ScopeCallback([this] { SprMngr.EndScene(); });
+
         // Quake effect
         ProcessScreenEffectQuake();
 
@@ -505,7 +507,6 @@ void FOClient::MainLoop()
         ProcessVideo();
         ProcessScreenEffectFading();
     }
-    SprMngr.EndScene();
 }
 
 void FOClient::ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back)
@@ -3661,9 +3662,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     SDL_StopTextInput();
             }
         }*/
-    }
-    else if (cmd == "Message" && args.size() >= 2) {
-        MessageBox::ShowErrorMessage("Info", args[1], "");
     }
     else if (cmd == "Exit") {
         Settings.Quit = true;

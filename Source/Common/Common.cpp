@@ -143,10 +143,10 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
         CreateDumpMessage("FatalException", ex.what());
 
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), true);
         }
         else {
-            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+            MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), true);
         }
     }
     catch (...) {
@@ -176,10 +176,10 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
 
         if (ExceptionMessageBox) {
             if (ex_info != nullptr) {
-                MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), false);
             }
             else {
-                MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+                MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), false);
             }
         }
     }

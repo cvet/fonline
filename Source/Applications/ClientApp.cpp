@@ -122,13 +122,15 @@ static void MainEntry([[maybe_unused]] void* data)
             ReportExceptionAndContinue(ex);
 
             // Recreate client on unhandled error
-            try {
-                Data->Client->Shutdown();
-                Data->Client->Release();
-                Data->Client = nullptr;
-            }
-            catch (const std::exception& ex2) {
-                ReportExceptionAndExit(ex2);
+            if (App->Settings.RecreateClientOnError) {
+                try {
+                    Data->Client->Shutdown();
+                    Data->Client->Release();
+                    Data->Client = nullptr;
+                }
+                catch (const std::exception& ex2) {
+                    ReportExceptionAndExit(ex2);
+                }
             }
         }
 

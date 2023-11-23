@@ -572,11 +572,11 @@ void AppAudio::UnlockDevice()
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(title);
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(traceback);
+    UNUSED_VARIABLE(fatal_error);
 }

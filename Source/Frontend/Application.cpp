@@ -1510,12 +1510,14 @@ void AppAudio::UnlockDevice()
     SDL_UnlockAudioDevice(AudioDeviceId);
 }
 
-void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     STACK_TRACE_ENTRY();
 
+    const char* title = fatal_error ? "Fatal Error" : "Error";
+
 #if FO_WEB || FO_ANDROID || FO_IOS
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, string(title).c_str(), string(message).c_str(), nullptr);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, string(message).c_str(), nullptr);
 
 #else
     auto verb_message = string(message);
@@ -1524,32 +1526,64 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
         verb_message += _str("\n\n{}", traceback);
     }
 
+    static unordered_set<string> ignore_entries;
+    static std::mutex ignore_entries_locker;
+
+    if (!fatal_error) {
+        auto locker = std::unique_lock {ignore_entries_locker};
+        if (ignore_entries.count(verb_message) != 0) {
+            return;
+        }
+    }
+
     SDL_MessageBoxButtonData copy_button;
     SDL_zero(copy_button);
     copy_button.buttonid = 0;
     copy_button.text = "Copy";
 
-    SDL_MessageBoxButtonData close_button;
-    SDL_zero(close_button);
-    close_button.buttonid = 1;
-    close_button.text = "Close";
-    close_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
-    close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+    SDL_MessageBoxButtonData ignore_all_button;
+    SDL_zero(ignore_all_button);
+    ignore_all_button.buttonid = 1;
+    ignore_all_button.text = "Ignore All";
 
-    const auto title_str = string(title);
+    SDL_MessageBoxButtonData ignore_button;
+    SDL_zero(ignore_button);
+    ignore_button.buttonid = 2;
+    ignore_button.text = "Ignore";
+    ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
 
-    const SDL_MessageBoxButtonData buttons[] = {close_button, copy_button};
+    SDL_MessageBoxButtonData exit_button;
+    SDL_zero(exit_button);
+    exit_button.buttonid = 2;
+    exit_button.text = "Exit";
+    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+
+    const SDL_MessageBoxButtonData buttons_with_ignore[] = {copy_button, ignore_all_button, ignore_button};
+    const SDL_MessageBoxButtonData buttons_with_exit[] = {copy_button, exit_button};
+
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
-    data.title = title_str.c_str();
+    data.title = title;
     data.message = verb_message.c_str();
-    data.numbuttons = 2;
-    data.buttons = buttons;
+    data.numbuttons = fatal_error ? 2 : 3;
+    data.buttons = fatal_error ? buttons_with_exit : buttons_with_ignore;
 
-    auto buttonid = 0;
-    while (SDL_ShowMessageBox(&data, &buttonid) == 0 && buttonid == 0) {
-        SDL_SetClipboardText(verb_message.c_str());
+    int buttonid = 0;
+    while (SDL_ShowMessageBox(&data, &buttonid) == 0) {
+        if (buttonid == 0) {
+            SDL_SetClipboardText(verb_message.c_str());
+        }
+        else if (buttonid == 1) {
+            auto locker = std::unique_lock {ignore_entries_locker};
+            ignore_entries.emplace(verb_message);
+            break;
+        }
+        else {
+            break;
+        }
     }
 #endif
 }

@@ -199,6 +199,7 @@ FIXED_SETTING(float, ModelProjFactor, 40.0f);
 FIXED_SETTING(bool, AtlasLinearFiltration, false);
 FIXED_SETTING(int, DefaultParticleDrawWidth, 128);
 FIXED_SETTING(int, DefaultParticleDrawHeight, 128);
+FIXED_SETTING(bool, RecreateClientOnError, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

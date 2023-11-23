@@ -421,7 +421,7 @@ class MessageBox final
 public:
     MessageBox() = delete;
 
-    static void ShowErrorMessage(string_view title, string_view message, string_view traceback);
+    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
 };
 
 extern Application* App;
