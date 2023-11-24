@@ -248,7 +248,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*actionItem*/);
+    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
@@ -371,7 +371,6 @@ protected:
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
-    void Net_OnCritterStopMove();
     void Net_OnSomeItem();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();

@@ -128,12 +128,12 @@ public:
     void ChangeDirAngle(int dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
-    void Broadcast_Move();
-    void Broadcast_Position();
+    void Broadcast_Moving();
     void Broadcast_Action(CritterAction action, int action_data, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
+    void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
@@ -143,12 +143,11 @@ public:
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
 
     void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
-    void Send_Move(const Critter* from_cr);
+    void Send_Moving(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
     void Send_LoadMap(const Map* map);
-    void Send_Position(const Critter* cr);
     void Send_AddItemOnMap(const Item* item);
     void Send_EraseItemFromMap(const Item* item);
     void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);

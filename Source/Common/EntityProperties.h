@@ -193,7 +193,7 @@ public:
     ENTITY_PROPERTY(Public, bool, IsShowAnimExt);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsLight);
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Public, bool, IsGeck);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsTrap);

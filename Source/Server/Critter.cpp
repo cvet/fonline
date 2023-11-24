@@ -234,7 +234,7 @@ auto Critter::AddCrIntoVisVec(Critter* add_cr) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (VisCrMap.count(add_cr->GetId()) != 0u) {
+    if (VisCrMap.count(add_cr->GetId()) != 0) {
         return false;
     }
 
@@ -504,7 +504,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Move()
+void Critter::Broadcast_Moving()
 {
     STACK_TRACE_ENTRY();
 
@@ -515,22 +515,7 @@ void Critter::Broadcast_Move()
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Move(this);
-    }
-}
-
-void Critter::Broadcast_Position()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (VisCr.empty()) {
-        return;
-    }
-
-    for (auto* cr : VisCr) {
-        cr->Send_Position(this);
+        cr->Send_Moving(this);
     }
 }
 
@@ -576,6 +561,21 @@ void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
 
     for (auto* cr : VisCr) {
         cr->Send_Teleport(this, to_hx, to_hy);
+    }
+}
+
+void Critter::SendAndBroadcast_Moving()
+{
+    STACK_TRACE_ENTRY();
+
+    Send_Moving(this);
+
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        cr->Send_Moving(this);
     }
 }
 
@@ -755,13 +755,15 @@ auto Critter::GetTalkedPlayers() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    auto talk = 0u;
+    uint talkers = 0;
+
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
-            talk++;
+            talkers++;
         }
     }
-    return talk;
+
+    return talkers;
 }
 
 auto Critter::IsTalkedPlayers() const -> bool
@@ -780,12 +782,14 @@ auto Critter::GetBarterPlayers() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    auto barter = 0u;
+    auto barter = 0;
+
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId() && cr->Talk.Barter) {
             barter++;
         }
     }
+
     return barter;
 }
 
@@ -794,7 +798,7 @@ auto Critter::IsFreeToTalk() const -> bool
     STACK_TRACE_ENTRY();
 
     auto max_talkers = GetMaxTalkers();
-    if (max_talkers == 0u) {
+    if (max_talkers == 0) {
         max_talkers = _engine->Settings.NpcMaxTalkers;
     }
 
@@ -812,14 +816,14 @@ void Critter::Send_Property(NetProperty type, const Property* prop, const Server
     }
 }
 
-void Critter::Send_Move(const Critter* from_cr)
+void Critter::Send_Moving(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Move(from_cr);
+        _player->Send_Moving(from_cr);
     }
 }
 
@@ -864,17 +868,6 @@ void Critter::Send_LoadMap(const Map* map)
 
     if (_player != nullptr) {
         _player->Send_LoadMap(map);
-    }
-}
-
-void Critter::Send_Position(const Critter* cr)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_Position(cr);
     }
 }
 

@@ -85,7 +85,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Invalid proto '{}' arg", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
@@ -114,7 +114,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Invalid proto '{}' arg", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
@@ -175,7 +175,9 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemComponent component)
 {
-    for (auto* item : self->GetItemsHex(hx, hy)) {
+    const auto& map_items = self->GetItems(hx, hy);
+
+    for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -194,8 +196,9 @@
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto& map_items = self->GetItems(hx, hy);
 
-    for (auto* item : self->GetItemsHex(hx, hy)) {
+    for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -213,7 +216,9 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, uint radius, ItemComponent component)
 {
-    for (auto* item : self->GetItemsHexEx(hx, hy, radius, hstring())) {
+    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+
+    for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -233,8 +238,9 @@
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, uint radius, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
 
-    for (auto* item : self->GetItemsHexEx(hx, hy, radius, hstring())) {
+    for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -262,7 +268,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemsHex(hx, hy);
+    return self->GetItems(hx, hy);
 }
 
 ///# ...
@@ -277,7 +283,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemsHexEx(hx, hy, radius, hstring());
+    return self->GetItemsInRadius(hx, hy, radius, hstring());
 }
 
 ///# ...
@@ -293,7 +299,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemsHexEx(hx, hy, radius, pid);
+    return self->GetItemsInRadius(hx, hy, radius, pid);
 }
 
 ///# ...
@@ -359,8 +365,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHex(hx, hy);
     vector<Item*> items;
+    const auto& map_items = self->GetItems(hx, hy);
+
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
@@ -387,8 +394,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHex(hx, hy);
     vector<Item*> items;
+    const auto& map_items = self->GetItems(hx, hy);
+
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
@@ -413,8 +421,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hstring());
     vector<Item*> items;
+    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
@@ -442,8 +451,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hstring());
     vector<Item*> items;
+    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
@@ -588,9 +598,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    auto* cr = self->GetHexCritter(hx, hy, false);
-    if (!cr) {
-        cr = self->GetHexCritter(hx, hy, true);
+    auto* cr = self->GetNonDeadCritter(hx, hy);
+    if (cr == nullptr) {
+        cr = self->GetDeadCritter(hx, hy);
     }
     return cr;
 }
@@ -602,7 +612,9 @@
 ///@ ExportMethod
 [[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, CritterComponent component, CritterFindType findType)
 {
-    for (auto* cr : self->GetCritters()) {
+    const auto& map_critters = self->GetCritters();
+
+    for (auto* cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return cr;
         }
@@ -620,8 +632,9 @@
 [[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
+    const auto& map_critters = self->GetCritters();
 
-    for (auto* cr : self->GetCritters()) {
+    for (auto* cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
             return cr;
         }
@@ -643,8 +656,14 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    auto critters = self->GetCritters(hx, hy, radius, findType);
+
+    std::sort(critters.begin(), critters.end(), [hx, hy](const Critter* cr1, const Critter* cr2) {
+        const uint dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const uint dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
+    });
+
     return critters;
 }
 
@@ -655,7 +674,8 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    const auto& map_critters = self->GetCritters();
+
     critters.reserve(map_critters.size());
 
     for (auto* cr : map_critters) {
@@ -675,22 +695,13 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, CritterFindType findType)
 {
     vector<Critter*> critters;
-    if (!pid) {
-        const auto map_critters = self->GetCritters();
-        critters.reserve(map_critters.size());
-        for (auto* cr : map_critters) {
-            if (cr->CheckFind(findType)) {
-                critters.push_back(cr);
-            }
-        }
-    }
-    else {
-        const auto map_npcs = self->GetNonPlayerCritters();
-        critters.reserve(map_npcs.size());
-        for (auto* npc : map_npcs) {
-            if (npc->GetProtoId() == pid && npc->CheckFind(findType)) {
-                critters.push_back(npc);
-            }
+    const auto& map_critters = self->GetCritters();
+
+    critters.reserve(map_critters.size());
+
+    for (auto* cr : map_critters) {
+        if ((!pid || cr->GetProtoId() == pid) && cr->CheckFind(findType)) {
+            critters.push_back(cr);
         }
     }
 
@@ -704,9 +715,9 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterComponent component, CritterFindType findType)
 {
-    const auto map_critters = self->GetCritters();
-
+    const auto& map_critters = self->GetCritters();
     vector<Critter*> critters;
+
     critters.reserve(map_critters.size());
 
     for (auto* cr : map_critters) {
@@ -727,9 +738,9 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    const auto map_critters = self->GetCritters();
-
+    const auto& map_critters = self->GetCritters();
     vector<Critter*> critters;
+
     critters.reserve(map_critters.size());
 
     for (auto* cr : map_critters) {
@@ -754,6 +765,7 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<Critter*> critters;
+
     TraceData trace;
     trace.TraceMap = self;
     trace.BeginHx = fromHx;
@@ -788,6 +800,7 @@
     vector<Critter*> critters;
     pair<uint16, uint16> block;
     pair<uint16, uint16> pre_block;
+
     TraceData trace;
     trace.TraceMap = self;
     trace.BeginHx = fromHx;
@@ -821,8 +834,10 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, CritterFindType findType)
 {
     vector<Critter*> critters;
-    for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && std::find(critters.begin(), critters.end(), cr) == critters.end() && GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->GetLookDistance(), fromHx, fromHy, toHx, toHy)) {
+    const auto& map_critters = self->GetCritters();
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), static_cast<int>(cr->GetLookDistance()), fromHx, fromHy, toHx, toHy)) {
             critters.push_back(cr);
         }
     }
@@ -890,7 +905,8 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_GetWallHexInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)
 {
-    pair<uint16, uint16> last_passed;
+    pair<uint16, uint16> last_movable;
+
     TraceData trace;
     trace.TraceMap = self;
     trace.BeginHx = fromHx;
@@ -899,13 +915,13 @@
     trace.EndHy = toHy;
     trace.Dist = dist;
     trace.Angle = angle;
-    trace.LastPassed = &last_passed;
+    trace.LastMovable = &last_movable;
 
     self->GetEngine()->MapMngr.TraceBullet(trace);
 
-    if (trace.IsHaveLastPassed) {
-        toHx = last_passed.first;
-        toHy = last_passed.second;
+    if (trace.IsHaveLastMovable) {
+        toHx = last_movable.first;
+        toHy = last_movable.second;
     }
     else {
         toHx = fromHx;
@@ -1078,13 +1094,13 @@
 ///# param hexY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexPassed(Map* self, uint16 hexX, uint16 hexY)
+[[maybe_unused]] bool Server_Map_IsHexMovable(Map* self, uint16 hexX, uint16 hexY)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexPassed(hexX, hexY);
+    return self->IsHexMovable(hexX, hexY);
 }
 
 ///# ...
@@ -1093,13 +1109,13 @@
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexesPassed(Map* self, uint16 hexX, uint16 hexY, uint radius)
+[[maybe_unused]] bool Server_Map_IsHexesMovable(Map* self, uint16 hexX, uint16 hexY, uint radius)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexesPassed(hexX, hexY, radius);
+    return self->IsHexesMovable(hexX, hexY, radius);
 }
 
 ///# ...
@@ -1107,13 +1123,13 @@
 ///# param hexY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexRaked(Map* self, uint16 hexX, uint16 hexY)
+[[maybe_unused]] bool Server_Map_IsHexShootable(Map* self, uint16 hexX, uint16 hexY)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexRaked(hexX, hexY);
+    return self->IsHexShootable(hexX, hexY);
 }
 
 ///# ...
@@ -1234,10 +1250,8 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetHexFlag(hx, hy, FH_BLOCK_ITEM);
-    if (full) {
-        self->SetHexFlag(hx, hy, FH_NRAKE_ITEM);
-    }
+    self->SetHexManualBlock(hx, hy, true, full);
+    // Todo: notify clients about manual hex block
 }
 
 ///# ...
@@ -1250,8 +1264,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    self->UnsetHexFlag(hx, hy, FH_BLOCK_ITEM);
-    self->UnsetHexFlag(hx, hy, FH_NRAKE_ITEM);
+    self->SetHexManualBlock(hx, hy, false, false);
 }
 
 ///# ...
@@ -1277,7 +1290,7 @@
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->GetLookDistance() : radius)) {
+        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }

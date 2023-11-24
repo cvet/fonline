@@ -67,13 +67,12 @@ public:
     void SetName(string_view name);
     void SetOwnedCritter(Critter* cr);
 
-    void Send_Move(const Critter* from_cr);
+    void Send_Moving(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
     void Send_LoadMap(const Map* map);
     void Send_Property(NetProperty type, const Property* prop, const Entity* entity);
-    void Send_Position(const Critter* cr);
     void Send_AddItemOnMap(const Item* item);
     void Send_EraseItemFromMap(const Item* item);
     void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);

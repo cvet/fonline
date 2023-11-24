@@ -70,8 +70,6 @@ static auto GetMsgSize(uint msg) -> uint
         return NETMSG_CRITTER_DIR_SIZE;
     case NETMSG_SEND_STOP_MOVE:
         return NETMSG_SEND_STOP_MOVE_SIZE;
-    case NETMSG_CRITTER_STOP_MOVE:
-        return NETMSG_CRITTER_STOP_MOVE_SIZE;
     case NETMSG_CRITTER_POS:
         return NETMSG_CRITTER_POS_SIZE;
     case NETMSG_CRITTER_TELEPORT:

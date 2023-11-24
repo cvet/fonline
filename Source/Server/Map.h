@@ -49,14 +49,22 @@ class Location;
 
 struct StaticMap
 {
+    // Todo: memory optimization - improve dynamic grid for map hex fields
+    struct Field
+    {
+        bool IsMoveBlocked {};
+        bool IsShootBlocked {};
+        vector<StaticItem*> StaticItems {};
+        vector<StaticItem*> TriggerItems {};
+    };
+
+    vector<Field> HexField {};
     vector<pair<uint, const Critter*>> CritterBillets {};
     vector<pair<uint, const Item*>> ItemBillets {};
     vector<pair<uint, const Item*>> HexItemBillets {};
     vector<pair<uint, const Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
     unordered_map<ident_t, StaticItem*> StaticItemsById {};
-    vector<StaticItem*> TriggerItems {};
-    vector<uint8> HexFlags {};
 };
 
 class Map final : public ServerEntity, public EntityWithProto, public MapProperties
@@ -76,39 +84,38 @@ public:
     [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
     [[nodiscard]] auto GetLocation() -> Location*;
     [[nodiscard]] auto GetLocation() const -> const Location*;
+    [[nodiscard]] auto IsHexMovable(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsHexShootable(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool;
+    [[nodiscard]] auto IsHexesMovable(uint16 to_hx, uint16 to_hy, uint radius, Critter* skip_cr) -> bool;
+    [[nodiscard]] auto IsBlockItem(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsItemTrigger(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsItemGag(uint16 hx, uint16 hy) const -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
     [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) -> Item*;
     [[nodiscard]] auto GetItems() -> const vector<Item*>&;
-    [[nodiscard]] auto GetItemsHex(uint16 hx, uint16 hy) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&;
+    [[nodiscard]] auto GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(uint16 hx, uint16 hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<uint16, uint16>>;
-    [[nodiscard]] auto GetHexFlags(uint16 hx, uint16 hy) const -> uint16;
-    [[nodiscard]] auto IsHexPassed(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexRaked(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexesPassed(uint16 hx, uint16 hy, uint radius) const -> bool;
-    [[nodiscard]] auto IsMovePassed(const Critter* cr, uint16 to_hx, uint16 to_hy, uint multihex) -> bool;
-    [[nodiscard]] auto IsHexTrigger(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexCritter(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexGag(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexBlockItem(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexStaticTrigger(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsFlagCritter(uint16 hx, uint16 hy, bool dead) const -> bool;
+    [[nodiscard]] auto IsAnyCritter(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsDeadCritter(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
-    [[nodiscard]] auto GetHexCritter(uint16 hx, uint16 hy, bool dead) -> Critter*;
-    [[nodiscard]] auto GetCrittersHex(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*;
+    [[nodiscard]] auto GetDeadCritter(uint16 hx, uint16 hy) -> Critter*;
+    [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> const vector<Critter*>&;
     [[nodiscard]] auto GetPlayerCritters() -> const vector<Critter*>&;
     [[nodiscard]] auto GetNonPlayerCritters() -> const vector<Critter*>&;
-    [[nodiscard]] auto GetCrittersRaw() -> vector<Critter*>&;
-    [[nodiscard]] auto GetPlayersRaw() -> vector<Critter*>&;
-    [[nodiscard]] auto GetNpcsRaw() -> vector<Critter*>&;
     [[nodiscard]] auto GetCrittersCount() const -> uint;
-    [[nodiscard]] auto GetPlayersCount() const -> uint;
-    [[nodiscard]] auto GetNpcsCount() const -> uint;
+    [[nodiscard]] auto GetPlayerCrittersCount() const -> uint;
+    [[nodiscard]] auto GetNonPlayerCrittersCount() const -> uint;
+    [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
     [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>;
@@ -119,8 +126,6 @@ public:
     void SetLocation(Location* loc);
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
-    void PlaceItemBlocks(uint16 hx, uint16 hy, Item* item);
-    void RemoveItemBlocks(uint16 hx, uint16 hy, Item* item);
     void SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
     void SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
     void SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
@@ -134,10 +139,9 @@ public:
     void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);
     void SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
-    void SetHexFlag(uint16 hx, uint16 hy, uint8 flag);
-    void UnsetHexFlag(uint16 hx, uint16 hy, uint8 flag);
-    void SetFlagCritter(uint16 hx, uint16 hy, uint multihex, bool dead);
-    void UnsetFlagCritter(uint16 hx, uint16 hy, uint multihex, bool dead);
+    void SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full);
+    void AddCritterToField(Critter* cr);
+    void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(uint16 hx, uint16 hy);
 
     ///@ ExportEvent
@@ -152,22 +156,41 @@ public:
     ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
 
 private:
-    struct HexesHash
+    struct Field
     {
-        std::size_t operator()(const tuple<uint16, uint16>& hexes) const noexcept { return std::get<0>(hexes) << 16 | std::get<1>(hexes); }
+        bool IsNonDeadCritter {};
+        bool IsDeadCritter {};
+        bool IsGagItem {};
+        bool IsTriggerItem {};
+        bool IsNoMoveItem {};
+        bool IsNoShootItem {};
+        bool IsMoveBlocked {};
+        bool IsShootBlocked {};
+        vector<Critter*> Critters {};
+        vector<Critter*> MultihexCritters {};
+        vector<Item*> Items {};
+        vector<Item*> BlockLines {};
+        bool ManualBlock {};
+        bool ManualBlockFull {};
     };
 
+    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) const -> const Field& { return _hexField[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto StaticMapFieldAt(uint16 hx, uint16 hy) const -> const StaticMap::Field& { return _staticMap->HexField[static_cast<size_t>(hy) * _width + hx]; }
+
+    void SetMultihexCritter(Critter* cr, bool set);
+    void RecacheHexFlags(Field& field, const StaticMap::Field& static_field);
+
     const StaticMap* _staticMap {};
-    uint8* _hexFlags {};
-    int _hexFlagsSize {};
+    uint16 _width {};
+    uint16 _height {};
+    vector<Field> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};
     vector<Critter*> _nonPlayerCritters {};
     vector<Item*> _items {};
     unordered_map<ident_t, Item*> _itemsMap {};
-    unordered_map<tuple<uint16, uint16>, vector<Item*>, HexesHash> _itemsByHex {};
-    unordered_map<tuple<uint16, uint16>, vector<Item*>, HexesHash> _blockLinesByHex {};
     Location* _mapLocation {};
     uint _loopLastTick[5] {};
 };

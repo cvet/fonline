@@ -494,6 +494,9 @@
         throw ScriptException("Critter is not on map");
     }
 
+    boneX = hex_cr->ScrX;
+    boneY = hex_cr->ScrY;
+
     if (!hex_cr->IsModel()) {
         return false;
     }
@@ -503,8 +506,9 @@
         return false;
     }
 
-    boneX = std::get<0>(*bone_pos) + hex_cr->ScrX;
-    boneY = std::get<1>(*bone_pos) + hex_cr->ScrY;
+    boneX += std::get<0>(*bone_pos);
+    boneY += std::get<1>(*bone_pos);
+
     return true;
 
 #else

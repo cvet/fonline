@@ -134,7 +134,7 @@ void Player::Send_AddCritter(const Critter* cr)
     }
 
     if (cr->IsMoving()) {
-        Send_Move(cr);
+        Send_Moving(cr);
     }
 }
 
@@ -277,7 +277,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Move(const Critter* from_cr)
+void Player::Send_Moving(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -307,7 +307,7 @@ void Player::Send_Move(const Critter* from_cr)
     }
     else {
         CONNECTION_OUTPUT_BEGIN(Connection);
-        Connection->OutBuf.StartMsg(NETMSG_CRITTER_STOP_MOVE);
+        Connection->OutBuf.StartMsg(NETMSG_CRITTER_POS);
         Connection->OutBuf.Write(from_cr->GetId());
         Connection->OutBuf.Write(from_cr->GetHexX());
         Connection->OutBuf.Write(from_cr->GetHexY());
@@ -632,24 +632,6 @@ void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
     Connection->OutBuf.Write(zx);
     Connection->OutBuf.Write(zy);
     Connection->OutBuf.Write(fog);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_Position(const Critter* cr)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_CRITTER_POS);
-    Connection->OutBuf.Write(cr->GetId());
-    Connection->OutBuf.Write(cr->GetHexX());
-    Connection->OutBuf.Write(cr->GetHexY());
-    Connection->OutBuf.Write(cr->GetHexOffsX());
-    Connection->OutBuf.Write(cr->GetHexOffsY());
-    Connection->OutBuf.Write(cr->GetDirAngle());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }

@@ -69,17 +69,16 @@ struct TraceData
     float Angle {};
     Critter* FindCr {};
     CritterFindType FindType {};
-    bool LastPassedSkipCritters {};
     HexCallbackFunc HexCallback {};
 
     // Output
     vector<Critter*>* Critters {};
     pair<uint16, uint16>* PreBlock {};
     pair<uint16, uint16>* Block {};
-    pair<uint16, uint16>* LastPassed {};
+    pair<uint16, uint16>* LastMovable {};
     bool IsFullTrace {};
-    bool IsCritterFounded {};
-    bool IsHaveLastPassed {};
+    bool IsCritterFound {};
+    bool IsHaveLastMovable {};
 };
 
 struct FindPathInput
@@ -184,7 +183,7 @@ private:
 
     FOServer* _engine;
     bool _runGarbager {true};
-    unordered_map<const ProtoMap*, StaticMap> _staticMaps {};
+    unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
     int _mapGridOffsX {};
     int _mapGridOffsY {};
     int16* _mapGrid {};

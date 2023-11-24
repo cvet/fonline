@@ -150,7 +150,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         multihex = props->GetValue<uint>(props->GetRegistrator()->Find("Multihex"));
     }
 
-    if (!map->IsHexesPassed(hx, hy, multihex)) {
+    if (!map->IsHexesMovable(hx, hy, multihex)) {
         if (accuracy) {
             return nullptr;
         }
@@ -173,7 +173,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
                 continue;
             }
-            if (!map->IsHexesPassed(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
+            if (!map->IsHexesMovable(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
                 continue;
             }
             break;

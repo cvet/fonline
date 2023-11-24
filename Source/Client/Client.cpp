@@ -162,7 +162,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_STOP_MOVE, [this] { Net_OnCritterStopMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
@@ -1575,35 +1574,6 @@ void FOClient::Net_OnCritterMove()
     cr->AnimateStay();
 }
 
-void FOClient::Net_OnCritterStopMove()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-
-    // Todo: slowly move to stop hex
-    [[maybe_unused]] const auto hx = _conn.InBuf.Read<uint16>();
-    [[maybe_unused]] const auto hy = _conn.InBuf.Read<uint16>();
-    [[maybe_unused]] const auto hex_ox = _conn.InBuf.Read<int16>();
-    [[maybe_unused]] const auto hex_oy = _conn.InBuf.Read<int16>();
-    [[maybe_unused]] const auto dir_angle = _conn.InBuf.Read<int16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (CurMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    auto* cr = CurMap->GetCritter(cr_id);
-    if (cr == nullptr) {
-        return;
-    }
-
-    cr->ClearMove();
-    cr->AnimateStay();
-}
-
 void FOClient::Net_OnSomeItem()
 {
     STACK_TRACE_ENTRY();
@@ -2998,7 +2968,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
         }
 
         if (rebuild_cache) {
-            item->GetMap()->EvaluateFieldFlags(item->GetHexX(), item->GetHexY());
+            item->GetMap()->RecacheHexFlags(item->GetHexX(), item->GetHexY());
         }
     }
 }
@@ -3353,7 +3323,7 @@ void FOClient::LmapPrepareMap()
             const auto& field = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
             ucolor cur_color;
 
-            if (const auto* cr = CurMap->GetActiveCritter(static_cast<uint16>(i1), static_cast<uint16>(i2)); cr != nullptr) {
+            if (const auto* cr = CurMap->GetNonDeadCritter(static_cast<uint16>(i1), static_cast<uint16>(i2)); cr != nullptr) {
                 cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});

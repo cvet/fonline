@@ -487,13 +487,13 @@ void MapView::AddItemToField(ItemHexView* item)
         std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
         std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
 
-        EvaluateFieldFlags(field);
+        RecacheHexFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
                 field2.BlockLineItems.emplace_back(item);
-                EvaluateFieldFlags(field2);
+                RecacheHexFlags(field2);
             });
         }
     }
@@ -525,7 +525,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         RUNTIME_ASSERT(it != field.Items.end());
         field.Items.erase(it);
 
-        EvaluateFieldFlags(field);
+        RecacheHexFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
@@ -533,7 +533,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
                 const auto it2 = std::find(field2.BlockLineItems.begin(), field2.BlockLineItems.end(), item);
                 RUNTIME_ASSERT(it2 != field2.BlockLineItems.end());
                 field2.BlockLineItems.erase(it2);
-                EvaluateFieldFlags(field2);
+                RecacheHexFlags(field2);
             });
         }
     }
@@ -2113,7 +2113,7 @@ auto MapView::MeasureMapBorders(const ItemHexView* item) -> bool
     return MeasureMapBorders(item->Spr, item->ScrX, item->ScrY);
 }
 
-void MapView::EvaluateFieldFlags(uint16 hx, uint16 hy)
+void MapView::RecacheHexFlags(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -2122,12 +2122,14 @@ void MapView::EvaluateFieldFlags(uint16 hx, uint16 hy)
 
     auto& field = FieldAt(hx, hy);
 
-    EvaluateFieldFlags(field);
+    RecacheHexFlags(field);
 }
 
-void MapView::EvaluateFieldFlags(Field& field)
+void MapView::RecacheHexFlags(Field& field)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     field.Flags.IsWall = false;
     field.Flags.IsWallTransp = false;
@@ -2138,18 +2140,20 @@ void MapView::EvaluateFieldFlags(Field& field)
     field.Flags.ScrollBlock = false;
     field.Corner = CornerType::NorthSouth;
 
-    if (!field.Critters.empty()) {
-        for (const auto* cr : field.Critters) {
-            if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
-                field.Flags.IsMoveBlocked = true;
+    if (_engine->Settings.CritterBlockHex) {
+        if (!field.Critters.empty()) {
+            for (const auto* cr : field.Critters) {
+                if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
+                    field.Flags.IsMoveBlocked = true;
+                }
             }
         }
-    }
 
-    if (!field.MultihexCritters.empty()) {
-        for (const auto* cr : field.MultihexCritters) {
-            if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
-                field.Flags.IsMoveBlocked = true;
+        if (!field.MultihexCritters.empty()) {
+            for (const auto* cr : field.MultihexCritters) {
+                if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
+                    field.Flags.IsMoveBlocked = true;
+                }
             }
         }
     }
@@ -2196,6 +2200,10 @@ void MapView::EvaluateFieldFlags(Field& field)
                 field.Flags.IsLightBlocked = true;
             }
         }
+    }
+
+    if (field.Flags.IsShootBlocked) {
+        field.Flags.IsMoveBlocked = true;
     }
 }
 
@@ -2290,7 +2298,7 @@ void MapView::Resize(uint16 width, uint16 height)
     std::memset(_hexLight.data(), 0, _hexLight.size());
 
     for (size_t i = 0; i < static_cast<size_t>(_width) * _height; i++) {
-        EvaluateFieldFlags(_hexField[i]);
+        RecacheHexFlags(_hexField[i]);
     }
 
     RefreshMap();
@@ -3218,7 +3226,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
     field.Critters.emplace_back(cr);
 
-    EvaluateFieldFlags(field);
+    RecacheHexFlags(field);
 
     SetMultihexCritter(cr, true);
 
@@ -3254,7 +3262,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     RUNTIME_ASSERT(it != field.Critters.end());
     field.Critters.erase(it);
 
-    EvaluateFieldFlags(field);
+    RecacheHexFlags(field);
 
     SetMultihexCritter(cr, false);
 
@@ -3279,14 +3287,24 @@ auto MapView::GetCritter(ident_t id) -> CritterHexView*
     return it != _crittersMap.end() ? it->second : nullptr;
 }
 
-auto MapView::GetActiveCritter(uint16 hx, uint16 hy) -> CritterHexView*
+auto MapView::GetNonDeadCritter(uint16 hx, uint16 hy) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (auto&& field = FieldAt(hx, hy); !field.Critters.empty()) {
+    auto&& field = FieldAt(hx, hy);
+
+    if (!field.Critters.empty()) {
         for (auto* cr : field.Critters) {
+            if (!cr->IsDead()) {
+                return cr;
+            }
+        }
+    }
+
+    if (!field.MultihexCritters.empty()) {
+        for (auto* cr : field.MultihexCritters) {
             if (!cr->IsDead()) {
                 return cr;
             }
@@ -3406,6 +3424,14 @@ auto MapView::GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> ve
         }
     }
 
+    if (!field.MultihexCritters.empty()) {
+        for (auto* cr : field.MultihexCritters) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
+            }
+        }
+    }
+
     return critters;
 }
 
@@ -3508,7 +3534,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
                     field.MultihexCritters.erase(it);
                 }
 
-                EvaluateFieldFlags(field);
+                RecacheHexFlags(field);
             }
         }
     }

@@ -171,41 +171,38 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
     switch (action) {
     case CritterAction::Knockout:
         SetCondition(CritterCondition::Knockout);
-        SetKnockoutStateAnim(static_cast<CritterStateAnim>(action_data));
         break;
     case CritterAction::StandUp:
         SetCondition(CritterCondition::Alive);
         break;
     case CritterAction::Dead: {
         SetCondition(CritterCondition::Dead);
-        SetDeadStateAnim(static_cast<CritterStateAnim>(action_data));
 
 #if FO_ENABLE_3D
         if (_model != nullptr) {
             _resetTime = _engine->GameTime.GameplayTime() + _model->GetAnimDuration();
+            _needReset = true;
         }
-        else {
-            auto* anim = GetCurAnim();
-            _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
-        }
-#else
-        auto* anim = GetCurAnim();
-        _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
+        else
 #endif
-        _needReset = true;
+        {
+            const auto* anim = GetCurAnim();
+            _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
+            _needReset = true;
+        }
     } break;
+    case CritterAction::Respawn:
+        SetCondition(CritterCondition::Alive);
+        FadeUp();
+        AnimateStay();
+        _resetTime = _engine->GameTime.GameplayTime(); // Fast
+        _needReset = true;
+        break;
     case CritterAction::Connect:
         SetPlayerOffline(false);
         break;
     case CritterAction::Disconnect:
         SetPlayerOffline(true);
-        break;
-    case CritterAction::Respawn:
-        SetCondition(CritterCondition::Alive);
-        FadeUp();
-        AnimateStay();
-        _needReset = true;
-        _resetTime = _engine->GameTime.GameplayTime(); // Fast
         break;
     case CritterAction::Refresh:
 #if FO_ENABLE_3D

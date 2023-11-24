@@ -322,14 +322,15 @@
     vector<CritterView*> critters;
 
     for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
     }
 
     std::sort(critters.begin(), critters.end(), [&hx, &hy](const CritterView* cr1, const CritterView* cr2) {
-        //
-        return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        const uint dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const uint dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
 
     return critters;

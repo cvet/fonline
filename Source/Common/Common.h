@@ -977,13 +977,7 @@ FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 
-// Bits
-#define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
-#define BIN_B(x) ((x)&0xf | (x) >> 12 & 0xf0)
-#define BIN8(v) (BIN_B(BIN_N(0x##v)))
-#define BIN16(bin16, bin8) ((BIN8(bin16) << 8) | (BIN8(bin8)))
-#define BIN32(bin32, bin24, bin16, bin8) ((BIN8(bin32) << 24) | (BIN8(bin24) << 16) | (BIN8(bin16) << 8) | (BIN8(bin8)))
-
+// Bit operation helpers
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
 constexpr auto IsBitSet(T x, T y) noexcept -> bool
 {
@@ -1492,24 +1486,6 @@ static constexpr uint8 GM_INFO_ZONES_FOG = 0x08;
 static constexpr uint8 GM_INFO_ALL = 0x0F;
 static constexpr uint8 GM_INFO_FOG = 0x10;
 static constexpr uint8 GM_INFO_LOCATION = 0x20;
-
-// Proto map hex flags
-static constexpr uint8 FH_BLOCK = BIN8(00000001);
-static constexpr uint8 FH_NOTRAKE = BIN8(00000010);
-static constexpr uint8 FH_STATIC_TRIGGER = BIN8(00100000);
-
-// Map instance hex flags
-static constexpr uint8 FH_CRITTER = BIN8(00000001);
-static constexpr uint8 FH_DEAD_CRITTER = BIN8(00000010);
-static constexpr uint8 FH_DOOR = BIN8(00001000);
-static constexpr uint8 FH_BLOCK_ITEM = BIN8(00010000);
-static constexpr uint8 FH_NRAKE_ITEM = BIN8(00100000);
-static constexpr uint8 FH_TRIGGER = BIN8(01000000);
-static constexpr uint8 FH_GAG_ITEM = BIN8(10000000);
-
-// Both proto map and map instance flags
-static constexpr uint16 FH_NOWAY = BIN16(00010001, 00000001);
-static constexpr uint16 FH_NOSHOOT = BIN16(00100000, 00000010);
 
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;

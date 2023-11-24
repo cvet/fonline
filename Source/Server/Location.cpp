@@ -151,12 +151,12 @@ auto Location::IsCanEnter(uint players_count) const -> bool
     STACK_TRACE_ENTRY();
 
     const auto max_palyers = GetMaxPlayers();
-    if (max_palyers == 0u) {
+    if (max_palyers == 0) {
         return true;
     }
 
     for (const auto* map : _locMaps) {
-        players_count += map->GetPlayersCount();
+        players_count += map->GetPlayerCrittersCount();
         if (players_count >= max_palyers) {
             return false;
         }
@@ -169,7 +169,7 @@ auto Location::IsNoCritter() const -> bool
     STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
-        if (map->GetCrittersCount() != 0u) {
+        if (map->GetCrittersCount() != 0) {
             return false;
         }
     }
@@ -181,7 +181,7 @@ auto Location::IsNoPlayer() const -> bool
     STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
-        if (map->GetPlayersCount() != 0u) {
+        if (map->GetPlayerCrittersCount() != 0) {
             return false;
         }
     }
@@ -193,7 +193,7 @@ auto Location::IsNoNpc() const -> bool
     STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
-        if (map->GetNpcsCount() != 0u) {
+        if (map->GetNonPlayerCrittersCount() != 0) {
             return false;
         }
     }
@@ -210,7 +210,7 @@ auto Location::IsCanDelete() const -> bool
 
     // Check for players
     for (const auto* map : _locMaps) {
-        if (map->GetPlayersCount() != 0u) {
+        if (map->GetPlayerCrittersCount() != 0) {
             return false;
         }
     }

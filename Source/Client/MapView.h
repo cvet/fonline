@@ -162,10 +162,10 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField[hy * _width + hx]; }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[hy * _width + hx].IsView; }
-    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _width + hx]; }
-    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _width * 3 + hx * 3]; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[static_cast<size_t>(hy) * _width + hx].IsView; }
+    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[static_cast<size_t>(hy) * _width * 3 + hx * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
@@ -204,8 +204,7 @@ public:
     void SetShootBorders(bool enabled);
     auto MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
-    void EvaluateFieldFlags(uint16 hx, uint16 hy);
-    void EvaluateFieldFlags(Field& field);
+    void RecacheHexFlags(uint16 hx, uint16 hy);
     void Resize(uint16 width, uint16 height);
 
     auto Scroll() -> bool;
@@ -218,7 +217,7 @@ public:
     auto AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
     auto AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
-    auto GetActiveCritter(uint16 hx, uint16 hy) -> CritterHexView*;
+    auto GetNonDeadCritter(uint16 hx, uint16 hy) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, uint16 hx, uint16 hy, bool smoothly);
@@ -291,7 +290,7 @@ private:
         IRect EndPos {};
     };
 
-    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
+    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[static_cast<size_t>(hy) * _width + hx]; }
     [[nodiscard]] auto IsVisible(const Sprite* spr, int ox, int oy) const -> bool;
     [[nodiscard]] auto GetViewWidth() const -> int;
     [[nodiscard]] auto GetViewHeight() const -> int;
@@ -306,6 +305,8 @@ private:
     auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
+
+    void RecacheHexFlags(Field& field);
 
     void PrepareFogToDraw();
     void InitView(int screen_hx, int screen_hy);

@@ -2370,7 +2370,7 @@ auto FOMapper::CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
-    if (CurMap->GetActiveCritter(hx, hy) != nullptr) {
+    if (CurMap->GetNonDeadCritter(hx, hy) != nullptr) {
         return nullptr;
     }
 

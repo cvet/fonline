@@ -744,27 +744,44 @@
 
 ///# ...
 ///# param cond ...
+///# param actionAnim ...
+///# param contextItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetCondition(Critter* self, CritterCondition cond)
+[[maybe_unused]] void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, AbstractItem* contextItem)
 {
     const auto prev_cond = self->GetCondition();
     if (prev_cond == cond) {
         return;
     }
 
-    self->SetCondition(cond);
+    Map* map = nullptr;
 
     if (self->GetMapId()) {
-        auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+        map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
         RUNTIME_ASSERT(map);
 
-        const auto hx = self->GetHexX();
-        const auto hy = self->GetHexY();
-        const auto multihex = self->GetMultihex();
-        const auto is_dead = (cond == CritterCondition::Dead);
+        map->RemoveCritterFromField(self);
+    }
 
-        map->UnsetFlagCritter(hx, hy, multihex, !is_dead);
-        map->SetFlagCritter(hx, hy, multihex, is_dead);
+    self->SetCondition(cond);
+
+    if (map != nullptr) {
+        map->AddCritterToField(self);
+    }
+
+    if (cond == CritterCondition::Dead) {
+        self->SendAndBroadcast_Action(CritterAction::Dead, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+    }
+    else if (cond == CritterCondition::Knockout) {
+        self->SendAndBroadcast_Action(CritterAction::Knockout, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+    }
+    else if (cond == CritterCondition::Alive) {
+        if (prev_cond == CritterCondition::Knockout) {
+            self->SendAndBroadcast_Action(CritterAction::StandUp, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+        }
+        else {
+            self->SendAndBroadcast_Action(CritterAction::Respawn, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+        }
     }
 }
 
@@ -1072,6 +1089,7 @@
     self->TargetMoving.State = MovingState::Success;
 
     self->ClearMove();
+    self->SendAndBroadcast_Moving();
 }
 
 ///# ...
@@ -1085,6 +1103,7 @@
     self->TargetMoving.State = MovingState::Success;
 
     self->ClearMove();
+    self->SendAndBroadcast_Moving();
 }
 
 ///# ...
