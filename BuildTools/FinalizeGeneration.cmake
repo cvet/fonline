@@ -715,6 +715,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoBitMask.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoBitMask.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
     "${FO_ENGINE_ROOT}/Source/Common/UcsTables-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/WinApi-Include.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"

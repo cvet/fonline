@@ -37,12 +37,9 @@
 
 #include "Critter.h"
 #include "Entity.h"
-#include "FileSystem.h"
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
-#include "Settings.h"
-#include "Timer.h"
 
 // Todo: make dynamic path growth and move max value to settings
 static constexpr auto FPATH_MAX_PATH = 400;

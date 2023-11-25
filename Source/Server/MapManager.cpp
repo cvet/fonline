@@ -82,11 +82,10 @@ void MapManager::LoadFromResources()
         RUNTIME_ASSERT(pmap);
 
         auto&& static_map = std::make_unique<StaticMap>();
-
         const auto map_width = pmap->GetWidth();
         const auto map_height = pmap->GetHeight();
 
-        static_map->HexField.resize(static_cast<size_t>(map_width) * map_height);
+        static_map->HexField.SetSize(map_width, map_height);
 
         // Read hashes
         {
@@ -203,10 +202,10 @@ void MapManager::LoadFromResources()
                         if (!item->GetIsHiddenInStatic()) {
                             static_map->StaticItems.emplace_back(item);
                             static_map->StaticItemsById.emplace(item->GetId(), item);
-                            static_map->HexField[static_cast<size_t>(hy) * map_width + hx].StaticItems.emplace_back(item);
+                            static_map->HexField.GetCellForWriting(hx, hy).StaticItems.emplace_back(item);
                         }
                         if (item->GetIsTrigger() || item->GetIsTrap()) {
-                            static_map->HexField[static_cast<size_t>(hy) * map_width + hx].TriggerItems.emplace_back(item);
+                            static_map->HexField.GetCellForWriting(hx, hy).TriggerItems.emplace_back(item);
                         }
                     }
                     else {
@@ -232,13 +231,14 @@ void MapManager::LoadFromResources()
 
             const auto hx = item->GetHexX();
             const auto hy = item->GetHexY();
-            auto& static_field = static_map->HexField[static_cast<size_t>(hy) * map_width + hx];
 
             if (!item->GetIsNoBlock()) {
+                auto& static_field = static_map->HexField.GetCellForWriting(hx, hy);
                 static_field.IsMoveBlocked = true;
             }
 
             if (!item->GetIsShootThru()) {
+                auto& static_field = static_map->HexField.GetCellForWriting(hx, hy);
                 static_field.IsShootBlocked = true;
                 static_field.IsMoveBlocked = true;
             }
@@ -246,9 +246,10 @@ void MapManager::LoadFromResources()
             // Block around scroll blocks
             if (item->GetIsScrollBlock()) {
                 for (uint8 k = 0; k < 6; k++) {
-                    auto hx_ = hx;
-                    auto hy_ = hy;
-                    if (GeometryHelper::MoveHexByDir(hx_, hy_, k, map_width, map_height)) {
+                    auto hx2 = hx;
+                    auto hy2 = hy;
+                    if (GeometryHelper::MoveHexByDir(hx2, hy2, k, map_width, map_height)) {
+                        auto& static_field = static_map->HexField.GetCellForWriting(hx2, hy2);
                         static_field.IsMoveBlocked = true;
                     }
                 }
@@ -256,8 +257,8 @@ void MapManager::LoadFromResources()
 
             if (item->IsNonEmptyBlockLines()) {
                 const auto shooted = item->GetIsShootThru();
-                GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, map_width, map_height, [&static_map, map_width, shooted](uint16 hx2, uint16 hy2) {
-                    auto& static_field2 = static_map->HexField[static_cast<size_t>(hy2) * map_width + hx2];
+                GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, map_width, map_height, [&static_map, shooted](uint16 hx2, uint16 hy2) {
+                    auto& static_field2 = static_map->HexField.GetCellForWriting(hx2, hy2);
                     static_field2.IsMoveBlocked = true;
                     if (!shooted) {
                         static_field2.IsShootBlocked = true;

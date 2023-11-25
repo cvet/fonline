@@ -40,6 +40,7 @@
 #include "MapLoader.h"
 #include "ScriptSystem.h"
 #include "ServerEntity.h"
+#include "TwoDimensionalGrid.h"
 
 class Item;
 using StaticItem = Item;
@@ -58,7 +59,7 @@ struct StaticMap
         vector<StaticItem*> TriggerItems {};
     };
 
-    vector<Field> HexField {};
+    TwoDimensionalGrid<Field, uint16, true> HexField {};
     vector<pair<uint, const Critter*>> CritterBillets {};
     vector<pair<uint, const Item*>> ItemBillets {};
     vector<pair<uint, const Item*>> HexItemBillets {};
@@ -174,17 +175,13 @@ private:
         bool ManualBlockFull {};
     };
 
-    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) const -> const Field& { return _hexField[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto StaticMapFieldAt(uint16 hx, uint16 hy) const -> const StaticMap::Field& { return _staticMap->HexField[static_cast<size_t>(hy) * _width + hx]; }
-
     void SetMultihexCritter(Critter* cr, bool set);
     void RecacheHexFlags(Field& field);
 
     const StaticMap* _staticMap {};
     uint16 _width {};
     uint16 _height {};
-    vector<Field> _hexField {};
+    TwoDimensionalGrid<Field, uint16, true> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};

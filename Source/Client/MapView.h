@@ -45,6 +45,7 @@
 #include "MapSprite.h"
 #include "ScriptSystem.h"
 #include "SpriteManager.h"
+#include "TwoDimensionalGrid.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -162,10 +163,10 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[static_cast<size_t>(hy) * _width + hx].IsView; }
-    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[static_cast<size_t>(hy) * _width * 3 + hx * 3]; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField.GetCellForReading(hx, hy); }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField.GetCellForReading(hx, hy).IsView; }
+    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { return &_hexLight[static_cast<size_t>(hy) * _width * 3 + static_cast<size_t>(hx) * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
@@ -185,7 +186,7 @@ public:
 
     auto FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16& end_x, uint16& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16& end_x, uint16& end_y, int cut) -> bool;
-    auto TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint8>& steps, int quad_dir) -> bool;
+    auto TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint8>& steps, int quad_dir) const -> bool;
     auto TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<uint16, uint16>* pre_block, pair<uint16, uint16>* block, vector<pair<uint16, uint16>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
@@ -290,12 +291,11 @@ private:
         IRect EndPos {};
     };
 
-    [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[static_cast<size_t>(hy) * _width + hx]; }
     [[nodiscard]] auto IsVisible(const Sprite* spr, int ox, int oy) const -> bool;
     [[nodiscard]] auto GetViewWidth() const -> int;
     [[nodiscard]] auto GetViewHeight() const -> int;
-    [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
-    [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
+    [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) const -> bool;
+    [[nodiscard]] auto ScrollCheck(int xmod, int ymod) const -> bool;
 
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
@@ -346,7 +346,7 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    vector<Field> _hexField {};
+    TwoDimensionalGrid<Field, uint16, false> _hexField {};
     vector<int16> _findPathGrid {};
 
     MapSpriteList _mapSprites;
