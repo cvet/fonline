@@ -490,7 +490,7 @@ void MapView::AddItemToField(ItemHexView* item)
         RecacheHexFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
-            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
                 field2.BlockLineItems.emplace_back(item);
                 RecacheHexFlags(field2);
@@ -528,7 +528,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         RecacheHexFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
-            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
                 const auto it2 = std::find(field2.BlockLineItems.begin(), field2.BlockLineItems.end(), item);
                 RUNTIME_ASSERT(it2 != field2.BlockLineItems.end());

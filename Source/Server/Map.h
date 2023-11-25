@@ -179,7 +179,7 @@ private:
     [[nodiscard]] auto StaticMapFieldAt(uint16 hx, uint16 hy) const -> const StaticMap::Field& { return _staticMap->HexField[static_cast<size_t>(hy) * _width + hx]; }
 
     void SetMultihexCritter(Critter* cr, bool set);
-    void RecacheHexFlags(Field& field, const StaticMap::Field& static_field);
+    void RecacheHexFlags(Field& field);
 
     const StaticMap* _staticMap {};
     uint16 _width {};

@@ -240,6 +240,7 @@ void MapManager::LoadFromResources()
 
             if (!item->GetIsShootThru()) {
                 static_field.IsShootBlocked = true;
+                static_field.IsMoveBlocked = true;
             }
 
             // Block around scroll blocks
@@ -255,7 +256,7 @@ void MapManager::LoadFromResources()
 
             if (item->IsNonEmptyBlockLines()) {
                 const auto shooted = item->GetIsShootThru();
-                GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, map_width, map_height, [&static_map, map_width, shooted](auto hx2, auto hy2) {
+                GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, map_width, map_height, [&static_map, map_width, shooted](uint16 hx2, uint16 hy2) {
                     auto& static_field2 = static_map->HexField[static_cast<size_t>(hy2) * map_width + hx2];
                     static_field2.IsMoveBlocked = true;
                     if (!shooted) {

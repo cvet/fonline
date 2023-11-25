@@ -58,14 +58,6 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _height = GetHeight();
 
     _hexField.resize(static_cast<size_t>(_width) * _height);
-
-    for (size_t i = 0; i < _hexField.size(); i++) {
-        auto& field = _hexField[i];
-        const auto& static_field = _staticMap->HexField[i];
-
-        field.IsMoveBlocked = static_field.IsMoveBlocked;
-        field.IsShootBlocked = static_field.IsShootBlocked;
-    }
 }
 
 Map::~Map()
@@ -252,7 +244,7 @@ void Map::AddCritterToField(Critter* cr)
     RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
     field.Critters.emplace_back(cr);
 
-    RecacheHexFlags(field, StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(field);
 
     SetMultihexCritter(cr, true);
 }
@@ -271,7 +263,7 @@ void Map::RemoveCritterFromField(Critter* cr)
     RUNTIME_ASSERT(it != field.Critters.end());
     field.Critters.erase(it);
 
-    RecacheHexFlags(field, StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(field);
 
     SetMultihexCritter(cr, false);
 }
@@ -304,7 +296,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
                     field.MultihexCritters.erase(it);
                 }
 
-                RecacheHexFlags(field, StaticMapFieldAt(static_cast<uint16>(nx), static_cast<uint16>(ny)));
+                RecacheHexFlags(field);
             }
         }
     }
@@ -386,13 +378,13 @@ void Map::SetItem(Item* item, uint16 hx, uint16 hy)
         _mapLocation->GeckCount++;
     }
 
-    RecacheHexFlags(field, StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(field);
 
     if (item->IsNonEmptyBlockLines()) {
-        GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+        GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
             auto& field2 = FieldAt(hx2, hy2);
             field2.BlockLines.emplace_back(item);
-            RecacheHexFlags(field2, StaticMapFieldAt(hx2, hy2));
+            RecacheHexFlags(field2);
         });
     }
 }
@@ -444,15 +436,15 @@ void Map::EraseItem(ident_t item_id)
         _mapLocation->GeckCount--;
     }
 
-    RecacheHexFlags(field, StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(field);
 
     if (item->IsNonEmptyBlockLines()) {
-        GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+        GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
             auto& field2 = FieldAt(hx2, hy2);
             const auto it = std::find(field2.BlockLines.begin(), field2.BlockLines.end(), item);
             RUNTIME_ASSERT(it != field2.BlockLines.end());
             field2.BlockLines.erase(it);
-            RecacheHexFlags(field2, StaticMapFieldAt(hx2, hy2));
+            RecacheHexFlags(field2);
         });
     }
 
@@ -499,8 +491,9 @@ auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
     STACK_TRACE_ENTRY();
 
     const auto& field = FieldAt(hx, hy);
+    const auto& static_field = StaticMapFieldAt(hx, hy);
 
-    return !field.IsMoveBlocked;
+    return !field.IsMoveBlocked && !static_field.IsMoveBlocked;
 }
 
 auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
@@ -508,8 +501,9 @@ auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
     STACK_TRACE_ENTRY();
 
     const auto& field = FieldAt(hx, hy);
+    const auto& static_field = StaticMapFieldAt(hx, hy);
 
-    return !field.IsShootBlocked;
+    return !field.IsShootBlocked && !static_field.IsShootBlocked;
 }
 
 auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
@@ -517,9 +511,7 @@ auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
     STACK_TRACE_ENTRY();
 
     // Base
-    const auto& field = FieldAt(hx, hy);
-
-    if (field.IsMoveBlocked) {
+    if (!IsHexMovable(hx, hy)) {
         return false;
     }
     if (radius == 0) {
@@ -535,9 +527,7 @@ auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
         const auto ny = static_cast<int16>(hy) + sy[i];
 
         if (nx >= 0 && ny >= 0 && nx < _width && ny < _height) {
-            const auto& neighbor_field = FieldAt(static_cast<uint16>(nx), static_cast<uint16>(ny));
-
-            if (neighbor_field.IsMoveBlocked) {
+            if (!IsHexMovable(static_cast<uint16>(nx), static_cast<uint16>(ny))) {
                 return false;
             }
         }
@@ -786,7 +776,7 @@ auto Map::IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item)
     }
 
     auto is_critter = false;
-    GeometryHelper::ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, _width, _height, [this, &is_critter](auto hx2, auto hy2) { is_critter = is_critter || IsAnyCritter(hx2, hy2); });
+    GeometryHelper::ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, _width, _height, [this, &is_critter](uint16 hx2, uint16 hy2) { is_critter = is_critter || IsAnyCritter(hx2, hy2); });
     return !is_critter;
 }
 
@@ -796,10 +786,10 @@ void Map::RecacheHexFlags(uint16 hx, uint16 hy)
 
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
-    RecacheHexFlags(FieldAt(hx, hy), StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(FieldAt(hx, hy));
 }
 
-void Map::RecacheHexFlags(Field& field, const StaticMap::Field& static_field)
+void Map::RecacheHexFlags(Field& field)
 {
     STACK_TRACE_ENTRY();
 
@@ -876,8 +866,8 @@ void Map::RecacheHexFlags(Field& field, const StaticMap::Field& static_field)
 
     const auto is_critter_block = _engine->Settings.CritterBlockHex && field.IsNonDeadCritter;
 
-    field.IsShootBlocked = static_field.IsShootBlocked || field.IsNoShootItem || (field.ManualBlock && field.ManualBlockFull);
-    field.IsMoveBlocked = field.IsShootBlocked || static_field.IsMoveBlocked || field.IsNoMoveItem || is_critter_block || field.ManualBlock;
+    field.IsShootBlocked = field.IsNoShootItem || (field.ManualBlock && field.ManualBlockFull);
+    field.IsMoveBlocked = field.IsShootBlocked || field.IsNoMoveItem || is_critter_block || field.ManualBlock;
 }
 
 void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
@@ -889,7 +879,7 @@ void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
     field.ManualBlock = enable;
     field.ManualBlockFull = full;
 
-    RecacheHexFlags(field, StaticMapFieldAt(hx, hy));
+    RecacheHexFlags(field);
 }
 
 auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
