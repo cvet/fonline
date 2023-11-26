@@ -172,9 +172,9 @@ auto TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::IndexHasher::operator()
     NO_STACK_TRACE_ENTRY();
 
     if constexpr (sizeof(TIndex) <= sizeof(size_t) / 2) {
-        return std::get<0>(index) << (sizeof(size_t) / 2 * 8) | std::get<1>(index);
+        return (static_cast<size_t>(std::get<0>(index)) << (sizeof(size_t) / 2 * 8)) | static_cast<size_t>(std::get<1>(index));
     }
     else {
-        return std::get<0>(index) ^ std::get<1>(index);
+        return static_cast<size_t>(std::get<0>(index)) ^ static_cast<size_t>(std::get<1>(index));
     }
 }
