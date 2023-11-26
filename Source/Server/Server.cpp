@@ -3358,7 +3358,22 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-    const auto move_uid = cr->Moving.Uid;
+    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId()](uint16 expected_hx, uint16 expected_hy) -> bool {
+        if (cr->IsDestroyed()) {
+            return false;
+        }
+        if (cr->Moving.Uid != expected_uid) {
+            return false;
+        }
+        if (cr->GetMapId() != expected_map_id) {
+            return false;
+        }
+        if (cr->GetHexX() != expected_hx || cr->GetHexY() != expected_hy) {
+            return false;
+        }
+        return true;
+    };
+
     auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
@@ -3433,18 +3448,19 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                     map->AddCritterToField(cr);
 
                     RUNTIME_ASSERT(!cr->IsDestroyed());
+
                     MapMngr.ProcessVisibleCritters(cr);
-                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
+                    if (!validate_moving(hx2, hy2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
-                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
+                    if (!validate_moving(hx2, hy2)) {
                         return;
                     }
 
                     VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
-                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
+                    if (!validate_moving(hx2, hy2)) {
                         return;
                     }
                 }
