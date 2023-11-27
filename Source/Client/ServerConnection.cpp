@@ -152,9 +152,11 @@ void ServerConnection::Process()
     }
 
     if (_isConnected) {
+        uint msg = 0;
+
         if (ReceiveData(true) >= 0) {
             while (_isConnected && _netIn.NeedProcess()) {
-                const auto msg = _netIn.Read<uint>();
+                msg = _netIn.Read<uint>();
 
                 CHECK_SERVER_IN_BUF_ERROR(*this);
 
@@ -209,10 +211,12 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     }
 
     if (_interthreadCommunication) {
-        if (_interthreadDisconnect) {
+        if (_interthreadRequestDisconnect) {
             Disconnect();
             return false;
         }
+
+        auto locker = std::unique_lock {_interthreadReceivedLocker};
 
         return for_write ? true : !_interthreadReceived.empty();
     }
@@ -293,11 +297,12 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
 
         _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) {
             if (!buf.empty()) {
+                auto locker = std::unique_lock {_interthreadReceivedLocker};
+
                 _interthreadReceived.insert(_interthreadReceived.end(), buf.begin(), buf.end());
             }
             else {
-                _interthreadSend = nullptr;
-                _interthreadDisconnect = true;
+                _interthreadRequestDisconnect = true;
             }
         });
 
@@ -317,6 +322,8 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
         return true;
     }
     else {
+        auto locker = std::unique_lock {_interthreadReceivedLocker};
+
         _interthreadCommunication = false;
     }
 
@@ -592,12 +599,18 @@ void ServerConnection::Disconnect()
     STACK_TRACE_ENTRY();
 
     if (_interthreadCommunication) {
-        _interthreadCommunication = false;
-        _interthreadDisconnect = false;
+        InterthreadDataCallback interthread_send;
 
-        if (_interthreadSend) {
-            _interthreadSend({});
-            _interthreadSend = nullptr;
+        if (!_interthreadRequestDisconnect) {
+            interthread_send = std::move(_interthreadSend);
+        }
+
+        _interthreadCommunication = false;
+        _interthreadSend = nullptr;
+        _interthreadRequestDisconnect = false;
+
+        if (interthread_send) {
+            interthread_send({});
         }
     }
 
@@ -696,6 +709,8 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     size_t whole_len;
 
     if (_interthreadCommunication) {
+        auto locker = std::unique_lock {_interthreadReceivedLocker};
+
         RUNTIME_ASSERT(!_interthreadReceived.empty());
         whole_len = _interthreadReceived.size();
         _incomeBuf = _interthreadReceived;
