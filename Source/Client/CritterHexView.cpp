@@ -171,12 +171,14 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
     switch (action) {
     case CritterAction::Knockout:
         SetCondition(CritterCondition::Knockout);
+        ClearMove();
         break;
     case CritterAction::StandUp:
         SetCondition(CritterCondition::Alive);
         break;
     case CritterAction::Dead: {
         SetCondition(CritterCondition::Dead);
+        ClearMove();
 
 #if FO_ENABLE_3D
         if (_model != nullptr) {

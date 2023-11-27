@@ -1757,16 +1757,28 @@ void FOClient::Net_OnCritterSetAnims()
 
     if (cr != nullptr) {
         if (cond == CritterCondition::Alive) {
-            cr->SetAliveStateAnim(state_anim);
-            cr->SetAliveActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetAliveStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetAliveActionAnim(action_anim);
+            }
         }
         if (cond == CritterCondition::Knockout) {
-            cr->SetKnockoutStateAnim(state_anim);
-            cr->SetKnockoutActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetKnockoutStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetKnockoutActionAnim(action_anim);
+            }
         }
         if (cond == CritterCondition::Dead) {
-            cr->SetDeadStateAnim(state_anim);
-            cr->SetDeadActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetDeadStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetDeadActionAnim(action_anim);
+            }
         }
     }
 
@@ -1848,15 +1860,6 @@ void FOClient::Net_OnCritterPos()
         if (cr->IsChosen()) {
             CurMap->RebuildFog();
         }
-    }
-
-    if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        cr->Moving.RealHexX = hx;
-        cr->Moving.RealHexY = hy;
-    }
-    else {
-        cr->Moving.RealHexX = 0;
-        cr->Moving.RealHexY = 0;
     }
 
     if (cr->GetHexOffsX() != hex_ox || cr->GetHexOffsY() != hex_oy) {
@@ -3659,7 +3662,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
     vector<uint8> steps;
     vector<uint16> control_steps;
 
-    if (speed > 0) {
+    if (speed != 0 && cr->IsAlive()) {
         if (pos_or_dir.index() == 0) {
             hx = std::get<0>(std::get<0>(pos_or_dir));
             hy = std::get<1>(std::get<0>(pos_or_dir));

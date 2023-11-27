@@ -113,8 +113,6 @@ public:
         int16 StartOy {};
         int16 EndOx {};
         int16 EndOy {};
-        uint16 RealHexX {};
-        uint16 RealHexY {};
     } Moving {};
 
 private:

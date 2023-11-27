@@ -61,6 +61,7 @@ enum class MovingState : uint8
     HexBusyRing = 9,
     Deadlock = 10,
     TraceFailed = 11,
+    NotAlive = 12,
 };
 
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties

@@ -3219,7 +3219,11 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
     // Path find
     if (cr->TargetMoving.State == MovingState::InProgress) {
-        bool need_find_path = !cr->IsMoving();
+        if (!cr->IsAlive()) {
+            cr->TargetMoving.State = MovingState::NotAlive;
+        }
+
+        bool need_find_path = !cr->IsMoving() && cr->IsAlive();
 
         if (!need_find_path && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0 || cr->TargetMoving.HexY != 0)) {
             const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
