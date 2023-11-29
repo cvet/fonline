@@ -1666,25 +1666,12 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (!cr->IsChosen()) {
-        int64 prev_hash_sum = 0;
-        for (const auto* item : cr->GetInvItems()) {
-            prev_hash_sum += item->EvaluateLightHash();
-        }
-
         cr->DeleteAllInvItems();
 
         for (uint16 i = 0; i < slots_data_count; i++) {
             const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
             RUNTIME_ASSERT(proto_item != nullptr);
             cr->AddInvItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
-        }
-
-        int64 hash_sum = 0;
-        for (const auto* item : cr->GetInvItems()) {
-            hash_sum += item->EvaluateLightHash();
-        }
-        if (hash_sum != prev_hash_sum) {
-            CurMap->RebuildLight();
         }
     }
 
@@ -1698,6 +1685,10 @@ void FOClient::Net_OnCritterMoveItem()
             _someItem->SetCritterSlot(prev_slot);
             OnItemInvChanged.Fire(item, _someItem);
         }
+    }
+
+    if (const auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
+        CurMap->UpdateCritterLightSource(hex_cr);
     }
 }
 
@@ -1913,11 +1904,13 @@ void FOClient::Net_OnChosenClearItems()
         return;
     }
 
-    if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsHaveLightSources()) {
-        CurMap->RebuildLight();
-    }
-
     chosen->DeleteAllInvItems();
+
+    if (CurMap != nullptr) {
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+    }
 }
 
 void FOClient::Net_OnChosenAddItem()
@@ -1940,12 +1933,7 @@ void FOClient::Net_OnChosenAddItem()
         return;
     }
 
-    auto* prev_item = chosen->GetInvItem(item_id);
-    auto prev_slot = CritterItemSlot::Inventory;
-    uint prev_light_hash = 0;
-    if (prev_item != nullptr) {
-        prev_slot = prev_item->GetCritterSlot();
-        prev_light_hash = prev_item->EvaluateLightHash();
+    if (auto* prev_item = chosen->GetInvItem(item_id); prev_item != nullptr) {
         chosen->DeleteInvItem(prev_item, false);
     }
 
@@ -1953,13 +1941,12 @@ void FOClient::Net_OnChosenAddItem()
     RUNTIME_ASSERT(proto_item);
 
     auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
-    auto self_destroy_fuse = RefCountHolder(item);
 
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
 
-        if (item->EvaluateLightHash() != prev_light_hash && (slot != CritterItemSlot::Inventory || prev_slot != CritterItemSlot::Inventory)) {
-            CurMap->RebuildLight();
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
         }
     }
 
@@ -1991,15 +1978,17 @@ void FOClient::Net_OnChosenEraseItem()
     }
 
     auto* item_clone = item->CreateRefClone();
+    auto item_clone_release = ScopeCallback([item_clone] { item_clone->Release(); });
 
-    const auto rebuild_light = CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory;
     chosen->DeleteInvItem(item, true);
-    if (rebuild_light) {
-        CurMap->RebuildLight();
-    }
 
     OnItemInvOut.Fire(item_clone);
-    item_clone->Release();
+
+    if (CurMap != nullptr) {
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+    }
 }
 
 void FOClient::Net_OnAllItemsSend()
@@ -2191,7 +2180,7 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in end parse to game");
+        WriteLog("Chosen is not created in end place to game");
         return;
     }
 
@@ -2200,9 +2189,13 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     if (CurMap != nullptr) {
         CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
-        dynamic_cast<CritterHexView*>(chosen)->AnimateStay();
+
+        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            hex_chosen->AnimateStay();
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+
         ShowMainScreen(SCREEN_GAME, {});
-        CurMap->RebuildLight();
     }
     else {
         ShowMainScreen(SCREEN_GLOBAL_MAP, {});
@@ -2335,7 +2328,6 @@ void FOClient::Net_OnProperty(uint data_size)
 
     if (type == NetProperty::ChosenItem) {
         auto* item = dynamic_cast<ItemView*>(entity);
-        auto self_destroy_fuse = RefCountHolder(item);
 
         OnItemInvChanged.Fire(item, item);
     }
@@ -2678,7 +2670,6 @@ void FOClient::Net_OnViewMap()
     CurMap->FindSetCenter(hx, hy);
     ShowMainScreen(SCREEN_GAME, {});
     ScreenFadeOut();
-    CurMap->RebuildLight();
 
     map<string, any_t> params;
     params["LocationId"] = any_t {_str("{}", loc_id).str()};
@@ -2963,7 +2954,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsLightThru()) {
-            item->GetMap()->RebuildLight();
+            item->GetMap()->UpdateHexLightSources(item->GetHexX(), item->GetHexY());
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsNoBlock()) {
@@ -2986,7 +2977,7 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        item->GetMap()->RebuildLight();
+        item->GetMap()->UpdateItemLightSource(item);
     }
 }
 

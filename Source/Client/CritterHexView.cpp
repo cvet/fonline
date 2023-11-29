@@ -85,7 +85,7 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetLight(CornerType::EastWest, _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+    mspr->SetLight(CornerType::EastWest, _map->GetLightData(), _map->GetWidth(), _map->GetHeight());
 }
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
@@ -405,18 +405,6 @@ void CritterHexView::ClearAnim()
         }
     }
     _animSequence.clear();
-}
-
-auto CritterHexView::IsHaveLightSources() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* item : _invItems) {
-        if (item->GetIsLight()) {
-            return true;
-        }
-    }
-    return false;
 }
 
 auto CritterHexView::IsNeedReset() const -> bool

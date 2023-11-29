@@ -65,24 +65,33 @@ struct ViewField
     float ScrYf {};
 };
 
-struct LightSource
-{
-    uint16 HexX {};
-    uint16 HexY {};
-    ucolor ColorRGB {};
-    int Distance {};
-    uint8 Flags {};
-    int Intensity {};
-    int* OffsX {};
-    int* OffsY {};
-    int LastOffsX {};
-    int LastOffsY {};
-};
-
 struct FindPathResult
 {
     vector<uint8> Steps {};
     vector<uint16> ControlSteps {};
+};
+
+struct LightSource
+{
+    uint16 HexX {};
+    uint16 HexY {};
+    ucolor Color {};
+    uint Distance {};
+    uint8 Flags {};
+    int Intensity {};
+    const int* OffsX {};
+    const int* OffsY {};
+    bool Applied {};
+    uint TargetIntensity {};
+    uint CurIntensity {};
+    ucolor CenterColor {};
+    uint Capacity {};
+    int LastOffsX {};
+    int LastOffsY {};
+    vector<tuple<uint16, uint16, uint8, bool>> FanHexes {}; // HexX, HexY, Alpha, UseOffsets
+    vector<tuple<uint16, uint16>> MarkedHexes {}; // HexX, HexY, Color
+    time_point Time {};
+    bool Finishing {};
 };
 
 struct FieldFlags
@@ -111,6 +120,7 @@ struct Field
     int16 RoofNum {};
     CornerType Corner {};
     FieldFlags Flags {};
+    unordered_map<LightSource*, ucolor> LightSources {};
 };
 
 ///@ ExportObject Client
@@ -163,10 +173,10 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { return _hexField.GetCellForReading(hx, hy); }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField.GetCellForReading(hx, hy); }
     [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField.GetCellForReading(hx, hy).IsView; }
     [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { return &_hexLight[static_cast<size_t>(hy) * _width * 3 + static_cast<size_t>(hx) * 3]; }
+    [[nodiscard]] auto GetLightData() -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
@@ -246,7 +256,9 @@ public:
     auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*;
     auto GetEntityAtScreenPos(int x, int y, int extra_range, bool check_transparent) -> ClientEntity*;
 
-    void RebuildLight() { _requestRebuildLight = _requestRenderLight = true; }
+    void UpdateCritterLightSource(const CritterHexView* cr);
+    void UpdateItemLightSource(const ItemHexView* item);
+    void UpdateHexLightSources(uint16 hx, uint16 hy);
 
     void SetSkipRoof(uint16 hx, uint16 hy);
     void MarkRoofNum(int hxi, int hyi, int16 num);
@@ -316,15 +328,19 @@ private:
     void InvalidateSpriteChain(Field& field);
 
     // Lighting
-    void PrepareLightToDraw();
-    void MarkLight(uint16 hx, uint16 hy, uint inten);
-    void MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint inten);
-    void MarkLightEnd(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint inten);
-    void MarkLightStep(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint inten);
-    void TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy, int dist, uint inten);
-    void ParseLightTriangleFan(const LightSource& ls);
-    void RealRebuildLight();
-    void CollectLightSources();
+    void ProcessLighting();
+    void UpdateLightSource(ident_t id, uint16 hx, uint16 hy, ucolor color, uint distance, uint8 flags, int intensity, const int* ox, const int* oy);
+    void FinishLightSource(ident_t id);
+    void CleanLightSourceOffsets(ident_t id);
+    void ApplyLightFan(LightSource* ls);
+    void CleanLightFan(LightSource* ls);
+    void TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy, uint distance, uint intensity);
+    void MarkLightStep(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint intensity);
+    void MarkLightEnd(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint intensity);
+    void MarkLightEndNeighbor(LightSource* ls, uint16 hx, uint16 hy, bool north_south, uint intensity);
+    void MarkLight(LightSource* ls, uint16 hx, uint16 hy, uint intensity);
+    void CalculateHexLight(uint16 hx, uint16 hy, const Field& field);
+    void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const;
 
     void OnScreenSizeChanged();
 
@@ -392,9 +408,9 @@ private:
     ContourType _critterContour {};
     ContourType _crittersContour {};
 
-    bool _requestRebuildLight {};
-    bool _requestRenderLight {};
-    vector<uint8> _hexLight {};
+    vector<ucolor> _hexLight {};
+    vector<ucolor> _hexTargetLight {};
+    time_point _hexLightTime {};
 
     int _prevMapDayTime {};
     int _prevGlobalDayTime {};
@@ -405,20 +421,12 @@ private:
     int _mapDayLightCapacity {};
     int _globalDayLightCapacity {};
 
-    size_t _lightPointsCount {};
-    vector<vector<PrimitivePoint>> _lightPoints {};
+    unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
+    vector<PrimitivePoint> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
-    vector<LightSource> _lightSources {};
-    vector<LightSource> _staticLightSources {};
-    int _lightCapacity {};
-    int _lightMinHx {};
-    int _lightMaxHx {};
-    int _lightMinHy {};
-    int _lightMaxHy {};
-    int _lightProcentR {};
-    int _lightProcentG {};
-    int _lightProcentB {};
-    bool _hasGlobalLights {};
+    size_t _globalLights {};
+    bool _needRebuildAllLights {};
+    bool _needRebuildLightPrimitives {};
 
     int _roofSkip {};
 

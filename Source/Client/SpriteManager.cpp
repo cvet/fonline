@@ -908,26 +908,14 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         // Light
         if (mspr->Light != nullptr) {
-            static auto light_func = [](ucolor& c, const uint8* l, const uint8* l2) {
-                const int lr = *(l + 0);
-                const int lg = *(l + 1);
-                const int lb = *(l + 2);
-                const int lr2 = *(l2 + 0);
-                const int lg2 = *(l2 + 1);
-                const int lb2 = *(l2 + 2);
-                auto& r = *(reinterpret_cast<uint8*>(&c) + 0);
-                auto& g = *(reinterpret_cast<uint8*>(&c) + 1);
-                auto& b = *(reinterpret_cast<uint8*>(&c) + 2);
-                const auto ir = static_cast<int>(r) + (lr + lr2) / 2;
-                const auto ig = static_cast<int>(g) + (lg + lg2) / 2;
-                const auto ib = static_cast<int>(b) + (lb + lb2) / 2;
-                r = static_cast<uint8>(std::min(ir, 255));
-                g = static_cast<uint8>(std::min(ig, 255));
-                b = static_cast<uint8>(std::min(ib, 255));
+            const auto mix_light = [](ucolor& c, const ucolor* l, const ucolor* l2) {
+                c.comp.r = static_cast<uint8>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
+                c.comp.g = static_cast<uint8>(std::min(c.comp.g + (l->comp.g + l2->comp.g) / 2, 255));
+                c.comp.b = static_cast<uint8>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
             };
 
-            light_func(color_r, mspr->Light, mspr->LightRight);
-            light_func(color_l, mspr->Light, mspr->LightLeft);
+            mix_light(color_r, mspr->Light, mspr->LightRight);
+            mix_light(color_l, mspr->Light, mspr->LightLeft);
         }
 
         // Alpha
@@ -1204,7 +1192,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
             y += offset->Y;
         }
 
-        const ucolor color = ApplyColorBrightness(point.PointColor);
+        const ucolor color = point.PPointColor != nullptr ? *point.PPointColor : point.PointColor;
 
         vbuf[i].PosX = x;
         vbuf[i].PosY = y;
@@ -1408,7 +1396,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, ucolor conto
 
 auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_settings.Brightness != 0) {
         const auto r = std::clamp(static_cast<int>(color.comp.r) + _settings.Brightness, 0, 255);

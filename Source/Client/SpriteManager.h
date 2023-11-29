@@ -147,8 +147,9 @@ struct PrimitivePoint
     int PointX {};
     int PointY {};
     ucolor PointColor {};
-    int* PointOffsX {};
-    int* PointOffsY {};
+    const int* PointOffsX {};
+    const int* PointOffsY {};
+    const ucolor* PPointColor {};
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 

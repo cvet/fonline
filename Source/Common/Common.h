@@ -355,6 +355,11 @@ static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
     return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 }
 
+static constexpr auto time_duration_div(time_duration duration1, time_duration duration2) -> float
+{
+    return static_cast<float>(static_cast<double>(duration1.count()) / static_cast<double>(duration2.count()));
+}
+
 template<>
 struct fmt::formatter<time_duration>
 {

@@ -1386,6 +1386,7 @@
         pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2])};
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
+        pp.PPointColor = nullptr;
     }
 
     client->SprMngr.DrawPoints(points, prim);
@@ -1876,7 +1877,6 @@
     auto* old_item = item->CreateRefClone();
     const auto from_slot = item->GetCritterSlot();
     auto* map_chosen = client->GetMapChosen();
-    const auto is_light = item->GetIsLight();
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_chosen != nullptr) {
@@ -1908,10 +1908,7 @@
     // Light
     if (client->CurMap != nullptr) {
         client->CurMap->RebuildFog();
-
-        if (is_light && (toSlot == CritterItemSlot::Inventory || (from_slot == CritterItemSlot::Inventory && toSlot != CritterItemSlot::Outside))) {
-            client->CurMap->RebuildLight();
-        }
+        client->CurMap->UpdateCritterLightSource(map_chosen);
     }
 
     // Notify scripts about item changing

@@ -48,7 +48,7 @@
 
 auto HashStorage::ToHashedString(string_view s) -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
@@ -81,7 +81,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
 auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
@@ -133,7 +133,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 
 auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return 0;
@@ -185,7 +185,7 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 
 auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return 0;
@@ -338,21 +338,21 @@ void GenericUtils::SetRandomSeed(int seed)
 
 auto GenericUtils::Random(int minimum, int maximum) -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return std::uniform_int_distribution {minimum, maximum}(RandomGenerator);
 }
 
 auto GenericUtils::Random(uint minimum, uint maximum) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return static_cast<uint>(Random(static_cast<int>(minimum), static_cast<int>(maximum)));
 }
 
 auto GenericUtils::Percent(int full, int peace) -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(full >= 0);
 
@@ -366,7 +366,7 @@ auto GenericUtils::Percent(int full, int peace) -> int
 
 auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (full == 0) {
         return 0;
@@ -378,7 +378,7 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
 
 auto GenericUtils::NumericalNumber(uint num) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (num % 2 != 0) {
         return num * (num / 2 + 1);
@@ -389,7 +389,7 @@ auto GenericUtils::NumericalNumber(uint num) -> uint
 
 auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto x01 = x1 - cx;
     const auto y01 = y1 - cy;
@@ -472,7 +472,7 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
 
 auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto dx = x1 - x2;
     const auto dy = y1 - y2;
@@ -481,7 +481,7 @@ auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint
 
 auto GenericUtils::GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto dx = static_cast<float>(std::abs(x2 - x1));
     const auto dy = static_cast<float>(std::abs(y2 - y1));
@@ -503,7 +503,7 @@ auto GenericUtils::GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float
 
 auto GenericUtils::ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto rad = deq * PI_FLOAT / 180.0f;
     sx = sx * std::cos(rad) - sy * std::sin(rad);
@@ -517,7 +517,7 @@ static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool;
 
 auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     float in[4];
     in[0] = objx;
@@ -551,7 +551,7 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
 
 auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     float final_matrix[16];
     MultMatricesf(model_matrix, proj_matrix, final_matrix);
@@ -589,7 +589,7 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
 
 static void MultMatricesf(const float a[16], const float b[16], float r[16])
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < 4; i++) {
         for (auto j = 0; j < 4; j++) {
@@ -600,7 +600,7 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16])
 
 static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4])
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < 4; i++) {
         out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
@@ -609,7 +609,7 @@ static void MultMatrixVecf(const float matrix[16], const float in[4], float out[
 
 static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     float inv[16];
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];

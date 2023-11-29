@@ -1188,7 +1188,6 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             }
 
             SelectEntityProp(ObjCurLine);
-            CurMap->RebuildLight();
         }
     }
     else if (dik == KeyCode::Prior) {
@@ -1524,7 +1523,6 @@ void FOMapper::IntLMouseDown()
                         cr->AnimateStay();
                     }
                 }
-                CurMap->RebuildLight();
             }
         }
         else if (IntMode == INT_MODE_LIST) {

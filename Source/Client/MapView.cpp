@@ -38,7 +38,7 @@
 #include "MapLoader.h"
 #include "StringUtils.h"
 
-static constexpr int MAX_LIGHT_VALUE = 10000;
+static constexpr int MAX_LIGHT_INTEN = 10000;
 static constexpr int MAX_LIGHT_HEX = 200;
 static constexpr int MAX_LIGHT_ALPHA = 255;
 
@@ -110,7 +110,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _height = GetHeight();
 
     _findPathGrid.resize((static_cast<size_t>(MAX_FIND_PATH) * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
-    _hexLight.resize(static_cast<size_t>(_width) * _height * 3);
+    _hexLight.resize(static_cast<size_t>(_width) * _height);
     _hexField.SetSize(_width, _height);
 
     ResizeView();
@@ -334,13 +334,6 @@ void MapView::LoadStaticData()
     ResizeView();
     RefreshMap();
 
-    CollectLightSources();
-    _lightPoints.clear();
-    _lightPointsCount = 0;
-    RealRebuildLight();
-    _requestRebuildLight = false;
-    _requestRenderLight = true;
-
     AutoScroll.Active = false;
 }
 
@@ -366,14 +359,14 @@ void MapView::Process()
             if (_mapDayColor != _prevMapDayColor) {
                 _prevMapDayColor = _mapDayColor;
 
-                _requestRebuildLight = true;
+                _needRebuildAllLights = true;
             }
 
             if (_globalDayColor != _prevGlobalDayColor) {
                 _prevGlobalDayColor = _globalDayColor;
 
-                if (_hasGlobalLights) {
-                    _requestRebuildLight = true;
+                if (_globalLights != 0) {
+                    _needRebuildAllLights = true;
                 }
             }
         }
@@ -497,6 +490,12 @@ void MapView::AddItemToField(ItemHexView* item)
             });
         }
     }
+
+    if (!item->GetIsLightThru()) {
+        UpdateHexLightSources(hx, hy);
+    }
+
+    UpdateItemLightSource(item);
 }
 
 void MapView::RemoveItemFromField(ItemHexView* item)
@@ -537,6 +536,12 @@ void MapView::RemoveItemFromField(ItemHexView* item)
             });
         }
     }
+
+    if (!item->GetIsLightThru()) {
+        UpdateHexLightSources(hx, hy);
+    }
+
+    FinishLightSource(item->GetId());
 }
 
 auto MapView::AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*
@@ -653,19 +658,11 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     AddItemToField(item);
 
-    if (!_mapperMode && item->GetIsStatic() && item->GetIsLight()) {
-        _staticLightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
-    }
-
     if (!MeasureMapBorders(item->Spr, item->ScrX, item->ScrY) && !_mapLoading) {
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent() && item->IsVisible()) {
             auto& field = _hexField.GetCellForWriting(hx, hy);
             auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
             AddSpriteToChain(field, spr);
-        }
-
-        if (item->GetIsLight() || !item->GetIsLightThru()) {
-            RebuildLight();
         }
     }
 
@@ -697,6 +694,8 @@ void MapView::MoveItem(ItemHexView* item, uint16 hx, uint16 hy)
 void MapView::DestroyItem(ItemHexView* item)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(item->GetMap() == this);
 
     if (item->IsSpriteValid()) {
         item->InvalidateSprite();
@@ -736,10 +735,7 @@ void MapView::DestroyItem(ItemHexView* item)
     }
 
     RemoveItemFromField(item);
-
-    if (item->GetIsLight() || !item->GetIsLightThru()) {
-        RebuildLight();
-    }
+    CleanLightSourceOffsets(item->GetId());
 
     item->MarkAsDestroyed();
     item->Release();
@@ -952,6 +948,8 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+
     uint16 hx = 0;
     uint16 hy = 0;
     if (GetHexAtScreenPos(x, y, hx, hy, nullptr, nullptr)) {
@@ -1052,11 +1050,6 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
     }
 
     InitView(screen_hx, screen_hy);
-
-    // Light
-    RealRebuildLight();
-    _requestRebuildLight = false;
-    _requestRenderLight = true;
 
     // Invalidation
     _mapSprites.Invalidate();
@@ -1231,6 +1224,8 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
 
     _screenHexX = screen_hx;
     _screenHexY = screen_hy;
+
+    _needRebuildLightPrimitives = true;
 
     _engine->OnRenderMap.Fire();
 }
@@ -1512,213 +1507,391 @@ void MapView::RebuildMapOffset(int ox, int oy)
         cr->RefreshOffs();
     }
 
-    // Light
-    RealRebuildLight();
-    _requestRebuildLight = false;
-    _requestRenderLight = true;
+    _needRebuildLightPrimitives = true;
 
     _engine->OnRenderMap.Fire();
 }
 
-void MapView::PrepareLightToDraw()
+void MapView::ProcessLighting()
 {
     STACK_TRACE_ENTRY();
 
-    if (_rtLight == nullptr) {
-        return;
+    if (_needRebuildAllLights) {
+        _needRebuildAllLights = false;
+
+        for (auto&& [id, ls] : _lightSources) {
+            ApplyLightFan(ls.get());
+        }
     }
 
-    // Rebuild light
-    if (_requestRebuildLight) {
-        _requestRebuildLight = false;
-        RealRebuildLight();
+    for (auto it = _lightSources.begin(); it != _lightSources.end();) {
+        auto&& ls = it->second;
+        const auto prev_intensity = ls->CurIntensity;
+
+        if (ls->Finishing) {
+            const auto elapsed_time = time_duration_div(_engine->GameTime.GameplayTime() - ls->Time, time_duration {std::chrono::milliseconds {200}});
+
+            if (elapsed_time >= 0.5f) {
+                ls->CurIntensity = lerp(ls->CurIntensity, 0u, std::clamp((elapsed_time - 0.5f) * 2.0f, 0.0f, 1.0f));
+            }
+        }
+        else {
+            if (ls->CurIntensity < ls->TargetIntensity) {
+                const auto elapsed_time = time_duration_div(_engine->GameTime.GameplayTime() - ls->Time, time_duration {std::chrono::milliseconds {200}});
+
+                ls->CurIntensity = lerp(0u, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
+            }
+        }
+
+        if (ls->Finishing && ls->CurIntensity == 0) {
+            CleanLightFan(ls.get());
+
+            it = _lightSources.erase(it);
+        }
+        else {
+            if (ls->CurIntensity != prev_intensity) {
+                ApplyLightFan(ls.get());
+            }
+
+            ++it;
+        }
     }
 
-    // Check dynamic light sources
-    if (!_requestRenderLight) {
-        for (auto& ls : _lightSources) {
-            if (ls.OffsX != nullptr && (*ls.OffsX != ls.LastOffsX || *ls.OffsY != ls.LastOffsY)) {
-                ls.LastOffsX = *ls.OffsX;
-                ls.LastOffsY = *ls.OffsY;
-                _requestRenderLight = true;
+    bool need_render_light = false;
+
+    if (_needRebuildLightPrimitives) {
+        _needRebuildLightPrimitives = false;
+        need_render_light = true;
+
+        _lightPoints.clear();
+        _lightSoftPoints.clear();
+
+        const auto min_hx = _viewField[0].HexX;
+        const auto max_hx = _viewField[_hVisible * _wVisible - 1].HexX;
+        const auto min_hy = _viewField[_wVisible - 1].HexY;
+        const auto max_hy = _viewField[_hVisible * _wVisible - _wVisible].HexY;
+
+        for (auto&& [id, ls] : _lightSources) {
+            RUNTIME_ASSERT(ls->Applied);
+
+            const auto hx = static_cast<int>(ls->HexX);
+            const auto hy = static_cast<int>(ls->HexY);
+            const auto dist = static_cast<int>(ls->Distance);
+
+            if (hx >= min_hx - dist && hx <= max_hx + dist && hy >= min_hy - dist && hy <= max_hy + dist) {
+                LightFanToPrimitves(ls.get(), _lightPoints, _lightSoftPoints);
+            }
+        }
+    }
+
+    if (!need_render_light) {
+        for (auto&& [id, ls] : _lightSources) {
+            if (ls->OffsX != nullptr && (*ls->OffsX != ls->LastOffsX || *ls->OffsY != ls->LastOffsY)) {
+                ls->LastOffsX = *ls->OffsX;
+                ls->LastOffsY = *ls->OffsY;
+                need_render_light = true;
             }
         }
     }
 
     // Prerender light
-    if (_requestRenderLight) {
-        _requestRenderLight = false;
+    if (need_render_light && _rtLight != nullptr) {
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
-        for (size_t i = 0; i < _lightPointsCount; i++) {
-            _engine->SprMngr.DrawPoints(_lightPoints[i], RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-        }
+
+        _engine->SprMngr.DrawPoints(_lightPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
         _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+
         _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }
 }
 
-void MapView::MarkLight(uint16 hx, uint16 hy, uint inten)
+void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto light = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
-    const auto lr = light * _lightProcentR / 100;
-    const auto lg = light * _lightProcentG / 100;
-    const auto lb = light * _lightProcentB / 100;
+    RUNTIME_ASSERT(cr->GetMap() == this);
 
-    auto* l = GetLightHex(hx, hy);
+    bool light_added = false;
 
-    if (lr > *(l + 0)) {
-        *l = static_cast<uint8>(lr);
+    for (const auto* item : cr->GetConstInvItems()) {
+        if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
+            UpdateLightSource(cr->GetId(), cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY);
+            light_added = true;
+            break;
+        }
     }
-    if (lg > *(l + 1)) {
-        *(l + 1) = static_cast<uint8>(lg);
+
+    // Default chosen light
+    if (!light_added && cr->IsChosen()) {
+        UpdateLightSource(cr->GetId(), cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY);
+        light_added = true;
     }
-    if (lb > *(l + 2)) {
-        *(l + 2) = static_cast<uint8>(lb);
+
+    if (!light_added) {
+        FinishLightSource(cr->GetId());
     }
 }
 
-void MapView::MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint inten)
+void MapView::UpdateItemLightSource(const ItemHexView* item)
 {
     STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    RUNTIME_ASSERT(item->GetMap() == this);
 
-    if (field.Flags.IsWall) {
-        const auto lt = field.Corner;
-
-        if ((north_south && (lt == CornerType::NorthSouth || lt == CornerType::North || lt == CornerType::West)) || (!north_south && (lt == CornerType::EastWest || lt == CornerType::East)) || lt == CornerType::South) {
-            const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
-            const auto light_self = static_cast<int>(inten / 2) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
-            const auto lr_full = light_full * _lightProcentR / 100;
-            const auto lg_full = light_full * _lightProcentG / 100;
-            const auto lb_full = light_full * _lightProcentB / 100;
-
-            auto* l = GetLightHex(hx, hy);
-
-            auto lr_self = static_cast<int>(*(l + 0)) + light_self * _lightProcentR / 100;
-            auto lg_self = static_cast<int>(*(l + 1)) + light_self * _lightProcentG / 100;
-            auto lb_self = static_cast<int>(*(l + 2)) + light_self * _lightProcentB / 100;
-
-            if (lr_self > lr_full) {
-                lr_self = lr_full;
-            }
-            if (lg_self > lg_full) {
-                lg_self = lg_full;
-            }
-            if (lb_self > lb_full) {
-                lb_self = lb_full;
-            }
-
-            if (lr_self > *(l + 0)) {
-                *l = static_cast<uint8>(lr_self);
-            }
-            if (lg_self > *(l + 1)) {
-                *(l + 1) = static_cast<uint8>(lg_self);
-            }
-            if (lb_self > *(l + 2)) {
-                *(l + 2) = static_cast<uint8>(lb_self);
-            }
-        }
-    }
-}
-
-void MapView::MarkLightEnd(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint inten)
-{
-    STACK_TRACE_ENTRY();
-
-    bool is_wall = false;
-    bool north_south = false;
-    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
-
-    if (field.Flags.IsWall) {
-        is_wall = true;
-
-        if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
-            north_south = true;
-        }
-    }
-
-    const int dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
-
-    if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
-        MarkLight(to_hx, to_hy, inten);
-
-        if (is_wall) {
-            if (north_south) {
-                if (to_hy > 0) {
-                    MarkLightEndNeighbor(to_hx, to_hy - 1, true, inten);
-                }
-                if (to_hy < _height - 1) {
-                    MarkLightEndNeighbor(to_hx, to_hy + 1, true, inten);
-                }
-            }
-            else {
-                if (to_hx > 0) {
-                    MarkLightEndNeighbor(to_hx - 1, to_hy, false, inten);
-
-                    if (to_hy > 0) {
-                        MarkLightEndNeighbor(to_hx - 1, to_hy - 1, false, inten);
-                    }
-                    if (to_hy < _height - 1) {
-                        MarkLightEndNeighbor(to_hx - 1, to_hy + 1, false, inten);
-                    }
-                }
-                if (to_hx < _width - 1) {
-                    MarkLightEndNeighbor(to_hx + 1, to_hy, false, inten);
-
-                    if (to_hy > 0) {
-                        MarkLightEndNeighbor(to_hx + 1, to_hy - 1, false, inten);
-                    }
-                    if (to_hy < _height - 1) {
-                        MarkLightEndNeighbor(to_hx + 1, to_hy + 1, false, inten);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void MapView::MarkLightStep(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint inten)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
-
-    if (field.Flags.IsWallTransp) {
-        const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
-        const int dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
-
-        if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
-            MarkLight(to_hx, to_hy, inten);
-        }
+    if (item->GetIsLight()) {
+        UpdateLightSource(item->GetId(), item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->ScrX, &item->ScrY);
     }
     else {
-        MarkLight(to_hx, to_hy, inten);
+        FinishLightSource(item->GetId());
     }
 }
 
-void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy, int dist, uint inten)
+void MapView::UpdateHexLightSources(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField.GetCellForWriting(hx, hy);
+
+    for (auto&& ls_pair : copy(field.LightSources)) {
+        ApplyLightFan(ls_pair.first);
+    }
+}
+
+void MapView::UpdateLightSource(ident_t id, uint16 hx, uint16 hy, ucolor color, uint distance, uint8 flags, int intensity, const int* ox, const int* oy)
+{
+    STACK_TRACE_ENTRY();
+
+    LightSource* ls;
+
+    const auto it = _lightSources.find(id);
+
+    if (it == _lightSources.end()) {
+        ls = _lightSources.emplace(id, std::make_unique<LightSource>(LightSource {hx, hy, color, distance, flags, intensity, ox, oy})).first->second.get();
+    }
+    else {
+        ls = it->second.get();
+
+        // Ignore redundant updates
+        if (!ls->Finishing && ls->HexX == hx && ls->HexY == hy && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity) {
+            return;
+        }
+
+        CleanLightFan(ls);
+
+        ls->Finishing = false;
+        ls->HexX = hx;
+        ls->HexY = hy;
+        ls->Color = color;
+        ls->Distance = distance;
+        ls->Flags = flags;
+        ls->Intensity = intensity;
+    }
+
+    ls->TargetIntensity = static_cast<uint>(std::min(std::abs(ls->Intensity), 100) * 100); // To MAX_LIGHT_INTEN
+
+    if (_mapLoading) {
+        ls->CurIntensity = ls->TargetIntensity;
+    }
+    else {
+        if (ls->CurIntensity != ls->TargetIntensity) {
+            ls->Time = _engine->GameTime.GameplayTime();
+        }
+    }
+
+    ApplyLightFan(ls);
+}
+
+void MapView::FinishLightSource(ident_t id)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _lightSources.find(id);
+
+    if (it != _lightSources.end()) {
+        auto&& ls = it->second;
+
+        if (!ls->Finishing) {
+            ls->Finishing = true;
+            ls->Time = _engine->GameTime.GameplayTime();
+        }
+    }
+}
+
+void MapView::CleanLightSourceOffsets(ident_t id)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _lightSources.find(id);
+
+    if (it != _lightSources.end()) {
+        auto&& ls = it->second;
+
+        ls->OffsX = nullptr;
+        ls->OffsY = nullptr;
+    }
+}
+
+void MapView::ApplyLightFan(LightSource* ls)
+{
+    STACK_TRACE_ENTRY();
+
+    if (ls->Applied) {
+        CleanLightFan(ls);
+    }
+
+    RUNTIME_ASSERT(!ls->Applied);
+
+    ls->Applied = true;
+
+    const auto center_hx = ls->HexX;
+    const auto center_hy = ls->HexY;
+    const auto distance = ls->Distance;
+    const auto prev_fan_hexes = std::move(ls->FanHexes);
+
+    ls->MarkedHexes.clear();
+    ls->MarkedHexes.reserve(static_cast<size_t>(GenericUtils::NumericalNumber(distance)) * GameSettings::MAP_DIR_COUNT + 1);
+    ls->FanHexes.clear();
+    ls->FanHexes.reserve(static_cast<size_t>(distance) * GameSettings::MAP_DIR_COUNT);
+
+    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+        _globalLights++;
+    }
+
+    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+        ls->Capacity = _globalDayLightCapacity;
+    }
+    else if (ls->Intensity >= 0) {
+        ls->Capacity = _mapDayLightCapacity;
+    }
+    else {
+        ls->Capacity = 100;
+    }
+
+    if (IsBitSet(ls->Flags, LIGHT_INVERSE)) {
+        ls->Capacity = 100 - ls->Capacity;
+    }
+
+    const auto intensity = ls->CurIntensity;
+    const auto center_alpha = static_cast<uint8>(MAX_LIGHT_ALPHA * ls->Capacity / 100 * intensity / MAX_LIGHT_INTEN);
+
+    ls->CenterColor = ucolor {ls->Color, center_alpha};
+
+    MarkLight(ls, center_hx, center_hy, intensity);
+
+    int raw_traced_hx = center_hx;
+    int raw_traced_hy = center_hy;
+    bool seek_start = true;
+    auto last_hx = static_cast<uint16>(-1);
+    auto last_hy = static_cast<uint16>(-1);
+
+    for (int i = 0, ii = (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i < ii; i++) {
+        const auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+
+        for (int j = 0, jj = static_cast<int>(GameSettings::HEXAGONAL_GEOMETRY ? distance : distance * 2); j < jj; j++) {
+            if (seek_start) {
+                for (uint l = 0; l < distance; l++) {
+                    GeometryHelper::MoveHexByDirUnsafe(raw_traced_hx, raw_traced_hy, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+                }
+
+                seek_start = false;
+                j = -1;
+            }
+            else {
+                GeometryHelper::MoveHexByDirUnsafe(raw_traced_hx, raw_traced_hy, dir);
+            }
+
+            auto traced_hx = static_cast<uint16>(std::clamp(raw_traced_hx, 0, _width - 1));
+            auto traced_hy = static_cast<uint16>(std::clamp(raw_traced_hy, 0, _height - 1));
+
+            if (IsBitSet(ls->Flags, LIGHT_DISABLE_DIR(i))) {
+                traced_hx = center_hx;
+                traced_hy = center_hy;
+            }
+            else {
+                TraceLightLine(ls, center_hx, center_hy, traced_hx, traced_hy, distance, intensity);
+            }
+
+            if (traced_hx != last_hx || traced_hy != last_hy) {
+                uint8 traced_alpha;
+                bool use_offsets = false;
+
+                if (static_cast<int>(traced_hx) != raw_traced_hx || static_cast<int>(traced_hy) != raw_traced_hy) {
+                    traced_alpha = static_cast<uint8>(lerp(static_cast<int>(center_alpha), 0, static_cast<float>(GeometryHelper::DistGame(center_hx, center_hy, traced_hx, traced_hy)) / static_cast<float>(distance)));
+
+                    if (traced_hx == center_hx && traced_hy == center_hy) {
+                        use_offsets = true;
+                    }
+                }
+                else {
+                    traced_alpha = 0;
+                    use_offsets = true;
+                }
+
+                ls->FanHexes.emplace_back(traced_hx, traced_hy, traced_alpha, use_offsets);
+
+                last_hx = traced_hx;
+                last_hy = traced_hy;
+            }
+        }
+    }
+
+    if (!ls->FanHexes.empty()) {
+        _needRebuildLightPrimitives = true;
+    }
+}
+
+void MapView::CleanLightFan(LightSource* ls)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(ls->Applied);
+
+    ls->Applied = false;
+
+    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+        RUNTIME_ASSERT(_globalLights > 0);
+
+        _globalLights--;
+    }
+
+    for (auto&& [hx, hy] : ls->MarkedHexes) {
+        auto& field = _hexField.GetCellForWriting(hx, hy);
+
+        field.LightSources.erase(ls);
+
+        CalculateHexLight(hx, hy, field);
+    }
+
+    if (!ls->FanHexes.empty()) {
+        _needRebuildLightPrimitives = true;
+    }
+}
+
+void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy, uint distance, uint intensity)
+{
+    NO_STACK_TRACE_ENTRY();
 
     const auto [base_sx, base_sy] = GenericUtils::GetStepsCoords(from_hx, from_hy, hx, hy);
     const auto sx1_f = base_sx;
     const auto sy1_f = base_sy;
+
     auto curx1_f = static_cast<float>(from_hx);
     auto cury1_f = static_cast<float>(from_hy);
-    int curx1_i = from_hx;
-    int cury1_i = from_hy;
-    const auto inten_sub = inten / dist;
+    auto curx1_i = static_cast<int>(from_hx);
+    auto cury1_i = static_cast<int>(from_hy);
+
+    auto cur_inten = intensity;
+    const auto inten_sub = intensity / distance;
 
     for (;;) {
-        inten -= inten_sub;
+        cur_inten -= inten_sub;
         curx1_f += sx1_f;
         cury1_f += sy1_f;
+
         const auto old_curx1_i = curx1_i;
         const auto old_cury1_i = cury1_i;
 
@@ -1731,13 +1904,12 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
         if (cury1_f - static_cast<float>(cury1_i) >= 0.5f) {
             cury1_i++;
         }
-        const auto can_mark = (curx1_i >= _lightMinHx && curx1_i <= _lightMaxHx && cury1_i >= _lightMinHy && cury1_i <= _lightMaxHy);
 
         // Left&Right trace
         auto ox = 0;
         auto oy = 0;
 
-        if ((old_curx1_i & 1) != 0) {
+        if ((old_curx1_i % 2) != 0) {
             if (old_curx1_i + 1 == curx1_i && old_cury1_i + 1 == cury1_i) {
                 ox = 1;
                 oy = 1;
@@ -1761,275 +1933,244 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
         if (ox != 0) {
             // Left side
             ox = old_curx1_i + ox;
+
             if (ox < 0 || ox >= _width || _hexField.GetCellForReading(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.IsLightBlocked) {
                 hx = static_cast<uint16>(ox < 0 || ox >= _width ? old_curx1_i : ox);
                 hy = static_cast<uint16>(old_cury1_i);
-                if (can_mark) {
-                    MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
-                }
+
+                MarkLightEnd(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, cur_inten);
                 break;
             }
-            if (can_mark) {
-                MarkLightStep(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i), inten);
-            }
+
+            MarkLightStep(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i), cur_inten);
 
             // Right side
             oy = old_cury1_i + oy;
+
             if (oy < 0 || oy >= _height || _hexField.GetCellForReading(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.IsLightBlocked) {
                 hx = static_cast<uint16>(old_curx1_i);
                 hy = static_cast<uint16>(oy < 0 || oy >= _height ? old_cury1_i : oy);
-                if (can_mark) {
-                    MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
-                }
+
+                MarkLightEnd(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, cur_inten);
                 break;
             }
-            if (can_mark) {
-                MarkLightStep(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy), inten);
-            }
+
+            MarkLightStep(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy), cur_inten);
         }
 
         // Main trace
         if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || _hexField.GetCellForReading(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.IsLightBlocked) {
             hx = static_cast<uint16>(curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
             hy = static_cast<uint16>(cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
-            if (can_mark) {
-                MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
-            }
+
+            MarkLightEnd(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, cur_inten);
             break;
         }
-        if (can_mark) {
-            MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i), inten);
-        }
+
+        MarkLightEnd(ls, static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i), cur_inten);
+
         if (curx1_i == hx && cury1_i == hy) {
             break;
         }
     }
 }
 
-void MapView::ParseLightTriangleFan(const LightSource& ls)
+void MapView::MarkLightStep(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint intensity)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
-    // All dirs disabled
-    if ((ls.Flags & 0x3F) == 0x3F) {
-        return;
-    }
+    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
 
-    const auto hx = ls.HexX;
-    const auto hy = ls.HexY;
+    if (field.Flags.IsWallTransp) {
+        const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
+        const auto dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
 
-    // Distance
-    const auto dist = ls.Distance;
-    if (dist < 1) {
-        return;
-    }
-
-    // Intensity
-    auto inten = std::abs(ls.Intensity);
-    if (inten > 100) {
-        inten = 100;
-    }
-
-    inten *= 100;
-
-    if (IsBitSet(ls.Flags, LIGHT_GLOBAL)) {
-        _lightCapacity = _globalDayLightCapacity;
-        _hasGlobalLights = true;
-    }
-    else if (ls.Intensity >= 0) {
-        _lightCapacity = _mapDayLightCapacity;
+        if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
+            MarkLight(ls, to_hx, to_hy, intensity);
+        }
     }
     else {
-        _lightCapacity = 100;
+        MarkLight(ls, to_hx, to_hy, intensity);
+    }
+}
+
+void MapView::MarkLightEnd(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint intensity)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    bool is_wall = false;
+    bool north_south = false;
+    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
+
+    if (field.Flags.IsWall) {
+        is_wall = true;
+
+        if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
+            north_south = true;
+        }
     }
 
-    if (IsBitSet(ls.Flags, LIGHT_INVERSE)) {
-        _lightCapacity = 100 - _lightCapacity;
-    }
+    const int dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
 
-    // Color
-    const auto alpha = static_cast<uint8>(MAX_LIGHT_ALPHA * _lightCapacity / 100 * inten / MAX_LIGHT_VALUE);
-    auto color = ucolor {ls.ColorRGB, alpha};
-    _lightProcentR = static_cast<int>(color.comp.r) * 100 / 255;
-    _lightProcentG = static_cast<int>(color.comp.g) * 100 / 255;
-    _lightProcentB = static_cast<int>(color.comp.b) * 100 / 255;
+    if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
+        MarkLight(ls, to_hx, to_hy, intensity);
 
-    // Begin
-    MarkLight(hx, hy, inten);
-    auto base_x = 0;
-    auto base_y = 0;
-    GetHexCurrentPosition(hx, hy, base_x, base_y);
-    base_x += _engine->Settings.MapHexWidth / 2;
-    base_y += _engine->Settings.MapHexHeight / 2;
-
-    _lightPointsCount++;
-    if (_lightPoints.size() < _lightPointsCount) {
-        _lightPoints.emplace_back();
-    }
-
-    auto& points = _lightPoints[_lightPointsCount - 1];
-    points.clear();
-    points.reserve(static_cast<size_t>(dist) * GameSettings::MAP_DIR_COUNT * 2);
-
-    const auto center_point = PrimitivePoint {base_x, base_y, color, ls.OffsX, ls.OffsY};
-    size_t added_points = 0;
-
-    int hx_far = hx;
-    int hy_far = hy;
-    auto seek_start = true;
-    auto last_hx = static_cast<uint16>(-1);
-    auto last_hy = static_cast<uint16>(-1);
-
-    for (auto i = 0, ii = (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i < ii; i++) {
-        const auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
-
-        for (auto j = 0, jj = (GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2); j < jj; j++) {
-            if (seek_start) {
-                // Move to start position
-                for (auto l = 0; l < dist; l++) {
-                    GeometryHelper::MoveHexByDirUnsafe(hx_far, hy_far, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+        if (is_wall) {
+            if (north_south) {
+                if (to_hy > 0) {
+                    MarkLightEndNeighbor(ls, to_hx, to_hy - 1, true, intensity);
                 }
-                seek_start = false;
-                j = -1;
+                if (to_hy < _height - 1) {
+                    MarkLightEndNeighbor(ls, to_hx, to_hy + 1, true, intensity);
+                }
             }
             else {
-                // Move to next hex
-                GeometryHelper::MoveHexByDirUnsafe(hx_far, hy_far, dir);
-            }
+                if (to_hx > 0) {
+                    MarkLightEndNeighbor(ls, to_hx - 1, to_hy, false, intensity);
 
-            auto hx_ = static_cast<uint16>(std::clamp(hx_far, 0, _width - 1));
-            auto hy_ = static_cast<uint16>(std::clamp(hy_far, 0, _height - 1));
-            if (IsBitSet(ls.Flags, LIGHT_DISABLE_DIR(i))) {
-                hx_ = hx;
-                hy_ = hy;
-            }
-            else {
-                TraceLight(hx, hy, hx_, hy_, dist, inten);
-            }
-
-            if (hx_ != last_hx || hy_ != last_hy) {
-                int* ox = nullptr;
-                int* oy = nullptr;
-                if (static_cast<int>(hx_) != hx_far || static_cast<int>(hy_) != hy_far) {
-                    int a = static_cast<int>(alpha - GeometryHelper::DistGame(hx, hy, hx_, hy_) * alpha / dist);
-                    a = std::clamp(a, 0, static_cast<int>(alpha));
-                    color = ucolor {color, static_cast<uint8>(a)};
-                    if (hx_ == hx && hy_ == hy) {
-                        ox = ls.OffsX;
-                        oy = ls.OffsY;
+                    if (to_hy > 0) {
+                        MarkLightEndNeighbor(ls, to_hx - 1, to_hy - 1, false, intensity);
+                    }
+                    if (to_hy < _height - 1) {
+                        MarkLightEndNeighbor(ls, to_hx - 1, to_hy + 1, false, intensity);
                     }
                 }
-                else {
-                    color = ucolor {color, 0};
-                    ox = ls.OffsX;
-                    oy = ls.OffsY;
-                }
+                if (to_hx < _width - 1) {
+                    MarkLightEndNeighbor(ls, to_hx + 1, to_hy, false, intensity);
 
-                const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, hx_, hy_);
-                points.emplace_back(PrimitivePoint {base_x + x, base_y + y, color, ox, oy});
-                if (++added_points % 2 == 0) {
-                    points.emplace_back(center_point);
+                    if (to_hy > 0) {
+                        MarkLightEndNeighbor(ls, to_hx + 1, to_hy - 1, false, intensity);
+                    }
+                    if (to_hy < _height - 1) {
+                        MarkLightEndNeighbor(ls, to_hx + 1, to_hy + 1, false, intensity);
+                    }
                 }
+            }
+        }
+    }
+}
 
-                last_hx = hx_;
-                last_hy = hy_;
+void MapView::MarkLightEndNeighbor(LightSource* ls, uint16 hx, uint16 hy, bool north_south, uint intensity)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField.GetCellForReading(hx, hy);
+
+    if (field.Flags.IsWall) {
+        const auto corner = field.Corner;
+
+        if ((north_south && (corner == CornerType::NorthSouth || corner == CornerType::North || corner == CornerType::West)) || (!north_south && (corner == CornerType::EastWest || corner == CornerType::East)) || corner == CornerType::South) {
+            MarkLight(ls, hx, hy, intensity / 2);
+        }
+    }
+}
+
+void MapView::MarkLight(LightSource* ls, uint16 hx, uint16 hy, uint intensity)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    const auto light_value = static_cast<int>(intensity) * MAX_LIGHT_HEX / MAX_LIGHT_INTEN * ls->Capacity / 100;
+    const auto light_value_r = static_cast<uint8>(light_value * ls->CenterColor.comp.r / 255);
+    const auto light_value_g = static_cast<uint8>(light_value * ls->CenterColor.comp.g / 255);
+    const auto light_value_b = static_cast<uint8>(light_value * ls->CenterColor.comp.b / 255);
+    const auto light_color = ucolor {light_value_r, light_value_g, light_value_b, 0};
+
+    auto& field = _hexField.GetCellForWriting(hx, hy);
+    const auto it = field.LightSources.find(ls);
+
+    if (it == field.LightSources.end()) {
+        field.LightSources.emplace(ls, light_color);
+        ls->MarkedHexes.emplace_back(hx, hy);
+        CalculateHexLight(hx, hy, field);
+    }
+    else {
+        auto& cur_color = it->second;
+
+        if (light_color.comp.r > cur_color.comp.r || light_color.comp.g > cur_color.comp.g || light_color.comp.b > cur_color.comp.b) {
+            cur_color = light_color;
+            CalculateHexLight(hx, hy, field);
+        }
+    }
+}
+
+void MapView::CalculateHexLight(uint16 hx, uint16 hy, const Field& field)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    auto& hex_light = _hexLight[hy * _width + hx];
+
+    hex_light = {};
+
+    for (auto&& ls_pair : field.LightSources) {
+        hex_light.comp.r = std::max(hex_light.comp.r, ls_pair.second.comp.r);
+        hex_light.comp.g = std::max(hex_light.comp.g, ls_pair.second.comp.g);
+        hex_light.comp.b = std::max(hex_light.comp.b, ls_pair.second.comp.b);
+    }
+}
+
+void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (ls->FanHexes.size() <= 1) {
+        return;
+    }
+
+    int center_x = 0;
+    int center_y = 0;
+    GetHexCurrentPosition(ls->HexX, ls->HexY, center_x, center_y);
+    center_x += _engine->Settings.MapHexWidth / 2;
+    center_y += _engine->Settings.MapHexHeight / 2;
+
+    const auto center_point = PrimitivePoint {center_x, center_y, ls->CenterColor, ls->OffsX, ls->OffsY};
+
+    const auto points_start_size = points.size();
+    points.reserve(points.size() + ls->FanHexes.size() * 3);
+    soft_points.reserve(soft_points.size() + ls->FanHexes.size() * 3);
+
+    for (size_t i = 0; i < ls->FanHexes.size(); i++) {
+        const auto& fan_hex = ls->FanHexes[i];
+        const uint16 hx = std::get<0>(fan_hex);
+        const uint16 hy = std::get<1>(fan_hex);
+        const uint8 alpha = std::get<2>(fan_hex);
+        const bool use_offsets = std::get<3>(fan_hex);
+
+        const auto [x, y] = _engine->Geometry.GetHexInterval(ls->HexX, ls->HexY, hx, hy);
+        const auto edge_point = PrimitivePoint {center_x + x, center_y + y, ucolor {ls->CenterColor, alpha}, use_offsets ? ls->OffsX : nullptr, use_offsets ? ls->OffsY : nullptr};
+
+        points.emplace_back(edge_point);
+
+        if (i > 0) {
+            points.emplace_back(center_point);
+            points.emplace_back(edge_point);
+
+            if (i == ls->FanHexes.size() - 1) {
+                points.emplace_back(points[points_start_size]);
+                points.emplace_back(center_point);
             }
         }
     }
 
-    for (size_t i = 0, j = points.size(); i < j; i++) {
-        if (i % 3 == 0) {
-            continue;
-        }
+    RUNTIME_ASSERT(points.size() % 3 == 0);
 
+    for (size_t i = points_start_size; i < points.size(); i += 3) {
         const auto& cur = points[i];
-        const auto next_i = (i + 1) % 3 == 0 ? i + 2 : i + 1;
-        const auto& next = points[next_i >= points.size() ? 0 : next_i];
+        const auto& next = points[i + 1];
 
         if (GenericUtils::DistSqrt(cur.PointX, cur.PointY, next.PointX, next.PointY) > static_cast<uint>(_engine->Settings.MapHexWidth)) {
-            _lightSoftPoints.emplace_back(PrimitivePoint {next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY});
-            _lightSoftPoints.emplace_back(PrimitivePoint {cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+            soft_points.emplace_back(PrimitivePoint {next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY, next.PPointColor});
+            soft_points.emplace_back(PrimitivePoint {cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY, cur.PPointColor});
 
-            const auto dist_comp = GenericUtils::DistSqrt(base_x, base_y, cur.PointX, cur.PointY) > GenericUtils::DistSqrt(base_x, base_y, next.PointX, next.PointY);
+            const auto dist_comp = GenericUtils::DistSqrt(center_x, center_y, cur.PointX, cur.PointY) > GenericUtils::DistSqrt(center_x, center_y, next.PointX, next.PointY);
             auto x = static_cast<float>(dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX);
             auto y = static_cast<float>(dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY);
             std::tie(x, y) = GenericUtils::ChangeStepsCoords(x, y, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
-                _lightSoftPoints.emplace_back(PrimitivePoint {cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+                soft_points.emplace_back(PrimitivePoint {cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY, cur.PPointColor});
             }
             else {
-                _lightSoftPoints.emplace_back(PrimitivePoint {next.PointX + iround(x), next.PointY + iround(y), next.PointColor, next.PointOffsX, next.PointOffsY});
-            }
-        }
-    }
-}
-
-void MapView::RealRebuildLight()
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_viewField.empty());
-
-    std::memset(_hexLight.data(), 0, _hexLight.size());
-
-    _hasGlobalLights = false;
-    _lightPointsCount = 0;
-    _lightSoftPoints.clear();
-    CollectLightSources();
-
-    _lightMinHx = _viewField[0].HexX;
-    _lightMaxHx = _viewField[_hVisible * _wVisible - 1].HexX;
-    _lightMinHy = _viewField[_wVisible - 1].HexY;
-    _lightMaxHy = _viewField[_hVisible * _wVisible - _wVisible].HexY;
-
-    for (const auto& ls : _lightSources) {
-        if (static_cast<int>(ls.HexX) >= _lightMinHx - ls.Distance && static_cast<int>(ls.HexX) <= _lightMaxHx + ls.Distance && //
-            static_cast<int>(ls.HexY) >= _lightMinHy - ls.Distance && static_cast<int>(ls.HexY) <= _lightMaxHy + ls.Distance) {
-            ParseLightTriangleFan(ls);
-        }
-    }
-}
-
-void MapView::CollectLightSources()
-{
-    STACK_TRACE_ENTRY();
-
-    _lightSources.clear();
-
-    // Scenery
-    if (_mapperMode) {
-        for (const auto* item : _staticItems) {
-            if (item->GetIsLight()) {
-                _lightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
-            }
-        }
-    }
-    else {
-        _lightSources = _staticLightSources;
-    }
-
-    // Items on ground
-    for (const auto* item : _dynamicItems) {
-        if (item->GetIsLight()) {
-            _lightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
-        }
-    }
-
-    // Items in critters slots
-    for (auto* cr : _critters) {
-        auto added = false;
-        for (const auto* item : cr->GetInvItems()) {
-            if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                _lightSources.emplace_back(LightSource {cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
-                added = true;
-            }
-        }
-
-        // Default chosen light
-        if (!_mapperMode) {
-            if (cr->IsChosen() && !added) {
-                _lightSources.emplace_back(LightSource {cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
+                soft_points.emplace_back(PrimitivePoint {next.PointX + iround(x), next.PointY + iround(y), next.PointColor, next.PointOffsX, next.PointOffsY, next.PPointColor});
             }
         }
     }
@@ -2123,6 +2264,8 @@ auto MapView::MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool
 auto MapView::MeasureMapBorders(const ItemHexView* item) -> bool
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(item->GetMap() == this);
 
     return MeasureMapBorders(item->Spr, item->ScrX, item->ScrY);
 }
@@ -2287,9 +2430,14 @@ void MapView::Resize(uint16 width, uint16 height)
 
     _hexTrack.resize(static_cast<size_t>(_width) * _height);
     std::memset(_hexTrack.data(), 0, _hexTrack.size());
-    _hexLight.resize(static_cast<size_t>(_width) * _height * 3);
-    std::memset(_hexLight.data(), 0, _hexLight.size());
+    _hexLight.resize(static_cast<size_t>(_width) * _height);
     _hexField.SetSize(_width, _height);
+
+    for (uint16 hy = 0; hy < _height; hy++) {
+        for (uint16 hx = 0; hx < _width; hx++) {
+            CalculateHexLight(hx, hy, _hexField.GetCellForReading(hx, hy));
+        }
+    }
 
     RefreshMap();
 }
@@ -2337,10 +2485,10 @@ void MapView::InitView(int screen_hx, int screen_hy)
         // Get center offset
         const auto hw = GetViewWidth() / 2 + _wRight;
         const auto hv = GetViewHeight() / 2 + _hTop;
-        auto vw = hv / 2 + (hv & 1) + 1;
+        auto vw = hv / 2 + (hv % 2) + 1;
         auto vh = hv - vw / 2 - 1;
         for (auto i = 0; i < hw; i++) {
-            if ((vw & 1) != 0) {
+            if ((vw % 2) != 0) {
                 vh--;
             }
             vw++;
@@ -2356,11 +2504,11 @@ void MapView::InitView(int screen_hx, int screen_hy)
         const auto wx = iround(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
         for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = screen_hx + yv / 2 + (yv & 1);
-            auto hy = screen_hy + (yv - (hx - screen_hx - (screen_hx & 1)) / 2);
-            auto ox = ((yv & 1) != 0 ? xa : xb);
+            auto hx = screen_hx + yv / 2 + (yv % 2);
+            auto hy = screen_hy + (yv - (hx - screen_hx - (screen_hx % 2)) / 2);
+            auto ox = ((yv % 2) != 0 ? xa : xb);
 
-            if (yv == 0 && ((screen_hx & 1) != 0)) {
+            if (yv == 0 && ((screen_hx % 2) != 0)) {
                 hy++;
             }
 
@@ -2373,7 +2521,7 @@ void MapView::InitView(int screen_hx, int screen_hy)
                 vf.HexX = hx;
                 vf.HexY = hy;
 
-                if ((hx & 1) != 0) {
+                if ((hx % 2) != 0) {
                     hy--;
                 }
                 hx++;
@@ -2398,7 +2546,7 @@ void MapView::InitView(int screen_hx, int screen_hy)
 
         // Initialize field
         for (auto j = 0; j < _hVisible; j++) {
-            auto x = ((j & 1) != 0 ? xa : xb);
+            auto x = ((j % 2) != 0 ? xa : xb);
             auto hx = basehx;
             auto hy = basehy;
 
@@ -2416,7 +2564,7 @@ void MapView::InitView(int screen_hx, int screen_hy)
                 x += _engine->Settings.MapHexWidth;
             }
 
-            if ((j & 1) != 0) {
+            if ((j % 2) != 0) {
                 basehy++;
             }
             else {
@@ -2562,7 +2710,7 @@ void MapView::DrawMap()
     auto reset_spr_mngr_zoom = ScopeCallback([this]() noexcept { _engine->SprMngr.SetSpritesZoom(1.0f); });
 
     // Prepare light
-    PrepareLightToDraw();
+    ProcessLighting();
 
     // Prepare fog
     PrepareFogToDraw();
@@ -2590,7 +2738,7 @@ void MapView::DrawMap()
     // Flat sprites
     _engine->SprMngr.DrawSprites(_mapSprites, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
 
-    // Light
+    // Lighting
     if (_rtLight != nullptr) {
         _engine->SprMngr.DrawRenderTarget(_rtLight, true, &prerendered_rect);
     }
@@ -2771,8 +2919,8 @@ void MapView::PrepareFogToDraw()
                         auto x = 0;
                         auto y = 0;
                         GetHexCurrentPosition(hx_, hy_, x, y);
-                        auto* ox = (dist_look == dist ? &chosen->ScrX : nullptr);
-                        auto* oy = (dist_look == dist ? &chosen->ScrY : nullptr);
+                        const auto* ox = (dist_look == dist ? &chosen->ScrX : nullptr);
+                        const auto* oy = (dist_look == dist ? &chosen->ScrY : nullptr);
                         _fogLookPoints.emplace_back(PrimitivePoint {x + half_hw, y + half_hh, ucolor {255, static_cast<uint8>(dist_look * 255 / dist), 0, 0}, ox, oy});
                         if (++look_points_added % 2 == 0) {
                             _fogLookPoints.emplace_back(center_look_point);
@@ -2790,8 +2938,8 @@ void MapView::PrepareFogToDraw()
                         auto y_ = 0;
                         GetHexCurrentPosition(hx_2, hy_2, x_, y_);
                         const auto result_shoot_dist = GeometryHelper::DistGame(base_hx, base_hy, hx_2, hy_2);
-                        auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->ScrX : nullptr);
-                        auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->ScrY : nullptr);
+                        const auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->ScrX : nullptr);
+                        const auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->ScrY : nullptr);
                         _fogShootPoints.emplace_back(PrimitivePoint {x_ + half_hw, y_ + half_hh, ucolor {255, static_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255}, ox, oy});
                         if (++shoot_points_added % 2 == 0) {
                             _fogShootPoints.emplace_back(center_shoot_point);
@@ -3220,6 +3368,8 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
     SetMultihexCritter(cr, true);
 
+    UpdateCritterLightSource(cr);
+
     if (!_mapLoading && IsHexToDraw(hx, hy) && cr->IsVisible()) {
         auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
 
@@ -3253,12 +3403,8 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     field.Critters.erase(it);
 
     RecacheHexFlags(field);
-
     SetMultihexCritter(cr, false);
-
-    if (cr->IsChosen() || cr->IsHaveLightSources()) {
-        RebuildLight();
-    }
+    FinishLightSource(cr->GetId());
 
     if (cr->IsSpriteValid()) {
         cr->InvalidateSprite();
@@ -3387,6 +3533,8 @@ void MapView::DestroyCritter(CritterHexView* cr)
     }
 
     RemoveCritterFromField(cr);
+    CleanLightSourceOffsets(cr->GetId());
+
     cr->DeleteAllInvItems();
     cr->MarkAsDestroyed();
     cr->Release();
@@ -3767,6 +3915,8 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+
 #define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y)-grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x)-grid_ox)]
 
     if (start_x == end_x && start_y == end_y) {
@@ -4089,6 +4239,8 @@ bool MapView::CutPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+
     return !!FindPath(cr, start_x, start_y, end_x, end_y, cut);
 }
 
@@ -4107,8 +4259,8 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
             return false;
         }
 
-        const auto& f = _hexField.GetCellForReading(check_hx, check_hy);
-        if (f.Flags.IsMoveBlocked) {
+        const auto& field = _hexField.GetCellForReading(check_hx, check_hy);
+        if (field.Flags.IsMoveBlocked) {
             return false;
         }
 
@@ -4472,7 +4624,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
 
             if (rh > 0) {
                 if (rw > 0) {
-                    if ((i & 1) != 0) {
+                    if ((i % 2) != 0) {
                         shx++;
                     }
                     else {
@@ -4480,7 +4632,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
                     }
                 }
                 else {
-                    if ((i & 1) != 0) {
+                    if ((i % 2) != 0) {
                         shy++;
                     }
                     else {
@@ -4490,7 +4642,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
             }
             else {
                 if (rw > 0) {
-                    if ((i & 1) != 0) {
+                    if ((i % 2) != 0) {
                         shy--;
                     }
                     else {
@@ -4498,7 +4650,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
                     }
                 }
                 else {
-                    if ((i & 1) != 0) {
+                    if ((i % 2) != 0) {
                         shx--;
                     }
                     else {
@@ -4507,7 +4659,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
                 }
             }
 
-            for (auto j = (i & 1) != 0 ? 1 : 0; j < hw; j += 2) {
+            for (auto j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
                 if (hx >= 0 && hy >= 0 && hx < _width && hy < _height) {
                     hexes.emplace_back(hx, hy);
                 }

@@ -197,31 +197,31 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
     Alpha = color_alpha;
 }
 
-void MapSprite::SetLight(CornerType corner, const uint8* light, uint16 maxhx, uint16 maxhy)
+void MapSprite::SetLight(CornerType corner, const ucolor* light, uint16 maxhx, uint16 maxhy)
 {
     STACK_TRACE_ENTRY();
 
     if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1) {
-        Light = &light[HexY * maxhx * 3 + HexX * 3];
+        Light = &light[HexY * maxhx + HexX];
 
         switch (corner) {
         case CornerType::EastWest:
         case CornerType::East:
-            LightRight = Light - 3;
-            LightLeft = Light + 3;
+            LightRight = Light - 1;
+            LightLeft = Light + 1;
             break;
         case CornerType::NorthSouth:
         case CornerType::West:
-            LightRight = Light + maxhx * 3;
-            LightLeft = Light - maxhx * 3;
+            LightRight = Light + maxhx;
+            LightLeft = Light - maxhx;
             break;
         case CornerType::South:
-            LightRight = Light - 3;
-            LightLeft = Light - maxhx * 3;
+            LightRight = Light - 1;
+            LightLeft = Light - maxhx;
             break;
         case CornerType::North:
-            LightRight = Light + maxhx * 3;
-            LightLeft = Light + 3;
+            LightRight = Light + maxhx;
+            LightLeft = Light + 1;
             break;
         }
     }

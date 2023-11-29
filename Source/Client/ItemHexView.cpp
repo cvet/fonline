@@ -75,7 +75,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
     }
 
     if (!GetIsNoLightInfluence()) {
-        mspr->SetLight(GetCorner(), _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+        mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetWidth(), _map->GetHeight());
     }
 }
 
