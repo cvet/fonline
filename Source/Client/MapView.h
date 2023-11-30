@@ -73,6 +73,7 @@ struct FindPathResult
 
 struct LightSource
 {
+    ident_t Id {};
     uint16 HexX {};
     uint16 HexY {};
     ucolor Color {};
@@ -82,6 +83,8 @@ struct LightSource
     const int* OffsX {};
     const int* OffsY {};
     bool Applied {};
+    bool NeedReapply {};
+    uint StartIntensity {};
     uint TargetIntensity {};
     uint CurIntensity {};
     ucolor CenterColor {};
@@ -422,10 +425,11 @@ private:
     int _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
+    unordered_map<LightSource*, size_t> _visibleLightSources {};
     vector<PrimitivePoint> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
     size_t _globalLights {};
-    bool _needRebuildAllLights {};
+    bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
 
     int _roofSkip {};

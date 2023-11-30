@@ -359,14 +359,14 @@ void MapView::Process()
             if (_mapDayColor != _prevMapDayColor) {
                 _prevMapDayColor = _mapDayColor;
 
-                _needRebuildAllLights = true;
+                _needReapplyLights = true;
             }
 
             if (_globalDayColor != _prevGlobalDayColor) {
                 _prevGlobalDayColor = _globalDayColor;
 
                 if (_globalLights != 0) {
-                    _needRebuildAllLights = true;
+                    _needReapplyLights = true;
                 }
             }
         }
@@ -1038,13 +1038,16 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
     RUNTIME_ASSERT(!_viewField.empty());
 
     for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
-        const auto hx = _viewField[i].HexX;
-        const auto hy = _viewField[i].HexY;
-        if (hx < 0 || hy < 0 || hx >= _width || hy >= _height) {
+        const auto& vf = _viewField[i];
+
+        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _width || vf.HexY >= _height) {
             continue;
         }
 
-        auto& field = _hexField.GetCellForWriting(static_cast<uint16>(hx), static_cast<uint16>(hy));
+        const auto hx = static_cast<uint16>(vf.HexX);
+        const auto hy = static_cast<uint16>(vf.HexY);
+        auto& field = _hexField.GetCellForWriting(hx, hy);
+
         field.IsView = false;
         InvalidateSpriteChain(field);
     }
@@ -1054,6 +1057,8 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
     // Invalidation
     _mapSprites.Invalidate();
     _engine->SprMngr.EggNotValid();
+    _visibleLightSources.clear();
+    _needReapplyLights = true;
 
     // Begin generate new sprites
     for (const auto i : xrange(_hVisible * _wVisible)) {
@@ -1065,12 +1070,18 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
-
         auto& field = _hexField.GetCellForWriting(hx, hy);
 
         field.IsView = true;
         field.ScrX = vf.ScrX;
         field.ScrY = vf.ScrY;
+
+        // Lighting
+        if (!field.LightSources.empty()) {
+            for (auto&& [ls, color] : field.LightSources) {
+                _visibleLightSources[ls]++;
+            }
+        }
 
         // Track
         if (_isShowTrack && GetHexTrack(hx, hy) != 0) {
@@ -1239,21 +1250,37 @@ void MapView::RebuildMapOffset(int ox, int oy)
     RUNTIME_ASSERT(oy == 0 || oy == -2 || oy == 2);
 
     auto hide_hex = [this](const ViewField& vf) {
-        const auto hxi = vf.HexX;
-        const auto hyi = vf.HexY;
-        if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
+        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _width || vf.HexY >= _height) {
             return;
         }
 
-        const auto hx = static_cast<uint16>(hxi);
-        const auto hy = static_cast<uint16>(hyi);
-        if (!IsHexToDraw(hx, hy)) {
-            return;
-        }
-
+        const auto hx = static_cast<uint16>(vf.HexX);
+        const auto hy = static_cast<uint16>(vf.HexY);
         auto& field = _hexField.GetCellForWriting(hx, hy);
+
+        if (!field.IsView) {
+            return;
+        }
+
         field.IsView = false;
         InvalidateSpriteChain(field);
+
+        // Lighting
+        if (!field.LightSources.empty()) {
+            for (auto&& [ls, color] : field.LightSources) {
+                const auto it = _visibleLightSources.find(ls);
+
+                RUNTIME_ASSERT(it != _visibleLightSources.end());
+                RUNTIME_ASSERT(it->second > 0);
+
+                if (it->second > 1) {
+                    it->second--;
+                }
+                else {
+                    _visibleLightSources.erase(it);
+                }
+            }
+        }
     };
 
     if (ox != 0) {
@@ -1326,13 +1353,28 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
+        auto& field = _hexField.GetCellForWriting(hx, hy);
 
-        if (IsHexToDraw(hx, hy)) {
+        if (field.IsView) {
             return;
         }
 
-        auto& field = _hexField.GetCellForWriting(hx, hy);
         field.IsView = true;
+
+        // Lighting
+        if (!field.LightSources.empty()) {
+            for (auto&& [ls, color] : field.LightSources) {
+                const auto it = _visibleLightSources.find(ls);
+
+                if (it == _visibleLightSources.end()) {
+                    _visibleLightSources.emplace(ls, 1);
+                    ls->NeedReapply = true;
+                }
+                else {
+                    it->second++;
+                }
+            }
+        }
 
         // Track
         if (_isShowTrack && (GetHexTrack(hx, hy) != 0)) {
@@ -1516,45 +1558,43 @@ void MapView::ProcessLighting()
 {
     STACK_TRACE_ENTRY();
 
-    if (_needRebuildAllLights) {
-        _needRebuildAllLights = false;
+    if (_needReapplyLights) {
+        _needReapplyLights = false;
 
-        for (auto&& [id, ls] : _lightSources) {
-            ApplyLightFan(ls.get());
+        for (auto&& [ls, count] : copy(_visibleLightSources)) {
+            ApplyLightFan(ls);
         }
     }
 
-    for (auto it = _lightSources.begin(); it != _lightSources.end();) {
-        auto&& ls = it->second;
+    vector<LightSource*> reapply_sources;
+    vector<LightSource*> remove_sources;
+
+    for (auto&& [ls, count] : _visibleLightSources) {
         const auto prev_intensity = ls->CurIntensity;
 
-        if (ls->Finishing) {
+        if (ls->CurIntensity != ls->TargetIntensity) {
             const auto elapsed_time = time_duration_div(_engine->GameTime.GameplayTime() - ls->Time, time_duration {std::chrono::milliseconds {200}});
 
-            if (elapsed_time >= 0.5f) {
-                ls->CurIntensity = lerp(ls->CurIntensity, 0u, std::clamp((elapsed_time - 0.5f) * 2.0f, 0.0f, 1.0f));
-            }
-        }
-        else {
-            if (ls->CurIntensity < ls->TargetIntensity) {
-                const auto elapsed_time = time_duration_div(_engine->GameTime.GameplayTime() - ls->Time, time_duration {std::chrono::milliseconds {200}});
-
-                ls->CurIntensity = lerp(0u, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
-            }
+            ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
 
         if (ls->Finishing && ls->CurIntensity == 0) {
-            CleanLightFan(ls.get());
-
-            it = _lightSources.erase(it);
+            remove_sources.emplace_back(ls);
         }
-        else {
-            if (ls->CurIntensity != prev_intensity) {
-                ApplyLightFan(ls.get());
-            }
-
-            ++it;
+        else if (ls->CurIntensity != prev_intensity || ls->NeedReapply) {
+            reapply_sources.emplace_back(ls);
         }
+    }
+
+    for (auto* ls : reapply_sources) {
+        ApplyLightFan(ls);
+    }
+
+    for (auto* ls : remove_sources) {
+        RUNTIME_ASSERT(_lightSources.count(ls->Id) != 0);
+
+        CleanLightFan(ls);
+        _lightSources.erase(ls->Id);
     }
 
     bool need_render_light = false;
@@ -1566,26 +1606,15 @@ void MapView::ProcessLighting()
         _lightPoints.clear();
         _lightSoftPoints.clear();
 
-        const auto min_hx = _viewField[0].HexX;
-        const auto max_hx = _viewField[_hVisible * _wVisible - 1].HexX;
-        const auto min_hy = _viewField[_wVisible - 1].HexY;
-        const auto max_hy = _viewField[_hVisible * _wVisible - _wVisible].HexY;
-
-        for (auto&& [id, ls] : _lightSources) {
+        for (auto&& [ls, count] : _visibleLightSources) {
             RUNTIME_ASSERT(ls->Applied);
 
-            const auto hx = static_cast<int>(ls->HexX);
-            const auto hy = static_cast<int>(ls->HexY);
-            const auto dist = static_cast<int>(ls->Distance);
-
-            if (hx >= min_hx - dist && hx <= max_hx + dist && hy >= min_hy - dist && hy <= max_hy + dist) {
-                LightFanToPrimitves(ls.get(), _lightPoints, _lightSoftPoints);
-            }
+            LightFanToPrimitves(ls, _lightPoints, _lightSoftPoints);
         }
     }
 
     if (!need_render_light) {
-        for (auto&& [id, ls] : _lightSources) {
+        for (auto&& [ls, count] : _visibleLightSources) {
             if (ls->OffsX != nullptr && (*ls->OffsX != ls->LastOffsX || *ls->OffsY != ls->LastOffsY)) {
                 ls->LastOffsX = *ls->OffsX;
                 ls->LastOffsY = *ls->OffsY;
@@ -1654,7 +1683,7 @@ void MapView::UpdateHexLightSources(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForWriting(hx, hy);
+    const auto& field = _hexField.GetCellForReading(hx, hy);
 
     for (auto&& ls_pair : copy(field.LightSources)) {
         ApplyLightFan(ls_pair.first);
@@ -1670,7 +1699,7 @@ void MapView::UpdateLightSource(ident_t id, uint16 hx, uint16 hy, ucolor color, 
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, std::make_unique<LightSource>(LightSource {hx, hy, color, distance, flags, intensity, ox, oy})).first->second.get();
+        ls = _lightSources.emplace(id, std::make_unique<LightSource>(LightSource {id, hx, hy, color, distance, flags, intensity, ox, oy})).first->second.get();
     }
     else {
         ls = it->second.get();
@@ -1691,13 +1720,14 @@ void MapView::UpdateLightSource(ident_t id, uint16 hx, uint16 hy, ucolor color, 
         ls->Intensity = intensity;
     }
 
-    ls->TargetIntensity = static_cast<uint>(std::min(std::abs(ls->Intensity), 100) * 100); // To MAX_LIGHT_INTEN
+    ls->TargetIntensity = static_cast<uint>(std::min(std::abs(ls->Intensity), 100));
 
     if (_mapLoading) {
         ls->CurIntensity = ls->TargetIntensity;
     }
     else {
         if (ls->CurIntensity != ls->TargetIntensity) {
+            ls->StartIntensity = ls->CurIntensity;
             ls->Time = _engine->GameTime.GameplayTime();
         }
     }
@@ -1716,6 +1746,8 @@ void MapView::FinishLightSource(ident_t id)
 
         if (!ls->Finishing) {
             ls->Finishing = true;
+            ls->StartIntensity = ls->CurIntensity;
+            ls->TargetIntensity = 0;
             ls->Time = _engine->GameTime.GameplayTime();
         }
     }
@@ -1746,6 +1778,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     RUNTIME_ASSERT(!ls->Applied);
 
     ls->Applied = true;
+    ls->NeedReapply = false;
 
     const auto center_hx = ls->HexX;
     const auto center_hy = ls->HexY;
@@ -1775,7 +1808,7 @@ void MapView::ApplyLightFan(LightSource* ls)
         ls->Capacity = 100 - ls->Capacity;
     }
 
-    const auto intensity = ls->CurIntensity;
+    const auto intensity = ls->CurIntensity * 100; // To MAX_LIGHT_INTEN
     const auto center_alpha = static_cast<uint8>(MAX_LIGHT_ALPHA * ls->Capacity / 100 * intensity / MAX_LIGHT_INTEN);
 
     ls->CenterColor = ucolor {ls->Color, center_alpha};
@@ -1862,13 +1895,14 @@ void MapView::CleanLightFan(LightSource* ls)
         auto& field = _hexField.GetCellForWriting(hx, hy);
 
         field.LightSources.erase(ls);
-
         CalculateHexLight(hx, hy, field);
     }
 
     if (!ls->FanHexes.empty()) {
         _needRebuildLightPrimitives = true;
     }
+
+    _visibleLightSources.erase(ls);
 }
 
 void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy, uint distance, uint intensity)
@@ -2082,6 +2116,10 @@ void MapView::MarkLight(LightSource* ls, uint16 hx, uint16 hy, uint intensity)
         field.LightSources.emplace(ls, light_color);
         ls->MarkedHexes.emplace_back(hx, hy);
         CalculateHexLight(hx, hy, field);
+
+        if (field.IsView) {
+            _visibleLightSources[ls]++;
+        }
     }
     else {
         auto& cur_color = it->second;
