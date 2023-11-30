@@ -1896,10 +1896,22 @@ void MapView::CleanLightFan(LightSource* ls)
 
         field.LightSources.erase(ls);
         CalculateHexLight(hx, hy, field);
+
+        if constexpr (FO_DEBUG) {
+            if (field.IsView) {
+                RUNTIME_ASSERT(_visibleLightSources[ls] > 0);
+
+                _visibleLightSources[ls]--;
+            }
+        }
     }
 
     if (!ls->FanHexes.empty()) {
         _needRebuildLightPrimitives = true;
+    }
+
+    if constexpr (FO_DEBUG) {
+        RUNTIME_ASSERT(_visibleLightSources.count(ls) == 0 || _visibleLightSources[ls] == 0);
     }
 
     _visibleLightSources.erase(ls);
