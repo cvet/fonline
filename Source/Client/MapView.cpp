@@ -1072,6 +1072,8 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
         const auto hy = static_cast<uint16>(vf.HexY);
         auto& field = _hexField.GetCellForWriting(hx, hy);
 
+        RUNTIME_ASSERT(!field.IsView);
+
         field.IsView = true;
         field.ScrX = vf.ScrX;
         field.ScrY = vf.ScrY;
@@ -2535,7 +2537,7 @@ void MapView::InitView(int screen_hx, int screen_hy)
         // Get center offset
         const auto hw = GetViewWidth() / 2 + _wRight;
         const auto hv = GetViewHeight() / 2 + _hTop;
-        auto vw = hv / 2 + (hv % 2) + 1;
+        auto vw = hv / 2 + std::abs(hv % 2) + 1;
         auto vh = hv - vw / 2 - 1;
         for (auto i = 0; i < hw; i++) {
             if ((vw % 2) != 0) {
@@ -2554,11 +2556,11 @@ void MapView::InitView(int screen_hx, int screen_hy)
         const auto wx = iround(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
         for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = screen_hx + yv / 2 + (yv % 2);
-            auto hy = screen_hy + (yv - (hx - screen_hx - (screen_hx % 2)) / 2);
-            auto ox = ((yv % 2) != 0 ? xa : xb);
+            auto hx = screen_hx + yv / 2 + std::abs(yv % 2);
+            auto hy = screen_hy + (yv - (hx - screen_hx - std::abs(screen_hx % 2)) / 2);
+            auto ox = (yv % 2) != 0 ? xa : xb;
 
-            if (yv == 0 && ((screen_hx % 2) != 0)) {
+            if (yv == 0 && (screen_hx % 2) != 0) {
                 hy++;
             }
 
@@ -2596,7 +2598,7 @@ void MapView::InitView(int screen_hx, int screen_hy)
 
         // Initialize field
         for (auto j = 0; j < _hVisible; j++) {
-            auto x = ((j % 2) != 0 ? xa : xb);
+            auto x = (j % 2) != 0 ? xa : xb;
             auto hx = basehx;
             auto hy = basehy;
 

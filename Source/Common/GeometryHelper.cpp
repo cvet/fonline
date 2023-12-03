@@ -266,7 +266,7 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) -> uint8
         const auto tx = static_cast<float>(x2);
         const auto ty = static_cast<float>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(x2 % 2) - static_cast<float>(x1 % 2)) * SQRT3_FLOAT;
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
         const auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx);
 
@@ -327,7 +327,7 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) -> 
         const auto tx = static_cast<float>(x2);
         const auto ty = static_cast<float>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(x2 % 2) - static_cast<float>(x1 % 2)) * SQRT3_FLOAT;
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
         auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx) + offset;
 
         if (dir < 0.0f) {
@@ -400,7 +400,7 @@ auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
     const auto tx = static_cast<float>(x2);
     const auto ty = static_cast<float>(y2);
     const auto nx = 3 * (tx - hx);
-    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(x2 % 2) - static_cast<float>(x1 % 2)) * SQRT3_FLOAT;
+    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
     float r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
     RUNTIME_ASSERT(r >= 0.0f);

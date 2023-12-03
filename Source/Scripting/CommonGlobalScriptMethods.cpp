@@ -283,7 +283,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     const auto* nums = "0123456789abcdef";
     char hex_digest[SHA1_DIGEST_SIZE * 2];
     for (uint i = 0; i < sizeof(hex_digest); i++) {
-        hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
+        hex_digest[i] = nums[(i % 2) != 0 ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
 
     return {hex_digest, sizeof(hex_digest)};
@@ -302,7 +302,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     const auto* nums = "0123456789abcdef";
     char hex_digest[digest_size * 2];
     for (uint i = 0; i < sizeof(hex_digest); i++) {
-        hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
+        hex_digest[i] = nums[(i % 2) != 0 ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
     return {hex_digest, sizeof(hex_digest)};
 }

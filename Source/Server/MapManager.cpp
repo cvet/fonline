@@ -967,7 +967,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 return output;
             }
 
-            auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((cx & 1) != 0);
+            auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((cx % 2) != 0);
 
             for (uint j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 const auto nxi = cx + sx[j];

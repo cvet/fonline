@@ -2206,13 +2206,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     // Setup hex moving switcher
-    auto switcher = 0;
+    int switcher = 0;
+
     if (!SelectedEntities.empty()) {
         if (const auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
-            switcher = cr->GetHexX() % 2;
+            switcher = std::abs(cr->GetHexX() % 2);
         }
         else if (const auto* item = dynamic_cast<ItemHexView*>(SelectedEntities[0]); item != nullptr) {
-            switcher = item->GetHexX() % 2;
+            switcher = std::abs(item->GetHexX() % 2);
         }
     }
 
@@ -2307,7 +2308,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeometryHelper::MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
+                    GeometryHelper::MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4 : 3) : ((sw % 2) != 0 ? 0 : 1));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
                     GeometryHelper::MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
