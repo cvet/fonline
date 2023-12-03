@@ -3051,14 +3051,14 @@ static auto EntityUpCast(Entity* a) -> T*
 
 static void HashedString_Construct(hstring* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) hstring();
 }
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
@@ -3072,7 +3072,7 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 
 static void HashedString_IsValidHash(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -3088,7 +3088,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
 
 static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -3102,63 +3102,63 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) hstring(other);
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self = other;
 }
 
 static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
 
 static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str() == other;
 }
 
 static auto HashedString_StringCast(const hstring& self) -> const string&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str();
 }
 
 static auto HashedString_StringConv(const hstring& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str();
 }
 
 static auto HashedString_GetString(const hstring& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return string(self.as_str());
 }
 
 static auto HashedString_GetHash(const hstring& self) -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_int();
 }
 
 static auto HashedString_GetUHash(const hstring& self) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_uint();
 }
@@ -3180,28 +3180,28 @@ static void Any_Destruct(any_t* self)
 template<typename T>
 static void Any_ConstructFrom(any_t* self, const T& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) any_t {_str("{}", other).str()};
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) any_t(other);
 }
 
 static void Any_Assign(any_t& self, const any_t& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self = other;
 }
 
 static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
@@ -3231,7 +3231,7 @@ static auto Any_Conv(const any_t& self) -> T
 template<typename T>
 static void Any_ConvGen(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
@@ -3248,7 +3248,7 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 template<typename T>
 static auto Any_ConvFrom(const T& self) -> any_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return any_t {_str("{}", self).str()};
 }
@@ -3256,7 +3256,7 @@ static auto Any_ConvFrom(const T& self) -> any_t
 template<typename T>
 static void StrongType_Construct(T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T();
 }
@@ -3264,7 +3264,7 @@ static void StrongType_Construct(T* self)
 template<typename T>
 static void StrongType_ConstructCopy(T* self, const T& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T(other);
 }
@@ -3272,7 +3272,7 @@ static void StrongType_ConstructCopy(T* self, const T& other)
 template<typename T>
 static void StrongType_ConstructFromUnderlying(T* self, const typename T::underlying_type& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T(other);
 }
@@ -3280,7 +3280,7 @@ static void StrongType_ConstructFromUnderlying(T* self, const typename T::underl
 template<typename T>
 static auto StrongType_Equals(const T& self, const T& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
@@ -3296,7 +3296,7 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 template<typename T>
 static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.underlying_value();
 }
@@ -3304,7 +3304,7 @@ static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
 template<typename T>
 static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self.underlying_value() = value;
 }
@@ -3312,7 +3312,7 @@ static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 template<typename T>
 static auto StrongType_GetStr(const T& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _str("{}", self).str();
 }
@@ -3320,21 +3320,21 @@ static auto StrongType_GetStr(const T& self) -> string
 template<typename T>
 static auto StrongType_AnyConv(const T& self) -> any_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return any_t {_str("{}", self).str()};
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) ucolor {rgba};
 }
 
 static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
     const auto clamped_g = static_cast<uint8>(std::clamp(g, 0, 255));
