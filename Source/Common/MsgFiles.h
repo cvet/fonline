@@ -54,39 +54,35 @@ class FileSystem;
 class FOMsg final
 {
 public:
-    using MsgMap = multimap<uint, string>;
-
     FOMsg() = default;
     FOMsg(const FOMsg&) = default;
     FOMsg(FOMsg&&) noexcept = default;
     auto operator=(const FOMsg&) -> FOMsg& = default;
     auto operator=(FOMsg&&) noexcept -> FOMsg& = default;
-    auto operator+=(const FOMsg& other) -> FOMsg&;
     ~FOMsg() = default;
 
-    static auto GetMsgType(string_view type_name) -> int;
+    [[nodiscard]] static auto GetMsgType(string_view type_name) -> int;
 
-    [[nodiscard]] auto GetStr(uint num) const -> string; // Todo: pass default to fomsg gets
-    [[nodiscard]] auto GetStr(uint num, uint skip) const -> string;
+    [[nodiscard]] auto GetStr(uint num) const -> const string&; // Todo: pass default to fomsg gets
+    [[nodiscard]] auto GetStr(uint num, size_t skip) const -> const string&;
     [[nodiscard]] auto GetStrNumUpper(uint num) const -> uint;
     [[nodiscard]] auto GetStrNumLower(uint num) const -> uint;
-    [[nodiscard]] auto GetInt(uint num) const -> int;
-    [[nodiscard]] auto GetBinary(uint num) const -> vector<uint8>;
-    [[nodiscard]] auto Count(uint num) const -> uint;
-    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto GetStrCount(uint num) const -> size_t;
+    [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto IsIntersects(const FOMsg& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
-    auto LoadFromString(string_view str, HashResolver& hash_resolver) -> bool;
+    auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(uint num, string_view str);
-    void AddBinary(uint num, const uint8* binary, uint len);
     void EraseStr(uint num);
+    void Merge(const FOMsg& other);
     void Clear();
 
 private:
-    MsgMap _strData {};
+    multimap<uint, string> _strData {};
+    string _emptyStr {};
 };
 
 class LanguagePack final

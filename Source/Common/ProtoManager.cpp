@@ -292,9 +292,10 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
 
             auto* msg = new FOMsg();
             uint str_num = 0;
+
             while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
-                const auto count = temp_msg.Count(str_num);
-                auto new_str_num = str_num;
+                const size_t count = temp_msg.GetStrCount(str_num);
+                uint new_str_num = str_num;
 
                 if constexpr (std::is_same_v<T, ProtoItem>) {
                     new_str_num = ITEM_STR_ID(proto->GetProtoId().as_uint(), str_num);

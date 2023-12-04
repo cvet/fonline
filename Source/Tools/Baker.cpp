@@ -983,7 +983,7 @@ void Baker::BakeAll()
                             throw GenericException("Dialog text intersection detected", pack->PackName);
                         }
 
-                        lang.Msg[TEXTMSG_DLG] += pack->Texts[i];
+                        lang.Msg[TEXTMSG_DLG].Merge(pack->Texts[i]);
                     }
                 }
             }
@@ -1001,7 +1001,7 @@ void Baker::BakeAll()
                                 throw GenericException("Proto text intersection detected", proto->GetName(), txt_type);
                             }
 
-                            lang.Msg[txt_type] += *proto->Texts[i];
+                            lang.Msg[txt_type].Merge(*proto->Texts[i]);
                         }
                     }
                 }

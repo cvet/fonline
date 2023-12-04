@@ -925,7 +925,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     }
     else {
         _conn.OutBuf.Write(prop->GetRegIndex());
-        if (data_size != 0u) {
+        if (data_size != 0) {
             _conn.OutBuf.Push(data, data_size);
         }
     }
@@ -1227,7 +1227,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         return;
     }
 
-    if (const auto& msg = _curLang.Msg[msg_num]; msg.Count(str_num) != 0u) {
+    if (const auto& msg = _curLang.Msg[msg_num]; msg.GetStrCount(str_num) != 0) {
         auto str = msg.GetStr(str_num);
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
         OnText(str, cr_id, how_say);
@@ -1243,7 +1243,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
         return;
     }
 
-    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100u;
+    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100;
     const auto sstr = fstr;
     if (!OnInMessage.Fire(sstr, how_say, cr_id, text_delay)) {
         return;
@@ -2209,7 +2209,7 @@ void FOClient::Net_OnProperty(uint data_size)
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    if (data_size == 0u) {
+    if (data_size == 0) {
         msg_len = _conn.InBuf.Read<uint>();
     }
     else {
@@ -2248,12 +2248,12 @@ void FOClient::Net_OnProperty(uint data_size)
 
     PropertyRawData prop_data;
 
-    if (data_size != 0u) {
+    if (data_size != 0) {
         _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
-        if (len != 0u) {
+        if (len != 0) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
@@ -3153,7 +3153,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                     if (msg_type < 0 || msg_type >= TEXTMSG_COUNT) {
                         tag = "<msg tag, unknown type>";
                     }
-                    else if (_curLang.Msg[msg_type].Count(str_num) == 0u) {
+                    else if (_curLang.Msg[msg_type].GetStrCount(str_num) == 0) {
                         tag = _str("<msg tag, string {} not found>", str_num);
                     }
                     else {

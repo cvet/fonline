@@ -54,104 +54,51 @@ struct MsgFilesData
 };
 GLOBAL_DATA(MsgFilesData, Data);
 
-static void HexToStr(uint8 hex, char* str)
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 2; i++) {
-        const auto val = i == 0 ? hex >> 4 : hex & 0xF;
-        if (val < 10) {
-            *str++ = static_cast<char>('0' + val);
-        }
-        else {
-            *str++ = static_cast<char>('A' + val - 10);
-        }
-    }
-}
-
-static auto StrToHex(const char* str) -> uint8
-{
-    STACK_TRACE_ENTRY();
-
-    uint8 result = 0;
-    for (auto i = 0; i < 2; i++) {
-        const auto c = *str++;
-        if (c < 'A') {
-            result |= (c - '0') << (i == 0 ? 4 : 0);
-        }
-        else {
-            result |= (c - 'A' + 10) << (i == 0 ? 4 : 0);
-        }
-    }
-    return result;
-}
-
-auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [key, value] : other._strData) {
-        EraseStr(key);
-        AddStr(key, value);
-    }
-    return *this;
-}
-
 void FOMsg::AddStr(uint num, string_view str)
 {
     STACK_TRACE_ENTRY();
 
-    _strData.insert(std::make_pair(num, str));
+    _strData.emplace(num, string(str));
 }
 
-void FOMsg::AddBinary(uint num, const uint8* binary, uint len)
+auto FOMsg::GetStr(uint num) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
-    vector<char> str;
-    str.resize(len * 2 + 1);
-
-    size_t str_cur = 0;
-    for (uint i = 0; i < len; i++) {
-        HexToStr(binary[i], &str[str_cur]);
-        str_cur += 2;
-    }
-
-    AddStr(num, static_cast<char*>(str.data()));
-}
-
-auto FOMsg::GetStr(uint num) const -> string
-{
-    STACK_TRACE_ENTRY();
-
-    const auto str_count = static_cast<uint>(_strData.count(num));
+    const size_t str_count = _strData.count(num);
     auto it = _strData.find(num);
 
     switch (str_count) {
     case 0:
-        return "";
+        return _emptyStr;
+
     case 1:
         break;
+
     default:
-        for (auto i = 0, j = GenericUtils::Random(0, static_cast<int>(str_count)) - 1; i < j; i++) {
+        const int random_skip = GenericUtils::Random(0, static_cast<int>(str_count)) - 1;
+
+        for (int i = 0; i < random_skip; i++) {
             ++it;
         }
+
         break;
     }
 
     return it->second;
 }
 
-auto FOMsg::GetStr(uint num, uint skip) const -> string
+auto FOMsg::GetStr(uint num, size_t skip) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
-    const auto str_count = static_cast<uint>(_strData.count(num));
+    const size_t str_count = _strData.count(num);
     auto it = _strData.find(num);
 
     if (skip >= str_count) {
-        return "";
+        return _emptyStr;
     }
+
     for (uint i = 0; i < skip; i++) {
         ++it;
     }
@@ -164,9 +111,11 @@ auto FOMsg::GetStrNumUpper(uint num) const -> uint
     STACK_TRACE_ENTRY();
 
     const auto it = _strData.upper_bound(num);
+
     if (it == _strData.end()) {
         return 0;
     }
+
     return it->first;
 }
 
@@ -175,81 +124,42 @@ auto FOMsg::GetStrNumLower(uint num) const -> uint
     STACK_TRACE_ENTRY();
 
     const auto it = _strData.lower_bound(num);
+
     if (it == _strData.end()) {
         return 0;
     }
+
     return it->first;
 }
 
-auto FOMsg::GetInt(uint num) const -> int
+auto FOMsg::GetStrCount(uint num) const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto str_count = static_cast<uint>(_strData.count(num));
-    auto it = _strData.find(num);
-
-    switch (str_count) {
-    case 0:
-        return -1;
-    case 1:
-        break;
-    default:
-        for (auto i = 0, j = GenericUtils::Random(0, static_cast<int>(str_count)) - 1; i < j; i++) {
-            ++it;
-        }
-        break;
-    }
-
-    return _str(it->second).toInt();
-}
-
-auto FOMsg::GetBinary(uint num) const -> vector<uint8>
-{
-    STACK_TRACE_ENTRY();
-
-    vector<uint8> result;
-
-    if (Count(num) == 0) {
-        return result;
-    }
-
-    const auto str = GetStr(num);
-    const auto len = static_cast<uint>(str.length()) / 2;
-    result.resize(len);
-    for (uint i = 0; i < len; i++) {
-        result[i] = StrToHex(&str[static_cast<size_t>(i) * 2]);
-    }
-
-    return result;
-}
-
-auto FOMsg::Count(uint num) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_strData.count(num));
+    return _strData.count(num);
 }
 
 void FOMsg::EraseStr(uint num)
 {
     STACK_TRACE_ENTRY();
 
-    while (true) {
-        auto it = _strData.find(num);
-        if (it != _strData.end()) {
-            _strData.erase(it);
-        }
-        else {
-            break;
-        }
-    }
+    _strData.erase(num);
 }
 
-auto FOMsg::GetSize() const -> uint
+void FOMsg::Merge(const FOMsg& other)
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_strData.size());
+    for (auto&& [key, value] : other._strData) {
+        AddStr(key, value);
+    }
+}
+
+auto FOMsg::GetSize() const -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    return _strData.size();
 }
 
 auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
@@ -261,6 +171,7 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
             return true;
         }
     }
+
     return false;
 }
 
@@ -268,25 +179,17 @@ auto FOMsg::GetBinaryData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    // Fill raw data
-    const auto count = static_cast<uint>(_strData.size());
-
     vector<uint8> data;
-    data.resize(sizeof(count));
-    std::memcpy(data.data(), &count, sizeof(count));
+    auto writer = DataWriter {data};
+
+    writer.Write<uint>(static_cast<uint>(_strData.size()));
 
     for (auto&& [num, str] : _strData) {
-        auto str_len = static_cast<uint>(str.length());
-
-        data.resize(data.size() + sizeof(num) + sizeof(str_len) + str_len);
-        std::memcpy(&data[data.size() - (sizeof(num) + sizeof(str_len) + str_len)], &num, sizeof(num));
-        std::memcpy(&data[data.size() - (sizeof(str_len) + str_len)], &str_len, sizeof(str_len));
-        if (str_len != 0) {
-            std::memcpy(&data[data.size() - str_len], str.c_str(), str_len);
-        }
+        writer.Write<uint>(num);
+        writer.Write<uint>(static_cast<uint>(str.length()));
+        writer.WritePtr(str.data(), str.length());
     }
 
-    // Compress
     return data;
 }
 
@@ -294,30 +197,22 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    Clear();
+    auto reader = DataReader {data};
 
-    // Read count of strings
-    const uint8* buf = data.data();
-    uint count = 0;
-    std::memcpy(&count, buf, sizeof(count));
-    buf += sizeof(count);
-
-    // Read strings
-    uint num = 0;
-    uint str_len = 0;
+    const auto count = reader.Read<uint>();
     string str;
+
     for (uint i = 0; i < count; i++) {
-        std::memcpy(&num, buf, sizeof(num));
-        buf += sizeof(num);
+        const auto num = reader.Read<uint>();
+        const auto str_len = reader.Read<uint>();
 
-        std::memcpy(&str_len, buf, sizeof(str_len));
-        buf += sizeof(str_len);
-
-        str.resize(str_len);
         if (str_len != 0) {
-            std::memcpy(str.data(), buf, str_len);
+            str.resize(str_len);
+            reader.ReadPtr(str.data(), str_len);
         }
-        buf += str_len;
+        else {
+            str.resize(0);
+        }
 
         AddStr(num, str);
     }
@@ -325,25 +220,27 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
     return true;
 }
 
-auto FOMsg::LoadFromString(string_view str, HashResolver& hash_resolver) -> bool
+auto FOMsg::LoadFromString(const string& str, HashResolver& hash_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    auto fail = false;
+    auto failed = false;
 
-    const auto sstr = string(str);
-    istringstream istr(sstr);
+    istringstream sstr(str);
     string line;
-    while (std::getline(istr, line, '\n')) {
+
+    while (std::getline(sstr, line, '\n')) {
         uint num = 0;
         size_t offset = 0;
+
         for (auto i = 0; i < 3; i++) {
             const auto first = line.find('{', offset);
             auto last = line.find('}', first);
+
             if (first == string::npos || last == string::npos) {
                 if (i == 2 && first != string::npos) {
                     string additional_line;
-                    while (last == string::npos && std::getline(istr, additional_line, '\n')) {
+                    while (last == string::npos && std::getline(sstr, additional_line, '\n')) {
                         line += "\n" + additional_line;
                         last = line.find('}', first);
                     }
@@ -351,14 +248,16 @@ auto FOMsg::LoadFromString(string_view str, HashResolver& hash_resolver) -> bool
 
                 if (first == string::npos || last == string::npos) {
                     if (i > 0 || first != string::npos) {
-                        fail = true;
+                        failed = true;
                     }
+
                     break;
                 }
             }
 
             auto substr = line.substr(first + 1, last - first - 1);
             offset = last + 1;
+
             if (i == 0 && num == 0) {
                 num = _str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
             }
@@ -369,12 +268,12 @@ auto FOMsg::LoadFromString(string_view str, HashResolver& hash_resolver) -> bool
                 AddStr(num, substr);
             }
             else {
-                fail = true;
+                failed = true;
             }
         }
     }
 
-    return !fail;
+    return !failed;
 }
 
 void FOMsg::LoadFromMap(const map<string, string>& kv)
@@ -383,6 +282,7 @@ void FOMsg::LoadFromMap(const map<string, string>& kv)
 
     for (auto&& [key, value] : kv) {
         const auto num = _str(key).toUInt();
+
         if (num != 0) {
             AddStr(num, value);
         }
@@ -391,6 +291,8 @@ void FOMsg::LoadFromMap(const map<string, string>& kv)
 
 void FOMsg::Clear()
 {
+    STACK_TRACE_ENTRY();
+
     _strData.clear();
 }
 
@@ -440,6 +342,7 @@ void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
     auto msg_files = resources.FilterFiles("fotxt");
+
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 
@@ -470,6 +373,7 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
     for (auto i = 0; i < TEXTMSG_COUNT; i++) {
         auto file = DiskFileSystem::OpenFile(_str("{}/{}-{}.fotxtb", dir, Name, Data->TextMsgFileName[i]), true);
         RUNTIME_ASSERT(file);
+
         const auto write_file_ok = file.Write(Msg[i].GetBinaryData());
         RUNTIME_ASSERT(write_file_ok);
     }

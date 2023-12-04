@@ -516,6 +516,7 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
+
     return client->GetCurLang().Msg[textMsg].GetStr(strNum);
 }
 
@@ -530,6 +531,7 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
+
     return client->GetCurLang().Msg[textMsg].GetStr(strNum, skipCount);
 }
 
@@ -543,6 +545,7 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
+
     return client->GetCurLang().Msg[textMsg].GetStrNumUpper(strNum);
 }
 
@@ -556,6 +559,7 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
+
     return client->GetCurLang().Msg[textMsg].GetStrNumLower(strNum);
 }
 
@@ -569,7 +573,8 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
-    return client->GetCurLang().Msg[textMsg].Count(strNum);
+
+    return static_cast<uint>(client->GetCurLang().Msg[textMsg].GetStrCount(strNum));
 }
 
 ///# ...
@@ -582,7 +587,8 @@
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
-    return client->GetCurLang().Msg[textMsg].Count(strNum) > 0;
+
+    return client->GetCurLang().Msg[textMsg].GetStrCount(strNum) != 0;
 }
 
 ///# ...
@@ -599,6 +605,7 @@
     if (pos == std::string::npos) {
         return string(text);
     }
+
     return string(text).replace(pos, replace.length(), obj1);
 }
 
@@ -624,6 +631,7 @@
     if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
         throw ScriptException("Invalid world map pos arg");
     }
+
     return client->GetWorldmapFog().Get2Bit(zoneX, zoneY);
 }
 
