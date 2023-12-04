@@ -3024,8 +3024,21 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     }
 }
 
+void FOClient::ChangeLanguage(string_view lang_name)
+{
+    STACK_TRACE_ENTRY();
+
+    auto lang_pack = LanguagePack();
+    lang_pack.LoadTexts(Resources, lang_name);
+
+    _curLang = std::move(lang_pack);
+    Settings.Language = lang_name;
+}
+
 void FOClient::ConsoleMessage(string_view msg)
 {
+    STACK_TRACE_ENTRY();
+
     auto str = string(msg);
     int how_say = SAY_NORM;
     const auto result = OnOutMessage.Fire(str, how_say);
@@ -3487,14 +3500,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "BytesReceive") {
         return _str("{}", _conn.GetBytesReceived()).str();
-    }
-    else if (cmd == "GetLanguage") {
-        return _curLang.Name;
-    }
-    else if (cmd == "SetLanguage" && args.size() >= 2) {
-        if (args[1].length() == 4) {
-            _curLang.LoadTexts(Resources, args[1]);
-        }
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
         auto w = _str(args[1]).toInt();

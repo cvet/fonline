@@ -1916,3 +1916,9 @@
 
     old_item->Release();
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
+{
+    client->ChangeLanguage(langName);
+}

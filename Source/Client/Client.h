@@ -153,6 +153,7 @@ public:
 
     void Shutdown();
     void MainLoop();
+    void ChangeLanguage(string_view lang_name);
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
