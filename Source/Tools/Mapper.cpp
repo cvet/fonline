@@ -923,11 +923,11 @@ void FOMapper::IntDraw()
 
         if (GetTabIndex() < static_cast<uint>((*CurItemProtos).size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), _curLang.NameCode);
-            if (it != proto_item->TextsLang.end()) {
-                auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
+            auto it = std::find_if(proto_item->Texts.begin(), proto_item->Texts.end(), [this](auto&& pack_pair) { return pack_pair.first == _curLang.GetName(); });
+            if (it != proto_item->Texts.end()) {
+                auto info = it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
-                info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
+                info += it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
                 SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
             }
         }

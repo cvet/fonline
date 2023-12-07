@@ -934,6 +934,7 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataRegistration-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/MsgFiles.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"

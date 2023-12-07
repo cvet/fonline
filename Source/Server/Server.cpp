@@ -1252,9 +1252,9 @@ void FOServer::Process_Text(Player* player)
             cr->Send_TextEx(cr->GetId(), str, SAY_WHISP, true);
         }
 
-        ItemMngr.RadioSendText(cr, str, true, 0, 0, channels);
+        ItemMngr.RadioSendText(cr, str, true, TextPackName::None, 0, channels);
         if (channels.empty()) {
-            cr->Send_TextMsg(cr, STR_RADIO_CANT_SEND, SAY_NETMSG, TEXTMSG_GAME);
+            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_RADIO_CANT_SEND);
             return;
         }
     } break;
@@ -2145,7 +2145,7 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check data
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2153,7 +2153,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Check name length
     const auto name_len_utf8 = _str(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2161,7 +2161,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Check for exist
     const auto player_id = MakePlayerId(name);
     if (DbStorage.Valid(PlayersCollectionName, player_id)) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_PLAYER_ALREADY, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_ALREADY);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2174,8 +2174,8 @@ void FOServer::Process_Register(Player* unlogined_player)
             auto& last_reg = it->second;
             const auto tick = GameTime.FrameTime();
             if (tick - last_reg < reg_tick) {
-                unlogined_player->Send_TextMsg(nullptr, STR_NET_REGISTRATION_IP_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-                unlogined_player->Send_TextMsgLex(nullptr, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, _str("$time{}", time_duration_to_ms<uint>(reg_tick - (tick - last_reg)) / 60000 + 1));
+                unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REGISTRATION_IP_WAIT);
+                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, _str("$time{}", time_duration_to_ms<uint>(reg_tick - (tick - last_reg)) / 60000 + 1));
                 unlogined_player->Connection->GracefulDisconnect();
                 return;
             }
@@ -2187,16 +2187,16 @@ void FOServer::Process_Register(Player* unlogined_player)
     }
 
 #if !FO_SINGLEPLAYER
-    uint disallow_msg_num = 0;
+    auto disallow_text_pack = TextPackName::None;
     uint disallow_str_num = 0;
     string lexems;
-    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_msg_num, disallow_str_num, lexems);
+    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_text_pack, disallow_str_num, lexems);
     if (!allow) {
-        if (disallow_msg_num < TEXTMSG_COUNT && disallow_str_num != 0) {
-            unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
+        if (disallow_text_pack != TextPackName::None && disallow_str_num != 0) {
+            unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, disallow_str_num, lexems);
         }
         else {
-            unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
         }
         unlogined_player->Connection->GracefulDisconnect();
         return;
@@ -2214,7 +2214,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     WriteLog("Registered player {} with id {}", name, player_id);
 
     // Notify
-    unlogined_player->Send_TextMsg(nullptr, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
+    unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REG_SUCCESS);
 
     CONNECTION_OUTPUT_BEGIN(unlogined_player->Connection);
     unlogined_player->Connection->OutBuf.StartMsg(NETMSG_REGISTER_SUCCESS);
@@ -2242,14 +2242,14 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check for null in login/password
     if (name.find('\0') != string::npos || password.find('\0') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check valid symbols in name
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2257,7 +2257,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     // Check for name length
     const auto name_len_utf8 = _str(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2266,7 +2266,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     const auto player_id = MakePlayerId(name);
     auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
     if (player_doc.count("Password") == 0 || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
-        unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
@@ -2274,15 +2274,15 @@ void FOServer::Process_Login(Player* unlogined_player)
 #if !FO_SINGLEPLAYER
     // Request script
     {
-        uint disallow_msg_num = 0;
-        uint disallow_str_num = 0;
+        auto disallow_msg_num = TextPackName::None;
+        TextPackKey disallow_str_num = 0;
         string lexems;
         if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
-            if (disallow_msg_num < TEXTMSG_COUNT && disallow_str_num != 0) {
-                unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
+            if (disallow_msg_num != TextPackName::None && disallow_str_num != 0) {
+                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, disallow_msg_num, disallow_str_num, lexems);
             }
             else {
-                unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+                unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
             }
             unlogined_player->Connection->GracefulDisconnect();
             return;
@@ -2298,7 +2298,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = false;
 
         if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this, *this)) {
-            unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+            unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
             unlogined_player->Connection->GracefulDisconnect();
             return;
         }
@@ -2407,7 +2407,7 @@ void FOServer::Process_Login(Player* unlogined_player)
                 RUNTIME_ASSERT(cr->IsOwnedByPlayer());
 
                 if (cr->GetOwner() != nullptr) {
-                    player->Send_TextMsg(nullptr, STR_NET_PLAYER_IN_GAME, SAY_NETMSG, TEXTMSG_GAME);
+                    player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_IN_GAME);
                     player->Connection->GracefulDisconnect();
                     return;
                 }
@@ -2428,7 +2428,7 @@ void FOServer::Process_Login(Player* unlogined_player)
                 if (cr != nullptr) {
                     cr->Release();
                 }
-                player->Send_TextMsg(nullptr, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+                player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
                 player->Connection->GracefulDisconnect();
                 return;
             }
@@ -3985,7 +3985,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
             if (!GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
                 cl->Send_Moving(cl);
                 cl->Send_Moving(npc);
-                cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
+                cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
                 WriteLog("Wrong distance to npc '{}', client '{}'", npc->GetName(), cl->GetName());
                 return;
             }
@@ -4005,19 +4005,19 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
             trace.FindCr = npc;
             MapMngr.TraceBullet(trace);
             if (!trace.IsCritterFound) {
-                cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
+                cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
                 return;
             }
         }
 
         if (!npc->IsAlive()) {
-            cl->Send_TextMsg(cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME);
+            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_LIFE);
             WriteLog("Npc '{}' bad condition, client '{}'", npc->GetName(), cl->GetName());
             return;
         }
 
         if (!npc->IsFreeToTalk()) {
-            cl->Send_TextMsg(cl, STR_DIALOG_MANY_TALKERS, SAY_NETMSG, TEXTMSG_GAME);
+            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_MANY_TALKERS);
             return;
         }
 
@@ -4046,7 +4046,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     else {
         if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Moving(cl);
-            cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
+            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
             WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
             return;
         }
@@ -4088,14 +4088,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     // Find dialog
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
     if (it_d == dialogs->end()) {
-        cl->Send_TextMsg(cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
+        cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
         WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", go_dialog, cl->GetName(), dialog_pack->PackId);
         return;
     }
 
     // Compile
     if (!DialogCompile(npc, cl, *it_d, cl->Talk.CurDialog)) {
-        cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+        cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4135,7 +4135,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
         if (failed) {
             CrMngr.CloseTalk(cl);
-            cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
             WriteLog("Dialog generation failed, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
             return;
         }
@@ -4144,12 +4144,12 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     // On head text
     if (cl->Talk.CurDialog.Answers.empty()) {
         if (npc != nullptr) {
-            npc->SendAndBroadcast_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems);
+            npc->SendAndBroadcast_MsgLex(npc->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cl->Talk.CurDialog.TextId, cl->Talk.Lexems);
         }
         else {
             auto* map = MapMngr.GetMap(cl->GetMapId());
             if (map != nullptr) {
-                map->SetTextMsg(hx, hy, 0, TEXTMSG_DLG, cl->Talk.CurDialog.TextId);
+                map->SetTextMsg(hx, hy, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
             }
         }
 
@@ -4201,7 +4201,7 @@ void FOServer::Process_Dialog(Player* player)
         if (talker == nullptr) {
             WriteLog("Critter with id {} not found, client '{}'", cr_id, cr->GetName());
             BreakIntoDebugger();
-            cr->Send_TextMsg(cr, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
+            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_FOUND);
             CrMngr.CloseTalk(cr);
             return;
         }
@@ -4226,7 +4226,7 @@ void FOServer::Process_Dialog(Player* player)
         // Barter
         const auto do_barter = [&] {
             if (cur_dialog->DlgScriptFuncName) {
-                cr->Send_TextMsg(talker, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
+                cr->Send_TextMsg(talker, SAY_DIALOG, TextPackName::Game, STR_BARTER_NO_BARTER_NOW);
                 return;
             }
 
@@ -4314,7 +4314,7 @@ void FOServer::Process_Dialog(Player* player)
     const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
-        cr->Send_TextMsg(cr, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
+        cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
         WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", next_dlg_id, cr->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4322,7 +4322,7 @@ void FOServer::Process_Dialog(Player* player)
     // Compile
     if (!DialogCompile(talker, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
-        cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+        cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4347,7 +4347,7 @@ void FOServer::Process_Dialog(Player* player)
 
         if (failed) {
             CrMngr.CloseTalk(cr);
-            cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
             WriteLog("Dialog generation failed, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
             return;
         }
@@ -4356,12 +4356,12 @@ void FOServer::Process_Dialog(Player* player)
     // On head text
     if (cr->Talk.CurDialog.Answers.empty()) {
         if (talker != nullptr) {
-            talker->SendAndBroadcast_MsgLex(talker->VisCr, cr->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cr->Talk.Lexems);
+            talker->SendAndBroadcast_MsgLex(talker->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cr->Talk.CurDialog.TextId, cr->Talk.Lexems);
         }
         else {
             auto* map = MapMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
-                map->SetTextMsg(cr->Talk.TalkHexX, cr->Talk.TalkHexY, 0, TEXTMSG_DLG, cr->Talk.CurDialog.TextId);
+                map->SetTextMsg(cr->Talk.TalkHexX, cr->Talk.TalkHexY, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
             }
         }
 

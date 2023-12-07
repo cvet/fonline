@@ -1804,6 +1804,10 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+DECLARE_EXCEPTION(HashResolveException);
+DECLARE_EXCEPTION(HashInsertException);
+DECLARE_EXCEPTION(HashCollisionException);
+
 class HashResolver
 {
 public:
@@ -1813,13 +1817,15 @@ public:
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
 };
 
+DECLARE_EXCEPTION(EnumResolveException);
+
 class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
 

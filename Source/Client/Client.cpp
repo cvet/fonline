@@ -117,7 +117,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     // Language Packs
-    _curLang.LoadTexts(Resources, Settings.Language);
+    _curLang = LanguagePack {Settings.Language, *this};
+    _curLang.LoadTexts(Resources);
 
     if (mapper_mode) {
         return;
@@ -731,7 +732,7 @@ void FOClient::Net_OnConnect(bool success)
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
-        AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+        AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_FAIL));
     }
 }
 
@@ -767,7 +768,7 @@ void FOClient::Net_SendLogIn()
     _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -1021,7 +1022,7 @@ void FOClient::Net_OnWrongNetProto()
 {
     STACK_TRACE_ENTRY();
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
@@ -1039,7 +1040,7 @@ void FOClient::Net_OnLoginSuccess()
 
     WriteLog("Authentication success");
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_LOGINOK));
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto encrypt_key = _conn.InBuf.Read<uint>();
@@ -1207,8 +1208,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto how_say = _conn.InBuf.Read<uint8>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
 
     string lexems;
     if (with_lexems) {
@@ -1222,13 +1223,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         return;
     }
 
-    if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value {}", msg_num);
-        return;
-    }
-
-    if (const auto& msg = _curLang.Msg[msg_num]; msg.GetStrCount(str_num) != 0) {
-        auto str = msg.GetStr(str_num);
+    if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
+        auto str = copy(msg.GetStr(str_num));
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
         OnText(str, cr_id, how_say);
     }
@@ -1305,7 +1301,10 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str(); };
+    const auto get_format = [this](uint str_num) -> string {
+        const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
+        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str();
+    };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
 
@@ -1396,17 +1395,12 @@ void FOClient::Net_OnMapTextMsg()
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
     const auto color = _conn.InBuf.Read<ucolor>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value, num {}", msg_num);
-        return;
-    }
-
-    auto str = _curLang.Msg[msg_num].GetStr(str_num);
+    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
     FormatTags(str, GetChosen(), nullptr, "");
     OnMapText(str, hx, hy, color);
 }
@@ -1419,18 +1413,13 @@ void FOClient::Net_OnMapTextMsgLex()
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
     const auto color = _conn.InBuf.Read<ucolor>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
     const auto lexems = _conn.InBuf.Read<string>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value, num {}", msg_num);
-        return;
-    }
-
-    auto str = _curLang.Msg[msg_num].GetStr(str_num);
+    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
     FormatTags(str, GetChosen(), nullptr, lexems);
     OnMapText(str, hx, hy, color);
 }
@@ -2374,12 +2363,12 @@ void FOClient::Net_OnChosenTalk()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
+    auto str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
     FormatTags(str, GetChosen(), npc, lexems);
     const auto text_to_script = str;
     string answers_to_script;
     for (const auto answers_text : answers_texts) {
-        str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
+        str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answers_text));
         FormatTags(str, GetChosen(), npc, lexems);
         answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
     }
@@ -3028,8 +3017,8 @@ void FOClient::ChangeLanguage(string_view lang_name)
 {
     STACK_TRACE_ENTRY();
 
-    auto lang_pack = LanguagePack();
-    lang_pack.LoadTexts(Resources, lang_name);
+    auto lang_pack = LanguagePack {lang_name, *this};
+    lang_pack.LoadTexts(Resources);
 
     _curLang = std::move(lang_pack);
     Settings.Language = lang_name;
@@ -3141,27 +3130,32 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                     tag = "<lexem not found>";
                 }
             }
-            // Msg text
-            else if (tag.length() > 4 && tag[0] == 'm' && tag[1] == 's' && tag[2] == 'g' && tag[3] == ' ') {
-                tag = tag.substr(4);
+            // Text pack
+            else if (tag.length() > 5 && tag[0] == 't' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == 't' && tag[4] == ' ') {
+                tag = tag.substr(5);
                 tag = _str(tag).erase('(').erase(')');
+
                 istringstream itag(tag);
-                string msg_type_name;
+                string pack_name_str;
                 uint str_num = 0;
-                if (itag >> msg_type_name >> str_num) {
-                    auto msg_type = FOMsg::GetMsgType(msg_type_name);
-                    if (msg_type < 0 || msg_type >= TEXTMSG_COUNT) {
-                        tag = "<msg tag, unknown type>";
+
+                if (itag >> pack_name_str >> str_num) {
+                    bool failed = false;
+                    const auto pack_name = _curLang.ResolveTextPackName(pack_name_str, &failed);
+                    const auto& text_pack = _curLang.GetTextPack(pack_name);
+
+                    if (failed) {
+                        tag = "<text tag, invalid pack name>";
                     }
-                    else if (_curLang.Msg[msg_type].GetStrCount(str_num) == 0) {
-                        tag = _str("<msg tag, string {} not found>", str_num);
+                    else if (text_pack.GetStrCount(str_num) == 0) {
+                        tag = _str("<text tag, string {} not found>", str_num);
                     }
                     else {
-                        tag = _curLang.Msg[msg_type].GetStr(str_num);
+                        tag = text_pack.GetStr(str_num);
                     }
                 }
                 else {
-                    tag = "<msg tag parse fail>";
+                    tag = "<text tag parse fail>";
                 }
             }
             // Script

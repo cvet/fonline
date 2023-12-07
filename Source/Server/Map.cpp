@@ -1097,15 +1097,14 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, u
     }
 }
 
-void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
+void Map::SetText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= _width || hy >= _height) {
-        return;
-    }
+    RUNTIME_ASSERT(hx < _width);
+    RUNTIME_ASSERT(hy < _height);
 
     for (auto* cr : _playerCritters) {
         if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
@@ -1114,36 +1113,34 @@ void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsaf
     }
 }
 
-void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
+void Map::SetTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= _width || hy >= _height || str_num == 0) {
-        return;
-    }
+    RUNTIME_ASSERT(hx < _width);
+    RUNTIME_ASSERT(hy < _height);
 
     for (auto* cr : _playerCritters) {
         if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
-            cr->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
+            cr->Send_MapTextMsg(hx, hy, color, text_pack, str_num);
         }
     }
 }
 
-void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
+void Map::SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= _width || hy >= _height || str_num == 0) {
-        return;
-    }
+    RUNTIME_ASSERT(hx < _width);
+    RUNTIME_ASSERT(hy < _height);
 
     for (auto* cr : _playerCritters) {
         if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
-            cr->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
+            cr->Send_MapTextMsgLex(hx, hy, color, text_pack, str_num, lexems);
         }
     }
 }

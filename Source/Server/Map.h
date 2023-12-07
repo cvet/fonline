@@ -127,9 +127,9 @@ public:
     void SetLocation(Location* loc);
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
-    void SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
-    void SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
-    void SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
+    void SetText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text);
+    void SetTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num);
+    void SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
     auto AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool;

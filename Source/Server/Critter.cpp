@@ -678,11 +678,11 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
     }
 }
 
-void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num)
+void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsg(this, str_num, how_say, msg_num);
+    Send_TextMsg(this, how_say, text_pack, str_num);
 
     if (to_cr.empty()) {
         return;
@@ -703,19 +703,19 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, 
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsg(this, str_num, how_say, msg_num);
+            cr->Send_TextMsg(this, how_say, text_pack, str_num);
         }
         else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsg(this, str_num, how_say, msg_num);
+            cr->Send_TextMsg(this, how_say, text_pack, str_num);
         }
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
+    Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
 
     if (to_cr.empty()) {
         return;
@@ -736,10 +736,10 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_nu
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
+            cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
         }
         else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
+            cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
         }
     }
 }
@@ -1025,47 +1025,47 @@ void Critter::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool
     }
 }
 
-void Critter::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num)
+void Critter::Send_TextMsg(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_cr, str_num, how_say, msg_num);
+        _player->Send_TextMsg(from_cr, how_say, text_pack, str_num);
     }
 }
 
-void Critter::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num)
+void Critter::Send_TextMsg(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_id, str_num, how_say, msg_num);
+        _player->Send_TextMsg(from_id, how_say, text_pack, str_num);
     }
 }
 
-void Critter::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
+void Critter::Send_TextMsgLex(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_cr, str_num, how_say, msg_num, lexems);
+        _player->Send_TextMsgLex(from_cr, how_say, text_pack, str_num, lexems);
     }
 }
 
-void Critter::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
+void Critter::Send_TextMsgLex(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_id, str_num, how_say, msg_num, lexems);
+        _player->Send_TextMsgLex(from_id, how_say, text_pack, str_num, lexems);
     }
 }
 
@@ -1157,7 +1157,7 @@ void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
     }
 }
 
-void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
+void Critter::Send_MapText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1168,25 +1168,25 @@ void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, b
     }
 }
 
-void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
+void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
+        _player->Send_MapTextMsg(hx, hy, color, text_pack, str_num);
     }
 }
 
-void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
+void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
+        _player->Send_MapTextMsgLex(hx, hy, color, text_pack, str_num, lexems);
     }
 }
 

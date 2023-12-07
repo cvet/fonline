@@ -297,8 +297,7 @@ public:
 
     void EnableComponent(hstring component);
 
-    vector<uint> TextsLang {};
-    vector<FOMsg*> Texts {};
+    vector<pair<string, TextPack>> Texts {};
     string CollectionName {};
 
 protected:

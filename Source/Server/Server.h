@@ -100,9 +100,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent

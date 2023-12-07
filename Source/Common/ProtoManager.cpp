@@ -287,14 +287,14 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
         RUNTIME_ASSERT(proto);
 
         for (auto&& [lang, pairs] : file_text) {
-            FOMsg temp_msg;
-            temp_msg.LoadFromMap(pairs);
+            TextPack temp_text_pack;
+            temp_text_pack.LoadFromMap(pairs);
 
-            auto* msg = new FOMsg();
+            TextPack text_pack;
             uint str_num = 0;
 
-            while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
-                const size_t count = temp_msg.GetStrCount(str_num);
+            while ((str_num = temp_text_pack.GetStrNumUpper(str_num)) != 0) {
+                const size_t count = temp_text_pack.GetStrCount(str_num);
                 uint new_str_num = str_num;
 
                 if constexpr (std::is_same_v<T, ProtoItem>) {
@@ -308,12 +308,11 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
                 }
 
                 for (const auto n : xrange(count)) {
-                    msg->AddStr(new_str_num, temp_msg.GetStr(str_num, n));
+                    text_pack.AddStr(new_str_num, temp_text_pack.GetStr(str_num, n));
                 }
             }
 
-            proto->TextsLang.push_back(*reinterpret_cast<const uint*>(lang.substr("Text_"_len).c_str()));
-            proto->Texts.push_back(msg);
+            proto->Texts.emplace_back(lang.substr("Text_"_len), std::move(text_pack));
         }
     }
 }

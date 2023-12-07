@@ -35,10 +35,6 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(HashResolveException);
-DECLARE_EXCEPTION(HashInsertException);
-DECLARE_EXCEPTION(HashCollisionException);
-
 class HashStorage : public HashResolver
 {
 public:

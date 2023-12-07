@@ -45,7 +45,6 @@
 #include "Timer.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
-DECLARE_EXCEPTION(EnumResolveException);
 
 class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
 {
@@ -61,7 +60,7 @@ public:
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
@@ -90,4 +89,5 @@ private:
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
+    string _emptyStr {};
 };

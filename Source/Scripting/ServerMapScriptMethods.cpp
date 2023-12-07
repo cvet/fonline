@@ -1138,11 +1138,12 @@
 ///# param color ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetText(Map* self, uint16 hexX, uint16 hexY, uint color, string_view text)
+[[maybe_unused]] void Server_Map_SetText(Map* self, uint16 hexX, uint16 hexY, ucolor color, string_view text)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
+
     self->SetText(hexX, hexY, color, text, false);
 }
 
@@ -1153,13 +1154,13 @@
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, ucolor color, TextPackName textPack, uint strNum)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsg(hexX, hexY, color, textMsg, strNum);
+    self->SetTextMsg(hexX, hexY, color, textPack, strNum);
 }
 
 ///# ...
@@ -1170,13 +1171,13 @@
 ///# param strNum ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum, string_view lexems)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, ucolor color, TextPackName textPack, uint strNum, string_view lexems)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsgLex(hexX, hexY, color, textMsg, strNum, lexems);
+    self->SetTextMsgLex(hexX, hexY, color, textPack, strNum, lexems);
 }
 
 ///# ...

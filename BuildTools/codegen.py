@@ -484,6 +484,9 @@ def parseTags():
                 keyValues = []
                 assert tagContext[1].startswith('{')
                 for l in tagContext[2:]:
+                    comm = l.find('//')
+                    if comm != -1:
+                        l = l[:comm].rstrip()
                     sep = l.find('=')
                     if sep == -1:
                         keyValues.append((l.rstrip(','), str(int(keyValues[-1][1], 0) + 1) if len(keyValues) else '0', []))

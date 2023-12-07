@@ -37,31 +37,14 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
-struct MsgFilesData
-{
-    string TextMsgFileName[TEXTMSG_COUNT] {
-        "text",
-        "_dialogs",
-        "_items",
-        "game",
-        "worldmap",
-        "combat",
-        "quest",
-        "holo",
-        "_internal",
-        "_locations",
-    };
-};
-GLOBAL_DATA(MsgFilesData, Data);
-
-void FOMsg::AddStr(uint num, string_view str)
+void TextPack::AddStr(TextPackKey num, string_view str)
 {
     STACK_TRACE_ENTRY();
 
     _strData.emplace(num, string(str));
 }
 
-auto FOMsg::GetStr(uint num) const -> const string&
+auto TextPack::GetStr(TextPackKey num) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -88,7 +71,7 @@ auto FOMsg::GetStr(uint num) const -> const string&
     return it->second;
 }
 
-auto FOMsg::GetStr(uint num, size_t skip) const -> const string&
+auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -99,14 +82,14 @@ auto FOMsg::GetStr(uint num, size_t skip) const -> const string&
         return _emptyStr;
     }
 
-    for (uint i = 0; i < skip; i++) {
+    for (size_t i = 0; i < skip; i++) {
         ++it;
     }
 
     return it->second;
 }
 
-auto FOMsg::GetStrNumUpper(uint num) const -> uint
+auto TextPack::GetStrNumUpper(TextPackKey num) const -> TextPackKey
 {
     STACK_TRACE_ENTRY();
 
@@ -119,7 +102,7 @@ auto FOMsg::GetStrNumUpper(uint num) const -> uint
     return it->first;
 }
 
-auto FOMsg::GetStrNumLower(uint num) const -> uint
+auto TextPack::GetStrNumLower(TextPackKey num) const -> TextPackKey
 {
     STACK_TRACE_ENTRY();
 
@@ -132,21 +115,21 @@ auto FOMsg::GetStrNumLower(uint num) const -> uint
     return it->first;
 }
 
-auto FOMsg::GetStrCount(uint num) const -> size_t
+auto TextPack::GetStrCount(TextPackKey num) const -> size_t
 {
     STACK_TRACE_ENTRY();
 
     return _strData.count(num);
 }
 
-void FOMsg::EraseStr(uint num)
+void TextPack::EraseStr(TextPackKey num)
 {
     STACK_TRACE_ENTRY();
 
     _strData.erase(num);
 }
 
-void FOMsg::Merge(const FOMsg& other)
+void TextPack::Merge(const TextPack& other)
 {
     STACK_TRACE_ENTRY();
 
@@ -155,14 +138,14 @@ void FOMsg::Merge(const FOMsg& other)
     }
 }
 
-auto FOMsg::GetSize() const -> size_t
+auto TextPack::GetSize() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
     return _strData.size();
 }
 
-auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
+auto TextPack::IsIntersects(const TextPack& other) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -175,7 +158,7 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
     return false;
 }
 
-auto FOMsg::GetBinaryData() const -> vector<uint8>
+auto TextPack::GetBinaryData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -185,7 +168,7 @@ auto FOMsg::GetBinaryData() const -> vector<uint8>
     writer.Write<uint>(static_cast<uint>(_strData.size()));
 
     for (auto&& [num, str] : _strData) {
-        writer.Write<uint>(num);
+        writer.Write<TextPackKey>(num);
         writer.Write<uint>(static_cast<uint>(str.length()));
         writer.WritePtr(str.data(), str.length());
     }
@@ -193,7 +176,7 @@ auto FOMsg::GetBinaryData() const -> vector<uint8>
     return data;
 }
 
-auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
+auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -203,7 +186,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
     string str;
 
     for (uint i = 0; i < count; i++) {
-        const auto num = reader.Read<uint>();
+        const auto num = reader.Read<TextPackKey>();
         const auto str_len = reader.Read<uint>();
 
         if (str_len != 0) {
@@ -220,7 +203,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
     return true;
 }
 
-auto FOMsg::LoadFromString(const string& str, HashResolver& hash_resolver) -> bool
+auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -230,7 +213,7 @@ auto FOMsg::LoadFromString(const string& str, HashResolver& hash_resolver) -> bo
     string line;
 
     while (std::getline(sstr, line, '\n')) {
-        uint num = 0;
+        TextPackKey num = 0;
         size_t offset = 0;
 
         for (auto i = 0; i < 3; i++) {
@@ -276,12 +259,12 @@ auto FOMsg::LoadFromString(const string& str, HashResolver& hash_resolver) -> bo
     return !failed;
 }
 
-void FOMsg::LoadFromMap(const map<string, string>& kv)
+void TextPack::LoadFromMap(const map<string, string>& kv)
 {
     STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
-        const auto num = _str(key).toUInt();
+        const TextPackKey num = _str(key).toUInt();
 
         if (num != 0) {
             AddStr(num, value);
@@ -289,80 +272,102 @@ void FOMsg::LoadFromMap(const map<string, string>& kv)
     }
 }
 
-void FOMsg::Clear()
+void TextPack::Clear()
 {
     STACK_TRACE_ENTRY();
 
     _strData.clear();
 }
 
-auto FOMsg::GetMsgType(string_view type_name) -> int
+LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resolver) :
+    _langName {lang_name},
+    _nameResolver {&name_resolver}
 {
     STACK_TRACE_ENTRY();
 
-    if (_str(type_name).compareIgnoreCase("text")) {
-        return TEXTMSG_TEXT;
-    }
-    else if (_str(type_name).compareIgnoreCase("dlg")) {
-        return TEXTMSG_DLG;
-    }
-    else if (_str(type_name).compareIgnoreCase("item")) {
-        return TEXTMSG_ITEM;
-    }
-    else if (_str(type_name).compareIgnoreCase("obj")) {
-        return TEXTMSG_ITEM;
-    }
-    else if (_str(type_name).compareIgnoreCase("game")) {
-        return TEXTMSG_GAME;
-    }
-    else if (_str(type_name).compareIgnoreCase("gm")) {
-        return TEXTMSG_GM;
-    }
-    else if (_str(type_name).compareIgnoreCase("combat")) {
-        return TEXTMSG_COMBAT;
-    }
-    else if (_str(type_name).compareIgnoreCase("quest")) {
-        return TEXTMSG_QUEST;
-    }
-    else if (_str(type_name).compareIgnoreCase("holo")) {
-        return TEXTMSG_HOLO;
-    }
-    else if (_str(type_name).compareIgnoreCase("internal")) {
-        return TEXTMSG_INTERNAL;
-    }
-    return -1;
+    _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
+    _textPacks[static_cast<size_t>(TextPackName::Game)] = std::make_unique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Dialogs)] = std::make_unique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Items)] = std::make_unique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Locations)] = std::make_unique<TextPack>();
 }
 
-void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver, string_view lang_name)
+auto LanguagePack::GetName() const -> const string&
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
-    Name = lang_name;
-    NameCode = *reinterpret_cast<const uint*>(lang_name.data());
+    return _langName;
+}
+
+auto LanguagePack::GetTextPack(TextPackName pack_name) const -> const TextPack&
+{
+    STACK_TRACE_ENTRY();
+
+    const auto pack_index = static_cast<size_t>(pack_name);
+
+    return _textPacks[pack_index] ? *_textPacks[pack_index] : _emptyPack;
+}
+
+auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
+{
+    STACK_TRACE_ENTRY();
+
+    const auto pack_index = static_cast<size_t>(pack_name);
+
+    if (!_textPacks[pack_index]) {
+        _textPacks[pack_index] = std::make_unique<TextPack>();
+    }
+
+    return *_textPacks[pack_index];
+}
+
+auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) const -> TextPackName
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        return static_cast<TextPackName>(_nameResolver->ResolveEnumValue("TextPackName", pack_name_str));
+    }
+    catch (const EnumResolveException&) {
+        if (failed != nullptr) {
+            *failed = true;
+            return {};
+        }
+
+        throw LanguagePackException("Invalid text pack name", pack_name_str);
+    }
+}
+
+void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver)
+{
+    STACK_TRACE_ENTRY();
 
     auto msg_files = resources.FilterFiles("fotxt");
 
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
+        const auto& msg_file_name = msg_file.GetName();
 
-        auto name = msg_file.GetName();
-        RUNTIME_ASSERT(name.length() > 5);
-        RUNTIME_ASSERT(name[4] == '-');
+        const auto sep = msg_file_name.find('.');
+        RUNTIME_ASSERT(sep != string::npos);
 
-        if (name.substr(0, 4) == lang_name) {
-            for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-                if (Data->TextMsgFileName[i] == name.substr(5)) {
-                    if (!Msg[i].LoadFromString(msg_file.GetStr(), hash_resolver)) {
-                        throw LanguagePackException("Invalid text file", msg_file.GetPath());
-                    }
-                }
+        string pack_name_str = msg_file_name.substr(0, sep);
+        string lang_name = msg_file_name.substr(sep + 1);
+        RUNTIME_ASSERT(!pack_name_str.empty());
+        RUNTIME_ASSERT(!lang_name.empty());
+
+        if (lang_name == _langName) {
+            const auto pack_name = ResolveTextPackName(pack_name_str);
+            auto& text_pack = GetTextPackForEdit(pack_name);
+
+            if (!text_pack.LoadFromString(msg_file.GetStr(), hash_resolver)) {
+                throw LanguagePackException("Invalid text file", msg_file.GetPath());
             }
         }
     }
 
-    if (Msg[TEXTMSG_GAME].GetSize() == 0) {
-        throw LanguagePackException("Unable to load game texts from file", lang_name);
+    if (GetTextPack(TextPackName::Game).GetSize() == 0) {
+        throw LanguagePackException("Unable to load game texts from file", _langName);
     }
 }
 
@@ -370,43 +375,51 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
 {
     STACK_TRACE_ENTRY();
 
-    for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-        auto file = DiskFileSystem::OpenFile(_str("{}/{}-{}.fotxtb", dir, Name, Data->TextMsgFileName[i]), true);
-        RUNTIME_ASSERT(file);
+    for (size_t i = 1; i < _textPacks.size(); i++) {
+        auto&& text_pack = _textPacks[i];
 
-        const auto write_file_ok = file.Write(Msg[i].GetBinaryData());
-        RUNTIME_ASSERT(write_file_ok);
+        if (text_pack) {
+            const string& pack_name_str = _nameResolver->ResolveEnumValueName("TextPackName", static_cast<int>(i));
+
+            auto file = DiskFileSystem::OpenFile(_str("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
+            RUNTIME_ASSERT(file);
+
+            const auto write_file_ok = file.Write(text_pack->GetBinaryData());
+            RUNTIME_ASSERT(write_file_ok);
+        }
     }
 }
 
-void LanguagePack::LoadTexts(FileSystem& resources, string_view lang_name)
+void LanguagePack::LoadTexts(FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
-    Name = lang_name;
-    NameCode = *reinterpret_cast<const uint*>(lang_name.data());
-
     auto msg_files = resources.FilterFiles("fotxtb");
+
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 
-        auto name = msg_file.GetName();
-        RUNTIME_ASSERT(name.length() > 5);
-        RUNTIME_ASSERT(name[4] == '-');
+        const auto& msg_file_name = msg_file.GetName();
 
-        if (name.substr(0, 4) == lang_name) {
-            for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-                if (Data->TextMsgFileName[i] == name.substr(5)) {
-                    if (!Msg[i].LoadFromBinaryData(msg_file.GetData())) {
-                        throw LanguagePackException("Invalid text file", msg_file.GetPath());
-                    }
-                }
+        const auto sep = msg_file_name.find('.');
+        RUNTIME_ASSERT(sep != string::npos);
+
+        string pack_name_str = msg_file_name.substr(0, sep);
+        string lang_name = msg_file_name.substr(sep + 1);
+        RUNTIME_ASSERT(!pack_name_str.empty());
+        RUNTIME_ASSERT(!lang_name.empty());
+
+        if (lang_name == _langName) {
+            const auto pack_name = ResolveTextPackName(pack_name_str);
+            auto& text_pack = GetTextPackForEdit(pack_name);
+
+            if (!text_pack.LoadFromBinaryData(msg_file.GetData())) {
+                throw LanguagePackException("Invalid binary text file", msg_file.GetPath());
             }
         }
     }
 
-    if (Msg[TEXTMSG_GAME].GetSize() == 0) {
-        throw LanguagePackException("Unable to load game texts from file", lang_name);
+    if (GetTextPack(TextPackName::Game).GetSize() == 0) {
+        throw LanguagePackException("Unable to load game texts from file", _langName);
     }
 }

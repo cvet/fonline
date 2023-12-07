@@ -480,115 +480,83 @@
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    client->AddMessage(FOMB_GAME, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(FOMB_GAME, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///# ...
 ///# param type ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    client->AddMessage(type, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(type, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return client->GetCurLang().Msg[textMsg].GetStr(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum, uint skipCount)
+[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return client->GetCurLang().Msg[textMsg].GetStr(strNum, skipCount);
+    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrNumUpper(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return client->GetCurLang().Msg[textMsg].GetStrNumUpper(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrNumLower(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return client->GetCurLang().Msg[textMsg].GetStrNumLower(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrCount(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return static_cast<uint>(client->GetCurLang().Msg[textMsg].GetStrCount(strNum));
+    return static_cast<uint>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    return client->GetCurLang().Msg[textMsg].GetStrCount(strNum) != 0;
+    return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
 
 ///# ...
@@ -1855,14 +1823,6 @@
 [[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
 {
     client->SprMngr.SetMousePosition(x, y);
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetCurLang(FOClient* client)
-{
-    return client->GetCurLang().Name;
 }
 
 ///# ...

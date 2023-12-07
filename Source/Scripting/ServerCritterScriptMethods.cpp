@@ -329,17 +329,17 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
     }
 
     if (howSay >= SAY_NETMSG) {
-        self->Send_TextMsg(self, numStr, howSay, textMsg);
+        self->Send_TextMsg(self, howSay, textPack, numStr);
     }
     else if (self->GetMapId()) {
-        self->SendAndBroadcast_Msg(self->VisCr, numStr, howSay, textMsg);
+        self->SendAndBroadcast_Msg(self->VisCr, howSay, textPack, numStr);
     }
 }
 
@@ -349,17 +349,17 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr, string_view lexems)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
     }
 
     if (howSay >= SAY_NETMSG) {
-        self->Send_TextMsgLex(self, numStr, howSay, textMsg, lexems);
+        self->Send_TextMsgLex(self, howSay, textPack, numStr, lexems);
     }
     else if (self->GetMapId()) {
-        self->SendAndBroadcast_MsgLex(self->VisCr, numStr, howSay, textMsg, lexems);
+        self->SendAndBroadcast_MsgLex(self->VisCr, howSay, textPack, numStr, lexems);
     }
 }
 

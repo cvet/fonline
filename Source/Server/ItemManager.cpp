@@ -598,7 +598,7 @@ void ItemManager::UnregisterRadio(Item* radio)
     }
 }
 
-void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, vector<uint16>& channels)
+void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels)
 {
     STACK_TRACE_ENTRY();
 
@@ -611,11 +611,11 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, msg_num, str_num, "");
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, text_pack, str_num, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -698,10 +698,10 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         cr->Send_TextEx(radio->GetId(), text, SAY_RADIO, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        cr->Send_TextMsgLex(radio->GetId(), str_num, SAY_RADIO, msg_num, lexems);
+                        cr->Send_TextMsgLex(radio->GetId(), SAY_RADIO, text_pack, str_num, lexems);
                     }
                     else {
-                        cr->Send_TextMsg(radio->GetId(), str_num, SAY_RADIO, msg_num);
+                        cr->Send_TextMsg(radio->GetId(), SAY_RADIO, text_pack, str_num);
                     }
 
                     cr->RadioMessageSended = cur_send;
@@ -734,13 +734,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     }
 
                     if (!text.empty()) {
-                        map->SetText(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, unsafe_text);
+                        map->SetText(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num, lexems);
+                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
                     }
                     else {
-                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num);
+                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text_pack, str_num);
                     }
                 }
             }

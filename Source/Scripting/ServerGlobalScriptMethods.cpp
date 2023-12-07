@@ -620,7 +620,7 @@
 [[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
 {
     if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, text, false, 0, 0, "");
+        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, text, false, TextPackName::None, 0, "");
     }
 }
 
@@ -629,9 +629,9 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, "");
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textPack, numStr, "");
 }
 
 ///# ...
@@ -640,9 +640,9 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr, string_view lexems)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, lexems);
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textPack, numStr, lexems);
 }
 
 ///# ...
@@ -1077,7 +1077,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Location*> Server_Game_GetZoneLocations(FOServer* server, uint16 zx, uint16 zy, uint zoneRadius)
 {
-    return server->MapMngr.GetZoneLocations(zx, zy, zoneRadius);
+    return server->MapMngr.GetZoneLocations(zx, zy, static_cast<int>(zoneRadius));
 }
 
 ///# ...
@@ -1176,7 +1176,7 @@
 ///@ ExportMethod
 [[maybe_unused]] int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
 {
-    if (!server->ProtoMngr.GetProtoItem(pid)) {
+    if (server->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid protoId arg");
     }
 

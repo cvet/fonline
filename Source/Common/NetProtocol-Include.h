@@ -206,14 +206,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MSG MAKE_NETMSG_HEADER(33)
-#define NETMSG_MSG_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(uint16) + sizeof(uint))
+#define NETMSG_MSG_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(TextPackName) + sizeof(TextPackKey))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
 // uint8 how_say
-// uint16 MSG_num
-// uint str_num
+// TextPackName text_pack
+// TextPackKey str_num
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MSG_LEX MAKE_NETMSG_HEADER(34)
@@ -223,8 +223,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint msg_len
 // ident_t cr_id
 // uint8 how_say
-// uint16 MSG_num
-// uint str_num
+// TextPackName text_pack
+// TextPackKey str_num
 // string lexems
 // ////////////////////////////////////////////////////////////////////////
 
@@ -235,21 +235,21 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint msg_len
 // uint16 hx
 // uint16 hy
-// uint color
+// ucolor color
 // string text
 // bool unsafe_text
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT_MSG MAKE_NETMSG_HEADER(36)
-#define NETMSG_MAP_TEXT_MSG_SIZE (sizeof(uint) + sizeof(uint16) * 2 + sizeof(uint) + sizeof(uint16) + sizeof(uint))
+#define NETMSG_MAP_TEXT_MSG_SIZE (sizeof(uint) + sizeof(uint16) * 2 + sizeof(ucolor) + sizeof(TextPackName) + sizeof(TextPackKey))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint16 hx
 // uint16 hy
-// uint color
-// uint16 MSG_num
-// uint str_num
+// ucolor color
+// TextPackName text_pack
+// TextPackKey str_num
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT_MSG_LEX MAKE_NETMSG_HEADER(37)
@@ -259,9 +259,9 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint msg_len
 // uint16 hx
 // uint16 hy
-// uint color
-// uint16 MSG_num
-// uint str_num
+// ucolor color
+// TextPackName text_pack
+// TextPackKey str_num
 // string lexems
 // ////////////////////////////////////////////////////////////////////////
 
