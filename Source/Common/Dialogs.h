@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
-#include "MsgFiles.h"
+#include "TextPack.h"
 
 enum class TalkType
 {

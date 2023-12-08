@@ -50,7 +50,6 @@
 #include "Keyboard.h"
 #include "LocationView.h"
 #include "MapView.h"
-#include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
@@ -61,6 +60,7 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
+#include "TextPack.h"
 #include "TwoBitMask.h"
 #include "VideoClip.h"
 

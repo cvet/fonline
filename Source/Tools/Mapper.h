@@ -48,7 +48,6 @@
 #include "LocationView.h"
 #include "MapLoader.h"
 #include "MapView.h"
-#include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
@@ -57,6 +56,7 @@
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
+#include "TextPack.h"
 #include "Timer.h"
 
 DECLARE_EXCEPTION(MapperException);

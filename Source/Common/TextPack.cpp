@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "MsgFiles.h"
+#include "TextPack.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
