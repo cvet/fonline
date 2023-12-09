@@ -116,10 +116,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
-    // Language Packs
-    _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadTexts(Resources);
-
     if (mapper_mode) {
         return;
     }
@@ -136,6 +132,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ScriptSys = new ClientScriptSystem(this);
     ScriptSys->InitSubsystems();
 #endif
+
+    _curLang = LanguagePack {Settings.Language, *this};
+    _curLang.LoadTexts(Resources);
 
     ProtoMngr.LoadFromResources();
 

@@ -68,6 +68,9 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     ScriptSys = new MapperScriptSystem(this);
     ScriptSys->InitSubsystems();
 
+    _curLang = LanguagePack {Settings.Language, *this};
+    _curLang.LoadTexts(Resources);
+
     ProtoMngr.LoadFromResources();
 
     // Fonts
