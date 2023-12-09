@@ -1225,7 +1225,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         flags_start = 12;
     }
     else if (prop->_dataType == Property::DataType::Dict) {
-        RUNTIME_ASSERT(flags.size() >= 18);
+        RUNTIME_ASSERT(flags.size() >= 19);
 
         prop->_isDictOfArray = flags[11][0] == '1';
         prop->_isDictOfString = flags[12][0] == '1';
@@ -1233,10 +1233,11 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         prop->_dictKeyTypeName = flags[14];
         RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
         prop->_dictKeySize = _str(flags[15]).toInt();
-        prop->_isDictKeyHash = flags[16][0] == '1';
-        prop->_isDictKeyEnum = flags[17][0] == '1';
+        prop->_isDictKeyString = flags[16][0] == '1';
+        prop->_isDictKeyHash = flags[17][0] == '1';
+        prop->_isDictKeyEnum = flags[18][0] == '1';
 
-        flags_start = 18;
+        flags_start = 19;
     }
 
     prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
@@ -1463,6 +1464,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     prop->_isDisabled = disabled;
 
     _registeredProperties.emplace_back(prop);
+    _constRegisteredProperties.emplace_back(prop);
 
     RUNTIME_ASSERT(_registeredPropertiesLookup.count(prop->_propName) == 0);
     _registeredPropertiesLookup.emplace(prop->_propName, prop);

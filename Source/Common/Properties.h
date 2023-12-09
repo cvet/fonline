@@ -109,7 +109,6 @@ class Property final
 {
     friend class PropertyRegistrator;
     friend class Properties;
-    friend class PropertiesSerializator; // Todo: remove friend from PropertiesSerializator and use public Property interface
 
 public:
     enum class AccessType
@@ -163,12 +162,23 @@ public:
     [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
     [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsDictKeyString() const -> bool { return _isDictKeyString; }
     [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
     [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
 
     [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
     [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsInt8() const -> bool { return _isInt8; }
+    [[nodiscard]] auto IsInt16() const -> bool { return _isInt16; }
+    [[nodiscard]] auto IsInt32() const -> bool { return _isInt32; }
+    [[nodiscard]] auto IsInt64() const -> bool { return _isInt64; }
+    [[nodiscard]] auto IsUInt8() const -> bool { return _isUInt8; }
+    [[nodiscard]] auto IsUInt16() const -> bool { return _isUInt16; }
+    [[nodiscard]] auto IsUInt32() const -> bool { return _isUInt32; }
+    [[nodiscard]] auto IsUInt64() const -> bool { return _isUInt64; }
     [[nodiscard]] auto IsFloat() const -> bool { return _isFloat; }
+    [[nodiscard]] auto IsSingleFloat() const -> bool { return _isSingleFloat; }
+    [[nodiscard]] auto IsDoubleFloat() const -> bool { return _isDoubleFloat; }
     [[nodiscard]] auto IsBool() const -> bool { return _isBool; }
 
     [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
@@ -244,6 +254,7 @@ private:
     bool _isDictOfString {};
     bool _isDictOfArray {};
     bool _isDictOfArrayOfString {};
+    bool _isDictKeyString {};
     bool _isDictKeyHash {};
     bool _isDictKeyEnum {};
     uint _dictKeySize {};
@@ -271,7 +282,6 @@ class Properties final
 {
     friend class PropertyRegistrator;
     friend class Property;
-    friend class PropertiesSerializator;
 
 public:
     Properties() = delete;
@@ -689,7 +699,6 @@ class PropertyRegistrator final
 {
     friend class Properties;
     friend class Property;
-    friend class PropertiesSerializator;
 
 public:
     PropertyRegistrator() = delete;
@@ -707,6 +716,7 @@ public:
     [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
+    [[nodiscard]] auto GetProperties() const -> const vector<const Property*>& { return _constRegisteredProperties; }
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
     [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
     [[nodiscard]] auto GetHashResolver() const -> const HashResolver& { return _hashResolver; }
@@ -722,6 +732,7 @@ private:
     HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
+    vector<const Property*> _constRegisteredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};

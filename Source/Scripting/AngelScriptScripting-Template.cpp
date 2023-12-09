@@ -1225,7 +1225,14 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                 while (data < data_end) {
                     const auto* key = data;
-                    data += prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
 
                     uint arr_size;
                     std::memcpy(&arr_size, data, sizeof(arr_size));
@@ -1290,7 +1297,12 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         }
                     }
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        dict->Set((void*)&key_str, &arr);
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         dict->Set((void*)&hkey, &arr);
                     }
@@ -1310,15 +1322,27 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                 while (data < data_end) {
                     const auto* key = data;
-                    data += prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
 
                     uint str_size;
                     std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
 
-                    string str(reinterpret_cast<const char*>(data), str_size);
+                    auto str = string {reinterpret_cast<const char*>(data), str_size};
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        dict->Set((void*)&key_str, &str);
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         dict->Set((void*)&hkey, &str);
                     }
@@ -1334,42 +1358,61 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                 }
             }
             else {
-                const auto whole_element_size = prop->GetDictKeySize() + prop->GetBaseSize();
-                const auto dict_size = data_size / whole_element_size;
+                const auto* data_end = data + data_size;
 
-                for (uint i = 0; i < dict_size; i++) {
-                    const auto* key = data + i * whole_element_size;
-                    const auto* value = data + i * whole_element_size + prop->GetDictKeySize();
+                while (data < data_end) {
+                    const auto* key = data;
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(data);
+                            dict->Set((void*)&key_str, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)&key_str, (void*)data);
+                        }
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)&hkey, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)&hkey, (void*)value);
+                            dict->Set((void*)&hkey, (void*)data);
                         }
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeySize());
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)&ekey, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)&ekey, (void*)value);
+                            dict->Set((void*)&ekey, (void*)data);
                         }
                     }
                     else {
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)key, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)key, (void*)value);
+                            dict->Set((void*)key, (void*)data);
                         }
                     }
+
+                    data += prop->GetBaseSize();
                 }
             }
         }
@@ -1405,7 +1448,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         const auto* arr = *static_cast<CScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
-            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0);
 
             if (arr_size != 0) {
                 // Calculate size
@@ -1488,9 +1531,18 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        data_size += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data_size += prop->GetDictKeySize();
+                    }
+
                     const auto* arr = *static_cast<const CScriptArray**>(value);
                     const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
-                    data_size += prop->GetDictKeySize() + sizeof(arr_size);
+                    data_size += sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
                         for (uint i = 0; i < arr_size; i++) {
@@ -1508,18 +1560,28 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        std::memcpy(buf, &key_len, sizeof(key_len));
+                        buf += sizeof(key_len);
+                        std::memcpy(buf, key_str.c_str(), key_len);
+                        buf += key_len;
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
-                    buf += prop->GetDictKeySize();
 
                     const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     std::memcpy(buf, &arr_size, sizeof(uint));
@@ -1582,10 +1644,19 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        data_size += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data_size += prop->GetDictKeySize();
+                    }
+
                     const auto& str = *static_cast<const string*>(value);
                     const auto str_size = static_cast<uint>(str.length());
 
-                    data_size += prop->GetDictKeySize() + sizeof(str_size) + str_size;
+                    data_size += sizeof(str_size) + str_size;
                 }
 
                 // Make buffer
@@ -1593,18 +1664,28 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        std::memcpy(buf, &key_len, sizeof(key_len));
+                        buf += sizeof(key_len);
+                        std::memcpy(buf, key_str.c_str(), key_len);
+                        buf += key_len;
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
-                    buf += prop->GetDictKeySize();
 
                     const auto str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(uint));
@@ -1617,11 +1698,50 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 }
             }
         }
+        else if (prop->IsDictKeyString()) {
+            if (dict != nullptr && dict->GetSize() != 0) {
+                // Calculate size
+                size_t data_size = 0;
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                const auto value_element_size = prop->GetBaseSize();
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& key_str = *static_cast<const string*>(key);
+                    const uint key_len = static_cast<uint>(key_str.length());
+                    data_size += sizeof(key_len) + key_len;
+                    data_size += value_element_size;
+                }
+
+                // Make buffer
+                auto* buf = prop_data.Alloc(data_size);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& key_str = *static_cast<const string*>(key);
+                    const uint key_len = static_cast<uint>(key_str.length());
+
+                    std::memcpy(buf, &key_len, sizeof(key_len));
+                    buf += sizeof(key_len);
+                    std::memcpy(buf, key_str.c_str(), key_len);
+                    buf += key_len;
+
+                    if (prop->IsBaseTypeHash()) {
+                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        std::memcpy(buf, &hash, value_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, value, value_element_size);
+                    }
+                    buf += value_element_size;
+                }
+            }
+        }
         else {
             const auto key_element_size = prop->GetDictKeySize();
             const auto value_element_size = prop->GetBaseSize();
             const auto whole_element_size = key_element_size + value_element_size;
-            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
+            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0);
 
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);

@@ -1577,6 +1577,7 @@ def genDataRegistration(target, isASCompiler):
             utKey = getUnderlyingType(btKey)
             r.append(btKey) # key type name
             r.append(getTypeSize(utKey)) # key size
+            r.append('1' if btKey == 'string' else '0') # is key string
             r.append('1' if btKey == 'hstring' else '0') # is key hash
             r.append('1' if btKey in scriptEnums | engineEnums else '0') # is key enum
         return r + baseFlags
