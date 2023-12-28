@@ -610,18 +610,22 @@ class Object
         }
     }
 
-    void _Reload(bool refreshText, bool refreshPosition)
+    void _RefreshPositionRecursive()
     {
-        if (refreshText) {
-            OnRefreshText();
-        }
-        if (refreshPosition) {
-            _RefreshPosition();
-        }
+        _RefreshPosition();
 
         for (uint i = 0; i < _Children.length(); i++) {
-            _Children[i]._Reload(refreshText, refreshPosition);
+            _Children[i]._RefreshPositionRecursive();
         }
+    }
+
+    void _RefreshTextRecursive()
+    {
+        for (uint i = 0; i < _Children.length(); i++) {
+            _Children[i]._RefreshTextRecursive();
+        }
+
+        OnRefreshText();
     }
 
     void _DrawCallback()
@@ -3807,14 +3811,15 @@ void CollectItemView(Object obj, ItemView[] itemViews)
 void Callback_OnResolutionChanged()
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        Screens[i]._Reload(false, true);
+        Screens[i]._RefreshPositionRecursive();
     }
 }
 
 void Callback_OnLanguageChanged()
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        Screens[i]._Reload(true, true);
+        Screens[i]._RefreshTextRecursive();
+        Screens[i]._RefreshPositionRecursive();
     }
 }
 
