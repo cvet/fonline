@@ -87,6 +87,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void OnDragChanged()
 //   void OnResizeGrid( Object cell, uint cellIndex )
 //   void OnDrawItem( Item item, Object cell, uint cellIndex )
+//   void OnRefreshText()
 // CheckBox
 //   void OnCheckedChanged()
 // ItemView
@@ -497,6 +498,9 @@ class Object
     void OnDrawItem(Item item, Object cell, uint cellIndex)
     {
     }
+    void OnRefreshText()
+    {
+    }
 
     Object()
     {
@@ -606,17 +610,17 @@ class Object
         }
     }
 
-    void _Reload(bool reconstruct, bool refreshPosition)
+    void _Reload(bool refreshText, bool refreshPosition)
     {
-        if (reconstruct) {
-            OnConstruct();
+        if (refreshText) {
+            OnRefreshText();
         }
         if (refreshPosition) {
             _RefreshPosition();
         }
 
         for (uint i = 0; i < _Children.length(); i++) {
-            _Children[i]._Reload(reconstruct, refreshPosition);
+            _Children[i]._Reload(refreshText, refreshPosition);
         }
     }
 
