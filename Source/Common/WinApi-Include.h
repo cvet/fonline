@@ -869,4 +869,24 @@
 #undef YieldProcessor
 #undef ZeroMemory
 #undef AddJob
+
+static constexpr char WINAPI_KERNEL32[] = "kernel32.dll";
+static constexpr char WINAPI_SET_THREAD_DESCRIPTION[] = "SetThreadDescription";
+
+template<const char* Mod, const char* Name, typename Result, typename... Args>
+inline auto WinApi_GetProcAddress()
+{
+    using Fn = Result(WINAPI*)(Args...);
+    static Fn func = []() -> Fn {
+        auto* hmod = ::GetModuleHandleA(Mod);
+        return !!hmod ? reinterpret_cast<Fn>(::GetProcAddress(hmod, Name)) : nullptr; // NOLINT(clang-diagnostic-cast-function-type-strict)
+    }();
+    return func;
+}
+
+inline auto WinApi_GetFunc_SetThreadDescription()
+{
+    return WinApi_GetProcAddress<WINAPI_KERNEL32, WINAPI_SET_THREAD_DESCRIPTION, HRESULT, HANDLE, PCWSTR>();
+}
+
 #endif

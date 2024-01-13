@@ -590,7 +590,9 @@ void WorkThread::ThreadEntry() noexcept
 
     try {
 #if FO_WINDOWS
-        ::SetThreadDescription(::GetCurrentThread(), _str(_name).toWideChar().c_str());
+        if (auto* func = WinApi_GetFunc_SetThreadDescription(); func != nullptr) {
+            func(::GetCurrentThread(), _str(_name).toWideChar().c_str());
+        }
 #endif
 #if FO_TRACY
         tracy::SetThreadName(_name.c_str());
