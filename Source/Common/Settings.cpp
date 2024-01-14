@@ -405,7 +405,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
     const_cast<bool&>(TabletBuild) = AndroidBuild || IOsBuild;
 
 #if FO_WINDOWS && !FO_UWP
-    if (GetSystemMetrics(SM_TABLETPC) != 0) {
+    if (::GetSystemMetrics(SM_TABLETPC) != 0) {
         const_cast<bool&>(DesktopBuild) = false;
         const_cast<bool&>(TabletBuild) = true;
     }

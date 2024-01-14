@@ -66,9 +66,7 @@ DISABLE_WARNINGS_POP()
 
 #include "zlib.h"
 
-#if FO_HAVE_ASIO
-#include "WinApi-Include.h" // After all because ASIO using WinAPI
-#endif
+#include "WinApiUndef-Include.h"
 
 NetConnection::NetConnection(ServerNetworkSettings& settings) :
     InBuf(settings.NetBufferSize),

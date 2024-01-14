@@ -36,13 +36,8 @@
 
 #include "Log.h"
 #include "DiskFileSystem.h"
+#include "Platform.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
-#include "WinApi-Include.h"
-
-#if FO_ANDROID
-#include <android/log.h>
-#endif
 
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -148,13 +143,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             }
         }
 
-#if FO_WINDOWS
-        ::OutputDebugStringW(_str(result).toWideChar().c_str());
-#endif
-
-#if FO_ANDROID
-        __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
-#endif
+        Platform::InfoLog(result);
 
 #if FO_TRACY
         TracyMessage(result.c_str(), result.length());

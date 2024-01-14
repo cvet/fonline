@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
-#include "WinApi-Include.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -48,10 +47,9 @@
 #endif
 #endif
 #include "backward.hpp"
-#if FO_WINDOWS
-#undef MessageBox
 #endif
-#endif
+
+#include "WinApiUndef-Include.h"
 
 #if FO_LINUX || FO_MAC
 #include <signal.h>

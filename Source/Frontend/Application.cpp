@@ -39,12 +39,13 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
-#include "WinApi-Include.h"
 
 #include "SDL.h"
 #include "SDL_audio.h"
 #include "SDL_events.h"
+#include "SDL_syswm.h"
 #include "SDL_video.h"
+
 #include "imgui.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
@@ -57,6 +58,8 @@
 #endif
 #include "backward.hpp"
 #endif
+
+#include "WinApiUndef-Include.h"
 
 Application* App;
 

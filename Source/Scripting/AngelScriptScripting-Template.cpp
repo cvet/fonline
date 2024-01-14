@@ -96,7 +96,7 @@
 #include "weakref/weakref.h"
 
 // Reset garbage from WinApi
-#include "WinApi-Include.h"
+#include "WinApiUndef-Include.h"
 
 #if SERVER_SCRIPTING
 #define BaseEntity ServerEntity

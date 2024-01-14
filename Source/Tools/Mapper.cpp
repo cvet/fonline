@@ -38,7 +38,6 @@
 #include "Log.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative),

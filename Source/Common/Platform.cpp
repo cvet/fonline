@@ -31,14 +31,46 @@
 // SOFTWARE.
 //
 
-// WinApi universal header
+#include "Platform.h"
+#include "StringUtils.h"
+#include "Version-Include.h"
+
 #if FO_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-// Extra headers
-#include <WinSock2.h>
-#include <shellapi.h>
-
-#include "WinApiUndef-Include.h"
+#include "WinApi-Include.h"
 #endif
+#if FO_ANDROID
+#include <android/log.h>
+#endif
+
+#if FO_WINDOWS
+template<typename T>
+static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
+{
+    if (auto* hmod = ::GetModuleHandleA(mod); hmod != nullptr) {
+        return reinterpret_cast<T>(::GetProcAddress(hmod, name)); // NOLINT(clang-diagnostic-cast-function-type-strict)
+    }
+
+    return nullptr;
+}
+#endif
+
+void Platform::InfoLog(const string& str)
+{
+#if FO_WINDOWS
+    ::OutputDebugStringW(_str(str).toWideChar().c_str());
+#elif FO_ANDROID
+    __android_log_write(ANDROID_LOG_INFO, FO_DEV_NAME, str.c_str());
+#endif
+}
+
+void Platform::SetThreadName(const string& str)
+{
+#if FO_WINDOWS
+    using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
+
+    if (set_thread_description != nullptr) {
+        set_thread_description(::GetCurrentThread(), _str(str).toWideChar().c_str());
+    }
+#endif
+}

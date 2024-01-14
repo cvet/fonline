@@ -39,10 +39,12 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
+#include "SDL_syswm.h"
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
+
+#include "WinApiUndef-Include.h"
 
 class Direct3D_Texture final : public RenderTexture
 {

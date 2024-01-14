@@ -35,10 +35,10 @@
 #include "Application.h"
 #include "DiskFileSystem.h"
 #include "Log.h"
+#include "Platform.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "Version-Include.h"
-#include "WinApi-Include.h"
 
 #if FO_MAC
 #include <sys/sysctl.h>
@@ -53,10 +53,9 @@
 #endif
 #endif
 #include "backward.hpp"
-#if FO_WINDOWS
-#undef MessageBox
 #endif
-#endif
+
+#include "WinApiUndef-Include.h"
 
 static bool ExceptionMessageBox = false;
 
@@ -405,7 +404,12 @@ void CreateDumpMessage(string_view appendix, string_view message)
 
 RefCounter::~RefCounter()
 {
-    WriteLog("Some of pointers still alive ({})", _ptrCounter.load());
+    try {
+        throw GenericException("Some of pointers still alive", _ptrCounter.load());
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
@@ -494,7 +498,13 @@ WorkThread::~WorkThread()
     }
 
     _workSignal.notify_one();
-    _thread.join();
+
+    try {
+        _thread.join();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 auto WorkThread::GetJobsCount() const -> size_t
@@ -589,11 +599,8 @@ void WorkThread::ThreadEntry() noexcept
     STACK_TRACE_ENTRY();
 
     try {
-#if FO_WINDOWS
-        if (auto* func = WinApi_GetFunc_SetThreadDescription(); func != nullptr) {
-            func(::GetCurrentThread(), _str(_name).toWideChar().c_str());
-        }
-#endif
+        Platform::SetThreadName(_name);
+
 #if FO_TRACY
         tracy::SetThreadName(_name.c_str());
 #endif
