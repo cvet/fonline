@@ -81,7 +81,15 @@ void LogToFile(string_view fname)
 
     std::lock_guard locker(Data->LogLocker);
 
-    Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
+    auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
+
+    if (log_file) {
+        Data->LogFileHandle = std::make_unique<DiskFile>(std::move(log_file));
+    }
+    else {
+        std::cout << "Can't create log file '" << fname << "'\n";
+        std::cout.flush();
+    }
 }
 
 void SetLogCallback(string_view key, LogFunc callback)

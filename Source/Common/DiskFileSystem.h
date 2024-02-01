@@ -64,6 +64,7 @@ public:
     auto Write(string_view str) -> bool;
     auto Write(const_span<uint8> data) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
+    auto Clear() -> bool;
 
 private:
     DiskFile(string_view fname, bool write, bool write_through);

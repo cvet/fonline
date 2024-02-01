@@ -42,6 +42,7 @@
 #include "CritterManager.h"
 #include "DataBase.h"
 #include "Dialogs.h"
+#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "Item.h"
@@ -77,6 +78,7 @@ public:
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const -> bool { return _startingError; }
+    [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
 
@@ -281,6 +283,7 @@ private:
 
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
+    WorkThread _healthWriter {"ServerHealthWriter"};
 
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};
@@ -292,6 +295,7 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
+    unique_ptr<DiskFile> _healthFile {};
     map<uint, time_point> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};

@@ -70,6 +70,50 @@ FOServer::FOServer(GlobalSettings& settings) :
         return true;
     });
 
+    // Health file
+    _starter.AddJob([this] {
+        STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
+
+        if (Settings.WriteHealthFile) {
+            const auto health_file_name = _str("{}_Health.txt", FO_DEV_NAME);
+            auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
+
+            if (health_file) {
+                _healthFile = std::make_unique<DiskFile>(std::move(health_file));
+                _healthFile->Write("Starting...");
+
+                _mainWorker.AddJob([this] {
+                    STACK_TRACE_ENTRY_NAMED("HealthFileJob");
+
+                    if (_started && _healthWriter.GetJobsCount() == 0) {
+                        _healthWriter.AddJob([this, health_info = GetHealthInfo()] {
+                            STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
+
+                            if (_healthFile->Clear()) {
+                                string buf;
+                                buf.reserve(health_info.size() + 128);
+
+                                buf += _str("{}\n\n", FO_GAME_NAME);
+                                buf += health_info;
+
+                                _healthFile->Write(buf);
+                            }
+
+                            return std::nullopt;
+                        });
+                    }
+
+                    return std::chrono::milliseconds {300};
+                });
+            }
+            else {
+                WriteLog("Can't health file '{}'", health_file_name);
+            }
+        }
+
+        return std::nullopt;
+    });
+
     // Mount resources
     _starter.AddJob([this] {
         STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
@@ -672,6 +716,7 @@ FOServer::~FOServer()
         // Finish logic
         _starter.Clear();
         _mainWorker.Clear();
+        _healthWriter.Clear();
 
         if (_started) {
             _mainWorker.AddJob([this] {
@@ -686,6 +731,11 @@ FOServer::~FOServer()
         }
 
         _started = false;
+
+        if (_healthFile) {
+            _healthFile->Write("\nSTOPPED\n");
+            _healthFile.reset();
+        }
 
         // Shutdown script system
         delete ScriptSys;
@@ -843,25 +893,7 @@ void FOServer::DrawGui(string_view server_name)
             // Info
             ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
             if (ImGui::TreeNode("Info")) {
-                buf = "";
-                const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
-                buf += _str("Cur time: {}\n", Timer::CurTime());
-                buf += _str("Uptime: {}\n", _stats.Uptime);
-                buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
-                buf += _str("Connections: {}\n", _stats.CurOnline);
-                buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-                buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
-                buf += _str("Locations: {}\n", MapMngr.GetLocationsCount());
-                buf += _str("Maps: {}\n", MapMngr.GetMapsCount());
-                buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
-                buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
-                buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
-                buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
-                buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
-                buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
-                buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-                buf += _str("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-                buf += _str("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
+                buf = GetHealthInfo();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -896,6 +928,33 @@ void FOServer::DrawGui(string_view server_name)
         }
     }
     ImGui::End();
+}
+
+auto FOServer::GetHealthInfo() const -> string
+{
+    string buf;
+    buf.reserve(2048);
+
+    const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
+    buf += _str("Cur time: {}\n", Timer::CurTime());
+    buf += _str("Uptime: {}\n", _stats.Uptime);
+    buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
+    buf += _str("Connections: {}\n", _stats.CurOnline);
+    buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
+    buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
+    buf += _str("Locations: {}\n", MapMngr.GetLocationsCount());
+    buf += _str("Maps: {}\n", MapMngr.GetMapsCount());
+    buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
+    buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
+    buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
+    buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
+    buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
+    buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
+    buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
+    buf += _str("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+    buf += _str("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
+
+    return buf;
 }
 
 auto FOServer::GetIngamePlayersStatistics() -> string
