@@ -229,7 +229,10 @@ auto DiskFile::GetPos() const -> size_t
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
+    const auto result = ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
+    RUNTIME_ASSERT(result != INVALID_SET_FILE_POINTER);
+
+    return static_cast<size_t>(result);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -344,7 +347,7 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
         return true;
     }
 
-    const bool result = SDL_RWwrite(_pImpl->Ops, buf, sizeof(char), len) == len;
+    const bool result = SDL_RWwrite(_pImpl->Ops, buf, len, 1) == 1;
 
     if (result && _pImpl->WriteThrough) {
         ::fflush(_pImpl->Ops->hidden.stdio.fp);
@@ -367,6 +370,7 @@ auto DiskFile::Clear() -> bool
     }
 
     const int fd = ::fileno(_pImpl->Ops->hidden.stdio.fp);
+    RUNTIME_ASSERT(fd != -1);
 
     return ::ftruncate(fd, 0) == 0;
 }
@@ -391,8 +395,9 @@ auto DiskFile::GetPos() const -> size_t
     RUNTIME_ASSERT(!_openedForWriting);
 
     const auto result = SDL_RWtell(_pImpl->Ops);
+    RUNTIME_ASSERT(result != -1);
 
-    return result != -1 ? static_cast<size_t>(result) : 0;
+    return static_cast<size_t>(result);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -402,9 +407,11 @@ auto DiskFile::GetWriteTime() const -> uint64
     RUNTIME_ASSERT(_pImpl);
 
     const int fd = ::fileno(_pImpl->Ops->hidden.stdio.fp);
+    RUNTIME_ASSERT(fd != -1);
 
     struct stat st;
-    ::fstat(fd, &st);
+    const int st_result = ::fstat(fd, &st);
+    RUNTIME_ASSERT(st_result != -1);
 
     return static_cast<uint64>(st.st_mtime);
 }
@@ -415,7 +422,7 @@ auto DiskFile::GetSize() const -> size_t
 
     const Sint64 size = SDL_RWsize(_pImpl->Ops);
 
-    return size <= 0 ? 0 : static_cast<size_t>(size);
+    return size == -1 ? 0 : static_cast<size_t>(size);
 }
 
 #else
@@ -526,6 +533,7 @@ auto DiskFile::Clear() -> bool
     }
 
     const int fd = ::fileno(_pImpl->File);
+    RUNTIME_ASSERT(fd != -1);
 
     return ::ftruncate(fd, 0) == 0;
 }
@@ -539,7 +547,7 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return ::fseek(_pImpl->File, offset, (int)origin) == 0;
+    return ::fseek(_pImpl->File, offset, static_cast<int>(origin)) != -1;
 }
 
 auto DiskFile::GetPos() const -> size_t
@@ -549,7 +557,10 @@ auto DiskFile::GetPos() const -> size_t
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return static_cast<size_t>(::ftell(_pImpl->File));
+    const auto result = ::ftell(_pImpl->File);
+    RUNTIME_ASSERT(result != -1);
+
+    return static_cast<size_t>(result);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -559,9 +570,11 @@ auto DiskFile::GetWriteTime() const -> uint64
     RUNTIME_ASSERT(_pImpl);
 
     const int fd = ::fileno(_pImpl->File);
+    RUNTIME_ASSERT(fd != -1);
 
     struct stat st;
-    ::fstat(fd, &st);
+    const int st_result = ::fstat(fd, &st);
+    RUNTIME_ASSERT(st_result != -1);
 
     return static_cast<uint64>(st.st_mtime);
 }
@@ -573,9 +586,11 @@ auto DiskFile::GetSize() const -> size_t
     RUNTIME_ASSERT(_pImpl);
 
     const int fd = ::fileno(_pImpl->File);
+    RUNTIME_ASSERT(fd != -1);
 
     struct stat st;
-    ::fstat(fd, &st);
+    const int st_result = ::fstat(fd, &st);
+    RUNTIME_ASSERT(st_result != -1);
 
     return static_cast<size_t>(st.st_size);
 }
