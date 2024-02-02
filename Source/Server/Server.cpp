@@ -75,7 +75,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
 
         if (Settings.WriteHealthFile) {
-            const auto health_file_name = _str("{}_Health.txt", FO_DEV_NAME);
+            const auto exe_path = DiskFileSystem::GetExePath();
+            const auto health_file_name = _str("{}_Health.txt", exe_path ? _str(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
             auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 
             if (health_file) {
