@@ -37,6 +37,7 @@
 #include "Application.h"
 #include "GenericUtils.h"
 #include "Networking.h"
+#include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
 #include "StringUtils.h"
@@ -75,7 +76,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
 
         if (Settings.WriteHealthFile) {
-            const auto exe_path = DiskFileSystem::GetExePath();
+            const auto exe_path = Platform::GetExePath();
             const auto health_file_name = _str("{}_Health.txt", exe_path ? _str(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
             auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 

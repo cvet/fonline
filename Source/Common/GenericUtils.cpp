@@ -38,14 +38,6 @@
 
 #include "zlib.h"
 
-// For ForkProcess
-#if FO_LINUX || FO_MAC
-#include <errno.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     NO_STACK_TRACE_ENTRY();
@@ -284,32 +276,6 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
 
     buf.resize(buf_len);
     return buf;
-}
-
-void GenericUtils::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
-{
-    STACK_TRACE_ENTRY();
-
-#if FO_LINUX || FO_MAC
-    pid_t pid = ::fork();
-    if (pid < 0) {
-        throw GenericException("fork() failed");
-    }
-    else if (pid != 0) {
-        ExitApp(true);
-    }
-
-    ::close(STDIN_FILENO);
-    ::close(STDOUT_FILENO);
-    ::close(STDERR_FILENO);
-
-    if (::setsid() < 0) {
-        throw GenericException("setsid() failed");
-    }
-
-#else
-    throw InvalidCallException(LINE_STR);
-#endif
 }
 
 void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data)

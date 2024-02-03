@@ -81,7 +81,6 @@ public:
     [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
 
     static void SetRandomSeed(int seed);
-    static void ForkProcess();
     static void WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data);
 };
 

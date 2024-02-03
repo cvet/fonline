@@ -49,9 +49,6 @@
 #if FO_ANDROID
 #include "SDL.h"
 #endif
-#if FO_MAC
-#include <libproc.h>
-#endif
 
 #if FO_WINDOWS && FO_UWP
 #define CreateFileW CreateFileFromAppW
@@ -210,7 +207,7 @@ auto DiskFile::Clear() -> bool
     return ::SetEndOfFile(_pImpl->FileHandle) != FALSE;
 }
 
-auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
+auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -222,7 +219,7 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return ::SetFilePointer(_pImpl->FileHandle, offset, nullptr, static_cast<DWORD>(origin)) != INVALID_SET_FILE_POINTER;
 }
 
-auto DiskFile::GetPos() const -> size_t
+auto DiskFile::GetReadPos() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -375,7 +372,7 @@ auto DiskFile::Clear() -> bool
     return ::ftruncate(fd, 0) == 0;
 }
 
-auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
+auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -387,7 +384,7 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return SDL_RWseek(_pImpl->Ops, offset, static_cast<int>(origin)) != -1;
 }
 
-auto DiskFile::GetPos() const -> size_t
+auto DiskFile::GetReadPos() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -538,7 +535,7 @@ auto DiskFile::Clear() -> bool
     return ::ftruncate(fd, 0) == 0;
 }
 
-auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
+auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -550,7 +547,7 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return ::fseek(_pImpl->File, offset, static_cast<int>(origin)) != -1;
 }
 
-auto DiskFile::GetPos() const -> size_t
+auto DiskFile::GetReadPos() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -1138,58 +1135,4 @@ void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_s
     STACK_TRACE_ENTRY();
 
     RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
-}
-
-auto DiskFileSystem::GetExePath() -> optional<string>
-{
-    STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    vector<wchar_t> path;
-    path.resize(FILENAME_MAX);
-
-    auto size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
-
-    if (size == 0) {
-        return std::nullopt;
-    }
-
-    while (size == path.size()) {
-        path.resize(path.size() * 2);
-        size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
-
-        if (size == 0) {
-            return std::nullopt;
-        }
-    }
-
-    return _str().parseWideChar(path.data()).str();
-
-#elif FO_MAC
-    char path[PROC_PIDPATHINFO_MAXSIZE];
-
-    const auto pid = ::getpid();
-
-    if (::proc_pidpath(pid, path, sizeof(path)) <= 0) {
-        return std::nullopt;
-    }
-
-    return path;
-
-#elif FO_LINUX
-    char path[FILENAME_MAX];
-
-    const auto size = ::readlink("/proc/self/exe", path, sizeof(path) - 1);
-
-    if (size == -1) {
-        return std::nullopt;
-    }
-
-    path[size] = '\0';
-
-    return path;
-
-#else
-    return std::nullopt;
-#endif
 }

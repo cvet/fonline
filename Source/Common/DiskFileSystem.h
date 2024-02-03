@@ -55,7 +55,7 @@ public:
     explicit operator bool() const;
     ~DiskFile();
 
-    [[nodiscard]] auto GetPos() const -> size_t;
+    [[nodiscard]] auto GetReadPos() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
     [[nodiscard]] auto GetSize() const -> size_t;
 
@@ -63,7 +63,7 @@ public:
     auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
     auto Write(const_span<uint8> data) -> bool;
-    auto SetPos(int offset, DiskFileSeek origin) -> bool;
+    auto SetReadPos(int offset, DiskFileSeek origin) -> bool;
     auto Clear() -> bool;
 
 private:
@@ -123,5 +123,4 @@ public:
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor);
-    static auto GetExePath() -> optional<string>;
 };

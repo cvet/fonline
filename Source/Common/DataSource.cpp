@@ -512,7 +512,7 @@ auto FalloutDat::ReadTree() -> bool
     STACK_TRACE_ENTRY();
 
     uint version = 0;
-    if (!_datFile.SetPos(-12, DiskFileSeek::End)) {
+    if (!_datFile.SetReadPos(-12, DiskFileSeek::End)) {
         return false;
     }
     if (!_datFile.Read(&version, 4)) {
@@ -522,7 +522,7 @@ auto FalloutDat::ReadTree() -> bool
     // DAT 2.1 Arcanum
     if (version == 0x44415431) // 1TAD
     {
-        if (!_datFile.SetPos(-4, DiskFileSeek::End)) {
+        if (!_datFile.SetReadPos(-4, DiskFileSeek::End)) {
             return false;
         }
 
@@ -532,7 +532,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         // Read tree
-        if (!_datFile.SetPos(-static_cast<int>(tree_size), DiskFileSeek::End)) {
+        if (!_datFile.SetReadPos(-static_cast<int>(tree_size), DiskFileSeek::End)) {
             return false;
         }
 
@@ -577,7 +577,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // DAT 2.0 Fallout2
-    if (!_datFile.SetPos(-8, DiskFileSeek::End)) {
+    if (!_datFile.SetReadPos(-8, DiskFileSeek::End)) {
         return false;
     }
 
@@ -592,7 +592,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // Check for DAT1.0 Fallout1 dat file
-    if (!_datFile.SetPos(0, DiskFileSeek::Set)) {
+    if (!_datFile.SetReadPos(0, DiskFileSeek::Set)) {
         return false;
     }
 
@@ -612,7 +612,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // Read tree
-    if (!_datFile.SetPos(-(static_cast<int>(tree_size) + 8), DiskFileSeek::End)) {
+    if (!_datFile.SetReadPos(-(static_cast<int>(tree_size) + 8), DiskFileSeek::End)) {
         return false;
     }
 
@@ -694,7 +694,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     int offset = 0;
     std::memcpy(&offset, ptr + 9, sizeof(offset));
 
-    if (!_datFile.SetPos(offset, DiskFileSeek::Set)) {
+    if (!_datFile.SetReadPos(offset, DiskFileSeek::Set)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);
     }
 
@@ -780,19 +780,19 @@ ZipFile::ZipFile(string_view fname)
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
             const auto* file = static_cast<DiskFile*>(stream);
-            return static_cast<long>(file->GetPos());
+            return static_cast<long>(file->GetReadPos());
         };
         ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
             auto* file = static_cast<DiskFile*>(stream);
             switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                file->SetPos(static_cast<int>(offset), DiskFileSeek::Set);
+                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::Set);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                file->SetPos(static_cast<int>(offset), DiskFileSeek::Cur);
+                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::Cur);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                file->SetPos(static_cast<int>(offset), DiskFileSeek::End);
+                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::End);
                 break;
             default:
                 return -1;

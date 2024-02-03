@@ -35,8 +35,8 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
 #include "Log.h"
+#include "Platform.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 
@@ -122,7 +122,6 @@ void InitApp(int argc, char** argv, bool client_mode)
         throw AppInitException("InitApp must be called only once");
     }
 
-#if FO_LINUX || FO_MAC
     const auto need_fork = [&] {
         for (int i = 0; i < argc; i++) {
             if (string_view(argv[i]) == "--fork") {
@@ -132,9 +131,8 @@ void InitApp(int argc, char** argv, bool client_mode)
         return false;
     };
     if (need_fork()) {
-        GenericUtils::ForkProcess();
+        Platform::ForkProcess();
     }
-#endif
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
@@ -151,7 +149,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 #endif
 
 #if !FO_WEB
-    if (const auto exe_path = DiskFileSystem::GetExePath()) {
+    if (const auto exe_path = Platform::GetExePath()) {
         LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
     }
     else {
