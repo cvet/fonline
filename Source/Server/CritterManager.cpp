@@ -128,7 +128,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->OnCritterMoveItem.Fire(cr, item, prev_slot);
 }
 
-auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*
+auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir, bool accuracy) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -136,8 +136,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
 
     RUNTIME_ASSERT(map);
     RUNTIME_ASSERT(proto_id);
-    RUNTIME_ASSERT(hx < map->GetWidth());
-    RUNTIME_ASSERT(hy < map->GetHeight());
+    RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
     RUNTIME_ASSERT(proto);
@@ -150,41 +149,35 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         multihex = props->GetValue<uint>(props->GetRegistrator()->Find("Multihex"));
     }
 
-    if (!map->IsHexesMovable(hx, hy, multihex)) {
+    if (!map->IsHexesMovable(hex, multihex)) {
         if (accuracy) {
             return nullptr;
         }
 
-        int hx_ = hx;
-        int hy_ = hy;
-        const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
+        const auto map_size = map->GetSize();
+        const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         // Find in 2 hex radius
-        auto pos = -1;
+        int pos = -1;
+
         while (true) {
-            pos++;
-            if (pos >= 18) {
+            if (++pos >= 18) {
                 return nullptr;
             }
 
-            if (hx_ + sx[pos] < 0 || hx_ + sx[pos] >= map->GetWidth()) {
+            const auto raw_check_hex = ipos {hex.x + sx[pos], hex.y + sy[pos]};
+
+            if (!map_size.IsValidPos(raw_check_hex)) {
                 continue;
             }
-            if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
+            if (!map->IsHexesMovable(map_size.FromRawPos(raw_check_hex), multihex)) {
                 continue;
             }
-            if (!map->IsHexesMovable(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
-                continue;
-            }
+
             break;
         }
 
-        hx_ += sx[pos];
-        hy_ += sy[pos];
-        hx = static_cast<uint16>(hx_);
-        hy = static_cast<uint16>(hy_);
-        RUNTIME_ASSERT(hx < map->GetWidth());
-        RUNTIME_ASSERT(hy < map->GetHeight());
+        hex = map_size.FromRawPos(ipos {hex.x + sx[pos], hex.y + sy[pos]});
     }
 
     auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);
@@ -197,17 +190,16 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
-    cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
-    cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
+
+    cr->SetWorldPos(loc != nullptr ? loc->GetWorldPos() : upos16 {});
     cr->SetHomeMapId(map->GetId());
     cr->SetHomeMapPid(map->GetProtoId());
-    cr->SetHomeHexX(hx);
-    cr->SetHomeHexY(hy);
+    cr->SetHomeHex(hex);
     cr->SetHomeDir(dir);
 
-    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, ident_t {});
+    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hex, ident_t {});
     RUNTIME_ASSERT(can);
-    _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, ident_t {});
+    _engine->MapMngr.AddCrToMap(cr, map, hex, dir, ident_t {});
 
     _engine->EntityMngr.CallInit(cr, true);
 
@@ -315,7 +307,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     return player_critters;
 }
 
-auto CritterManager::GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>
+auto CritterManager::GetGlobalMapCritters(upos16 wpos, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
@@ -327,7 +319,9 @@ auto CritterManager::GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, Cri
     critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (!cr->GetMapId() && GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), wx, wy) <= radius && cr->CheckFind(find_type)) {
+        const auto cr_pos = cr->GetWorldPos();
+
+        if (!cr->GetMapId() && GenericUtils::DistSqrt(ipos {cr_pos.x, cr_pos.y}, ipos {wpos.x, wpos.y}) <= radius && cr->CheckFind(find_type)) {
             critters.push_back(cr);
         }
     }
@@ -426,25 +420,23 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     // Check distance
     if (!cr->Talk.IgnoreDistance) {
-        auto map_id = ident_t {};
-        uint16 hx = 0;
-        uint16 hy = 0;
+        ident_t map_id;
+        mpos hex;
         uint talk_distance = 0;
+
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
-            hx = talker->GetHexX();
-            hy = talker->GetHexY();
+            hex = talker->GetMapHex();
             talk_distance = talker->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
         }
         else if (cr->Talk.Type == TalkType::Hex) {
             map_id = cr->Talk.TalkHexMap;
-            hx = cr->Talk.TalkHexX;
-            hy = cr->Talk.TalkHexY;
+            hex = cr->Talk.TalkHex;
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
+        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetMapHex(), hex, talk_distance)) {
             cr->Send_TextMsg(cr, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cr);
         }

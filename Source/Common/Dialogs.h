@@ -113,8 +113,7 @@ struct TalkData
     TalkType Type {};
     ident_t CritterId {};
     ident_t TalkHexMap {};
-    uint16 TalkHexX {};
-    uint16 TalkHexY {};
+    mpos TalkHex {};
     hstring DialogPackId {};
     Dialog CurDialog {};
     uint LastDialogId {};

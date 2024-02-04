@@ -75,7 +75,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
     }
 
     if (!GetIsNoLightInfluence()) {
-        mspr->SetLight(GetCorner(), _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+        mspr->SetLight(GetCorner(), _map->GetLightHex({}), _map->GetSize());
     }
 }
 
@@ -99,62 +99,60 @@ void ItemHexView::Process()
                 speed = 1.0f;
             }
 
-            _effCurX += _effSx * dt * speed;
-            _effCurY += _effSy * dt * speed;
+            _effCurOffset.x += _effStepOffset.x * dt * speed;
+            _effCurOffset.y += _effStepOffset.y * dt * speed;
 
             RefreshOffs();
 
             _effUpdateLastTime = _engine->GameTime.GameplayTime();
 
-            if (GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY) >= _effDist) {
+            if (GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
                 Finish();
             }
         }
 
-        const auto dist = GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY);
+        const auto dist = GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset);
         const auto proc = GenericUtils::Percent(_effDist, dist);
-        auto&& [step_hx, step_hy] = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
+        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
 
-        if (GetHexX() != step_hx || GetHexY() != step_hy) {
-            const auto hx = GetHexX();
-            const auto hy = GetHexY();
+        if (const auto hex = GetMapHex(); hex != step_hex) {
+            const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
-            const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, step_hx, step_hy);
-            _effCurX -= static_cast<float>(x);
-            _effCurY -= static_cast<float>(y);
+            _effCurOffset.x -= static_cast<float>(x);
+            _effCurOffset.y -= static_cast<float>(y);
 
             RefreshOffs();
 
-            _map->MoveItem(this, step_hx, step_hy);
+            _map->MoveItem(this, step_hex);
         }
     }
 }
 
-void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
+void ItemHexView::SetEffect(mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
     _isEffect = true;
     _isDynamicEffect = false;
 
-    const auto from_hx = GetHexX();
-    const auto from_hy = GetHexY();
+    const auto cur_hex = GetMapHex();
 
-    if (from_hx != to_hx || from_hy != to_hy) {
+    if (cur_hex != to_hex) {
         _isDynamicEffect = true;
-        _effSteps.emplace_back(from_hx, from_hy);
-        _map->TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_effSteps, false);
-        auto [x, y] = _engine->Geometry.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
-        y += GenericUtils::Random(5, 25); // Center of body
-        std::tie(_effSx, _effSy) = GenericUtils::GetStepsCoords(0, 0, x, y);
-        _effDist = GenericUtils::DistSqrt(0, 0, x, y);
+
+        _effSteps.emplace_back(cur_hex);
+        _map->TraceBullet(cur_hex, to_hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_effSteps, false);
+
+        auto pos_offset = _engine->Geometry.GetHexInterval(cur_hex, to_hex);
+        pos_offset.y += GenericUtils::Random(5, 25); // Center of body
+
+        _effStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
+        _effDist = GenericUtils::DistSqrt({}, pos_offset);
     }
 
-    _effStartX = ScrX;
-    _effStartY = ScrY;
-    _effCurX = static_cast<float>(ScrX);
-    _effCurY = static_cast<float>(ScrY);
-    _effDir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    _effStartOffset = SprOffset;
+    _effCurOffset = {static_cast<float>(SprOffset.x), static_cast<float>(SprOffset.y)};
+    _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
     _effUpdateLastTime = _engine->GameTime.GameplayTime();
 }
 
@@ -183,7 +181,7 @@ void ItemHexView::RefreshAnim()
     }
 
     if (_isEffect) {
-        _anim->SetDir(static_cast<uint8>(_effDir));
+        _anim->SetDir(_effDir);
     }
 
     _anim->UseGameplayTimer();
@@ -238,22 +236,23 @@ void ItemHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
 
-    ScrX = GetOffsetX();
-    ScrY = GetOffsetY();
+    const auto draw_offset = GetDrawOffset();
+
+    SprOffset = ipos {draw_offset.x, draw_offset.y};
 
     if (GetIsTile()) {
         if (GetIsRoofTile()) {
-            ScrX += _engine->Settings.MapRoofOffsX;
-            ScrY += _engine->Settings.MapRoofOffsY;
+            SprOffset.x += _engine->Settings.MapRoofOffsX;
+            SprOffset.y += _engine->Settings.MapRoofOffsY;
         }
         else {
-            ScrX += _engine->Settings.MapTileOffsX;
-            ScrY += _engine->Settings.MapTileOffsY;
+            SprOffset.x += _engine->Settings.MapTileOffsX;
+            SprOffset.y += _engine->Settings.MapTileOffsY;
         }
     }
 
     if (_isDynamicEffect) {
-        ScrX += iround(_effCurX);
-        ScrY += iround(_effCurY);
+        SprOffset.x += iround(_effCurOffset.x);
+        SprOffset.y += iround(_effCurOffset.y);
     }
 }

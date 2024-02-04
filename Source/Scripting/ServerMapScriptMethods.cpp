@@ -72,15 +72,14 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param protoId ...
 ///# param count ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_AddItem(Map* self, uint16 hx, uint16 hy, hstring protoId, uint count)
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, uint count)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -88,7 +87,7 @@
     if (proto == nullptr) {
         throw ScriptException("Invalid proto '{}' arg", protoId);
     }
-    if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
+    if (!self->IsPlaceForProtoItem(hex, proto)) {
         throw ScriptException("No place for item");
     }
 
@@ -96,20 +95,19 @@
         return nullptr;
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
+    return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, nullptr, false);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param protoId ...
 ///# param count ...
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_AddItem(Map* self, uint16 hx, uint16 hy, hstring protoId, uint count, const map<ItemProperty, int>& props)
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, uint count, const map<ItemProperty, int>& props)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -117,7 +115,7 @@
     if (proto == nullptr) {
         throw ScriptException("Invalid proto '{}' arg", protoId);
     }
-    if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
+    if (!self->IsPlaceForProtoItem(hex, proto)) {
         throw ScriptException("No place for item");
     }
 
@@ -133,10 +131,10 @@
             props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, false);
+        return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, &props_, false);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
+    return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, nullptr, false);
 }
 
 ///# ...
@@ -153,29 +151,27 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, hstring pid)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemHex(hx, hy, pid, nullptr);
+    return self->GetItemHex(hex, pid, nullptr);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param component ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemComponent component)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent component)
 {
-    const auto& map_items = self->GetItems(hx, hy);
+    const auto& map_items = self->GetItems(hex);
 
     for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
@@ -187,16 +183,15 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemProperty property, int propertyValue)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_items = self->GetItems(hx, hy);
+    const auto& map_items = self->GetItems(hex);
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -208,15 +203,14 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///# param component ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, uint radius, ItemComponent component)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, mpos hex, uint radius, ItemComponent component)
 {
-    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
     for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
@@ -228,17 +222,16 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, uint radius, ItemProperty property, int propertyValue)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, mpos hex, uint radius, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -258,32 +251,30 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItems(hx, hy);
+    return self->GetItems(hex);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, uint radius)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, uint radius)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemsInRadius(hx, hy, radius, hstring());
+    return self->GetItemsInRadius(hex, radius, hstring());
 }
 
 ///# ...
@@ -293,13 +284,13 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, uint radius, hstring pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, uint radius, hstring pid)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetItemsInRadius(hx, hy, radius, pid);
+    return self->GetItemsInRadius(hex, radius, pid);
 }
 
 ///# ...
@@ -359,14 +350,14 @@
 ///# param component ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, ItemComponent component)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemComponent component)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
     vector<Item*> items;
-    const auto& map_items = self->GetItems(hx, hy);
+    const auto& map_items = self->GetItems(hex);
 
     items.reserve(map_items.size());
 
@@ -386,16 +377,16 @@
 ///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, ItemProperty property, int propertyValue)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
     vector<Item*> items;
-    const auto& map_items = self->GetItems(hx, hy);
+    const auto& map_items = self->GetItems(hex);
 
     items.reserve(map_items.size());
 
@@ -415,14 +406,14 @@
 ///# param component ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, uint radius, ItemComponent component)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, uint radius, ItemComponent component)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
     vector<Item*> items;
-    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
     items.reserve(map_items.size());
 
@@ -443,16 +434,16 @@
 ///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, uint16 hx, uint16 hy, uint radius, ItemProperty property, int propertyValue)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, mpos hex, uint radius, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
     vector<Item*> items;
-    const auto map_items = self->GetItemsInRadius(hx, hy, radius, hstring());
+    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
     items.reserve(map_items.size());
 
@@ -480,13 +471,13 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] StaticItem* Server_Map_GetStaticItem(Map* self, uint16 hx, uint16 hy, hstring pid)
+[[maybe_unused]] StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring pid)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItem(hx, hy, pid);
+    return self->GetStaticItem(hex, pid);
 }
 
 ///# ...
@@ -494,13 +485,13 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, uint16 hx, uint16 hy)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItemsHex(hx, hy);
+    return self->GetStaticItemsHex(hex);
 }
 
 ///# ...
@@ -510,13 +501,13 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, uint16 hx, uint16 hy, uint radius, hstring pid)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, uint radius, hstring pid)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItemsHexEx(hx, hy, radius, pid);
+    return self->GetStaticItemsHexEx(hex, radius, pid);
 }
 
 ///# ...
@@ -592,15 +583,15 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, uint16 hx, uint16 hy)
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    auto* cr = self->GetNonDeadCritter(hx, hy);
+    auto* cr = self->GetNonDeadCritter(hex);
     if (cr == nullptr) {
-        cr = self->GetDeadCritter(hx, hy);
+        cr = self->GetDeadCritter(hex);
     }
     return cr;
 }
@@ -650,17 +641,18 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, uint16 hx, uint16 hy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, uint radius, CritterFindType findType)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    auto critters = self->GetCritters(hx, hy, radius, findType);
+    auto critters = self->GetCritters(hex, radius, findType);
 
-    std::sort(critters.begin(), critters.end(), [hx, hy](const Critter* cr1, const Critter* cr2) {
-        const uint dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const uint dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    std::sort(critters.begin(), critters.end(), [hex](const Critter* cr1, const Critter* cr2) {
+        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
+        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
 
@@ -753,60 +745,51 @@
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType)
 {
     vector<Critter*> critters;
 
     TraceData trace;
     trace.TraceMap = self;
-    trace.BeginHx = fromHx;
-    trace.BeginHy = fromHy;
-    trace.EndHx = toHx;
-    trace.EndHy = toHy;
+    trace.StartHex = fromHex;
+    trace.TargetHex = toHex;
     trace.Dist = dist;
     trace.Angle = angle;
     trace.Critters = &critters;
     trace.FindType = findType;
+
     self->GetEngine()->MapMngr.TraceBullet(trace);
 
     return critters;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///# param findType ...
-///# param preBlockHx ...
-///# param preBlockHy ...
-///# param blockHx ...
-///# param blockHy ...
+///# param preBlockHex ...
+///# param blockHex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType, uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     vector<Critter*> critters;
-    pair<uint16, uint16> block;
-    pair<uint16, uint16> pre_block;
+    mpos block;
+    mpos pre_block;
 
     TraceData trace;
     trace.TraceMap = self;
-    trace.BeginHx = fromHx;
-    trace.BeginHy = fromHy;
-    trace.EndHx = toHx;
-    trace.EndHy = toHy;
+    trace.StartHex = fromHex;
+    trace.TargetHex = toHex;
     trace.Dist = dist;
     trace.Angle = angle;
     trace.Critters = &critters;
@@ -816,28 +799,27 @@
 
     self->GetEngine()->MapMngr.TraceBullet(trace);
 
-    preBlockHx = pre_block.first;
-    preBlockHy = pre_block.second;
-    blockHx = block.first;
-    blockHy = block.second;
+    preBlockHex = pre_block;
+    blockHex = block;
+
     return critters;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<Critter*> critters;
     const auto& map_critters = self->GetCritters();
 
     for (auto* cr : map_critters) {
-        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), static_cast<int>(cr->GetLookDistance()), fromHx, fromHy, toHx, toHy)) {
+        const auto hex = cr->GetMapHex();
+
+        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, static_cast<int>(cr->GetLookDistance()), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.push_back(cr);
         }
     }
@@ -856,6 +838,7 @@
     UNUSED_VARIABLE(self);
 
     vector<Critter*> result_critters;
+
     for (auto* cr : critters) {
         for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
             if (std::find(result_critters.begin(), result_critters.end(), cr_) == result_critters.end()) {
@@ -863,27 +846,25 @@
             }
         }
     }
+
     return result_critters;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_GetHexInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)
+[[maybe_unused]] void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float angle, uint dist)
 {
-    pair<uint16, uint16> pre_block;
-    pair<uint16, uint16> block;
+    mpos pre_block;
+    mpos block;
+
     TraceData trace;
     trace.TraceMap = self;
-    trace.BeginHx = fromHx;
-    trace.BeginHy = fromHy;
-    trace.EndHx = toHx;
-    trace.EndHy = toHy;
+    trace.StartHex = fromHex;
+    trace.TargetHex = toHex;
     trace.Dist = dist;
     trace.Angle = angle;
     trace.PreBlock = &pre_block;
@@ -891,28 +872,23 @@
 
     self->GetEngine()->MapMngr.TraceBullet(trace);
 
-    toHx = pre_block.first;
-    toHy = pre_block.second;
+    toHex = pre_block;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_GetWallHexInPath(Map* self, uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)
+[[maybe_unused]] void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& toHex, float angle, uint dist)
 {
-    pair<uint16, uint16> last_movable;
+    mpos last_movable;
 
     TraceData trace;
     trace.TraceMap = self;
-    trace.BeginHx = fromHx;
-    trace.BeginHy = fromHy;
-    trace.EndHx = toHx;
-    trace.EndHy = toHy;
+    trace.StartHex = fromHex;
+    trace.TargetHex = toHex;
     trace.Dist = dist;
     trace.Angle = angle;
     trace.LastMovable = &last_movable;
@@ -920,38 +896,32 @@
     self->GetEngine()->MapMngr.TraceBullet(trace);
 
     if (trace.IsHaveLastMovable) {
-        toHx = last_movable.first;
-        toHy = last_movable.second;
+        toHex = last_movable;
     }
     else {
-        toHx = fromHx;
-        toHy = fromHy;
+        toHex = fromHex;
     }
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex, uint cut)
 {
-    if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid from hexes args");
     }
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid to hexes args");
     }
 
     FindPathInput input;
     input.MapId = self->GetId();
-    input.FromHexX = fromHx;
-    input.FromHexY = fromHy;
-    input.ToHexX = toHx;
-    input.ToHexY = toHy;
+    input.FromHex = fromHex;
+    input.ToHex = toHex;
     input.Cut = cut;
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
@@ -970,23 +940,21 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, Critter* cr, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex, uint cut)
 {
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
     }
 
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid to hexes args");
     }
 
     FindPathInput input;
     input.MapId = self->GetId();
     input.FromCritter = cr;
-    input.FromHexX = cr->GetHexX();
-    input.FromHexY = cr->GetHexY();
-    input.ToHexX = toHx;
-    input.ToHexY = toHy;
+    input.FromHex = cr->GetMapHex();
+    input.ToHex = toHex;
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
 
@@ -1006,9 +974,9 @@
 ///# param dir ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, uint16 hx, uint16 hy, uint8 dir)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -1017,7 +985,7 @@
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hex, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -1033,9 +1001,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, uint16 hx, uint16 hy, uint8 dir, const map<CritterProperty, int>& props)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int>& props)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -1049,7 +1017,7 @@
         props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hex, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -1065,9 +1033,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, uint16 hx, uint16 hy, uint8 dir, const map<CritterProperty, any_t>& props)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -1081,7 +1049,7 @@
         props_.SetValueAsAnyProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hex, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -1090,137 +1058,129 @@
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexMovable(Map* self, uint16 hexX, uint16 hexY)
+[[maybe_unused]] bool Server_Map_IsHexMovable(Map* self, mpos hex)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexMovable(hexX, hexY);
+    return self->IsHexMovable(hex);
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexesMovable(Map* self, uint16 hexX, uint16 hexY, uint radius)
+[[maybe_unused]] bool Server_Map_IsHexesMovable(Map* self, mpos hex, uint radius)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexesMovable(hexX, hexY, radius);
+    return self->IsHexesMovable(hex, radius);
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexShootable(Map* self, uint16 hexX, uint16 hexY)
+[[maybe_unused]] bool Server_Map_IsHexShootable(Map* self, mpos hex)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsHexShootable(hexX, hexY);
+    return self->IsHexShootable(hex);
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# param color ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetText(Map* self, uint16 hexX, uint16 hexY, uint color, string_view text)
+[[maybe_unused]] void Server_Map_SetText(Map* self, mpos hex, uint color, string_view text)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
-    self->SetText(hexX, hexY, color, text, false);
+    self->SetText(hex, color, text, false);
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# param color ...
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, uint color, uint16 textMsg, uint strNum)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsg(hexX, hexY, color, textMsg, strNum);
+    self->SetTextMsg(hex, color, textMsg, strNum);
 }
 
 ///# ...
-///# param hexX ...
-///# param hexY ...
+///# param hex ...
 ///# param color ...
 ///# param textMsg ...
 ///# param strNum ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum, string_view lexems)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, uint color, uint16 textMsg, uint strNum, string_view lexems)
 {
-    if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsgLex(hexX, hexY, color, textMsg, strNum, lexems);
+    self->SetTextMsgLex(hex, color, textMsg, strNum, lexems);
 }
 
 ///# ...
 ///# param effPid ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunEffect(Map* self, hstring effPid, uint16 hx, uint16 hy, uint radius)
+[[maybe_unused]] void Server_Map_RunEffect(Map* self, hstring effPid, mpos hex, uint radius)
 {
     if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
     }
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SendEffect(effPid, hx, hy, static_cast<uint16>(radius));
+    self->SendEffect(effPid, hex, static_cast<uint16>(radius));
 }
 
 ///# ...
 ///# param effPid ...
 ///# param fromCr ...
 ///# param toCr ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hstring effPid, Critter* fromCr, Critter* toCr, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
+[[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hstring effPid, Critter* fromCr, Critter* toCr, mpos fromHex, mpos toHex)
 {
     if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
     }
-    if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid from hexes args");
     }
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid to hexes args");
     }
 
     const auto from_crid = fromCr != nullptr ? fromCr->GetId() : ident_t {};
     const auto to_crid = toCr != nullptr ? toCr->GetId() : ident_t {};
-    self->SendFlyEffect(effPid, from_crid, to_crid, fromHx, fromHy, toHx, toHy);
+
+    self->SendFlyEffect(effPid, from_crid, to_crid, fromHex, toHex);
 }
 
 ///# ...
@@ -1229,14 +1189,14 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, uint16 hx, uint16 hy, hstring pid)
+[[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
     if (proto_item == nullptr) {
         throw ScriptException("Proto item not found");
     }
 
-    return self->IsPlaceForProtoItem(hx, hy, proto_item);
+    return self->IsPlaceForProtoItem(hex, proto_item);
 }
 
 ///# ...
@@ -1244,27 +1204,26 @@
 ///# param hy ...
 ///# param full ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_BlockHex(Map* self, uint16 hx, uint16 hy, bool full)
+[[maybe_unused]] void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetHexManualBlock(hx, hy, true, full);
+    self->SetHexManualBlock(hex, true, full);
     // Todo: notify clients about manual hex block
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_UnblockHex(Map* self, uint16 hx, uint16 hy)
+[[maybe_unused]] void Server_Map_UnblockHex(Map* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetHexManualBlock(hx, hy, false, false);
+    self->SetHexManualBlock(hex, false, false);
 }
 
 ///# ...
@@ -1279,18 +1238,17 @@
 
 ///# ...
 ///# param soundName ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName, uint16 hx, uint16 hy, uint radius)
+[[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName, mpos hex, uint radius)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
+        if (GeometryHelper::CheckDist(hex, cr->GetMapHex(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }
@@ -1305,59 +1263,66 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
-///# param steps ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_MoveHexByDir(Map* self, uint16& hx, uint16& hy, uint8 dir, uint steps)
+[[maybe_unused]] uint Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
-    if (steps == 0) {
-        throw ScriptException("Steps arg is zero");
-    }
 
-    auto result = false;
-    auto hx_ = hx;
-    auto hy_ = hy;
-    const auto maxhx = self->GetWidth();
-    const auto maxhy = self->GetHeight();
-
-    if (steps > 1) {
-        for (uint i = 0; i < steps; i++) {
-            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
-        }
+    if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
+        return 1;
     }
     else {
-        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        return 0;
+    }
+}
+
+///# ...
+///# param hex ...
+///# param dir ...
+///# param steps ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir, uint steps)
+{
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
+        throw ScriptException("Invalid dir arg");
     }
 
-    hx = hx_;
-    hy = hy_;
+    uint result = 0;
+
+    for (uint i = 0; i < steps; i++) {
+        if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
+            result++;
+        }
+        else {
+            break;
+        }
+    }
+
     return result;
 }
 
 ///# ...
 ///# param cr ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_VerifyTrigger(Map* self, Critter* cr, uint16 hx, uint16 hy, uint8 dir)
+[[maybe_unused]] void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, uint8 dir)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
 
-    auto from_hx = hx;
-    auto from_hy = hy;
-    if (GeometryHelper::MoveHexByDir(from_hx, from_hy, GeometryHelper::ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
-        self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
+    auto from_hex = hex;
+
+    if (GeometryHelper::MoveHexByDir(from_hex, GeometryHelper::ReverseDir(dir), self->GetSize())) {
+        self->GetEngine()->VerifyTrigger(self, cr, from_hex, hex, dir);
     }
 }

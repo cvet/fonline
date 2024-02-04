@@ -90,7 +90,7 @@ public:
     auto operator=(NetOutBuffer&&) noexcept -> NetOutBuffer& = default;
     ~NetOutBuffer() override = default;
 
-    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0u; }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0; }
 
     void Push(const void* buf, size_t len);
     void Cut(size_t len);
@@ -121,6 +121,12 @@ public:
     {
         const auto hash = value.as_hash();
         Push(&hash, sizeof(hash));
+    }
+
+    template<typename T, std::enable_if_t<is_valid_pod_type_v<T>, int> = 0>
+    void Write(const T& value)
+    {
+        Push(&value, sizeof(value));
     }
 
     void StartMsg(uint msg);
@@ -187,6 +193,14 @@ public:
     [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
     {
         return ReadHashedString(hash_resolver);
+    }
+
+    template<typename T, std::enable_if_t<is_valid_pod_type_v<T>, int> = 0>
+    [[nodiscard]] auto Read() -> T
+    {
+        T result = {};
+        Pop(&result, sizeof(T));
+        return result;
     }
 
 private:

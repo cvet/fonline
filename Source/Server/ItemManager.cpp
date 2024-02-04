@@ -223,8 +223,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     // Reset ownership properties
     if (props != nullptr) {
         item->SetMapId(ident_t {});
-        item->SetHexX(0);
-        item->SetHexY(0);
+        item->SetMapHex({});
         item->SetCritterId(ident_t {});
         item->SetCritterSlot(CritterItemSlot::Inventory);
         item->SetContainerId(ident_t {});
@@ -354,11 +353,11 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex, bool skip_checks)
 {
     STACK_TRACE_ENTRY();
 
-    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetMapHex() == to_hex) {
         return;
     }
 
@@ -373,12 +372,12 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         EraseItemHolder(item, holder);
-        to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        to_map->AddItem(item, to_hex, dynamic_cast<Critter*>(holder));
     }
     else {
         auto* item_ = SplitItem(item, count);
         if (item_ != nullptr) {
-            to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+            to_map->AddItem(item_, to_hex, dynamic_cast<Critter*>(holder));
         }
     }
 }
@@ -611,11 +610,11 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, msg_num, str_num, "");
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldPos(), text, unsafe_text, msg_num, str_num, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, upos16 from_wpos, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -685,7 +684,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         }
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
-                            if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, cr->GetWorldX(), cr->GetWorldY(), 0, broadcast - 101)) {
+                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, cr->GetWorldPos().x, cr->GetWorldPos().y, 0, broadcast - 101)) {
                                 continue;
                             }
                         }
@@ -724,7 +723,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
                             const auto* loc = map->GetLocation();
-                            if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101)) {
+                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, loc->GetWorldPos().x, loc->GetWorldPos().y, loc->GetRadius(), broadcast - 101)) {
                                 continue;
                             }
                         }
@@ -734,13 +733,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     }
 
                     if (!text.empty()) {
-                        map->SetText(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, unsafe_text);
+                        map->SetText(radio->GetMapHex(), 0xFFFFFFFE, text, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num, lexems);
+                        map->SetTextMsgLex(radio->GetMapHex(), 0xFFFFFFFE, msg_num, str_num, lexems);
                     }
                     else {
-                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num);
+                        map->SetTextMsg(radio->GetMapHex(), 0xFFFFFFFE, msg_num, str_num);
                     }
                 }
             }

@@ -74,8 +74,7 @@ void ResourceManager::IndexFiles()
     auto&& spr = dynamic_pointer_cast<AtlasSprite>(_sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites));
     RUNTIME_ASSERT(spr);
     _critterDummyAnimFrames = std::make_unique<SpriteSheet>(_sprMngr, 1, 100, 1);
-    _critterDummyAnimFrames->Width = spr->Width;
-    _critterDummyAnimFrames->Height = spr->Height;
+    _critterDummyAnimFrames->Size = spr->Size;
     _critterDummyAnimFrames->Spr[0] = std::move(spr);
     RUNTIME_ASSERT(_critterDummyAnimFrames);
 
@@ -174,15 +173,15 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                                     // Append offsets
                                     if (!first) {
                                         for (uint i = 0; i < dir_anim->CntFrm - 1; i++) {
-                                            dir_anim->SprOffset[dir_anim->CntFrm - 1].X += dir_anim->SprOffset[i].X;
-                                            dir_anim->SprOffset[dir_anim->CntFrm - 1].Y += dir_anim->SprOffset[i].Y;
+                                            dir_anim->SprOffset[dir_anim->CntFrm - 1].x += dir_anim->SprOffset[i].x;
+                                            dir_anim->SprOffset[dir_anim->CntFrm - 1].y += dir_anim->SprOffset[i].y;
                                         }
                                     }
 
                                     // Change size
                                     dir_anim->Spr[0] = first ? dir_anim->GetSpr(0)->MakeCopy() : dir_anim->GetSpr(dir_anim->CntFrm - 1)->MakeCopy();
-                                    dir_anim->SprOffset[0].X = first ? dir_anim->SprOffset[0].X : dir_anim->SprOffset[dir_anim->CntFrm - 1].X;
-                                    dir_anim->SprOffset[0].Y = first ? dir_anim->SprOffset[0].Y : dir_anim->SprOffset[dir_anim->CntFrm - 1].Y;
+                                    dir_anim->SprOffset[0].x = first ? dir_anim->SprOffset[0].x : dir_anim->SprOffset[dir_anim->CntFrm - 1].x;
+                                    dir_anim->SprOffset[0].y = first ? dir_anim->SprOffset[0].y : dir_anim->SprOffset[dir_anim->CntFrm - 1].y;
                                     dir_anim->CntFrm = 1;
                                 }
                             }
@@ -200,8 +199,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                                         }
                                     }
                                     if (!fixed) {
-                                        spr->OffsX += ox;
-                                        spr->OffsY += oy;
+                                        spr->Offset.x += ox;
+                                        spr->Offset.y += oy;
                                     }
                                 }
                             }
@@ -301,12 +300,12 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 int ox = 0;
                 int oy = 0;
                 for (uint i = 0; i < anim_->CntFrm; i++) {
-                    ox += anim_->SprOffset[i].X;
-                    oy += anim_->SprOffset[i].Y;
+                    ox += anim_->SprOffset[i].x;
+                    oy += anim_->SprOffset[i].y;
                 }
 
-                anim_merge->SprOffset[anim_->CntFrm].X -= ox;
-                anim_merge->SprOffset[anim_->CntFrm].X -= oy;
+                anim_merge->SprOffset[anim_->CntFrm].x -= ox;
+                anim_merge->SprOffset[anim_->CntFrm].x -= oy;
             }
 
             return std::move(anim_merge_base);
@@ -333,8 +332,8 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                     // Append offsets
                     if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
                         for (uint i = 0; i < anim_->CntFrm - 1; i++) {
-                            anim_clone->SprOffset[0].X += anim_->SprOffset[i].X;
-                            anim_clone->SprOffset[0].Y += anim_->SprOffset[i].Y;
+                            anim_clone->SprOffset[0].x += anim_->SprOffset[i].x;
+                            anim_clone->SprOffset[0].y += anim_->SprOffset[i].y;
                         }
                     }
                 }
@@ -367,8 +366,8 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
         for (uint i = 0; i < frames->CntFrm; i++) {
             auto* spr = frames->GetSpr(i);
 
-            spr->OffsX += stay_spr->OffsX;
-            spr->OffsY += stay_spr->OffsY;
+            spr->Offset.x += stay_spr->Offset.x;
+            spr->Offset.y += stay_spr->Offset.y;
         }
     }
 }
@@ -391,15 +390,15 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
         int next_y = 0;
 
         for (uint i = 0; i < stay_frm->CntFrm; i++) {
-            next_x += stay_frm->SprOffset[i].X;
-            next_y += stay_frm->SprOffset[i].Y;
+            next_x += stay_frm->SprOffset[i].x;
+            next_y += stay_frm->SprOffset[i].y;
         }
 
         for (uint i = 0; i < frames->CntFrm; i++) {
             auto* spr = frames->GetSpr(i);
 
-            spr->OffsX += next_x;
-            spr->OffsY += next_y;
+            spr->Offset.x += next_x;
+            spr->Offset.y += next_y;
         }
     }
 }

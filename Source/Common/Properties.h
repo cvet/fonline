@@ -105,7 +105,81 @@ using PropertyGetCallback = std::function<PropertyRawData(Entity*, const Propert
 using PropertySetCallback = std::function<void(Entity*, const Property*, PropertyRawData&)>;
 using PropertyPostSetCallback = std::function<void(Entity*, const Property*)>;
 
-class Property final
+class PropertyBaseInfo
+{
+    friend class PropertyRegistrator;
+    friend class PropertiesSerializator; // Todo: remove friend from PropertiesSerializator and use public Property interface
+
+public:
+    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
+    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
+    [[nodiscard]] auto IsBaseTypeInt() const -> bool { return _isInt; }
+    [[nodiscard]] auto IsBaseTypeSignedInt() const -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsBaseTypeFloat() const -> bool { return _isFloat; }
+    [[nodiscard]] auto IsBaseTypeBool() const -> bool { return _isBool; }
+    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
+    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
+    [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
+    [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
+    [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
+    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
+    [[nodiscard]] auto IsDict() const -> bool { return _dataType == DataType::Dict; }
+    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
+    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
+    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
+    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
+    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
+    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
+    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _asFullTypeName; }
+
+protected:
+    enum class DataType
+    {
+        PlainData,
+        String,
+        Array,
+        Dict,
+        Struct,
+    };
+
+    DataType _dataType {};
+
+    bool _isStringBase {};
+    bool _isHashBase {};
+    bool _isInt {};
+    bool _isSignedInt {};
+    bool _isFloat {};
+    bool _isBool {};
+    bool _isEnumBase {};
+    uint _baseSize {};
+    string _baseTypeName {};
+
+    bool _isInt8 {};
+    bool _isInt16 {};
+    bool _isInt32 {};
+    bool _isInt64 {};
+    bool _isUInt8 {};
+    bool _isUInt16 {};
+    bool _isUInt32 {};
+    bool _isUInt64 {};
+    bool _isSingleFloat {};
+    bool _isDoubleFloat {};
+
+    bool _isArrayOfString {};
+
+    bool _isDictOfString {};
+    bool _isDictOfArray {};
+    bool _isDictOfArrayOfString {};
+    bool _isDictKeyHash {};
+    bool _isDictKeyEnum {};
+    uint _dictKeySize {};
+    string _dictKeyTypeName {};
+
+    string _asFullTypeName {};
+};
+
+class Property final : public PropertyBaseInfo
 {
     friend class PropertyRegistrator;
     friend class Properties;
@@ -139,42 +213,16 @@ public:
 
     Property(const Property&) = delete;
     Property(Property&&) noexcept = default;
-    auto operator=(const Property&) = delete;
-    auto operator=(Property&&) noexcept = delete;
+    auto operator=(const Property&) -> Property& = delete;
+    auto operator=(Property&&) noexcept -> Property& = default;
     ~Property() = default;
 
     [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetName() const -> const string& { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const -> const string& { return _propNameWithoutComponent; }
-    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
-    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
-    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
     [[nodiscard]] auto GetComponent() const -> const hstring& { return _component; }
-
     [[nodiscard]] auto GetRegIndex() const -> uint16 { return _regIndex; }
     [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
-    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
-    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
-    [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
-    [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
-    [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
-    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
-    [[nodiscard]] auto IsDict() const -> bool { return _dataType == DataType::Dict; }
-    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
-    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
-    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
-    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
-    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
-
-    [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
-    [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }
-    [[nodiscard]] auto IsFloat() const -> bool { return _isFloat; }
-    [[nodiscard]] auto IsBool() const -> bool { return _isBool; }
-
-    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
-    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
-    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
-    [[nodiscard]] auto IsBaseScriptFuncType() const -> bool { return !_scriptFuncType.empty(); }
     [[nodiscard]] auto GetBaseScriptFuncType() const -> const string& { return _scriptFuncType; }
 
     [[nodiscard]] auto IsDisabled() const -> bool { return _isDisabled; }
@@ -183,6 +231,7 @@ public:
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const -> bool { return _isNullGetterForProto; }
+    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
 
     [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
@@ -193,15 +242,7 @@ public:
     void AddPostSetter(PropertyPostSetCallback setter) const;
 
 private:
-    enum class DataType
-    {
-        PlainData,
-        String,
-        Array,
-        Dict,
-    };
-
-    explicit Property(const PropertyRegistrator* registrator);
+    Property(const PropertyRegistrator* registrator, const PropertyBaseInfo& base_info);
 
     const PropertyRegistrator* _registrator;
 
@@ -212,44 +253,11 @@ private:
     string _propName {};
     vector<string> _propNameAliases {};
     string _propNameWithoutComponent {};
-    string _fullTypeName {};
     hstring _component {};
-    DataType _dataType {};
-
-    bool _isStringBase {};
-    bool _isHashBase {};
-    bool _isResourceHash {};
-    bool _isInt {};
-    bool _isSignedInt {};
-    bool _isFloat {};
-    bool _isBool {};
-    bool _isEnumBase {};
-    uint _baseSize {};
-    string _baseTypeName {};
     string _scriptFuncType {};
-
-    bool _isInt8 {};
-    bool _isInt16 {};
-    bool _isInt32 {};
-    bool _isInt64 {};
-    bool _isUInt8 {};
-    bool _isUInt16 {};
-    bool _isUInt32 {};
-    bool _isUInt64 {};
-    bool _isSingleFloat {};
-    bool _isDoubleFloat {};
-
-    bool _isArrayOfString {};
-
-    bool _isDictOfString {};
-    bool _isDictOfArray {};
-    bool _isDictOfArrayOfString {};
-    bool _isDictKeyHash {};
-    bool _isDictKeyEnum {};
-    uint _dictKeySize {};
-    string _dictKeyTypeName {};
-
     AccessType _accessType {};
+    bool _isResourceHash {};
+
     bool _isDisabled {};
     bool _isVirtual {};
     bool _isReadOnly {};
@@ -313,7 +321,7 @@ public:
     void SetValueAsAnyProps(int property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -464,7 +472,7 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -704,7 +712,7 @@ public:
     [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
-    [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }
+    [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
@@ -715,18 +723,20 @@ public:
     void RegisterComponent(string_view name);
     void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }
     void RegisterProperty(const const_span<string_view>& flags);
+    auto ResolveType(string_view type_str) const -> const PropertyBaseInfo&;
 
 private:
     const string _className;
     const PropertiesRelationType _relation;
     HashResolver& _hashResolver;
     NameResolver& _nameResolver;
-    vector<Property*> _registeredProperties {};
+    vector<unique_ptr<Property>> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};
     unordered_map<string_view, Property::AccessType> _accessMap {};
     unordered_map<string_view, Property::DataType> _dataTypeMap {};
+    mutable unordered_map<string_view, PropertyBaseInfo> _baseInfoCache {};
 
     // PlainData info
     uint _wholePodDataSize {};

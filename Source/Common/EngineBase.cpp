@@ -70,7 +70,7 @@ auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> Pro
     return registrator;
 }
 
-void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
+void FOEngineBase::AddEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
@@ -93,7 +93,7 @@ void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_ty
 
     _enums[string(name)] = std::move(key_values);
     _enumsRev[string(name)] = std::move(key_values_rev);
-    _enumTypes[string(name)] = &underlying_type;
+    _enumSizes[string(name)] = size;
 }
 
 auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*

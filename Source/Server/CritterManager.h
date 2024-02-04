@@ -62,14 +62,14 @@ public:
 
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetGlobalMapCritters(upos16 wpos, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCritter(ident_t cr_id) const -> const Critter*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> size_t;
     [[nodiscard]] auto CrittersInGame() const -> size_t;
 
-    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*;
+    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir, bool accuracy) -> Critter*;
     void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;

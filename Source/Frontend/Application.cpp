@@ -87,22 +87,22 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
-static auto WindowPosToScreenPos(int x, int y) -> tuple<int, int>
+static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto screen_x = iround(static_cast<float>(x - vp.Left) / static_cast<float>(vp.Width()) * static_cast<float>(App->Settings.ScreenWidth));
-    const auto screen_y = iround(static_cast<float>(y - vp.Top) / static_cast<float>(vp.Height()) * static_cast<float>(App->Settings.ScreenHeight));
+    const auto screen_x = iround(static_cast<float>(pos.x - vp.Left) / static_cast<float>(vp.Width()) * static_cast<float>(App->Settings.ScreenWidth));
+    const auto screen_y = iround(static_cast<float>(pos.y - vp.Top) / static_cast<float>(vp.Height()) * static_cast<float>(App->Settings.ScreenHeight));
 
     return {screen_x, screen_y};
 }
 
-static auto ScreenPosToWindowPos(int x, int y) -> tuple<int, int>
+static auto ScreenPosToWindowPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto win_x = vp.Left + iround(static_cast<float>(x) / static_cast<float>(App->Settings.ScreenWidth) * static_cast<float>(vp.Width()));
-    const auto win_y = vp.Top + iround(static_cast<float>(y) / static_cast<float>(App->Settings.ScreenHeight) * static_cast<float>(vp.Height()));
+    const auto win_x = vp.Left + iround(static_cast<float>(pos.x) / static_cast<float>(App->Settings.ScreenWidth) * static_cast<float>(vp.Width()));
+    const auto win_y = vp.Top + iround(static_cast<float>(pos.y) / static_cast<float>(App->Settings.ScreenHeight) * static_cast<float>(vp.Height()));
 
     return {win_x, win_y};
 }
@@ -506,7 +506,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         Settings.Fullscreen = false;
 #endif
 
-        MainWindow._windowHandle = CreateInternalWindow(Settings.ScreenWidth, Settings.ScreenHeight);
+        MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
         _allWindows.emplace_back(&MainWindow);
 
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
@@ -569,8 +569,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
         RUNTIME_ASSERT(bytes_per_pixel == 4);
 
-        auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
-        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const ucolor*>(pixels));
+        auto* font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
+        font_tex->UpdateTextureRegion({}, {width, height}, reinterpret_cast<const ucolor*>(pixels));
         io.Fonts->TexID = font_tex;
 
         // Default effect
@@ -617,12 +617,11 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::CreateChildWindow(int width, int height) -> AppWindow*
+auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
 
     throw NotImplementedException(LINE_STR);
 
@@ -633,7 +632,7 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
     return window;*/
 }
 
-auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
+auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 {
     STACK_TRACE_ENTRY();
 
@@ -702,7 +701,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    auto* sdl_window = SDL_CreateWindow(FO_GAME_NAME, win_pos, win_pos, width, height, window_create_flags);
+    auto* sdl_window = SDL_CreateWindow(FO_GAME_NAME, win_pos, win_pos, size.width, size.height, window_create_flags);
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
@@ -731,7 +730,9 @@ void Application::BeginFrame()
         switch (sdl_event.type) {
         case SDL_MOUSEMOTION: {
             InputEvent::MouseMoveEvent ev;
-            std::tie(ev.MouseX, ev.MouseY) = WindowPosToScreenPos(sdl_event.motion.x, sdl_event.motion.y);
+            const auto screen_pos = WindowPosToScreenPos({sdl_event.motion.x, sdl_event.motion.y});
+            ev.MouseX = screen_pos.x;
+            ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
             const auto x_ratio = static_cast<float>(App->Settings.ScreenWidth) / static_cast<float>(vp.Width());
             const auto y_ratio = static_cast<float>(App->Settings.ScreenHeight) / static_cast<float>(vp.Height());
@@ -904,7 +905,7 @@ void Application::BeginFrame()
                 int width = 0;
                 int height = 0;
                 SDL_GetWindowSizeInPixels(resized_window, &width, &height);
-                ActiveRenderer->OnResizeWindow(width, height);
+                ActiveRenderer->OnResizeWindow({width, height});
 
                 for (auto* window : copy(_allWindows)) {
                     if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
@@ -958,18 +959,20 @@ void Application::BeginFrame()
 #endif
         if (is_app_focused) {
             if (io.WantSetMousePos) {
-                Input.SetMousePosition(static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y), &MainWindow);
+                Input.SetMousePosition({iround(io.MousePos.x), iround(io.MousePos.y)}, &MainWindow);
             }
 
             if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
                 int mouse_x_global;
                 int mouse_y_global;
                 SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
+
                 int window_x;
                 int window_y;
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
-                auto&& [screen_x, screen_y] = WindowPosToScreenPos(mouse_x_global - window_x, mouse_y_global - window_y);
-                io.AddMousePosEvent(static_cast<float>(screen_x), static_cast<float>(screen_y));
+
+                const auto screen_pos = WindowPosToScreenPos({mouse_x_global - window_x, mouse_y_global - window_y});
+                io.AddMousePosEvent(static_cast<float>(screen_pos.x), static_cast<float>(screen_pos.y));
             }
         }
     }
@@ -1035,7 +1038,7 @@ void Application::EndFrame()
                 const auto clip_rect_b = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
-                    ActiveRenderer->EnableScissor(clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t);
+                    ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t}, {clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
@@ -1053,68 +1056,72 @@ void Application::EndFrame()
 #endif
 }
 
-auto AppWindow::GetSize() const -> tuple<int, int>
+auto AppWindow::GetSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
-    auto w = 1000;
-    auto h = 1000;
+    int width = 1000;
+    int height = 1000;
+
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle), &w, &h);
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle), &width, &height);
     }
-    return {w, h};
+
+    return {width, height};
 }
 
-void AppWindow::SetSize(int w, int h)
+void AppWindow::SetSize(isize size)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), w, h);
+        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), size.width, size.height);
     }
 }
 
-auto AppWindow::GetScreenSize() const -> tuple<int, int>
+auto AppWindow::GetScreenSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
     return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
-void AppWindow::SetScreenSize(int w, int h)
+void AppWindow::SetScreenSize(isize size)
 {
     STACK_TRACE_ENTRY();
 
-    if (w != App->Settings.ScreenWidth || h != App->Settings.ScreenHeight) {
-        App->Settings.ScreenWidth = w;
-        App->Settings.ScreenHeight = h;
+    if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
+        App->Settings.ScreenWidth = size.width;
+        App->Settings.ScreenHeight = size.height;
 
         _onScreenSizeChangedDispatcher();
     }
 }
 
-auto AppWindow::GetPosition() const -> tuple<int, int>
+auto AppWindow::GetPosition() const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    auto x = 0;
-    auto y = 0;
+    int x = 0;
+    int y = 0;
+
     if (ActiveRendererType != RenderType::Null) {
         SDL_GetWindowPosition(static_cast<SDL_Window*>(_windowHandle), &x, &y);
     }
+
     return {x, y};
 }
 
-void AppWindow::SetPosition(int x, int y)
+void AppWindow::SetPosition(ipos pos)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), x, y);
+        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), pos.x, pos.y);
     }
 }
 
@@ -1239,11 +1246,11 @@ void AppWindow::Destroy()
     }
 }
 
-auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
+    return ActiveRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
@@ -1268,11 +1275,11 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void AppRender::EnableScissor(int x, int y, int width, int height)
+void AppRender::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
-    ActiveRenderer->EnableScissor(x, y, width, height);
+    ActiveRenderer->EnableScissor(pos, size);
 }
 
 void AppRender::DisableScissor()
@@ -1310,38 +1317,36 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return ActiveRenderer->IsRenderTargetFlipped();
 }
 
-auto AppInput::GetMousePosition() const -> tuple<int, int>
+auto AppInput::GetMousePosition() const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    auto x = 100;
-    auto y = 100;
+    int x = 100;
+    int y = 100;
+
     if (ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
 
-    std::tie(x, y) = WindowPosToScreenPos(x, y);
-
-    return {x, y};
+    return WindowPosToScreenPos({x, y});
 }
 
-void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        App->Settings.MouseX = x;
-        App->Settings.MouseY = y;
+        App->Settings.MousePos = pos;
 
         SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
 
         if (relative_to != nullptr) {
-            std::tie(x, y) = ScreenPosToWindowPos(x, y);
+            pos = ScreenPosToWindowPos(pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), x, y);
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), pos.x, pos.y);
         }
         else {
-            SDL_WarpMouseGlobal(x, y);
+            SDL_WarpMouseGlobal(pos.x, pos.y);
         }
 
         SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);

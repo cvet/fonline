@@ -289,8 +289,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     for (const auto& cr_id : cr_ids) {
         auto* cr = LoadCritter(cr_id, nullptr, is_error);
         if (cr != nullptr) {
-            if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
-                WriteLog("Error set critter {} {} to map {} {} at hex {} {}", cr->GetName(), cr->GetId(), map->GetName(), map->GetId(), cr->GetHexX(), cr->GetHexY());
+            if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetMapHex(), ident_t {})) {
+                WriteLog("Error set critter {} {} to map {} {} at hex {} {}", cr->GetName(), cr->GetId(), map->GetName(), map->GetId(), cr->GetMapHex());
                 is_error = true;
                 continue;
             }
@@ -303,13 +303,13 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     for (const auto& item_id : item_ids) {
         auto* item = LoadItem(item_id, is_error);
         if (item != nullptr) {
-            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
-                WriteLog("Invalid item {} {} map {} {} hex pos {} {}", item->GetName(), item->GetId(), map_pid, map_id, item->GetHexX(), item->GetHexY());
+            if (!map->GetSize().IsValidPos(item->GetMapHex())) {
+                WriteLog("Invalid item {} {} map {} {} hex pos {} {}", item->GetName(), item->GetId(), map_pid, map_id, item->GetMapHex());
                 is_error = true;
                 continue;
             }
 
-            map->SetItem(item, item->GetHexX(), item->GetHexY());
+            map->SetItem(item, item->GetMapHex());
         }
     }
 

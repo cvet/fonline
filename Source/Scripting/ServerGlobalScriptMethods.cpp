@@ -158,7 +158,8 @@
         throw ScriptException("Differernt maps");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    const auto dist = GeometryHelper::DistGame(cr1->GetMapHex(), cr2->GetMapHex());
+
     return static_cast<int>(dist);
 }
 
@@ -190,6 +191,22 @@
 
 ///# ...
 ///# param item ...
+///# param toCr ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Critter* toCr)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCr, false);
+}
+
+///# ...
+///# param item ...
 ///# param count ...
 ///# param toCr ...
 ///@ ExportMethod
@@ -202,15 +219,31 @@
         throw ScriptException("Critter arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
+    if (count == 0) {
+        return;
     }
-    if (count_ > item->GetCount()) {
+    if (count > item->GetCount()) {
         throw ScriptException("Count arg is greater than maximum");
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCr, false);
+    server->ItemMngr.MoveItem(item, count, toCr, false);
+}
+
+///# ...
+///# param item ...
+///# param toCr ...
+///# param skipChecks ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Critter* toCr, bool skipChecks)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCr, skipChecks);
 }
 
 ///# ...
@@ -228,25 +261,22 @@
         throw ScriptException("Critter arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
+    if (count == 0) {
+        return;
     }
-    if (count_ > item->GetCount()) {
+    if (count > item->GetCount()) {
         throw ScriptException("Count arg is greater than maximum");
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCr, skipChecks);
+    server->ItemMngr.MoveItem(item, count, toCr, skipChecks);
 }
 
 ///# ...
 ///# param item ...
-///# param count ...
 ///# param toMap ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -254,30 +284,48 @@
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
+    if (!toMap->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
-    }
-
-    server->ItemMngr.MoveItem(item, count_, toMap, toHx, toHy, false);
+    server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex, false);
 }
 
 ///# ...
 ///# param item ...
 ///# param count ...
 ///# param toMap ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, mpos toHex)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toMap == nullptr) {
+        throw ScriptException("Map arg is null");
+    }
+    if (!toMap->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid hexex args");
+    }
+
+    if (count == 0) {
+        return;
+    }
+    if (count > item->GetCount()) {
+        throw ScriptException("Count arg is greater than maximum");
+    }
+
+    server->ItemMngr.MoveItem(item, count, toMap, toHex, false);
+}
+
+///# ...
+///# param item ...
+///# param toMap ...
+///# param toHex ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Map* toMap, mpos toHex, bool skipChecks)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -285,19 +333,57 @@
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
+    if (!toMap->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
+    server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex, skipChecks);
+}
+
+///# ...
+///# param item ...
+///# param count ...
+///# param toMap ...
+///# param toHex ...
+///# param skipChecks ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, mpos toHex, bool skipChecks)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
     }
-    if (count_ > item->GetCount()) {
+    if (toMap == nullptr) {
+        throw ScriptException("Map arg is null");
+    }
+    if (!toMap->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid hexex args");
+    }
+
+    if (count == 0) {
+        return;
+    }
+    if (count > item->GetCount()) {
         throw ScriptException("Count arg is greater than maximum");
     }
 
-    server->ItemMngr.MoveItem(item, count_, toMap, toHx, toHy, skipChecks);
+    server->ItemMngr.MoveItem(item, count, toMap, toHex, skipChecks);
+}
+
+///# ...
+///# param item ...
+///# param toCont ...
+///# param stackId ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
+    }
+
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId, false);
 }
 
 ///# ...
@@ -315,15 +401,33 @@
         throw ScriptException("Container arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
+    if (count == 0) {
+        return;
     }
-    if (count_ > item->GetCount()) {
+    if (count > item->GetCount()) {
         throw ScriptException("Count arg is greater than maximum");
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCont, stackId, false);
+    server->ItemMngr.MoveItem(item, count, toCont, stackId, false);
+}
+
+///# ...
+///# param item ...
+///# param count ...
+///# param toCont ...
+///# param stackId ...
+///# param skipChecks ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId, bool skipChecks)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
+    }
+
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId, skipChecks);
 }
 
 ///# ...
@@ -342,15 +446,14 @@
         throw ScriptException("Container arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
+    if (count == 0) {
+        return;
     }
-    if (count_ > item->GetCount()) {
+    if (count > item->GetCount()) {
         throw ScriptException("Count arg is greater than maximum");
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCont, stackId, skipChecks);
+    server->ItemMngr.MoveItem(item, count, toCont, stackId, skipChecks);
 }
 
 ///# ...
@@ -395,15 +498,14 @@
 ///# ...
 ///# param items ...
 ///# param toMap ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, mpos toHex)
 {
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
+    if (!toMap->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -412,23 +514,22 @@
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy, false);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex, false);
     }
 }
 
 ///# ...
 ///# param items ...
 ///# param toMap ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, mpos toHex, bool skipChecks)
 {
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
+    if (!toMap->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -437,7 +538,7 @@
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy, skipChecks);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex, skipChecks);
     }
 }
 
@@ -500,6 +601,7 @@
 {
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
+
         if (count >= cur_count) {
             server->ItemMngr.DeleteItem(item);
         }
@@ -515,7 +617,9 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId)
 {
-    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
+    auto* item = server->ItemMngr.GetItem(itemId);
+
+    if (item != nullptr) {
         server->ItemMngr.DeleteItem(item);
     }
 }
@@ -526,8 +630,11 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId, uint count)
 {
-    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0) {
+    auto* item = server->ItemMngr.GetItem(itemId);
+
+    if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
+
         if (count >= cur_count) {
             server->ItemMngr.DeleteItem(item);
         }
@@ -558,6 +665,7 @@
     for (const auto item_id : itemIds) {
         if (item_id) {
             auto* item = server->ItemMngr.GetItem(item_id);
+
             if (item != nullptr) {
                 server->ItemMngr.DeleteItem(item);
             }
@@ -581,7 +689,9 @@
 [[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
+        Critter* cr = server->CrMngr.GetCritter(crId);
+
+        if (cr != nullptr && cr->IsNpc()) {
             server->CrMngr.DeleteCritter(cr);
         }
     }
@@ -606,7 +716,9 @@
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && cr->IsNpc()) {
+            Critter* cr = server->CrMngr.GetCritter(id);
+
+            if (cr != nullptr && cr->IsNpc()) {
                 server->CrMngr.DeleteCritter(cr);
             }
         }
@@ -620,7 +732,7 @@
 [[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
 {
     if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, text, false, 0, 0, "");
+        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, text, false, 0, 0, "");
     }
 }
 
@@ -631,7 +743,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, "");
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textMsg, numStr, "");
 }
 
 ///# ...
@@ -642,7 +754,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr, string_view lexems)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, lexems);
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textMsg, numStr, lexems);
 }
 
 ///# ...
@@ -739,16 +851,15 @@
 
 ///# ...
 ///# param locPid ...
-///# param wx ...
-///# param wy ...
+///# param wpos ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, uint16 wx, uint16 wy)
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, upos16 wpos)
 {
     // Create and generate location
-    auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
+    auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
     if (loc == nullptr) {
-        throw ScriptException("Unable to create location '{}'.", locPid);
+        throw ScriptException("Unable to create location {}", locPid);
     }
 
     return loc;
@@ -756,15 +867,14 @@
 
 ///# ...
 ///# param locPid ...
-///# param wx ...
-///# param wy ...
+///# param wpos ...
 ///# param critters ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, uint16 wx, uint16 wy, const vector<Critter*>& critters)
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, upos16 wpos, const vector<Critter*>& critters)
 {
     // Create and generate location
-    auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
+    auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
     if (loc == nullptr) {
         throw ScriptException("Unable to create location {}", locPid);
     }
@@ -780,8 +890,8 @@
             cr->Send_AutomapsInfo(nullptr, loc);
         }
 
-        const auto zx = static_cast<uint16>(loc->GetWorldX() / server->Settings.GlobalMapZoneLength);
-        const auto zy = static_cast<uint16>(loc->GetWorldY() / server->Settings.GlobalMapZoneLength);
+        const auto zx = static_cast<uint16>(loc->GetWorldPos().x / server->Settings.GlobalMapZoneLength);
+        const auto zy = static_cast<uint16>(loc->GetWorldPos().y / server->Settings.GlobalMapZoneLength);
 
         auto gmap_fog = cr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
@@ -877,15 +987,14 @@
 }
 
 ///# ...
-///# param wx ...
-///# param wy ...
+///# param wpos ...
 ///# param radius ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, uint16 wx, uint16 wy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, upos16 wpos, uint radius, CritterFindType findType)
 {
-    return server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType);
+    return server->CrMngr.GetGlobalMapCritters(wpos, radius, findType);
 }
 
 ///# ...
@@ -1028,18 +1137,17 @@
 }
 
 ///# ...
-///# param wx ...
-///# param wy ...
+///# param wpos ...
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, uint16 wx, uint16 wy, uint radius)
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, upos16 wpos, uint radius)
 {
     vector<Location*> locations;
     locations.reserve(server->MapMngr.GetLocationsCount());
 
     for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius()) {
+        if (GenericUtils::DistSqrt({wpos.x, wpos.y}, {loc->GetWorldPos().x, loc->GetWorldPos().y}) <= radius + loc->GetRadius()) {
             locations.push_back(loc);
         }
     }
@@ -1048,19 +1156,18 @@
 }
 
 ///# ...
-///# param wx ...
-///# param wy ...
+///# param wpos ...
 ///# param radius ...
 ///# param cr ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, uint16 wx, uint16 wy, uint radius, Critter* cr)
+[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, upos16 wpos, uint radius, Critter* cr)
 {
     vector<Location*> locations;
     locations.reserve(server->MapMngr.GetLocationsCount());
 
     for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && //
+        if (GenericUtils::DistSqrt({wpos.x, wpos.y}, {loc->GetWorldPos().x, loc->GetWorldPos().y}) <= radius + loc->GetRadius() && //
             (loc->IsLocVisible() || (cr != nullptr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
@@ -1077,7 +1184,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Location*> Server_Game_GetZoneLocations(FOServer* server, uint16 zx, uint16 zy, uint zoneRadius)
 {
-    return server->MapMngr.GetZoneLocations(zx, zy, zoneRadius);
+    return server->MapMngr.GetZoneLocations(zx, zy, static_cast<int>(zoneRadius));
 }
 
 ///# ...
@@ -1105,7 +1212,7 @@
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    server->BeginDialog(cr, npc, hstring(), 0, 0, ignoreDistance);
+    server->BeginDialog(cr, npc, {}, {}, ignoreDistance);
 
     return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
 }
@@ -1136,7 +1243,7 @@
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    server->BeginDialog(cr, npc, dlgPack, 0, 0, ignoreDistance);
+    server->BeginDialog(cr, npc, dlgPack, {}, ignoreDistance);
 
     return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
 }
@@ -1144,12 +1251,11 @@
 ///# ...
 ///# param cr ...
 ///# param dlgPack ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, uint16 hx, uint16 hy, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, mpos hex, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -1157,7 +1263,7 @@
     if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
-    if (!server->DlgMngr.GetDialog(dlgPack)) {
+    if (server->DlgMngr.GetDialog(dlgPack) == nullptr) {
         throw ScriptException("Dialog not found");
     }
 
@@ -1165,9 +1271,9 @@
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    server->BeginDialog(cr, nullptr, dlgPack, hx, hy, ignoreDistance);
+    server->BeginDialog(cr, nullptr, dlgPack, hex, ignoreDistance);
 
-    return cr->Talk.Type == TalkType::Hex && cr->Talk.TalkHexX == hx && cr->Talk.TalkHexY == hy;
+    return cr->Talk.Type == TalkType::Hex && cr->Talk.TalkHex == hex;
 }
 
 ///# ...
@@ -1176,7 +1282,7 @@
 ///@ ExportMethod
 [[maybe_unused]] int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
 {
-    if (!server->ProtoMngr.GetProtoItem(pid)) {
+    if (server->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid protoId arg");
     }
 

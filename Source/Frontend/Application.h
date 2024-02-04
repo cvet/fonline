@@ -251,16 +251,16 @@ class AppWindow final
     friend class AppInput;
 
 public:
-    [[nodiscard]] auto GetSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetSize() const -> isize;
+    [[nodiscard]] auto GetScreenSize() const -> isize;
+    [[nodiscard]] auto GetPosition() const -> ipos;
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
     void GrabInput(bool enable);
-    void SetSize(int w, int h);
-    void SetScreenSize(int w, int h);
-    void SetPosition(int x, int y);
+    void SetSize(isize size);
+    void SetScreenSize(isize size);
+    void SetPosition(ipos pos);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
     void Blink();
@@ -292,7 +292,7 @@ public:
     static const int& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*;
+    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44;
@@ -300,7 +300,7 @@ public:
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
-    void EnableScissor(int x, int y, int width, int height);
+    void EnableScissor(ipos pos, isize size);
     void DisableScissor();
 
 private:
@@ -314,13 +314,13 @@ class AppInput final
 public:
     static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
 
-    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetMousePosition() const -> ipos;
     [[nodiscard]] auto GetClipboardText() -> const string&;
 
     [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
 
     void ClearEvents();
-    void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
+    void SetMousePosition(ipos pos, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
     void SetClipboardText(string_view text);
 
@@ -371,7 +371,7 @@ public:
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
 
-    [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
+    [[nodiscard]] auto CreateChildWindow(isize size) -> AppWindow*;
 
     void OpenLink(string_view link);
     void SetImGuiEffect(RenderEffect* effect);
@@ -396,7 +396,7 @@ public:
     AppAudio Audio;
 
 private:
-    [[nodiscard]] auto CreateInternalWindow(int width, int height) -> WindowInternalHandle*;
+    [[nodiscard]] auto CreateInternalWindow(isize size) -> WindowInternalHandle*;
 
     uint64 _time {};
     uint64 _timeFrequency {};

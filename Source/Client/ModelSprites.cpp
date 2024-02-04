@@ -43,20 +43,20 @@ ModelSprite::ModelSprite(SpriteManager& spr_mngr) :
     STACK_TRACE_ENTRY();
 }
 
-auto ModelSprite::IsHitTest(int x, int y) const -> bool
+auto ModelSprite::IsHitTest(ipos pos) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
-    const auto x2 = x - (Width - view_width) / 2;
-    const auto y2 = y - (Height - view_height - (OffsY - view_height / 8));
+    const auto x2 = pos.x - (Size.width - view_width) / 2;
+    const auto y2 = pos.y - (Size.height - view_height - (Offset.y - view_height / 8));
 
     if (x2 >= 0 && y2 >= 0 && x2 < view_width && y2 < view_height) {
-        const auto atlas_x = x + iround(Atlas->MainTex->SizeData[0] * AtlasRect.Left);
-        const auto atlas_y = y + iround(Atlas->MainTex->SizeData[1] * AtlasRect.Top);
+        const auto atlas_x = pos.x + iround(Atlas->MainTex->SizeData[0] * AtlasRect.Left);
+        const auto atlas_y = pos.y + iround(Atlas->MainTex->SizeData[1] * AtlasRect.Top);
 
-        return _sprMngr.GetRtMngr().GetRenderTargetPixel(Atlas->RTarg, atlas_x, atlas_y).comp.a > 0;
+        return _sprMngr.GetRtMngr().GetRenderTargetPixel(Atlas->RTarg, {atlas_x, atlas_y}).comp.a > 0;
     }
 
     return false;
@@ -68,7 +68,7 @@ auto ModelSprite::GetViewSize() const -> optional<IRect>
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
-    return IRect {view_width, view_height, 0, -OffsY + view_height / 8};
+    return IRect {view_width, view_height, 0, -Offset.y + view_height / 8};
 }
 
 void ModelSprite::Prewarm()
@@ -155,26 +155,24 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     }
 
     model->SetupFrame();
-    auto&& [draw_width, draw_height] = model->GetDrawSize();
+
+    const auto draw_size = model->GetDrawSize();
 
     auto&& model_spr = std::make_shared<ModelSprite>(_sprMngr);
 
     model_spr->_factory = this;
     model_spr->_model = std::move(model);
-    model_spr->Width = draw_width;
-    model_spr->Height = draw_height;
-    model_spr->OffsY = static_cast<int16>(draw_height / 4);
+    model_spr->Size = draw_size;
+    model_spr->Offset.y = static_cast<int16>(draw_size.height / 4);
 
-    int x = 0;
-    int y = 0;
-    auto&& [atlas, atlas_node] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_width, draw_height, x, y);
+    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
 
     model_spr->Atlas = atlas;
     model_spr->AtlasNode = atlas_node;
-    model_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    model_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    model_spr->AtlasRect.Right = static_cast<float>(x + draw_width) / static_cast<float>(atlas->Width);
-    model_spr->AtlasRect.Bottom = static_cast<float>(y + draw_height) / static_cast<float>(atlas->Height);
+    model_spr->AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
+    model_spr->AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
+    model_spr->AtlasRect.Right = static_cast<float>(pos.x + draw_size.width) / static_cast<float>(atlas->Size.width);
+    model_spr->AtlasRect.Bottom = static_cast<float>(pos.y + draw_size.height) / static_cast<float>(atlas->Size.height);
 
     return model_spr;
 }
@@ -220,18 +218,18 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     RUNTIME_ASSERT(_modelMngr);
 
     // Find place for render
-    const auto frame_width = model_spr->Width * ModelInstance::FRAME_SCALE;
-    const auto frame_height = model_spr->Height * ModelInstance::FRAME_SCALE;
-
+    const auto frame_size = isize {model_spr->Size.width * ModelInstance::FRAME_SCALE, model_spr->Size.height * ModelInstance::FRAME_SCALE};
     RenderTarget* rt_model = nullptr;
+
     for (auto* rt : _rtIntermediate) {
-        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
+        if (rt->MainTex->Size == frame_size) {
             rt_model = rt;
             break;
         }
     }
+
     if (rt_model == nullptr) {
-        rt_model = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
+        rt_model = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
         _rtIntermediate.push_back(rt_model);
     }
 
@@ -250,17 +248,19 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     // Render to atlas
     if (rt_model->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
-        const auto t = iround((1.0f - model_spr->AtlasRect.Top) * static_cast<float>(model_spr->Atlas->Height));
-        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
-        const auto b = iround((1.0f - model_spr->AtlasRect.Bottom) * static_cast<float>(model_spr->Atlas->Height));
+        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Size.width));
+        const auto t = iround((1.0f - model_spr->AtlasRect.Top) * static_cast<float>(model_spr->Atlas->Size.height));
+        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Size.width));
+        const auto b = iround((1.0f - model_spr->AtlasRect.Bottom) * static_cast<float>(model_spr->Atlas->Size.height));
+
         region_to = IRect(l, t, r, b);
     }
     else {
-        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
-        const auto t = iround(model_spr->AtlasRect.Top * static_cast<float>(model_spr->Atlas->Height));
-        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
-        const auto b = iround(model_spr->AtlasRect.Bottom * static_cast<float>(model_spr->Atlas->Height));
+        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Size.width));
+        const auto t = iround(model_spr->AtlasRect.Top * static_cast<float>(model_spr->Atlas->Size.height));
+        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Size.width));
+        const auto b = iround(model_spr->AtlasRect.Bottom * static_cast<float>(model_spr->Atlas->Size.height));
+
         region_to = IRect(l, t, r, b);
     }
 

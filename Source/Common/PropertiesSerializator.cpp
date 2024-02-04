@@ -43,7 +43,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
     AnyData::Document doc;
 
-    for (const auto* prop : props->_registrator->_registeredProperties) {
+    for (auto&& prop : props->_registrator->_registeredProperties) {
         // Skip pure virtual properties
         if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
             continue;
@@ -88,7 +88,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             }
         }
 
-        doc.insert(std::make_pair(prop->_propName, SavePropertyToValue(props, prop, hash_resolver, name_resolver)));
+        doc.insert(std::make_pair(prop->GetName(), SavePropertyToValue(props, prop.get(), hash_resolver, name_resolver)));
     }
 
     return doc;
@@ -133,22 +133,27 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     uint data_size;
     const auto* data = props->GetRawData(prop, data_size);
 
-    if (prop->_dataType == Property::DataType::PlainData) {
-        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+    return SavePropertyToValue(prop, data, data_size, hash_resolver, name_resolver);
+}
 
+auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, const uint8* data, uint data_size, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+{
+    STACK_TRACE_ENTRY();
+
+    if (prop->_dataType == Property::DataType::PlainData) {
         if (prop->_isHashBase) {
-            return string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
+            return string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data)));
         }
         else if (prop->_isEnumBase) {
             int enum_value = 0;
-            std::memcpy(&enum_value, &props->_podData[prop->_podDataOffset], prop->_baseSize);
+            std::memcpy(&enum_value, data, prop->_baseSize);
             return name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
 #define PARSE_VALUE(is, t, ret_t) \
     do { \
         if (prop->is) { \
-            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(&props->_podData[prop->_podDataOffset]))); \
+            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data))); \
         } \
     } while (false)
 
@@ -168,9 +173,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         }
     }
     else if (prop->_dataType == Property::DataType::String) {
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-
-        if (data_size > 0) {
+        if (data_size != 0) {
             return string(reinterpret_cast<const char*>(data), data_size);
         }
 
@@ -178,7 +181,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     }
     else if (prop->_dataType == Property::DataType::Array) {
         if (prop->_isArrayOfString) {
-            if (data_size > 0) {
+            if (data_size != 0) {
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(uint);
@@ -200,7 +203,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             return AnyData::Array();
         }
         else {
-            uint arr_size = data_size / prop->_baseSize;
+            const uint arr_size = data_size / prop->_baseSize;
 
             AnyData::Array arr;
             arr.reserve(arr_size);
@@ -266,7 +269,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     else if (prop->_dataType == Property::DataType::Dict) {
         AnyData::Dict dict;
 
-        if (data_size > 0) {
+        if (data_size != 0) {
             const auto get_key_string = [prop, &hash_resolver, &name_resolver](const uint8* p) -> string {
                 if (prop->_isDictKeyHash) {
                     return string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(p)));
@@ -305,7 +308,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     AnyData::Array arr;
                     arr.reserve(arr_size);
 
-                    if (arr_size > 0) {
+                    if (arr_size != 0) {
                         if (prop->_isDictOfArrayOfString) {
                             for (uint i = 0; i < arr_size; i++) {
                                 uint str_size;
@@ -399,8 +402,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 }
             }
             else {
-                uint whole_element_size = prop->_dictKeySize + prop->_baseSize;
-                uint dict_size = data_size / whole_element_size;
+                const uint whole_element_size = prop->_dictKeySize + prop->_baseSize;
+                const uint dict_size = data_size / whole_element_size;
 
                 for (uint i = 0; i < dict_size; i++) {
                     const auto* pkey = data + static_cast<size_t>(i) * whole_element_size;
@@ -479,6 +482,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         return false;
     }
 
+    const auto set_data = [props, prop](const uint8* data, uint data_size) { props->SetRawData(prop, data, data_size); };
+
+    return LoadPropertyFromValue(prop, prop->GetName(), value, set_data, hash_resolver, name_resolver);
+}
+
+auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop, string_view prop_name, const AnyData::Value& value, const std::function<void(const uint8*, uint)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
+{
     // Implicit conversion to string
     string tmp_str;
 
@@ -553,12 +563,12 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     if (prop->_dataType == Property::DataType::PlainData) {
         if (prop->_isHashBase) {
             if (value.index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong hash value type, property {}", prop->GetName());
+                WriteLog("Wrong hash value type, property {}", prop_name);
                 return false;
             }
 
             const auto h = hash_resolver.ToHashedString(std::get<string>(value)).as_hash();
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->_baseSize);
+            set_data(reinterpret_cast<const uint8*>(&h), prop->_baseSize);
         }
         else if (prop->_isEnumBase) {
             int enum_value;
@@ -575,20 +585,20 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 enum_value = static_cast<int>(value.index() == AnyData::INT_VALUE ? std::get<int>(value) : std::get<int64>(value));
             }
             else {
-                WriteLog("Wrong enum value type, property {}", prop->GetName());
+                WriteLog("Wrong enum value type, property {}", prop_name);
                 return false;
             }
 
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&enum_value), prop->_baseSize);
+            set_data(reinterpret_cast<const uint8*>(&enum_value), prop->_baseSize);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong integer value type (array or dict), property {}", prop->GetName());
+                WriteLog("Wrong integer value type (array or dict), property {}", prop_name);
                 return false;
             }
 
             if (value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value)) {
-                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop->GetName());
+                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop_name);
                 return false;
             }
 
@@ -654,7 +664,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 #undef PARSE_VALUE
 
-            props->SetRawData(prop, pod_data, prop->_baseSize);
+            set_data(pod_data, prop->_baseSize);
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
@@ -662,34 +672,34 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
     else if (prop->_dataType == Property::DataType::String) {
         if (!can_read_to_string(value)) {
-            WriteLog("Wrong string value type, property {}", prop->GetName());
+            WriteLog("Wrong string value type, property {}", prop_name);
             return false;
         }
 
         const auto& str = read_to_string(value);
 
-        props->SetRawData(prop, reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
+        set_data(reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
     }
     else if (prop->_dataType == Property::DataType::Array) {
         if (value.index() != AnyData::ARRAY_VALUE) {
-            WriteLog("Wrong array value type, property {}", prop->GetName());
+            WriteLog("Wrong array value type, property {}", prop_name);
             return false;
         }
 
         const auto& arr = std::get<AnyData::Array>(value);
 
         if (arr.empty()) {
-            props->SetRawData(prop, nullptr, 0);
+            set_data(nullptr, 0);
             return true;
         }
 
         if (prop->_isHashBase) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array hash element value type, property {}", prop->GetName());
+                WriteLog("Wrong array hash element value type, property {}", prop_name);
                 return false;
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
+            const uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
             auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
@@ -699,15 +709,15 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 *reinterpret_cast<hstring::hash_t*>(data.get() + i * sizeof(hstring::hash_t)) = h;
             }
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
         else if (prop->_isEnumBase) {
             if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
-                WriteLog("Wrong array enum element value type, property {}", prop->GetName());
+                WriteLog("Wrong array enum element value type, property {}", prop_name);
                 return false;
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * prop->_baseSize;
+            const uint data_size = static_cast<uint>(arr.size()) * prop->_baseSize;
             auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
@@ -729,11 +739,11 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 std::memcpy(data.get() + i * prop->_baseSize, &enum_value, prop->_baseSize);
             }
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong array element value type (array or dict), property {}", prop->GetName());
+                WriteLog("Wrong array element value type (array or dict), property {}", prop_name);
                 return false;
             }
 
@@ -741,13 +751,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 for (size_t i = 0; i < arr.size(); i++) {
                     RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
                     if (!can_convert_str_to_number(arr[i])) {
-                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop->GetName());
+                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop_name);
                         return false;
                     }
                 }
             }
 
-            uint data_size = prop->_baseSize * static_cast<uint>(arr.size());
+            const uint data_size = prop->_baseSize * static_cast<uint>(arr.size());
             auto data = unique_ptr<uint8>(new uint8[data_size]);
             const auto arr_element_index = arr[0].index();
 
@@ -815,13 +825,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 #undef PARSE_VALUE
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
         else {
             RUNTIME_ASSERT(prop->_isArrayOfString);
 
             if (!can_read_to_string(arr[0])) {
-                WriteLog("Wrong array element value type, property {}", prop->GetName());
+                WriteLog("Wrong array element value type, property {}", prop_name);
                 return false;
             }
 
@@ -847,31 +857,32 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             RUNTIME_ASSERT(data_pos == data_size);
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
     }
     else if (prop->_dataType == Property::DataType::Dict) {
         if (value.index() != AnyData::DICT_VALUE) {
-            WriteLog("Wrong dict value type, property {}", prop->GetName());
+            WriteLog("Wrong dict value type, property {}", prop_name);
             return false;
         }
 
         const auto& dict = std::get<AnyData::Dict>(value);
 
         if (dict.empty()) {
-            props->SetRawData(prop, nullptr, 0);
+            set_data(nullptr, 0);
             return true;
         }
 
         // Measure data length
         uint data_size = 0;
         bool wrong_input = false;
+
         for (const auto& [key2, value2] : dict) {
             data_size += prop->_dictKeySize;
 
             if (prop->_isDictOfArray) {
                 if (value2.index() != AnyData::ARRAY_VALUE) {
-                    WriteLog("Wrong dict array value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict array value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -883,7 +894,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 if (prop->_isDictKeyHash) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element hash value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element hash value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -894,7 +905,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->_isDictKeyEnum) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element enum value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element enum value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -905,7 +916,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->_isDictOfArrayOfString) {
                     for (const auto& e : arr) {
                         if (!can_read_to_string(e)) {
-                            WriteLog("Wrong dict array element string value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element string value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -916,13 +927,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else {
                     for (const auto& e : arr) {
                         if (e.index() == AnyData::ARRAY_VALUE || e.index() == AnyData::DICT_VALUE || e.index() != arr[0].index()) {
-                            WriteLog("Wrong dict array element value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
 
                         if (e.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(e)) {
-                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop->GetName());
+                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -933,7 +944,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isDictOfString) {
                 if (!can_read_to_string(value2)) {
-                    WriteLog("Wrong dict string element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict string element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -942,7 +953,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isHashBase) {
                 if (value2.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict hash element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict hash element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -951,7 +962,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isEnumBase) {
                 if (value2.index() != AnyData::STRING_VALUE && value2.index() != AnyData::INT_VALUE && value2.index() != AnyData::INT64_VALUE) {
-                    WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict enum element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -960,13 +971,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else {
                 if (value2.index() == AnyData::ARRAY_VALUE || value2.index() == AnyData::DICT_VALUE) {
-                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop->GetName());
+                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
 
                 if (value2.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value2)) {
-                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(value2), prop->GetName());
+                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(value2), prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -1086,7 +1097,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             throw UnreachablePlaceException(LINE_STR); \
         } \
     } while (false)
-
                         if (prop->_isInt8) {
                             PARSE_VALUE(int8);
                         }
@@ -1184,7 +1194,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             throw UnreachablePlaceException(LINE_STR); \
         } \
     } while (false)
-
                     if (prop->_isInt8) {
                         PARSE_VALUE(int8);
                     }
@@ -1231,7 +1240,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
         RUNTIME_ASSERT(data_pos == data_size);
 
-        props->SetRawData(prop, data.get(), data_size);
+        set_data(data.get(), data_size);
     }
     else {
         throw UnreachablePlaceException(LINE_STR);

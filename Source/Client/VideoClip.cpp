@@ -174,8 +174,10 @@ auto VideoClip::GetTime() const -> time_duration
     }
 }
 
-auto VideoClip::GetSize() const -> tuple<int, int>
+auto VideoClip::GetSize() const -> isize
 {
+    STACK_TRACE_ENTRY();
+
     return {static_cast<int>(_impl->VideoInfo.pic_width), static_cast<int>(_impl->VideoInfo.pic_height)};
 }
 

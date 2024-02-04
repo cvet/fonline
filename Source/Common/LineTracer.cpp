@@ -36,15 +36,14 @@
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle)
+LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float angle)
 {
     STACK_TRACE_ENTRY();
 
-    _maxHx = maxhx;
-    _maxHy = maxhy;
+    _mapSize = map_size;
 
     if constexpr (GameSettings::SQUARE_GEOMETRY) {
-        _dir = std::atan2(static_cast<float>(ty - hy), static_cast<float>(tx - hx)) + angle;
+        _dir = std::atan2(static_cast<float>(target_hex.y - start_hex.y), static_cast<float>(target_hex.x - start_hex.x)) + angle;
         _dx = std::cos(_dir);
         _dy = std::sin(_dir);
 
@@ -57,12 +56,12 @@ LineTracer::LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx,
             _dy = _dy > 0 ? 1.0f : -1.0f;
         }
 
-        _x1 = static_cast<float>(hx) + 0.5f;
-        _y1 = static_cast<float>(hy) + 0.5f;
+        _x1 = static_cast<float>(start_hex.x) + 0.5f;
+        _y1 = static_cast<float>(start_hex.y) + 0.5f;
     }
     else {
-        const auto nx = 3.0f * (static_cast<float>(tx) - static_cast<float>(hx));
-        const auto ny = (static_cast<float>(ty) - static_cast<float>(hy)) * SQRT3_X2_FLOAT - (static_cast<float>(tx & 1) - static_cast<float>(hx & 1)) * SQRT3_FLOAT;
+        const auto nx = 3.0f * (static_cast<float>(target_hex.x) - static_cast<float>(start_hex.x));
+        const auto ny = (static_cast<float>(target_hex.y) - static_cast<float>(start_hex.y)) * SQRT3_X2_FLOAT - (static_cast<float>(target_hex.x % 2) - static_cast<float>(start_hex.x % 2)) * SQRT3_FLOAT;
 
         _dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
@@ -96,10 +95,10 @@ LineTracer::LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx,
             _dir2 = 1;
         }
 
-        _x1 = 3.0f * static_cast<float>(hx) + BIAS_FLOAT;
-        _y1 = SQRT3_X2_FLOAT * static_cast<float>(hy) - SQRT3_FLOAT * static_cast<float>(hx & 1) + BIAS_FLOAT;
-        _x2 = 3.0f * static_cast<float>(tx) + BIAS_FLOAT + BIAS_FLOAT;
-        _y2 = SQRT3_X2_FLOAT * static_cast<float>(ty) - SQRT3_FLOAT * static_cast<float>(tx & 1) + BIAS_FLOAT;
+        _x1 = 3.0f * static_cast<float>(start_hex.x) + BIAS_FLOAT;
+        _y1 = SQRT3_X2_FLOAT * static_cast<float>(start_hex.y) - SQRT3_FLOAT * static_cast<float>(start_hex.x % 2) + BIAS_FLOAT;
+        _x2 = 3.0f * static_cast<float>(target_hex.x) + BIAS_FLOAT + BIAS_FLOAT;
+        _y2 = SQRT3_X2_FLOAT * static_cast<float>(target_hex.y) - SQRT3_FLOAT * static_cast<float>(target_hex.x % 2) + BIAS_FLOAT;
 
         if (angle != 0.0f) {
             _x2 -= _x1;
@@ -117,52 +116,42 @@ LineTracer::LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx,
     }
 }
 
-auto LineTracer::GetNextHex(uint16& cx, uint16& cy) const -> uint8
+auto LineTracer::GetNextHex(mpos& pos) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    auto t1_x = cx;
-    auto t2_x = cx;
-    auto t1_y = cy;
-    auto t2_y = cy;
+    auto t1_pos = pos;
+    auto t2_pos = pos;
 
-    GeometryHelper::MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
-    GeometryHelper::MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
+    GeometryHelper::MoveHexByDir(t1_pos, _dir1, _mapSize);
+    GeometryHelper::MoveHexByDir(t2_pos, _dir2, _mapSize);
 
-    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_y) - static_cast<float>(t1_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_x));
-    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_y) - static_cast<float>(t2_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_x));
+    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_pos.y) - static_cast<float>(t1_pos.x % 2) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_pos.x));
+    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_pos.y) - static_cast<float>(t2_pos.x % 2) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_pos.x));
 
     dist1 = dist1 > 0 ? dist1 : -dist1;
     dist2 = dist2 > 0 ? dist2 : -dist2;
 
     // Left hand biased
     if (dist1 <= dist2) {
-        cx = t1_x;
-        cy = t1_y;
+        pos = t1_pos;
         return _dir1;
     }
-
-    cx = t2_x;
-    cy = t2_y;
-    return _dir2;
+    else {
+        pos = t2_pos;
+        return _dir2;
+    }
 }
 
-void LineTracer::GetNextSquare(uint16& cx, uint16& cy)
+void LineTracer::GetNextSquare(mpos& pos)
 {
     STACK_TRACE_ENTRY();
 
     _x1 += _dx;
     _y1 += _dy;
 
-    cx = static_cast<uint16>(floor(_x1));
-    cy = static_cast<uint16>(floor(_y1));
-
-    if (cx >= _maxHx) {
-        cx = _maxHx - 1;
-    }
-    if (cy >= _maxHy) {
-        cy = _maxHy - 1;
-    }
+    pos = {static_cast<uint16>(std::floor(_x1)), static_cast<uint16>(std::floor(_y1))};
+    pos = _mapSize.ClampPos(pos);
 }
 
 void LineTracer::NormalizeDir()

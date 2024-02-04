@@ -750,8 +750,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     UNUSED_VARIABLE(as_engine);
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
 
     if (as_dict == nullptr || as_dict->GetSize() == 0) {
         return {};
@@ -778,8 +778,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     UNUSED_VARIABLE(as_engine);
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
 
     as_dict->Clear();
 
@@ -797,8 +797,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
 
     auto* as_dict = CreateASDict(as_engine, type);
 
@@ -1662,28 +1662,20 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     return prop_data;
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
-        RUNTIME_ASSERT(value.length() <= 0xFFFF);
-        out_buf.Write(static_cast<uint16>(value.length()));
-        out_buf.Push(value.data(), value.length());
+    if constexpr (std::is_same_v<T, any_t>) {
+        out_buf.Write<string>(value);
     }
-    else if constexpr (std::is_same_v<T, hstring>) {
+    else {
         out_buf.Write(value);
-    }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T>) {
-        out_buf.Write(value);
-    }
-    else if constexpr (is_strong_type_v<T>) {
-        out_buf.Write(value.underlying_value());
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
@@ -1697,8 +1689,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
@@ -1713,28 +1705,23 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
-        const auto len = in_buf.Read<uint16>();
-        value.resize(len);
-        in_buf.Pop(value.data(), len);
+    if constexpr (std::is_same_v<T, any_t>) {
+        value = any_t {in_buf.Read<string>()};
     }
     else if constexpr (std::is_same_v<T, hstring>) {
         value = in_buf.Read<hstring>(hash_resolver);
     }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T>) {
+    else {
         value = in_buf.Read<T>();
-    }
-    else if constexpr (is_strong_type_v<T>) {
-        value = T {in_buf.Read<typename T::underlying_type>()};
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
@@ -1750,8 +1737,8 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
         int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
@@ -3226,6 +3213,9 @@ static auto Any_Conv(const any_t& self) -> T
     else if constexpr (std::is_same_v<T, string>) {
         return self;
     }
+    else {
+        return parse_from_string<T>(self);
+    }
 }
 
 template<typename T>
@@ -3342,6 +3332,38 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
     const auto clamped_a = static_cast<uint8>(std::clamp(a, 0, 255));
 
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
+}
+
+static void Ipos_ConstructXandY(ipos* self, int x, int y)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) ipos {x, y};
+}
+
+static void Isize_ConstructWandH(isize* self, int width, int height)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) isize {width, height};
+}
+
+static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, int height)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) irect {x, y, width, height};
+}
+
+static void Mpos_ConstructXandY(mpos* self, int x, int y)
+{
+    STACK_TRACE_ENTRY();
+
+    if (x < 0 || x > 0xFFFF || y < 0 || y > 0xFFFF) {
+        throw ScriptException("Invalid mpos values", x, y);
+    }
+
+    new (self) mpos {static_cast<uint16>(x), static_cast<uint16>(y)};
 }
 
 template<typename T, typename U>
@@ -3629,7 +3651,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, game_engine));
-
     AS_VERIFY(engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
     ScriptExtensions::RegisterScriptStdStringAnyExtensions(engine);
@@ -3660,15 +3681,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
-#define REGISTER_HARD_STRONG_TYPE(name, type, underlying_type) \
+#define REGISTER_HARD_STRONG_TYPE(name, type) \
     if (strong_type_registered.count(name) == 0) { \
         strong_type_registered.emplace(name); \
         AS_VERIFY(engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
         AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, #underlying_type " get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, "void set_value(" #underlying_type ")", SCRIPT_FUNC_THIS(StrongType_SetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
@@ -3676,23 +3695,59 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterGlobalFunction(_str(name " get_ZERO_{}()", _str(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
     }
 
-#define REGISTER_RELAXED_STRONG_TYPE(name, type, underlying_type) \
+#define REGISTER_RELAXED_STRONG_TYPE(name, type) \
+    static_assert(is_strong_type_v<type>); \
     if (strong_type_registered.count(name) == 0) { \
-        REGISTER_HARD_STRONG_TYPE(name, type, underlying_type); \
-        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        REGISTER_HARD_STRONG_TYPE(name, type); \
+        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, _str("void f(const {} &in)", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod(name, _str("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
     }
+
+#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) \
+    AS_VERIFY(engine->RegisterObjectMethod(name, _str("{} get_value() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(name, _str("void set_value({})", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS(StrongType_SetUnderlying<type>), SCRIPT_FUNC_THIS_CONV));
 
     unordered_set<string> strong_type_registered;
 
     // Register ucolor
-    REGISTER_HARD_STRONG_TYPE("ucolor", ucolor, uint);
+    REGISTER_HARD_STRONG_TYPE("ucolor", ucolor);
     AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(uint rgba)", SCRIPT_FUNC_THIS(Ucolor_ConstructRawRgba), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(int r, int g, int b, int a = 255)", SCRIPT_FUNC_THIS(Ucolor_ConstructRgba), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 red", offsetof(ucolor, comp.r)));
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 green", offsetof(ucolor, comp.g)));
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
+
+    // Register ipos
+    REGISTER_HARD_STRONG_TYPE("ipos", ipos);
+    AS_VERIFY(engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos, x)));
+    AS_VERIFY(engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos, y)));
+
+    // Register isize
+    REGISTER_HARD_STRONG_TYPE("isize", isize);
+    AS_VERIFY(engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("isize", "int width", offsetof(isize, width)));
+    AS_VERIFY(engine->RegisterObjectProperty("isize", "int height", offsetof(isize, height)));
+
+    // Register irect
+    REGISTER_HARD_STRONG_TYPE("irect", irect);
+    AS_VERIFY(engine->RegisterObjectBehaviour("irect", asBEHAVE_CONSTRUCT, "void f(int x, int y, int width, int height)", SCRIPT_FUNC_THIS(Irect_ConstructXandYandWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("irect", "int x", offsetof(irect, x)));
+    AS_VERIFY(engine->RegisterObjectProperty("irect", "int y", offsetof(irect, y)));
+    AS_VERIFY(engine->RegisterObjectProperty("irect", "int width", offsetof(irect, width)));
+    AS_VERIFY(engine->RegisterObjectProperty("irect", "int height", offsetof(irect, height)));
+
+    // Register mpos
+    REGISTER_HARD_STRONG_TYPE("mpos", mpos);
+    AS_VERIFY(engine->RegisterObjectBehaviour("mpos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Mpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("mpos", "uint16 x", offsetof(mpos, x)));
+    AS_VERIFY(engine->RegisterObjectProperty("mpos", "uint16 y", offsetof(mpos, y)));
+
+    // Register msize
+    REGISTER_HARD_STRONG_TYPE("msize", msize);
+    AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
+    AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name, real_class) \

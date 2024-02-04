@@ -176,6 +176,74 @@ enum class CornerType : uint8
     EastWest = 5,
 };
 
+///@ ExportType mpos mpos HardStrong
+struct mpos
+{
+    constexpr mpos() noexcept = default;
+    constexpr mpos(uint16 x_, uint16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const mpos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const mpos& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x - other.x), static_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x * other.x), static_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x / other.x), static_cast<uint16>(y / other.y)}; }
+
+    uint16 x {};
+    uint16 y {};
+};
+static_assert(std::is_standard_layout_v<mpos>);
+static_assert(sizeof(mpos) == 4);
+DECLARE_FORMATTER(mpos, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(mpos, sstr >> value.x, sstr >> value.y);
+
+template<>
+struct std::hash<mpos>
+{
+    auto operator()(const mpos& v) const noexcept -> size_t { return hash_combine(std::hash<uint16> {}(v.x), std::hash<uint16> {}(v.y)); }
+};
+
+///@ ExportType msize msize HardStrong
+struct msize
+{
+    [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> uint { return static_cast<uint>(width * height); }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
+    }
+    template<typename T>
+    [[nodiscard]] constexpr auto ClampPos(T pos) const -> mpos
+    {
+        RUNTIME_ASSERT(width > 0);
+        RUNTIME_ASSERT(height > 0);
+        return {static_cast<uint16>(std::clamp(static_cast<int>(pos.x), 0, width - 1)), static_cast<uint16>(std::clamp(static_cast<int>(pos.y), 0, height - 1))};
+    }
+    template<typename T>
+    [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
+    {
+        RUNTIME_ASSERT(width > 0);
+        RUNTIME_ASSERT(height > 0);
+        RUNTIME_ASSERT(pos.x >= 0);
+        RUNTIME_ASSERT(pos.y >= 0);
+        RUNTIME_ASSERT(pos.x < width);
+        RUNTIME_ASSERT(pos.y < height);
+        return {static_cast<uint16>(pos.x), static_cast<uint16>(pos.y)};
+    }
+
+    uint16 width {};
+    uint16 height {};
+};
+static_assert(std::is_standard_layout_v<msize>);
+static_assert(sizeof(msize) == 4);
+DECLARE_FORMATTER(msize, "{} {}", value.width, value.height);
+DECLARE_TYPE_PARSER(msize, sstr >> value.width, sstr >> value.height);
+
 class AnimationResolver
 {
 public:

@@ -204,22 +204,20 @@ void Application::SetImGuiEffect(RenderEffect* effect)
     UNUSED_VARIABLE(effect);
 }
 
-auto Application::CreateChildWindow(int width, int height) -> AppWindow*
+auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
 
     return nullptr;
 }
 
-auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
+auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
 
     return nullptr;
 }
@@ -249,55 +247,52 @@ void Application::EndFrame()
 #endif
 }
 
-auto AppWindow::GetSize() const -> tuple<int, int>
+auto AppWindow::GetSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
-    auto w = 1000;
-    auto h = 1000;
+    constexpr auto width = 1000;
+    constexpr auto height = 1000;
 
-    return {w, h};
+    return {width, height};
 }
 
-void AppWindow::SetSize(int w, int h)
+void AppWindow::SetSize(isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(w);
-    UNUSED_VARIABLE(h);
+    UNUSED_VARIABLE(size);
 }
 
-auto AppWindow::GetScreenSize() const -> tuple<int, int>
+auto AppWindow::GetScreenSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
     return {1000, 1000};
 }
 
-void AppWindow::SetScreenSize(int w, int h)
+void AppWindow::SetScreenSize(isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(w);
-    UNUSED_VARIABLE(h);
+    UNUSED_VARIABLE(size);
 }
 
-auto AppWindow::GetPosition() const -> tuple<int, int>
+auto AppWindow::GetPosition() const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    auto x = 0;
-    auto y = 0;
+    constexpr auto x = 0;
+    constexpr auto y = 0;
 
     return {x, y};
 }
 
-void AppWindow::SetPosition(int x, int y)
+void AppWindow::SetPosition(ipos pos)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(pos);
 }
 
 auto AppWindow::IsFocused() const -> bool
@@ -354,12 +349,11 @@ void AppWindow::Destroy()
     STACK_TRACE_ENTRY();
 }
 
-auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(linear_filtered);
     UNUSED_VARIABLE(with_depth);
 
@@ -389,14 +383,12 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     UNUSED_VARIABLE(stencil);
 }
 
-void AppRender::EnableScissor(int x, int y, int width, int height)
+void AppRender::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(pos);
+    UNUSED_VARIABLE(size);
 }
 
 void AppRender::DisableScissor()
@@ -445,21 +437,21 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return false;
 }
 
-auto AppInput::GetMousePosition() const -> tuple<int, int>
+auto AppInput::GetMousePosition() const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    auto x = 100;
-    auto y = 100;
+    constexpr auto x = 100;
+    constexpr auto y = 100;
+
     return {x, y};
 }
 
-void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(pos);
     UNUSED_VARIABLE(relative_to);
 }
 

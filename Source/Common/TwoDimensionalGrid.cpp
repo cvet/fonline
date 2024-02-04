@@ -35,6 +35,8 @@
 
 [[maybe_unused]] void TestSpecializations()
 {
-    [[maybe_unused]] TwoDimensionalGrid<int, uint8, true> grid1;
-    [[maybe_unused]] TwoDimensionalGrid<int, uint8, false> grid2;
+    if constexpr (FO_DEBUG) {
+        [[maybe_unused]] TwoDimensionalGrid<int, ipos, isize, true> grid1;
+        [[maybe_unused]] TwoDimensionalGrid<int, ipos, isize, false> grid2;
+    }
 }

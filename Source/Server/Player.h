@@ -81,7 +81,7 @@ public:
     void Send_GlobalInfo(uint8 flags);
     void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
-    void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
+    void Send_Teleport(const Critter* cr, mpos to_hex);
     void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
@@ -96,12 +96,12 @@ public:
     void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
     void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
-    void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
-    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
+    void Send_Effect(hstring eff_pid, mpos hex, uint16 radius);
+    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
-    void Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
-    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
-    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
+    void Send_MapText(mpos hex, uint color, string_view text, bool unsafe_text);
+    void Send_MapTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num);
+    void Send_MapTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_num, string_view lexems);
     void Send_ViewMap();
     void Send_SomeItem(const Item* item); // Without checks
     void Send_PlaceToGameComplete();

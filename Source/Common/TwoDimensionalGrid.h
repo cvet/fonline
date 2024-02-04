@@ -35,43 +35,31 @@
 
 #include "Common.h"
 
-template<typename TCell, typename TIndex, bool MemoryOptimized>
+template<typename TCell, typename TPos, typename TSize, bool MemoryOptimized>
 class TwoDimensionalGrid
 {
 public:
-    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const -> const TCell&;
-    [[nodiscard]] auto GetCellForWriting(TIndex x, TIndex y) -> TCell&;
+    [[nodiscard]] auto GetCellForReading(TPos pos) const -> const TCell&;
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell&;
 
-    void SetSize(TIndex width, TIndex height);
+    void SetSize(TSize size);
 
 private:
-    struct IndexHasher
-    {
-        auto operator()(const tuple<TIndex, TIndex>& index) const noexcept -> size_t;
-    };
-
-    TIndex _width {};
-    TIndex _height {};
-    unordered_map<tuple<TIndex, TIndex>, TCell, IndexHasher> _cells {};
+    TSize _size {};
+    unordered_map<TPos, TCell> _cells {};
     vector<TCell> _preallocatedCells {};
     const TCell _emptyCell {};
 };
 
-template<typename TCell, typename TIndex, bool MemoryOptimized>
-auto TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::GetCellForReading(TIndex x, TIndex y) const -> const TCell&
+template<typename TCell, typename TPos, typename TSize, bool MemoryOptimized>
+auto TwoDimensionalGrid<TCell, TPos, TSize, MemoryOptimized>::GetCellForReading(TPos pos) const -> const TCell&
 {
     NO_STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_signed_v<TIndex>) {
-        RUNTIME_ASSERT(x >= 0);
-        RUNTIME_ASSERT(y >= 0);
-    }
-
-    RUNTIME_ASSERT(x < _width);
-    RUNTIME_ASSERT(y < _height);
+    RUNTIME_ASSERT(_size.IsValidPos(pos));
 
     if constexpr (MemoryOptimized) {
-        const auto it = _cells.find(tuple {x, y});
+        const auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
             return _emptyCell;
@@ -81,65 +69,52 @@ auto TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::GetCellForReading(TInde
         }
     }
     else {
-        return _preallocatedCells[static_cast<size_t>(y) * _width + x];
+        return _preallocatedCells[static_cast<size_t>(pos.y) * _size.width + pos.x];
     }
 }
 
-template<typename TCell, typename TIndex, bool MemoryOptimized>
-auto TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::GetCellForWriting(TIndex x, TIndex y) -> TCell&
+template<typename TCell, typename TPos, typename TSize, bool MemoryOptimized>
+auto TwoDimensionalGrid<TCell, TPos, TSize, MemoryOptimized>::GetCellForWriting(TPos pos) -> TCell&
 {
     NO_STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_signed_v<TIndex>) {
-        RUNTIME_ASSERT(x >= 0);
-        RUNTIME_ASSERT(y >= 0);
-    }
-
-    RUNTIME_ASSERT(x < _width);
-    RUNTIME_ASSERT(y < _height);
+    RUNTIME_ASSERT(_size.IsValidPos(pos));
 
     if constexpr (MemoryOptimized) {
-        const auto it = _cells.find(tuple {x, y});
+        const auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
-            return _cells.emplace(tuple {x, y}, TCell {}).first->second;
+            return _cells.emplace(pos, TCell {}).first->second;
         }
         else {
             return it->second;
         }
     }
     else {
-        return _preallocatedCells[static_cast<size_t>(y) * _width + x];
+        return _preallocatedCells[static_cast<size_t>(pos.y) * _size.width + pos.x];
     }
 }
 
-template<typename TCell, typename TIndex, bool MemoryOptimized>
-void TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::SetSize(TIndex width, TIndex height)
+template<typename TCell, typename TPos, typename TSize, bool MemoryOptimized>
+void TwoDimensionalGrid<TCell, TPos, TSize, MemoryOptimized>::SetSize(TSize size)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_signed_v<TIndex>) {
-        RUNTIME_ASSERT(width >= 0);
-        RUNTIME_ASSERT(height >= 0);
-    }
+    const auto prev_size = _size;
 
-    const auto prev_width = _width;
-    const auto prev_height = _height;
+    _size = size;
 
-    _width = width;
-    _height = height;
-
-    if (prev_width == 0 && prev_height == 0) {
+    if (prev_size == TSize {}) {
         if constexpr (!MemoryOptimized) {
-            _preallocatedCells.resize(static_cast<size_t>(_width) * _height);
+            _preallocatedCells.resize(_size.GetSquare());
         }
     }
     else {
         if constexpr (MemoryOptimized) {
-            for (size_t hy = 0; hy < std::max(prev_height, _height); hy++) {
-                for (size_t hx = 0; hx < std::max(prev_width, _width); hx++) {
-                    if (hx >= _width && hy >= _height && hx < prev_width && hy < prev_height) {
-                        const auto it = _cells.find(tuple {static_cast<TIndex>(hx), static_cast<TIndex>(hy)});
+            for (size_t y = 0; y < std::max(prev_size.height, _size.height); y++) {
+                for (size_t x = 0; x < std::max(prev_size.width, _size.width); x++) {
+                    if (x >= _size.width && y >= _size.height && x < prev_size.width && y < prev_size.height) {
+                        const auto it = _cells.find(prev_size.FromRawPos(ipos {static_cast<int>(x), static_cast<int>(y)}));
 
                         if (it != _cells.end()) {
                             _cells.erase(it);
@@ -151,30 +126,17 @@ void TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::SetSize(TIndex width, T
         else {
             vector<TCell> new_cells;
 
-            new_cells.resize(static_cast<size_t>(_width) * _height);
+            new_cells.resize(_size.GetSquare());
 
-            for (size_t hy = 0; hy < std::max(prev_height, _height); hy++) {
-                for (size_t hx = 0; hx < std::max(prev_width, _width); hx++) {
-                    if (hx < _width && hy < _height && hx < prev_width && hy < prev_height) {
-                        new_cells[hy * _width + hx] = std::move(_preallocatedCells[hy * prev_width + hx]);
+            for (size_t y = 0; y < std::max(prev_size.height, _size.height); y++) {
+                for (size_t x = 0; x < std::max(prev_size.width, _size.width); x++) {
+                    if (x < _size.width && y < _size.height && x < prev_size.width && y < prev_size.height) {
+                        new_cells[y * _size.width + x] = std::move(_preallocatedCells[y * prev_size.width + x]);
                     }
                 }
             }
 
             _preallocatedCells = std::move(new_cells);
         }
-    }
-}
-
-template<typename TCell, typename TIndex, bool MemoryOptimized>
-auto TwoDimensionalGrid<TCell, TIndex, MemoryOptimized>::IndexHasher::operator()(const tuple<TIndex, TIndex>& index) const noexcept -> size_t
-{
-    NO_STACK_TRACE_ENTRY();
-
-    if constexpr (sizeof(TIndex) <= sizeof(size_t) / 2) {
-        return (static_cast<size_t>(std::get<0>(index)) << (sizeof(size_t) / 2 * 8)) | static_cast<size_t>(std::get<1>(index));
-    }
-    else {
-        return static_cast<size_t>(std::get<0>(index)) ^ static_cast<size_t>(std::get<1>(index));
     }
 }

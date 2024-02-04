@@ -47,8 +47,8 @@
 class Direct3D_Texture final : public RenderTexture
 {
 public:
-    Direct3D_Texture(int width, int height, bool linear_filtered, bool with_depth) :
-        RenderTexture(width, height, linear_filtered, with_depth)
+    Direct3D_Texture(isize size, bool linear_filtered, bool with_depth) :
+        RenderTexture(size, linear_filtered, with_depth)
     {
     }
     Direct3D_Texture(const Direct3D_Texture&) = delete;
@@ -57,9 +57,9 @@ public:
     auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
-    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
+    [[nodiscard]] auto GetTexturePixel(ipos pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -151,10 +151,8 @@ static D3D11_RECT ScissorRect {};
 static D3D11_RECT DisabledScissorRect {};
 static D3D11_VIEWPORT ViewPort {};
 static IRect ViewPortRect {};
-static int BackBufWidth {};
-static int BackBufHeight {};
-static int TargetWidth {};
-static int TargetHeight {};
+static isize BackBufSize {};
+static isize TargetSize {};
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
@@ -423,8 +421,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
 
-    BackBufWidth = settings.ScreenWidth;
-    BackBufHeight = settings.ScreenHeight;
+    BackBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
     // One pixel staging texture
     D3D11_TEXTURE2D_DESC one_pix_staging_desc;
@@ -445,8 +442,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    DummyTexture = CreateTexture(1, 1, false, false);
-    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
+    DummyTexture = CreateTexture({1, 1}, false, false);
+    DummyTexture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
     // Init render target
     SetRenderTarget(nullptr);
@@ -467,15 +464,15 @@ void Direct3D_Renderer::Present()
     D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 }
 
-auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_tex = std::make_unique<Direct3D_Texture>(width, height, linear_filtered, with_depth);
+    auto&& d3d_tex = std::make_unique<Direct3D_Texture>(size, linear_filtered, with_depth);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
-    tex_desc.Width = width;
-    tex_desc.Height = height;
+    tex_desc.Width = size.width;
+    tex_desc.Height = size.height;
     tex_desc.MipLevels = 1;
     tex_desc.ArraySize = 1;
     tex_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -491,8 +488,8 @@ auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtere
 
     if (with_depth) {
         D3D11_TEXTURE2D_DESC depth_tex_desc = {};
-        depth_tex_desc.Width = width;
-        depth_tex_desc.Height = height;
+        depth_tex_desc.Width = size.width;
+        depth_tex_desc.Height = size.height;
         depth_tex_desc.MipLevels = 1;
         depth_tex_desc.ArraySize = 1;
         depth_tex_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -771,8 +768,8 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
         vp_ox = 0;
         vp_oy = 0;
-        vp_width = d3d_tex->Width;
-        vp_height = d3d_tex->Height;
+        vp_width = d3d_tex->Size.width;
+        vp_height = d3d_tex->Size.height;
         screen_width = vp_width;
         screen_height = vp_height;
     }
@@ -780,13 +777,13 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
         CurRenderTarget = MainRenderTarget;
         CurDepthStencil = nullptr;
 
-        const float back_buf_aspect = static_cast<float>(BackBufWidth) / static_cast<float>(BackBufHeight);
+        const float back_buf_aspect = static_cast<float>(BackBufSize.width) / static_cast<float>(BackBufSize.height);
         const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufHeight) * screen_aspect : static_cast<float>(BackBufHeight) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufWidth) / back_buf_aspect : static_cast<float>(BackBufWidth) / screen_aspect);
+        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.height) * screen_aspect : static_cast<float>(BackBufSize.height) * back_buf_aspect);
+        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.width) / back_buf_aspect : static_cast<float>(BackBufSize.width) / screen_aspect);
 
-        vp_ox = (BackBufWidth - fit_width) / 2;
-        vp_oy = (BackBufHeight - fit_height) / 2;
+        vp_ox = (BackBufSize.width - fit_width) / 2;
+        vp_oy = (BackBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
         screen_width = Settings->ScreenWidth;
@@ -814,8 +811,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     DisabledScissorRect.right = vp_ox + vp_width;
     DisabledScissorRect.bottom = vp_oy + vp_height;
 
-    TargetWidth = screen_width;
-    TargetHeight = screen_height;
+    TargetSize = {screen_width, screen_height};
 }
 
 void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -845,24 +841,24 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     }
 }
 
-void Direct3D_Renderer::EnableScissor(int x, int y, int width, int height)
+void Direct3D_Renderer::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
-    if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
-        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
-        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetHeight);
+    if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
+        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
+        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(x + width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(y + height) * y_ratio);
+        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
     }
     else {
-        ScissorRect.left = ViewPortRect.Left + x;
-        ScissorRect.top = ViewPortRect.Top + y;
-        ScissorRect.right = ViewPortRect.Left + x + width;
-        ScissorRect.bottom = ViewPortRect.Top + y + height;
+        ScissorRect.left = ViewPortRect.Left + pos.x;
+        ScissorRect.top = ViewPortRect.Top + pos.y;
+        ScissorRect.right = ViewPortRect.Left + pos.x + size.width;
+        ScissorRect.bottom = ViewPortRect.Top + pos.y + size.height;
     }
 
     ScissorEnabled = true;
@@ -875,7 +871,7 @@ void Direct3D_Renderer::DisableScissor()
     ScissorEnabled = false;
 }
 
-void Direct3D_Renderer::OnResizeWindow(int width, int height)
+void Direct3D_Renderer::OnResizeWindow(isize size)
 {
     const auto is_cur_rt = CurRenderTarget == MainRenderTarget;
 
@@ -888,7 +884,7 @@ void Direct3D_Renderer::OnResizeWindow(int width, int height)
     MainRenderTarget->Release();
     MainRenderTarget = nullptr;
 
-    const auto d3d_resize_buffers = SwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+    const auto d3d_resize_buffers = SwapChain->ResizeBuffers(0, size.width, size.height, DXGI_FORMAT_UNKNOWN, 0);
     RUNTIME_ASSERT(SUCCEEDED(d3d_resize_buffers));
 
     ID3D11Texture2D* back_buf = nullptr;
@@ -899,8 +895,7 @@ void Direct3D_Renderer::OnResizeWindow(int width, int height)
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
 
-    BackBufWidth = width;
-    BackBufHeight = height;
+    BackBufSize = size;
 
     if (is_cur_rt) {
         SetRenderTarget(nullptr);
@@ -928,20 +923,17 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> ucolor
+auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x < Width);
-    RUNTIME_ASSERT(y < Height);
+    RUNTIME_ASSERT(Size.IsValidPos(pos));
 
     D3D11_BOX src_box;
-    src_box.left = x;
-    src_box.top = y;
-    src_box.right = x + 1;
-    src_box.bottom = y + 1;
+    src_box.left = pos.x;
+    src_box.top = pos.y;
+    src_box.right = pos.x + 1;
+    src_box.bottom = pos.y + 1;
     src_box.front = 0;
     src_box.back = 1;
 
@@ -958,23 +950,23 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> ucolor
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
+auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x + width <= Width);
-    RUNTIME_ASSERT(y + height <= Height);
+    RUNTIME_ASSERT(size.width > 0);
+    RUNTIME_ASSERT(size.height > 0);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(width) * height);
+    result.resize(static_cast<size_t>(size.width) * size.height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
-    staging_desc.Width = width;
-    staging_desc.Height = height;
+    staging_desc.Width = size.width;
+    staging_desc.Height = size.height;
     staging_desc.MipLevels = 1;
     staging_desc.ArraySize = 1;
     staging_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -990,10 +982,10 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_staging_tex));
 
     D3D11_BOX src_box;
-    src_box.left = x;
-    src_box.top = y;
-    src_box.right = x + width;
-    src_box.bottom = y + height;
+    src_box.left = pos.x;
+    src_box.top = pos.y;
+    src_box.right = pos.x + size.width;
+    src_box.bottom = pos.y + size.height;
     src_box.front = 0;
     src_box.back = 1;
 
@@ -1003,9 +995,9 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
-    for (int i = 0; i < height; i++) {
+    for (int i = 0; i < size.height; i++) {
         const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
-        std::memcpy(&result[static_cast<size_t>(i) * width], src, static_cast<size_t>(width) * 4);
+        std::memcpy(&result[static_cast<size_t>(i) * size.width], src, static_cast<size_t>(size.width) * 4);
     }
 
     D3DDeviceContext->Unmap(staging_tex, 0);
@@ -1014,26 +1006,24 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
+void Direct3D_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(r.Left >= 0);
-    RUNTIME_ASSERT(r.Right >= 0);
-    RUNTIME_ASSERT(r.Right <= Width);
-    RUNTIME_ASSERT(r.Bottom <= Height);
-    RUNTIME_ASSERT(r.Right > r.Left);
-    RUNTIME_ASSERT(r.Bottom > r.Top);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     D3D11_BOX dest_box;
-    dest_box.left = r.Left;
-    dest_box.top = r.Top;
-    dest_box.right = r.Right;
-    dest_box.bottom = r.Bottom;
+    dest_box.left = pos.x;
+    dest_box.top = pos.y;
+    dest_box.right = pos.x + size.width;
+    dest_box.bottom = pos.y + size.height;
     dest_box.front = 0;
     dest_box.back = 1;
 
-    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, 4 * r.Width(), 0);
+    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, 4 * size.width, 0);
 }
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()

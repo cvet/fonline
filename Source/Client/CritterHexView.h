@@ -65,6 +65,8 @@ public:
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto IsNameVisible() const -> bool;
+    [[nodiscard]] auto GetNameTextPos() const -> ipos;
+    [[nodiscard]] auto GetNameTextInfo(bool& name_visible, int& lines) const -> irect;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
@@ -85,36 +87,28 @@ public:
     void Process();
     void ResetOk();
     void ClearAnim();
-    void AddExtraOffs(int ext_ox, int ext_oy);
+    void AddExtraOffs(ipos offset);
     void RefreshOffs();
     void SetText(string_view str, ucolor color, time_duration text_delay);
     void DrawTextOnHead();
-    void GetNameTextPos(int& x, int& y) const;
-    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void ClearMove();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
 
-    struct
+    struct MovingData
     {
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
         time_point StartTime {};
         time_duration OffsetTime {};
-        uint16 StartHexX {};
-        uint16 StartHexY {};
-        uint16 EndHexX {};
-        uint16 EndHexY {};
+        mpos StartHex {};
+        mpos EndHex {};
         float WholeTime {};
         float WholeDist {};
-        int16 StartOx {};
-        int16 StartOy {};
-        int16 EndOx {};
-        int16 EndOy {};
-        uint16 RealHexX {};
-        uint16 RealHexY {};
+        ipos16 StartHexOffset {};
+        ipos16 EndHexOffset {};
     } Moving {};
 
 private:
@@ -154,12 +148,9 @@ private:
     time_duration _textShowDuration {};
     ucolor _textOnHeadColor {COLOR_TEXT};
 
-    int _oxAnim {};
-    int _oyAnim {};
-    float _oxExt {};
-    float _oyExt {};
-    float _oxExtSpeed {};
-    float _oyExtSpeed {};
+    ipos _offsAnim {};
+    fpos _offsExt {};
+    fpos _offsExtSpeed {};
     time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D

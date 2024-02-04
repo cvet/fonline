@@ -74,6 +74,10 @@ static void SetEntry(T& entry, string_view value, bool append)
         auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
         entry = T {static_cast<T>(std::get<AnyData::INT_VALUE>(any_value))};
     }
+    else if constexpr (is_valid_pod_type_v<T>) {
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
+        entry = parse_from_string<T>(std::get<AnyData::STRING_VALUE>(any_value));
+    }
     else {
         auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
         entry += static_cast<T>(std::get<AnyData::INT_VALUE>(any_value));

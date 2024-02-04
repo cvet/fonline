@@ -386,34 +386,28 @@
 
 ///# ...
 ///# param nameVisible ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
 ///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
+[[maybe_unused]] irect Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& lines)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->GetNameTextInfo(nameVisible, x, y, w, h, lines);
+    return hex_cr->GetNameTextInfo(nameVisible, lines);
 }
 
 ///# ...
-///# param x ...
-///# param y ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_GetTextPos(CritterView* self, int& x, int& y)
+[[maybe_unused]] ipos Client_Critter_GetTextPos(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->GetNameTextPos(x, y);
+    return hex_cr->GetNameTextPos();
 }
 
 ///# ...
@@ -482,11 +476,10 @@
 
 ///# ...
 ///# param boneName ...
-///# param boneX ...
-///# param boneY ...
+///# param boneOffset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, int& boneX, int& boneY)
+[[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, ipos& boneOffset)
 {
 #if FO_ENABLE_3D
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
@@ -494,20 +487,18 @@
         throw ScriptException("Critter is not on map");
     }
 
-    boneX = hex_cr->ScrX;
-    boneY = hex_cr->ScrY;
+    boneOffset = hex_cr->SprOffset;
 
     if (!hex_cr->IsModel()) {
         return false;
     }
 
     const auto bone_pos = hex_cr->GetModel()->GetBonePos(boneName);
-    if (!bone_pos) {
+    if (!bone_pos.has_value()) {
         return false;
     }
 
-    boneX += std::get<0>(*bone_pos);
-    boneY += std::get<1>(*bone_pos);
+    boneOffset = boneOffset + bone_pos.value();
 
     return true;
 
@@ -522,14 +513,14 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, uint16 hx, uint16 hy, int ox, int oy, uint speed)
+[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos16 hex_offset, uint speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hx, hy, ox, oy}, speed);
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, hex_offset}, speed);
 }
 
 ///@ ExportMethod

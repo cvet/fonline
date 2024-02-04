@@ -42,9 +42,9 @@ DECLARE_EXCEPTION(HashCollisionException);
 class HashStorage : public HashResolver
 {
 public:
-    auto ToHashedString(string_view s) -> hstring override;
-    auto ToHashedStringMustExists(string_view s) const -> hstring override;
-    auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
+    [[nodiscard]] auto ToHashedString(string_view s) -> hstring override;
+    [[nodiscard]] auto ToHashedStringMustExists(string_view s) const -> hstring override;
+    [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
 
 private:
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
@@ -80,13 +80,13 @@ public:
     [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
-    [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
-    [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
+    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> uint;
+    [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) -> fpos;
+    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) -> fpos;
 
     static void SetRandomSeed(int seed);
     static void ForkProcess();
-    static void WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data);
+    static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
 };
 
 class MatrixHelper final

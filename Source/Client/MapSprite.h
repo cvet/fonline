@@ -96,18 +96,16 @@ enum class EggAppearenceType : uint8
     ByXOrY,
 };
 
-///@ ExportObject Client HasFactory
+///@ ExportRefType Client HasFactory
 struct MapSpriteData
 {
     SCRIPTABLE_OBJECT_BEGIN();
 
     bool Valid {};
     uint SprId {};
-    uint16 HexX {};
-    uint16 HexY {};
+    mpos Hex {};
     hstring ProtoId {};
-    int OffsX {};
-    int OffsY {};
+    ipos Offset {};
     bool IsFlat {};
     bool NoLight {};
     DrawOrderType DrawOrder {};
@@ -117,13 +115,13 @@ struct MapSpriteData
     ucolor Color {};
     ucolor ContourColor {};
     bool IsTweakOffs {};
-    int TweakOffsX {};
-    int TweakOffsY {};
+    ipos TweakOffset {};
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
 
     SCRIPTABLE_OBJECT_END();
 };
+static_assert(std::is_standard_layout_v<MapSpriteData>);
 
 class MapSprite final
 {
@@ -137,7 +135,7 @@ public:
 
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetViewRect() const -> IRect;
-    [[nodiscard]] auto CheckHit(int ox, int oy, bool check_transparent) const -> bool;
+    [[nodiscard]] auto CheckHit(ipos pos, bool check_transparent) const -> bool;
 
     void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
@@ -146,7 +144,7 @@ public:
     void SetColor(ucolor color);
     void SetAlpha(const uint8* alpha);
     void SetFixedAlpha(uint8 alpha);
-    void SetLight(CornerType corner, const uint8* light, uint16 maxhx, uint16 maxhy);
+    void SetLight(CornerType corner, const uint8* light, msize size);
 
     // Todo:: incapsulate all sprite data
     MapSpriteList* Root {};
@@ -155,14 +153,10 @@ public:
     size_t TreeIndex {};
     const Sprite* Spr {};
     const Sprite* const* PSpr {};
-    uint16 HexX {};
-    uint16 HexY {};
-    int ScrX {};
-    int ScrY {};
-    const int* PScrX {};
-    const int* PScrY {};
-    const int* OffsX {};
-    const int* OffsY {};
+    mpos Hex {};
+    ipos HexOffset {};
+    const ipos* PHexOffset {};
+    const ipos* SprOffset {};
     const uint8* Alpha {};
     const uint8* Light {};
     const uint8* LightRight {};
@@ -200,13 +194,13 @@ public:
 
     [[nodiscard]] auto RootSprite() -> MapSprite*;
 
-    auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void Invalidate();
     void Sort();
 
 private:
-    auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void GrowPool();
 
     SpriteManager& _sprMngr;

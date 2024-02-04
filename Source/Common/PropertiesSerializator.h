@@ -46,5 +46,7 @@ public:
     [[nodiscard]] static auto SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] static auto LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool;
     [[nodiscard]] static auto SavePropertyToValue(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
+    [[nodiscard]] static auto SavePropertyToValue(const PropertyBaseInfo* prop, const uint8* data, uint data_size, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] static auto LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool;
+    [[nodiscard]] static auto LoadPropertyFromValue(const PropertyBaseInfo* prop, string_view prop_name, const AnyData::Value& value, const std::function<void(const uint8*, uint)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool;
 };

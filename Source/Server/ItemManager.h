@@ -72,7 +72,7 @@ public:
     void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
-    void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);
+    void MoveItem(Item* item, uint count, Map* to_map, mpos to_hex, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks);
     auto AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*;
     void EraseItemFromContainer(Item* cont, Item* item);
@@ -80,7 +80,7 @@ public:
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, vector<uint16>& channels);
-    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems);
+    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, upos16 from_wpos, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:

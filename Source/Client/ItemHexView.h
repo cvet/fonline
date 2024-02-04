@@ -59,7 +59,7 @@ public:
     void Process();
     void RefreshAlpha();
     void RefreshAnim();
-    void SetEffect(uint16 to_hx, uint16 to_hy);
+    void SetEffect(mpos to_hex);
     void RefreshOffs();
 
 private:
@@ -69,14 +69,11 @@ private:
 
     bool _isEffect {};
     bool _isDynamicEffect {};
-    float _effSx {};
-    float _effSy {};
-    int _effStartX {};
-    int _effStartY {};
-    float _effCurX {};
-    float _effCurY {};
+    fpos _effStepOffset {};
+    ipos _effStartOffset {};
+    fpos _effCurOffset {};
     uint _effDist {};
     time_point _effUpdateLastTime {};
-    int _effDir {};
-    vector<pair<uint16, uint16>> _effSteps {};
+    uint8 _effDir {};
+    vector<mpos> _effSteps {};
 };

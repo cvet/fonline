@@ -422,7 +422,7 @@ void ModelInstance::SetupFrame()
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
+auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos
 {
     STACK_TRACE_ENTRY();
 
@@ -432,13 +432,13 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
     return {iround(out.x / static_cast<float>(FRAME_SCALE)), iround(out.y / static_cast<float>(FRAME_SCALE))};
 }
 
-auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
+auto ModelInstance::Convert2dTo3d(ipos pos) const -> vec3
 {
     STACK_TRACE_ENTRY();
 
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
-    const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
-    const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
+    const auto xf = static_cast<float>(pos.x) * static_cast<float>(FRAME_SCALE);
+    const auto yf = static_cast<float>(pos.y) * static_cast<float>(FRAME_SCALE);
     vec3 out;
     MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameHeight) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
@@ -831,12 +831,12 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     return mesh_changed;
 }
 
-void ModelInstance::MoveModel(int ox, int oy)
+void ModelInstance::MoveModel(ipos offset)
 {
     STACK_TRACE_ENTRY();
 
-    const vec3 pos_zero = Convert2dTo3d(0, 0);
-    const vec3 pos = Convert2dTo3d(ox, oy);
+    const vec3 pos_zero = Convert2dTo3d({0, 0});
+    const vec3 pos = Convert2dTo3d(offset);
     const vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
@@ -1047,14 +1047,14 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const -> tuple<int, int>
+auto ModelInstance::GetDrawSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
 
-auto ModelInstance::GetViewSize() const -> tuple<int, int>
+auto ModelInstance::GetViewSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 
@@ -1824,7 +1824,7 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameWidth / FRAME_SCALE;
     const auto h = _frameHeight / FRAME_SCALE;
-    ProcessAnimation(dt, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, static_cast<float>(FRAME_SCALE));
 
     if (_combinedMeshesSize != 0) {
         for (size_t i = 0; i < _combinedMeshesSize; i++) {
@@ -1835,19 +1835,20 @@ void ModelInstance::Draw()
     DrawAllParticles();
 }
 
-void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
+void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
 {
     STACK_TRACE_ENTRY();
 
     // Update world matrix, only for root
     if (_parentBone == nullptr) {
-        const auto pos = Convert2dTo3d(x, y);
+        const auto pos3d = Convert2dTo3d(pos);
         mat44 mat_rot_y;
         mat44 mat_scale;
         mat44 mat_trans;
         mat44::Scaling(vec3(scale, scale, scale), mat_scale);
         mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * PI_FLOAT / 180.0f, mat_rot_y);
-        mat44::Translation(pos, mat_trans);
+        mat44::Translation(pos3d, mat_trans);
+
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos.x = _parentMatrix.a4;
         _groundPos.y = _parentMatrix.b4;
@@ -1928,7 +1929,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
     // Move child animations
     for (auto&& child : _children) {
-        child->ProcessAnimation(elapsed, x, y, 1.0f);
+        child->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     // Animation callbacks
@@ -2058,7 +2059,7 @@ auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
     return bone;
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
+auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
 {
     STACK_TRACE_ENTRY();
 
@@ -2072,9 +2073,10 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
 
     const auto p = Convert3dTo2d(pos);
-    const auto x = p.X - _frameWidth / FRAME_SCALE / 2;
-    const auto y = -(p.Y - _frameHeight / FRAME_SCALE / 4);
-    return tuple {x, y};
+    const auto x = p.x - _frameWidth / FRAME_SCALE / 2;
+    const auto y = -(p.y - _frameHeight / FRAME_SCALE / 4);
+
+    return ipos {x, y};
 }
 
 auto ModelInstance::GetAnimDuration() const -> time_duration

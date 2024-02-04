@@ -158,7 +158,7 @@
         throw ScriptException("Critters different maps");
     }
 
-    return GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
+    return GeometryHelper::DistGame(hex_cr1->GetMapHex(), hex_cr2->GetMapHex());
 }
 
 ///# ...
@@ -413,24 +413,23 @@
     }
 
     auto&& clip = std::make_unique<VideoClip>(file.GetData());
-    auto&& tex = unique_ptr<RenderTexture> {App->Render.CreateTexture(std::get<0>(clip->GetSize()), std::get<1>(clip->GetSize()), true, false)};
+    auto&& tex = unique_ptr<RenderTexture> {App->Render.CreateTexture(clip->GetSize(), true, false)};
 
     clip->SetLooped(looped);
 
     auto* video = new VideoPlayback();
     video->Clip = std::move(clip);
     video->Tex = std::move(tex);
+
     return video;
 }
 
 ///# ...
 ///# param video ...
-///# param x ...
-///# param y ...
-///# param width ...
-///# param height ...
+///# param pos ...
+///# param size ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, int x, int y, int width, int height)
+[[maybe_unused]] void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -440,10 +439,10 @@
         return;
     }
 
-    if (width > 0 && height > 0) {
-        video->Tex->UpdateTextureRegion({0, 0, video->Tex->Width, video->Tex->Height}, video->Clip->RenderFrame().data());
+    if (size.width > 0 && size.height > 0) {
+        video->Tex->UpdateTextureRegion({}, video->Tex->Size, video->Clip->RenderFrame().data());
 
-        const auto r = IRect {x, y, x + width, y + height};
+        const auto r = IRect {pos.x, pos.y, pos.x + size.width, pos.y + size.height};
         client->SprMngr.DrawTexture(video->Tex.get(), false, nullptr, &r);
     }
 
@@ -866,15 +865,13 @@
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# param button ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, int x, int y, MouseButton button)
+[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, MouseButton button)
 {
     UNUSED_VARIABLE(client);
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(pos);
     UNUSED_VARIABLE(button);
 
     throw NotImplementedException(LINE_STR);
@@ -1000,37 +997,22 @@
 ///# param sprId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId)
+[[maybe_unused]] isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
     if (spr == nullptr) {
-        return 0;
+        return {};
     }
 
-    return spr->Width;
+    return spr->Size;
 }
 
 ///# ...
 ///# param sprId ...
+///# param pos ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId)
-{
-    const auto* spr = client->AnimGetSpr(sprId);
-    if (spr == nullptr) {
-        return 0;
-    }
-
-    return spr->Height;
-}
-
-///# ...
-///# param sprId ...
-///# param x ...
-///# param y ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, int x, int y)
+[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos pos)
 {
     if (sprId == 0) {
         return false;
@@ -1041,7 +1023,7 @@
         return false;
     }
 
-    return client->SprMngr.SpriteHitTest(spr, x, y, false);
+    return client->SprMngr.SpriteHitTest(spr, pos, false);
 }
 
 ///# ...
@@ -1094,27 +1076,24 @@
 
 ///# ...
 ///# param text ...
-///# param w ...
-///# param h ...
+///# param size ...
 ///# param font ...
 ///# param flags ...
-///# param tw ...
-///# param th ...
+///# param resultSize ...
 ///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, int flags, isize& resultSize, int& lines)
 {
-    if (!client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
+    if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, lines)) {
         throw ScriptException("Can't evaluate text information", font);
     }
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1129,16 +1108,15 @@
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, x, y, COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, pos, COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, ucolor color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1153,17 +1131,16 @@
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, x, y, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, ucolor color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1178,25 +1155,23 @@
         return;
     }
 
-    auto xx = x;
-    auto yy = y;
+    auto x = pos.x;
+    auto y = pos.y;
 
     if (offs) {
-        xx += -spr->Width / 2 + spr->OffsX;
-        yy += -spr->Height + spr->OffsY;
+        x += -spr->Size.width / 2 + spr->Offset.x;
+        y += -spr->Size.height + spr->Offset.y;
     }
 
-    client->SprMngr.DrawSprite(spr, xx, yy, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1211,18 +1186,16 @@
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, ucolor color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1237,20 +1210,18 @@
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///# param color ...
 ///# param zoom ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, ucolor color, bool zoom, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool zoom, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1265,28 +1236,26 @@
         return;
     }
 
-    auto xx = x;
-    auto yy = y;
+    auto x = pos.x;
+    auto y = pos.y;
 
     if (offs) {
-        xx += spr->OffsX;
-        yy += spr->OffsY;
+        x += spr->Offset.x;
+        y += spr->Offset.y;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, xx, yy, w, h, zoom, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, size, zoom, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
 ///# param sprId ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///# param sprWidth ...
 ///# param sprHeight ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int x, int y, int w, int h, int sprWidth, int sprHeight, ucolor color)
+[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, ipos pos, isize size, int sprWidth, int sprHeight, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1301,20 +1270,18 @@
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(spr, x, y, w, h, sprWidth, sprHeight, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpritePattern(spr, pos, size, sprWidth, sprHeight, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
 ///# param text ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///# param color ...
 ///# param font ...
 ///# param flags ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, ucolor color, int font, int flags)
+[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, int flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1323,22 +1290,21 @@
         return;
     }
 
-    auto ww = w;
-    auto hh = h;
-    auto xx = x;
-    auto yy = y;
+    auto x = pos.x;
+    auto y = pos.y;
+    auto width = size.width;
+    auto height = size.height;
 
-    if (ww < 0) {
-        ww = -ww;
-        xx -= ww;
+    if (width < 0) {
+        width = -width;
+        x -= width;
     }
-    if (hh < 0) {
-        hh = -hh;
-        yy -= hh;
+    if (height < 0) {
+        height = -height;
+        y -= height;
     }
 
-    const auto r = IRect(xx, yy, xx + ww, yy + hh);
-    client->SprMngr.DrawStr(r, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
+    client->SprMngr.DrawText({x, y, width, height}, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
 }
 
 ///# ...
@@ -1381,11 +1347,10 @@
 
     for (size_t i = 0; i < size; i++) {
         auto& pp = points[i];
-        pp.PointX = data[i * 3];
-        pp.PointY = data[i * 3 + 1];
+
+        pp.PointPos = {data[i * 3], data[i * 3 + 1]};
         pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2])};
-        pp.PointOffsX = nullptr;
-        pp.PointOffsY = nullptr;
+        pp.PointOffset = nullptr;
     }
 
     client->SprMngr.DrawPoints(points, prim);
@@ -1407,8 +1372,9 @@
 [[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
+
     if (frames != nullptr) {
-        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), l, t, r - l, b - t, scratch, center, color != ucolor::clear ? color : COLOR_SPRITE);
+        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : COLOR_SPRITE);
     }
 }
 
@@ -1474,6 +1440,7 @@
     const auto stt = (count > 11 ? position[11] : 0.0f);
     const auto str = (count > 12 ? position[12] : 0.0f);
     const auto stb = (count > 13 ? position[13] : 0.0f);
+
     if (count > 13) {
         client->SprMngr.PushScissor(static_cast<int>(stl), static_cast<int>(stt), static_cast<int>(str), static_cast<int>(stb));
     }
@@ -1494,7 +1461,10 @@
 
     model_spr->DrawToAtlas();
 
-    client->SprMngr.DrawSprite(model_spr.get(), static_cast<int>(x) - model_spr->Width / 2 + model_spr->OffsX, static_cast<int>(y) - model_spr->Height + model_spr->OffsY, color != ucolor::clear ? color : COLOR_SPRITE);
+    const auto result_x = static_cast<int>(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
+    const auto result_y = static_cast<int>(y) - model_spr->Size.height + model_spr->Offset.y;
+
+    client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
 
     if (count > 13) {
         client->SprMngr.PopScissor();
@@ -1515,14 +1485,12 @@
 }
 
 ///# ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PushDrawScissor(FOClient* client, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
 {
-    client->SprMngr.PushScissor(x, y, x + w, y + h);
+    client->SprMngr.PushScissor(pos.x, pos.y, pos.x + size.width, pos.y + size.height);
 }
 
 ///# ...
@@ -1542,7 +1510,7 @@
     }
 
     if (client->OffscreenSurfaces.empty()) {
-        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
+        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Screen, {0, 0}, false);
         if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");
         }
@@ -1599,12 +1567,10 @@
 
 ///# ...
 ///# param effectSubtype ...
-///# param x ...
-///# param y ...
-///# param w ...
-///# param h ...
+///# param pos ...
+///# param size ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1625,8 +1591,13 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    const auto from = IRect(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
+    const auto l = std::clamp(pos.x, 0, client->Settings.ScreenWidth);
+    const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
+    const auto r = std::clamp(pos.x + size.width, 0, client->Settings.ScreenWidth);
+    const auto b = std::clamp(pos.y + size.height, 0, client->Settings.ScreenHeight);
+    const auto from = IRect(l, t, r, b);
     const auto to = IRect(from);
+
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
@@ -1840,12 +1811,11 @@
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
+[[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, ipos pos)
 {
-    client->SprMngr.SetMousePosition(x, y);
+    client->SprMngr.SetMousePosition(pos);
 }
 
 ///# ...

@@ -152,16 +152,12 @@ void Critter::ClearMove()
     Moving.ControlSteps = {};
     Moving.StartTime = {};
     Moving.Speed = {};
-    Moving.StartHexX = {};
-    Moving.StartHexY = {};
-    Moving.EndHexX = {};
-    Moving.EndHexY = {};
+    Moving.StartHex = {};
+    Moving.EndHex = {};
     Moving.WholeTime = {};
     Moving.WholeDist = {};
-    Moving.StartOx = {};
-    Moving.StartOy = {};
-    Moving.EndOx = {};
-    Moving.EndOy = {};
+    Moving.StartHexOffset = {};
+    Moving.EndHexOffset = {};
 }
 
 void Critter::ClearVisible()
@@ -549,7 +545,7 @@ void Critter::Broadcast_Dir()
     }
 }
 
-void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
+void Critter::Broadcast_Teleport(mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
@@ -560,7 +556,7 @@ void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Teleport(this, to_hx, to_hy);
+        cr->Send_Teleport(this, to_hex);
     }
 }
 
@@ -672,7 +668,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -705,7 +701,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, 
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
-        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
     }
@@ -738,7 +734,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_nu
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
-        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
     }
@@ -959,14 +955,14 @@ void Critter::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
     }
 }
 
-void Critter::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
+void Critter::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Teleport(cr, to_hx, to_hy);
+        _player->Send_Teleport(cr, to_hex);
     }
 }
 
@@ -1124,25 +1120,25 @@ void Critter::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
     }
 }
 
-void Critter::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
+void Critter::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Effect(eff_pid, hx, hy, radius);
+        _player->Send_Effect(eff_pid, hex, radius);
     }
 }
 
-void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
+void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hx, from_hy, to_hx, to_hy);
+        _player->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
     }
 }
 
@@ -1157,36 +1153,36 @@ void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
     }
 }
 
-void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
+void Critter::Send_MapText(mpos hex, uint color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapText(hx, hy, color, text, unsafe_text);
+        _player->Send_MapText(hex, color, text, unsafe_text);
     }
 }
 
-void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
+void Critter::Send_MapTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
+        _player->Send_MapTextMsg(hex, color, msg_num, str_num);
     }
 }
 
-void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
+void Critter::Send_MapTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
+        _player->Send_MapTextMsgLex(hex, color, msg_num, str_num, lexems);
     }
 }
 

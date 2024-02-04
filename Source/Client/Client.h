@@ -67,7 +67,7 @@
 DECLARE_EXCEPTION(EngineDataNotFoundException);
 DECLARE_EXCEPTION(ResourcesOutdatedException);
 
-///@ ExportObject Client
+///@ ExportRefType Client
 struct VideoPlayback
 {
     SCRIPTABLE_OBJECT_BEGIN();
@@ -79,6 +79,7 @@ struct VideoPlayback
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
 };
+static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
 enum class EffectType : uint
@@ -175,7 +176,7 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, any_t> params);
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -238,7 +239,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, ucolor& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, mpos& /*hex*/, ucolor& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, ident_t /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
@@ -309,8 +310,7 @@ protected:
     {
         ident_t LocId {};
         hstring LocPid {};
-        uint16 LocWx {};
-        uint16 LocWy {};
+        upos16 LocPos {};
         uint16 Radius {};
         ucolor Color {};
         uint8 Entrances {};
@@ -393,7 +393,7 @@ protected:
     void Net_OnRemoteCall();
 
     void OnText(string_view str, ident_t cr_id, int how_say);
-    void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
+    void OnMapText(string_view str, mpos hex, ucolor color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);

@@ -67,7 +67,7 @@ public:
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 
     auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+    void AddEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values);
     void FinalizeDataRegistration();
 
     GlobalSettings& Settings;
@@ -89,5 +89,5 @@ private:
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
-    unordered_map<string, const type_info*> _enumTypes {};
+    unordered_map<string, size_t> _enumSizes {};
 };

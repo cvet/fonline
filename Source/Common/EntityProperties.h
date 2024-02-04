@@ -110,9 +110,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexY);
+    ENTITY_PROPERTY(PrivateCommon, mpos, MapHex);
     ///@ ExportProperty ReadOnly Alias = CritId
     ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
     ///@ ExportProperty ReadOnly Alias = CritSlot Alias = Slot
@@ -130,9 +128,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, Opened);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int16, OffsetX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int16, OffsetY);
+    ENTITY_PROPERTY(Public, ipos16, DrawOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, float, FlyEffectSpeed);
     ///@ ExportProperty ReadOnly
@@ -258,9 +254,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, MapId);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, WorldX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, WorldY);
+    ENTITY_PROPERTY(Protected, upos16, WorldPos);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, ident_t, GlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
@@ -276,17 +270,11 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexX);
+    ENTITY_PROPERTY(PrivateCommon, mpos, MapLeaveHex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexY);
+    ENTITY_PROPERTY(PrivateCommon, mpos, MapHex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexY);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, int16, HexOffsX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, int16, HexOffsY);
+    ENTITY_PROPERTY(PrivateCommon, ipos16, MapHexOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, Dir);
     ///@ ExportProperty ReadOnly
@@ -334,9 +322,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, hstring, HomeMapPid);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, HomeHexX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, HomeHexY);
+    ENTITY_PROPERTY(PrivateServer, mpos, HomeHex);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint8, HomeDir);
     ///@ ExportProperty
@@ -410,13 +396,9 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateClient, string, FileDir);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Width);
+    ENTITY_PROPERTY(PrivateCommon, msize, Size);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Height);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, uint16, WorkHexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, uint16, WorkHexY);
+    ENTITY_PROPERTY(PrivateClient, mpos, WorkHex);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LocId);
     ///@ ExportProperty ReadOnly
@@ -469,9 +451,7 @@ public:
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, WorldX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, WorldY);
+    ENTITY_PROPERTY(PrivateServer, upos16, WorldPos);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint16, Radius);
     ///@ ExportProperty

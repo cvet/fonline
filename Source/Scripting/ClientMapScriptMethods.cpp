@@ -62,17 +62,15 @@
 
 ///# ...
 ///# param text ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param showTime ...
 ///# param color ...
 ///# param fade ...
-///# param endOx ...
-///# param endOy ...
+///# param endOffset ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, ucolor color, bool fade, int endOx, int endOy)
+[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, mpos hex, tick_t showTime, ucolor color, bool fade, ipos endOffset)
 {
-    self->AddMapText(text, hx, hy, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
+    self->AddMapText(text, hex, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOffset);
 }
 
 ///# ...
@@ -84,10 +82,10 @@
         throw ScriptException("Map sprite arg is null");
     }
 
-    if (mapSpr->HexX >= self->GetWidth() || mapSpr->HexY >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(mapSpr->Hex)) {
         return;
     }
-    if (!self->IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
+    if (!self->IsHexToDraw(mapSpr->Hex)) {
         return;
     }
 
@@ -122,16 +120,16 @@
         contour_color = proto_item->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
-    const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& spr = self->GetDrawList().InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
-        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, anim, nullptr, //
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+    const auto& field = self->GetField(mapSpr->Hex);
+    auto& spr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, static_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
+        {(self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->Offset.x, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->Offset.y}, &field.Offset, anim, nullptr, //
+        mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
 
     if (!no_light) {
-        spr.SetLight(corner, self->GetLightHex(0, 0), self->GetWidth(), self->GetHeight());
+        spr.SetLight(corner, self->GetLightHex({}), self->GetSize());
     }
 
     if (!is_flat && !disable_egg) {
@@ -224,13 +222,12 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, uint16 hx, uint16 hy)
+[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, mpos hex)
 {
-    auto&& hex_items = self->GetItems(hx, hy);
+    auto&& hex_items = self->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
@@ -307,29 +304,28 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param radius ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, uint16 hx, uint16 hy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, uint radius, CritterFindType findType)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hexes args");
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
     }
 
     vector<CritterView*> critters;
 
     for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetMapHex(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [&hx, &hy](const CritterView* cr1, const CritterView* cr2) {
-        const uint dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const uint dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    std::sort(critters.begin(), critters.end(), [&hex](const CritterView* cr1, const CritterView* cr2) {
+        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
+        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
 
@@ -337,123 +333,128 @@
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType)
 {
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
+    }
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
+    }
+
     vector<CritterHexView*> critters;
-    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
+
+    self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
+
     return vec_cast<CritterView*>(critters);
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///# param findType ...
-///# param preBlockHx ...
-///# param preBlockHy ...
-///# param blockHx ...
-///# param blockHy ...
+///# param preBlockHex ...
+///# param blockHex ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType, uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
+    }
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
+    }
+
     vector<CritterHexView*> critters;
-    pair<uint16, uint16> block = {};
-    pair<uint16, uint16> pre_block = {};
-    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, &block, &pre_block, nullptr, true);
-    preBlockHx = pre_block.first;
-    preBlockHy = pre_block.second;
-    blockHx = block.first;
-    blockHy = block.second;
+
+    self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
+
     return vec_cast<CritterView*>(critters);
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)
+[[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint dist)
 {
-    pair<uint16, uint16> pre_block = {};
-    pair<uint16, uint16> block = {};
-    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
-    toHx = pre_block.first;
-    toHy = pre_block.second;
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
+    }
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
+    }
+
+    mpos pre_block;
+
+    self->TraceBullet(fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, &pre_block, nullptr, nullptr, true);
+
+    toHex = pre_block;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
-    if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
-        throw ScriptException("Invalid from hexes args");
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
     }
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
-        throw ScriptException("Invalid to hexes args");
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
     }
 
-    auto to_hx = toHx;
-    auto to_hy = toHy;
-
-    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
-        if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
-            return {GeometryHelper::GetFarDir(fromHx, fromHy, to_hx, to_hy)};
+    if (GeometryHelper::DistGame(fromHex, toHex) <= 1) {
+        if (GeometryHelper::DistGame(fromHex, toHex) > 0 && cut == 0) {
+            return {GeometryHelper::GetFarDir(fromHex, toHex)};
         }
         return {};
     }
 
-    const auto init_to_hx = to_hx;
-    const auto init_to_hy = to_hy;
+    auto to_hex = toHex;
+    const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, static_cast<int>(cut))) {
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHex, init_to_hex) <= cut && GeometryHelper::DistGame(fromHex, to_hex) <= 1) {
         return {};
     }
 
-    auto result = self->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, -1);
+    auto result = self->FindPath(nullptr, fromHex, to_hex, -1);
     if (!result) {
         return {};
     }
 
-    return result->Steps;
+    return result->DirSteps;
 }
 
 ///# ...
 ///# param cr ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
-        throw ScriptException("Invalid to hexes args");
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
     }
 
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
@@ -461,89 +462,80 @@
         throw ScriptException("Critter is not on map");
     }
 
-    auto to_hx = toHx;
-    auto to_hy = toHy;
-
-    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
-        if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
+    if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) <= 1 + cr->GetMultihex()) {
+        if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) > cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetFarDir(cr->GetMapHex(), toHex)};
         }
         return {};
     }
 
-    const auto init_to_hx = to_hx;
-    const auto init_to_hy = to_hy;
+    auto to_hex = toHex;
+    const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetMapHex(), to_hex, static_cast<int>(cut))) {
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetMapHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetMapHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
-    auto result = self->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, -1);
+    auto result = self->FindPath(hex_cr, cr->GetMapHex(), to_hex, -1);
     if (!result) {
         return {};
     }
 
-    return result->Steps;
+    return result->DirSteps;
 }
 
 ///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
+///# param fromHex ...
+///# param toHex ...
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
-    if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
-        throw ScriptException("Invalid from hexes args");
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
     }
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
-        throw ScriptException("Invalid to hexes args");
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
     }
 
-    auto to_hx = toHx;
-    auto to_hy = toHy;
-
-    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (GeometryHelper::DistGame(fromHex, toHex) <= 1) {
         return cut > 0 ? 0 : 1;
     }
 
-    const auto init_to_hx = to_hx;
-    const auto init_to_hy = to_hy;
+    auto to_hex = toHex;
+    const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, static_cast<int>(cut))) {
         return 0;
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHex, init_to_hex) <= cut && GeometryHelper::DistGame(fromHex, to_hex) <= 1) {
         return 0;
     }
 
-    const auto result = self->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, -1);
+    const auto result = self->FindPath(nullptr, fromHex, to_hex, -1);
     if (!result) {
         return 0;
     }
 
-    return static_cast<uint>(result->Steps.size());
+    return static_cast<uint>(result->DirSteps.size());
 }
 
 ///# ...
 ///# param cr ...
-///# param toHx ...
-///# param toHy ...
+///# param toHex ...
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, CritterView* cr, uint16 toHx, uint16 toHy, uint cut)
+[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
-    if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
-        throw ScriptException("Invalid to hexes args");
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
     }
 
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
@@ -551,61 +543,56 @@
         throw ScriptException("Critter is not on map");
     }
 
-    auto to_hx = toHx;
-    auto to_hy = toHy;
-
-    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) <= 1 + cr->GetMultihex()) {
         return cut > 0 ? 0 : 1;
     }
 
-    const auto init_to_hx = to_hx;
-    const auto init_to_hy = to_hy;
+    auto to_hex = toHex;
+    const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetMapHex(), to_hex, static_cast<int>(cut))) {
         return 0;
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetMapHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetMapHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 
-    const auto result = self->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, -1);
+    const auto result = self->FindPath(hex_cr, cr->GetMapHex(), to_hex, -1);
     if (!result) {
         return 0;
     }
 
-    return static_cast<uint>(result->Steps.size());
+    return static_cast<uint>(result->DirSteps.size());
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_MoveScreenToHex(MapView* self, uint16 hx, uint16 hy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint speed, bool canStop)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hex args");
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
     }
 
-    if (speed == 0u) {
-        self->FindSetCenter(hx, hy);
+    if (speed == 0) {
+        self->FindSetCenter(hex);
     }
     else {
-        self->ScrollToHex(hx, hy, static_cast<float>(speed) / 1000.0f, canStop);
+        self->ScrollToHex(hex, static_cast<float>(speed) / 1000.0f, canStop);
     }
 }
 
 ///# ...
-///# param ox ...
-///# param oy ...
+///# param offset ...
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_MoveScreenOffset(MapView* self, int ox, int oy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint speed, bool canStop)
 {
-    self->ScrollOffset(ox, oy, static_cast<float>(speed) / 1000.0f, canStop);
+    self->ScrollOffset(offset, static_cast<float>(speed) / 1000.0f, canStop);
 }
 
 ///# ...
@@ -624,8 +611,7 @@
             self->AutoScroll.SoftLockedCritter = id;
         }
 
-        self->AutoScroll.CritterLastHexX = (cr != nullptr ? cr->GetHexX() : 0);
-        self->AutoScroll.CritterLastHexY = (cr != nullptr ? cr->GetHexY() : 0);
+        self->AutoScroll.CritterLastHex = cr != nullptr ? cr->GetMapHex() : mpos {};
     }
     else {
         if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
@@ -638,92 +624,75 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
 ///# param steps ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Map_MoveHexByDir(MapView* self, uint16& hx, uint16& hy, uint8 dir, uint steps)
+[[maybe_unused]] bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, uint steps)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
-    if (steps == 0u) {
-        throw ScriptException("Steps arg is zero");
+    if (steps == 0) {
+        throw ScriptException("DirSteps arg is zero");
     }
 
-    auto result = false;
-    auto hx_ = hx;
-    auto hy_ = hy;
+    bool result = false;
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+            result |= GeometryHelper::MoveHexByDir(hex, dir, self->GetSize());
         }
     }
     else {
-        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+        result = GeometryHelper::MoveHexByDir(hex, dir, self->GetSize());
     }
 
-    hx = hx_;
-    hy = hy_;
     return result;
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param roof ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof)
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof)
 {
-    if (hx >= self->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
     }
 
-    return self->GetTile(hx, hy, roof, -1);
+    return self->GetTile(hex, roof, -1);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param roof ...
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof, uint8 layer)
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof, uint8 layer)
 {
-    if (hx >= self->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
     }
 
-    return self->GetTile(hx, hy, roof, layer);
+    return self->GetTile(hex, roof, layer);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param roof ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Map_GetTiles(MapView* self, uint16 hx, uint16 hy, bool roof)
+[[maybe_unused]] vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, bool roof)
 {
-    if (hx >= self->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
     }
 
-    return vec_cast<ItemView*>(self->GetTiles(hx, hy, roof));
+    return vec_cast<ItemView*>(self->GetTiles(hex, roof));
 }
 
 ///# ...
@@ -776,23 +745,22 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
-///# param x ...
-///# param y ...
+///# param hex ...
+///# param hexOffset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexScreenPos(MapView* self, uint16 hx, uint16 hy, int& x, int& y)
+[[maybe_unused]] bool Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& hexOffset)
 {
-    x = 0;
-    y = 0;
+    hexOffset.x = 0;
+    hexOffset.y = 0;
 
-    if (hx < self->GetWidth() && hy < self->GetHeight()) {
-        self->GetHexCurrentPosition(hx, hy, x, y);
-        x += self->GetEngine()->Settings.ScrOx + (self->GetEngine()->Settings.MapHexWidth / 2);
-        y += self->GetEngine()->Settings.ScrOy + (self->GetEngine()->Settings.MapHexHeight / 2);
-        x = static_cast<int>(static_cast<float>(x) / self->GetSpritesZoom());
-        y = static_cast<int>(static_cast<float>(y) / self->GetSpritesZoom());
+    if (self->GetSize().IsValidPos(hex)) {
+        hexOffset = self->GetHexCurrentPosition(hex);
+        hexOffset.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
+        hexOffset.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
+        hexOffset.x = static_cast<int>(static_cast<float>(hexOffset.x) / self->GetSpritesZoom());
+        hexOffset.y = static_cast<int>(static_cast<float>(hexOffset.y) / self->GetSpritesZoom());
+
         return true;
     }
 
@@ -800,119 +768,95 @@
 }
 
 ///# ...
-///# param x ...
-///# param y ...
-///# param hx ...
-///# param hy ...
+///# param pos ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, uint16& hx, uint16& hy)
+[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex)
 {
-    uint16 hx_ = 0;
-    uint16 hy_ = 0;
-    const auto result = self->GetHexAtScreenPos(x, y, hx_, hy_, nullptr, nullptr);
-    if (result) {
-        hx = hx_;
-        hy = hy_;
-        return true;
-    }
-    return false;
+    return self->GetHexAtScreenPos(pos, hex, nullptr);
 }
 
 ///# ...
-///# param x ...
-///# param y ...
-///# param hx ...
-///# param hy ...
-///# param ox ...
+///# param pos ...
+///# param hex ...
+///# param hexOffset ...
 ///# param oy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, uint16& hx, uint16& hy, int& ox, int& oy)
+[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex, ipos& hexOffset)
 {
-    uint16 hx_ = 0;
-    uint16 hy_ = 0;
-    const auto result = self->GetHexAtScreenPos(x, y, hx_, hy_, &ox, &oy);
-    if (result) {
-        hx = hx_;
-        hy = hy_;
-        return true;
-    }
-    return false;
+    return self->GetHexAtScreenPos(pos, hex, &hexOffset);
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Map_GetItemAtScreenPos(MapView* self, int x, int y)
+[[maybe_unused]] ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos pos)
 {
     bool item_egg;
-    return self->GetItemAtScreenPos(x, y, item_egg, 0, true);
+    return self->GetItemAtScreenPos(pos, item_egg, 0, true);
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, int x, int y)
+[[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos)
 {
-    return self->GetCritterAtScreenPos(x, y, false, 0, true);
+    return self->GetCritterAtScreenPos(pos, false, 0, true);
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# param extraRange
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, int x, int y, int extraRange)
+[[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos, int extraRange)
 {
-    auto* cr = self->GetCritterAtScreenPos(x, y, false, 0, true);
+    auto* cr = self->GetCritterAtScreenPos(pos, false, 0, true);
+
     if (cr == nullptr && extraRange != 0) {
-        cr = self->GetCritterAtScreenPos(x, y, true, extraRange, false);
+        cr = self->GetCritterAtScreenPos(pos, true, extraRange, false);
     }
+
     return cr;
 }
 
 ///# ...
-///# param x ...
-///# param y ...
+///# param pos ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, int x, int y)
+[[maybe_unused]] ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos pos)
 {
-    return self->GetEntityAtScreenPos(x, y, 0, true);
+    return self->GetEntityAtScreenPos(pos, 0, true);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexPassed(MapView* self, uint16 hx, uint16 hy)
+[[maybe_unused]] bool Client_Map_IsMapHexPassed(MapView* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hx, hy).Flags.IsMoveBlocked;
+    return !self->GetField(hex).Flags.IsMoveBlocked;
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexShooted(MapView* self, uint16 hx, uint16 hy)
+[[maybe_unused]] bool Client_Map_IsMapHexShooted(MapView* self, mpos hex)
 {
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+    if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hx, hy).Flags.IsShootBlocked;
+    return !self->GetField(hex).Flags.IsShootBlocked;
 }
 
 ///# ...
@@ -935,12 +879,12 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_SetCursorPos(MapView* self, CritterView* cr, int mouseX, int mouseY, bool showSteps, bool forceRefresh)
+[[maybe_unused]] void Client_Map_SetCursorPos(MapView* self, CritterView* cr, ipos mousePos, bool showSteps, bool forceRefresh)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    self->SetCursorPos(hex_cr, mouseX, mouseY, showSteps, forceRefresh);
+    self->SetCursorPos(hex_cr, mousePos, showSteps, forceRefresh);
 }

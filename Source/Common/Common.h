@@ -231,12 +231,17 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
     return {};
 }
 
+inline auto hash_combine(size_t h1, size_t h2) -> size_t
+{
+    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+}
+
 struct pair_hash
 {
     template<typename T, typename U>
-    std::size_t operator()(const std::pair<T, U>& p) const
+    auto operator()(const std::pair<T, U>& v) const noexcept -> size_t
     {
-        return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
+        return hash_combine(std::hash<T> {}(v.first), std::hash<U> {}(v.second));
     }
 };
 
@@ -244,9 +249,10 @@ struct pair_hash
 template<typename T>
 struct strong_type
 {
-    using underlying_type = typename T::type;
+    using underlying_type = typename T::underlying_type;
     static constexpr bool is_strong_type = true;
     static constexpr const char* type_name = T::name;
+    static constexpr const char* underlying_type_name = T::underlying_type_name;
 
     constexpr strong_type() noexcept :
         _value {}
@@ -269,9 +275,9 @@ private:
 };
 
 template<typename T>
-struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
+struct std::hash<strong_type<T>>
 {
-    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
+    auto operator()(const strong_type<T>& v) const noexcept -> size_t { return std::hash<typename strong_type<T>::underlying_type> {}(v.underlying_value()); }
 };
 
 template<typename T>
@@ -301,29 +307,32 @@ struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_t
 template<typename T>
 constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
-///@ ExportType ident ident_t uint HardStrong
+///@ ExportType ident ident_t HardStrong HasValueAccessor
 #define IDENT_T_NAME "ident"
 struct ident_t_traits
 {
     static constexpr const char* name = IDENT_T_NAME;
-    using type = uint;
+    static constexpr const char* underlying_type_name = "uint";
+    using underlying_type = uint;
 };
 using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
 static_assert(std::is_standard_layout_v<ident_t>);
 
-///@ ExportType tick_t tick_t uint RelaxedStrong
+///@ ExportType tick_t tick_t RelaxedStrong HasValueAccessor
 #define TICK_T_NAME "tick_t"
 struct tick_t_traits
 {
     static constexpr const char* name = TICK_T_NAME;
-    using type = uint;
+    static constexpr const char* underlying_type_name = "uint";
+    using underlying_type = uint;
 };
 using tick_t = strong_type<tick_t_traits>;
 static_assert(sizeof(tick_t) == sizeof(uint));
 static_assert(std::is_standard_layout_v<tick_t>);
 
 // Custom any as string
+// Todo: export any_t with ExportType
 class any_t : public string
 {
 };
@@ -334,7 +343,7 @@ using time_duration = time_point::clock::duration;
 static_assert(sizeof(time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<time_point::clock::period, std::micro>);
 
-static inline auto time_point_to_unix_time(const time_point& t) -> time_t
+inline auto time_point_to_unix_time(const time_point& t) -> time_t
 {
     const auto system_clock_now = std::chrono::system_clock::now();
     const auto system_clock_time = system_clock_now + std::chrono::duration_cast<std::chrono::system_clock::duration>(t - time_point::clock::now());
@@ -342,7 +351,7 @@ static inline auto time_point_to_unix_time(const time_point& t) -> time_t
     return unix_time;
 }
 
-static inline auto time_point_desc(const time_point& t) -> std::tm
+inline auto time_point_desc(const time_point& t) -> std::tm
 {
     const auto unix_time = time_point_to_unix_time(t);
     const auto tm_struct = fmt::localtime(unix_time);
@@ -1214,83 +1223,17 @@ struct TRect
     T Right {};
     T Bottom {};
 };
-using IRect = TRect<int>;
-using FRect = TRect<float>;
-
-template<typename T>
-struct TPoint
-{
-    TPoint() :
-        X(0),
-        Y(0)
-    {
-    }
-    template<typename T2>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    TPoint(const TPoint<T2>& r) :
-        X(static_cast<T>(r.X)),
-        Y(static_cast<T>(r.Y))
-    {
-    }
-    TPoint(T x, T y) :
-        X(x),
-        Y(y)
-    {
-    }
-    TPoint(const TPoint& fp, T ox, T oy) :
-        X(fp.X + ox),
-        Y(fp.Y + oy)
-    {
-    }
-
-    template<typename T2>
-    auto operator=(const TPoint<T2>& fp) -> TPoint&
-    {
-        X = static_cast<T>(fp.X);
-        Y = static_cast<T>(fp.Y);
-        return *this;
-    }
-
-    void Clear()
-    {
-        X = 0;
-        Y = 0;
-    }
-
-    [[nodiscard]] auto IsZero() const -> bool { return !X && !Y; }
-
-    [[nodiscard]] auto operator[](int index) -> T&
-    {
-        switch (index) {
-        case 0:
-            return X;
-        case 1:
-            return Y;
-        default:
-            break;
-        }
-        return X;
-    }
-
-    [[nodiscard]] auto operator()(T x, T y) -> TPoint&
-    {
-        X = x;
-        Y = y;
-        return *this;
-    }
-
-    T X {};
-    T Y {};
-};
-using IPoint = TPoint<int>;
-using FPoint = TPoint<float>;
+using IRect = TRect<int>; // Todo: move IRect to irect
+using FRect = TRect<float>; // Todo: move FRect to frect
 
 // Color type
-///@ ExportType ucolor ucolor uint HardStrong
+///@ ExportType ucolor ucolor HardStrong HasValueAccessor
 struct ucolor
 {
     using underlying_type = uint;
     static constexpr bool is_strong_type = true;
+    static constexpr const char* type_name = "ucolor";
+    static constexpr const char* underlying_type_name = "uint";
 
     constexpr ucolor() noexcept :
         rgba {}
@@ -1343,7 +1286,7 @@ static_assert(std::is_standard_layout_v<ucolor>);
 template<>
 struct std::hash<ucolor>
 {
-    size_t operator()(const ucolor& s) const noexcept { return std::hash<uint>()(s.rgba); }
+    auto operator()(const ucolor& v) const noexcept -> size_t { return std::hash<uint> {}(v.rgba); }
 };
 
 template<>
@@ -1400,7 +1343,7 @@ static_assert(std::is_standard_layout_v<hstring>);
 template<>
 struct std::hash<hstring>
 {
-    size_t operator()(const hstring& s) const noexcept { return std::hash<hstring::hash_t>()(s.as_hash()); }
+    auto operator()(const hstring& v) const noexcept -> size_t { return std::hash<hstring::hash_t> {}(v.as_hash()); }
 };
 
 template<>
@@ -1418,6 +1361,277 @@ struct fmt::formatter<hstring>
         return format_to(ctx.out(), "{}", s.as_str());
     }
 };
+
+// Plain data types
+template<typename T>
+constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_type_v<T> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && !std::is_enum_v<T>;
+
+template<typename T>
+inline auto parse_from_string(const string& str) -> T;
+
+template<typename...>
+struct always_false : std::false_type
+{
+};
+
+template<typename T>
+inline auto parse_from_string(const string& str) -> T
+{
+    static_assert(always_false<T>::value, "No specialization exists for parse_from_string");
+}
+
+#define DECLARE_FORMATTER(type, ...) \
+    template<> \
+    struct fmt::formatter<type> \
+    { \
+        template<typename ParseContext> \
+        constexpr auto parse(ParseContext& ctx) \
+        { \
+            return ctx.begin(); \
+        } \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) \
+        { \
+            return format_to(ctx.out(), __VA_ARGS__); \
+        } \
+    }
+
+#define DECLARE_TYPE_PARSER(type, ...) \
+    template<> \
+    inline auto parse_from_string<type>(const string& str)->type \
+    { \
+        type value = {}; \
+        istringstream sstr {str}; \
+        __VA_ARGS__; \
+        return value; \
+    }
+
+// Position types
+///@ ExportType isize isize HardStrong
+struct isize
+{
+    [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> int { return width * height; }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
+    }
+
+    int width {};
+    int height {};
+};
+static_assert(std::is_standard_layout_v<isize>);
+static_assert(sizeof(isize) == 8);
+DECLARE_FORMATTER(isize, "{} {}", value.width, value.height);
+DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
+
+///@ ExportType ipos ipos HardStrong
+struct ipos
+{
+    [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
+
+    int x {};
+    int y {};
+};
+static_assert(std::is_standard_layout_v<ipos>);
+static_assert(sizeof(ipos) == 8);
+DECLARE_FORMATTER(ipos, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos, sstr >> value.x, sstr >> value.y);
+
+template<>
+struct std::hash<ipos>
+{
+    auto operator()(const ipos& v) const noexcept -> size_t { return hash_combine(std::hash<int> {}(v.x), std::hash<int> {}(v.y)); }
+};
+
+///@ ExportType irect irect HardStrong
+struct irect
+{
+    constexpr irect() noexcept = default;
+    constexpr irect(ipos pos, isize size) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr irect(int x_, int y_, isize size) noexcept :
+        x {x_},
+        y {y_},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr irect(ipos pos, int width_, int height_) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr irect(int x_, int y_, int width_, int height_) noexcept :
+        x {x_},
+        y {y_},
+        width {width_},
+        height {height_}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && width == other.width; }
+    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || height != other.height || height != other.height; }
+
+    int x {};
+    int y {};
+    int width {};
+    int height {};
+};
+static_assert(std::is_standard_layout_v<irect>);
+static_assert(sizeof(irect) == 16);
+DECLARE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
+
+///@ ExportType ipos16 ipos16 HardStrong
+struct ipos16
+{
+    [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x + other.x), static_cast<int16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x - other.x), static_cast<int16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x * other.x), static_cast<int16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x / other.x), static_cast<int16>(y / other.y)}; }
+
+    int16 x {};
+    int16 y {};
+};
+static_assert(std::is_standard_layout_v<ipos16>);
+static_assert(sizeof(ipos16) == 4);
+DECLARE_FORMATTER(ipos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
+
+///@ ExportType upos16 upos16 HardStrong
+struct upos16
+{
+    [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const upos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x - other.x), static_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x * other.x), static_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x / other.x), static_cast<uint16>(y / other.y)}; }
+
+    uint16 x {};
+    uint16 y {};
+};
+static_assert(std::is_standard_layout_v<upos16>);
+static_assert(sizeof(upos16) == 4);
+DECLARE_FORMATTER(upos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
+
+///@ ExportType ipos8 ipos8 HardStrong
+struct ipos8
+{
+    [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos8& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x + other.x), static_cast<int8>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x - other.x), static_cast<int8>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x * other.x), static_cast<int8>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x / other.x), static_cast<int8>(y / other.y)}; }
+
+    int8 x {};
+    int8 y {};
+};
+static_assert(std::is_standard_layout_v<ipos8>);
+static_assert(sizeof(ipos8) == 2);
+DECLARE_FORMATTER(ipos8, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
+
+///@ ExportType fsize fsize HardStrong
+struct fsize
+{
+    [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> float { return width * height; }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < width && pos.y < height;
+    }
+
+    float width {};
+    float height {};
+};
+static_assert(std::is_standard_layout_v<fsize>);
+static_assert(sizeof(fsize) == 8);
+DECLARE_FORMATTER(fsize, "{} {}", value.width, value.height);
+DECLARE_TYPE_PARSER(fsize, sstr >> value.width, sstr >> value.height);
+
+///@ ExportType fpos fpos HardStrong
+struct fpos
+{
+    [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const fpos& other) const noexcept -> fpos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const fpos& other) const noexcept -> fpos { return {x / other.x, y / other.y}; }
+
+    float x {};
+    float y {};
+};
+static_assert(std::is_standard_layout_v<fpos>);
+static_assert(sizeof(fpos) == 8);
+DECLARE_FORMATTER(fpos, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(fpos, sstr >> value.x, sstr >> value.y);
+
+///@ ExportType frect frect HardStrong
+struct frect
+{
+    constexpr frect() noexcept = default;
+    constexpr frect(fpos pos, fsize size) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(float x_, float y_, fsize size) noexcept :
+        x {x_},
+        y {y_},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(fpos pos, float width_, float height_) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr frect(float x_, float y_, float width_, float height_) noexcept :
+        x {x_},
+        y {y_},
+        width {width_},
+        height {height_}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const frect& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+
+    float x {};
+    float y {};
+    float width {};
+    float height {};
+};
+static_assert(std::is_standard_layout_v<frect>);
+static_assert(sizeof(frect) == 16);
+DECLARE_FORMATTER(frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_PARSER(frect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
 
 // Generic constants
 // Todo: eliminate as much defines as possible
@@ -1812,6 +2026,8 @@ class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
+    //[[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, size_t& size) const -> bool = 0;
+    //[[nodiscard]] virtual auto GetTypeInfo(string_view type_name, TypeDesc& desc) const -> bool = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;

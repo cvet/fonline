@@ -115,10 +115,8 @@ static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static bool BaseFrameBufObjBinded {};
-static int BaseFrameBufWidth {};
-static int BaseFrameBufHeight {};
-static int TargetWidth {};
-static int TargetHeight {};
+static isize BaseFrameBufSize {};
+static isize TargetSize {};
 static mat44 ProjectionMatrixColMaj {};
 static RenderTexture* DummyTexture {};
 static IRect ViewPortRect {};
@@ -135,15 +133,15 @@ static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work wit
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) :
-        RenderTexture(width, height, linear_filtered, with_depth)
+    OpenGL_Texture(isize size, bool linear_filtered, bool with_depth) :
+        RenderTexture(size, linear_filtered, with_depth)
     {
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
-    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
+    [[nodiscard]] auto GetTexturePixel(ipos pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -328,8 +326,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &BaseFrameBufObj));
-    BaseFrameBufWidth = settings.ScreenWidth;
-    BaseFrameBufHeight = settings.ScreenHeight;
+    BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
     // Calculate atlas size
     GLint max_texture_size;
@@ -358,8 +355,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    DummyTexture = CreateTexture(1, 1, false, false);
-    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
+    DummyTexture = CreateTexture({1, 1}, false, false);
+    DummyTexture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
     // Init render target
     SetRenderTarget(nullptr);
@@ -378,11 +375,11 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
+    auto&& opengl_tex = std::make_unique<OpenGL_Texture>(size, linear_filtered, with_depth);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -398,7 +395,7 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
 #endif
-    GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+    GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.width, size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
     GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
 
     if (with_depth) {
@@ -406,7 +403,7 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
         GL(glGetIntegerv(GL_RENDERBUFFER_BINDING, &cur_rb));
         GL(glGenRenderbuffers(1, &opengl_tex->DepthBuffer));
         GL(glBindRenderbuffer(GL_RENDERBUFFER, opengl_tex->DepthBuffer));
-        GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height));
+        GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, size.width, size.height));
         GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, opengl_tex->DepthBuffer));
         GL(glBindRenderbuffer(GL_RENDERBUFFER, cur_rb));
     }
@@ -619,8 +616,8 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
         vp_ox = 0;
         vp_oy = 0;
-        vp_width = opengl_tex->Width;
-        vp_height = opengl_tex->Height;
+        vp_width = opengl_tex->Size.width;
+        vp_height = opengl_tex->Size.height;
         screen_width = vp_width;
         screen_height = vp_height;
     }
@@ -628,13 +625,13 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const float back_buf_aspect = static_cast<float>(BaseFrameBufWidth) / static_cast<float>(BaseFrameBufHeight);
+        const float back_buf_aspect = static_cast<float>(BaseFrameBufSize.width) / static_cast<float>(BaseFrameBufSize.height);
         const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufHeight) * screen_aspect : static_cast<float>(BaseFrameBufHeight) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufWidth) / back_buf_aspect : static_cast<float>(BaseFrameBufWidth) / screen_aspect);
+        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
+        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
 
-        vp_ox = (BaseFrameBufWidth - fit_width) / 2;
-        vp_oy = (BaseFrameBufHeight - fit_height) / 2;
+        vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
+        vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
         screen_width = Settings->ScreenWidth;
@@ -647,8 +644,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
-    TargetWidth = screen_width;
-    TargetHeight = screen_height;
+    TargetSize = {screen_width, screen_height};
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -681,7 +677,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     }
 }
 
-void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
+void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
@@ -690,20 +686,20 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
     int r;
     int b;
 
-    if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
-        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
-        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetHeight);
+    if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
+        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
+        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(x + width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(y + height) * y_ratio);
+        l = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
+        t = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
+        r = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
+        b = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
     }
     else {
-        l = ViewPortRect.Left + x;
-        t = ViewPortRect.Top + y;
-        r = ViewPortRect.Left + x + width;
-        b = ViewPortRect.Top + y + height;
+        l = ViewPortRect.Left + pos.x;
+        t = ViewPortRect.Top + pos.y;
+        r = ViewPortRect.Left + pos.x + size.width;
+        b = ViewPortRect.Top + pos.y + size.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));
@@ -717,10 +713,9 @@ void OpenGL_Renderer::DisableScissor()
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
-void OpenGL_Renderer::OnResizeWindow(int width, int height)
+void OpenGL_Renderer::OnResizeWindow(isize size)
 {
-    BaseFrameBufWidth = width;
-    BaseFrameBufHeight = height;
+    BaseFrameBufSize = size;
 
     if (BaseFrameBufObjBinded) {
         SetRenderTarget(nullptr);
@@ -742,14 +737,11 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> ucolor
+auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x < Width);
-    RUNTIME_ASSERT(y < Height);
+    RUNTIME_ASSERT(Size.IsValidPos(pos));
 
     ucolor result;
 
@@ -757,51 +749,49 @@ auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> ucolor
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
+    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
+auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x + width <= Width);
-    RUNTIME_ASSERT(y + height <= Height);
+    RUNTIME_ASSERT(size.width > 0);
+    RUNTIME_ASSERT(size.height > 0);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(width) * height);
+    result.resize(static_cast<size_t>(size.width) * size.height);
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
+    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(r.Left >= 0);
-    RUNTIME_ASSERT(r.Right >= 0);
-    RUNTIME_ASSERT(r.Right <= Width);
-    RUNTIME_ASSERT(r.Bottom <= Height);
-    RUNTIME_ASSERT(r.Right > r.Left);
-    RUNTIME_ASSERT(r.Bottom > r.Top);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
-    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
+    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
 }
 

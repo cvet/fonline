@@ -45,14 +45,14 @@ HexView::HexView(MapView* map) :
     STACK_TRACE_ENTRY();
 }
 
-auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*
+auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* hex_offset) -> MapSprite*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& mspr = list.AddSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+    auto& mspr = list.AddSprite(draw_order, hex, {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2}, //
+        hex_offset, nullptr, &Spr, &SprOffset, &Alpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
@@ -62,14 +62,14 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx
     return _mapSpr;
 }
 
-auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*
+auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* hex_offset) -> MapSprite*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& mspr = list.InsertSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+    auto& mspr = list.InsertSprite(draw_order, hex, {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2}, //
+        hex_offset, nullptr, &Spr, &SprOffset, &Alpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 

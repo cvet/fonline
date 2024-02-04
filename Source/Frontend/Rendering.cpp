@@ -35,12 +35,11 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-auto Null_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(linear_filtered);
     UNUSED_VARIABLE(with_depth);
 
@@ -124,14 +123,12 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
     UNUSED_VARIABLE(stencil);
 }
 
-void Null_Renderer::EnableScissor(int x, int y, int width, int height)
+void Null_Renderer::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(pos);
+    UNUSED_VARIABLE(size);
 }
 
 void Null_Renderer::DisableScissor()
@@ -139,25 +136,23 @@ void Null_Renderer::DisableScissor()
     STACK_TRACE_ENTRY();
 }
 
-void Null_Renderer::OnResizeWindow(int width, int height)
+void Null_Renderer::OnResizeWindow(isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
 }
 
-RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
-    Width {width}, //
-    Height {height},
-    SizeData {static_cast<float>(width), static_cast<float>(height), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height)},
+RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
+    Size {size},
+    SizeData {static_cast<float>(size.width), static_cast<float>(size.height), 1.0f / static_cast<float>(size.width), 1.0f / static_cast<float>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
+    RUNTIME_ASSERT(Size.width > 0);
+    RUNTIME_ASSERT(Size.height > 0);
 }
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) :

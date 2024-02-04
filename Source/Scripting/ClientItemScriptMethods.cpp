@@ -56,7 +56,7 @@
     return cloned_item;
 }
 
-static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
+static void ItemGetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -69,12 +69,10 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
             throw ScriptException("Invalid critter ownership, critter not found");
         }
 
-        hx = cr->GetHexX();
-        hy = cr->GetHexY();
+        hex = cr->GetMapHex();
     } break;
     case ItemOwnership::MapHex: {
-        hx = self->GetHexX();
-        hy = self->GetHexY();
+        hex = self->GetMapHex();
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
@@ -87,7 +85,7 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
         }
 
         // Look recursively
-        ItemGetMapPos(cont, hx, hy);
+        ItemGetMapPos(cont, hex);
     } break;
     default:
         throw ScriptException("Invalid item ownership");
@@ -95,16 +93,15 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, uint16& hx, uint16& hy)
+[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
-    ItemGetMapPos(self, hx, hy);
+    ItemGetMapPos(self, hex);
 }
 
 ///# ...
