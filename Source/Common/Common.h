@@ -1410,7 +1410,7 @@ inline auto parse_from_string(const string& str) -> T
 
 #define DECLARE_TYPE_PARSER(type, ...) \
     template<> \
-    inline auto parse_from_string<type>(const string& str) -> type \
+    inline auto parse_from_string<type>(const string& str)->type \
     { \
         type value = {}; \
         istringstream sstr {str}; \
@@ -1665,13 +1665,13 @@ constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
 #define DLGID_MASK (0xFFFFC000)
-#define DLG_STR_ID(dlg_id, idx) (((dlg_id) & DLGID_MASK) | ((idx) & ~DLGID_MASK))
+#define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
-#define LOC_STR_ID(loc_pid, idx) (((loc_pid) & LOCPID_MASK) | ((idx) & ~LOCPID_MASK))
+#define LOC_STR_ID(loc_pid, idx) (((loc_pid)&LOCPID_MASK) | ((idx) & ~LOCPID_MASK))
 #define ITEMPID_MASK (0xFFFFFFF0)
-#define ITEM_STR_ID(item_pid, idx) (((item_pid) & ITEMPID_MASK) | ((idx) & ~ITEMPID_MASK))
+#define ITEM_STR_ID(item_pid, idx) (((item_pid)&ITEMPID_MASK) | ((idx) & ~ITEMPID_MASK))
 #define CRPID_MASK (0xFFFFFFF0)
-#define CR_STR_ID(cr_pid, idx) (((cr_pid) & CRPID_MASK) | ((idx) & ~CRPID_MASK))
+#define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
 // Ping
 static constexpr uint8 PING_SERVER = 0;
