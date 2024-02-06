@@ -32,6 +32,7 @@
 //
 
 #include "Platform.h"
+#include "Application.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
