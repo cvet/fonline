@@ -156,14 +156,14 @@ string GetTimeString(const string format, int year, int month, int day, int dayO
     }
     if (month != -1) {
         result = Game.ReplaceText(result, "%MONTH%", month);
-        result = Game.ReplaceText(result, "%MONTH-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(month)));
+        result = Game.ReplaceText(result, "%MONTH-STR%", Game.GetText(TextPackName::Game, STR_MONTH(month)));
     }
     if (day != -1) {
         result = Game.ReplaceText(result, "%DAY%", day);
     }
     if (dayOfWeek != -1) {
         result = Game.ReplaceText(result, "%DOW%", dayOfWeek);
-        result = Game.ReplaceText(result, "%DOW-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(dayOfWeek)));
+        result = Game.ReplaceText(result, "%DOW-STR%", Game.GetText(TextPackName::Game, STR_MONTH(dayOfWeek)));
     }
     if (hour != -1) {
         result = Game.ReplaceText(result, "%HOUR%", hour);

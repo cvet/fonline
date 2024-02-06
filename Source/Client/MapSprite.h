@@ -144,7 +144,7 @@ public:
     void SetColor(ucolor color);
     void SetAlpha(const uint8* alpha);
     void SetFixedAlpha(uint8 alpha);
-    void SetLight(CornerType corner, const uint8* light, msize size);
+    void SetLight(CornerType corner, const ucolor* light, msize size);
 
     // Todo:: incapsulate all sprite data
     MapSpriteList* Root {};
@@ -158,9 +158,9 @@ public:
     const ipos* PHexOffset {};
     const ipos* SprOffset {};
     const uint8* Alpha {};
-    const uint8* Light {};
-    const uint8* LightRight {};
-    const uint8* LightLeft {};
+    const ucolor* Light {};
+    const ucolor* LightRight {};
+    const ucolor* LightLeft {};
     EggAppearenceType EggAppearence {};
     ContourType Contour {};
     ucolor ContourColor {};

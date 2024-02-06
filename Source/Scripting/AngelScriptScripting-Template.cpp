@@ -96,7 +96,7 @@
 #include "weakref/weakref.h"
 
 // Reset garbage from WinApi
-#include "WinApi-Include.h"
+#include "WinApiUndef-Include.h"
 
 #if SERVER_SCRIPTING
 #define BaseEntity ServerEntity
@@ -1225,7 +1225,14 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                 while (data < data_end) {
                     const auto* key = data;
-                    data += prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
 
                     uint arr_size;
                     std::memcpy(&arr_size, data, sizeof(arr_size));
@@ -1290,7 +1297,12 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         }
                     }
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        dict->Set((void*)&key_str, &arr);
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         dict->Set((void*)&hkey, &arr);
                     }
@@ -1310,15 +1322,27 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                 while (data < data_end) {
                     const auto* key = data;
-                    data += prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
 
                     uint str_size;
                     std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
 
-                    string str(reinterpret_cast<const char*>(data), str_size);
+                    auto str = string {reinterpret_cast<const char*>(data), str_size};
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        dict->Set((void*)&key_str, &str);
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         dict->Set((void*)&hkey, &str);
                     }
@@ -1334,42 +1358,61 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                 }
             }
             else {
-                const auto whole_element_size = prop->GetDictKeySize() + prop->GetBaseSize();
-                const auto dict_size = data_size / whole_element_size;
+                const auto* data_end = data + data_size;
 
-                for (uint i = 0; i < dict_size; i++) {
-                    const auto* key = data + i * whole_element_size;
-                    const auto* value = data + i * whole_element_size + prop->GetDictKeySize();
+                while (data < data_end) {
+                    const auto* key = data;
 
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        data += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data += prop->GetDictKeySize();
+                    }
+
+                    if (prop->IsDictKeyString()) {
+                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(data);
+                            dict->Set((void*)&key_str, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)&key_str, (void*)data);
+                        }
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)&hkey, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)&hkey, (void*)value);
+                            dict->Set((void*)&hkey, (void*)data);
                         }
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeySize());
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)&ekey, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)&ekey, (void*)value);
+                            dict->Set((void*)&ekey, (void*)data);
                         }
                     }
                     else {
                         if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
+                            const auto hvalue = resolve_hash(data);
                             dict->Set((void*)key, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)key, (void*)value);
+                            dict->Set((void*)key, (void*)data);
                         }
                     }
+
+                    data += prop->GetBaseSize();
                 }
             }
         }
@@ -1405,7 +1448,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         const auto* arr = *static_cast<CScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
-            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0);
 
             if (arr_size != 0) {
                 // Calculate size
@@ -1488,9 +1531,18 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        data_size += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data_size += prop->GetDictKeySize();
+                    }
+
                     const auto* arr = *static_cast<const CScriptArray**>(value);
                     const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
-                    data_size += prop->GetDictKeySize() + sizeof(arr_size);
+                    data_size += sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
                         for (uint i = 0; i < arr_size; i++) {
@@ -1508,18 +1560,28 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        std::memcpy(buf, &key_len, sizeof(key_len));
+                        buf += sizeof(key_len);
+                        std::memcpy(buf, key_str.c_str(), key_len);
+                        buf += key_len;
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
-                    buf += prop->GetDictKeySize();
 
                     const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     std::memcpy(buf, &arr_size, sizeof(uint));
@@ -1582,10 +1644,19 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        data_size += sizeof(key_len) + key_len;
+                    }
+                    else {
+                        data_size += prop->GetDictKeySize();
+                    }
+
                     const auto& str = *static_cast<const string*>(value);
                     const auto str_size = static_cast<uint>(str.length());
 
-                    data_size += prop->GetDictKeySize() + sizeof(str_size) + str_size;
+                    data_size += sizeof(str_size) + str_size;
                 }
 
                 // Make buffer
@@ -1593,18 +1664,28 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
-                    if (prop->IsDictKeyHash()) {
+                    if (prop->IsDictKeyString()) {
+                        const auto& key_str = *static_cast<const string*>(key);
+                        const uint key_len = static_cast<uint>(key_str.length());
+                        std::memcpy(buf, &key_len, sizeof(key_len));
+                        buf += sizeof(key_len);
+                        std::memcpy(buf, key_str.c_str(), key_len);
+                        buf += key_len;
+                    }
+                    else if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
+                        buf += prop->GetDictKeySize();
                     }
-                    buf += prop->GetDictKeySize();
 
                     const auto str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(uint));
@@ -1617,11 +1698,50 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 }
             }
         }
+        else if (prop->IsDictKeyString()) {
+            if (dict != nullptr && dict->GetSize() != 0) {
+                // Calculate size
+                size_t data_size = 0;
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                const auto value_element_size = prop->GetBaseSize();
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& key_str = *static_cast<const string*>(key);
+                    const uint key_len = static_cast<uint>(key_str.length());
+                    data_size += sizeof(key_len) + key_len;
+                    data_size += value_element_size;
+                }
+
+                // Make buffer
+                auto* buf = prop_data.Alloc(data_size);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& key_str = *static_cast<const string*>(key);
+                    const uint key_len = static_cast<uint>(key_str.length());
+
+                    std::memcpy(buf, &key_len, sizeof(key_len));
+                    buf += sizeof(key_len);
+                    std::memcpy(buf, key_str.c_str(), key_len);
+                    buf += key_len;
+
+                    if (prop->IsBaseTypeHash()) {
+                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        std::memcpy(buf, &hash, value_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, value, value_element_size);
+                    }
+                    buf += value_element_size;
+                }
+            }
+        }
         else {
             const auto key_element_size = prop->GetDictKeySize();
             const auto value_element_size = prop->GetBaseSize();
             const auto whole_element_size = key_element_size + value_element_size;
-            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
+            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0);
 
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
@@ -3038,14 +3158,14 @@ static auto EntityUpCast(Entity* a) -> T*
 
 static void HashedString_Construct(hstring* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) hstring();
 }
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
@@ -3059,7 +3179,7 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 
 static void HashedString_IsValidHash(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -3075,7 +3195,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
 
 static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -3089,63 +3209,63 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) hstring(other);
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self = other;
 }
 
 static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
 
 static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str() == other;
 }
 
 static auto HashedString_StringCast(const hstring& self) -> const string&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str();
 }
 
 static auto HashedString_StringConv(const hstring& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_str();
 }
 
 static auto HashedString_GetString(const hstring& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return string(self.as_str());
 }
 
 static auto HashedString_GetHash(const hstring& self) -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_int();
 }
 
 static auto HashedString_GetUHash(const hstring& self) -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.as_uint();
 }
@@ -3167,28 +3287,28 @@ static void Any_Destruct(any_t* self)
 template<typename T>
 static void Any_ConstructFrom(any_t* self, const T& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) any_t {_str("{}", other).str()};
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) any_t(other);
 }
 
 static void Any_Assign(any_t& self, const any_t& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self = other;
 }
 
 static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
@@ -3221,7 +3341,7 @@ static auto Any_Conv(const any_t& self) -> T
 template<typename T>
 static void Any_ConvGen(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
@@ -3238,7 +3358,7 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 template<typename T>
 static auto Any_ConvFrom(const T& self) -> any_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return any_t {_str("{}", self).str()};
 }
@@ -3246,7 +3366,7 @@ static auto Any_ConvFrom(const T& self) -> any_t
 template<typename T>
 static void StrongType_Construct(T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T();
 }
@@ -3254,7 +3374,7 @@ static void StrongType_Construct(T* self)
 template<typename T>
 static void StrongType_ConstructCopy(T* self, const T& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T(other);
 }
@@ -3262,7 +3382,7 @@ static void StrongType_ConstructCopy(T* self, const T& other)
 template<typename T>
 static void StrongType_ConstructFromUnderlying(T* self, const typename T::underlying_type& other)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) T(other);
 }
@@ -3270,7 +3390,7 @@ static void StrongType_ConstructFromUnderlying(T* self, const typename T::underl
 template<typename T>
 static auto StrongType_Equals(const T& self, const T& other) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self == other;
 }
@@ -3286,7 +3406,7 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 template<typename T>
 static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.underlying_value();
 }
@@ -3294,7 +3414,7 @@ static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
 template<typename T>
 static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     self.underlying_value() = value;
 }
@@ -3302,7 +3422,7 @@ static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 template<typename T>
 static auto StrongType_GetStr(const T& self) -> string
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _str("{}", self).str();
 }
@@ -3310,21 +3430,21 @@ static auto StrongType_GetStr(const T& self) -> string
 template<typename T>
 static auto StrongType_AnyConv(const T& self) -> any_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return any_t {_str("{}", self).str()};
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) ucolor {rgba};
 }
 
 static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
     const auto clamped_g = static_cast<uint8>(std::clamp(g, 0, 255));
@@ -3336,28 +3456,28 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 
 static void Ipos_ConstructXandY(ipos* self, int x, int y)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) ipos {x, y};
 }
 
 static void Isize_ConstructWandH(isize* self, int width, int height)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) isize {width, height};
 }
 
 static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, int height)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     new (self) irect {x, y, width, height};
 }
 
 static void Mpos_ConstructXandY(mpos* self, int x, int y)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (x < 0 || x > 0xFFFF || y < 0 || y > 0xFFFF) {
         throw ScriptException("Invalid mpos values", x, y);

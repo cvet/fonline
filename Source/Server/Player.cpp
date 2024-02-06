@@ -753,7 +753,7 @@ void Player::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num)
+void Player::Send_TextMsg(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -769,13 +769,13 @@ void Player::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, u
     Connection->OutBuf.StartMsg(NETMSG_MSG);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num)
+void Player::Send_TextMsg(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -789,13 +789,13 @@ void Player::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 m
     Connection->OutBuf.StartMsg(NETMSG_MSG);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
+void Player::Send_TextMsgLex(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -811,14 +811,14 @@ void Player::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
+void Player::Send_TextMsgLex(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -832,14 +832,14 @@ void Player::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint1
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapText(mpos hex, uint color, string_view text, bool unsafe_text)
+void Player::Send_MapText(mpos hex, ucolor color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -855,7 +855,7 @@ void Player::Send_MapText(mpos hex, uint color, string_view text, bool unsafe_te
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num)
+void Player::Send_MapTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -865,13 +865,13 @@ void Player::Send_MapTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num)
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG);
     Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(color);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_num, string_view lexems)
+void Player::Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -881,7 +881,7 @@ void Player::Send_MapTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_n
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG_LEX);
     Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(color);
-    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();

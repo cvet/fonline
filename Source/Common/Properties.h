@@ -108,17 +108,27 @@ using PropertyPostSetCallback = std::function<void(Entity*, const Property*)>;
 class PropertyBaseInfo
 {
     friend class PropertyRegistrator;
-    friend class PropertiesSerializator; // Todo: remove friend from PropertiesSerializator and use public Property interface
 
 public:
     [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
     [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
     [[nodiscard]] auto IsBaseTypeInt() const -> bool { return _isInt; }
     [[nodiscard]] auto IsBaseTypeSignedInt() const -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsBaseTypeInt8() const -> bool { return _isInt8; }
+    [[nodiscard]] auto IsBaseTypeInt16() const -> bool { return _isInt16; }
+    [[nodiscard]] auto IsBaseTypeInt32() const -> bool { return _isInt32; }
+    [[nodiscard]] auto IsBaseTypeInt64() const -> bool { return _isInt64; }
+    [[nodiscard]] auto IsBaseTypeUInt8() const -> bool { return _isUInt8; }
+    [[nodiscard]] auto IsBaseTypeUInt16() const -> bool { return _isUInt16; }
+    [[nodiscard]] auto IsBaseTypeUInt32() const -> bool { return _isUInt32; }
+    [[nodiscard]] auto IsBaseTypeUInt64() const -> bool { return _isUInt64; }
     [[nodiscard]] auto IsBaseTypeFloat() const -> bool { return _isFloat; }
+    [[nodiscard]] auto IsBaseTypeSingleFloat() const -> bool { return _isSingleFloat; }
+    [[nodiscard]] auto IsBaseTypeDoubleFloat() const -> bool { return _isDoubleFloat; }
     [[nodiscard]] auto IsBaseTypeBool() const -> bool { return _isBool; }
     [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
     [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
+    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
     [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
     [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
@@ -129,6 +139,7 @@ public:
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
     [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
     [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
+    [[nodiscard]] auto IsDictKeyString() const -> bool { return _isDictKeyString; }
     [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
     [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
     [[nodiscard]] auto GetFullTypeName() const -> const string& { return _asFullTypeName; }
@@ -147,6 +158,7 @@ protected:
 
     bool _isStringBase {};
     bool _isHashBase {};
+    bool _isResourceHash {};
     bool _isInt {};
     bool _isSignedInt {};
     bool _isFloat {};
@@ -173,6 +185,7 @@ protected:
     bool _isDictOfArrayOfString {};
     bool _isDictKeyHash {};
     bool _isDictKeyEnum {};
+    bool _isDictKeyString {};
     uint _dictKeySize {};
     string _dictKeyTypeName {};
 
@@ -183,7 +196,6 @@ class Property final : public PropertyBaseInfo
 {
     friend class PropertyRegistrator;
     friend class Properties;
-    friend class PropertiesSerializator; // Todo: remove friend from PropertiesSerializator and use public Property interface
 
 public:
     enum class AccessType
@@ -231,7 +243,6 @@ public:
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const -> bool { return _isNullGetterForProto; }
-    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
 
     [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
@@ -256,7 +267,6 @@ private:
     hstring _component {};
     string _scriptFuncType {};
     AccessType _accessType {};
-    bool _isResourceHash {};
 
     bool _isDisabled {};
     bool _isVirtual {};
@@ -279,7 +289,6 @@ class Properties final
 {
     friend class PropertyRegistrator;
     friend class Property;
-    friend class PropertiesSerializator;
 
 public:
     Properties() = delete;
@@ -697,7 +706,6 @@ class PropertyRegistrator final
 {
     friend class Properties;
     friend class Property;
-    friend class PropertiesSerializator;
 
 public:
     PropertyRegistrator() = delete;
@@ -715,6 +723,7 @@ public:
     [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
+    [[nodiscard]] auto GetProperties() const -> const vector<const Property*>& { return _constRegisteredProperties; }
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
     [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
     [[nodiscard]] auto GetHashResolver() const -> const HashResolver& { return _hashResolver; }
@@ -731,6 +740,7 @@ private:
     HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<unique_ptr<Property>> _registeredProperties {};
+    vector<const Property*> _constRegisteredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};

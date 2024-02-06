@@ -145,6 +145,7 @@ struct PrimitivePoint
     ipos PointPos {};
     ucolor PointColor {};
     const ipos* PointOffset {};
+    const ucolor* PPointColor {};
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 

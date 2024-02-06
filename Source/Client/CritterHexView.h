@@ -56,7 +56,6 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
     [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;

@@ -131,7 +131,7 @@ void DialogManager::AddDialog(DialogPack* pack)
 {
     STACK_TRACE_ENTRY();
 
-    if (_dialogPacks.count(pack->PackId) != 0u) {
+    if (_dialogPacks.count(pack->PackId) != 0) {
         throw DialogManagerException("Dialog already added", pack->PackName);
     }
 
@@ -202,24 +202,24 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             throw DialogParseException("One of the lang section not found", pack_name);
         }
 
-        FOMsg temp_msg;
+        TextPack temp_msg;
         if (!temp_msg.LoadFromString(lang_buf, *_engine)) {
             throw DialogParseException("Load MSG fail", pack_name);
         }
 
-        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0u) {
+        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0) {
             throw DialogParseException("Text have any text with index greather than 4000", pack_name);
         }
 
-        pack->TextsLang.push_back(*reinterpret_cast<const uint*>(lang_app.c_str()));
-        pack->Texts.emplace_back();
+        pack->Texts.emplace_back(lang_app, TextPack {});
 
         uint str_num = 0;
-        while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
-            const auto count = temp_msg.Count(str_num);
-            const auto new_str_num = DLG_STR_ID(pack->PackId.as_uint(), (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
-            for (uint n = 0; n < count; n++) {
-                pack->Texts[i].AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
+        while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
+            const size_t count = temp_msg.GetStrCount(str_num);
+            const uint new_str_num = DLG_STR_ID(pack->PackId.as_uint(), (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
+
+            for (size_t n = 0; n < count; n++) {
+                pack->Texts[i].second.AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
             }
         }
     }
@@ -366,7 +366,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     int values_count = 0;
     string svalue;
     auto ivalue = 0;
-    uint id_index = 0u;
+    uint id_index = 0;
     hstring id_hash;
     string type_str;
     string name;

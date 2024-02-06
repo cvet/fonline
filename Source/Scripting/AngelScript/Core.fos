@@ -17,20 +17,10 @@
 #define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
 
 // Msg nums
-#define TEXTMSG_TEXT      (0)
-#define TEXTMSG_DLG       (1)
-#define TEXTMSG_ITEM      (2)
-#define TEXTMSG_GAME      (3)
-#define TEXTMSG_GM        (4)
-#define TEXTMSG_COMBAT    (5)
-#define TEXTMSG_QUEST     (6)
-#define TEXTMSG_HOLO      (7)
-#define TEXTMSG_INTERNAL  (8)
-#define TEXTMSG_LOCATIONS (9)
-#define DLGSTR            #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
-#define LOCSTR            #(locPid, strNum)((locPid.uhash & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
-#define ITEMSTR           #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
-#define CRSTR             #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define DLGSTR  #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
+#define LOCSTR  #(locPid, strNum)((locPid.uhash & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
+#define ITEMSTR #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define CRSTR   #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))

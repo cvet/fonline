@@ -38,7 +38,6 @@
 #include "Log.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
@@ -67,6 +66,9 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     Mapper_RegisterData(this);
     ScriptSys = new MapperScriptSystem(this);
     ScriptSys->InitSubsystems();
+
+    _curLang = LanguagePack {Settings.Language, *this};
+    _curLang.LoadTexts(Resources);
 
     ProtoMngr.LoadFromResources();
 
@@ -923,11 +925,11 @@ void FOMapper::IntDraw()
 
         if (GetTabIndex() < static_cast<uint>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), _curLang.NameCode);
-            if (it != proto_item->TextsLang.end()) {
-                auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
+            auto it = std::find_if(proto_item->Texts.begin(), proto_item->Texts.end(), [this](auto&& pack_pair) { return pack_pair.first == _curLang.GetName(); });
+            if (it != proto_item->Texts.end()) {
+                auto info = it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
-                info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
+                info += it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
                 DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
             }
         }
@@ -1190,7 +1192,6 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             }
 
             SelectEntityProp(ObjCurLine);
-            CurMap->RebuildLight();
         }
     }
     else if (dik == KeyCode::Prior) {
@@ -1525,7 +1526,6 @@ void FOMapper::IntLMouseDown()
                         cr->AnimateStay();
                     }
                 }
-                CurMap->RebuildLight();
             }
         }
         else if (IntMode == INT_MODE_LIST) {
@@ -2211,13 +2211,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     // Setup hex moving switcher
-    auto switcher = 0;
+    int switcher = 0;
+
     if (!SelectedEntities.empty()) {
         if (const auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
-            switcher = cr->GetMapHex().x % 2;
+            switcher = std::abs(cr->GetMapHex().x % 2);
         }
         else if (const auto* item = dynamic_cast<ItemHexView*>(SelectedEntities[0]); item != nullptr) {
-            switcher = item->GetMapHex().x % 2;
+            switcher = std::abs(item->GetMapHex().x % 2);
         }
     }
 
@@ -2306,7 +2307,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
+                    GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hx > 0 ? ((sw % 2) != 0 ? 4 : 3) : ((sw % 2) != 0 ? 0 : 1));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
                     GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hy > 0 ? 2 : 5);

@@ -88,9 +88,9 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, uint16 textMsg, uint numStr)
+[[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr)
 {
-    self->Send_TextMsg(nullptr, numStr, SAY_NETMSG, textMsg);
+    self->Send_TextMsg(nullptr, SAY_NETMSG, textPack, numStr);
 }
 
 ///# ...
@@ -98,9 +98,9 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, uint16 textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr, string_view lexems)
 {
-    self->Send_TextMsgLex(nullptr, numStr, SAY_NETMSG, textMsg, lexems);
+    self->Send_TextMsgLex(nullptr, SAY_NETMSG, textPack, numStr, lexems);
 }
 
 ///# ...

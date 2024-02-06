@@ -121,19 +121,20 @@
     }
 
     const auto& field = self->GetField(mapSpr->Hex);
-    auto& spr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, static_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
+    auto& mspr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, static_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
         {(self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->Offset.x, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->Offset.y}, &field.Offset, anim, nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
-    spr.MapSpr = mapSpr;
+    mspr.MapSpr = mapSpr;
     mapSpr->AddRef();
 
     if (!no_light) {
-        spr.SetLight(corner, self->GetLightHex({}), self->GetSize());
+        mspr.SetLight(corner, self->GetLightData(), self->GetSize());
     }
 
     if (!is_flat && !disable_egg) {
         EggAppearenceType egg_appearence;
+
         switch (corner) {
         case CornerType::South:
             egg_appearence = EggAppearenceType::ByXOrY;
@@ -149,16 +150,17 @@
             egg_appearence = EggAppearenceType::ByX;
             break;
         }
-        spr.SetEggAppearence(egg_appearence);
+
+        mspr.SetEggAppearence(egg_appearence);
     }
 
     if (color != ucolor::clear) {
-        spr.SetColor(ucolor {color, 0});
-        spr.SetFixedAlpha(color.comp.a);
+        mspr.SetColor(ucolor {color, 0});
+        mspr.SetFixedAlpha(color.comp.a);
     }
 
     if (contour_color != ucolor::clear) {
-        spr.SetContour(ContourType::Custom, contour_color);
+        mspr.SetContour(ContourType::Custom, contour_color);
     }
 }
 

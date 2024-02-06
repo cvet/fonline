@@ -35,10 +35,6 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(HashResolveException);
-DECLARE_EXCEPTION(HashInsertException);
-DECLARE_EXCEPTION(HashCollisionException);
-
 class HashStorage : public HashResolver
 {
 public:
@@ -85,7 +81,6 @@ public:
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) -> fpos;
 
     static void SetRandomSeed(int seed);
-    static void ForkProcess();
     static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
 };
 

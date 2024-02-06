@@ -1076,7 +1076,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, m
     }
 }
 
-void Map::SetText(mpos hex, uint color, string_view text, bool unsafe_text)
+void Map::SetText(mpos hex, ucolor color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1089,7 +1089,7 @@ void Map::SetText(mpos hex, uint color, string_view text, bool unsafe_text)
     }
 }
 
-void Map::SetTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num)
+void Map::SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -1097,12 +1097,12 @@ void Map::SetTextMsg(mpos hex, uint color, uint16 msg_num, uint str_num)
 
     for (auto* cr : _playerCritters) {
         if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetMapHex())) {
-            cr->Send_MapTextMsg(hex, color, msg_num, str_num);
+            cr->Send_MapTextMsg(hex, color, text_pack, str_num);
         }
     }
 }
 
-void Map::SetTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_num, string_view lexems)
+void Map::SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -1110,7 +1110,7 @@ void Map::SetTextMsgLex(mpos hex, uint color, uint16 msg_num, uint str_num, stri
 
     for (auto* cr : _playerCritters) {
         if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetMapHex())) {
-            cr->Send_MapTextMsgLex(hex, color, msg_num, str_num, lexems);
+            cr->Send_MapTextMsgLex(hex, color, text_pack, str_num, lexems);
         }
     }
 }

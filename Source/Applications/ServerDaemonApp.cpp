@@ -34,7 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "GenericUtils.h"
+#include "Platform.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     STACK_TRACE_ENTRY();
 
     try {
-        GenericUtils::ForkProcess();
+        Platform::ForkProcess();
 
         InitApp(argc, argv);
 

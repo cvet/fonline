@@ -34,8 +34,8 @@
 #include "ClientConnection.h"
 
 #include "Log.h"
-#include "MsgFiles.h"
 #include "Networking.h"
+#include "TextPack.h"
 
 ClientConnection::ClientConnection(NetConnection* net_connection) :
     InBuf {net_connection->InBuf},

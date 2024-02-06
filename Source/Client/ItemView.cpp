@@ -66,13 +66,6 @@ auto ItemView::CreateRefClone() const -> ItemView*
     return new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
 }
 
-auto ItemView::EvaluateLightHash() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor().underlying_value() : 0;
-}
-
 auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();

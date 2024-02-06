@@ -163,7 +163,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> string
+auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -172,7 +172,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
             *failed = true;
-            return {};
+            return _emptyStr;
         }
 
         throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
@@ -183,7 +183,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Can't resolve value {} for enum {}", value, enum_name);
             *failed = true;
-            return {};
+            return _emptyStr;
         }
 
         throw EnumResolveException("Can't resolve value for enum", enum_name, value);

@@ -1102,11 +1102,12 @@
 ///# param color ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetText(Map* self, mpos hex, uint color, string_view text)
+[[maybe_unused]] void Server_Map_SetText(Map* self, mpos hex, ucolor color, string_view text)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
+
     self->SetText(hex, color, text, false);
 }
 
@@ -1116,13 +1117,13 @@
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, uint color, uint16 textMsg, uint strNum)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, ucolor color, TextPackName textPack, uint strNum)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsg(hex, color, textMsg, strNum);
+    self->SetTextMsg(hex, color, textPack, strNum);
 }
 
 ///# ...
@@ -1132,13 +1133,13 @@
 ///# param strNum ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, uint color, uint16 textMsg, uint strNum, string_view lexems)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, mpos hex, ucolor color, TextPackName textPack, uint strNum, string_view lexems)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetTextMsgLex(hex, color, textMsg, strNum, lexems);
+    self->SetTextMsgLex(hex, color, textPack, strNum, lexems);
 }
 
 ///# ...

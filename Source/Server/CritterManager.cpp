@@ -410,7 +410,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
         }
 
         if (!talker->IsAlive()) {
-            cr->Send_TextMsg(cr, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME);
+            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_LIFE);
             CloseTalk(cr);
             return;
         }
@@ -437,7 +437,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
         }
 
         if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetMapHex(), hex, talk_distance)) {
-            cr->Send_TextMsg(cr, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
+            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
             CloseTalk(cr);
         }
     }

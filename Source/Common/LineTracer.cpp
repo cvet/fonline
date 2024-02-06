@@ -61,7 +61,7 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float an
     }
     else {
         const auto nx = 3.0f * (static_cast<float>(target_hex.x) - static_cast<float>(start_hex.x));
-        const auto ny = (static_cast<float>(target_hex.y) - static_cast<float>(start_hex.y)) * SQRT3_X2_FLOAT - (static_cast<float>(target_hex.x % 2) - static_cast<float>(start_hex.x % 2)) * SQRT3_FLOAT;
+        const auto ny = (static_cast<float>(target_hex.y) - static_cast<float>(start_hex.y)) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(target_hex.x % 2)) - static_cast<float>(std::abs(start_hex.x % 2))) * SQRT3_FLOAT;
 
         _dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
@@ -96,9 +96,9 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float an
         }
 
         _x1 = 3.0f * static_cast<float>(start_hex.x) + BIAS_FLOAT;
-        _y1 = SQRT3_X2_FLOAT * static_cast<float>(start_hex.y) - SQRT3_FLOAT * static_cast<float>(start_hex.x % 2) + BIAS_FLOAT;
+        _y1 = SQRT3_X2_FLOAT * static_cast<float>(start_hex.y) - SQRT3_FLOAT * static_cast<float>(std::abs(start_hex.x % 2)) + BIAS_FLOAT;
         _x2 = 3.0f * static_cast<float>(target_hex.x) + BIAS_FLOAT + BIAS_FLOAT;
-        _y2 = SQRT3_X2_FLOAT * static_cast<float>(target_hex.y) - SQRT3_FLOAT * static_cast<float>(target_hex.x % 2) + BIAS_FLOAT;
+        _y2 = SQRT3_X2_FLOAT * static_cast<float>(target_hex.y) - SQRT3_FLOAT * static_cast<float>(std::abs(target_hex.x % 2)) + BIAS_FLOAT;
 
         if (angle != 0.0f) {
             _x2 -= _x1;
@@ -126,8 +126,8 @@ auto LineTracer::GetNextHex(mpos& pos) const -> uint8
     GeometryHelper::MoveHexByDir(t1_pos, _dir1, _mapSize);
     GeometryHelper::MoveHexByDir(t2_pos, _dir2, _mapSize);
 
-    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_pos.y) - static_cast<float>(t1_pos.x % 2) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_pos.x));
-    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_pos.y) - static_cast<float>(t2_pos.x % 2) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_pos.x));
+    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_pos.y) - static_cast<float>(std::abs(t1_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_pos.x));
+    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_pos.y) - static_cast<float>(std::abs(t2_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_pos.x));
 
     dist1 = dist1 > 0 ? dist1 : -dist1;
     dist2 = dist2 > 0 ? dist2 : -dist2;

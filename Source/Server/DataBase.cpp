@@ -51,7 +51,7 @@ DISABLE_WARNINGS_PUSH()
 #include "bson/bson.h"
 DISABLE_WARNINGS_POP()
 
-#include "WinApi-Include.h"
+#include "WinApiUndef-Include.h"
 
 class DataBaseImpl
 {

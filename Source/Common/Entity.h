@@ -35,8 +35,8 @@
 
 #include "Common.h"
 
-#include "MsgFiles.h"
 #include "Properties.h"
+#include "TextPack.h"
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
@@ -365,8 +365,7 @@ public:
 
     void EnableComponent(hstring component);
 
-    vector<uint> TextsLang {};
-    vector<FOMsg*> Texts {};
+    vector<pair<string, TextPack>> Texts {};
     string CollectionName {};
 
 protected:

@@ -115,9 +115,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _fpsTime = GameTime.FrameTime();
     Settings.MousePos = App->Input.GetMousePosition();
 
-    // Language Packs
-    _curLang.LoadTexts(Resources, Settings.Language);
-
     if (mapper_mode) {
         return;
     }
@@ -134,6 +131,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ScriptSys = new ClientScriptSystem(this);
     ScriptSys->InitSubsystems();
 #endif
+
+    _curLang = LanguagePack {Settings.Language, *this};
+    _curLang.LoadTexts(Resources);
 
     ProtoMngr.LoadFromResources();
 
@@ -723,7 +723,7 @@ void FOClient::Net_OnConnect(bool success)
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
-        AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+        AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_FAIL));
     }
 }
 
@@ -759,7 +759,7 @@ void FOClient::Net_SendLogIn()
     _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -913,7 +913,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     }
     else {
         _conn.OutBuf.Write(prop->GetRegIndex());
-        if (data_size != 0u) {
+        if (data_size != 0) {
             _conn.OutBuf.Push(data, data_size);
         }
     }
@@ -1009,7 +1009,7 @@ void FOClient::Net_OnWrongNetProto()
 {
     STACK_TRACE_ENTRY();
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
@@ -1027,7 +1027,7 @@ void FOClient::Net_OnLoginSuccess()
 
     WriteLog("Authentication success");
 
-    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_LOGINOK));
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto encrypt_key = _conn.InBuf.Read<uint>();
@@ -1192,8 +1192,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto how_say = _conn.InBuf.Read<uint8>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
 
     string lexems;
     if (with_lexems) {
@@ -1207,13 +1207,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         return;
     }
 
-    if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value {}", msg_num);
-        return;
-    }
-
-    if (const auto& msg = _curLang.Msg[msg_num]; msg.Count(str_num) != 0u) {
-        auto str = msg.GetStr(str_num);
+    if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
+        auto str = copy(msg.GetStr(str_num));
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
         OnText(str, cr_id, how_say);
     }
@@ -1228,7 +1223,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
         return;
     }
 
-    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100u;
+    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100;
     const auto sstr = fstr;
     if (!OnInMessage.Fire(sstr, how_say, cr_id, text_delay)) {
         return;
@@ -1290,7 +1285,10 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str(); };
+    const auto get_format = [this](uint str_num) -> string {
+        const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
+        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str();
+    };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
 
@@ -1371,14 +1369,13 @@ void FOClient::Net_OnMapTextMsg()
 
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    RUNTIME_ASSERT(msg_num < TEXTMSG_COUNT);
+    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
 
-    auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, "");
     OnMapText(str, hex, color);
 }
@@ -1390,15 +1387,14 @@ void FOClient::Net_OnMapTextMsgLex()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
-    const auto msg_num = _conn.InBuf.Read<uint16>();
-    const auto str_num = _conn.InBuf.Read<uint>();
+    const auto text_pack = _conn.InBuf.Read<TextPackName>();
+    const auto str_num = _conn.InBuf.Read<TextPackKey>();
     const auto lexems = _conn.InBuf.Read<string>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    RUNTIME_ASSERT(msg_num < TEXTMSG_COUNT);
+    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
 
-    auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, lexems);
     OnMapText(str, hex, color);
 }
@@ -1623,25 +1619,12 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (!cr->IsChosen()) {
-        int64 prev_hash_sum = 0;
-        for (const auto* item : cr->GetInvItems()) {
-            prev_hash_sum += item->EvaluateLightHash();
-        }
-
         cr->DeleteAllInvItems();
 
         for (uint16 i = 0; i < slots_data_count; i++) {
             const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
             RUNTIME_ASSERT(proto_item != nullptr);
             cr->AddInvItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
-        }
-
-        int64 hash_sum = 0;
-        for (const auto* item : cr->GetInvItems()) {
-            hash_sum += item->EvaluateLightHash();
-        }
-        if (hash_sum != prev_hash_sum) {
-            CurMap->RebuildLight();
         }
     }
 
@@ -1655,6 +1638,10 @@ void FOClient::Net_OnCritterMoveItem()
             _someItem->SetCritterSlot(prev_slot);
             OnItemInvChanged.Fire(item, _someItem);
         }
+    }
+
+    if (const auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
+        CurMap->UpdateCritterLightSource(hex_cr);
     }
 }
 
@@ -1714,16 +1701,28 @@ void FOClient::Net_OnCritterSetAnims()
 
     if (cr != nullptr) {
         if (cond == CritterCondition::Alive) {
-            cr->SetAliveStateAnim(state_anim);
-            cr->SetAliveActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetAliveStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetAliveActionAnim(action_anim);
+            }
         }
         if (cond == CritterCondition::Knockout) {
-            cr->SetKnockoutStateAnim(state_anim);
-            cr->SetKnockoutActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetKnockoutStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetKnockoutActionAnim(action_anim);
+            }
         }
         if (cond == CritterCondition::Dead) {
-            cr->SetDeadStateAnim(state_anim);
-            cr->SetDeadActionAnim(action_anim);
+            if (state_anim != CritterStateAnim::None) {
+                cr->SetDeadStateAnim(state_anim);
+            }
+            if (action_anim != CritterActionAnim::None) {
+                cr->SetDeadActionAnim(action_anim);
+            }
         }
     }
 
@@ -1853,11 +1852,13 @@ void FOClient::Net_OnChosenClearItems()
         return;
     }
 
-    if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsHaveLightSources()) {
-        CurMap->RebuildLight();
-    }
-
     chosen->DeleteAllInvItems();
+
+    if (CurMap != nullptr) {
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+    }
 }
 
 void FOClient::Net_OnChosenAddItem()
@@ -1880,12 +1881,7 @@ void FOClient::Net_OnChosenAddItem()
         return;
     }
 
-    auto* prev_item = chosen->GetInvItem(item_id);
-    auto prev_slot = CritterItemSlot::Inventory;
-    uint prev_light_hash = 0;
-    if (prev_item != nullptr) {
-        prev_slot = prev_item->GetCritterSlot();
-        prev_light_hash = prev_item->EvaluateLightHash();
+    if (auto* prev_item = chosen->GetInvItem(item_id); prev_item != nullptr) {
         chosen->DeleteInvItem(prev_item, false);
     }
 
@@ -1893,13 +1889,12 @@ void FOClient::Net_OnChosenAddItem()
     RUNTIME_ASSERT(proto_item);
 
     auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
-    auto self_destroy_fuse = RefCountHolder(item);
 
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
 
-        if (item->EvaluateLightHash() != prev_light_hash && (slot != CritterItemSlot::Inventory || prev_slot != CritterItemSlot::Inventory)) {
-            CurMap->RebuildLight();
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
         }
     }
 
@@ -1931,15 +1926,17 @@ void FOClient::Net_OnChosenEraseItem()
     }
 
     auto* item_clone = item->CreateRefClone();
+    auto item_clone_release = ScopeCallback([item_clone] { item_clone->Release(); });
 
-    const auto rebuild_light = CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory;
     chosen->DeleteInvItem(item, true);
-    if (rebuild_light) {
-        CurMap->RebuildLight();
-    }
 
     OnItemInvOut.Fire(item_clone);
-    item_clone->Release();
+
+    if (CurMap != nullptr) {
+        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+    }
 }
 
 void FOClient::Net_OnAllItemsSend()
@@ -2124,7 +2121,7 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in end parse to game");
+        WriteLog("Chosen is not created in end place to game");
         return;
     }
 
@@ -2133,9 +2130,13 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     if (CurMap != nullptr) {
         CurMap->FindSetCenter(chosen->GetMapHex());
-        dynamic_cast<CritterHexView*>(chosen)->AnimateStay();
+
+        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            hex_chosen->AnimateStay();
+            CurMap->UpdateCritterLightSource(hex_chosen);
+        }
+
         ShowMainScreen(SCREEN_GAME, {});
-        CurMap->RebuildLight();
     }
     else {
         ShowMainScreen(SCREEN_GLOBAL_MAP, {});
@@ -2149,7 +2150,7 @@ void FOClient::Net_OnProperty(uint data_size)
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    if (data_size == 0u) {
+    if (data_size == 0) {
         msg_len = _conn.InBuf.Read<uint>();
     }
     else {
@@ -2188,12 +2189,12 @@ void FOClient::Net_OnProperty(uint data_size)
 
     PropertyRawData prop_data;
 
-    if (data_size != 0u) {
+    if (data_size != 0) {
         _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
-        if (len != 0u) {
+        if (len != 0) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
@@ -2268,7 +2269,6 @@ void FOClient::Net_OnProperty(uint data_size)
 
     if (type == NetProperty::ChosenItem) {
         auto* item = dynamic_cast<ItemView*>(entity);
-        auto self_destroy_fuse = RefCountHolder(item);
 
         OnItemInvChanged.Fire(item, item);
     }
@@ -2315,12 +2315,15 @@ void FOClient::Net_OnChosenTalk()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
+    auto str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
+
     FormatTags(str, GetChosen(), npc, lexems);
+
     const auto text_to_script = str;
     string answers_to_script;
+
     for (const auto answers_text : answers_texts) {
-        str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
+        str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answers_text));
         FormatTags(str, GetChosen(), npc, lexems);
         answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
     }
@@ -2608,7 +2611,6 @@ void FOClient::Net_OnViewMap()
     CurMap->FindSetCenter(hex);
     ShowMainScreen(SCREEN_GAME, {});
     ScreenFadeOut();
-    CurMap->RebuildLight();
 
     map<string, any_t> params;
     params["LocationId"] = any_t {_str("{}", loc_id).str()};
@@ -2893,7 +2895,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsLightThru()) {
-            item->GetMap()->RebuildLight();
+            item->GetMap()->UpdateHexLightSources(item->GetMapHex());
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsNoBlock()) {
@@ -2916,7 +2918,7 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        item->GetMap()->RebuildLight();
+        item->GetMap()->UpdateItemLightSource(item);
     }
 }
 
@@ -2963,8 +2965,21 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     }
 }
 
+void FOClient::ChangeLanguage(string_view lang_name)
+{
+    STACK_TRACE_ENTRY();
+
+    auto lang_pack = LanguagePack {lang_name, *this};
+    lang_pack.LoadTexts(Resources);
+
+    _curLang = std::move(lang_pack);
+    Settings.Language = lang_name;
+}
+
 void FOClient::ConsoleMessage(string_view msg)
 {
+    STACK_TRACE_ENTRY();
+
     auto str = string(msg);
     int how_say = SAY_NORM;
     const auto result = OnOutMessage.Fire(str, how_say);
@@ -3067,27 +3082,32 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                     tag = "<lexem not found>";
                 }
             }
-            // Msg text
-            else if (tag.length() > 4 && tag[0] == 'm' && tag[1] == 's' && tag[2] == 'g' && tag[3] == ' ') {
-                tag = tag.substr(4);
+            // Text pack
+            else if (tag.length() > 5 && tag[0] == 't' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == 't' && tag[4] == ' ') {
+                tag = tag.substr(5);
                 tag = _str(tag).erase('(').erase(')');
+
                 istringstream itag(tag);
-                string msg_type_name;
+                string pack_name_str;
                 uint str_num = 0;
-                if (itag >> msg_type_name >> str_num) {
-                    auto msg_type = FOMsg::GetMsgType(msg_type_name);
-                    if (msg_type < 0 || msg_type >= TEXTMSG_COUNT) {
-                        tag = "<msg tag, unknown type>";
+
+                if (itag >> pack_name_str >> str_num) {
+                    bool failed = false;
+                    const auto pack_name = _curLang.ResolveTextPackName(pack_name_str, &failed);
+                    const auto& text_pack = _curLang.GetTextPack(pack_name);
+
+                    if (failed) {
+                        tag = "<text tag, invalid pack name>";
                     }
-                    else if (_curLang.Msg[msg_type].Count(str_num) == 0u) {
-                        tag = _str("<msg tag, string {} not found>", str_num);
+                    else if (text_pack.GetStrCount(str_num) == 0) {
+                        tag = _str("<text tag, string {} not found>", str_num);
                     }
                     else {
-                        tag = _curLang.Msg[msg_type].GetStr(str_num);
+                        tag = text_pack.GetStr(str_num);
                     }
                 }
                 else {
-                    tag = "<msg tag parse fail>";
+                    tag = "<text tag parse fail>";
                 }
             }
             // Script
@@ -3428,14 +3448,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "BytesReceive") {
         return _str("{}", _conn.GetBytesReceived()).str();
     }
-    else if (cmd == "GetLanguage") {
-        return _curLang.Name;
-    }
-    else if (cmd == "SetLanguage" && args.size() >= 2) {
-        if (args[1].length() == 4) {
-            _curLang.LoadTexts(Resources, args[1]);
-        }
-    }
     else if (cmd == "SetResolution" && args.size() >= 3) {
         auto w = _str(args[1]).toInt();
         auto h = _str(args[2]).toInt();
@@ -3591,7 +3603,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
     vector<uint8> steps;
     vector<uint16> control_steps;
 
-    if (speed > 0) {
+    if (speed != 0 && cr->IsAlive()) {
         if (pos_or_dir.index() == 0) {
             hex = std::get<0>(std::get<0>(pos_or_dir));
             hex_offset = std::get<1>(std::get<0>(pos_or_dir));

@@ -46,7 +46,6 @@
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "Version-Include.h"
 
 class BakerEngine : public FOEngineBase
@@ -957,59 +956,70 @@ void Baker::BakeAll()
             auto txt_files = baker_engine.Resources.FilterFiles("fotxt");
             while (txt_files.MoveNext()) {
                 const auto file = txt_files.GetCurFileHeader();
-                const auto lang = file.GetName().substr(0, 4);
-                if (languages.emplace(lang).second) {
-                    WriteLog("Language: {}", lang);
+                const auto& file_name = file.GetName();
+
+                const auto sep = file_name.find('.');
+                RUNTIME_ASSERT(sep != string::npos);
+
+                string lang_name = file_name.substr(sep + 1);
+                RUNTIME_ASSERT(!lang_name.empty());
+
+                if (languages.emplace(lang_name).second) {
+                    WriteLog("Language: {}", lang_name);
                 }
             }
 
             vector<LanguagePack> lang_packs;
 
             for (const auto& lang_name : languages) {
-                LanguagePack lang_pack;
-                lang_pack.ParseTexts(baker_engine.Resources, baker_engine, lang_name);
-                lang_packs.push_back(lang_pack);
+                auto lang_pack = LanguagePack {lang_name, baker_engine};
+                lang_pack.ParseTexts(baker_engine.Resources, baker_engine);
+                lang_packs.emplace_back(std::move(lang_pack));
             }
 
             // Dialog texts
             for (auto* pack : dialog_mngr.GetDialogs()) {
-                for (size_t i = 0; i < pack->TextsLang.size(); i++) {
+                for (size_t i = 0; i < pack->Texts.size(); i++) {
                     for (auto& lang : lang_packs) {
-                        if (pack->TextsLang[i] != lang.NameCode) {
+                        if (pack->Texts[i].first != lang.GetName()) {
                             continue;
                         }
 
-                        if (lang.Msg[TEXTMSG_DLG].IsIntersects(pack->Texts[i])) {
+                        auto& text_pack = lang.GetTextPackForEdit(TextPackName::Dialogs);
+
+                        if (text_pack.IsIntersects(pack->Texts[i].second)) {
                             throw GenericException("Dialog text intersection detected", pack->PackName);
                         }
 
-                        lang.Msg[TEXTMSG_DLG] += pack->Texts[i];
+                        text_pack.Merge(pack->Texts[i].second);
                     }
                 }
             }
 
             // Proto texts
-            const auto fill_proto_texts = [&lang_packs](const auto& protos, int txt_type) {
+            const auto fill_proto_texts = [&lang_packs](const auto& protos, TextPackName pack_name) {
                 for (auto&& [pid, proto] : protos) {
-                    for (size_t i = 0; i < proto->TextsLang.size(); i++) {
+                    for (size_t i = 0; i < proto->Texts.size(); i++) {
                         for (auto& lang : lang_packs) {
-                            if (proto->TextsLang[i] != lang.NameCode) {
+                            if (proto->Texts[i].first != lang.GetName()) {
                                 continue;
                             }
 
-                            if (lang.Msg[txt_type].IsIntersects(*proto->Texts[i])) {
-                                throw GenericException("Proto text intersection detected", proto->GetName(), txt_type);
+                            auto& text_pack = lang.GetTextPackForEdit(pack_name);
+
+                            if (text_pack.IsIntersects(proto->Texts[i].second)) {
+                                throw GenericException("Proto text intersection detected", proto->GetName(), pack_name);
                             }
 
-                            lang.Msg[txt_type] += *proto->Texts[i];
+                            text_pack.Merge(proto->Texts[i].second);
                         }
                     }
                 }
             };
 
-            fill_proto_texts(proto_mngr.GetProtoCritters(), TEXTMSG_DLG);
-            fill_proto_texts(proto_mngr.GetProtoItems(), TEXTMSG_ITEM);
-            fill_proto_texts(proto_mngr.GetProtoLocations(), TEXTMSG_LOCATIONS);
+            fill_proto_texts(proto_mngr.GetProtoCritters(), TextPackName::Dialogs);
+            fill_proto_texts(proto_mngr.GetProtoItems(), TextPackName::Items);
+            fill_proto_texts(proto_mngr.GetProtoLocations(), TextPackName::Locations);
 
             // Save parsed packs
             for (const auto& lang_pack : lang_packs) {

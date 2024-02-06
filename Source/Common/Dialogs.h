@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
-#include "MsgFiles.h"
+#include "TextPack.h"
 
 enum class TalkType
 {
@@ -103,8 +103,7 @@ struct DialogPack
     hstring PackId {};
     string PackName {};
     vector<Dialog> Dialogs {};
-    vector<uint> TextsLang {};
-    vector<FOMsg> Texts {};
+    vector<pair<string, TextPack>> Texts {};
     string Comment {};
 };
 

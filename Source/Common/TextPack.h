@@ -37,75 +37,77 @@
 
 DECLARE_EXCEPTION(LanguagePackException);
 
-static constexpr auto TEXTMSG_TEXT = 0;
-static constexpr auto TEXTMSG_DLG = 1;
-static constexpr auto TEXTMSG_ITEM = 2;
-static constexpr auto TEXTMSG_GAME = 3;
-static constexpr auto TEXTMSG_GM = 4;
-static constexpr auto TEXTMSG_COMBAT = 5;
-static constexpr auto TEXTMSG_QUEST = 6;
-static constexpr auto TEXTMSG_HOLO = 7;
-static constexpr auto TEXTMSG_INTERNAL = 8;
-static constexpr auto TEXTMSG_LOCATIONS = 9;
-static constexpr auto TEXTMSG_COUNT = 10;
+///@ ExportEnum
+enum class TextPackName : uint8
+{
+    None = 0,
+    Game = 1,
+    Dialogs = 2,
+    Items = 3,
+    Locations = 4,
+};
 
 class FileSystem;
 
-class FOMsg final
+using TextPackKey = uint;
+
+class TextPack final
 {
 public:
-    using MsgMap = multimap<uint, string>;
+    TextPack() = default;
+    TextPack(const TextPack&) = default;
+    TextPack(TextPack&&) noexcept = default;
+    auto operator=(const TextPack&) -> TextPack& = default;
+    auto operator=(TextPack&&) noexcept -> TextPack& = default;
+    ~TextPack() = default;
 
-    FOMsg() = default;
-    FOMsg(const FOMsg&) = default;
-    FOMsg(FOMsg&&) noexcept = default;
-    auto operator=(const FOMsg&) -> FOMsg& = default;
-    auto operator=(FOMsg&&) noexcept -> FOMsg& = default;
-    auto operator+=(const FOMsg& other) -> FOMsg&;
-    ~FOMsg() = default;
-
-    static auto GetMsgType(string_view type_name) -> int;
-
-    [[nodiscard]] auto GetStr(uint num) const -> string; // Todo: pass default to fomsg gets
-    [[nodiscard]] auto GetStr(uint num, uint skip) const -> string;
-    [[nodiscard]] auto GetStrNumUpper(uint num) const -> uint;
-    [[nodiscard]] auto GetStrNumLower(uint num) const -> uint;
-    [[nodiscard]] auto GetInt(uint num) const -> int;
-    [[nodiscard]] auto GetBinary(uint num) const -> vector<uint8>;
-    [[nodiscard]] auto Count(uint num) const -> uint;
-    [[nodiscard]] auto GetSize() const -> uint;
-    [[nodiscard]] auto IsIntersects(const FOMsg& other) const -> bool;
+    [[nodiscard]] auto GetStr(TextPackKey num) const -> const string&;
+    [[nodiscard]] auto GetStr(TextPackKey num, size_t skip) const -> const string&;
+    [[nodiscard]] auto GetStrNumUpper(TextPackKey num) const -> TextPackKey;
+    [[nodiscard]] auto GetStrNumLower(TextPackKey num) const -> TextPackKey;
+    [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
+    [[nodiscard]] auto GetSize() const -> size_t;
+    [[nodiscard]] auto IsIntersects(const TextPack& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
-    auto LoadFromString(string_view str, HashResolver& hash_resolver) -> bool;
+    auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
-    void AddStr(uint num, string_view str);
-    void AddBinary(uint num, const uint8* binary, uint len);
-    void EraseStr(uint num);
+    void AddStr(TextPackKey num, string_view str);
+    void EraseStr(TextPackKey num);
+    void Merge(const TextPack& other);
     void Clear();
 
 private:
-    MsgMap _strData {};
+    multimap<TextPackKey, string> _strData {};
+    string _emptyStr {};
 };
 
 class LanguagePack final
 {
 public:
     LanguagePack() = default;
+    LanguagePack(string_view lang_name, const NameResolver& name_resolver);
     LanguagePack(const LanguagePack&) = default;
     LanguagePack(LanguagePack&&) noexcept = default;
     auto operator=(const LanguagePack&) -> LanguagePack& = default;
     auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
-    auto operator==(const string& name) const -> bool { return name == Name; }
-    auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
+    auto operator==(string_view lang_name) const -> bool { return lang_name == _langName; }
     ~LanguagePack() = default;
 
-    void ParseTexts(FileSystem& resources, HashResolver& hash_resolver, string_view lang_name);
-    void SaveTextsToDisk(string_view dir) const;
-    void LoadTexts(FileSystem& resources, string_view lang_name);
+    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const -> const TextPack&;
+    [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
+    [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
 
-    string Name {};
-    uint NameCode {};
-    FOMsg Msg[TEXTMSG_COUNT] {};
+    void ParseTexts(FileSystem& resources, HashResolver& hash_resolver);
+    void SaveTextsToDisk(string_view dir) const;
+    void LoadTexts(FileSystem& resources);
+
+private:
+    string _langName {};
+    const NameResolver* _nameResolver {};
+    vector<unique_ptr<TextPack>> _textPacks {};
+    TextPack _emptyPack {};
+    bool _nonConstHelper {};
 };

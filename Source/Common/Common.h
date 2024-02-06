@@ -148,7 +148,7 @@ inline auto format_as(T v)
 
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP
-#include "WinApi-Include.h"
+#include "WinApiUndef-Include.h"
 #endif
 
 // Base types
@@ -362,6 +362,11 @@ template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
 static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
 {
     return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
+}
+
+static constexpr auto time_duration_div(time_duration duration1, time_duration duration2) -> float
+{
+    return static_cast<float>(static_cast<double>(duration1.count()) / static_cast<double>(duration2.count()));
 }
 
 template<>
@@ -675,12 +680,19 @@ public:
         return *this;
     }
 
-    void Unsubscribe()
+    void Unsubscribe() noexcept
     {
-        for (auto& cb : _unsubscribeCallbacks) {
-            cb._unsubscribeCallback();
-        }
+        const auto callbacks = std::move(_unsubscribeCallbacks);
         _unsubscribeCallbacks.clear();
+
+        for (const auto& cb : callbacks) {
+            try {
+                cb._unsubscribeCallback();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+        }
     }
 
 private:
@@ -707,7 +719,12 @@ public:
     ~EventObserver()
     {
         if (!_subscriberCallbacks.empty()) {
-            ThrowException();
+            try {
+                throw GenericException("Some of subscriber still alive", _subscriberCallbacks.size());
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
     }
 
@@ -718,13 +735,6 @@ public:
     }
 
 private:
-    void ThrowException()
-    {
-        if (std::uncaught_exceptions() == 0) {
-            throw GenericException("Some of subscriber still alive", _subscriberCallbacks.size());
-        }
-    }
-
     list<Callback> _subscriberCallbacks {};
 };
 
@@ -791,7 +801,7 @@ public:
     explicit ptr(T* p) :
         _value {p}
     {
-        if (_value) {
+        if (_value != nullptr) {
             ++_value->ptrCounter;
         }
     }
@@ -805,11 +815,11 @@ public:
     auto operator=(const type& other) -> ptr&
     {
         if (this != &other) {
-            if (_value) {
+            if (_value != nullptr) {
                 --_value->ptrCounter;
             }
             _value = other._value;
-            if (_value) {
+            if (_value != nullptr) {
                 ++_value->ptrCounter;
             }
         }
@@ -825,7 +835,7 @@ public:
     auto operator=(type&& other) noexcept -> ptr&
     {
         if (this != &other) {
-            if (_value) {
+            if (_value != nullptr) {
                 --_value->ptrCounter;
             }
             _value = other._value;
@@ -836,7 +846,7 @@ public:
 
     ~ptr()
     {
-        if (_value) {
+        if (_value != nullptr) {
             --_value->ptrCounter;
         }
     }
@@ -2013,6 +2023,10 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+DECLARE_EXCEPTION(HashResolveException);
+DECLARE_EXCEPTION(HashInsertException);
+DECLARE_EXCEPTION(HashCollisionException);
+
 class HashResolver
 {
 public:
@@ -2022,6 +2036,8 @@ public:
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
 };
 
+DECLARE_EXCEPTION(EnumResolveException);
+
 class NameResolver
 {
 public:
@@ -2030,7 +2046,7 @@ public:
     //[[nodiscard]] virtual auto GetTypeInfo(string_view type_name, TypeDesc& desc) const -> bool = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
 

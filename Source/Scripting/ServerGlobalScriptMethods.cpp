@@ -732,7 +732,7 @@
 [[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
 {
     if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, text, false, 0, 0, "");
+        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, text, false, TextPackName::None, 0, "");
     }
 }
 
@@ -741,9 +741,9 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textMsg, numStr, "");
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textPack, numStr, "");
 }
 
 ///# ...
@@ -752,9 +752,9 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr, string_view lexems)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textMsg, numStr, lexems);
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textPack, numStr, lexems);
 }
 
 ///# ...

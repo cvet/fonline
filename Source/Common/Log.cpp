@@ -36,13 +36,8 @@
 
 #include "Log.h"
 #include "DiskFileSystem.h"
+#include "Platform.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
-#include "WinApi-Include.h"
-
-#if FO_ANDROID
-#include <android/log.h>
-#endif
 
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -86,7 +81,19 @@ void LogToFile(string_view fname)
 
     std::lock_guard locker(Data->LogLocker);
 
-    Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
+    auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
+
+    if (log_file) {
+        Data->LogFileHandle = std::make_unique<DiskFile>(std::move(log_file));
+    }
+    else {
+        string log_err_msg = _str("Can't create log file '{}'", fname).str();
+
+        Platform::InfoLog(log_err_msg);
+
+        std::cout << log_err_msg << "\n";
+        std::cout.flush();
+    }
 }
 
 void SetLogCallback(string_view key, LogFunc callback)
@@ -148,13 +155,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             }
         }
 
-#if FO_WINDOWS
-        ::OutputDebugStringW(_str(result).toWideChar().c_str());
-#endif
-
-#if FO_ANDROID
-        __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
-#endif
+        Platform::InfoLog(result);
 
 #if FO_TRACY
         TracyMessage(result.c_str(), result.length());

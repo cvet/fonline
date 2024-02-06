@@ -50,7 +50,6 @@
 #include "Keyboard.h"
 #include "LocationView.h"
 #include "MapView.h"
-#include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
@@ -61,6 +60,7 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
+#include "TextPack.h"
 #include "TwoBitMask.h"
 #include "VideoClip.h"
 
@@ -154,6 +154,7 @@ public:
 
     void Shutdown();
     void MainLoop();
+    void ChangeLanguage(string_view lang_name);
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);

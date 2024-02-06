@@ -39,7 +39,6 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 #include "SDL.h"
 #include "SDL_video.h"

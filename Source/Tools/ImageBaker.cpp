@@ -40,7 +40,6 @@
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 #include "png.h"
 

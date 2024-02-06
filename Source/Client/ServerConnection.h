@@ -115,6 +115,7 @@ private:
     bool _interthreadCommunication {};
     InterthreadDataCallback _interthreadSend {};
     vector<uint8> _interthreadReceived {};
-    bool _interthreadDisconnect {};
+    std::mutex _interthreadReceivedLocker {};
+    std::atomic_bool _interthreadRequestDisconnect {};
     optional<time_point> _artificalLagTime {};
 };

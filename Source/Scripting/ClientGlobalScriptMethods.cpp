@@ -479,109 +479,83 @@
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    client->AddMessage(FOMB_GAME, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(FOMB_GAME, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///# ...
 ///# param type ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-
-    client->AddMessage(type, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(type, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].GetStr(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum, uint skipCount)
+[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].GetStr(strNum, skipCount);
+    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrNumUpper(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].GetStrNumUpper(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrNumLower(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].GetStrNumLower(strNum);
+    return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetMsgStrCount(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].Count(strNum);
+    return static_cast<uint>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
 ///# ...
-///# param textMsg ...
+///# param textPack ...
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
 {
-    if (textMsg >= TEXTMSG_COUNT) {
-        throw ScriptException("Invalid text msg arg");
-    }
-    return client->GetCurLang().Msg[textMsg].Count(strNum) > 0;
+    return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
 
 ///# ...
@@ -598,6 +572,7 @@
     if (pos == std::string::npos) {
         return string(text);
     }
+
     return string(text).replace(pos, replace.length(), obj1);
 }
 
@@ -623,6 +598,7 @@
     if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
         throw ScriptException("Invalid world map pos arg");
     }
+
     return client->GetWorldmapFog().Get2Bit(zoneX, zoneY);
 }
 
@@ -1351,6 +1327,7 @@
         pp.PointPos = {data[i * 3], data[i * 3 + 1]};
         pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2])};
         pp.PointOffset = nullptr;
+        pp.PPointColor = nullptr;
     }
 
     client->SprMngr.DrawPoints(points, prim);
@@ -1819,14 +1796,6 @@
 }
 
 ///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetCurLang(FOClient* client)
-{
-    return client->GetCurLang().Name;
-}
-
-///# ...
 ///# param itemCount ...
 ///# param itemId ...
 ///# param swapItemId ...
@@ -1846,7 +1815,6 @@
     auto* old_item = item->CreateRefClone();
     const auto from_slot = item->GetCritterSlot();
     auto* map_chosen = client->GetMapChosen();
-    const auto is_light = item->GetIsLight();
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_chosen != nullptr) {
@@ -1878,14 +1846,17 @@
     // Light
     if (client->CurMap != nullptr) {
         client->CurMap->RebuildFog();
-
-        if (is_light && (toSlot == CritterItemSlot::Inventory || (from_slot == CritterItemSlot::Inventory && toSlot != CritterItemSlot::Outside))) {
-            client->CurMap->RebuildLight();
-        }
+        client->CurMap->UpdateCritterLightSource(map_chosen);
     }
 
     // Notify scripts about item changing
     client->OnItemInvChanged.Fire(item, old_item);
 
     old_item->Release();
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
+{
+    client->ChangeLanguage(langName);
 }

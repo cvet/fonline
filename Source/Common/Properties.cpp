@@ -1226,6 +1226,7 @@ auto PropertyRegistrator::ResolveType(string_view type_str) const -> const Prope
         base_info._dictKeySize = _str(flags[15]).toInt();
         base_info._isDictKeyHash = flags[16][0] == '1';
         base_info._isDictKeyEnum = flags[17][0] == '1';*/
+        //_isDictKeyString
     }
 
     base_info._isStringBase = base_info._dataType == Property::DataType::String || base_info._isArrayOfString || base_info._isDictOfString || base_info._isDictOfArrayOfString;
