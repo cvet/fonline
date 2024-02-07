@@ -117,6 +117,7 @@ if(FO_MULTICONFIG)
 endif()
 
 AddConfiguration(Profiling RelWithDebInfo)
+AddConfiguration(Profiling_OnDemand RelWithDebInfo)
 AddConfiguration(Debug_Profiling Debug)
 AddConfiguration(Release_Ext Release)
 

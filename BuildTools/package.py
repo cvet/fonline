@@ -223,14 +223,16 @@ def build():
 					(['Headless'] if 'Headless' in args.pack else []) + \
 					(['Service'] if 'Service' in args.pack else []) + \
 					(['Profiling'] if 'Profiling' in args.pack else []) + \
+					(['OnDemandProfiling'] if 'OnDemandProfiling' in args.pack else []) + \
 					(['OGL'] if 'OGL' in args.pack else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType == 'Profiling' else '') + \
+						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '') + \
 						('_OpenGL' if binType == 'OGL' else '')
 				log('Setup', arch, binName)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
 						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
 						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
@@ -333,13 +335,15 @@ def build():
 			for binType in [''] + \
 					(['Headless'] if 'Headless' in args.pack else []) + \
 					(['Daemon'] if 'Daemon' in args.pack else []) + \
-					(['Profiling'] if 'Profiling' in args.pack else []):
-				binName = args.devname + '_' + args.target + binType
+					(['Profiling'] if 'Profiling' in args.pack else []) + \
+					(['OnDemandProfiling'] if 'OnDemandProfiling' in args.pack else []) + \
+				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Daemon'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType == 'Profiling' else '')
+						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '')
 				log('Setup', arch, binName)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
 						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
 						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
