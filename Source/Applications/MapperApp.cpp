@@ -108,14 +108,14 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
-        while (!App->Settings.Quit) {
+        while (!App->IsQuitRequested()) {
             MapperEntry(nullptr);
         }
 
 #else
         auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
 
-        while (!App->Settings.Quit) {
+        while (!App->IsQuitRequested()) {
             balancer.StartLoop();
             MapperEntry(nullptr);
             balancer.EndLoop();

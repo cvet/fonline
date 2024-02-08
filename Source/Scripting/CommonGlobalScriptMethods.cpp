@@ -71,6 +71,13 @@
 }
 
 ///# ...
+///@ ExportMethod
+[[maybe_unused]] void Common_RequestQuit([[maybe_unused]] FOEngineBase* engine)
+{
+    App->RequestQuit();
+}
+
+///# ...
 ///# param resourcePath ...
 ///# return ...
 ///@ ExportMethod

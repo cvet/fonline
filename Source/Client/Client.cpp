@@ -2688,7 +2688,7 @@ void FOClient::TryExit()
     else {
         switch (GetMainScreen()) {
         case SCREEN_LOGIN:
-            Settings.Quit = true;
+            App->RequestQuit();
             break;
         case SCREEN_WAIT:
             _conn.Disconnect();
@@ -3624,9 +3624,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     SDL_StopTextInput();
             }
         }*/
-    }
-    else if (cmd == "Exit") {
-        Settings.Quit = true;
     }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());

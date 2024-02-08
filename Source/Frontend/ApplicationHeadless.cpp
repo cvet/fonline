@@ -75,7 +75,7 @@ static void SignalHandler(int sig)
 {
     signal(sig, SignalHandler);
 
-    App->Settings.Quit = true;
+    App->RequestQuit();
 }
 #endif
 

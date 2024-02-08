@@ -371,6 +371,7 @@ public:
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
 
+    [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
     void OpenLink(string_view link);
@@ -380,6 +381,7 @@ public:
 #endif
     void BeginFrame();
     void EndFrame();
+    void RequestQuit() { _quit = true; }
 
     GlobalSettings Settings;
 
@@ -407,6 +409,7 @@ private:
     RenderDrawBuffer* _imguiDrawBuf {};
     RenderEffect* _imguiEffect {};
     vector<AppWindow*> _allWindows {};
+    std::atomic_bool _quit {};
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};
     EventDispatcher<> _onFrameEndDispatcher {OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {OnPause};

@@ -804,7 +804,7 @@ void Application::BeginFrame()
                 EventsQueue->emplace_back(ev);
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
-                    Settings.Quit = true;
+                    RequestQuit();
                 }
             }
             else {
@@ -884,7 +884,7 @@ void Application::BeginFrame()
 
             Uint8 window_event = sdl_event.window.event;
             if (window_event == SDL_WINDOWEVENT_CLOSE) {
-                Settings.Quit = true;
+                RequestQuit();
             }
             else if (window_event == SDL_WINDOWEVENT_ENTER) {
                 _pendingMouseLeaveFrame = 0;
@@ -915,7 +915,7 @@ void Application::BeginFrame()
             }
         } break;
         case SDL_QUIT: {
-            Settings.Quit = true;
+            RequestQuit();
         } break;
         case SDL_APP_TERMINATING: {
             _onQuitDispatcher();

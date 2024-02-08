@@ -54,7 +54,7 @@ int main(int argc, char** argv)
         {
             auto server = std::make_unique<FOServer>(App->Settings);
 
-            while (!App->Settings.Quit) {
+            while (!App->IsQuitRequested()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {100});
             }
         }
