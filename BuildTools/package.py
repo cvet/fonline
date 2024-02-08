@@ -336,7 +336,7 @@ def build():
 					(['Headless'] if 'Headless' in args.pack else []) + \
 					(['Daemon'] if 'Daemon' in args.pack else []) + \
 					(['Profiling'] if 'Profiling' in args.pack else []) + \
-					(['OnDemandProfiling'] if 'OnDemandProfiling' in args.pack else [])
+					(['OnDemandProfiling'] if 'OnDemandProfiling' in args.pack else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Daemon'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
 						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '')
