@@ -60,10 +60,10 @@ struct MeshData
 
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(Vertices.data(), len * sizeof(Vertices[0]));
+        writer.WritePtr(Vertices.data(), len * sizeof(Vertex3D));
         len = static_cast<uint>(Indices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(Indices.data(), len * sizeof(Indices[0]));
+        writer.WritePtr(Indices.data(), len * sizeof(vindex_t));
         len = static_cast<uint>(DiffuseTexture.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(DiffuseTexture.data(), len);
@@ -76,11 +76,11 @@ struct MeshData
         }
         len = static_cast<uint>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
+        writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(mat44));
     }
 
     vector<Vertex3D> Vertices {};
-    vector<uint16> Indices {};
+    vector<vindex_t> Indices {};
     string DiffuseTexture {};
     vector<string> SkinBones {};
     vector<mat44> SkinBoneOffsets {};
@@ -710,7 +710,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         // Faces
         mesh->Indices.resize(vertices_count);
         for (auto i = 0; i < vertices_count; i++) {
-            mesh->Indices[i] = static_cast<uint16>(i);
+            mesh->Indices[i] = static_cast<vindex_t>(i);
         }
 
         // Material

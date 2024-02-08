@@ -51,6 +51,12 @@ constexpr size_t MODEL_MAX_BONES = 54;
 constexpr size_t BONES_PER_VERTEX = 4;
 #endif
 
+#if FO_RENDER_32BIT_INDEX
+using vindex_t = uint;
+#else
+using vindex_t = uint16;
+#endif
+
 using RenderEffectLoader = std::function<string(string_view)>;
 
 enum class RenderType
@@ -192,7 +198,7 @@ public:
 
     vector<Vertex2D> Vertices {};
     size_t VertCount {};
-    vector<uint16> Indices {};
+    vector<vindex_t> Indices {};
     size_t IndCount {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};

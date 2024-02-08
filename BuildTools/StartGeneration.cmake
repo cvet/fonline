@@ -416,6 +416,8 @@ endif()
 string(TOUPPER "${FO_OS}" FO_OS_UPPER)
 add_compile_definitions(FO_${FO_OS_UPPER}=1)
 
+add_compile_definitions(FO_RENDER_32BIT_INDEX=0)
+
 # Information about CPU architecture
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	StatusMessage("CPU architecture: 64-bit")

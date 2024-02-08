@@ -1130,7 +1130,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
         D3D11_BUFFER_DESC ibuf_desc = {};
         ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-        ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
+        ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(vindex_t));
         ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         ibuf_desc.MiscFlags = 0;
@@ -1143,7 +1143,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
     const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
 
-    std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
+    std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(vindex_t));
 
     D3DDeviceContext->Unmap(IndexBuf, 0);
 }
@@ -1295,7 +1295,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 
         D3DDeviceContext->IASetInputLayout(InputLayout[pass]);
         D3DDeviceContext->IASetVertexBuffers(0, 1, &d3d_dbuf->VertexBuf, &stride, &offset);
-        D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf, DXGI_FORMAT_R16_UINT, 0);
+        if constexpr (sizeof(vindex_t) == 2) {
+            D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf, DXGI_FORMAT_R16_UINT, 0);
+        }
+        else {
+            D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf, DXGI_FORMAT_R32_UINT, 0);
+        }
         D3DDeviceContext->IASetPrimitiveTopology(draw_mode);
 
         D3DDeviceContext->VSSetShader(VertexShader[pass], nullptr, 0);
@@ -1415,7 +1420,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 
         D3DDeviceContext->IASetInputLayout(nullptr);
         D3DDeviceContext->IASetVertexBuffers(0, 1, &null_buf, &stride, &offset);
-        D3DDeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+        if constexpr (sizeof(vindex_t) == 2) {
+            D3DDeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+        }
+        else {
+            D3DDeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+        }
 
         D3DDeviceContext->VSSetShader(nullptr, nullptr, 0);
         D3DDeviceContext->PSSetShader(nullptr, nullptr, 0);

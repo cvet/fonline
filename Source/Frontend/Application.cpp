@@ -1021,7 +1021,7 @@ void Application::EndFrame()
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
             _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
             for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-                _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
+                _imguiDrawBuf->Indices[i] = static_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
 
             _imguiDrawBuf->Upload(_imguiEffect->Usage);

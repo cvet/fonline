@@ -695,12 +695,12 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
             auto& ibuf = _spritesDrawBuf->Indices;
             auto& ipos = _spritesDrawBuf->IndCount;
 
-            ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
@@ -1198,7 +1198,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         vbuf[i].PosY = y;
         vbuf[i].Color = color;
 
-        ibuf[i] = static_cast<uint16>(i);
+        ibuf[i] = static_cast<vindex_t>(i);
     }
 
     _primitiveDrawBuf->PrimType = prim;
@@ -2478,12 +2478,12 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor 
             const auto x2 = texture_uv[2];
             const auto y2 = texture_uv[3];
 
-            ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
 
             auto& v0 = vbuf[vpos++];
             v0.PosX = static_cast<float>(x);
