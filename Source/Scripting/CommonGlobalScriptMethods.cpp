@@ -72,7 +72,7 @@
 
 ///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_RequestQuit([[maybe_unused]] FOEngineBase* engine)
+[[maybe_unused]] void Common_Game_RequestQuit([[maybe_unused]] FOEngineBase* engine)
 {
     App->RequestQuit();
 }
