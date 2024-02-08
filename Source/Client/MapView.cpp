@@ -113,6 +113,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _hexLight.resize(static_cast<size_t>(_width) * _height);
     _hexField.SetSize(_width, _height);
 
+    _lightPoints.resize(1);
+    _lightSoftPoints.resize(1);
+
     ResizeView();
 
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
@@ -1605,13 +1608,32 @@ void MapView::ProcessLighting()
         _needRebuildLightPrimitives = false;
         need_render_light = true;
 
-        _lightPoints.clear();
-        _lightSoftPoints.clear();
+        for (auto& points : _lightPoints) {
+            points.clear();
+        }
+        for (auto& points : _lightSoftPoints) {
+            points.clear();
+        }
+
+        size_t cur_points = 0;
 
         for (auto&& [ls, count] : _visibleLightSources) {
             RUNTIME_ASSERT(ls->Applied);
 
-            LightFanToPrimitves(ls, _lightPoints, _lightSoftPoints);
+            // Split large entries to fit into 16-bit index
+            if constexpr (sizeof(vindex_t) == 2) {
+                while (_lightPoints[cur_points].size() > 0x7FFF || _lightSoftPoints.size() > 0x7FFF) {
+                    cur_points++;
+
+                    if (cur_points >= _lightPoints.size()) {
+                        _lightPoints.emplace_back();
+                        _lightSoftPoints.emplace_back();
+                        break;
+                    }
+                }
+            }
+
+            LightFanToPrimitves(ls, _lightPoints[cur_points], _lightSoftPoints[cur_points]);
         }
     }
 
@@ -1633,8 +1655,16 @@ void MapView::ProcessLighting()
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
 
-        _engine->SprMngr.DrawPoints(_lightPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-        _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+        for (auto& points : _lightPoints) {
+            if (!points.empty()) {
+                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+            }
+        }
+        for (auto& points : _lightPoints) {
+            if (!points.empty()) {
+                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+            }
+        }
 
         _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }

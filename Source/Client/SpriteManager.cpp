@@ -1141,6 +1141,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     // Check primitives
     const auto count = points.size();
     auto prim_count = static_cast<int>(count);
+
     switch (prim) {
     case RenderPrimitiveType::PointList:
         break;
@@ -1161,12 +1162,15 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         return;
     }
 
-    _primitiveDrawBuf->CheckAllocBuf(count, count);
-
     auto& vbuf = _primitiveDrawBuf->Vertices;
     auto& vpos = _primitiveDrawBuf->VertCount;
     auto& ibuf = _primitiveDrawBuf->Indices;
     auto& ipos = _primitiveDrawBuf->IndCount;
+
+    vpos = 0;
+    ipos = 0;
+
+    _primitiveDrawBuf->CheckAllocBuf(count, count);
 
     vpos = count;
     ipos = count;
