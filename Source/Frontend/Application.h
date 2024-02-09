@@ -381,7 +381,8 @@ public:
 #endif
     void BeginFrame();
     void EndFrame();
-    void RequestQuit() { _quit = true; }
+    void RequestQuit();
+    void WaitForRequestedQuit();
 
     GlobalSettings Settings;
 
@@ -410,6 +411,8 @@ private:
     RenderEffect* _imguiEffect {};
     vector<AppWindow*> _allWindows {};
     std::atomic_bool _quit {};
+    std::condition_variable _quitEvent {};
+    std::mutex _quitLocker {};
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};
     EventDispatcher<> _onFrameEndDispatcher {OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {OnPause};

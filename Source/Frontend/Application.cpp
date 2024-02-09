@@ -1054,6 +1054,25 @@ void Application::EndFrame()
 #endif
 }
 
+void Application::RequestQuit()
+{
+    STACK_TRACE_ENTRY();
+
+    _quit = true;
+    _quitEvent.notify_all();
+}
+
+void Application::WaitForRequestedQuit()
+{
+    STACK_TRACE_ENTRY();
+
+    auto locker = std::unique_lock {_quitLocker};
+
+    while (!_quit) {
+        _quitEvent.wait(locker);
+    }
+}
+
 auto AppWindow::GetSize() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();

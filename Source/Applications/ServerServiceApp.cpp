@@ -67,9 +67,7 @@ static void ServerEntry()
     try {
         Data->Server = std::make_unique<FOServer>(App->Settings);
 
-        while (!App->IsQuitRequested()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {100});
-        }
+        App->WaitForRequestedQuit();
 
         Data->Server.reset();
     }
