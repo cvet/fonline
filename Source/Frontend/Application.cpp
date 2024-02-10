@@ -1058,6 +1058,8 @@ void Application::RequestQuit()
 {
     STACK_TRACE_ENTRY();
 
+    WriteLog("Quit requested");
+
     _quit = true;
     _quitEvent.notify_all();
 }
