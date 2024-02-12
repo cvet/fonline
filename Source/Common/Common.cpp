@@ -257,6 +257,26 @@ auto GetStackTrace() -> string
 #endif
 }
 
+auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if !FO_NO_MANUAL_STACK_TRACE
+    const auto& st = StackTrace;
+
+    if (deep < st.CallsCount) {
+        return st.CallTree[st.CallsCount - 1 - deep];
+    }
+    else {
+        return nullptr;
+    }
+
+#else
+
+    return nullptr;
+#endif
+}
+
 auto GetRealStackTrace() -> string
 {
     NO_STACK_TRACE_ENTRY();

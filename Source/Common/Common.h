@@ -525,6 +525,7 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
+extern auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*;
 
 struct StackTraceScopeEntry
 {
