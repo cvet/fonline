@@ -70,7 +70,6 @@ void Player::SetOwnedCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_ownedCr);
     _ownedCr = cr;
 }
 
@@ -122,7 +121,7 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
     Connection->OutBuf.Write(cr->GetDeadActionAnim());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer());
-    Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
+    Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetPlayer() == nullptr);
     Connection->OutBuf.Write(is_chosen);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();

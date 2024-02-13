@@ -92,9 +92,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] Player* Server_Critter_GetOwner(Critter* self)
+[[maybe_unused]] Player* Server_Critter_GetPlayer(Critter* self)
 {
-    return self->GetOwner();
+    return self->GetPlayer();
 }
 
 ///# ...
@@ -1032,8 +1032,8 @@
         throw ScriptException("Critter is not player");
     }
 
-    if (const auto* owner = self->GetOwner(); owner != nullptr) {
-        owner->Connection->GracefulDisconnect();
+    if (const auto* player = self->GetPlayer(); player != nullptr) {
+        player->Connection->GracefulDisconnect();
     }
 }
 
@@ -1046,7 +1046,7 @@
         throw ScriptException("Critter is not player");
     }
 
-    return self->GetOwner() != nullptr;
+    return self->GetPlayer() != nullptr;
 }
 
 ///# ...

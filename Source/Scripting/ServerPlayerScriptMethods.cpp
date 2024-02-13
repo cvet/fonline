@@ -37,6 +37,38 @@
 
 // ReSharper disable CppInconsistentNaming
 
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] Critter* Server_Player_CreateCritter(Player* self, hstring protoId)
+{
+    return self->GetEngine()->CreatePlayerCritter(self, protoId);
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] Critter* Server_Player_LoadCritter(Player* self, ident_t crId)
+{
+    return self->GetEngine()->LoadPlayerCritter(self, crId);
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Server_Player_UnloadCritter(Player* self, Critter* cr)
+{
+    UNUSED_VARIABLE(self);
+
+    self->GetEngine()->UnloadPlayerCritter(cr);
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Server_Player_SwitchCritter(Player* self, Critter* cr)
+{
+    self->GetEngine()->SwitchPlayerCritter(self, cr);
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Server_Player_DestroyCritter(Player* self, ident_t crId)
+{
+    self->GetEngine()->GetEngine()->DestroyPlayerCritter(self, crId);
+}
+
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer

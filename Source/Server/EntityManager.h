@@ -74,7 +74,7 @@ public:
 
     auto LoadLocation(ident_t loc_id, bool& is_error) -> Location*;
     auto LoadMap(ident_t map_id, bool& is_error) -> Map*;
-    auto LoadCritter(ident_t cr_id, Player* owner, bool& is_error) -> Critter*;
+    auto LoadCritter(ident_t cr_id, bool& is_error) -> Critter*;
     auto LoadItem(ident_t item_id, bool& is_error) -> Item*;
 
     void CallInit(Location* loc, bool first_time);

@@ -91,6 +91,12 @@ public:
     void VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance);
 
+    auto CreatePlayerCritter(Player* player, hstring pid) -> Critter*;
+    auto LoadPlayerCritter(Player* player, ident_t cr_id) -> Critter*;
+    void UnloadPlayerCritter(Critter* cr);
+    void SwitchPlayerCritter(Player* player, Critter* cr);
+    void DestroyPlayerCritter(Player* player, ident_t cr_id);
+
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
     ///@ ExportEvent
@@ -113,6 +119,10 @@ public:
     ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerEnter, Player* /*player*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
@@ -270,7 +280,7 @@ private:
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
     void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self);
-    void LogoutCritter(Critter* cr);
+    void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint;

@@ -287,7 +287,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 
     const auto cr_ids = map->GetCritterIds();
     for (const auto& cr_id : cr_ids) {
-        auto* cr = LoadCritter(cr_id, nullptr, is_error);
+        auto* cr = LoadCritter(cr_id, is_error);
         if (cr != nullptr) {
             if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
                 WriteLog("Error set critter {} {} to map {} {} at hex {} {}", cr->GetName(), cr->GetId(), map->GetName(), map->GetId(), cr->GetHexX(), cr->GetHexY());
@@ -316,7 +316,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     return map;
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) -> Critter*
+auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -332,7 +332,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) ->
         return {};
     }
 
-    auto* cr = new Critter(_engine, cr_id, owner, proto);
+    auto* cr = new Critter(_engine, cr_id, proto);
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;

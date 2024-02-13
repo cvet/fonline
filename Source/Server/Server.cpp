@@ -1094,6 +1094,7 @@ void FOServer::ProcessPlayer(Player* player)
 
         if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
             cr->DetachPlayer();
+            player->SetOwnedCritter(nullptr);
         }
 
         OnPlayerLogout.Fire(player);
@@ -1523,9 +1524,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (auto* owner = cr->GetOwner()) {
-            owner->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
-            owner->Connection->GracefulDisconnect();
+        if (auto* player = cr->GetPlayer()) {
+            player->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
+            player->Connection->GracefulDisconnect();
             logcb("Player disconnected");
         }
         else {
@@ -1934,17 +1935,110 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    // Remove player critter from game
-    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= std::chrono::milliseconds {Settings.MinimumOfflineTime}) {
-        LogoutCritter(cr);
+    // Auto unload player critter
+    if (cr->IsOwnedByPlayer() && cr->GetPlayer() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= std::chrono::milliseconds {Settings.MinimumOfflineTime}) {
+        UnloadPlayerCritter(cr);
     }
 }
 
-void FOServer::LogoutCritter(Critter* cr)
+auto FOServer::CreatePlayerCritter(Player* player, hstring pid) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Logout critter {}", cr->GetName());
+    WriteLog(LogType::Info, "Create player {} critter {}", player->GetName(), pid);
+
+    const auto* proto = ProtoMngr.GetProtoCritter(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Invalid player critter proto", pid);
+    }
+
+    auto* cr = new Critter(this, ident_t {}, proto);
+
+    EntityMngr.RegisterEntity(cr);
+
+    auto ids = player->GetOwnedCritterIds();
+    ids.emplace_back(cr->GetId());
+    player->SetOwnedCritterIds(ids);
+
+    cr->AttachPlayer(player);
+    cr->DetachPlayer();
+
+    const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
+    RUNTIME_ASSERT(can_add_to_global_map);
+
+    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
+
+    if (!cr->IsDestroyed()) {
+        EntityMngr.CallInit(cr, true);
+    }
+
+    if (cr->IsDestroyed()) {
+        throw GenericException("Player critter destroyed during init");
+    }
+
+    return cr;
+}
+
+auto FOServer::LoadPlayerCritter(Player* player, ident_t cr_id) -> Critter*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(cr_id);
+
+    WriteLog(LogType::Info, "Load player {} critter {}", player->GetName(), cr_id);
+
+    if (const auto ids = player->GetOwnedCritterIds(); std::find(ids.begin(), ids.end(), cr_id) == ids.end()) {
+        throw GenericException("Invalid player critter id for loading", cr_id);
+    }
+
+    if (CrMngr.GetCritter(cr_id) != nullptr) {
+        throw GenericException("Player critter already in game");
+    }
+
+    bool is_error = false;
+    Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
+
+    if (is_error) {
+        if (cr != nullptr) {
+            cr->MarkAsDestroyed();
+            cr->Release();
+        }
+
+        throw GenericException("Player critter data base loading error");
+    }
+
+    cr->AttachPlayer(player);
+    cr->DetachPlayer();
+
+    const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
+    RUNTIME_ASSERT(can_add_to_global_map);
+
+    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
+
+    if (!cr->IsDestroyed()) {
+        EntityMngr.CallInit(cr, false);
+    }
+
+    if (cr->IsDestroyed()) {
+        throw GenericException("Player critter destroyed during init");
+    }
+
+    return cr;
+}
+
+void FOServer::UnloadPlayerCritter(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr);
+
+    WriteLog(LogType::Info, "Unload player critter {}", cr->GetName());
+
+    if (cr->GetPlayer() != nullptr) {
+        throw GenericException("Player critter not detached before unloading");
+    }
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
@@ -1994,6 +2088,156 @@ void FOServer::LogoutCritter(Critter* cr)
     EntityMngr.UnregisterEntity(cr);
     cr->MarkAsDestroyed();
     cr->Release();
+}
+
+void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(cr);
+
+    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
+
+    Critter* prev_cr = player->GetOwnedCritter();
+
+    if (prev_cr == cr) {
+        throw GenericException("Player critter already selected");
+    }
+
+    auto ids = player->GetOwnedCritterIds();
+    const auto id_it = std::find(ids.begin(), ids.end(), cr->GetId());
+
+    if (id_it == ids.end()) {
+        throw GenericException("Invalid player critter id for switching");
+    }
+
+    ids.erase(id_it);
+    ids.insert(ids.begin(), cr->GetId());
+    player->SetOwnedCritterIds(ids);
+
+    if (prev_cr != nullptr) {
+        prev_cr->DetachPlayer();
+    }
+
+    cr->AttachPlayer(player);
+    player->SetOwnedCritter(cr);
+
+    SendCritterInitialInfo(cr, prev_cr);
+
+    OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+}
+
+void FOServer::DestroyPlayerCritter(Player* player, ident_t cr_id)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(cr_id);
+
+    WriteLog(LogType::Info, "Destroy player {} critter {}", player->GetName(), cr_id);
+
+    if (const auto* cr = player->GetOwnedCritter(); cr != nullptr && cr->GetId() == cr_id) {
+        throw GenericException("Player critter not detached before destroying");
+    }
+
+    auto ids = player->GetOwnedCritterIds();
+    const auto id_it = std::find(ids.begin(), ids.end(), cr_id);
+
+    if (id_it == ids.end()) {
+        throw GenericException("Invalid player critter id for destroying");
+    }
+
+    ids.erase(id_it);
+    player->SetOwnedCritterIds(ids);
+
+    DbStorage.Delete(ToHashedString("Critters"), cr_id);
+}
+
+void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
+{
+    cr->Send_TimeSync();
+
+    if (cr->ViewMapId) {
+        auto* map = MapMngr.GetMap(cr->ViewMapId);
+        cr->ViewMapId = ident_t {};
+        if (map != nullptr) {
+            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
+            cr->Send_ViewMap();
+            return;
+        }
+    }
+
+    const auto* map = MapMngr.GetMap(cr->GetMapId());
+    const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
+
+    if (same_map) {
+        // Remove entities diff
+        cr->Send_RemoveCritter(prev_cr);
+
+        for (const auto* visible_cr : prev_cr->VisCrSelf) {
+            if (cr->VisCrSelfMap.count(visible_cr->GetId()) == 0) {
+                cr->Send_RemoveCritter(visible_cr);
+            }
+        }
+
+        for (const auto item_id : prev_cr->VisItem) {
+            if (cr->VisItem.count(item_id) == 0) {
+                if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                    cr->Send_EraseItemFromMap(item);
+                }
+            }
+        }
+    }
+    else {
+        cr->Send_LoadMap(map);
+    }
+
+    cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
+
+    if (!cr->GetMapId()) {
+        RUNTIME_ASSERT(cr->GlobalMapGroup);
+
+        cr->Send_GlobalInfo(GM_INFO_ALL);
+        cr->Send_AllAutomapsInfo();
+    }
+    else {
+        RUNTIME_ASSERT(map);
+
+        // Send chosen
+        cr->Send_AddCritter(cr);
+        cr->Send_AddAllItems();
+        cr->Send_AllAutomapsInfo();
+
+        // Send current critters
+        for (const auto* visible_cr : cr->VisCrSelf) {
+            if (same_map && prev_cr->VisCrSelfMap.count(visible_cr->GetId()) != 0) {
+                continue;
+            }
+
+            cr->Send_AddCritter(visible_cr);
+        }
+
+        // Send current items on map
+        for (const auto item_id : cr->VisItem) {
+            if (same_map && prev_cr->VisItem.count(item_id) != 0) {
+                continue;
+            }
+
+            if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                cr->Send_AddItemOnMap(item);
+            }
+        }
+    }
+
+    // Check active talk
+    if (cr->Talk.Type != TalkType::None) {
+        CrMngr.ProcessTalk(cr, true);
+        cr->Send_Talk();
+    }
+
+    // Notify about end of placing
+    cr->Send_PlaceToGameComplete();
 }
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir)
@@ -2452,8 +2696,6 @@ void FOServer::Process_Login(Player* unlogined_player)
     player->Connection->OutBuf.SetEncryptKey(encrypt_key);
 
     // Attach critter
-    bool critter_reconnected = false;
-
     if (!player_reconnected) {
         Critter* cr = nullptr;
 
@@ -2463,10 +2705,12 @@ void FOServer::Process_Login(Player* unlogined_player)
         // Try find in game
         if (cr_id) {
             cr = CrMngr.GetCritter(cr_id);
+
             if (cr != nullptr) {
                 RUNTIME_ASSERT(cr->IsOwnedByPlayer());
 
-                if (cr->GetOwner() != nullptr) {
+                // Already attached to another player
+                if (cr->GetPlayer() != nullptr) {
                     player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_IN_GAME);
                     player->Connection->GracefulDisconnect();
                     return;
@@ -2474,123 +2718,21 @@ void FOServer::Process_Login(Player* unlogined_player)
 
                 cr->AttachPlayer(player);
                 player->SetOwnedCritter(cr);
-                critter_reconnected = true;
+                SendCritterInitialInfo(cr, nullptr);
 
-                WriteLog("Critter for player found in game");
+                WriteLog(LogType::Info, "Critter for player found in game");
             }
-        }
-
-        // Try load critter from data base
-        if (cr == nullptr && cr_id) {
-            bool is_error = false;
-            cr = EntityMngr.LoadCritter(cr_id, player, is_error);
-            if (is_error) {
-                if (cr != nullptr) {
-                    cr->Release();
-                }
-                player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
-                player->Connection->GracefulDisconnect();
-                return;
-            }
-
-            cr->SetMapId(ident_t {});
-            cr->SetGlobalMapLeaderId(ident_t {});
-
-            player->SetOwnedCritter(cr);
-
-            WriteLog("Critter for player loaded from data base");
-
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
-            RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
-
-            cr->Send_TimeSync();
-            cr->Send_LoadMap(nullptr);
-
-            EntityMngr.CallInit(cr, false);
-        }
-
-        // Create new critter
-        if (cr == nullptr) {
-            const auto* proto = ProtoMngr.GetProtoCritter(ToHashedString("Player"));
-            RUNTIME_ASSERT(proto);
-
-            cr = new Critter(this, ident_t {}, player, proto);
-
-            EntityMngr.RegisterEntity(cr);
-            player->SetOwnedCritterIds({cr->GetId()});
-            player->SetOwnedCritter(cr);
-
-            WriteLog("Critter for player created from scratch");
-
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
-            RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
-
-            cr->Send_TimeSync();
-            cr->Send_LoadMap(nullptr);
-
-            EntityMngr.CallInit(cr, true);
         }
     }
     else {
-        critter_reconnected = true;
+        if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
+            SendCritterInitialInfo(cr, nullptr);
+        }
     }
 
-    if (critter_reconnected) {
-        Critter* cr = player->GetOwnedCritter();
-
-        cr->Send_TimeSync();
-
-        if (cr->ViewMapId) {
-            auto* map = MapMngr.GetMap(cr->ViewMapId);
-            cr->ViewMapId = ident_t {};
-            if (map != nullptr) {
-                MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
-                cr->Send_ViewMap();
-                return;
-            }
-        }
-
-        auto* map = MapMngr.GetMap(cr->GetMapId());
-        cr->Send_LoadMap(map);
-        cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
-
-        if (!cr->GetMapId()) {
-            RUNTIME_ASSERT(cr->GlobalMapGroup);
-
-            cr->Send_GlobalInfo(GM_INFO_ALL);
-            cr->Send_AllAutomapsInfo();
-        }
-        else {
-            RUNTIME_ASSERT(map);
-
-            // Send chosen
-            cr->Send_AddCritter(cr);
-            cr->Send_AddAllItems();
-            cr->Send_AllAutomapsInfo();
-
-            // Send current critters
-            for (auto* visible_cr : cr->VisCrSelf) {
-                cr->Send_AddCritter(visible_cr);
-            }
-
-            // Send current items on map
-            for (const auto item_id : cr->VisItem) {
-                if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
-                    cr->Send_AddItemOnMap(item);
-                }
-            }
-        }
-
-        // Check active talk
-        if (cr->Talk.Type != TalkType::None) {
-            CrMngr.ProcessTalk(cr, true);
-            cr->Send_Talk();
-        }
-
-        // Notify about end of placing
-        cr->Send_PlaceToGameComplete();
+    if (!OnPlayerEnter.Fire(player)) {
+        player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
+        player->Connection->GracefulDisconnect();
     }
 }
 

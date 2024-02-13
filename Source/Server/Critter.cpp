@@ -41,22 +41,14 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props) :
+Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
-    CritterProperties(GetInitRef()),
-    _player {owner}
+    CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    if (_player != nullptr) {
-        _player->AddRef();
-
-        _name = _player->GetName();
-    }
-    else {
-        _name = _str("{}_{}", proto->GetName(), id);
-    }
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 Critter::~Critter()
@@ -118,29 +110,31 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
     return true;
 }
 
+void Critter::AttachPlayer(Player* player)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(!_player);
+
+    _playerDetached = false;
+    _player = player;
+    _player->AddRef();
+
+    _name = _player->GetName();
+}
+
 void Critter::DetachPlayer()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_player != nullptr);
+    RUNTIME_ASSERT(_player);
     RUNTIME_ASSERT(!_playerDetached);
 
     _player->Release();
     _player = nullptr;
     _playerDetached = true;
     _playerDetachTime = _engine->GameTime.FrameTime();
-}
-
-void Critter::AttachPlayer(Player* owner)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_player == nullptr);
-    RUNTIME_ASSERT(_playerDetached);
-
-    _playerDetached = false;
-    _player = owner;
-    _player->AddRef();
 }
 
 void Critter::ClearMove()
@@ -268,63 +262,63 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
 
 auto Critter::AddCrIntoVisSet1(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr1.insert(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisSet2(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr2.insert(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisSet3(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr3.insert(cr_id).second;
 }
 
 auto Critter::DelCrFromVisSet1(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr1.erase(cr_id) != 0;
 }
 
 auto Critter::DelCrFromVisSet2(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr2.erase(cr_id) != 0;
 }
 
 auto Critter::DelCrFromVisSet3(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr3.erase(cr_id) != 0;
 }
 
 auto Critter::AddIdVisItem(ident_t item_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.insert(item_id).second;
 }
 
 auto Critter::DelIdVisItem(ident_t item_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.erase(item_id) != 0;
 }
 
 auto Critter::CountIdVisItem(ident_t item_id) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.count(item_id) != 0;
 }

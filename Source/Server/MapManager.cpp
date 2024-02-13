@@ -126,7 +126,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
-                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto, &cr_props);
+                    auto* cr = new Critter(_engine, ident_t {}, cr_proto, &cr_props);
 
                     static_map->CritterBillets.emplace_back(cr_id, cr);
 

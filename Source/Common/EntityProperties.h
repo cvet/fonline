@@ -79,7 +79,7 @@ public:
     {
     }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, OwnedCritterIds);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, string, Password);

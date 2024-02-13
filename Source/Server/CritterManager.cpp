@@ -187,7 +187,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         RUNTIME_ASSERT(hy < map->GetHeight());
     }
 
-    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);
+    auto* cr = new Critter(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterEntity(cr);
 

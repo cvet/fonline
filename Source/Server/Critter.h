@@ -71,7 +71,7 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 
 public:
     Critter() = delete;
-    Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props = nullptr);
+    Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -80,8 +80,8 @@ public:
 
     [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _player != nullptr || _playerDetached; }
     [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
-    [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }
-    [[nodiscard]] auto GetOwner() -> Player* { return _player; }
+    [[nodiscard]] auto GetPlayer() const -> const Player* { return _player; }
+    [[nodiscard]] auto GetPlayer() -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> time_duration;
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
@@ -120,8 +120,8 @@ public:
     auto DelIdVisItem(ident_t item_id) -> bool;
     auto CountIdVisItem(ident_t item_id) const -> bool;
 
+    void AttachPlayer(Player* player);
     void DetachPlayer();
-    void AttachPlayer(Player* owner);
     void ClearMove();
     void ClearVisible();
     void SetItem(Item* item);

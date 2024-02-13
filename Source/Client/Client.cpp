@@ -1155,6 +1155,11 @@ void FOClient::Net_OnRemoveCritter()
         cr->Finish();
 
         OnCritterOut.Fire(cr);
+
+        if (cr == _chosen) {
+            _chosen->Release();
+            _chosen = nullptr;
+        }
     }
     else {
         const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
@@ -1164,8 +1169,15 @@ void FOClient::Net_OnRemoveCritter()
         }
 
         auto* cr = *it;
+
         OnCritterOut.Fire(cr);
         _worldmapCritters.erase(it);
+
+        if (cr == _chosen) {
+            _chosen->Release();
+            _chosen = nullptr;
+        }
+
         cr->MarkAsDestroyed();
         cr->Release();
     }
@@ -2168,12 +2180,12 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
+        BreakIntoDebugger();
         WriteLog("Chosen is not created in end place to game");
         return;
     }
 
-    FlashGameWindow();
-    ScreenFadeOut();
+    int target_screen;
 
     if (CurMap != nullptr) {
         CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
@@ -2183,10 +2195,16 @@ void FOClient::Net_OnPlaceToGameComplete()
             CurMap->UpdateCritterLightSource(hex_chosen);
         }
 
-        ShowMainScreen(SCREEN_GAME, {});
+        target_screen = SCREEN_GAME;
     }
     else {
-        ShowMainScreen(SCREEN_GLOBAL_MAP, {});
+        target_screen = SCREEN_GLOBAL_MAP;
+    }
+
+    if (target_screen != GetMainScreen()) {
+        FlashGameWindow();
+        ScreenFadeOut();
+        ShowMainScreen(target_screen, {});
     }
 
     WriteLog("Entering to game complete");
