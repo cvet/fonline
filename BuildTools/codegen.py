@@ -2297,6 +2297,24 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
+                    if target == 'Server' and targ == 'Client':
+                        globalLines.append('static void ASRemoteCall_CritterSend_' + rcName + '(Critter* self' + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
+                        globalLines.append('{')
+                        if not isASCompiler:
+                            globalLines.append('    STACK_TRACE_ENTRY();')
+                            globalLines.append('    ENTITY_VERIFY_NULL(self);')
+                            globalLines.append('    ENTITY_VERIFY(self);')
+                            globalLines.append('    Player* player = self->GetPlayer();')
+                            globalLines.append('    if (player != nullptr) {')
+                            globalLines.append('        ASRemoteCall_Send_' + rcName + '(player' + (', ' if rcArgs else '') + ', '.join(['std::forward<' + metaTypeToASEngineType(p[0]) + '>(' + p[1] + ')' for p in rcArgs]) + ');')
+                            globalLines.append('    }')
+                        else:
+                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            for p in rcArgs:
+                                globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                            globalLines.append('    throw ScriptCompilerException("Stub");')
+                        globalLines.append('}')
+                        globalLines.append('')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == target and subsystem == 'AngelScript':
@@ -2470,6 +2488,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
                             '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_Send_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
+                if target == 'Server' and targ == 'Client' and subsystem == 'AngelScript':
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("CritterRemoteCaller", "void ' + rcName +
+                            '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_CritterSend_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == target and subsystem == 'AngelScript':
