@@ -222,7 +222,7 @@ void CritterManager::DeleteCritter(Critter* cr)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(cr->IsNpc());
+    RUNTIME_ASSERT(!cr->GetIsControlledByPlayer());
 
     // Redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
@@ -283,16 +283,16 @@ auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
 
-    vector<Critter*> npcs;
-    npcs.reserve(all_critters.size());
+    vector<Critter*> non_player_critters;
+    non_player_critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (cr->IsNpc()) {
-            npcs.push_back(cr);
+        if (!cr->GetIsControlledByPlayer()) {
+            non_player_critters.push_back(cr);
         }
     }
 
-    return npcs;
+    return non_player_critters;
 }
 
 auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>
@@ -307,7 +307,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     player_critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (cr->IsOwnedByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
+        if (cr->GetIsControlledByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
             player_critters.push_back(cr);
         }
     }

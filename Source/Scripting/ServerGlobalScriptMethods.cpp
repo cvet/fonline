@@ -62,6 +62,30 @@
 }
 
 ///@ ExportMethod
+[[maybe_unused]] Critter* Server_Game_CreateCritter(FOServer* server, hstring protoId, bool forPlayer)
+{
+    return server->CreateCritter(protoId, forPlayer);
+}
+
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Game_LoadCritter(FOServer* server, ident_t crId, bool forPlayer)
+{
+    return server->LoadCritter(crId, forPlayer);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_UnloadCritter(FOServer* server, Critter* cr)
+{
+    server->UnloadCritter(cr);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DestroyUnloadedCritter(FOServer* server, ident_t crId)
+{
+    server->DestroyUnloadedCritter(crId);
+}
+
+///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, false, func);
@@ -570,7 +594,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, Critter* cr)
 {
-    if (cr != nullptr && cr->IsNpc()) {
+    if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
         server->CrMngr.DeleteCritter(cr);
     }
 }
@@ -581,7 +605,7 @@
 [[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
+        if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && !cr->GetIsControlledByPlayer()) {
             server->CrMngr.DeleteCritter(cr);
         }
     }
@@ -593,7 +617,7 @@
 [[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<Critter*>& critters)
 {
     for (auto* cr : critters) {
-        if (cr != nullptr && cr->IsNpc()) {
+        if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
             server->CrMngr.DeleteCritter(cr);
         }
     }
@@ -606,7 +630,7 @@
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && cr->IsNpc()) {
+            if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && !cr->GetIsControlledByPlayer()) {
                 server->CrMngr.DeleteCritter(cr);
             }
         }
@@ -1061,7 +1085,7 @@
 
     for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && //
-            (loc->IsLocVisible() || (cr != nullptr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
+            (loc->IsLocVisible() || (cr != nullptr && cr->GetIsControlledByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -1091,13 +1115,13 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsOwnedByPlayer()) {
+    if (!cr->GetIsControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
         throw ScriptException("Npc arg is null");
     }
-    if (!npc->IsNpc()) {
+    if (npc->GetIsControlledByPlayer()) {
         throw ScriptException("Npc arg is not npc");
     }
 
@@ -1122,13 +1146,13 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsOwnedByPlayer()) {
+    if (!cr->GetIsControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
         throw ScriptException("Npc arg is null");
     }
-    if (!npc->IsNpc()) {
+    if (npc->GetIsControlledByPlayer()) {
         throw ScriptException("Npc arg is not npc");
     }
 
@@ -1154,7 +1178,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsOwnedByPlayer()) {
+    if (!cr->GetIsControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (!server->DlgMngr.GetDialog(dlgPack)) {

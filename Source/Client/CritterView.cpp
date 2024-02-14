@@ -73,23 +73,6 @@ void CritterView::SetName(string_view name)
     _name = name;
 }
 
-void CritterView::SetPlayer(bool is_player, bool is_chosen)
-{
-    STACK_TRACE_ENTRY();
-
-    _ownedByPlayer = is_player;
-    _isChosen = is_chosen;
-}
-
-void CritterView::SetPlayerOffline(bool is_offline)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_ownedByPlayer);
-
-    _isPlayerOffline = is_offline;
-}
-
 auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
@@ -204,10 +187,10 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {

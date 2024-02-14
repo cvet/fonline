@@ -78,8 +78,6 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _player != nullptr || _playerDetached; }
-    [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
     [[nodiscard]] auto GetPlayer() const -> const Player* { return _player; }
     [[nodiscard]] auto GetPlayer() -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> time_duration;
@@ -277,7 +275,6 @@ public:
 
 private:
     Player* _player {};
-    bool _playerDetached {};
     time_point _playerDetachTime {};
     vector<Item*> _invItems {};
     time_point _talkNextTime {};

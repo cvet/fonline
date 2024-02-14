@@ -1192,7 +1192,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                 if (cr->GetId() == _critterContourCrId) {
                     contour = _critterContour;
                 }
-                else if (!cr->IsChosen()) {
+                else if (!cr->GetIsChosen()) {
                     contour = _crittersContour;
                 }
                 mspr->SetContour(contour, cr->GetContourColor());
@@ -1485,7 +1485,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                 if (cr->GetId() == _critterContourCrId) {
                     contour = _critterContour;
                 }
-                else if (!cr->IsChosen()) {
+                else if (!cr->GetIsChosen()) {
                     contour = _crittersContour;
                 }
                 mspr->SetContour(contour, cr->GetContourColor());
@@ -1687,7 +1687,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
     }
 
     // Default chosen light
-    if (!light_added && cr->IsChosen()) {
+    if (!light_added && cr->GetIsChosen()) {
         UpdateLightSource(cr->GetId(), cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY);
         light_added = true;
     }
@@ -2928,7 +2928,7 @@ void MapView::PrepareFogToDraw()
 
         CritterHexView* chosen;
 
-        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->IsChosen(); });
+        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->GetIsChosen(); });
         if (it != _critters.end()) {
             chosen = *it;
         }
@@ -3462,7 +3462,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
         if (cr->GetId() == _critterContourCrId) {
             contour = _critterContour;
         }
-        else if (!cr->IsDead() && !cr->IsChosen()) {
+        else if (!cr->IsDead() && !cr->GetIsChosen()) {
             contour = _crittersContour;
         }
         spr->SetContour(contour, cr->GetContourColor());
@@ -3664,7 +3664,7 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
     if (_critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
         if (cr != nullptr && cr->IsSpriteValid()) {
-            if (!cr->IsDead() && !cr->IsChosen()) {
+            if (!cr->IsDead() && !cr->GetIsChosen()) {
                 cr->GetSprite()->SetContour(_crittersContour);
             }
             else {
@@ -3695,7 +3695,7 @@ void MapView::SetCrittersContour(ContourType contour)
     _crittersContour = contour;
 
     for (auto* cr : _critters) {
-        if (!cr->IsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
+        if (!cr->GetIsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
             cr->GetSprite()->SetContour(contour);
         }
     }
@@ -3937,7 +3937,7 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, i
         if (!cr->IsVisible() || cr->IsFinishing() || !cr->IsSpriteValid()) {
             continue;
         }
-        if (ignore_dead_and_chosen && (cr->IsDead() || cr->IsChosen())) {
+        if (ignore_dead_and_chosen && (cr->IsDead() || cr->GetIsChosen())) {
             continue;
         }
 

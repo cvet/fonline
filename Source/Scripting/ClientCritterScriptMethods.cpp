@@ -49,34 +49,10 @@
 
 ///# ...
 ///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsChosen(CritterView* self)
-{
-    return self->IsChosen();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsOwnedByPlayer(CritterView* self)
-{
-    return self->IsOwnedByPlayer();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsNpc(CritterView* self)
-{
-    return self->IsNpc();
-}
-
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
-    return self->IsOwnedByPlayer() && self->IsPlayerOffline();
+    return self->GetIsControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
 ///# ...

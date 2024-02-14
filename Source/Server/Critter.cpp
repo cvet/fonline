@@ -64,7 +64,7 @@ auto Critter::GetOfflineTime() const -> time_duration
 {
     STACK_TRACE_ENTRY();
 
-    return _playerDetached ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
+    return GetIsControlledByPlayer() && _player == nullptr ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
 }
 
 auto Critter::IsAlive() const -> bool
@@ -95,10 +95,10 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
@@ -114,12 +114,17 @@ void Critter::AttachPlayer(Player* player)
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(GetIsControlledByPlayer());
     RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(!player->GetControlledCritterId());
     RUNTIME_ASSERT(!_player);
 
-    _playerDetached = false;
     _player = player;
     _player->AddRef();
+
+    _player->SetControlledCritterId(GetId());
+    _player->SetLastControlledCritterId(GetId());
+    _player->SetControlledCritter(this);
 
     _name = _player->GetName();
 }
@@ -128,12 +133,16 @@ void Critter::DetachPlayer()
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(GetIsControlledByPlayer());
     RUNTIME_ASSERT(_player);
-    RUNTIME_ASSERT(!_playerDetached);
+    RUNTIME_ASSERT(_player->GetControlledCritterId() == GetId());
+
+    _player->SetControlledCritterId({});
+    _player->SetControlledCritter(nullptr);
 
     _player->Release();
     _player = nullptr;
-    _playerDetached = true;
+
     _playerDetachTime = _engine->GameTime.FrameTime();
 }
 

@@ -1500,7 +1500,7 @@ auto MapManager::CanAddCrToMap(const Critter* cr, const Map* map, uint16 hx, uin
         if (!map->IsHexesMovable(hx, hy, cr->GetMultihex())) {
             return false;
         }
-        if (cr->IsOwnedByPlayer()) {
+        if (cr->GetIsControlledByPlayer()) {
             if (const auto* loc = map->GetLocation(); loc != nullptr && !loc->IsCanEnter(1)) {
                 return false;
             }
@@ -1539,7 +1539,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
         cr->SetLastMapId(map->GetId());
         cr->SetLastMapPid(map->GetProtoId());
 
-        if (!cr->IsOwnedByPlayer()) {
+        if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             RUNTIME_ASSERT(std::find(cr_ids.begin(), cr_ids.end(), cr->GetId()) == cr_ids.end());
             cr_ids.emplace_back(cr->GetId());
@@ -1608,7 +1608,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         cr->SetMapId(ident_t {});
 
-        if (!cr->IsOwnedByPlayer()) {
+        if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             const auto cr_id_it = std::find(cr_ids.begin(), cr_ids.end(), cr->GetId());
             RUNTIME_ASSERT(cr_id_it != cr_ids.end());
@@ -1660,7 +1660,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     if (!view_cr->GetMapId()) {
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
-        if (view_cr->IsOwnedByPlayer()) {
+        if (view_cr->GetIsControlledByPlayer()) {
             for (const auto* cr : *view_cr->GlobalMapGroup) {
                 if (view_cr == cr) {
                     view_cr->Send_AddCritter(view_cr);

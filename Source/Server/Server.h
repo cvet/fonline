@@ -91,11 +91,11 @@ public:
     void VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance);
 
-    auto CreatePlayerCritter(Player* player, hstring pid) -> Critter*;
-    auto LoadPlayerCritter(Player* player, ident_t cr_id) -> Critter*;
-    void UnloadPlayerCritter(Critter* cr);
+    auto CreateCritter(hstring pid, bool for_player) -> Critter*;
+    auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
+    void UnloadCritter(Critter* cr);
     void SwitchPlayerCritter(Player* player, Critter* cr);
-    void DestroyPlayerCritter(Player* player, ident_t cr_id);
+    void DestroyUnloadedCritter(ident_t cr_id);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
@@ -155,6 +155,10 @@ public:
     ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterLoad, Critter* /*cr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent

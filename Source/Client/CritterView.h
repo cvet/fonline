@@ -53,10 +53,6 @@ public:
     ~CritterView() override = default;
 
     [[nodiscard]] auto GetName() const -> string_view override { return _name; }
-    [[nodiscard]] auto IsNpc() const -> bool { return !_ownedByPlayer; }
-    [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _ownedByPlayer; }
-    [[nodiscard]] auto IsChosen() const -> bool { return _isChosen; }
-    [[nodiscard]] auto IsPlayerOffline() const -> bool { return _isPlayerOffline; }
     [[nodiscard]] auto IsAlive() const -> bool { return GetCondition() == CritterCondition::Alive; }
     [[nodiscard]] auto IsKnockout() const -> bool { return GetCondition() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const -> bool { return GetCondition() == CritterCondition::Dead; }
@@ -73,12 +69,7 @@ public:
     virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllInvItems();
     void SetName(string_view name);
-    void SetPlayer(bool is_player, bool is_chosen);
-    void SetPlayerOffline(bool is_offline);
 
 protected:
-    bool _ownedByPlayer {};
-    bool _isPlayerOffline {};
-    bool _isChosen {};
     vector<ItemView*> _invItems {};
 };

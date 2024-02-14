@@ -1082,7 +1082,7 @@ void FOClient::Net_OnAddCritter()
     const auto alive_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto knockout_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto dead_action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto is_owned_by_player = _conn.InBuf.Read<bool>();
+    const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
 
@@ -1120,19 +1120,18 @@ void FOClient::Net_OnAddCritter()
     cr->SetKnockoutActionAnim(knockout_action_anim);
     cr->SetDeadActionAnim(dead_action_anim);
 
-    cr->SetPlayer(is_owned_by_player, is_chosen);
-    if (is_owned_by_player) {
-        cr->SetPlayerOffline(is_player_offline);
-    }
+    cr->SetIsControlledByPlayer(is_controlled_by_player);
+    cr->SetIsChosen(is_chosen);
+    cr->SetIsPlayerOffline(is_player_offline);
 
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         _chosen = cr;
         _chosen->AddRef();
     }
 
     OnCritterIn.Fire(cr);
 
-    if (CurMap != nullptr && cr->IsChosen()) {
+    if (CurMap != nullptr && cr->GetIsChosen()) {
         CurMap->RebuildFog();
     }
 }
@@ -1665,7 +1664,7 @@ void FOClient::Net_OnCritterMoveItem()
         return;
     }
 
-    if (!cr->IsChosen()) {
+    if (!cr->GetIsChosen()) {
         cr->DeleteAllInvItems();
 
         for (uint16 i = 0; i < slots_data_count; i++) {
@@ -1679,7 +1678,7 @@ void FOClient::Net_OnCritterMoveItem()
         hex_cr->Action(action, static_cast<int>(prev_slot), is_item ? _someItem : nullptr, false);
     }
 
-    if (is_item && cur_slot != prev_slot && cr->IsChosen()) {
+    if (is_item && cur_slot != prev_slot && cr->GetIsChosen()) {
         if (auto* item = cr->GetInvItem(_someItem->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             _someItem->SetCritterSlot(prev_slot);
@@ -1800,7 +1799,7 @@ void FOClient::Net_OnCritterTeleport()
 
     CurMap->MoveCritter(cr, to_hx, to_hy, false);
 
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
             CurMap->AutoScroll.CritterLastHexX = cr->GetHexX();
             CurMap->AutoScroll.CritterLastHexY = cr->GetHexY();
@@ -1848,7 +1847,7 @@ void FOClient::Net_OnCritterPos()
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
         CurMap->MoveCritter(cr, hx, hy, true);
 
-        if (cr->IsChosen()) {
+        if (cr->GetIsChosen()) {
             CurMap->RebuildFog();
         }
     }
@@ -2831,7 +2830,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 
     auto* cr = dynamic_cast<CritterView*>(entity);
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
     else if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -2853,7 +2852,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
-            if (cr != nullptr && cr->IsChosen()) {
+            if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
             else if (cr != nullptr && prop->GetAccess() == Property::AccessType::PublicFullModifiable) {

@@ -201,10 +201,10 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         _needReset = true;
         break;
     case CritterAction::Connect:
-        SetPlayerOffline(false);
+        SetIsPlayerOffline(false);
         break;
     case CritterAction::Disconnect:
-        SetPlayerOffline(true);
+        SetIsPlayerOffline(true);
         break;
     case CritterAction::Refresh:
 #if FO_ENABLE_3D
@@ -760,7 +760,7 @@ void CritterHexView::ProcessMoving()
             const auto cur_hy = GetHexY();
             const auto moved = (cur_hx != old_hx || cur_hy != old_hy);
 
-            if (moved && IsChosen()) {
+            if (moved && GetIsChosen()) {
                 _map->RebuildFog();
             }
 
@@ -894,7 +894,7 @@ void CritterHexView::RefreshOffs()
     ScrY = GetHexOffsY() + iround(_oyExt) + _oyAnim;
 
     if (IsSpriteValid()) {
-        if (IsChosen()) {
+        if (GetIsChosen()) {
             _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), GetSprite());
         }
     }
@@ -933,13 +933,13 @@ auto CritterHexView::IsNameVisible() const -> bool
     if (!_engine->Settings.ShowCritterName) {
         return false;
     }
-    if (!_engine->Settings.ShowPlayerName && IsOwnedByPlayer()) {
+    if (!_engine->Settings.ShowPlayerName && GetIsControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowNpcName && IsNpc()) {
+    if (!_engine->Settings.ShowNpcName && !GetIsControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowDeadNpcName && IsNpc() && IsDead()) {
+    if (!_engine->Settings.ShowDeadNpcName && !GetIsControlledByPlayer() && IsDead()) {
         return false;
     }
 
@@ -958,7 +958,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
         str = _name;
 
-        if (_ownedByPlayer && _isPlayerOffline) {
+        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
     }
@@ -994,7 +994,7 @@ void CritterHexView::DrawTextOnHead()
 
         str = _name;
 
-        if (_ownedByPlayer && _isPlayerOffline) {
+        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
 

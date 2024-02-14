@@ -79,8 +79,10 @@ public:
     {
     }
 
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateServer, ident_t, ControlledCritterId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, OwnedCritterIds);
+    ENTITY_PROPERTY(PrivateServer, ident_t, LastControlledCritterId);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, string, Password);
     ///@ ExportProperty
@@ -383,6 +385,12 @@ public:
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsControlledByPlayer);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateClient, bool, IsChosen);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateClient, bool, IsPlayerOffline);
 };
 
 class MapProperties : public EntityProperties

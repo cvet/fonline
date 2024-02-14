@@ -192,7 +192,7 @@
     // On other critters
     if (item == nullptr) {
         for (auto* cr : self->GetCritters()) {
-            if (!cr->IsChosen()) {
+            if (!cr->GetIsChosen()) {
                 item = cr->GetInvItem(itemId);
             }
         }
@@ -297,7 +297,7 @@
     }
     else {
         for (auto* cr : self->GetCritters()) {
-            if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+            if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }

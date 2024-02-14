@@ -76,22 +76,6 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Server_Critter_IsOwnedByPlayer(Critter* self)
-{
-    return self->IsOwnedByPlayer();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsNpc(Critter* self)
-{
-    return self->IsNpc();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] Player* Server_Critter_GetPlayer(Critter* self)
 {
     return self->GetPlayer();
@@ -278,7 +262,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         return;
     }
 
@@ -312,7 +296,7 @@
     if (howSay != SAY_FLASH_WINDOW && text.empty()) {
         return;
     }
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -331,7 +315,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr)
 {
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -351,7 +335,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr, string_view lexems)
 {
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -428,10 +412,6 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
 {
-    if (!self->IsNpc()) {
-        throw ScriptException("Critter is not npc");
-    }
-
     vector<Critter*> result;
 
     for (auto* cr : self->VisCr) {
@@ -694,7 +674,7 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetInvItem(itemId, self->IsOwnedByPlayer());
+    auto* item = self->GetInvItem(itemId, self->GetIsControlledByPlayer());
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
@@ -1028,7 +1008,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Critter_Disconnect(Critter* self)
 {
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
@@ -1042,7 +1022,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Server_Critter_IsOnline(Critter* self)
 {
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 

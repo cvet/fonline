@@ -630,7 +630,7 @@ void EntityManager::UnregisterEntity(Critter* entity)
     const auto it = _allCritters.find(entity->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
-    UnregisterEntityEx(entity, !entity->IsOwnedByPlayer());
+    UnregisterEntityEx(entity, !entity->GetIsControlledByPlayer());
 }
 
 void EntityManager::RegisterEntity(Item* entity)
