@@ -205,8 +205,6 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     cr->SetHomeHexY(hy);
     cr->SetHomeDir(dir);
 
-    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, ident_t {});
-    RUNTIME_ASSERT(can);
     _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, ident_t {});
 
     _engine->EntityMngr.CallInit(cr, true);
@@ -224,7 +222,7 @@ void CritterManager::DeleteCritter(Critter* cr)
 
     RUNTIME_ASSERT(!cr->GetIsControlledByPlayer());
 
-    // Redundant calls
+    // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
     }
@@ -237,13 +235,11 @@ void CritterManager::DeleteCritter(Critter* cr)
     // Tear off from environment
     {
         cr->LockMapTransfers++;
-        auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+        auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        while (cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountInvItems() != 0) {
-            // Delete inventory
+        while (cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountInvItems() != 0 || cr->GetIsAttached() || !cr->AttachedCritters.empty()) {
             DeleteInventory(cr);
 
-            // Delete from map
             if (cr->GetMapId()) {
                 auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
                 RUNTIME_ASSERT(map);
@@ -252,6 +248,16 @@ void CritterManager::DeleteCritter(Critter* cr)
             else {
                 RUNTIME_ASSERT(cr->GlobalMapGroup);
                 _engine->MapMngr.EraseCrFromMap(cr, nullptr);
+            }
+
+            if (cr->GetIsAttached()) {
+                cr->DetachFromCritter();
+            }
+
+            if (!cr->AttachedCritters.empty()) {
+                for (auto* attached_cr : copy(cr->AttachedCritters)) {
+                    attached_cr->DetachFromCritter();
+                }
             }
         }
     }

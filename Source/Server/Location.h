@@ -62,10 +62,6 @@ public:
     [[nodiscard]] auto GetMapByIndex(uint index) -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) -> Map*;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> uint;
-    [[nodiscard]] auto IsCanEnter(uint players_count) const -> bool;
-    [[nodiscard]] auto IsNoCritter() const -> bool;
-    [[nodiscard]] auto IsNoPlayer() const -> bool;
-    [[nodiscard]] auto IsNoNpc() const -> bool;
     [[nodiscard]] auto IsCanDelete() const -> bool;
 
     void BindScript();

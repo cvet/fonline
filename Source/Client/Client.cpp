@@ -164,6 +164,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), [this] { Net_OnProperty(1); });
@@ -1119,7 +1120,6 @@ void FOClient::Net_OnAddCritter()
     cr->SetAliveActionAnim(alive_action_anim);
     cr->SetKnockoutActionAnim(knockout_action_anim);
     cr->SetDeadActionAnim(dead_action_anim);
-
     cr->SetIsControlledByPlayer(is_controlled_by_player);
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
@@ -1857,6 +1857,56 @@ void FOClient::Net_OnCritterPos()
         cr->SetHexOffsX(hex_ox);
         cr->SetHexOffsY(hex_oy);
         cr->RefreshOffs();
+    }
+}
+
+void FOClient::Net_OnCritterAttachments()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto is_attached = _conn.InBuf.Read<bool>();
+
+    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    vector<ident_t> attached_critters;
+    attached_critters.resize(attached_critters_count);
+    for (uint16 i = 0; i < attached_critters_count; i++) {
+        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+    }
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap != nullptr) {
+        auto* cr = CurMap->GetCritter(cr_id);
+        if (cr == nullptr) {
+            return;
+        }
+
+        cr->SetIsAttached(is_attached);
+        cr->AttachedCritters = std::move(attached_critters);
+
+        if (is_attached) {
+            for (auto* map_cr : CurMap->GetCritters()) {
+                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                    map_cr->MoveAttachedCritters();
+                    break;
+                }
+            }
+        }
+
+        if (!cr->AttachedCritters.empty()) {
+            cr->MoveAttachedCritters();
+        }
+    }
+    else {
+        auto* cr = GetWorldmapCritter(cr_id);
+        if (cr == nullptr) {
+            return;
+        }
+
+        cr->SetIsAttached(is_attached);
+        cr->AttachedCritters = std::move(attached_critters);
     }
 }
 
@@ -3652,6 +3702,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed)
 {
     STACK_TRACE_ENTRY();
+
+    if (cr->GetIsAttached()) {
+        return;
+    }
 
     const auto prev_moving = cr->IsMoving();
 

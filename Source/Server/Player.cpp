@@ -104,7 +104,6 @@ void Player::Send_AddCritter(const Critter* cr)
     cr->StoreData(is_chosen, &data, &data_sizes);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
     Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.Write(cr->GetProtoId());
@@ -125,11 +124,14 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(is_chosen);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
-
     CONNECTION_OUTPUT_END(Connection);
 
     if (!is_chosen) {
         Send_MoveItem(cr, nullptr, CritterAction::Refresh, CritterItemSlot::Inventory);
+    }
+
+    if (cr->GetIsAttached() || !cr->AttachedCritters.empty()) {
+        Send_Attachments(cr);
     }
 
     if (cr->IsMoving()) {
@@ -1142,6 +1144,24 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
             Connection->OutBuf.Write(item->GetProtoId());
             NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
         }
+    }
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::Send_Attachments(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_CRITTER_ATTACHMENTS);
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(from_cr->GetIsAttached());
+    Connection->OutBuf.Write(static_cast<uint16>(from_cr->AttachedCritters.size()));
+    for (const auto* attached_cr : from_cr->AttachedCritters) {
+        Connection->OutBuf.Write(attached_cr->GetId());
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);

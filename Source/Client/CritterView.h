@@ -70,6 +70,8 @@ public:
     void DeleteAllInvItems();
     void SetName(string_view name);
 
+    vector<ident_t> AttachedCritters {};
+
 protected:
     vector<ItemView*> _invItems {};
 };

@@ -289,10 +289,11 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     for (const auto& cr_id : cr_ids) {
         auto* cr = LoadCritter(cr_id, is_error);
         if (cr != nullptr) {
-            if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
-                WriteLog("Error set critter {} {} to map {} {} at hex {} {}", cr->GetName(), cr->GetId(), map->GetName(), map->GetId(), cr->GetHexX(), cr->GetHexY());
-                is_error = true;
-                continue;
+            if (cr->GetHexX() >= map->GetWidth()) {
+                cr->SetHexX(map->GetWidth() - 1);
+            }
+            if (cr->GetHexY() >= map->GetHeight()) {
+                cr->SetHexY(map->GetHeight() - 1);
             }
 
             map->AddCritter(cr);

@@ -379,6 +379,7 @@ protected:
     void Net_OnCritterSetAnims();
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
+    void Net_OnCritterAttachments();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();

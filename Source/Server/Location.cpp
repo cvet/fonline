@@ -146,60 +146,6 @@ auto Location::GetMapIndex(hstring map_pid) const -> uint
     return static_cast<uint>(-1);
 }
 
-auto Location::IsCanEnter(uint players_count) const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    const auto max_palyers = GetMaxPlayers();
-    if (max_palyers == 0) {
-        return true;
-    }
-
-    for (const auto* map : _locMaps) {
-        players_count += map->GetPlayerCrittersCount();
-        if (players_count >= max_palyers) {
-            return false;
-        }
-    }
-    return true;
-}
-
-auto Location::IsNoCritter() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* map : _locMaps) {
-        if (map->GetCrittersCount() != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
-auto Location::IsNoPlayer() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* map : _locMaps) {
-        if (map->GetPlayerCrittersCount() != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
-auto Location::IsNoNpc() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* map : _locMaps) {
-        if (map->GetNonPlayerCrittersCount() != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 auto Location::IsCanDelete() const -> bool
 {
     STACK_TRACE_ENTRY();

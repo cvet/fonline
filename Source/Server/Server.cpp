@@ -1495,12 +1495,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, ident_t {})) {
-            logcb("Critter move success");
-        }
-        else {
-            logcb("Critter move fail");
-        }
+        MapMngr.TransitToMap(cr, map, hex_x, hex_y, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1523,9 +1518,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (auto* player = cr->GetPlayer()) {
-            player->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
-            player->Connection->GracefulDisconnect();
+        if (auto* player_ = cr->GetPlayer()) {
+            player_->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
+            player_->Connection->GracefulDisconnect();
             logcb("Player disconnected");
         }
         else {
@@ -1536,17 +1531,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (!player_cr->IsAlive()) {
-            logcb("To global fail, only life none");
-            break;
-        }
-
-        if (MapMngr.TransitToGlobal(player_cr, ident_t {})) {
-            logcb("To global success");
-        }
-        else {
-            logcb("To global fail");
-        }
+        MapMngr.TransitToGlobal(player_cr, {});
     } break;
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1744,7 +1729,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto hy = player_cr->GetHexY();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(player_cr, map, hx, hy, dir, 5, ident_t {});
+        MapMngr.TransitToMap(player_cr, map, hx, hy, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_SETTIME: {
@@ -1935,8 +1920,12 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 
     // Auto unload player critter
-    if (cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= std::chrono::milliseconds {Settings.MinimumOfflineTime}) {
-        UnloadCritter(cr);
+    if (cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr) {
+        const tick_t auto_unload_time = get_if_non_zero(cr->GetAutoUnloadOfflineTime(), tick_t {Settings.MinimumOfflineTime});
+
+        if (cr->GetOfflineTime() >= std::chrono::milliseconds {auto_unload_time.underlying_value()}) {
+            UnloadCritter(cr);
+        }
     }
 }
 
@@ -1956,12 +1945,11 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
 
     EntityMngr.RegisterEntity(cr);
 
-    cr->SetIsControlledByPlayer(for_player);
+    if (for_player) {
+        cr->MarkIsForPlayer();
+    }
 
-    const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
-    RUNTIME_ASSERT(can_add_to_global_map);
-
-    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
+    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, {});
 
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, true);
@@ -1998,12 +1986,11 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         throw GenericException("Critter data base loading error");
     }
 
-    cr->SetIsControlledByPlayer(for_player);
+    if (for_player) {
+        cr->MarkIsForPlayer();
+    }
 
-    const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
-    RUNTIME_ASSERT(can_add_to_global_map);
-
-    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
+    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, {});
 
     if (!cr->IsDestroyed()) {
         OnCritterLoad.Fire(cr);
@@ -2029,20 +2016,34 @@ void FOServer::UnloadCritter(Critter* cr)
 
     WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
 
+    if (cr->IsDestroying()) {
+        throw GenericException("Critter in destroying state");
+    }
     if (cr->GetPlayer() != nullptr) {
         throw GenericException("Player critter not detached from player before unloading");
     }
 
-    OnCritterUnload.Fire(cr);
+    cr->MarkAsDestroying();
 
-    if (cr->IsDestroyed()) {
-        return;
-    }
+    OnCritterUnload.Fire(cr);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto* map = MapMngr.GetMap(cr->GetMapId());
+    RUNTIME_ASSERT(!cr->GetMapId() || map);
     MapMngr.EraseCrFromMap(cr, map);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    if (cr->GetIsAttached()) {
+        cr->DetachFromCritter();
+    }
+
+    if (!cr->AttachedCritters.empty()) {
+        for (auto* attached_cr : copy(cr->AttachedCritters)) {
+            attached_cr->DetachFromCritter();
+        }
+    }
 
     auto& inv_items = cr->GetRawInvItems();
 
@@ -2763,6 +2764,13 @@ void FOServer::Process_Move(Player* player)
         return;
     }
 
+    if (cr->GetIsAttached()) {
+        BreakIntoDebugger();
+        player->Send_Attachments(cr);
+        player->Send_Moving(cr);
+        return;
+    }
+
     // Validate path
     // Todo: validate player moving path
     /*auto next_start_hx = start_hx;
@@ -2864,6 +2872,13 @@ void FOServer::Process_StopMove(Player* player)
     Critter* cr = map->GetCritter(cr_id);
     if (cr == nullptr) {
         BreakIntoDebugger();
+        return;
+    }
+
+    if (cr->GetIsAttached()) {
+        BreakIntoDebugger();
+        player->Send_Attachments(cr);
+        player->Send_Moving(cr);
         return;
     }
 
@@ -3384,7 +3399,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     // Moving
     if (cr->IsMoving()) {
         auto* map = MapMngr.GetMap(cr->GetMapId());
-        if (map != nullptr && cr->IsAlive()) {
+        if (map != nullptr && cr->IsAlive() && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
 
             if (cr->IsDestroyed()) {
@@ -3397,13 +3412,23 @@ void FOServer::ProcessCritterMoving(Critter* cr)
         }
     }
 
-    // Path find
     if (cr->TargetMoving.State == MovingState::InProgress) {
-        if (!cr->IsAlive()) {
+        if (cr->GetIsAttached()) {
+            cr->TargetMoving.State = MovingState::Attached;
+        }
+        else if (!cr->IsAlive()) {
             cr->TargetMoving.State = MovingState::NotAlive;
         }
 
-        bool need_find_path = !cr->IsMoving() && cr->IsAlive();
+        if (cr->TargetMoving.State != MovingState::InProgress && cr->IsMoving()) {
+            cr->ClearMove();
+            cr->SendAndBroadcast_Moving();
+        }
+    }
+
+    // Path find
+    if (cr->TargetMoving.State == MovingState::InProgress) {
+        bool need_find_path = !cr->IsMoving();
 
         if (!need_find_path && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0 || cr->TargetMoving.HexY != 0)) {
             const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
@@ -3542,20 +3567,34 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId()](uint16 expected_hx, uint16 expected_hy) -> bool {
-        if (cr->IsDestroyed()) {
+    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId(), map](uint16 expected_hx, uint16 expected_hy) -> bool {
+        const auto validate_moving_inner = [&]() -> bool {
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return false;
+            }
+            if (cr->Moving.Uid != expected_uid) {
+                return false;
+            }
+            if (cr->GetMapId() != expected_map_id) {
+                return false;
+            }
+            if (cr->GetHexX() != expected_hx || cr->GetHexY() != expected_hy) {
+                return false;
+            }
+            return true;
+        };
+
+        if (!validate_moving_inner()) {
+            if (!cr->IsDestroyed() && cr->Moving.Uid == expected_uid) {
+                cr->ClearMove();
+                cr->SendAndBroadcast_Moving();
+            }
+
             return false;
         }
-        if (cr->Moving.Uid != expected_uid) {
-            return false;
+        else {
+            return true;
         }
-        if (cr->GetMapId() != expected_map_id) {
-            return false;
-        }
-        if (cr->GetHexX() != expected_hx || cr->GetHexY() != expected_hy) {
-            return false;
-        }
-        return true;
     };
 
     auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
@@ -3620,9 +3659,9 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
             const auto old_hx = cr->GetHexX();
             const auto old_hy = cr->GetHexY();
+            const uint8 dir = GeometryHelper::GetFarDir(old_hx, old_hy, hx2, hy2);
 
             if (old_hx != hx2 || old_hy != hy2) {
-                const uint8 dir = GeometryHelper::GetFarDir(old_hx, old_hy, hx2, hy2);
                 const uint multihex = cr->GetMultihex();
 
                 if (map->IsHexesMovable(hx2, hy2, multihex, cr)) {
@@ -3633,17 +3672,17 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
                     RUNTIME_ASSERT(!cr->IsDestroyed());
 
+                    VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
+                    if (!validate_moving(hx2, hy2)) {
+                        return;
+                    }
+
                     MapMngr.ProcessVisibleCritters(cr);
                     if (!validate_moving(hx2, hy2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
-                    if (!validate_moving(hx2, hy2)) {
-                        return;
-                    }
-
-                    VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
                     if (!validate_moving(hx2, hy2)) {
                         return;
                     }
@@ -3675,14 +3714,26 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
             const auto mxi = static_cast<int16>(std::round(mx));
             const auto myi = static_cast<int16>(std::round(my));
+
             if (moved || cr->GetHexOffsX() != mxi || cr->GetHexOffsY() != myi) {
                 cr->SetHexOffsX(mxi);
                 cr->SetHexOffsY(myi);
             }
 
             // Evaluate dir angle
-            const auto dir_angle = Geometry.GetLineDirAngle(0, 0, ox, oy);
-            cr->SetDirAngle(static_cast<int16>(dir_angle));
+            const auto dir_angle_f = Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
+
+            cr->SetDirAngle(dir_angle);
+
+            // Move attached critters
+            if (!cr->AttachedCritters.empty()) {
+                cr->MoveAttachedCritters();
+
+                if (!validate_moving(cr_hx, cr_hy)) {
+                    return;
+                }
+            }
 
             break;
         }
@@ -3710,6 +3761,10 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self)
 {
     STACK_TRACE_ENTRY();
+
+    if (cr->GetIsAttached()) {
+        cr->DetachFromCritter();
+    }
 
     cr->ClearMove();
 

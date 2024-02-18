@@ -162,6 +162,32 @@ void CritterHexView::ClearMove()
     Moving.EndOy = {};
 }
 
+void CritterHexView::MoveAttachedCritters()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const auto hx = GetHexX();
+    const auto hy = GetHexY();
+    const auto hex_ox = GetHexOffsX();
+    const auto hex_oy = GetHexOffsY();
+
+    for (const auto cr_id : AttachedCritters) {
+        if (auto* cr = _map->GetCritter(cr_id); cr != nullptr) {
+            if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
+                _map->MoveCritter(cr, hx, hy, false);
+            }
+
+            if (cr->GetHexOffsX() != hex_ox || cr->GetHexOffsY() != hex_oy) {
+                cr->SetHexOffsX(hex_ox);
+                cr->SetHexOffsY(hex_oy);
+                cr->RefreshOffs();
+            }
+        }
+    }
+}
+
 void CritterHexView::Action(CritterAction action, int action_data, Entity* context_item, bool local_call /* = true */)
 {
     STACK_TRACE_ENTRY();
@@ -602,6 +628,11 @@ void CritterHexView::Process()
         RefreshOffs();
     }
 
+    // Attachments
+    if (!AttachedCritters.empty()) {
+        MoveAttachedCritters();
+    }
+
     // Animation
     const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
     const auto anim_proc = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _animStartTime) * 100 / (cur_anim.AnimDuration != time_duration {} ? time_duration_to_ms<uint>(cur_anim.AnimDuration) : 100);
@@ -784,6 +815,7 @@ void CritterHexView::ProcessMoving()
 
             const auto mxi = static_cast<int16>(iround(mx));
             const auto myi = static_cast<int16>(iround(my));
+
             if (moved || GetHexOffsX() != mxi || GetHexOffsY() != myi) {
 #if FO_ENABLE_3D
                 if (_model != nullptr) {
@@ -804,16 +836,17 @@ void CritterHexView::ProcessMoving()
             }
 
             // Evaluate dir angle
-            const auto dir_angle = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle_f = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
 
 #if FO_ENABLE_3D
             if (_model != nullptr) {
-                ChangeMoveDirAngle(static_cast<int>(dir_angle));
+                ChangeMoveDirAngle(dir_angle);
             }
             else
 #endif
             {
-                ChangeDir(GeometryHelper::AngleToDir(static_cast<int16>(dir_angle)));
+                ChangeDir(GeometryHelper::AngleToDir(dir_angle));
             }
 
             done = true;

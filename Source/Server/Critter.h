@@ -62,6 +62,7 @@ enum class MovingState : uint8
     Deadlock = 10,
     TraceFailed = 11,
     NotAlive = 12,
+    Attached = 13,
 };
 
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
@@ -118,9 +119,13 @@ public:
     auto DelIdVisItem(ident_t item_id) -> bool;
     auto CountIdVisItem(ident_t item_id) const -> bool;
 
+    void MarkIsForPlayer();
     void AttachPlayer(Player* player);
     void DetachPlayer();
     void ClearMove();
+    void AttachToCritter(Critter* cr);
+    void DetachFromCritter();
+    void MoveAttachedCritters();
     void ClearVisible();
     void SetItem(Item* item);
     void ChangeDir(uint8 dir);
@@ -140,6 +145,7 @@ public:
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems);
+    void SendAndBroadcast_Attachments();
 
     void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Send_Moving(const Critter* from_cr);
@@ -181,6 +187,7 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
+    void Send_Attachments(const Critter* from_cr);
 
     void AddTimeEvent(hstring func_name, uint rate, tick_t duration, const any_t& identifier);
     void EraseTimeEvent(size_t index);
@@ -242,7 +249,7 @@ public:
     ident_t ViewMapLocId {};
     uint ViewMapLocEnt {};
 
-    struct
+    struct TargetMovingData
     {
         MovingState State {MovingState::Success};
         ident_t TargId {};
@@ -254,7 +261,7 @@ public:
         ident_t GagEntityId {};
     } TargetMoving {};
 
-    struct
+    struct MovingData
     {
         uint16 Speed {};
         uint Uid {};
@@ -272,6 +279,8 @@ public:
         int16 EndOx {};
         int16 EndOy {};
     } Moving {};
+
+    vector<Critter*> AttachedCritters {};
 
 private:
     Player* _player {};

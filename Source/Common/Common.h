@@ -1810,6 +1810,14 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+// Other helpers
+template<typename T>
+constexpr auto get_if_non_zero(const T& value, const T& extra_value) -> const T&
+{
+    return !!value ? value : extra_value;
+}
+
+// Hashing
 DECLARE_EXCEPTION(HashResolveException);
 DECLARE_EXCEPTION(HashInsertException);
 DECLARE_EXCEPTION(HashCollisionException);

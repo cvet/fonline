@@ -366,18 +366,18 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
     ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame);
+    ENTITY_PROPERTY(Protected, tick_t, AutoUnloadOfflineTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
-    ///@ ExportProperty
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
@@ -385,12 +385,16 @@ public:
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateCommon, bool, IsControlledByPlayer);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateClient, bool, IsChosen);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateClient, bool, IsPlayerOffline);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateCommon, bool, IsAttached);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateServer, ident_t, AttachMaster);
 };
 
 class MapProperties : public EntityProperties
@@ -468,8 +472,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, MaxPlayers);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage);
     ///@ ExportProperty

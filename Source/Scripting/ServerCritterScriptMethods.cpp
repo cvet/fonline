@@ -96,7 +96,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, uint16 hx, uint16 hy, uint8 dir)
 {
-    if (self->LockMapTransfers > 0) {
+    if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
 
@@ -108,16 +108,20 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (hx != self->GetHexX() || hy != self->GetHexY()) {
-        if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
-            self->ChangeDir(dir);
-        }
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, ident_t {})) {
-            throw ScriptException("Transit fail");
-        }
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
     }
-    else if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
-        self->ChangeDir(dir);
+
+    if (hx != self->GetHexX() || hy != self->GetHexY()) {
+        if (self->GetDir() != corrected_dir) {
+            self->ChangeDir(corrected_dir);
+        }
+
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, self->GetDir(), 2);
+    }
+    else if (self->GetDir() != corrected_dir) {
+        self->ChangeDir(corrected_dir);
         self->Send_Dir(self);
         self->Broadcast_Dir();
     }
@@ -131,20 +135,47 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir)
 {
-    if (self->LockMapTransfers > 0) {
+    if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
     }
 
-    auto dir_ = dir;
-    if (dir_ >= GameSettings::MAP_DIR_COUNT) {
-        dir_ = 0;
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, ident_t {})) {
-        throw ScriptException("Transit to map hex fail");
+    self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, 2);
+
+    const auto* loc = map->GetLocation();
+    if (loc != nullptr && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
+        self->SetWorldX(loc->GetWorldX());
+        self->SetWorldY(loc->GetWorldY());
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir, bool force_hex)
+{
+    if (self->LockMapTransfers != 0) {
+        throw ScriptException("Transfers locked");
+    }
+    if (map == nullptr) {
+        throw ScriptException("Map arg is null");
+    }
+
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
+    }
+
+    if (force_hex) {
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, std::nullopt);
+    }
+    else {
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, 2);
     }
 
     const auto* loc = map->GetLocation();
@@ -158,13 +189,15 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToGlobal(Critter* self)
 {
-    if (self->LockMapTransfers > 0) {
+    if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
-        throw ScriptException("Transit to global failed");
+    if (!self->GetMapId()) {
+        return;
     }
+
+    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
 }
 
 ///# ...
@@ -172,46 +205,41 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
 {
-    if (self->LockMapTransfers > 0) {
+    if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
     if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
-        throw ScriptException("Transit to global failed");
-    }
+    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
 
-    for (auto* cr_ : group) {
-        if (cr_ != nullptr && !cr_->IsDestroyed()) {
-            self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId());
+    for (auto* cr : group) {
+        if (cr != nullptr && !cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
+            self->GetEngine()->MapMngr.TransitToGlobal(cr, self->GetId());
         }
     }
 }
 
 ///# ...
-///# param leader ...
+///# param globalCr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* leader)
+[[maybe_unused]] void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* globalCr)
 {
-    if (self->LockMapTransfers > 0) {
+    if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
     if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
-    if (leader == nullptr) {
-        throw ScriptException("Leader arg not found");
+    if (globalCr == nullptr) {
+        throw ScriptException("Global critter arg is null");
+    }
+    if (globalCr->GetMapId()) {
+        throw ScriptException("Global critter is not on global map");
     }
 
-    if (leader->GlobalMapGroup == nullptr) {
-        throw ScriptException("Leader is not on global map");
-    }
-
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId())) {
-        throw ScriptException("Transit fail");
-    }
+    self->GetEngine()->MapMngr.TransitToGlobal(self, globalCr->GetId());
 }
 
 ///# ...
@@ -429,6 +457,18 @@
     });
 
     return result;
+}
+
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self)
+{
+    if (self->GetMapId()) {
+        throw ScriptException("Critter is not on global map");
+    }
+
+    RUNTIME_ASSERT(self->GlobalMapGroup);
+
+    return *self->GlobalMapGroup;
 }
 
 ///# ...
@@ -1096,6 +1136,66 @@
 
     self->ClearMove();
     self->SendAndBroadcast_Moving();
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
+{
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+    if (cr == self) {
+        throw ScriptException("Critter can't attach to itself");
+    }
+    if (cr->GetMapId() != self->GetMapId()) {
+        throw ScriptException("Different maps with attached critter");
+    }
+    if (cr->GetIsAttached()) {
+        throw ScriptException("Can't attach to attached critter");
+    }
+    if (!self->AttachedCritters.empty()) {
+        throw ScriptException("Can't attach with attachments");
+    }
+
+    if (self->GetIsAttached()) {
+        if (self->GetAttachMaster() == cr->GetId()) {
+            return;
+        }
+
+        // Auto detach from previous critter
+        self->DetachFromCritter();
+    }
+
+    self->AttachToCritter(cr);
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+    cr->MoveAttachedCritters();
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DetachFromCritter(Critter* self)
+{
+    if (!self->GetIsAttached()) {
+        return;
+    }
+
+    self->DetachFromCritter();
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DetachAllCritters(Critter* self)
+{
+    for (auto* cr : copy(self->AttachedCritters)) {
+        cr->DetachFromCritter();
+    }
+
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+}
+
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
+{
+    return self->AttachedCritters;
 }
 
 ///# ...

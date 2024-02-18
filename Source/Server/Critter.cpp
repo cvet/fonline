@@ -110,6 +110,16 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
     return true;
 }
 
+void Critter::MarkIsForPlayer()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!GetIsControlledByPlayer());
+
+    SetIsControlledByPlayer(true);
+    _playerDetachTime = _engine->GameTime.FrameTime();
+}
+
 void Critter::AttachPlayer(Player* player)
 {
     STACK_TRACE_ENTRY();
@@ -165,6 +175,130 @@ void Critter::ClearMove()
     Moving.StartOy = {};
     Moving.EndOx = {};
     Moving.EndOy = {};
+}
+
+void Critter::AttachToCritter(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr != this);
+    RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+    RUNTIME_ASSERT(!cr->GetIsAttached());
+    RUNTIME_ASSERT(!GetIsAttached());
+    RUNTIME_ASSERT(AttachedCritters.empty());
+
+    if (IsMoving()) {
+        ClearMove();
+        SendAndBroadcast_Moving();
+    }
+
+    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    RUNTIME_ASSERT(it == cr->AttachedCritters.end());
+    cr->AttachedCritters.emplace_back(this);
+
+    SetIsAttached(true);
+    SetAttachMaster(cr->GetId());
+
+    SendAndBroadcast_Attachments();
+    cr->SendAndBroadcast_Attachments();
+}
+
+void Critter::DetachFromCritter()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(GetIsAttached());
+    RUNTIME_ASSERT(GetAttachMaster());
+
+    auto* cr = _engine->CrMngr.GetCritter(GetAttachMaster());
+    RUNTIME_ASSERT(cr);
+
+    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    RUNTIME_ASSERT(it != cr->AttachedCritters.end());
+    cr->AttachedCritters.erase(it);
+
+    SetIsAttached(false);
+    SetAttachMaster({});
+
+    SendAndBroadcast_Attachments();
+    cr->SendAndBroadcast_Attachments();
+}
+
+void Critter::MoveAttachedCritters()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!GetMapId()) {
+        return;
+    }
+
+    // Sync position
+    auto* map = _engine->MapMngr.GetMap(GetMapId());
+    RUNTIME_ASSERT(map);
+
+    vector<tuple<Critter*, uint16, uint16, RefCountHolder<Critter>>> moved_critters;
+
+    const auto new_hx = GetHexX();
+    const auto new_hy = GetHexY();
+    const auto new_hex_ox = GetHexOffsX();
+    const auto new_hex_oy = GetHexOffsY();
+
+    for (auto* cr : AttachedCritters) {
+        RUNTIME_ASSERT(!cr->IsDestroyed());
+        RUNTIME_ASSERT(cr->GetIsAttached());
+        RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
+        RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+
+        cr->SetHexOffsX(new_hex_ox);
+        cr->SetHexOffsY(new_hex_oy);
+
+        const auto hx = cr->GetHexX();
+        const auto hy = cr->GetHexY();
+
+        if (hx != new_hx || hy != new_hy) {
+            map->RemoveCritterFromField(cr);
+            cr->SetHexX(new_hx);
+            cr->SetHexY(new_hy);
+            map->AddCritterToField(cr);
+
+            moved_critters.emplace_back(cr, hx, hy, RefCountHolder {cr});
+        }
+    }
+
+    // Callbacks time
+    auto this_ref_holder = RefCountHolder(this);
+    auto map_ref_holder = RefCountHolder(map);
+    const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
+
+    for (auto&& [cr, prev_hx, prev_hy, cr_ref_holder] : moved_critters) {
+        const auto is_cr_valid = [cr = cr, map] {
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return false;
+            }
+            if (cr->GetMapId() != map->GetId()) {
+                return false;
+            }
+            return true;
+        };
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->VerifyTrigger(map, cr, prev_hx, prev_hy, new_hx, new_hy, dir);
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->MapMngr.ProcessVisibleCritters(cr);
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->MapMngr.ProcessVisibleItems(cr);
+    }
 }
 
 void Critter::ClearVisible()
@@ -747,6 +881,21 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_s
     }
 }
 
+void Critter::SendAndBroadcast_Attachments()
+{
+    STACK_TRACE_ENTRY();
+
+    Send_Attachments(this);
+
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        cr->Send_Attachments(this);
+    }
+}
+
 auto Critter::IsTalking() const -> bool
 {
     STACK_TRACE_ENTRY();
@@ -1245,6 +1394,17 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
 
     if (_player != nullptr) {
         _player->Send_SomeItems(items, param);
+    }
+}
+
+void Critter::Send_Attachments(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (_player != nullptr) {
+        _player->Send_Attachments(from_cr);
     }
 }
 

@@ -108,6 +108,7 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
+    void Send_Attachments(const Critter* from_cr);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnGetAccess, int /*arg1*/, string& /*arg2*/);

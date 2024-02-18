@@ -91,6 +91,7 @@ public:
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void ClearMove();
+    void MoveAttachedCritters();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
