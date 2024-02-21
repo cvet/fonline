@@ -39,7 +39,7 @@ TEST_CASE("AnyData")
 {
     SECTION("Int 1")
     {
-        AnyData::Value val = 1234ll;
+        AnyData::Value val = static_cast<int64>(1234);
         REQUIRE(AnyData::ValueToString(val) == "1234");
         REQUIRE(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::INT64_VALUE));
     }
@@ -115,7 +115,7 @@ TEST_CASE("AnyData")
 
     SECTION("Array of ints")
     {
-        AnyData::Array arr = {1ll, 2ll, 3ll, 4ll};
+        AnyData::Array arr = {static_cast<int64>(1), static_cast<int64>(2), static_cast<int64>(3), static_cast<int64>(4)};
         REQUIRE(AnyData::ValueToString(arr) == "1 2 3 4");
         REQUIRE(arr == std::get<AnyData::ARRAY_VALUE>(AnyData::ParseValue(AnyData::ValueToString(arr), false, true, AnyData::INT64_VALUE)));
     }
@@ -130,9 +130,9 @@ TEST_CASE("AnyData")
     SECTION("Dict with ints")
     {
         AnyData::Dict dict;
-        dict.emplace("key1", 1ll);
-        dict.emplace("key2", 2ll);
-        dict.emplace("key3", 3ll);
+        dict.emplace("key1", static_cast<int64>(1));
+        dict.emplace("key2", static_cast<int64>(2));
+        dict.emplace("key3", static_cast<int64>(3));
         REQUIRE(AnyData::ValueToString(dict) == "key1 1 key2 2 key3 3");
         REQUIRE(dict == std::get<AnyData::DICT_VALUE>(AnyData::ParseValue(AnyData::ValueToString(dict), true, false, AnyData::INT64_VALUE)));
     }
@@ -150,7 +150,7 @@ TEST_CASE("AnyData")
     SECTION("Dict of array 1")
     {
         AnyData::Dict dict;
-        AnyData::Array arr1 = {1ll, 2ll, 3ll};
+        AnyData::Array arr1 = {static_cast<int64>(1), static_cast<int64>(2), static_cast<int64>(3)};
         dict.emplace("key1", arr1);
 
         REQUIRE(AnyData::ValueToString(dict) == "key1 \"1 2 3\"");
