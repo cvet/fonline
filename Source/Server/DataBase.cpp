@@ -192,12 +192,12 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     }
     else if (value_index == AnyData::BOOL_VALUE) {
         if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::BOOL_VALUE>(value));
+            throw DataBaseException("ValueToBson bson_append_bool", key, std::get<AnyData::BOOL_VALUE>(value));
         }
     }
     else if (value_index == AnyData::STRING_VALUE) {
         if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::STRING_VALUE>(value));
+            throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<AnyData::STRING_VALUE>(value));
         }
     }
     else if (value_index == AnyData::ARRAY_VALUE) {
