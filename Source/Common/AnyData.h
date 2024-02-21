@@ -40,17 +40,16 @@ class AnyData final
 public:
     AnyData() = delete;
 
-    static constexpr auto INT_VALUE = 0;
-    static constexpr auto INT64_VALUE = 1;
-    static constexpr auto DOUBLE_VALUE = 2;
-    static constexpr auto BOOL_VALUE = 3;
-    static constexpr auto STRING_VALUE = 4;
-    static constexpr auto ARRAY_VALUE = 5;
-    static constexpr auto DICT_VALUE = 6;
+    static constexpr auto INT64_VALUE = 0;
+    static constexpr auto DOUBLE_VALUE = 1;
+    static constexpr auto BOOL_VALUE = 2;
+    static constexpr auto STRING_VALUE = 3;
+    static constexpr auto ARRAY_VALUE = 4;
+    static constexpr auto DICT_VALUE = 5;
 
-    using Array = vector<std::variant<int, int64, double, bool, string>>;
-    using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
-    using Value = std::variant<int, int64, double, bool, string, Array, Dict>;
+    using Array = vector<std::variant<int64, double, bool, string>>;
+    using Dict = map<string, std::variant<int64, double, bool, string, Array>>;
+    using Value = std::variant<int64, double, bool, string, Array, Dict>;
     using Document = map<string, Value>;
 
     [[nodiscard]] static auto ValueToString(const Value& value) -> string;

@@ -39,9 +39,9 @@ TEST_CASE("AnyData")
 {
     SECTION("Int 1")
     {
-        AnyData::Value val = 1234;
+        AnyData::Value val = 1234ll;
         REQUIRE(AnyData::ValueToString(val) == "1234");
-        REQUIRE(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::INT_VALUE));
+        REQUIRE(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::INT64_VALUE));
     }
 
     SECTION("Float 1")
@@ -115,9 +115,9 @@ TEST_CASE("AnyData")
 
     SECTION("Array of ints")
     {
-        AnyData::Array arr = {1, 2, 3, 4};
+        AnyData::Array arr = {1ll, 2ll, 3ll, 4ll};
         REQUIRE(AnyData::ValueToString(arr) == "1 2 3 4");
-        REQUIRE(arr == std::get<AnyData::ARRAY_VALUE>(AnyData::ParseValue(AnyData::ValueToString(arr), false, true, AnyData::INT_VALUE)));
+        REQUIRE(arr == std::get<AnyData::ARRAY_VALUE>(AnyData::ParseValue(AnyData::ValueToString(arr), false, true, AnyData::INT64_VALUE)));
     }
 
     SECTION("Array of strings")
@@ -130,11 +130,11 @@ TEST_CASE("AnyData")
     SECTION("Dict with ints")
     {
         AnyData::Dict dict;
-        dict.emplace("key1", 1);
-        dict.emplace("key2", 2);
-        dict.emplace("key3", 3);
+        dict.emplace("key1", 1ll);
+        dict.emplace("key2", 2ll);
+        dict.emplace("key3", 3ll);
         REQUIRE(AnyData::ValueToString(dict) == "key1 1 key2 2 key3 3");
-        REQUIRE(dict == std::get<AnyData::DICT_VALUE>(AnyData::ParseValue(AnyData::ValueToString(dict), true, false, AnyData::INT_VALUE)));
+        REQUIRE(dict == std::get<AnyData::DICT_VALUE>(AnyData::ParseValue(AnyData::ValueToString(dict), true, false, AnyData::INT64_VALUE)));
     }
 
     SECTION("Dict with strings")
@@ -150,11 +150,11 @@ TEST_CASE("AnyData")
     SECTION("Dict of array 1")
     {
         AnyData::Dict dict;
-        AnyData::Array arr1 = {1, 2, 3};
+        AnyData::Array arr1 = {1ll, 2ll, 3ll};
         dict.emplace("key1", arr1);
 
         REQUIRE(AnyData::ValueToString(dict) == "key1 \"1 2 3\"");
-        REQUIRE(dict == std::get<AnyData::DICT_VALUE>(AnyData::ParseValue(AnyData::ValueToString(dict), true, true, AnyData::INT_VALUE)));
+        REQUIRE(dict == std::get<AnyData::DICT_VALUE>(AnyData::ParseValue(AnyData::ValueToString(dict), true, true, AnyData::INT64_VALUE)));
     }
 
     SECTION("Dict of array 2")

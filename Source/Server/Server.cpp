@@ -2265,9 +2265,9 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.emplace_back(static_cast<int>(unlogined_player->Connection->GetIp()));
+    reg_ip.emplace_back(static_cast<int64>(unlogined_player->Connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.emplace_back(static_cast<int>(unlogined_player->Connection->GetPort()));
+    reg_port.emplace_back(static_cast<int64>(unlogined_player->Connection->GetPort()));
 
     DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
