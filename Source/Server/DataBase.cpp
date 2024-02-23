@@ -180,12 +180,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     STACK_TRACE_ENTRY();
 
     const auto value_index = value.index();
-    if (value_index == AnyData::INT_VALUE) {
-        if (!bson_append_int32(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::INT_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_int32", key, std::get<AnyData::INT_VALUE>(value));
-        }
-    }
-    else if (value_index == AnyData::INT64_VALUE) {
+    if (value_index == AnyData::INT64_VALUE) {
         if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::INT64_VALUE>(value))) {
             throw DataBaseException("ValueToBson bson_append_int64", key, std::get<AnyData::INT64_VALUE>(value));
         }
@@ -197,12 +192,12 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     }
     else if (value_index == AnyData::BOOL_VALUE) {
         if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::BOOL_VALUE>(value));
+            throw DataBaseException("ValueToBson bson_append_bool", key, std::get<AnyData::BOOL_VALUE>(value));
         }
     }
     else if (value_index == AnyData::STRING_VALUE) {
         if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::STRING_VALUE>(value));
+            throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<AnyData::STRING_VALUE>(value));
         }
     }
     else if (value_index == AnyData::ARRAY_VALUE) {
@@ -218,12 +213,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
             arr_key_index++;
 
             const auto arr_value_index = arr_value.index();
-            if (arr_value_index == AnyData::INT_VALUE) {
-                if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<AnyData::INT_VALUE>(arr_value));
-                }
-            }
-            else if (arr_value_index == AnyData::INT64_VALUE) {
+            if (arr_value_index == AnyData::INT64_VALUE) {
                 if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
                     throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
                 }
@@ -261,12 +251,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         const auto& dict = std::get<AnyData::DICT_VALUE>(value);
         for (auto&& [dict_key, dict_value] : dict) {
             const auto dict_value_index = dict_value.index();
-            if (dict_value_index == AnyData::INT_VALUE) {
-                if (!bson_append_int32(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::INT_VALUE>(dict_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", dict_key, std::get<AnyData::INT_VALUE>(dict_value));
-                }
-            }
-            else if (dict_value_index == AnyData::INT64_VALUE) {
+            if (dict_value_index == AnyData::INT64_VALUE) {
                 if (!bson_append_int64(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::INT64_VALUE>(dict_value))) {
                     throw DataBaseException("ValueToBson bson_append_int64", dict_key, std::get<AnyData::INT64_VALUE>(dict_value));
                 }
@@ -299,12 +284,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
                     arr_key_index++;
 
                     const auto arr_value_index = arr_value.index();
-                    if (arr_value_index == AnyData::INT_VALUE) {
-                        if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<AnyData::INT_VALUE>(arr_value));
-                        }
-                    }
-                    else if (arr_value_index == AnyData::INT64_VALUE) {
+                    if (arr_value_index == AnyData::INT64_VALUE) {
                         if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
                             throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
                         }
@@ -362,10 +342,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
     const auto* value = bson_iter_value(iter);
 
-    if (value->value_type == BSON_TYPE_INT32) {
-        return value->value.v_int32;
-    }
-    else if (value->value_type == BSON_TYPE_INT64) {
+    if (value->value_type == BSON_TYPE_INT64) {
         return value->value.v_int64;
     }
     else if (value->value_type == BSON_TYPE_DOUBLE) {
@@ -386,10 +363,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         AnyData::Array arr;
         while (bson_iter_next(&arr_iter)) {
             const auto* arr_value = bson_iter_value(&arr_iter);
-            if (arr_value->value_type == BSON_TYPE_INT32) {
-                arr.emplace_back(arr_value->value.v_int32);
-            }
-            else if (arr_value->value_type == BSON_TYPE_INT64) {
+            if (arr_value->value_type == BSON_TYPE_INT64) {
                 arr.emplace_back(arr_value->value.v_int64);
             }
             else if (arr_value->value_type == BSON_TYPE_DOUBLE) {
@@ -418,10 +392,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
             const auto* dict_value = bson_iter_value(&doc_iter);
-            if (dict_value->value_type == BSON_TYPE_INT32) {
-                dict.emplace(string(key), dict_value->value.v_int32);
-            }
-            else if (dict_value->value_type == BSON_TYPE_INT64) {
+            if (dict_value->value_type == BSON_TYPE_INT64) {
                 dict.emplace(string(key), dict_value->value.v_int64);
             }
             else if (dict_value->value_type == BSON_TYPE_DOUBLE) {
@@ -442,10 +413,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
                 AnyData::Array dict_array;
                 while (bson_iter_next(&doc_arr_iter)) {
                     const auto* doc_arr_value = bson_iter_value(&doc_arr_iter);
-                    if (doc_arr_value->value_type == BSON_TYPE_INT32) {
-                        dict_array.emplace_back(doc_arr_value->value.v_int32);
-                    }
-                    else if (doc_arr_value->value_type == BSON_TYPE_INT64) {
+                    if (doc_arr_value->value_type == BSON_TYPE_INT64) {
                         dict_array.emplace_back(doc_arr_value->value.v_int64);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_DOUBLE) {

@@ -521,11 +521,8 @@ auto Properties::ApplyPropertyFromText(const Property* prop, string_view text) -
     if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHashBase || prop->_isEnumBase) {
         value_type = AnyData::STRING_VALUE;
     }
-    else if (prop->_isInt64 || prop->_isUInt64) {
-        value_type = AnyData::INT64_VALUE;
-    }
     else if (prop->_isInt) {
-        value_type = AnyData::INT_VALUE;
+        value_type = AnyData::INT64_VALUE;
     }
     else if (prop->_isBool) {
         value_type = AnyData::BOOL_VALUE;
