@@ -342,7 +342,10 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
     const auto* value = bson_iter_value(iter);
 
-    if (value->value_type == BSON_TYPE_INT64) {
+    if (value->value_type == BSON_TYPE_INT32) {
+        return static_cast<int64>(value->value.v_int32);
+    }
+    else if (value->value_type == BSON_TYPE_INT64) {
         return value->value.v_int64;
     }
     else if (value->value_type == BSON_TYPE_DOUBLE) {
@@ -363,7 +366,10 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         AnyData::Array arr;
         while (bson_iter_next(&arr_iter)) {
             const auto* arr_value = bson_iter_value(&arr_iter);
-            if (arr_value->value_type == BSON_TYPE_INT64) {
+            if (arr_value->value_type == BSON_TYPE_INT32) {
+                arr.emplace_back(static_cast<int64>(arr_value->value.v_int32));
+            }
+            else if (arr_value->value_type == BSON_TYPE_INT64) {
                 arr.emplace_back(arr_value->value.v_int64);
             }
             else if (arr_value->value_type == BSON_TYPE_DOUBLE) {
@@ -392,7 +398,10 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
             const auto* dict_value = bson_iter_value(&doc_iter);
-            if (dict_value->value_type == BSON_TYPE_INT64) {
+            if (dict_value->value_type == BSON_TYPE_INT32) {
+                dict.emplace(string(key), static_cast<int64>(dict_value->value.v_int32));
+            }
+            else if (dict_value->value_type == BSON_TYPE_INT64) {
                 dict.emplace(string(key), dict_value->value.v_int64);
             }
             else if (dict_value->value_type == BSON_TYPE_DOUBLE) {
@@ -413,7 +422,10 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
                 AnyData::Array dict_array;
                 while (bson_iter_next(&doc_arr_iter)) {
                     const auto* doc_arr_value = bson_iter_value(&doc_arr_iter);
-                    if (doc_arr_value->value_type == BSON_TYPE_INT64) {
+                    if (doc_arr_value->value_type == BSON_TYPE_INT32) {
+                        dict_array.emplace_back(static_cast<int64>(doc_arr_value->value.v_int32));
+                    }
+                    else if (doc_arr_value->value_type == BSON_TYPE_INT64) {
                         dict_array.emplace_back(doc_arr_value->value.v_int64);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_DOUBLE) {
