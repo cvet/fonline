@@ -1828,10 +1828,10 @@ class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int = 0;
 };
 
 class FrameBalancer

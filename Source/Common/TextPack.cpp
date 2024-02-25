@@ -326,7 +326,7 @@ auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) 
     STACK_TRACE_ENTRY();
 
     try {
-        return static_cast<TextPackName>(_nameResolver->ResolveEnumValue("TextPackName", pack_name_str));
+        return static_cast<TextPackName>(_nameResolver->ResolveEnumValue(string("TextPackName"), string(pack_name_str)));
     }
     catch (const EnumResolveException&) {
         if (failed != nullptr) {

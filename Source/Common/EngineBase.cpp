@@ -116,11 +116,11 @@ void FOEngineBase::FinalizeDataRegistration()
     GetPropertiesForEdit().AllocData();
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
+auto FOEngineBase::ResolveEnumValue(const string& enum_value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _enumsFull.find(string(enum_value_name));
+    const auto it = _enumsFull.find(enum_value_name);
     if (it == _enumsFull.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum full value {}", enum_value_name);
@@ -134,11 +134,11 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) c
     return it->second;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
+auto FOEngineBase::ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
-    const auto enum_it = _enums.find(string(enum_name));
+    const auto enum_it = _enums.find(enum_name);
     if (enum_it == _enums.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum {}", enum_name);
@@ -149,7 +149,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
         throw EnumResolveException("Invalid enum", enum_name, value_name);
     }
 
-    const auto value_it = enum_it->second.find(string(value_name));
+    const auto value_it = enum_it->second.find(value_name);
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
             WriteLog("Can't resolve {} for enum {}", value_name, enum_name);
@@ -163,11 +163,11 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
+auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool* failed) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
-    const auto enum_it = _enumsRev.find(string(enum_name));
+    const auto enum_it = _enumsRev.find(enum_name);
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
@@ -192,7 +192,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
+auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -204,10 +204,10 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
     }
 
     if (str[0] == '@') {
-        return ToHashedString(str.substr(1)).as_int();
+        return ToHashedString(string_view(str).substr(1)).as_int();
     }
     else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
-        return ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
+        return ToHashedString(string_view(str).substr(str.rfind(':') + 1)).as_int();
     }
     else if (_str(str).isNumber()) {
         return _str(str).toInt();
