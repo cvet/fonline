@@ -53,9 +53,9 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-        const auto collision_detected = (s != it->second.Str);
+        const auto collision_detected = s != it->second.Str;
 #else
-        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+        const auto collision_detected = s.length() != it->second.Str.length();
 #endif
         if (collision_detected) {
             throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
@@ -86,9 +86,9 @@ auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
 
     if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-        const auto collision_detected = (s != it->second.Str);
+        const auto collision_detected = s != it->second.Str;
 #else
-        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+        const auto collision_detected = s.length() != it->second.Str.length();
 #endif
         if (collision_detected) {
             throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);

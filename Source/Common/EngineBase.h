@@ -64,9 +64,11 @@ public:
     [[nodiscard]] auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
+    [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> override;
 
     auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
     void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+    void SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
     GlobalSettings& Settings;
@@ -89,5 +91,6 @@ private:
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
+    unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };

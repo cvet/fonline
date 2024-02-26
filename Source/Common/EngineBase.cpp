@@ -105,6 +105,15 @@ auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const
     return it->second;
 }
 
+void FOEngineBase::SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _migrationRules = std::move(migration_rules);
+}
+
 void FOEngineBase::FinalizeDataRegistration()
 {
     STACK_TRACE_ENTRY();
@@ -220,4 +229,45 @@ auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
     }
 
     return ResolveEnumValue(str, failed);
+}
+
+auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring>
+{
+    STACK_TRACE_ENTRY();
+
+    if (_migrationRules.empty()) {
+        return std::nullopt;
+    }
+
+    const auto it_rules = _migrationRules.find(rule_name);
+
+    if (it_rules == _migrationRules.end()) {
+        return std::nullopt;
+    }
+
+    const auto it_rules2 = it_rules->second.find(extra_info);
+
+    if (it_rules2 == it_rules->second.end()) {
+        return std::nullopt;
+    }
+
+    const auto it_target = it_rules2->second.find(target);
+
+    if (it_target == it_rules2->second.end()) {
+        return std::nullopt;
+    }
+
+    hstring result = it_target->second;
+
+    while (true) {
+        const auto it_target2 = it_rules2->second.find(result);
+
+        if (it_target2 == it_rules2->second.end()) {
+            break;
+        }
+
+        result = it_target2->second;
+    }
+
+    return result;
 }
