@@ -2156,13 +2156,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 globalLines.append('    ' + mbr + ';')
                         globalLines.append('    return event_result;')
                         globalLines.append('}')
-                    globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
+                    globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func, Entity::EventPriority priority)')
                     globalLines.append('{')
                     if not isASCompiler:
                         globalLines.append('    STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
+                        globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         globalLines.append('    event_data.Callback = [self, func = RefCountHolder(func)](const initializer_list<void*>& args) {')
                         globalLines.append('        return ' + funcEntry + '_Callback(self, func.get(), args);')
@@ -2174,6 +2175,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
                         globalLines.append('    UNUSED_VARIABLE(func);')
+                        globalLines.append('    UNUSED_VARIABLE(priority);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
