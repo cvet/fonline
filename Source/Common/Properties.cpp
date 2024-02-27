@@ -1063,8 +1063,9 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 }
 
 PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver) :
-    _className {class_name},
+    _className {hash_resolver.ToHashedString(class_name)},
     _relation {relation},
+    _migrationRuleName {hash_resolver.ToHashedString("Property")},
     _hashResolver {hash_resolver},
     _nameResolver {name_resolver}
 {
@@ -1113,7 +1114,7 @@ void PropertyRegistrator::RegisterComponent(string_view name)
     _registeredComponents.insert(name_hash);
 }
 
-auto PropertyRegistrator::GetClassName() const -> const string&
+auto PropertyRegistrator::GetClassName() const -> hstring
 {
     STACK_TRACE_ENTRY();
 
@@ -1127,6 +1128,7 @@ auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property
     if (property_index >= 0 && property_index < static_cast<int>(_registeredProperties.size())) {
         return _registeredProperties[property_index];
     }
+
     return nullptr;
 }
 
@@ -1134,7 +1136,16 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 {
     STACK_TRACE_ENTRY();
 
-    auto key = string(property_name);
+    auto& key = _registeredPropertiesLookupBuf;
+
+    key = property_name;
+
+    const auto hkey = _hashResolver.ToHashedString(key);
+
+    if (const auto& rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _className, hkey); rule.has_value()) {
+        key = rule.value();
+    }
+
     if (const auto separator = property_name.find('.'); separator != string::npos) {
         key[separator] = '_';
     }
@@ -1343,11 +1354,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             check_next_param();
             i += 2;
         }
-        else if (flags[i] == "Alias") {
-            check_next_param();
-            prop->_propNameAliases.emplace_back(flags[i + 2]);
-            i += 2;
-        }
         else if (flags[i] == "NullGetterForProto") {
             prop->_isNullGetterForProto = true;
         }
@@ -1465,11 +1471,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     RUNTIME_ASSERT(_registeredPropertiesLookup.count(prop->_propName) == 0);
     _registeredPropertiesLookup.emplace(prop->_propName, prop);
-
-    for (const auto& alias : prop->_propNameAliases) {
-        RUNTIME_ASSERT(_registeredPropertiesLookup.count(alias) == 0);
-        _registeredPropertiesLookup.emplace(alias, prop);
-    }
 
     // Fix plain data data offsets
     if (prop->_podDataOffset != static_cast<uint>(-1)) {

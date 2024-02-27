@@ -220,7 +220,6 @@ private:
     mutable vector<PropertyPostSetCallback> _postSetters {};
 
     string _propName {};
-    vector<string> _propNameAliases {};
     string _propNameWithoutComponent {};
     string _fullTypeName {};
     hstring _component {};
@@ -709,7 +708,7 @@ public:
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    [[nodiscard]] auto GetClassName() const -> const string&;
+    [[nodiscard]] auto GetClassName() const -> hstring;
     [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
@@ -727,13 +726,15 @@ public:
     void RegisterProperty(const const_span<string_view>& flags);
 
 private:
-    const string _className;
+    const hstring _className;
     const PropertiesRelationType _relation;
+    const hstring _migrationRuleName;
     HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
     vector<const Property*> _constRegisteredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
+    mutable string _registeredPropertiesLookupBuf {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};
     unordered_map<string_view, Property::AccessType> _accessMap {};
