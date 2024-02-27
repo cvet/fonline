@@ -212,11 +212,11 @@ public:
     ///@ ExportEnum
     enum class EventPriority
     {
-        Lowest,
-        Low,
-        Normal,
-        High,
-        Highest,
+        Lowest = 0,
+        Low = 1000000,
+        Normal = 2000000,
+        High = 3000000,
+        Highest = 4000000,
     };
 
     struct EventCallbackData
@@ -224,7 +224,7 @@ public:
         EventCallback Callback {};
         const void* SubscribtionPtr {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
-        EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
+        EventPriority Priority {EventPriority::Normal};
         bool OneShot {}; // Todo: improve entity event OneShot
         bool Deferred {}; // Todo: improve entity event Deferred
     };
@@ -254,7 +254,7 @@ public:
     void SetValueAsInt(int prop_index, int value);
     void SetValueAsAny(const Property* prop, const any_t& value);
     void SetValueAsAny(int prop_index, const any_t& value);
-    void SubscribeEvent(const string& event_name, EventCallbackData callback);
+    void SubscribeEvent(const string& event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
     void UnsubscribeAllEvent(const string& event_name);
     auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
@@ -275,7 +275,7 @@ protected:
 
 private:
     auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*;
-    void SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback);
+    void SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData&& callback);
     void UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr);
     auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
 
@@ -330,7 +330,7 @@ protected:
 class EntityEventBase
 {
 public:
-    void Subscribe(Entity::EventCallbackData callback);
+    void Subscribe(Entity::EventCallbackData&& callback);
     void Unsubscribe(const void* subscription_ptr);
     void UnsubscribeAll();
 

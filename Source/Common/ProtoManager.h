@@ -68,6 +68,11 @@ public:
 
 private:
     FOEngineBase* _engine;
+    const hstring _migrationRuleName;
+    const hstring _itemClassName;
+    const hstring _crClassName;
+    const hstring _mapClassName;
+    const hstring _locClassName;
     unordered_map<hstring, const ProtoItem*> _itemProtos {};
     unordered_map<hstring, const ProtoCritter*> _crProtos {};
     unordered_map<hstring, const ProtoMap*> _mapProtos {};
