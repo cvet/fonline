@@ -176,9 +176,12 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsScrollBlock);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHidden);
+    ENTITY_PROPERTY(PrivateServer, bool, IsHidden);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenPicture);
+    ENTITY_PROPERTY(PrivateCommon, bool, AlwaysHideSprite);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenInStatic);
     ///@ ExportProperty ReadOnly
@@ -411,6 +414,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, bool, IsAttached);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, ident_t, AttachMaster);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
 };
 
 class MapProperties : public EntityProperties

@@ -334,33 +334,6 @@
 }
 
 ///# ...
-///# param visible ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Critter_SetVisibility(CritterView* self, bool visible)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    hex_cr->Visible = visible;
-    hex_cr->GetEngine()->CurMap->RefreshMap();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_GetVisibility(CritterView* self)
-{
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    return hex_cr->Visible;
-}
-
-///# ...
 ///# param nameVisible ...
 ///# param x ...
 ///# param y ...

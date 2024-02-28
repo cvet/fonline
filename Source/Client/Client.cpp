@@ -243,6 +243,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
@@ -257,6 +258,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
@@ -2998,6 +3000,17 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     }
 }
 
+void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        cr->SetSpriteVisiblity(!cr->GetHideSprite());
+    }
+}
+
 void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
@@ -3087,6 +3100,17 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
                 item->GetAnim()->Play({}, false, true);
             }
         }
+    }
+}
+
+void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->SetSpriteVisiblity(!item->GetHideSprite());
     }
 }
 

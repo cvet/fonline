@@ -154,21 +154,21 @@ auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     EggAppearence = egg_appearence;
 }
 
 void MapSprite::SetContour(ContourType contour)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
 }
 
 void MapSprite::SetContour(ContourType contour, ucolor color)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
     ContourColor = color;
@@ -176,21 +176,21 @@ void MapSprite::SetContour(ContourType contour, ucolor color)
 
 void MapSprite::SetColor(ucolor color)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Color = color;
 }
 
 void MapSprite::SetAlpha(const uint8* alpha)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Alpha = alpha;
 }
 
 void MapSprite::SetFixedAlpha(uint8 alpha)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
     *color_alpha = alpha;
@@ -199,7 +199,7 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
 
 void MapSprite::SetLight(CornerType corner, const ucolor* light, uint16 maxhx, uint16 maxhy)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1) {
         Light = &light[HexY * maxhx + HexX];
@@ -232,6 +232,13 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, uint16 maxhx, u
     }
 }
 
+void MapSprite::SetHidden(bool hidden)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    _hidden = hidden;
+}
+
 MapSpriteList::MapSpriteList(SpriteManager& spr_mngr) :
     _sprMngr {spr_mngr}
 {
@@ -242,7 +249,12 @@ MapSpriteList::~MapSpriteList()
 {
     STACK_TRACE_ENTRY();
 
-    Invalidate();
+    try {
+        Invalidate();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 
     for (const auto* spr : _invalidatedSprites) {
         delete spr;

@@ -44,6 +44,8 @@ Sprite::Sprite(SpriteManager& spr_mngr) :
 
 auto Sprite::IsHitTest(int x, int y) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(x, y);
 
     return false;
@@ -52,6 +54,7 @@ auto Sprite::IsHitTest(int x, int y) const -> bool
 void Sprite::StartUpdate()
 {
     STACK_TRACE_ENTRY();
+
     _sprMngr._updateSprites.emplace(this, weak_from_this());
 }
 
@@ -870,6 +873,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
     for (const auto* mspr = mspr_list.RootSprite(); mspr != nullptr; mspr = mspr->ChainChild) {
         RUNTIME_ASSERT(mspr->Valid);
 
+        if (mspr->IsHidden()) {
+            continue;
+        }
         if (mspr->DrawOrder < draw_oder_from) {
             continue;
         }

@@ -53,8 +53,8 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsVisible() const -> bool { return Visible; }
     [[nodiscard]] auto IsSpriteValid() const -> bool { return _mapSprValid; }
+    [[nodiscard]] auto IsSpriteVisible() const -> bool { return _mapSpr != nullptr && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto GetSprite() const -> const MapSprite*;
     [[nodiscard]] auto GetSprite() -> MapSprite*;
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
@@ -73,9 +73,9 @@ public:
     void SetMaxAlpha(uint8 alpha);
     void RefreshSprite();
     void InvalidateSprite();
+    void SetSpriteVisiblity(bool enabled);
 
     // Todo: incapsulate hex view fileds
-    bool Visible {true};
     const Sprite* Spr {};
     int ScrX {};
     int ScrY {};
@@ -94,6 +94,7 @@ private:
 
     MapSprite* _mapSpr {};
     bool _mapSprValid {};
+    bool _mapSprHidden {};
 
     uint8 _maxAlpha {0xFF};
 
