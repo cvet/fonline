@@ -1092,15 +1092,17 @@ void FOClient::Net_OnAddCritter()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     CritterView* cr;
+    CritterHexView* hex_cr;
 
     if (CurMap != nullptr) {
-        auto* hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hx, hy, dir_angle, _tempPropertiesData);
+        hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hx, hy, dir_angle, _tempPropertiesData);
         RUNTIME_ASSERT(hex_cr);
-        cr = hex_cr;
 
         if (_screenModeMain != SCREEN_WAIT) {
             hex_cr->FadeUp();
         }
+
+        cr = hex_cr;
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
@@ -1109,6 +1111,8 @@ void FOClient::Net_OnAddCritter()
         cr = new CritterView(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
         _worldmapCritters.emplace_back(cr);
+
+        hex_cr = nullptr;
     }
 
     cr->SetHexOffsX(hex_ox);
@@ -1123,6 +1127,10 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsControlledByPlayer(is_controlled_by_player);
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
+
+    if ((hex_ox != 0 || hex_oy != 0) && hex_cr != nullptr) {
+        hex_cr->RefreshOffs();
+    }
 
     if (cr->GetIsChosen()) {
         _chosen = cr;
@@ -1883,17 +1891,20 @@ void FOClient::Net_OnCritterAttachments()
             return;
         }
 
-        cr->SetIsAttached(is_attached);
-        cr->AttachedCritters = std::move(attached_critters);
+        if (cr->GetIsAttached() != is_attached) {
+            cr->SetIsAttached(is_attached);
 
-        if (is_attached) {
-            for (auto* map_cr : CurMap->GetCritters()) {
-                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
-                    map_cr->MoveAttachedCritters();
-                    break;
+            if (is_attached) {
+                for (auto* map_cr : CurMap->GetCritters()) {
+                    if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                        map_cr->MoveAttachedCritters();
+                        break;
+                    }
                 }
             }
         }
+
+        cr->AttachedCritters = std::move(attached_critters);
 
         if (!cr->AttachedCritters.empty()) {
             cr->MoveAttachedCritters();

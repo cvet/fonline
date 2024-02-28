@@ -926,10 +926,8 @@ void CritterHexView::RefreshOffs()
     ScrX = GetHexOffsX() + iround(_oxExt) + _oxAnim;
     ScrY = GetHexOffsY() + iround(_oyExt) + _oyAnim;
 
-    if (IsSpriteValid()) {
-        if (GetIsChosen()) {
-            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), GetSprite());
-        }
+    if (IsSpriteValid() && GetIsChosen()) {
+        _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), GetSprite());
     }
 }
 

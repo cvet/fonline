@@ -1406,51 +1406,58 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
         cr->DetachFromCritter();
     }
 
-    if (prev_map_id == map_id) {
-        // One map
-        if (!map_id) {
-            // Todo: check group on transfer from global to global
-            return;
+    vector<Critter*> attached_critters;
+
+    if (!cr->AttachedCritters.empty()) {
+        attached_critters = cr->AttachedCritters;
+
+        for (auto* attached_cr : attached_critters) {
+            attached_cr->DetachFromCritter();
         }
+    }
 
-        RUNTIME_ASSERT(hx < map->GetWidth());
-        RUNTIME_ASSERT(hy < map->GetHeight());
+    if (map == prev_map) {
+        // Between one map
+        if (map != nullptr) {
+            RUNTIME_ASSERT(hx < map->GetWidth());
+            RUNTIME_ASSERT(hy < map->GetHeight());
 
-        const auto multihex = cr->GetMultihex();
+            const auto multihex = cr->GetMultihex();
 
-        uint16 start_hx = hx;
-        uint16 start_hy = hy;
+            uint16 start_hx = hx;
+            uint16 start_hy = hy;
 
-        if (safe_radius.has_value()) {
-            auto start_hex = map->FindStartHex(hx, hy, multihex, safe_radius.value(), true);
-            if (!start_hex.has_value()) {
-                start_hex = map->FindStartHex(hx, hy, multihex, safe_radius.value(), false);
+            if (safe_radius.has_value()) {
+                auto start_hex = map->FindStartHex(hx, hy, multihex, safe_radius.value(), true);
+                if (!start_hex.has_value()) {
+                    start_hex = map->FindStartHex(hx, hy, multihex, safe_radius.value(), false);
+                }
+                if (start_hex.has_value()) {
+                    start_hx = std::get<0>(start_hex.value());
+                    start_hy = std::get<1>(start_hex.value());
+                }
             }
-            if (start_hex.has_value()) {
-                start_hx = std::get<0>(start_hex.value());
-                start_hy = std::get<1>(start_hex.value());
+
+            cr->ChangeDir(dir);
+            map->RemoveCritterFromField(cr);
+            cr->SetHexX(start_hx);
+            cr->SetHexY(start_hy);
+            map->AddCritterToField(cr);
+            cr->Send_Teleport(cr, start_hx, start_hy);
+            cr->Broadcast_Teleport(start_hx, start_hy);
+            cr->ClearVisible();
+            cr->Send_Moving(cr);
+
+            ProcessVisibleCritters(cr);
+            ProcessVisibleItems(cr);
+
+            if (cr->IsDestroyed()) {
+                return;
             }
-        }
-
-        cr->ChangeDir(dir);
-        map->RemoveCritterFromField(cr);
-        cr->SetHexX(start_hx);
-        cr->SetHexY(start_hy);
-        map->AddCritterToField(cr);
-        cr->Send_Teleport(cr, start_hx, start_hy);
-        cr->Broadcast_Teleport(start_hx, start_hy);
-        cr->ClearVisible();
-        cr->Send_Moving(cr);
-
-        ProcessVisibleCritters(cr);
-        ProcessVisibleItems(cr);
-
-        if (cr->IsDestroyed()) {
-            return;
         }
     }
     else {
-        // Different maps
+        // Between different maps
         uint16 start_hx = hx;
         uint16 start_hy = hy;
 
@@ -1494,18 +1501,16 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
     }
 
     // Transit attached critters
-    if (!cr->AttachedCritters.empty()) {
-        const auto attached_critters = copy_hold_ref(cr->AttachedCritters);
-
+    if (!attached_critters.empty()) {
         for (auto* attached_cr : attached_critters) {
-            if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && attached_cr->GetIsAttached() && attached_cr->GetAttachMaster() == cr->GetId() && attached_cr->GetMapId() == prev_map_id) {
+            if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->GetMapId() == prev_map_id) {
                 Transit(attached_cr, map, cr->GetHexX(), cr->GetHexY(), dir, std::nullopt, cr->GetId());
             }
         }
 
-        if (!cr->IsDestroyed()) {
+        if (!cr->IsDestroyed() && !cr->GetIsAttached()) {
             for (auto* attached_cr : attached_critters) {
-                if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !cr->GetIsAttached() && !attached_cr->GetIsAttached() && attached_cr->AttachedCritters.empty() && attached_cr->GetMapId() == cr->GetMapId()) {
+                if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->AttachedCritters.empty() && attached_cr->GetMapId() == cr->GetMapId()) {
                     attached_cr->AttachToCritter(cr);
                 }
             }
