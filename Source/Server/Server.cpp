@@ -1092,11 +1092,12 @@ void FOServer::ProcessPlayer(Player* player)
     if (player->Connection->IsHardDisconnected()) {
         WriteLog("Disconnected player {}", player->GetName());
 
+        OnPlayerLogout.Fire(player);
+
         if (auto* cr = player->GetControlledCritter(); cr != nullptr) {
             cr->DetachPlayer();
         }
 
-        OnPlayerLogout.Fire(player);
         EntityMngr.UnregisterEntity(player);
 
         player->Release();
