@@ -1611,7 +1611,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         cr->ClearVisible();
         map->EraseCritter(cr);
 
-        cr->SetMapId(ident_t {});
+        cr->SetMapId({});
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
