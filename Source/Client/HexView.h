@@ -54,7 +54,7 @@ public:
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsSpriteValid() const -> bool { return _mapSprValid; }
-    [[nodiscard]] auto IsSpriteVisible() const -> bool { return _mapSpr != nullptr && !_mapSpr->IsHidden(); }
+    [[nodiscard]] auto IsSpriteVisible() const -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto GetSprite() const -> const MapSprite*;
     [[nodiscard]] auto GetSprite() -> MapSprite*;
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
