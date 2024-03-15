@@ -1877,6 +1877,7 @@ void FOClient::Net_OnCritterAttachments()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto is_attached = _conn.InBuf.Read<bool>();
+    const auto attach_master = _conn.InBuf.Read<ident_t>();
 
     const auto attached_critters_count = _conn.InBuf.Read<uint16>();
     vector<ident_t> attached_critters;
@@ -1892,6 +1893,8 @@ void FOClient::Net_OnCritterAttachments()
         if (cr == nullptr) {
             return;
         }
+
+        cr->SetAttachMaster(attach_master);
 
         if (cr->GetIsAttached() != is_attached) {
             cr->SetIsAttached(is_attached);

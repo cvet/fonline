@@ -1159,6 +1159,7 @@ void Player::Send_Attachments(const Critter* from_cr)
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ATTACHMENTS);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(from_cr->GetIsAttached());
+    Connection->OutBuf.Write(from_cr->GetAttachMaster());
     Connection->OutBuf.Write(static_cast<uint16>(from_cr->AttachedCritters.size()));
     for (const auto* attached_cr : from_cr->AttachedCritters) {
         Connection->OutBuf.Write(attached_cr->GetId());

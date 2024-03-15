@@ -413,7 +413,7 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateCommon, bool, IsAttached);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, ident_t, AttachMaster);
+    ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
 };
