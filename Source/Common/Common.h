@@ -1384,8 +1384,8 @@ struct hstring
         string Str {};
     };
 
-    hstring() = default;
-    constexpr explicit hstring(const entry* static_storage_entry) :
+    hstring() noexcept = default;
+    constexpr explicit hstring(const entry* static_storage_entry) noexcept :
         _entry {static_storage_entry}
     {
     }
@@ -1446,17 +1446,6 @@ constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
 constexpr auto SQRT3_FLOAT = 1.732050807f;
 constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
 constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
-
-// Id helpers
-// Todo: remove all id masks after moving to 64-bit hashes
-#define DLGID_MASK (0xFFFFC000)
-#define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
-#define LOCPID_MASK (0xFFFFF000)
-#define LOC_STR_ID(loc_pid, idx) (((loc_pid)&LOCPID_MASK) | ((idx) & ~LOCPID_MASK))
-#define ITEMPID_MASK (0xFFFFFFF0)
-#define ITEM_STR_ID(item_pid, idx) (((item_pid)&ITEMPID_MASK) | ((idx) & ~ITEMPID_MASK))
-#define CRPID_MASK (0xFFFFFFF0)
-#define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
 // Ping
 static constexpr uint8 PING_SERVER = 0;
@@ -1529,6 +1518,7 @@ enum class NetProperty : uint8
     ChosenItem, // One extra arg: item_id
     Map, // No extra args
     Location, // No extra args
+    CustomEntity, // One extra arg: id
 };
 
 // Generic fixed game settings
@@ -1775,12 +1765,23 @@ constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_v
 
 // Vector pointer cast
 template<typename T, typename T2>
-constexpr auto vec_cast(const vector<T2>& value) -> vector<T>
+constexpr auto vec_static_cast(const vector<T2>& value) -> vector<T>
 {
     vector<T> result;
     result.reserve(value.size());
     for (auto&& v : value) {
         result.emplace_back(static_cast<T>(v));
+    }
+    return result;
+}
+
+template<typename T, typename T2>
+constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(value.size());
+    for (auto&& v : value) {
+        result.emplace_back(dynamic_cast<T>(v));
     }
     return result;
 }
@@ -1877,6 +1878,30 @@ public:
 
 private:
     time_point _startTime;
+};
+
+DECLARE_EXCEPTION(InfinityLoopException);
+
+class InfinityLoopDetector
+{
+public:
+    explicit InfinityLoopDetector(size_t max_count = 10) :
+        _maxCount {max_count + 10}
+    {
+    }
+
+    auto AddLoop() -> bool
+    {
+        if (++_counter >= _maxCount) {
+            throw InfinityLoopException("Detected infinity loop", _counter);
+        }
+
+        return true;
+    }
+
+private:
+    size_t _maxCount;
+    size_t _counter {};
 };
 
 class WorkThread

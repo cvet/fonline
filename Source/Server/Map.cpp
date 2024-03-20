@@ -42,7 +42,7 @@
 #include "StringUtils.h"
 
 Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _staticMap {static_map},
@@ -201,7 +201,7 @@ void Map::AddCritter(Critter* cr)
     AddCritterToField(cr);
 }
 
-void Map::EraseCritter(Critter* cr)
+void Map::RemoveCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -389,7 +389,7 @@ void Map::SetItem(Item* item, uint16 hx, uint16 hy)
     }
 }
 
-void Map::EraseItem(ident_t item_id)
+void Map::RemoveItem(ident_t item_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -455,7 +455,7 @@ void Map::EraseItem(ident_t item_id)
         }
 
         if (cr->DelIdVisItem(item->GetId())) {
-            cr->Send_EraseItemFromMap(item);
+            cr->Send_RemoveItemFromMap(item);
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
@@ -564,7 +564,7 @@ void Map::ChangeViewItem(Item* item)
         if (cr->CountIdVisItem(item->GetId())) {
             if (item->GetIsHidden()) {
                 cr->DelIdVisItem(item->GetId());
-                cr->Send_EraseItemFromMap(item);
+                cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
@@ -585,7 +585,7 @@ void Map::ChangeViewItem(Item* item)
 
                 if (!allowed) {
                     cr->DelIdVisItem(item->GetId());
-                    cr->Send_EraseItemFromMap(item);
+                    cr->Send_RemoveItemFromMap(item);
                     cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
             }

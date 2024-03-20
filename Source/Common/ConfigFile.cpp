@@ -325,6 +325,13 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
     return key_values;
 }
 
+auto ConfigFile::GetSections() -> multimap<string, map<string, string>>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _sectionKeyValues;
+}
+
 auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
 {
     STACK_TRACE_ENTRY();
@@ -350,17 +357,6 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const ->
         return false;
     }
     return it_section->second.find(string(key_name)) != it_section->second.end();
-}
-
-auto ConfigFile::GetSectionNames() const -> set<string>
-{
-    STACK_TRACE_ENTRY();
-
-    set<string> sections;
-    for (auto&& [key, value] : _sectionKeyValues) {
-        sections.insert(key);
-    }
-    return sections;
 }
 
 auto ConfigFile::GetSectionKeyValues(string_view section_name) -> const map<string, string>*

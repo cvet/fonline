@@ -506,13 +506,49 @@
     }
 }
 
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DestroyEntity(FOServer* server, ident_t id)
+{
+    if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
+        server->EntityMngr.DestroyEntity(entity);
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DestroyEntity(FOServer* server, ServerEntity* entity)
+{
+    if (entity != nullptr) {
+        server->EntityMngr.DestroyEntity(entity);
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DestroyEntities(FOServer* server, const vector<ident_t>& ids)
+{
+    for (const auto id : ids) {
+        if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
+            server->EntityMngr.DestroyEntity(entity);
+        }
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DestroyEntities(FOServer* server, const vector<ServerEntity*>& entities)
+{
+    for (auto* entity : entities) {
+        if (entity != nullptr) {
+            server->EntityMngr.DestroyEntity(entity);
+        }
+    }
+}
+
 ///# ...
 ///# param item ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, Item* item)
+[[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, Item* item)
 {
     if (item != nullptr) {
-        server->ItemMngr.DeleteItem(item);
+        server->ItemMngr.DestroyItem(item);
     }
 }
 
@@ -520,12 +556,12 @@
 ///# param item ...
 ///# param count ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, Item* item, uint count)
+[[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, Item* item, uint count)
 {
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
         if (count >= cur_count) {
-            server->ItemMngr.DeleteItem(item);
+            server->ItemMngr.DestroyItem(item);
         }
         else {
             item->SetCount(cur_count - count);
@@ -537,10 +573,10 @@
 ///# ...
 ///# param itemId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId)
+[[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, ident_t itemId)
 {
     if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
-        server->ItemMngr.DeleteItem(item);
+        server->ItemMngr.DestroyItem(item);
     }
 }
 
@@ -548,12 +584,12 @@
 ///# param itemId ...
 ///# param count ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId, uint count)
+[[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, ident_t itemId, uint count)
 {
     if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
         if (count >= cur_count) {
-            server->ItemMngr.DeleteItem(item);
+            server->ItemMngr.DestroyItem(item);
         }
         else {
             item->SetCount(cur_count - count);
@@ -565,11 +601,11 @@
 ///# ...
 ///# param items ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<Item*>& items)
+[[maybe_unused]] void Server_Game_DestroyItems(FOServer* server, const vector<Item*>& items)
 {
     for (auto* item : items) {
         if (item != nullptr) {
-            server->ItemMngr.DeleteItem(item);
+            server->ItemMngr.DestroyItem(item);
         }
     }
 }
@@ -577,13 +613,13 @@
 ///# ...
 ///# param itemIds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<ident_t>& itemIds)
+[[maybe_unused]] void Server_Game_DestroyItems(FOServer* server, const vector<ident_t>& itemIds)
 {
     for (const auto item_id : itemIds) {
         if (item_id) {
             auto* item = server->ItemMngr.GetItem(item_id);
             if (item != nullptr) {
-                server->ItemMngr.DeleteItem(item);
+                server->ItemMngr.DestroyItem(item);
             }
         }
     }
@@ -592,21 +628,21 @@
 ///# ...
 ///# param cr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, Critter* cr)
+[[maybe_unused]] void Server_Game_DestroyCritter(FOServer* server, Critter* cr)
 {
     if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
-        server->CrMngr.DeleteCritter(cr);
+        server->CrMngr.DestroyCritter(cr);
     }
 }
 
 ///# ...
 ///# param crId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, ident_t crId)
+[[maybe_unused]] void Server_Game_DestroyCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
         if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && !cr->GetIsControlledByPlayer()) {
-            server->CrMngr.DeleteCritter(cr);
+            server->CrMngr.DestroyCritter(cr);
         }
     }
 }
@@ -614,11 +650,11 @@
 ///# ...
 ///# param critters ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<Critter*>& critters)
+[[maybe_unused]] void Server_Game_DestroyCritters(FOServer* server, const vector<Critter*>& critters)
 {
     for (auto* cr : critters) {
         if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
-            server->CrMngr.DeleteCritter(cr);
+            server->CrMngr.DestroyCritter(cr);
         }
     }
 }
@@ -626,12 +662,12 @@
 ///# ...
 ///# param critterIds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<ident_t>& critterIds)
+[[maybe_unused]] void Server_Game_DestroyCritters(FOServer* server, const vector<ident_t>& critterIds)
 {
     for (const auto id : critterIds) {
         if (id) {
             if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && !cr->GetIsControlledByPlayer()) {
-                server->CrMngr.DeleteCritter(cr);
+                server->CrMngr.DestroyCritter(cr);
             }
         }
     }
@@ -828,21 +864,21 @@
 ///# ...
 ///# param loc ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, Location* loc)
+[[maybe_unused]] void Server_Game_DestroyLocation(FOServer* server, Location* loc)
 {
     if (loc != nullptr) {
-        server->MapMngr.DeleteLocation(loc);
+        server->MapMngr.DestroyLocation(loc);
     }
 }
 
 ///# ...
 ///# param locId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, ident_t locId)
+[[maybe_unused]] void Server_Game_DestroyLocation(FOServer* server, ident_t locId)
 {
     auto* loc = server->MapMngr.GetLocation(locId);
     if (loc != nullptr) {
-        server->MapMngr.DeleteLocation(loc);
+        server->MapMngr.DestroyLocation(loc);
     }
 }
 
@@ -892,6 +928,7 @@
     dummy_net_conn->Release();
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
+        player->MarkAsDestroying();
         player->MarkAsDestroyed();
         player->Release();
         throw ScriptException("Player data db read failed");
@@ -1242,7 +1279,7 @@
 ///# param firstStr ...
 ///# param parameter ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_EraseTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
+[[maybe_unused]] void Server_Game_RemoveTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
 {
     UNUSED_VARIABLE(server);
     UNUSED_VARIABLE(sayType);

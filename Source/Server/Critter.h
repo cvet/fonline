@@ -154,15 +154,14 @@ public:
     void Send_RemoveCritter(const Critter* cr);
     void Send_LoadMap(const Map* map);
     void Send_AddItemOnMap(const Item* item);
-    void Send_EraseItemFromMap(const Item* item);
+    void Send_RemoveItemFromMap(const Item* item);
     void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);
-    void Send_AddItem(const Item* item);
-    void Send_EraseItem(const Item* item);
+    void Send_ChosenAddItem(const Item* item);
+    void Send_ChosenRemoveItem(const Item* item);
     void Send_GlobalInfo(uint8 flags);
     void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
     void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
-    void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
     void Send_Text(const Critter* from_cr, string_view text, uint8 how_say);
@@ -184,13 +183,12 @@ public:
     void Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
-    void Send_AddAllItems();
     void Send_AllAutomapsInfo();
-    void Send_SomeItems(const vector<Item*>* items, int param);
+    void Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
 
     void AddTimeEvent(hstring func_name, uint rate, tick_t duration, const any_t& identifier);
-    void EraseTimeEvent(size_t index);
+    void RemoveTimeEvent(size_t index);
     void ProcessTimeEvents();
 
     ///@ ExportEvent

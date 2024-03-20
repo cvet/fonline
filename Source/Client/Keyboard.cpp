@@ -131,7 +131,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
     else if (dik == KeyCode::Text) {
         auto text = string(dik_text);
-        EraseInvalidChars(text, flags);
+        RemoveInvalidChars(text, flags);
         if (!text.empty()) {
             str.insert(pos, text);
             pos += static_cast<uint>(text.length());
@@ -158,7 +158,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
 }
 
-void Keyboard::EraseInvalidChars(string& str, uint flags) const
+void Keyboard::RemoveInvalidChars(string& str, uint flags) const
 {
     STACK_TRACE_ENTRY();
 

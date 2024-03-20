@@ -40,10 +40,10 @@
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
-///@ ExportEntity Item Item ItemView HasProto HasStatics HasAbstract
-///@ ExportEntity Critter Critter CritterView HasProto
-///@ ExportEntity Map Map MapView HasProto
-///@ ExportEntity Location Location LocationView HasProto
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract
+///@ ExportEntity Critter Critter CritterView HasProtos
+///@ ExportEntity Map Map MapView HasProtos
+///@ ExportEntity Location Location LocationView HasProtos
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* \
@@ -60,7 +60,7 @@
     } \
     inline bool IsNonEmpty##prop() const \
     { \
-        return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; \
+        return _propsRef.GetRawDataSize(GetProperty##prop()) != 0; \
     } \
     static uint16 prop##_RegIndex
 
@@ -187,10 +187,33 @@ public:
 
 class EntityProperties
 {
+public:
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, ident_t, CustomHolderId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, hstring, CustomHolderEntry);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
+
 protected:
     explicit EntityProperties(Properties& props);
 
     Properties& _propsRef;
+};
+
+enum class EntityHolderEntryAccess
+{
+    Private,
+    Protected,
+    Public,
+};
+
+struct EntityTypeInfo
+{
+    const PropertyRegistrator* PropRegistrator {};
+    bool Exported {};
+    bool HasProtos {};
+    unordered_map<hstring, tuple<hstring, EntityHolderEntryAccess>> HolderEntries {}; // Target type, access
 };
 
 class Entity
@@ -237,15 +260,19 @@ public:
 
     [[nodiscard]] virtual auto GetName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
-    [[nodiscard]] auto GetClassName() const -> string_view;
+    [[nodiscard]] auto GetTypeName() const -> hstring;
+    [[nodiscard]] auto GetTypeNamePlural() const -> hstring;
     [[nodiscard]] auto GetProperties() const -> const Properties&;
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
-    [[nodiscard]] auto IsDestroying() const -> bool;
-    [[nodiscard]] auto IsDestroyed() const -> bool;
+    [[nodiscard]] auto IsDestroying() const -> bool { return _isDestroying; }
+    [[nodiscard]] auto IsDestroyed() const -> bool { return _isDestroyed; }
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
+    [[nodiscard]] auto HasInnerEntities() const -> bool { return _innerEntities && !_innerEntities->empty(); }
+    [[nodiscard]] auto GetRawInnerEntities() const -> const auto& { return *_innerEntities; }
+    [[nodiscard]] auto GetInnerEntities(hstring entry) -> const vector<Entity*>*;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
@@ -258,12 +285,15 @@ public:
     void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
     void UnsubscribeAllEvent(const string& event_name);
     auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
+    void AddInnerEntity(hstring entry, Entity* entity);
+    void RemoveInnerEntity(hstring entry, Entity* entity);
+    void ClearInnerEntities();
 
     void AddRef() const noexcept;
     void Release() const noexcept;
 
     void MarkAsDestroying();
-    virtual void MarkAsDestroyed();
+    void MarkAsDestroyed();
 
 protected:
     Entity(const PropertyRegistrator* registrator, const Properties* props);
@@ -280,7 +310,8 @@ private:
     auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
 
     Properties _props;
-    unordered_map<string, vector<EventCallbackData>> _events {};
+    unordered_map<string, vector<EventCallbackData>> _events {}; // Todo: entity events map key to hstring
+    unique_ptr<unordered_map<hstring, vector<Entity*>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};
@@ -293,11 +324,11 @@ public:
     [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto HasComponent(hstring name) const -> bool;
     [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;
-    [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
+    [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>& { return _components; }
 
     void EnableComponent(hstring component);
 
-    vector<pair<string, TextPack>> Texts {};
+    map<string, TextPack> Texts {};
     string CollectionName {};
 
 protected:

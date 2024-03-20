@@ -532,7 +532,7 @@
 ///# ...
 ///# param pid ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid)
+[[maybe_unused]] void Server_Critter_DestroyItem(Critter* self, hstring pid)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -550,7 +550,7 @@
 ///# param pid ...
 ///# param count ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
+[[maybe_unused]] void Server_Critter_DestroyItem(Critter* self, hstring pid, uint count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -954,7 +954,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, ident_t locId)
+[[maybe_unused]] void Server_Critter_RmoveKnownLocation(Critter* self, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Invalid location id");
@@ -964,7 +964,7 @@
         return;
     }
 
-    self->GetEngine()->MapMngr.EraseKnownLoc(self, locId);
+    self->GetEngine()->MapMngr.RemoveKnownLoc(self, locId);
 
     if (!self->GetMapId()) {
         if (const auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
@@ -1032,16 +1032,16 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SendItems(Critter* self, const vector<Item*>& items)
 {
-    self->Send_SomeItems(&items, 0);
+    self->Send_SomeItems(items, false, false, {});
 }
 
 ///# ...
 ///# param items ...
-///# param param ...
+///# param contextParam ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SendItems(Critter* self, const vector<Item*>& items, int param)
+[[maybe_unused]] void Server_Critter_SendItems(Critter* self, const vector<Item*>& items, bool owned, bool withInnerEntities, any_t contextParam)
 {
-    self->Send_SomeItems(&items, param);
+    self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }
 
 ///# ...
@@ -1331,14 +1331,14 @@
         throw ScriptException("Index arg is greater than maximum time events");
     }
 
-    self->EraseTimeEvent(index);
+    self->RemoveTimeEvent(index);
     self->AddTimeEvent(te_func_names[index], newRate, newDuration, te_identifiers[index]);
 }
 
 ///# ...
 ///# param index ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_EraseTimeEvent(Critter* self, uint index)
+[[maybe_unused]] void Server_Critter_RemoveTimeEvent(Critter* self, uint index)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
 
@@ -1346,14 +1346,14 @@
         throw ScriptException("Index arg is greater than maximum time events");
     }
 
-    self->EraseTimeEvent(index);
+    self->RemoveTimeEvent(index);
 }
 
 ///# ...
 ///# param identifier ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, any_t identifier)
+[[maybe_unused]] uint Server_Critter_RemoveTimeEvents(Critter* self, any_t identifier)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
 
@@ -1362,7 +1362,7 @@
 
     for (const auto& te_identifier : te_identifiers) {
         if (te_identifier == identifier) {
-            self->EraseTimeEvent(index);
+            self->RemoveTimeEvent(index);
             count++;
         }
         else {
@@ -1377,7 +1377,7 @@
 ///# param identifiers ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, const vector<any_t>& identifiers)
+[[maybe_unused]] uint Server_Critter_RemoveTimeEvents(Critter* self, const vector<any_t>& identifiers)
 {
     uint count = 0;
 
@@ -1387,7 +1387,7 @@
 
         for (const auto& te_identifier : te_identifiers) {
             if (te_identifier == identifier) {
-                self->EraseTimeEvent(index);
+                self->RemoveTimeEvent(index);
                 count++;
             }
             else {

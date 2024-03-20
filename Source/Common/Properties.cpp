@@ -1062,8 +1062,9 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
     return _registrator->_hashResolver.ResolveHash(h);
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver) :
-    _className {hash_resolver.ToHashedString(class_name)},
+PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver) :
+    _typeName {hash_resolver.ToHashedString(type_name)},
+    _typeNamePlural {hash_resolver.ToHashedString(_str("{}s", type_name))},
     _relation {relation},
     _migrationRuleName {hash_resolver.ToHashedString("Property")},
     _hashResolver {hash_resolver},
@@ -1114,13 +1115,6 @@ void PropertyRegistrator::RegisterComponent(string_view name)
     _registeredComponents.insert(name_hash);
 }
 
-auto PropertyRegistrator::GetClassName() const -> hstring
-{
-    STACK_TRACE_ENTRY();
-
-    return _className;
-}
-
 auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property*
 {
     STACK_TRACE_ENTRY();
@@ -1142,7 +1136,7 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 
     const auto hkey = _hashResolver.ToHashedString(key);
 
-    if (const auto& rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _className, hkey); rule.has_value()) {
+    if (const auto& rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
     }
 
@@ -1356,6 +1350,9 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
         else if (flags[i] == "NullGetterForProto") {
             prop->_isNullGetterForProto = true;
+        }
+        else if (flags[i] == "IsCommon") {
+            // Skip
         }
         else {
             throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);

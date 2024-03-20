@@ -61,7 +61,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer : virtual public FOEngineBase
+class FOServer : public FOEngineBase
 {
     friend class ServerScriptSystem;
 
@@ -272,6 +272,7 @@ private:
     void OnSendCritterValue(Entity* entity, const Property* prop);
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop);

@@ -36,8 +36,6 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "EntityProperties.h"
-#include "EntityProtos.h"
 
 class FOServer;
 
@@ -71,4 +69,24 @@ private:
 
     ident_t _id;
     bool _initCalled {};
+};
+
+class CustomEntity : public ServerEntity, public EntityProperties
+{
+public:
+    CustomEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+        ServerEntity(engine, id, registrator, props),
+        EntityProperties(GetInitRef())
+    {
+    }
+};
+
+class CustomEntityWithProto : public CustomEntity, public EntityWithProto
+{
+public:
+    CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) :
+        CustomEntity(engine, id, registrator, props),
+        EntityWithProto(proto)
+    {
+    }
 };

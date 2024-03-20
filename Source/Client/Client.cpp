@@ -45,7 +45,7 @@
 
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode) :
 #if !FO_SINGLEPLAYER
-    FOEngineBase(settings, PropertiesRelationType::ClientRelative),
+    FOEngineBase(settings, mapper_mode ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative),
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
@@ -155,7 +155,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_PLACE_TO_GAME_COMPLETE, [this] { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
-    _conn.AddMessageHandler(NETMSG_SOME_ITEM, [this] { Net_OnSomeItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, [this] { Net_OnCritterAction(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
@@ -184,21 +183,18 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_MAP_TEXT, [this] { Net_OnMapText(); });
     _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, [this] { Net_OnMapTextMsg(); });
     _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, [this] { Net_OnMapTextMsgLex(); });
-    _conn.AddMessageHandler(NETMSG_ALL_PROPERTIES, [this] { Net_OnAllProperties(); });
-    _conn.AddMessageHandler(NETMSG_CLEAR_ITEMS, [this] { Net_OnChosenClearItems(); });
-    _conn.AddMessageHandler(NETMSG_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
-    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, [this] { Net_OnChosenEraseItem(); });
-    _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, [this] { Net_OnAllItemsSend(); });
+    _conn.AddMessageHandler(NETMSG_CHOSEN_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
+    _conn.AddMessageHandler(NETMSG_CHOSEN_REMOVE_ITEM, [this] { Net_OnChosenRemoveItem(); });
     _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
     _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, [this] { Net_OnAutomapsInfo(); });
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
-    _conn.AddMessageHandler(NETMSG_LOADMAP, [this] { Net_OnLoadMap(); });
+    _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
-    _conn.AddMessageHandler(NETMSG_RPC, [this] { Net_OnRemoteCall(); });
+    _conn.AddMessageHandler(NETMSG_REMOTE_CALL, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
-    _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, [this] { Net_OnEraseItemFromMap(); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM_FROM_MAP, [this] { Net_OnRemoveItemFromMap(); });
     _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
     _conn.AddMessageHandler(NETMSG_EFFECT, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
@@ -226,12 +222,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
     }
 
     // Properties with custom behaviours
@@ -241,24 +237,24 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
@@ -293,22 +289,21 @@ void FOClient::Shutdown()
     }
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        CurMap->DestroySelf();
         CurMap = nullptr;
     }
 
     if (_curPlayer != nullptr) {
-        _curPlayer->MarkAsDestroyed();
-        _curPlayer->Release();
+        _curPlayer->DestroySelf();
         _curPlayer = nullptr;
     }
 
     if (_curLocation != nullptr) {
-        _curLocation->MarkAsDestroyed();
-        _curLocation->Release();
+        _curLocation->DestroySelf();
         _curLocation = nullptr;
     }
+
+    DestroyInnerEntities();
 }
 
 auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool
@@ -743,18 +738,18 @@ void FOClient::Net_OnDisconnect()
     STACK_TRACE_ENTRY();
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        CurMap->DestroySelf();
         CurMap = nullptr;
 
         CleanupSpriteCache();
     }
 
     if (_curPlayer != nullptr) {
-        _curPlayer->MarkAsDestroyed();
-        _curPlayer->Release();
+        _curPlayer->DestroySelf();
         _curPlayer = nullptr;
     }
+
+    DestroyInnerEntities();
 
     TryAutoLogin();
 }
@@ -1053,14 +1048,19 @@ void FOClient::Net_OnLoginSuccess()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    _conn.InBuf.SetEncryptKey(encrypt_key);
-
     RestoreData(_globalsPropertiesData);
 
     RUNTIME_ASSERT(_curPlayer);
     RUNTIME_ASSERT(!_curPlayer->GetId());
-    _curPlayer->SetId(player_id);
+    _curPlayer->SetId(player_id, true);
     _curPlayer->RestoreData(_playerPropertiesData);
+
+    RUNTIME_ASSERT(!HasInnerEntities());
+    ReceiveCustomEntities(this);
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     OnLoginSuccess.Fire();
 }
@@ -1117,6 +1117,9 @@ void FOClient::Net_OnAddCritter()
         hex_cr = nullptr;
     }
 
+    ReceiveCustomEntities(cr);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
     cr->SetHexOffsX(hex_ox);
     cr->SetHexOffsY(hex_oy);
     cr->SetCondition(cond);
@@ -1130,19 +1133,85 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
 
+    // Initial items
+    const auto items_count = _conn.InBuf.Read<uint>();
+
+    for (uint i = 0; i < items_count; i++) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+
+        const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
+        RUNTIME_ASSERT(proto_item);
+
+        auto* item = cr->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+
+        ReceiveCustomEntities(item);
+    }
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    // Initial attachment
+    const auto is_attached = _conn.InBuf.Read<bool>();
+
+    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    vector<ident_t> attached_critters;
+    attached_critters.resize(attached_critters_count);
+    for (uint16 i = 0; i < attached_critters_count; i++) {
+        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+    }
+
+    cr->SetIsAttached(is_attached);
+    cr->AttachedCritters = std::move(attached_critters);
+
+    if (CurMap != nullptr) {
+        if (is_attached) {
+            for (auto* map_cr : CurMap->GetCritters()) {
+                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                    map_cr->MoveAttachedCritters();
+                    break;
+                }
+            }
+        }
+
+        if (!hex_cr->AttachedCritters.empty()) {
+            hex_cr->MoveAttachedCritters();
+        }
+    }
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
     if ((hex_ox != 0 || hex_oy != 0) && hex_cr != nullptr) {
         hex_cr->RefreshOffs();
     }
 
-    if (cr->GetIsChosen()) {
+    if (is_chosen) {
         _chosen = cr;
         _chosen->AddRef();
     }
 
     OnCritterIn.Fire(cr);
 
-    if (CurMap != nullptr && cr->GetIsChosen()) {
-        CurMap->RebuildFog();
+    if (hex_cr != nullptr) {
+#if FO_ENABLE_3D
+        if (hex_cr->IsModel()) {
+            hex_cr->GetModel()->PrewarmParticles();
+            hex_cr->GetModel()->StartMeshGeneration();
+        }
+#endif
+
+        if (items_count != 0) {
+            CurMap->UpdateCritterLightSource(hex_cr);
+        }
+
+        if (is_chosen) {
+            CurMap->RebuildFog();
+        }
+
+        if (!hex_cr->IsAnim()) {
+            hex_cr->AnimateStay();
+        }
     }
 }
 
@@ -1187,8 +1256,7 @@ void FOClient::Net_OnRemoveCritter()
             _chosen = nullptr;
         }
 
-        cr->MarkAsDestroyed();
-        cr->Release();
+        cr->DestroySelf();
     }
 }
 
@@ -1212,7 +1280,7 @@ void FOClient::Net_OnText()
     string str = text;
 
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
+        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
     OnText(str, cr_id, how_say);
@@ -1402,7 +1470,7 @@ void FOClient::Net_OnMapText()
     string str = text;
 
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
+        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
     OnMapText(str, hx, hy, color);
@@ -1583,38 +1651,37 @@ void FOClient::Net_OnCritterMove()
     cr->AnimateStay();
 }
 
-void FOClient::Net_OnSomeItem()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (_someItem != nullptr) {
-        _someItem->Release();
-        _someItem = nullptr;
-    }
-
-    const auto* proto = ProtoMngr.GetProtoItem(pid);
-    RUNTIME_ASSERT(proto);
-
-    _someItem = new ItemView(this, item_id, proto);
-    _someItem->RestoreData(_tempPropertiesData);
-}
-
 void FOClient::Net_OnCritterAction()
 {
     STACK_TRACE_ENTRY();
 
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
     const auto action_ext = _conn.InBuf.Read<int>();
     const auto is_context_item = _conn.InBuf.Read<bool>();
+
+    ItemView* context_item = nullptr;
+
+    auto context_item_release = ScopeCallback([&context_item] {
+        if (context_item != nullptr) {
+            context_item->Release();
+        }
+    });
+
+    if (is_context_item) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        RUNTIME_ASSERT(proto);
+
+        context_item = new ItemView(this, item_id, proto);
+        context_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(context_item);
+    }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1624,11 +1691,13 @@ void FOClient::Net_OnCritterAction()
     }
 
     auto* cr = CurMap->GetCritter(cr_id);
+
     if (cr == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
-    cr->Action(action, action_ext, is_context_item ? _someItem : nullptr, false);
+    cr->Action(action, action_ext, context_item, false);
 }
 
 void FOClient::Net_OnCritterMoveItem()
@@ -1639,23 +1708,29 @@ void FOClient::Net_OnCritterMoveItem()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
     const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto is_item = _conn.InBuf.Read<bool>();
     const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto slots_data_count = _conn.InBuf.Read<uint16>();
+    const auto is_moved_item = _conn.InBuf.Read<bool>();
 
-    vector<CritterItemSlot> slots_data_slot;
-    vector<ident_t> slots_data_id;
-    vector<hstring> slots_data_pid;
-    vector<vector<vector<uint8>>> slots_data_data;
-    for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
-        const auto slot = _conn.InBuf.Read<CritterItemSlot>();
+    ItemView* moved_item = nullptr;
+
+    auto moved_item_release = ScopeCallback([&moved_item] {
+        if (moved_item != nullptr) {
+            moved_item->Release();
+        }
+    });
+
+    if (is_moved_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-        slots_data_slot.push_back(slot);
-        slots_data_id.push_back(item_id);
-        slots_data_pid.push_back(pid);
-        slots_data_data.push_back(_tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        RUNTIME_ASSERT(proto);
+
+        moved_item = new ItemView(this, item_id, proto);
+        moved_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(moved_item);
     }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1671,28 +1746,45 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (cr == nullptr) {
         BreakIntoDebugger();
+        _conn.InBuf.SetError(true);
         return;
     }
 
-    if (!cr->GetIsChosen()) {
+    // Todo: rework critters inventory updating
+    const auto items_count = _conn.InBuf.Read<uint>();
+
+    if (items_count != 0) {
+        RUNTIME_ASSERT(!cr->GetIsChosen());
+
         cr->DeleteAllInvItems();
 
-        for (uint16 i = 0; i < slots_data_count; i++) {
-            const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
-            RUNTIME_ASSERT(proto_item != nullptr);
-            cr->AddInvItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
+        for (uint i = 0; i < items_count; i++) {
+            const auto item_id = _conn.InBuf.Read<ident_t>();
+            const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+            const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
+            NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+
+            const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
+            RUNTIME_ASSERT(proto_item);
+
+            auto* item = cr->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+
+            ReceiveCustomEntities(item);
         }
+
+        CHECK_SERVER_IN_BUF_ERROR(_conn);
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, static_cast<int>(prev_slot), is_item ? _someItem : nullptr, false);
+        hex_cr->Action(action, static_cast<int>(prev_slot), moved_item, false);
     }
 
-    if (is_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto* item = cr->GetInvItem(_someItem->GetId()); item != nullptr) {
+    if (moved_item != nullptr && cur_slot != prev_slot && cr->GetIsChosen()) {
+        if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
-            _someItem->SetCritterSlot(prev_slot);
-            OnItemInvChanged.Fire(item, _someItem);
+            moved_item->SetCritterSlot(prev_slot);
+
+            OnItemInvChanged.Fire(item, moved_item);
         }
     }
 
@@ -1705,12 +1797,35 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
     const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto is_context_item = _conn.InBuf.Read<bool>();
     const auto clear_sequence = _conn.InBuf.Read<bool>();
     const auto delay_play = _conn.InBuf.Read<bool>();
+    const auto is_context_item = _conn.InBuf.Read<bool>();
+
+    ItemView* context_item = nullptr;
+
+    auto context_item_release = ScopeCallback([&context_item] {
+        if (context_item != nullptr) {
+            context_item->Release();
+        }
+    });
+
+    if (is_context_item) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        RUNTIME_ASSERT(proto);
+
+        context_item = new ItemView(this, item_id, proto);
+        context_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(context_item);
+    }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1728,7 +1843,7 @@ void FOClient::Net_OnCritterAnimate()
         cr->ClearAnim();
     }
     if (delay_play || !cr->IsAnim()) {
-        cr->Animate(state_anim, action_anim, is_context_item ? _someItem : nullptr);
+        cr->Animate(state_anim, action_anim, context_item);
     }
 }
 
@@ -1923,66 +2038,14 @@ void FOClient::Net_OnCritterAttachments()
     }
 }
 
-void FOClient::Net_OnAllProperties()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Chosen properties");
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen not created, skip");
-        BreakIntoDebugger();
-        return;
-    }
-
-    chosen->RestoreData(_tempPropertiesData);
-
-    // Animate
-    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && !hex_chosen->IsAnim()) {
-        hex_chosen->AnimateStay();
-    }
-
-    // Refresh borders
-    CurMap->RebuildFog();
-}
-
-void FOClient::Net_OnChosenClearItems()
-{
-    STACK_TRACE_ENTRY();
-
-    _initialItemsSend = true;
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen is not created in clear items");
-        BreakIntoDebugger();
-        return;
-    }
-
-    chosen->DeleteAllInvItems();
-
-    if (CurMap != nullptr) {
-        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
-            CurMap->UpdateCritterLightSource(hex_chosen);
-        }
-    }
-}
-
 void FOClient::Net_OnChosenAddItem()
 {
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
-    const auto slot = _conn.InBuf.Read<CritterItemSlot>();
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1992,6 +2055,7 @@ void FOClient::Net_OnChosenAddItem()
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in add item");
         BreakIntoDebugger();
+        _conn.InBuf.SetError(true);
         return;
     }
 
@@ -1999,10 +2063,13 @@ void FOClient::Net_OnChosenAddItem()
         chosen->DeleteInvItem(prev_item, false);
     }
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
     RUNTIME_ASSERT(proto_item);
 
-    auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
+    auto* item = chosen->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+
+    ReceiveCustomEntities(item);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
@@ -2012,12 +2079,10 @@ void FOClient::Net_OnChosenAddItem()
         }
     }
 
-    if (!_initialItemsSend) {
-        OnItemInvIn.Fire(item);
-    }
+    OnItemInvIn.Fire(item);
 }
 
-void FOClient::Net_OnChosenEraseItem()
+void FOClient::Net_OnChosenRemoveItem()
 {
     STACK_TRACE_ENTRY();
 
@@ -2053,60 +2118,39 @@ void FOClient::Net_OnChosenEraseItem()
     }
 }
 
-void FOClient::Net_OnAllItemsSend()
-{
-    STACK_TRACE_ENTRY();
-
-    _initialItemsSend = false;
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen is not created in all items send");
-        BreakIntoDebugger();
-        return;
-    }
-
-#if FO_ENABLE_3D
-    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsModel()) {
-        hex_chosen->GetModel()->PrewarmParticles();
-        hex_chosen->GetModel()->StartMeshGeneration();
-    }
-#endif
-
-    OnItemInvAllIn.Fire();
-}
-
 void FOClient::Net_OnAddItemOnMap()
 {
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
-
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
+        _conn.InBuf.SetError(true);
         return;
     }
 
-    auto* item = CurMap->AddReceivedItem(item_id, pid, hx, hy, _tempPropertiesData);
+    auto* item = CurMap->AddReceivedItem(item_id, item_pid, hx, hy, _tempPropertiesData);
+    RUNTIME_ASSERT(item);
 
-    if (item != nullptr) {
-        if (_screenModeMain != SCREEN_WAIT) {
-            item->FadeUp();
-        }
+    ReceiveCustomEntities(item);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-        OnItemMapIn.Fire(item);
+    if (_screenModeMain != SCREEN_WAIT) {
+        item->FadeUp();
     }
+
+    OnItemMapIn.Fire(item);
 }
 
-void FOClient::Net_OnEraseItemFromMap()
+void FOClient::Net_OnRemoveItemFromMap()
 {
     STACK_TRACE_ENTRY();
 
@@ -2391,7 +2435,9 @@ void FOClient::Net_OnProperty(uint data_size)
     }
 
     if (type == NetProperty::MapItem) {
-        OnItemMapChanged.Fire(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
+        auto* item = dynamic_cast<ItemView*>(entity);
+
+        OnItemMapChanged.Fire(item, item);
     }
 
     if (type == NetProperty::ChosenItem) {
@@ -2513,16 +2559,14 @@ void FOClient::Net_OnLoadMap()
     OnMapUnload.Fire();
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        CurMap->DestroySelf();
         CurMap = nullptr;
 
         CleanupSpriteCache();
     }
 
     if (_curLocation != nullptr) {
-        _curLocation->MarkAsDestroyed();
-        _curLocation->Release();
+        _curLocation->DestroySelf();
         _curLocation = nullptr;
     }
 
@@ -2539,6 +2583,10 @@ void FOClient::Net_OnLoadMap()
         CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
         CurMap->RestoreData(_tempPropertiesData);
         CurMap->LoadStaticData();
+
+        ReceiveCustomEntities(_curLocation);
+        ReceiveCustomEntities(CurMap);
+        CHECK_SERVER_IN_BUF_ERROR(_conn);
 
         WriteLog("Local map loaded");
     }
@@ -2624,9 +2672,9 @@ void FOClient::Net_OnGlobalInfo()
 
     if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
         for (auto* cr : _worldmapCritters) {
-            cr->MarkAsDestroyed();
-            cr->Release();
+            cr->DestroySelf();
         }
+
         _worldmapCritters.clear();
     }
 
@@ -2638,19 +2686,18 @@ void FOClient::Net_OnSomeItems()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto param = _conn.InBuf.Read<int>();
-    [[maybe_unused]] const auto is_null = _conn.InBuf.Read<bool>();
-    const auto count = _conn.InBuf.Read<uint>();
+    const auto context_param = any_t {_conn.InBuf.Read<string>()};
+    const auto items_count = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    vector<ItemView*> item_container;
+    vector<ItemView*> items;
+    items.reserve(items_count);
 
-    for (uint i = 0; i < count; i++) {
+    for (uint i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -2658,12 +2705,19 @@ void FOClient::Net_OnSomeItems()
 
         auto* item = new ItemView(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
-        item_container.push_back(item);
+
+        ReceiveCustomEntities(item);
+
+        items.emplace_back(item);
     }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    OnReceiveItems.Fire(item_container, param);
+    OnReceiveItems.Fire(items, context_param);
+
+    for (const auto* item : items) {
+        item->Release();
+    }
 }
 
 void FOClient::Net_OnAutomapsInfo()
@@ -2755,6 +2809,184 @@ void FOClient::Net_OnRemoteCall()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
+}
+
+void FOClient::Net_OnAddCustomEntity()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto holder_id = _conn.InBuf.Read<ident_t>();
+    const auto holder_entry = _conn.InBuf.Read<hstring>(*this);
+    const auto id = _conn.InBuf.Read<ident_t>();
+    const auto pid = _conn.InBuf.Read<hstring>(*this);
+
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataCustomEntity);
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    Entity* holder;
+
+    if (holder_id) {
+        holder = GetEntity(holder_id);
+
+        if (holder == nullptr) {
+            BreakIntoDebugger();
+            return;
+        }
+    }
+    else {
+        holder = this;
+    }
+
+    auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
+
+    OnCustomEntityIn.Fire(entity);
+}
+
+void FOClient::Net_OnRemoveCustomEntity()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto id = _conn.InBuf.Read<ident_t>();
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    auto* entity = GetEntity(id);
+
+    if (entity == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+
+    if (custom_entity == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    OnCustomEntityOut.Fire(custom_entity);
+
+    Entity* holder;
+
+    if (custom_entity->GetCustomHolderId()) {
+        holder = GetEntity(custom_entity->GetCustomHolderId());
+    }
+    else {
+        holder = this;
+    }
+
+    if (holder != nullptr) {
+        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+    }
+    else {
+        BreakIntoDebugger();
+    }
+
+    custom_entity->DestroySelf();
+}
+
+void FOClient::ReceiveCustomEntities(Entity* holder)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto entries_count = _conn.InBuf.Read<uint16>();
+
+    if (entries_count == 0) {
+        return;
+    }
+
+    for (uint16 i = 0; i < entries_count; i++) {
+        const auto entry = _conn.InBuf.Read<hstring>(*this);
+        const auto entities_count = _conn.InBuf.Read<uint>();
+
+        for (uint j = 0; j < entities_count; j++) {
+            const auto id = _conn.InBuf.Read<ident_t>();
+            const auto pid = _conn.InBuf.Read<hstring>(*this);
+            NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataCustomEntity);
+
+            auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
+
+            ReceiveCustomEntities(entity);
+        }
+    }
+}
+
+auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto type_name = std::get<0>(GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
+
+    RUNTIME_ASSERT(IsValidEntityType(type_name));
+
+    const bool has_protos = GetEntityTypeInfo(type_name).HasProtos;
+    const ProtoEntity* proto = nullptr;
+
+    if (pid) {
+        RUNTIME_ASSERT(has_protos);
+        proto = ProtoMngr.GetProtoEntity(type_name, pid);
+        RUNTIME_ASSERT(proto);
+    }
+    else {
+        RUNTIME_ASSERT(!has_protos);
+    }
+
+    const auto* registrator = GetPropertyRegistrator(type_name);
+
+    CustomEntityView* entity;
+
+    if (proto != nullptr) {
+        entity = new CustomEntityWithProtoView(this, id, registrator, nullptr, proto);
+    }
+    else {
+        entity = new CustomEntityView(this, id, registrator, nullptr);
+    }
+
+    entity->RestoreData(data);
+
+    if (const auto* holder_with_id = dynamic_cast<ClientEntity*>(holder); holder_with_id != nullptr) {
+        entity->SetCustomHolderId(holder_with_id->GetId());
+    }
+    else {
+        RUNTIME_ASSERT(holder == this);
+    }
+
+    entity->SetCustomHolderEntry(entry);
+
+    holder->AddInnerEntity(entry, entity);
+
+    return entity;
+}
+
+auto FOClient::GetEntity(ident_t id) -> ClientEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _allEntities.find(id);
+
+    return it != _allEntities.end() ? it->second : nullptr;
+}
+
+void FOClient::RegisterEntity(ClientEntity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(entity);
+    RUNTIME_ASSERT(entity->GetId());
+
+    _allEntities[entity->GetId()] = entity;
+}
+
+void FOClient::UnregisterEntity(ClientEntity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(entity);
+    RUNTIME_ASSERT(entity->GetId());
+
+    _allEntities.erase(entity->GetId());
 }
 
 void FOClient::TryExit()
@@ -3466,9 +3698,9 @@ void FOClient::GmapNullParams()
     _worldmapFog.Fill(0);
 
     for (auto* cr : _worldmapCritters) {
-        cr->MarkAsDestroyed();
-        cr->Release();
+        cr->DestroySelf();
     }
+
     _worldmapCritters.clear();
 }
 
@@ -3488,6 +3720,24 @@ void FOClient::CleanupSpriteCache()
 
     ResMngr.CleanupCritterFrames();
     SprMngr.CleanupSpriteCache();
+}
+
+void FOClient::DestroyInnerEntities()
+{
+    STACK_TRACE_ENTRY();
+
+    if (HasInnerEntities()) {
+        for (auto&& [entry, entities] : GetRawInnerEntities()) {
+            for (auto* entity : entities) {
+                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+                RUNTIME_ASSERT(custom_entity);
+
+                custom_entity->DestroySelf();
+            }
+        }
+
+        ClearInnerEntities();
+    }
 }
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string

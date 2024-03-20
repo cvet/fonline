@@ -198,7 +198,9 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Setup engine data");
 
         // Properties that saving to data base
-        for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
+        for (auto&& [reg_name, entity_info] : GetEntityTypesInfo()) {
+            const auto* registrator = entity_info.PropRegistrator;
+
             for (size_t i = 0; i < registrator->GetCount(); i++) {
                 const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
@@ -261,12 +263,20 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
             };
 
-            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+
+            for (auto&& [reg_name, entity_info] : GetEntityTypesInfo()) {
+                if (entity_info.Exported) {
+                    continue;
+                }
+
+                set_send_callbacks(entity_info.PropRegistrator, [this](Entity* entity, const Property* prop) { OnSendCustomEntityValue(entity, prop); });
+            }
         }
 
         // Properties with custom behaviours
@@ -280,18 +290,18 @@ FOServer::FOServer(GlobalSettings& settings) :
                 prop->AddPostSetter(std::move(callback));
             };
 
-            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
+            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
         }
 
         return std::nullopt;
@@ -723,7 +733,8 @@ FOServer::~FOServer()
         if (_started) {
             _mainWorker.AddJob([this] {
                 OnFinish.Fire();
-                EntityMngr.FinalizeEntities();
+                EntityMngr.DestroyInnerEntities(this);
+                EntityMngr.DestroyAllEntities();
                 DbStorage.CommitChanges(true);
 
                 return std::nullopt;
@@ -1065,7 +1076,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
             case NETMSG_REGISTER:
                 Process_Register(unlogined_player);
                 break;
-            case NETMSG_RPC:
+            case NETMSG_REMOTE_CALL:
                 Process_RemoteCall(unlogined_player);
                 break;
 
@@ -1147,7 +1158,7 @@ void FOServer::ProcessPlayer(Player* player)
         case NETMSG_SEND_TALK_NPC:
             Process_Dialog(player);
             break;
-        case NETMSG_RPC:
+        case NETMSG_REMOTE_CALL:
             Process_RemoteCall(player);
             break;
         case NETMSG_SEND_POD_PROPERTY(1, 0):
@@ -1949,7 +1960,7 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, 0, 0, 0, {});
 
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, true);
@@ -1990,7 +2001,7 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, 0, 0, 0, {});
 
     if (!cr->IsDestroyed()) {
         OnCritterLoad.Fire(cr);
@@ -2032,7 +2043,8 @@ void FOServer::UnloadCritter(Critter* cr)
 
     auto* map = MapMngr.GetMap(cr->GetMapId());
     RUNTIME_ASSERT(!cr->GetMapId() || map);
-    MapMngr.EraseCrFromMap(cr, map);
+
+    MapMngr.RemoveCritterFromMap(cr, map);
     RUNTIME_ASSERT(!cr->IsDestroyed());
 
     if (cr->GetIsAttached()) {
@@ -2045,9 +2057,48 @@ void FOServer::UnloadCritter(Critter* cr)
         }
     }
 
-    auto& inv_items = cr->GetRawInvItems();
+    std::function<void(Entity*)> unload_inner_entities;
 
-    const auto remove_item = [this](Item* item) {
+    unload_inner_entities = [this, &unload_inner_entities](Entity* holder) {
+        for (auto&& [entry, entities] : holder->GetRawInnerEntities()) {
+            for (auto* entity : entities) {
+                if (entity->HasInnerEntities()) {
+                    unload_inner_entities(entity);
+                }
+
+                auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
+                RUNTIME_ASSERT(custom_entity);
+
+                EntityMngr.UnregisterEntity(custom_entity, false);
+                custom_entity->MarkAsDestroyed();
+                custom_entity->Release();
+            }
+        }
+
+        holder->ClearInnerEntities();
+    };
+
+    if (cr->HasInnerEntities()) {
+        unload_inner_entities(cr);
+    }
+
+    std::function<void(Item*)> unload_item;
+
+    unload_item = [this, &unload_item, &unload_inner_entities](Item* item) {
+        if (item->HasInnerItems()) {
+            auto& inner_items = item->GetRawInnerItems();
+
+            for (auto* inner_item : inner_items) {
+                unload_item(inner_item);
+            }
+
+            inner_items.clear();
+        }
+
+        if (item->HasInnerEntities()) {
+            unload_inner_entities(item);
+        }
+
         if (item->GetIsRadio()) {
             ItemMngr.UnregisterRadio(item);
         }
@@ -2057,30 +2108,10 @@ void FOServer::UnloadCritter(Critter* cr)
         item->Release();
     };
 
-    std::function<void(Item*)> remove_inner_items;
-
-    remove_inner_items = [&remove_inner_items, &remove_item](Item* cont) {
-        auto& inner_items = cont->GetRawInnerItems();
-
-        for (auto* inner_item : inner_items) {
-            if (inner_item->IsInnerItems()) {
-                remove_inner_items(inner_item);
-            }
-        }
-
-        for (auto* inner_item : inner_items) {
-            remove_item(inner_item);
-        }
-
-        inner_items.clear();
-    };
+    auto& inv_items = cr->GetRawInvItems();
 
     for (auto* item : inv_items) {
-        if (item->IsInnerItems()) {
-            remove_inner_items(item);
-        }
-
-        remove_item(item);
+        unload_item(item);
     }
 
     inv_items.clear();
@@ -2166,7 +2197,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         for (const auto item_id : prev_cr->VisItem) {
             if (cr->VisItem.count(item_id) == 0) {
                 if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
-                    cr->Send_EraseItemFromMap(item);
+                    cr->Send_RemoveItemFromMap(item);
                 }
             }
         }
@@ -2188,7 +2219,6 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
         // Send chosen
         cr->Send_AddCritter(cr);
-        cr->Send_AddAllItems();
         cr->Send_AllAutomapsInfo();
 
         // Send current critters
@@ -2655,27 +2685,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
     }
 
-    // Login ok
-    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-
-    vector<const uint8*>* global_vars_data = nullptr;
-    vector<uint>* global_vars_data_sizes = nullptr;
-    StoreData(false, &global_vars_data, &global_vars_data_sizes);
-
-    vector<const uint8*>* player_data = nullptr;
-    vector<uint>* player_data_sizes = nullptr;
-    player->StoreData(true, &player_data, &player_data_sizes);
-
-    CONNECTION_OUTPUT_BEGIN(player->Connection);
-    player->Connection->OutBuf.StartMsg(NETMSG_LOGIN_SUCCESS);
-    player->Connection->OutBuf.Write(encrypt_key);
-    player->Connection->OutBuf.Write(player_id);
-    NET_WRITE_PROPERTIES(player->Connection->OutBuf, global_vars_data, global_vars_data_sizes);
-    NET_WRITE_PROPERTIES(player->Connection->OutBuf, player_data, player_data_sizes);
-    player->Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(player->Connection);
-
-    player->Connection->OutBuf.SetEncryptKey(encrypt_key);
+    // Login success
+    player->Send_LoginSuccess();
 
     // Attach critter
     if (!player_reconnected) {
@@ -2997,40 +3008,40 @@ void FOServer::Process_Property(Player* player, uint data_size)
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        prop = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = CrMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = ItemMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* cr_ = CrMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
@@ -3039,21 +3050,21 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr->GetInvItem(item_id, true);
         }
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = MapMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* map = MapMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3144,10 +3155,10 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
     hstring collection_name;
 
     if (server_entity != nullptr) {
-        collection_name = ToHashedString(_str("{}s", server_entity->GetClassName()));
+        collection_name = server_entity->GetTypeNamePlural();
     }
     else {
-        collection_name = ToHashedString(entity->GetClassName());
+        collection_name = entity->GetTypeName();
     }
 
     DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
@@ -3162,7 +3173,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
         AnyData::Document doc;
         doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityClass"] = string(entity->GetClassName());
+        doc["EntityType"] = string(entity->GetTypeName());
         doc["EntityId"] = static_cast<int64>(entry_id.underlying_value());
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
@@ -3272,6 +3283,20 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
+void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
+    RUNTIME_ASSERT(custom_entity);
+
+    EntityMngr.ForEachCustomEntityView(custom_entity, [&](Player* player, bool owner) {
+        if (owner || IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+            player->Send_Property(NetProperty::CustomEntity, prop, custom_entity);
+        }
+    });
+}
+
 void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
 {
     STACK_TRACE_ENTRY();
@@ -3316,10 +3341,10 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
         auto* cr = CrMngr.GetCritter(item->GetCritterId());
         if (cr != nullptr) {
             if (item->GetIsHidden()) {
-                cr->Send_EraseItem(item);
+                cr->Send_ChosenRemoveItem(item);
             }
             else {
-                cr->Send_AddItem(item);
+                cr->Send_ChosenAddItem(item);
             }
             cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
@@ -4643,7 +4668,7 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
         }
 
         if (!map->AddItem(item, hx, hy, nullptr)) {
-            ItemMngr.DeleteItem(item);
+            ItemMngr.DestroyItem(item);
             return nullptr;
         }
 

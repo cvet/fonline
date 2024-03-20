@@ -166,6 +166,22 @@ struct BaseEntity : Entity
 {
 };
 
+struct CustomEntity : BaseEntity
+{
+};
+
+struct CustomEntityWithProto : BaseEntity
+{
+};
+
+struct CustomEntityView : BaseEntity
+{
+};
+
+struct CustomEntityWithProtoView : BaseEntity
+{
+};
+
 #if COMPILER_VALIDATION_MODE
 #define INIT_ARGS FileSystem &resources, FOEngineBase **out_engine
 #else
@@ -230,7 +246,9 @@ public:
 #define INIT_ARGS
 
 #define GET_AS_ENGINE_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData->Engine
+#define GET_AS_ENGINE_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys)->AngelScriptData->Engine
 #define GET_SCRIPT_SYS_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData.get()
+#define GET_SCRIPT_SYS_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys)->AngelScriptData.get()
 
 #define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
@@ -543,6 +561,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     vector<asIScriptContext*> BusyContexts {};
     string ExceptionStackTrace {};
     std::unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
+    unordered_set<hstring> HashedStrings {};
 };
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
@@ -1892,7 +1911,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 {
     STACK_TRACE_ENTRY();
 
-    out_buf.StartMsg(NETMSG_RPC);
+    out_buf.StartMsg(NETMSG_REMOTE_CALL);
     out_buf.Write(rpc_num);
 }
 
@@ -2678,11 +2697,11 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = static_cast<SCRIPTING_CLASS*>(engine->ScriptSys)->AngelScriptData.get();
+    auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -2708,7 +2727,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     int as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
-    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_CLASS_NAME || flags != 0) {
+    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
         throw ScriptException("Invalid getter function");
     }
 
@@ -2761,11 +2780,11 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = static_cast<SCRIPTING_CLASS*>(engine->ScriptSys)->AngelScriptData.get();
+    auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -2785,7 +2804,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     int as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
-    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_CLASS_NAME || flags != 0) {
+    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
         throw ScriptException("Invalid setter function");
     }
 
@@ -3464,61 +3483,149 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 }
 
-template<typename T, typename U>
-static void CustomEntity_Create(asIScriptGeneric* gen)
+template<typename T>
+static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const ProtoCustomEntity*
 {
     STACK_TRACE_ENTRY();
 
-#if !COMPILER_MODE && SERVER_SCRIPTING
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    T* entity = engine->EntityMngr.CreateCustomEntity(U::ENTITY_CLASS_NAME);
-    new (gen->GetAddressOfReturnLocation()) T*(entity);
+#if !COMPILER_MODE
+    UNUSED_VARIABLE(engine);
+    UNUSED_VARIABLE(pid);
+    return nullptr;
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(engine);
+    UNUSED_VARIABLE(pid);
+    return nullptr;
 #endif
 }
 
-template<typename T, typename U>
-static void CustomEntity_Get(asIScriptGeneric* gen)
+template<typename T>
+static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
 {
     STACK_TRACE_ENTRY();
 
-#if !COMPILER_MODE && SERVER_SCRIPTING
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
-    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
-    ENTITY_VERIFY(entity);
-    new (gen->GetAddressOfReturnLocation()) T*(entity);
+#if !COMPILER_MODE
+    UNUSED_VARIABLE(engine);
+    return nullptr;
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(engine);
+    return nullptr;
 #endif
 }
 
-template<typename T, typename U>
-static void CustomEntity_DeleteById(asIScriptGeneric* gen)
+template<typename T>
+static void Game_DestroyOne(FOEngine* engine, T* entity)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
-    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
-#else
-    UNUSED_VARIABLE(gen);
-#endif
-}
-
-template<typename T, typename U>
-static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE && SERVER_SCRIPTING
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    T* entity = *static_cast<T**>(gen->GetAddressOfArg(0));
-    ENTITY_VERIFY(entity);
     if (entity != nullptr) {
-        engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity->GetId());
+        engine->EntityMngr.DestroyEntity(entity);
+    }
+#else
+    UNUSED_VARIABLE(engine);
+    UNUSED_VARIABLE(entity);
+#endif
+}
+
+template<typename T>
+static void Game_DestroyAll(FOEngine* engine, CScriptArray* as_entities)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
+    const auto entities = MarshalArray<T*>(as_engine, as_entities);
+    for (auto* entity : entities) {
+        if (entity != nullptr) {
+            engine->EntityMngr.DestroyEntity(entity);
+        }
+    }
+#else
+    UNUSED_VARIABLE(engine);
+    UNUSED_VARIABLE(as_entities);
+#endif
+}
+
+template<typename H, typename T, typename T2>
+static void CustomEntity_Add(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
+    H* holder = static_cast<H*>(gen->GetObject());
+    const hstring pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
+    CustomEntity* entity = holder->GetEngine()->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
+    RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+    new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
+#else
+    UNUSED_VARIABLE(gen);
+#endif
+}
+
+template<typename H, typename T, typename T2>
+static void CustomEntity_GetAll(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
+    H* holder = static_cast<H*>(gen->GetObject());
+    auto* entities = holder->GetInnerEntities(entry);
+
+    if (entities != nullptr && !entities->empty()) {
+        vector<T*> casted_entities;
+        casted_entities.reserve(entities->size());
+
+        for (auto* entity : *entities) {
+            ENTITY_VERIFY(entity);
+            RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+            auto* casted_entity = dynamic_cast<T*>(entity);
+            RUNTIME_ASSERT(casted_entity);
+            casted_entities.emplace_back(casted_entity);
+        }
+
+        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), _str("{}[]", T2::ENTITY_TYPE_NAME).c_str(), casted_entities);
+        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
+    }
+    else {
+        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), _str("{}[]", T2::ENTITY_TYPE_NAME).c_str());
+        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
+    }
+#else
+    UNUSED_VARIABLE(gen);
+#endif
+}
+
+template<typename H, typename T, typename T2>
+static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
+    H* holder = static_cast<H*>(gen->GetObject());
+    auto* entities = holder->GetInnerEntities(entry);
+
+    if (entities != nullptr && !entities->empty()) {
+        vector<ident_t> ids;
+        ids.reserve(entities->size());
+
+        for (auto* entity : *entities) {
+            ENTITY_VERIFY(entity);
+            RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+            auto* casted_entity = dynamic_cast<T*>(entity);
+            RUNTIME_ASSERT(casted_entity);
+            ids.emplace_back(casted_entity->GetId());
+        }
+
+        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), "ident[]", ids);
+        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
+    }
+    else {
+        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), "ident[]");
+        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
 #else
     UNUSED_VARIABLE(gen);
@@ -3644,6 +3751,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AngelScriptData = std::make_unique<AngelScriptImpl>();
     AngelScriptData->GameEngine = game_engine;
     AngelScriptData->Engine = engine;
+#endif
+
+#if !COMPILER_MODE
+    [[maybe_unused]] unordered_set<hstring>& hashed_strings = AngelScriptData->HashedStrings;
+#else
+    [[maybe_unused]] unordered_set<hstring> hashed_strings;
 #endif
 
     int as_result;
@@ -3867,14 +3980,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", SCRIPT_GENERIC((CustomEntity_Create<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(" IDENT_T_NAME " id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" IDENT_T_NAME " id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", SCRIPT_GENERIC((CustomEntity_DeleteByRef<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
-    entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
+    entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>))); \
+    entity_is_custom.emplace(class_name)
 
 #define REGISTER_ENTITY_ABSTRACT(class_name, real_class) \
     REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
@@ -3895,9 +4007,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    entity_has_protos.emplace(class_name); \
+    if (entity_is_custom.count(class_name) != 0) { \
+        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@+ GetProto" class_name "(hstring pid)", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntity<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@[]@ GetProto" class_name "s()", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntities<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    } \
     entity_get_component_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetComponent<proto_real_class>))); \
-    entity_get_value_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetValue<proto_real_class>)))
+    entity_get_value_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetValue<proto_real_class>))); \
+    entity_has_protos.emplace(class_name)
 
 #define REGISTER_ENTITY_STATICS(class_name, real_class) \
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
@@ -3911,14 +4027,29 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
-    entity_has_statics.emplace(class_name); \
     entity_get_component_func_ptr.emplace("Static" class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
-    entity_get_value_func_ptr.emplace("Static" class_name, SCRIPT_GENERIC((Property_GetValue<real_class>)))
+    entity_get_value_func_ptr.emplace("Static" class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
+    entity_has_statics.emplace(class_name)
 
 #define REGISTER_ENTITY_METHOD(class_name, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(class_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
 
+#define REGISTER_ENTITY_HOLDER(holder_class_name, class_name, holder_real_class, real_class, entity_info, entry_name) \
+    { \
+        const hstring& entry_name_hash = *hashed_strings.emplace(game_engine->ToHashedString(entry_name)).first; \
+        if constexpr (SERVER_SCRIPTING) { \
+            if (entity_has_protos.count(class_name) != 0) { \
+                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+            } \
+            else { \
+                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+            } \
+        } \
+        AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+    }
+
     REGISTER_BASE_ENTITY("Entity", Entity);
 
+    unordered_set<string> entity_is_custom;
     unordered_set<string> entity_is_global;
     unordered_set<string> entity_has_abstract;
     unordered_set<string> entity_has_protos;
@@ -3977,12 +4108,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ///@ CodeGen Register
 
     // Register properties
-    for (auto&& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
-        const auto is_global = entity_is_global.count(reg_name) != 0;
-        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0;
-        const auto is_has_protos = entity_has_protos.count(reg_name) != 0;
-        const auto is_has_statics = entity_has_statics.count(reg_name) != 0;
-        const auto class_name = is_global ? reg_name + "Singleton" : reg_name;
+    for (auto&& [type_name, entity_info] : game_engine->GetEntityTypesInfo()) {
+        const auto* registrator = entity_info.PropRegistrator;
+        const auto& type_name_str = type_name.as_str();
+        const auto is_global = entity_is_global.count(type_name_str) != 0;
+        const auto is_has_abstract = entity_has_abstract.count(type_name_str) != 0;
+        const auto is_has_protos = entity_info.HasProtos;
+        const auto is_has_statics = entity_has_statics.count(type_name_str) != 0;
+        const auto class_name = is_global ? type_name_str + "Singleton" : type_name_str;
         const auto abstract_class_name = "Abstract" + class_name;
         const auto proto_class_name = "Proto" + class_name;
         const auto static_class_name = "Static" + class_name;
@@ -3998,22 +4131,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
         for (const auto& component : registrator->GetComponents()) {
             {
-                const auto component_type = _str("{}{}Component", reg_name, component).str();
+                const auto component_type = _str("{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_abstract) {
-                const auto component_type = _str("Abstract{}{}Component", reg_name, component).str();
+                const auto component_type = _str("Abstract{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_protos) {
-                const auto component_type = _str("Proto{}{}Component", reg_name, component).str();
+                const auto component_type = _str("Proto{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_statics) {
-                const auto component_type = _str("Static{}{}Component", reg_name, component).str();
+                const auto component_type = _str("Static{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
@@ -4026,24 +4159,24 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (!prop->IsDisabled()) {
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
                     if (is_has_abstract) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", reg_name, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                     if (is_has_protos) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Proto{}{}Component", reg_name, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                     if (is_has_statics) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Static{}{}Component", reg_name, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                 }
             }
 
             if (!prop->IsDisabled() && !prop->IsReadOnly()) {
                 const auto decl_set = _str("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
             }
         }
 
@@ -4054,12 +4187,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(prop->GetRegIndex());
             }
 
-            AS_VERIFY(engine->SetDefaultNamespace(_str("{}PropertyGroup", registrator->GetClassName()).c_str()));
+            AS_VERIFY(engine->SetDefaultNamespace(_str("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
+            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, _str("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(engine->RegisterGlobalFunction(_str("const {}Property[]@+ get_{}()", registrator->GetClassName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(engine->RegisterGlobalFunction(_str("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(engine->SetDefaultNamespace(""));
         }
     }

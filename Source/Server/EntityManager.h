@@ -46,8 +46,6 @@
 class EntityManager final
 {
 public:
-    static constexpr auto ENTITIES_FINALIZATION_FUSE_VALUE = 10000;
-
     EntityManager() = delete;
     explicit EntityManager(FOServer* engine);
     EntityManager(const EntityManager&) = delete;
@@ -56,6 +54,8 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
+    [[nodiscard]] auto GetEntity(ident_t id) -> ServerEntity*;
+    [[nodiscard]] auto GetEntities() -> const unordered_map<ident_t, ServerEntity*>&;
     [[nodiscard]] auto GetPlayer(ident_t id) -> Player*;
     [[nodiscard]] auto GetPlayers() -> const unordered_map<ident_t, Player*>&;
     [[nodiscard]] auto GetLocation(ident_t id) -> Location*;
@@ -70,7 +70,9 @@ public:
     [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
 
     void LoadEntities();
-    void FinalizeEntities();
+    void DestroyEntity(Entity* entity);
+    void DestroyInnerEntities(Entity* holder);
+    void DestroyAllEntities();
 
     auto LoadLocation(ident_t loc_id, bool& is_error) -> Location*;
     auto LoadMap(ident_t map_id, bool& is_error) -> Map*;
@@ -92,13 +94,18 @@ public:
     void UnregisterEntity(Critter* entity);
     void RegisterEntity(Item* entity);
     void UnregisterEntity(Item* entity, bool delete_from_db);
+    void RegisterEntity(CustomEntity* entity);
+    void UnregisterEntity(CustomEntity* entity, bool delete_from_db);
 
-    auto GetCustomEntity(string_view entity_class_name, ident_t id) -> ServerEntity*;
-    auto CreateCustomEntity(string_view entity_class_name) -> ServerEntity*;
-    void DeleteCustomEntity(string_view entity_class_name, ident_t id);
+    auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
+    auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
+    auto LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity*;
+    auto GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*;
+    void DestroyCustomEntity(CustomEntity* entity);
+    void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
 
 private:
-    auto LoadEntityDoc(hstring collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDoc(hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
@@ -109,6 +116,8 @@ private:
     unordered_map<ident_t, Map*> _allMaps {};
     unordered_map<ident_t, Critter*> _allCritters {};
     unordered_map<ident_t, Item*> _allItems {};
-    unordered_map<string, unordered_map<ident_t, ServerEntity*>> _allCustomEntities {};
+    unordered_map<hstring, unordered_map<ident_t, CustomEntity*>> _allCustomEntities {};
+    unordered_map<ident_t, ServerEntity*> _allEntities {};
+    const hstring _entityTypeMapCollection {};
     bool _nonConstHelper {};
 };

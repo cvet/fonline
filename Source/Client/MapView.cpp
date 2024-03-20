@@ -68,7 +68,7 @@ static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 }
 
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _mapSprites(engine->SprMngr)
@@ -143,28 +143,27 @@ MapView::~MapView()
     }
 }
 
-void MapView::MarkAsDestroyed()
+void MapView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
     for (auto* cr : copy(_critters)) {
         DestroyCritter(cr);
     }
+
     RUNTIME_ASSERT(_critters.empty());
     RUNTIME_ASSERT(_crittersMap.empty());
 
     for (auto* item : copy(_allItems)) {
         DestroyItem(item);
     }
+
     RUNTIME_ASSERT(_allItems.empty());
     RUNTIME_ASSERT(_staticItems.empty());
     RUNTIME_ASSERT(_dynamicItems.empty());
     RUNTIME_ASSERT(_nonTileItems.empty());
     RUNTIME_ASSERT(_processingItems.empty());
     RUNTIME_ASSERT(_itemsMap.empty());
-
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
 }
 
 void MapView::EnableMapperMode()
@@ -274,6 +273,7 @@ void MapView::LoadStaticData()
     // Read static items
     {
         _mapLoading = true;
+        auto reset_loading = ScopeCallback([this] { _mapLoading = false; });
 
         const auto items_count = reader.Read<uint>();
 
@@ -302,8 +302,6 @@ void MapView::LoadStaticData()
 
             AddItemInternal(static_item);
         }
-
-        _mapLoading = false;
     }
 
     reader.VerifyEnd();
@@ -740,8 +738,7 @@ void MapView::DestroyItem(ItemHexView* item)
     RemoveItemFromField(item);
     CleanLightSourceOffsets(item->GetId());
 
-    item->MarkAsDestroyed();
-    item->Release();
+    item->DestroySelf();
 }
 
 auto MapView::GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*
@@ -1420,7 +1417,6 @@ void MapView::RebuildMapOffset(int ox, int oy)
         // Items on hex
         if (!field.Items.empty()) {
             for (auto* item : field.Items) {
-
                 if (!_mapperMode) {
                     if (item->GetAlwaysHideSprite()) {
                         continue;
@@ -3604,9 +3600,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
     RemoveCritterFromField(cr);
     CleanLightSourceOffsets(cr->GetId());
 
-    cr->DeleteAllInvItems();
-    cr->MarkAsDestroyed();
-    cr->Release();
+    cr->DestroySelf();
 }
 
 auto MapView::GetCritters() -> const vector<CritterHexView*>&

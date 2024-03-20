@@ -70,10 +70,10 @@ public:
     [[nodiscard]] auto CrittersInGame() const -> size_t;
 
     auto CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*;
-    void DeleteCritter(Critter* cr);
-    void DeleteInventory(Critter* cr);
+    void DestroyCritter(Critter* cr);
+    void DestroyInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;
-    void EraseItemFromCritter(Critter* cr, Item* item, bool send);
+    void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
     void ProcessTalk(Critter* cr, bool force);
     void CloseTalk(Critter* cr);
 

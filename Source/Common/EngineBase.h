@@ -57,18 +57,23 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
-    [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
     [[nodiscard]] auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int override;
-    [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
+    [[nodiscard]] auto IsValidEntityType(hstring type_name) const -> bool;
+    [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
+    [[nodiscard]] auto GetEntityTypesInfo() const -> const unordered_map<hstring, EntityTypeInfo>&;
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> override;
 
-    auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
-    void SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
+    auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
+    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
+    void RegisterEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+    void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
     GlobalSettings& Settings;
@@ -86,11 +91,12 @@ protected:
 private:
     const PropertiesRelationType _propsRelation;
     bool _registrationFinalized {};
-    unordered_map<string, const PropertyRegistrator*> _registrators {};
+    unordered_map<hstring, EntityTypeInfo> _entityTypesInfo {};
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
+    unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
