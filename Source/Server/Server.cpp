@@ -1677,9 +1677,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        const auto param0 = ResolveGenericValue(param0_str);
-        const auto param1 = ResolveGenericValue(param1_str);
-        const auto param2 = ResolveGenericValue(param2_str);
+        bool failed = false;
+        const auto param0 = ResolveGenericValue(param0_str, &failed);
+        const auto param1 = ResolveGenericValue(param1_str, &failed);
+        const auto param2 = ResolveGenericValue(param2_str, &failed);
 
         if (ScriptSys->CallFunc<void, Player*>(ToHashedString(func_name), player) || //
             ScriptSys->CallFunc<void, Player*, int>(ToHashedString(func_name), player, param0) || //
