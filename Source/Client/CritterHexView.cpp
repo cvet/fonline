@@ -86,6 +86,10 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
     HexView::SetupSprite(mspr);
 
     mspr->SetLight(CornerType::EastWest, _map->GetLightData(), _map->GetSize());
+
+    if (!mspr->IsHidden() && GetHideSprite()) {
+        mspr->SetHidden(true);
+    }
 }
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
@@ -158,6 +162,29 @@ void CritterHexView::ClearMove()
     Moving.EndHexOffset = {};
 }
 
+void CritterHexView::MoveAttachedCritters()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const auto hex = GetMapHex();
+    const auto hex_offset = GetMapHexOffset();
+
+    for (const auto cr_id : AttachedCritters) {
+        if (auto* cr = _map->GetCritter(cr_id); cr != nullptr) {
+            if (cr->GetMapHex() != hex) {
+                _map->MoveCritter(cr, hex, false);
+            }
+
+            if (cr->GetMapHexOffset() != hex_offset) {
+                cr->SetMapHexOffset(hex_offset);
+                cr->RefreshOffs();
+            }
+        }
+    }
+}
+
 void CritterHexView::Action(CritterAction action, int action_data, Entity* context_item, bool local_call /* = true */)
 {
     STACK_TRACE_ENTRY();
@@ -197,10 +224,10 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         _needReset = true;
         break;
     case CritterAction::Connect:
-        SetPlayerOffline(false);
+        SetIsPlayerOffline(false);
         break;
     case CritterAction::Disconnect:
-        SetPlayerOffline(true);
+        SetIsPlayerOffline(true);
         break;
     case CritterAction::Refresh:
 #if FO_ENABLE_3D
@@ -597,6 +624,11 @@ void CritterHexView::Process()
         RefreshOffs();
     }
 
+    // Attachments
+    if (!AttachedCritters.empty()) {
+        MoveAttachedCritters();
+    }
+
     // Animation
     const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
     const auto anim_proc = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _animStartTime) * 100 / (cur_anim.AnimDuration != time_duration {} ? time_duration_to_ms<uint>(cur_anim.AnimDuration) : 100);
@@ -750,7 +782,7 @@ void CritterHexView::ProcessMoving()
             const auto cur_hex = GetMapHex();
             const auto moved = cur_hex != prev_hex;
 
-            if (moved && IsChosen()) {
+            if (moved && GetIsChosen()) {
                 _map->RebuildFog();
             }
 
@@ -794,16 +826,17 @@ void CritterHexView::ProcessMoving()
             }
 
             // Evaluate dir angle
-            const auto dir_angle = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle_f = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
 
 #if FO_ENABLE_3D
             if (_model != nullptr) {
-                ChangeMoveDirAngle(static_cast<int>(dir_angle));
+                ChangeMoveDirAngle(dir_angle);
             }
             else
 #endif
             {
-                ChangeDir(GeometryHelper::AngleToDir(static_cast<int16>(dir_angle)));
+                ChangeDir(GeometryHelper::AngleToDir(dir_angle));
             }
 
             done = true;
@@ -882,10 +915,8 @@ void CritterHexView::RefreshOffs()
 
     SprOffset = ipos {hex_offset.x, hex_offset.y} + ipos {iround(_offsExt.x), iround(_offsExt.y)} + _offsAnim;
 
-    if (IsSpriteValid()) {
-        if (IsChosen()) {
-            _engine->SprMngr.SetEgg(GetMapHex(), GetSprite());
-        }
+    if (IsSpriteValid() && GetIsChosen()) {
+        _engine->SprMngr.SetEgg(GetMapHex(), GetSprite());
     }
 }
 
@@ -927,13 +958,13 @@ auto CritterHexView::IsNameVisible() const -> bool
     if (!_engine->Settings.ShowCritterName) {
         return false;
     }
-    if (!_engine->Settings.ShowPlayerName && IsOwnedByPlayer()) {
+    if (!_engine->Settings.ShowPlayerName && GetIsControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowNpcName && IsNpc()) {
+    if (!_engine->Settings.ShowNpcName && !GetIsControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowDeadNpcName && IsNpc() && IsDead()) {
+    if (!_engine->Settings.ShowDeadNpcName && !GetIsControlledByPlayer() && IsDead()) {
         return false;
     }
 
@@ -953,7 +984,7 @@ auto CritterHexView::GetNameTextInfo(bool& name_visible, int& lines) const -> ir
 
         str = _name;
 
-        if (_ownedByPlayer && _isPlayerOffline) {
+        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
     }
@@ -992,7 +1023,7 @@ void CritterHexView::DrawTextOnHead()
 
         str = _name;
 
-        if (_ownedByPlayer && _isPlayerOffline) {
+        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
 

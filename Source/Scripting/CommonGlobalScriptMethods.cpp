@@ -67,7 +67,23 @@
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
-    WriteLog("{}", text);
+    const auto* st_entry = GetStackTraceEntry(1);
+
+    if (st_entry != nullptr) {
+        const auto module_name = _str(st_entry->file).extractFileName().eraseFileExtension().str();
+
+        WriteLog("{}: {}", module_name, text);
+    }
+    else {
+        WriteLog("{}", text);
+    }
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_RequestQuit([[maybe_unused]] FOEngineBase* engine)
+{
+    App->RequestQuit();
 }
 
 ///# ...

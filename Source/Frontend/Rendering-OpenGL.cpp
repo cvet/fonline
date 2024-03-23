@@ -909,7 +909,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
     const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(uint16), Indices.data(), buf_type));
+    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), Indices.data(), buf_type));
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
     // Vertex array
@@ -1105,7 +1105,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 
     const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
-    const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(uint16));
+    const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
@@ -1170,7 +1170,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             GL(glDepthMask(GL_FALSE));
         }
 
-        GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
+        if constexpr (sizeof(vindex_t) == 2) {
+            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
+        }
+        else {
+            GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_INT, start_pos));
+        }
 
         if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
             GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));

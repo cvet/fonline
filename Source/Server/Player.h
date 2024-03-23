@@ -61,11 +61,11 @@ public:
     [[nodiscard]] auto GetHost() const -> string_view;
     [[nodiscard]] auto GetPort() const -> uint16;
 
-    [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
-    [[nodiscard]] auto GetOwnedCritter() -> Critter* { return _ownedCr; }
+    [[nodiscard]] auto GetControlledCritter() const -> const Critter* { return _controlledCr; }
+    [[nodiscard]] auto GetControlledCritter() -> Critter* { return _controlledCr; }
 
     void SetName(string_view name);
-    void SetOwnedCritter(Critter* cr);
+    void SetControlledCritter(Critter* cr);
 
     void Send_Moving(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
@@ -108,6 +108,7 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
+    void Send_Attachments(const Critter* from_cr);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnGetAccess, int /*arg1*/, string& /*arg2*/);
@@ -124,6 +125,6 @@ public:
     const Property* SendIgnoreProperty {};
 
 private:
-    Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
+    Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
     time_point _talkNextTime {};
 };

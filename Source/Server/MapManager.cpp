@@ -125,7 +125,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
-                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto, &cr_props);
+                    auto* cr = new Critter(_engine, ident_t {}, cr_proto, &cr_props);
 
                     static_map->CritterBillets.emplace_back(cr_id, cr);
 
@@ -671,7 +671,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayerCritters()) {
-        TransitToGlobal(cl, ident_t {});
+        TransitToGlobal(cl, {});
     }
 }
 
@@ -1341,111 +1341,116 @@ label_FindOk:
     return output;
 }
 
-auto MapManager::TransitToGlobal(Critter* cr, ident_t leader_id) -> bool
+void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius)
 {
     STACK_TRACE_ENTRY();
 
-    if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'", cr->GetName());
-        return false;
-    }
+    RUNTIME_ASSERT(map);
+    RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
-    return Transit(cr, nullptr, {}, 0, 0, leader_id);
+    Transit(cr, map, hex, dir, safe_radius, {});
 }
 
-auto MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, uint radius, ident_t leader_id) -> bool
+void MapManager::TransitToGlobal(Critter* cr, ident_t global_cr_id)
 {
     STACK_TRACE_ENTRY();
 
-    // Check location deletion
-    const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
-    if (loc != nullptr && loc->GetToGarbage()) {
-        WriteLog("Transfer to deleted location, critter '{}'", cr->GetName());
-        return false;
-    }
+    Transit(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
+}
 
-    // Maybe critter already in transfer
+void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id)
+{
+    STACK_TRACE_ENTRY();
+
     if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'", cr->GetName());
-        return false;
+        throw GenericException("Critter transfers locked");
     }
 
-    const auto map_id = map != nullptr ? map->GetId() : ident_t {};
+    cr->LockMapTransfers++;
+    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-    const auto cur_map_id = cr->GetMapId();
-    auto* cur_map = cur_map_id ? GetMap(cur_map_id) : nullptr;
-    RUNTIME_ASSERT(!cur_map_id || !!cur_map);
+    const auto prev_map_id = cr->GetMapId();
+    auto* prev_map = prev_map_id ? GetMap(prev_map_id) : nullptr;
+    RUNTIME_ASSERT(!prev_map_id || !!prev_map);
 
     cr->ClearMove();
 
-    if (cur_map_id == map_id) {
-        // One map
-        if (!map_id) {
-            // Todo: check group
-            return true;
+    if (cr->GetIsAttached()) {
+        cr->DetachFromCritter();
+    }
+
+    vector<Critter*> attached_critters;
+
+    if (!cr->AttachedCritters.empty()) {
+        attached_critters = cr->AttachedCritters;
+
+        for (auto* attached_cr : attached_critters) {
+            attached_cr->DetachFromCritter();
         }
+    }
 
-        if (!map->GetSize().IsValidPos(hex)) {
-            return false;
+    if (map == prev_map) {
+        // Between one map
+        if (map != nullptr) {
+            RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+
+            const auto multihex = cr->GetMultihex();
+
+            mpos start_hex = hex;
+
+            if (safe_radius.has_value()) {
+                auto safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), true);
+                if (!safe_start_hex.has_value()) {
+                    safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), false);
+                }
+                if (safe_start_hex.has_value()) {
+                    start_hex = safe_start_hex.value();
+                }
+            }
+
+            cr->ChangeDir(dir);
+            map->RemoveCritterFromField(cr);
+            cr->SetMapHex(start_hex);
+            map->AddCritterToField(cr);
+            cr->Send_Teleport(cr, start_hex);
+            cr->Broadcast_Teleport(start_hex);
+            cr->ClearVisible();
+            cr->Send_Moving(cr);
+
+            ProcessVisibleCritters(cr);
+            ProcessVisibleItems(cr);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
-
-        const auto multihex = cr->GetMultihex();
-
-        auto start_hex = map->FindStartHex(hex, multihex, radius, true);
-        if (!start_hex.has_value()) {
-            start_hex = map->FindStartHex(hex, multihex, radius, false);
-        }
-        if (!start_hex.has_value()) {
-            return false;
-        }
-
-        const auto fixed_hex = start_hex.value();
-
-        cr->LockMapTransfers++;
-        auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
-
-        cr->ChangeDir(dir);
-        map->RemoveCritterFromField(cr);
-        cr->SetMapHex(fixed_hex);
-        map->AddCritterToField(cr);
-        cr->Send_Teleport(cr, fixed_hex);
-        cr->Broadcast_Teleport(fixed_hex);
-        cr->ClearVisible();
-        cr->Send_Moving(cr);
-
-        ProcessVisibleCritters(cr);
-        ProcessVisibleItems(cr);
     }
     else {
-        // Different maps
-        mpos fixed_hex;
+        // Between different maps
+        mpos start_hex = hex;
 
         if (map != nullptr) {
             const auto multihex = cr->GetMultihex();
 
-            auto start_hex = map->FindStartHex(hex, multihex, radius, true);
-            if (!start_hex.has_value()) {
-                start_hex = map->FindStartHex(hex, multihex, radius, false);
+            if (safe_radius.has_value()) {
+                auto safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), true);
+                if (!safe_start_hex.has_value()) {
+                    safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), false);
+                }
+                if (safe_start_hex.has_value()) {
+                    start_hex = safe_start_hex.value();
+                }
             }
-            if (!start_hex.has_value()) {
-                return false;
-            }
-
-            fixed_hex = start_hex.value();
         }
-
-        if (!CanAddCrToMap(cr, map, fixed_hex, leader_id)) {
-            return false;
-        }
-
-        cr->LockMapTransfers++;
-        auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
         cr->SetMapLeaveHex(cr->GetMapHex());
 
-        EraseCrFromMap(cr, cur_map);
+        EraseCrFromMap(cr, prev_map);
+        AddCrToMap(cr, map, start_hex, dir, global_cr_id);
 
-        AddCrToMap(cr, map, fixed_hex, dir, leader_id);
+        if (cr->IsDestroyed()) {
+            return;
+        }
 
         cr->Send_LoadMap(nullptr);
         cr->Send_AddCritter(cr);
@@ -1454,48 +1459,44 @@ auto MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, uint radius
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
 
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
         cr->Send_PlaceToGameComplete();
     }
 
-    return true;
-}
-
-auto MapManager::CanAddCrToMap(const Critter* cr, const Map* map, mpos hex, ident_t leader_id) const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (map != nullptr) {
-        if (!map->GetSize().IsValidPos(hex)) {
-            return false;
+    // Transit attached critters
+    if (!attached_critters.empty()) {
+        for (auto* attached_cr : attached_critters) {
+            if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->GetMapId() == prev_map_id) {
+                Transit(attached_cr, map, cr->GetMapHex(), dir, std::nullopt, cr->GetId());
+            }
         }
-        if (!map->IsHexesMovable(hex, cr->GetMultihex())) {
-            return false;
-        }
-        if (cr->IsOwnedByPlayer()) {
-            if (const auto* loc = map->GetLocation(); loc != nullptr && !loc->IsCanEnter(1)) {
-                return false;
+
+        if (!cr->IsDestroyed() && !cr->GetIsAttached()) {
+            for (auto* attached_cr : attached_critters) {
+                if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->AttachedCritters.empty() && attached_cr->GetMapId() == cr->GetMapId()) {
+                    attached_cr->AttachToCritter(cr);
+                }
+            }
+
+            if (!cr->IsDestroyed()) {
+                cr->MoveAttachedCritters();
+                ProcessVisibleCritters(cr);
             }
         }
     }
-    else {
-        if (leader_id && leader_id != cr->GetId()) {
-            const auto* leader = _engine->CrMngr.GetCritter(leader_id);
-            if (leader == nullptr || leader->GetMapId()) {
-                return false;
-            }
-        }
-    }
-    return true;
 }
 
-void MapManager::AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t leader_id)
+void MapManager::AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
-    auto decrease_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
@@ -1509,7 +1510,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t 
         cr->SetLastMapId(map->GetId());
         cr->SetLastMapPid(map->GetProtoId());
 
-        if (!cr->IsOwnedByPlayer()) {
+        if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             RUNTIME_ASSERT(std::find(cr_ids.begin(), cr_ids.end(), cr->GetId()) == cr_ids.end());
             cr_ids.emplace_back(cr->GetId());
@@ -1523,7 +1524,9 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t 
     else {
         RUNTIME_ASSERT(!cr->GlobalMapGroup);
 
-        if (!leader_id || leader_id == cr->GetId()) {
+        const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->CrMngr.GetCritter(global_cr_id) : nullptr;
+
+        if (global_cr == nullptr || global_cr->GetMapId()) {
             cr->SetGlobalMapLeaderId(cr->GetId());
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
 
@@ -1533,22 +1536,19 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t 
             cr->GlobalMapGroup->push_back(cr);
         }
         else {
-            const auto* leader = _engine->CrMngr.GetCritter(leader_id);
-            RUNTIME_ASSERT(leader);
-            RUNTIME_ASSERT(!leader->GetMapId());
-            RUNTIME_ASSERT(leader->GlobalMapGroup);
+            RUNTIME_ASSERT(global_cr->GlobalMapGroup);
 
-            cr->SetWorldPos(leader->GetWorldPos());
-            cr->SetGlobalMapLeaderId(leader_id);
-            cr->SetGlobalMapTripId(leader->GetGlobalMapTripId());
+            cr->SetWorldPos(global_cr->GetWorldPos());
+            cr->SetGlobalMapLeaderId(global_cr_id);
+            cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
-            cr->SetLastGlobalMapLeaderId(leader_id);
+            cr->SetLastGlobalMapLeaderId(global_cr_id);
 
-            for (auto* group_cr : *leader->GlobalMapGroup) {
+            for (auto* group_cr : *global_cr->GlobalMapGroup) {
                 group_cr->Send_AddCritter(cr);
             }
 
-            cr->GlobalMapGroup = leader->GlobalMapGroup;
+            cr->GlobalMapGroup = global_cr->GlobalMapGroup;
             cr->GlobalMapGroup->push_back(cr);
         }
 
@@ -1561,7 +1561,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     STACK_TRACE_ENTRY();
 
     cr->LockMapTransfers++;
-    auto decrease_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
@@ -1575,9 +1575,9 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         cr->ClearVisible();
         map->EraseCritter(cr);
 
-        cr->SetMapId(ident_t {});
+        cr->SetMapId({});
 
-        if (!cr->IsOwnedByPlayer()) {
+        if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             const auto cr_id_it = std::find(cr_ids.begin(), cr_ids.end(), cr->GetId());
             RUNTIME_ASSERT(cr_id_it != cr_ids.end());
@@ -1615,389 +1615,234 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     }
 }
 
-void MapManager::ProcessVisibleCritters(Critter* view_cr)
+void MapManager::ProcessVisibleCritters(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (view_cr->IsDestroyed()) {
+    if (cr->IsDestroyed()) {
         return;
     }
 
-    // Global map
-    if (!view_cr->GetMapId()) {
-        RUNTIME_ASSERT(view_cr->GlobalMapGroup);
+    if (!cr->GetMapId()) {
+        // Global map
+        RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        if (view_cr->IsOwnedByPlayer()) {
-            for (const auto* cr : *view_cr->GlobalMapGroup) {
-                if (view_cr == cr) {
-                    view_cr->Send_AddCritter(view_cr);
-                    view_cr->Send_AddAllItems();
+        if (cr->GetIsControlledByPlayer()) {
+            for (const auto* group_cr : *cr->GlobalMapGroup) {
+                if (cr == group_cr) {
+                    cr->Send_AddCritter(cr);
+                    cr->Send_AddAllItems();
                 }
                 else {
-                    view_cr->Send_AddCritter(cr);
+                    cr->Send_AddCritter(group_cr);
                 }
             }
         }
+    }
+    else {
+        // Local map
+        auto* map = GetMap(cr->GetMapId());
+        RUNTIME_ASSERT(map);
 
+        for (auto* target : copy_hold_ref(map->GetCritters())) {
+            optional<bool> trace_result;
+            ProcessCritterLook(map, cr, target, trace_result);
+            ProcessCritterLook(map, target, cr, trace_result);
+        }
+    }
+}
+
+void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(map && cr && target);
+
+    if (cr == target) {
+        return;
+    }
+    if (map->IsDestroyed() || cr->IsDestroyed() || target->IsDestroyed()) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId()) {
+        return;
+    }
+    if (target->GetMapId() != map->GetId()) {
         return;
     }
 
-    // Local map
-    auto* map = GetMap(view_cr->GetMapId());
-    RUNTIME_ASSERT(map);
+    bool is_see = IsCritterSeeCritter(map, cr, target, trace_result);
 
-    uint vis;
-    const auto look_base_self = view_cr->GetLookDistance();
-    const int dir_self = view_cr->GetDir();
-    constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
-    const auto show_cr_dist1 = view_cr->GetShowCritterDist1();
-    const auto show_cr_dist2 = view_cr->GetShowCritterDist2();
-    const auto show_cr_dist3 = view_cr->GetShowCritterDist3();
-    const auto show_cr1 = show_cr_dist1 > 0;
-    const auto show_cr2 = show_cr_dist2 > 0;
-    const auto show_cr3 = show_cr_dist3 > 0;
-    const auto show_cr = (show_cr1 || show_cr2 || show_cr3);
-    const auto sneak_base_self = view_cr->GetSneakCoefficient();
+    if (!is_see && !target->AttachedCritters.empty()) {
+        for (auto* attached_cr : target->AttachedCritters) {
+            RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
-    for (auto* cr : copy_hold_ref(map->GetCritters())) {
-        if (cr == view_cr || cr->IsDestroyed()) {
-            continue;
-        }
+            optional<bool> dummy_trace_result;
+            is_see = IsCritterSeeCritter(map, cr, attached_cr, dummy_trace_result);
 
-        auto dist = GeometryHelper::DistGame(view_cr->GetMapHex(), cr->GetMapHex());
-
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SCRIPT)) {
-            const auto allow_self = _engine->OnMapCheckLook.Fire(map, view_cr, cr);
-            const auto allow_opp = _engine->OnMapCheckLook.Fire(map, cr, view_cr);
-
-            if (allow_self) {
-                if (cr->AddCrIntoVisVec(view_cr)) {
-                    view_cr->Send_AddCritter(cr);
-                    view_cr->OnCritterAppeared.Fire(cr);
-                }
-            }
-            else {
-                if (cr->DelCrFromVisVec(view_cr)) {
-                    view_cr->Send_RemoveCritter(cr);
-                    view_cr->OnCritterDisappeared.Fire(cr);
-                }
-            }
-
-            if (allow_opp) {
-                if (view_cr->AddCrIntoVisVec(cr)) {
-                    cr->Send_AddCritter(view_cr);
-                    cr->OnCritterAppeared.Fire(view_cr);
-                }
-            }
-            else {
-                if (view_cr->DelCrFromVisVec(cr)) {
-                    cr->Send_RemoveCritter(view_cr);
-                    cr->OnCritterDisappeared.Fire(view_cr);
-                }
-            }
-
-            if (show_cr) {
-                if (show_cr1) {
-                    if (show_cr_dist1 >= dist) {
-                        if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
-                            view_cr->OnCritterAppearedDist1.Fire(cr);
-                        }
-                    }
-                    else {
-                        if (view_cr->DelCrFromVisSet1(cr->GetId())) {
-                            view_cr->OnCritterDisappearedDist1.Fire(cr);
-                        }
-                    }
-                }
-                if (show_cr2) {
-                    if (show_cr_dist2 >= dist) {
-                        if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
-                            view_cr->OnCritterAppearedDist2.Fire(cr);
-                        }
-                    }
-                    else {
-                        if (view_cr->DelCrFromVisSet2(cr->GetId())) {
-                            view_cr->OnCritterDisappearedDist2.Fire(cr);
-                        }
-                    }
-                }
-                if (show_cr3) {
-                    if (show_cr_dist3 >= dist) {
-                        if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
-                            view_cr->OnCritterAppearedDist3.Fire(cr);
-                        }
-                    }
-                    else {
-                        if (view_cr->DelCrFromVisSet3(cr->GetId())) {
-                            view_cr->OnCritterDisappearedDist3.Fire(cr);
-                        }
-                    }
-                }
-            }
-
-            if (const auto cr_dist = cr->GetShowCritterDist1(); cr_dist != 0) {
-                if (cr_dist >= dist) {
-                    if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
-                        cr->OnCritterAppearedDist1.Fire(view_cr);
-                    }
-                }
-                else {
-                    if (cr->DelCrFromVisSet1(view_cr->GetId())) {
-                        cr->OnCritterDisappearedDist1.Fire(view_cr);
-                    }
-                }
-            }
-
-            if (const auto cr_dist = cr->GetShowCritterDist2(); cr_dist != 0) {
-                if (cr_dist >= dist) {
-                    if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
-                        cr->OnCritterAppearedDist2.Fire(view_cr);
-                    }
-                }
-                else {
-                    if (cr->DelCrFromVisSet2(view_cr->GetId())) {
-                        cr->OnCritterDisappearedDist2.Fire(view_cr);
-                    }
-                }
-            }
-
-            if (const auto cr_dist = cr->GetShowCritterDist3(); cr_dist != 0) {
-                if (cr_dist >= dist) {
-                    if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
-                        cr->OnCritterAppearedDist1.Fire(view_cr);
-                    }
-                }
-                else {
-                    if (cr->DelCrFromVisSet3(view_cr->GetId())) {
-                        cr->OnCritterDisappearedDist3.Fire(view_cr);
-                    }
-                }
-            }
-
-            continue;
-        }
-
-        auto look_self = look_base_self;
-        auto look_opp = cr->GetLookDistance();
-
-        // Dir modifier
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-            // Self
-            auto real_dir = GeometryHelper::GetFarDir(view_cr->GetMapHex(), cr->GetMapHex());
-            auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
-
-            if (i > static_cast<int>(dirs_count / 2u)) {
-                i = static_cast<int>(dirs_count) - i;
-            }
-
-            look_self -= look_self * _engine->Settings.LookDir[i] / 100;
-
-            // Opponent
-            const int dir_opp = cr->GetDir();
-
-            real_dir = static_cast<uint8>((real_dir + dirs_count / 2u) % dirs_count);
-            i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
-
-            if (i > static_cast<int>(dirs_count / 2u)) {
-                i = static_cast<int>(dirs_count) - i;
-            }
-
-            look_opp -= look_opp * _engine->Settings.LookDir[i] / 100;
-        }
-
-        if (dist > look_self && dist > look_opp) {
-            dist = std::numeric_limits<uint>::max();
-        }
-
-        // Trace
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
-            TraceData trace;
-            trace.TraceMap = map;
-            trace.StartHex = view_cr->GetMapHex();
-            trace.TargetHex = cr->GetMapHex();
-
-            TraceBullet(trace);
-
-            if (!trace.IsFullTrace) {
-                dist = std::numeric_limits<uint>::max();
+            if (is_see) {
+                break;
             }
         }
+    }
 
-        // Self
-        if (cr->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
-            auto sneak_opp = cr->GetSneakCoefficient();
-            if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto real_dir = GeometryHelper::GetFarDir(view_cr->GetMapHex(), cr->GetMapHex());
-                auto i = dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self;
-
-                if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = static_cast<int>(dirs_count) - i;
-                }
-
-                sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[i] / 100;
-            }
-
-            sneak_opp /= _engine->Settings.SneakDivider;
-            vis = look_self > sneak_opp ? look_self - sneak_opp : 0;
+    if (is_see) {
+        if (target->AddCrIntoVisVec(cr)) {
+            cr->Send_AddCritter(target);
+            cr->OnCritterAppeared.Fire(target);
         }
-        else {
-            vis = look_self;
+    }
+    else {
+        if (target->DelCrFromVisVec(cr)) {
+            cr->Send_RemoveCritter(target);
+            cr->OnCritterDisappeared.Fire(target);
         }
+    }
 
-        if (vis < _engine->Settings.LookMinimum) {
-            vis = _engine->Settings.LookMinimum;
-        }
+    const uint dist = GeometryHelper::DistGame(cr->GetMapHex(), target->GetMapHex());
+    const uint show_cr_dist1 = cr->GetShowCritterDist1();
+    const uint show_cr_dist2 = cr->GetShowCritterDist2();
+    const uint show_cr_dist3 = cr->GetShowCritterDist3();
 
-        if (vis >= dist) {
-            if (cr->AddCrIntoVisVec(view_cr)) {
-                view_cr->Send_AddCritter(cr);
-                view_cr->OnCritterAppeared.Fire(cr);
+    if (show_cr_dist1 != 0) {
+        if (show_cr_dist1 >= dist && is_see) {
+            if (cr->AddCrIntoVisSet1(target->GetId())) {
+                cr->OnCritterAppearedDist1.Fire(target);
             }
         }
         else {
-            if (cr->DelCrFromVisVec(view_cr)) {
-                view_cr->Send_RemoveCritter(cr);
-                view_cr->OnCritterDisappeared.Fire(cr);
+            if (cr->DelCrFromVisSet1(target->GetId())) {
+                cr->OnCritterDisappearedDist1.Fire(target);
             }
         }
+    }
 
-        if (show_cr1) {
-            if (show_cr_dist1 >= dist) {
-                if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
-                    view_cr->OnCritterAppearedDist1.Fire(cr);
-                }
-            }
-            else {
-                if (view_cr->DelCrFromVisSet1(cr->GetId())) {
-                    view_cr->OnCritterDisappearedDist1.Fire(cr);
-                }
-            }
-        }
-        if (show_cr2) {
-            if (show_cr_dist2 >= dist) {
-                if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
-                    view_cr->OnCritterAppearedDist2.Fire(cr);
-                }
-            }
-            else {
-                if (view_cr->DelCrFromVisSet2(cr->GetId())) {
-                    view_cr->OnCritterDisappearedDist2.Fire(cr);
-                }
-            }
-        }
-        if (show_cr3) {
-            if (show_cr_dist3 >= dist) {
-                if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
-                    view_cr->OnCritterAppearedDist3.Fire(cr);
-                }
-            }
-            else {
-                if (view_cr->DelCrFromVisSet3(cr->GetId())) {
-                    view_cr->OnCritterDisappearedDist3.Fire(cr);
-                }
-            }
-        }
-
-        // Opponent
-        if (view_cr->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
-            auto sneak_self = sneak_base_self;
-
-            if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto dir_opp = cr->GetDir();
-                const auto real_dir = GeometryHelper::GetFarDir(cr->GetMapHex(), view_cr->GetMapHex());
-                auto i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
-
-                if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = static_cast<int>(dirs_count) - i;
-                }
-
-                sneak_self -= sneak_self * _engine->Settings.LookSneakDir[i] / 100;
-            }
-
-            sneak_self /= _engine->Settings.SneakDivider;
-            vis = (look_opp > sneak_self ? look_opp - sneak_self : 0);
-        }
-        else {
-            vis = look_opp;
-        }
-
-        if (vis < _engine->Settings.LookMinimum) {
-            vis = _engine->Settings.LookMinimum;
-        }
-
-        if (vis >= dist) {
-            if (view_cr->AddCrIntoVisVec(cr)) {
-                cr->Send_AddCritter(view_cr);
-                cr->OnCritterAppeared.Fire(view_cr);
+    if (show_cr_dist2 != 0) {
+        if (show_cr_dist2 >= dist && is_see) {
+            if (cr->AddCrIntoVisSet2(target->GetId())) {
+                cr->OnCritterAppearedDist2.Fire(target);
             }
         }
         else {
-            if (view_cr->DelCrFromVisVec(cr)) {
-                cr->Send_RemoveCritter(view_cr);
-                cr->OnCritterDisappeared.Fire(view_cr);
+            if (cr->DelCrFromVisSet2(target->GetId())) {
+                cr->OnCritterDisappearedDist2.Fire(target);
             }
         }
+    }
 
-        auto cr_dist = cr->GetShowCritterDist1();
-
-        if (cr_dist != 0) {
-            if (cr_dist >= dist) {
-                if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
-                    cr->OnCritterAppearedDist1.Fire(view_cr);
-                }
-            }
-            else {
-                if (cr->DelCrFromVisSet1(view_cr->GetId())) {
-                    cr->OnCritterDisappearedDist1.Fire(view_cr);
-                }
+    if (show_cr_dist3 != 0) {
+        if (show_cr_dist3 >= dist && is_see) {
+            if (cr->AddCrIntoVisSet3(target->GetId())) {
+                cr->OnCritterAppearedDist3.Fire(target);
             }
         }
-
-        cr_dist = cr->GetShowCritterDist2();
-
-        if (cr_dist != 0) {
-            if (cr_dist >= dist) {
-                if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
-                    cr->OnCritterAppearedDist2.Fire(view_cr);
-                }
-            }
-            else {
-                if (cr->DelCrFromVisSet2(view_cr->GetId())) {
-                    cr->OnCritterDisappearedDist2.Fire(view_cr);
-                }
-            }
-        }
-
-        cr_dist = cr->GetShowCritterDist3();
-
-        if (cr_dist != 0) {
-            if (cr_dist >= dist) {
-                if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
-                    cr->OnCritterAppearedDist3.Fire(view_cr);
-                }
-            }
-            else {
-                if (cr->DelCrFromVisSet3(view_cr->GetId())) {
-                    cr->OnCritterDisappearedDist3.Fire(view_cr);
-                }
+        else {
+            if (cr->DelCrFromVisSet3(target->GetId())) {
+                cr->OnCritterDisappearedDist3.Fire(target);
             }
         }
     }
 }
 
-void MapManager::ProcessVisibleItems(Critter* view_cr)
+auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!map->IsDestroyed());
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+    RUNTIME_ASSERT(!target->IsDestroyed());
+
+    bool is_see;
+
+    if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SCRIPT)) {
+        is_see = _engine->OnMapCheckLook.Fire(map, cr, target);
+    }
+    else {
+        uint dist = GeometryHelper::DistGame(cr->GetMapHex(), target->GetMapHex());
+        uint look_dist = cr->GetLookDistance();
+        const int cr_dir = cr->GetDir();
+
+        // Dir modifier
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
+            const auto real_dir = GeometryHelper::GetFarDir(cr->GetMapHex(), target->GetMapHex());
+            auto dir_index = cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir;
+
+            if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
+                dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+            }
+
+            look_dist -= look_dist * _engine->Settings.LookDir[dir_index] / 100;
+        }
+
+        if (dist > look_dist) {
+            dist = std::numeric_limits<uint>::max();
+        }
+
+        // Trace
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
+            if (!trace_result.has_value()) {
+                TraceData trace;
+                trace.TraceMap = map;
+                trace.StartHex = cr->GetMapHex();
+                trace.TargetHex = target->GetMapHex();
+
+                TraceBullet(trace);
+
+                if (!trace.IsFullTrace) {
+                    dist = std::numeric_limits<uint>::max();
+                }
+
+                trace_result = trace.IsFullTrace;
+            }
+            else {
+                if (!trace_result.value()) {
+                    dist = std::numeric_limits<uint>::max();
+                }
+            }
+        }
+
+        // Sneak
+        if (target->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
+            auto sneak_opp = target->GetSneakCoefficient();
+
+            if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
+                const auto real_dir = GeometryHelper::GetFarDir(cr->GetMapHex(), target->GetMapHex());
+                auto dir_index = (cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir);
+
+                if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
+                    dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+                }
+
+                sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[dir_index] / 100;
+            }
+
+            sneak_opp /= _engine->Settings.SneakDivider;
+            look_dist = look_dist > sneak_opp ? look_dist - sneak_opp : 0;
+        }
+
+        if (look_dist < _engine->Settings.LookMinimum) {
+            look_dist = _engine->Settings.LookMinimum;
+        }
+
+        is_see = look_dist >= dist;
+    }
+
+    return is_see;
+}
+
+void MapManager::ProcessVisibleItems(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (view_cr->IsDestroyed()) {
+    if (cr->IsDestroyed()) {
         return;
     }
 
-    const auto map_id = view_cr->GetMapId();
+    const auto map_id = cr->GetMapId();
 
     if (!map_id) {
         return;
@@ -2006,7 +1851,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     auto* map = GetMap(map_id);
     RUNTIME_ASSERT(map);
 
-    const int look = static_cast<int>(view_cr->GetLookDistance());
+    const int look = static_cast<int>(cr->GetLookDistance());
 
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
@@ -2017,20 +1862,19 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         }
 
         if (item->GetIsAlwaysView()) {
-            if (view_cr->AddIdVisItem(item->GetId())) {
-                view_cr->Send_AddItemOnMap(item);
-                view_cr->OnItemOnMapAppeared.Fire(item, nullptr);
+            if (cr->AddIdVisItem(item->GetId())) {
+                cr->Send_AddItemOnMap(item);
+                cr->OnItemOnMapAppeared.Fire(item, nullptr);
             }
         }
         else {
             bool allowed;
 
             if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                allowed = _engine->OnMapCheckTrapLook.Fire(map, view_cr, item);
+                allowed = _engine->OnMapCheckTrapLook.Fire(map, cr, item);
             }
             else {
-                int dist = static_cast<int>(GeometryHelper::DistGame(view_cr->GetMapHex(), item->GetMapHex()));
-
+                int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetMapHex(), item->GetMapHex()));
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }
@@ -2039,15 +1883,15 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             }
 
             if (allowed) {
-                if (view_cr->AddIdVisItem(item->GetId())) {
-                    view_cr->Send_AddItemOnMap(item);
-                    view_cr->OnItemOnMapAppeared.Fire(item, nullptr);
+                if (cr->AddIdVisItem(item->GetId())) {
+                    cr->Send_AddItemOnMap(item);
+                    cr->OnItemOnMapAppeared.Fire(item, nullptr);
                 }
             }
             else {
-                if (view_cr->DelIdVisItem(item->GetId())) {
-                    view_cr->Send_EraseItemFromMap(item);
-                    view_cr->OnItemOnMapDisappeared.Fire(item, nullptr);
+                if (cr->DelIdVisItem(item->GetId())) {
+                    cr->Send_EraseItemFromMap(item);
+                    cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
             }
         }

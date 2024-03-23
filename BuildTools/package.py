@@ -48,6 +48,7 @@ def log(*text):
 
 log(f'Make {args.target} ({args.config}) for {args.platform}')
 
+packArgs = args.pack.split('+')
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 resourcesDir = 'Resources'
@@ -220,18 +221,20 @@ def build():
 		# Binaries
 		for arch in args.arch.split('+'):
 			for binType in [''] + \
-					(['Headless'] if 'Headless' in args.pack else []) + \
-					(['Service'] if 'Service' in args.pack else []) + \
-					(['Profiling'] if 'Profiling' in args.pack else []) + \
-					(['OGL'] if 'OGL' in args.pack else []):
+					(['Headless'] if 'Headless' in packArgs else []) + \
+					(['Service'] if 'Service' in packArgs else []) + \
+					(['Profiling'] if 'Profiling' in packArgs else []) + \
+					(['OnDemandProfiling'] if 'OnDemandProfiling' in packArgs else []) + \
+					(['OGL'] if 'OGL' in packArgs else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType == 'Profiling' else '') + \
+						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '') + \
 						('_OpenGL' if binType == 'OGL' else '')
-				log('Setup', arch, binName)
+				log('Setup', arch, binName, binType)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
 						('-Profiling' if binType == 'Profiling' else '') + \
-						('-Debug' if 'Debug' in args.pack else '')
+						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
+						('-Debug' if 'Debug' in packArgs else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
@@ -244,7 +247,7 @@ def build():
 				patchConfig(os.path.join(targetOutputPath, binOutName + '.exe'), 'ForceOpenGL=1' if binType == 'OGL' else None)
 		
 		# Zip
-		if 'Zip' in args.pack:
+		if 'Zip' in packArgs:
 			log('Create zipped archive')
 			makeZip(targetOutputPath + '.zip', targetOutputPath)
 		
@@ -324,23 +327,25 @@ def build():
 		"""
 		
 		# Cleanup raw files if not requested
-		if 'Raw' not in args.pack:
+		if 'Raw' not in packArgs:
 			shutil.rmtree(targetOutputPath, True)
 
 	elif args.platform == 'Linux':
 		# Raw files
 		for arch in args.arch.split('+'):
 			for binType in [''] + \
-					(['Headless'] if 'Headless' in args.pack else []) + \
-					(['Daemon'] if 'Daemon' in args.pack else []) + \
-					(['Profiling'] if 'Profiling' in args.pack else []):
-				binName = args.devname + '_' + args.target + binType
+					(['Headless'] if 'Headless' in packArgs else []) + \
+					(['Daemon'] if 'Daemon' in packArgs else []) + \
+					(['Profiling'] if 'Profiling' in packArgs else []) + \
+					(['OnDemandProfiling'] if 'OnDemandProfiling' in packArgs else []):
+				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Daemon'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType == 'Profiling' else '')
-				log('Setup', arch, binName)
+						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '')
+				log('Setup', arch, binName, binType)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
 						('-Profiling' if binType == 'Profiling' else '') + \
-						('-Debug' if 'Debug' in args.pack else '')
+						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
+						('-Debug' if 'Debug' in packArgs else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))
@@ -350,27 +355,27 @@ def build():
 				os.chmod(os.path.join(targetOutputPath, binOutName), st.st_mode | stat.S_IEXEC)
 		
 		# Tar
-		if 'Tar' in args.pack:
+		if 'Tar' in packArgs:
 			log('Create tar archive')
 			makeTar(targetOutputPath + '.tar', targetOutputPath, 'w')
 		
 		# TarGz
-		if 'TarGz' in args.pack:
+		if 'TarGz' in packArgs:
 			log('Create tar.gz archive')
 			makeTar(targetOutputPath + '.tar.gz', targetOutputPath, 'w:gz')
 		
 		# Zip
-		if 'Zip' in args.pack:
+		if 'Zip' in packArgs:
 			log('Create zipped archive')
 			makeZip(targetOutputPath + '.zip', targetOutputPath)
 		
 		# AppImage
-		if 'Zip' in args.pack:
+		if 'Zip' in packArgs:
 			# Todo: AppImage
 			pass
 		
 		# Cleanup raw files if not requested
-		if 'Raw' not in args.pack:
+		if 'Raw' not in packArgs:
 			shutil.rmtree(targetOutputPath, True)
 		
 	elif args.platform == 'Mac':
@@ -415,7 +420,7 @@ def build():
 		binName = args.devname + '_' + args.target
 		binOutName = binName
 		log('Setup', binName)
-		binEntry = args.target + '-' + args.platform + '-' + args.arch + ('-Debug' if 'Debug' in args.pack else '')
+		binEntry = args.target + '-' + args.platform + '-' + args.arch + ('-Debug' if 'Debug' in packArgs else '')
 		binPath = getInput(os.path.join('Binaries', binEntry), binName)
 		log('Binary input', binPath)
 		shutil.copy(os.path.join(binPath, binName + '.js'), os.path.join(targetOutputPath, binOutName + '.js'))
@@ -426,7 +431,7 @@ def build():
 		
 		shutil.copy(os.path.join(curPath, 'web', 'default-index.html'), os.path.join(targetOutputPath, 'index.html'))
 		
-		if 'WebServer' in args.pack:
+		if 'WebServer' in packArgs:
 			shutil.copy(os.path.join(curPath, 'web', 'simple-web-server.py'), os.path.join(targetOutputPath, 'web-server.py'))
 		
 		# Generate resources
@@ -457,7 +462,7 @@ def build():
 		#logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
 		
 		# Zip
-		if 'Zip' in args.pack:
+		if 'Zip' in packArgs:
 			log('Create zipped archive')
 			makeZip(targetOutputPath + '.zip', targetOutputPath)
 		

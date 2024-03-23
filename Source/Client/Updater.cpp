@@ -128,7 +128,7 @@ auto Updater::Process() -> bool
     while (App->Input.PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
-                App->Settings.Quit = true;
+                App->RequestQuit();
             }
         }
     }

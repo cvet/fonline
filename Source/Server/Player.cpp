@@ -66,12 +66,11 @@ void Player::SetName(string_view name)
     _name = name;
 }
 
-void Player::SetOwnedCritter(Critter* cr)
+void Player::SetControlledCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_ownedCr);
-    _ownedCr = cr;
+    _controlledCr = cr;
 }
 
 auto Player::GetIp() const -> uint
@@ -101,11 +100,10 @@ void Player::Send_AddCritter(const Critter* cr)
 
     vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto is_chosen = cr == GetOwnedCritter();
+    const auto is_chosen = cr == GetControlledCritter();
     cr->StoreData(is_chosen, &data, &data_sizes);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
     Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.Write(cr->GetProtoId());
@@ -119,16 +117,19 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetAliveActionAnim());
     Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
     Connection->OutBuf.Write(cr->GetDeadActionAnim());
-    Connection->OutBuf.Write(cr->IsOwnedByPlayer());
-    Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
+    Connection->OutBuf.Write(cr->GetIsControlledByPlayer());
+    Connection->OutBuf.Write(cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr);
     Connection->OutBuf.Write(is_chosen);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
-
     CONNECTION_OUTPUT_END(Connection);
 
     if (!is_chosen) {
         Send_MoveItem(cr, nullptr, CritterAction::Refresh, CritterItemSlot::Inventory);
+    }
+
+    if (cr->GetIsAttached() || !cr->AttachedCritters.empty()) {
+        Send_Attachments(cr);
     }
 
     if (cr->IsMoving()) {
@@ -155,7 +156,7 @@ void Player::Send_LoadMap(const Map* map)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
     const Location* loc = nullptr;
     hstring pid_map;
@@ -163,7 +164,7 @@ void Player::Send_LoadMap(const Map* map)
     uint8 map_index_in_loc = 0;
 
     if (map == nullptr) {
-        map = _engine->MapMngr.GetMap(_ownedCr->GetMapId());
+        map = _engine->MapMngr.GetMap(_controlledCr->GetMapId());
     }
 
     if (map != nullptr) {
@@ -349,7 +350,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, CritterActi
 {
     STACK_TRACE_ENTRY();
 
-    const auto is_chosen = from_cr == GetOwnedCritter();
+    const auto is_chosen = from_cr == GetControlledCritter();
 
     if (item != nullptr) {
         Send_SomeItem(item);
@@ -526,9 +527,9 @@ void Player::Send_GlobalInfo(uint8 info_flags)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
-    const auto known_locs = _ownedCr->GetKnownLocations();
+    const auto known_locs = _controlledCr->GetKnownLocations();
 
     auto loc_count = static_cast<uint16>(known_locs.size());
 
@@ -558,7 +559,7 @@ void Player::Send_GlobalInfo(uint8 info_flags)
             }
             else {
                 loc_count--;
-                _engine->MapMngr.EraseKnownLoc(_ownedCr, loc_id);
+                _engine->MapMngr.EraseKnownLoc(_controlledCr, loc_id);
 
                 constexpr size_t send_location_size = sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8);
                 constexpr char empty_loc[send_location_size] = {0};
@@ -568,7 +569,7 @@ void Player::Send_GlobalInfo(uint8 info_flags)
     }
 
     if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
-        auto gmap_fog = _ownedCr->GetGlobalMapFog();
+        auto gmap_fog = _controlledCr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
             gmap_fog.resize(GM_ZONES_FOG_SIZE);
         }
@@ -579,7 +580,7 @@ void Player::Send_GlobalInfo(uint8 info_flags)
     CONNECTION_OUTPUT_END(Connection);
 
     if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
-        _engine->MapMngr.ProcessVisibleCritters(_ownedCr);
+        _engine->MapMngr.ProcessVisibleCritters(_controlledCr);
     }
 }
 
@@ -664,39 +665,39 @@ void Player::Send_Talk()
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
-    const auto close = _ownedCr->Talk.Type == TalkType::None;
-    const auto is_npc = _ownedCr->Talk.Type == TalkType::Critter;
+    const auto close = _controlledCr->Talk.Type == TalkType::None;
+    const auto is_npc = _controlledCr->Talk.Type == TalkType::Critter;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_TALK_NPC);
 
     if (close) {
         Connection->OutBuf.Write(is_npc);
-        Connection->OutBuf.Write(_ownedCr->Talk.CritterId);
-        Connection->OutBuf.Write(_ownedCr->Talk.DialogPackId);
+        Connection->OutBuf.Write(_controlledCr->Talk.CritterId);
+        Connection->OutBuf.Write(_controlledCr->Talk.DialogPackId);
         Connection->OutBuf.Write(static_cast<uint8>(0));
     }
     else {
-        const auto all_answers = static_cast<uint8>(_ownedCr->Talk.CurDialog.Answers.size());
+        const auto all_answers = static_cast<uint8>(_controlledCr->Talk.CurDialog.Answers.size());
 
-        auto talk_time = _ownedCr->Talk.TalkTime;
+        auto talk_time = _controlledCr->Talk.TalkTime;
         if (talk_time != time_duration {}) {
-            const auto diff = _engine->GameTime.GameplayTime() - _ownedCr->Talk.StartTime;
+            const auto diff = _engine->GameTime.GameplayTime() - _controlledCr->Talk.StartTime;
             talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds {1};
         }
 
         Connection->OutBuf.Write(is_npc);
-        Connection->OutBuf.Write(_ownedCr->Talk.CritterId);
-        Connection->OutBuf.Write(_ownedCr->Talk.DialogPackId);
+        Connection->OutBuf.Write(_controlledCr->Talk.CritterId);
+        Connection->OutBuf.Write(_controlledCr->Talk.DialogPackId);
         Connection->OutBuf.Write(all_answers);
-        Connection->OutBuf.Write(static_cast<uint16>(_ownedCr->Talk.Lexems.length()));
-        if (_ownedCr->Talk.Lexems.length() != 0) {
-            Connection->OutBuf.Push(_ownedCr->Talk.Lexems.c_str(), _ownedCr->Talk.Lexems.length());
+        Connection->OutBuf.Write(static_cast<uint16>(_controlledCr->Talk.Lexems.length()));
+        if (_controlledCr->Talk.Lexems.length() != 0) {
+            Connection->OutBuf.Push(_controlledCr->Talk.Lexems.c_str(), _controlledCr->Talk.Lexems.length());
         }
-        Connection->OutBuf.Write(_ownedCr->Talk.CurDialog.TextId);
-        for (const auto& answer : _ownedCr->Talk.CurDialog.Answers) {
+        Connection->OutBuf.Write(_controlledCr->Talk.CurDialog.TextId);
+        for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
             Connection->OutBuf.Write(answer.TextId);
         }
         Connection->OutBuf.Write(time_duration_to_ms<uint>(talk_time));
@@ -1020,13 +1021,13 @@ void Player::Send_ViewMap()
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_VIEW_MAP);
-    Connection->OutBuf.Write(_ownedCr->ViewMapHex);
-    Connection->OutBuf.Write(_ownedCr->ViewMapLocId);
-    Connection->OutBuf.Write(_ownedCr->ViewMapLocEnt);
+    Connection->OutBuf.Write(_controlledCr->ViewMapHex);
+    Connection->OutBuf.Write(_controlledCr->ViewMapLocId);
+    Connection->OutBuf.Write(_controlledCr->ViewMapLocEnt);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -1066,14 +1067,14 @@ void Player::Send_AddAllItems()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CLEAR_ITEMS);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 
-    for (const auto* item : _ownedCr->_invItems) {
+    for (const auto* item : _controlledCr->_invItems) {
         Send_AddItem(item);
     }
 
@@ -1089,10 +1090,10 @@ void Player::Send_AllAutomapsInfo()
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_ownedCr);
+    RUNTIME_ASSERT(_controlledCr);
 
     vector<Location*> locs;
-    for (const auto loc_id : _ownedCr->GetKnownLocations()) {
+    for (const auto loc_id : _controlledCr->GetKnownLocations()) {
         auto* loc = _engine->MapMngr.GetLocation(loc_id);
         if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
             locs.push_back(loc);
@@ -1126,6 +1127,25 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
             Connection->OutBuf.Write(item->GetProtoId());
             NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
         }
+    }
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::Send_Attachments(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_CRITTER_ATTACHMENTS);
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(from_cr->GetIsAttached());
+    Connection->OutBuf.Write(from_cr->GetAttachMaster());
+    Connection->OutBuf.Write(static_cast<uint16>(from_cr->AttachedCritters.size()));
+    for (const auto* attached_cr : from_cr->AttachedCritters) {
+        Connection->OutBuf.Write(attached_cr->GetId());
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);

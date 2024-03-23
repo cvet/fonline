@@ -143,7 +143,6 @@ public:
     [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
     [[nodiscard]] auto GetMapsCount() const -> size_t;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
-    [[nodiscard]] auto CanAddCrToMap(const Critter* cr, const Map* map, mpos hex, ident_t leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
@@ -154,20 +153,23 @@ public:
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
-    void AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t leader_id);
+    void AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
     void EraseCrFromMap(Critter* cr, Map* map);
-    auto TransitToGlobal(Critter* cr, ident_t leader_id) -> bool;
-    auto Transit(Critter* cr, Map* map, mpos hex, uint8 dir, uint radius, ident_t leader_id) -> bool;
+    void TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius);
+    void TransitToGlobal(Critter* cr, ident_t global_cr_id);
     void KickPlayersToGlobalMap(Map* map);
-    void ProcessVisibleCritters(Critter* view_cr);
-    void ProcessVisibleItems(Critter* view_cr);
+    void ProcessVisibleCritters(Critter* cr);
+    void ProcessVisibleItems(Critter* cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir);
     void AddKnownLoc(Critter* cr, ident_t loc_id);
     void EraseKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
     [[nodiscard]] FORCE_INLINE auto GridAt(mpos pos) -> int16&;
+    [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
+    void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
+    void Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 

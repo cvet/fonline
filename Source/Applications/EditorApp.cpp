@@ -57,7 +57,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         auto* editor = new FOEditor(App->Settings);
 
-        while (!App->Settings.Quit) {
+        while (!App->IsQuitRequested()) {
             App->BeginFrame();
 
             editor->MainLoop();

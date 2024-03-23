@@ -91,6 +91,12 @@ public:
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos dlg_hex, bool ignore_distance);
 
+    auto CreateCritter(hstring pid, bool for_player) -> Critter*;
+    auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
+    void UnloadCritter(Critter* cr);
+    void SwitchPlayerCritter(Player* player, Critter* cr);
+    void DestroyUnloadedCritter(ident_t cr_id);
+
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
     ///@ ExportEvent
@@ -113,6 +119,10 @@ public:
     ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerEnter, Player* /*player*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
@@ -145,6 +155,10 @@ public:
     ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterLoad, Critter* /*cr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
@@ -270,7 +284,7 @@ private:
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
     void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, bool send_self);
-    void LogoutCritter(Critter* cr);
+    void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint;

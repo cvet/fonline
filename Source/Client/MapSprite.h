@@ -136,6 +136,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto CheckHit(ipos pos, bool check_transparent) const -> bool;
+    [[nodiscard]] auto IsHidden() const -> bool { return _hidden; }
 
     void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
@@ -145,6 +146,7 @@ public:
     void SetAlpha(const uint8* alpha);
     void SetFixedAlpha(uint8 alpha);
     void SetLight(CornerType corner, const ucolor* light, msize size);
+    void SetHidden(bool hidden);
 
     // Todo:: incapsulate all sprite data
     MapSpriteList* Root {};
@@ -177,6 +179,9 @@ public:
     MapSprite** ChainLast {};
     MapSprite* ChainParent {};
     MapSprite* ChainChild {};
+
+private:
+    bool _hidden {};
 };
 
 class MapSpriteList final

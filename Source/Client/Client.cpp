@@ -163,6 +163,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), [this] { Net_OnProperty(1); });
@@ -241,6 +242,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
@@ -254,6 +256,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::DrawOffset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
@@ -1068,7 +1071,7 @@ void FOClient::Net_OnAddCritter()
     const auto alive_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto knockout_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto dead_action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto is_owned_by_player = _conn.InBuf.Read<bool>();
+    const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
 
@@ -1077,15 +1080,17 @@ void FOClient::Net_OnAddCritter()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     CritterView* cr;
+    CritterHexView* hex_cr;
 
     if (CurMap != nullptr) {
-        auto* hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
+        hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
         RUNTIME_ASSERT(hex_cr);
-        cr = hex_cr;
 
         if (_screenModeMain != SCREEN_WAIT) {
             hex_cr->FadeUp();
         }
+
+        cr = hex_cr;
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
@@ -1094,6 +1099,8 @@ void FOClient::Net_OnAddCritter()
         cr = new CritterView(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
         _worldmapCritters.emplace_back(cr);
+
+        hex_cr = nullptr;
     }
 
     cr->SetMapHexOffset(hex_offset);
@@ -1104,20 +1111,22 @@ void FOClient::Net_OnAddCritter()
     cr->SetAliveActionAnim(alive_action_anim);
     cr->SetKnockoutActionAnim(knockout_action_anim);
     cr->SetDeadActionAnim(dead_action_anim);
+    cr->SetIsControlledByPlayer(is_controlled_by_player);
+    cr->SetIsChosen(is_chosen);
+    cr->SetIsPlayerOffline(is_player_offline);
 
-    cr->SetPlayer(is_owned_by_player, is_chosen);
-    if (is_owned_by_player) {
-        cr->SetPlayerOffline(is_player_offline);
+    if (hex_offset != ipos16 {} && hex_cr != nullptr) {
+        hex_cr->RefreshOffs();
     }
 
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         _chosen = cr;
         _chosen->AddRef();
     }
 
     OnCritterIn.Fire(cr);
 
-    if (CurMap != nullptr && cr->IsChosen()) {
+    if (CurMap != nullptr && cr->GetIsChosen()) {
         CurMap->RebuildFog();
     }
 }
@@ -1140,6 +1149,11 @@ void FOClient::Net_OnRemoveCritter()
         cr->Finish();
 
         OnCritterOut.Fire(cr);
+
+        if (cr == _chosen) {
+            _chosen->Release();
+            _chosen = nullptr;
+        }
     }
     else {
         const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
@@ -1149,8 +1163,15 @@ void FOClient::Net_OnRemoveCritter()
         }
 
         auto* cr = *it;
+
         OnCritterOut.Fire(cr);
         _worldmapCritters.erase(it);
+
+        if (cr == _chosen) {
+            _chosen->Release();
+            _chosen = nullptr;
+        }
+
         cr->MarkAsDestroyed();
         cr->Release();
     }
@@ -1618,7 +1639,7 @@ void FOClient::Net_OnCritterMoveItem()
         return;
     }
 
-    if (!cr->IsChosen()) {
+    if (!cr->GetIsChosen()) {
         cr->DeleteAllInvItems();
 
         for (uint16 i = 0; i < slots_data_count; i++) {
@@ -1632,7 +1653,7 @@ void FOClient::Net_OnCritterMoveItem()
         hex_cr->Action(action, static_cast<int>(prev_slot), is_item ? _someItem : nullptr, false);
     }
 
-    if (is_item && cur_slot != prev_slot && cr->IsChosen()) {
+    if (is_item && cur_slot != prev_slot && cr->GetIsChosen()) {
         if (auto* item = cr->GetInvItem(_someItem->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             _someItem->SetCritterSlot(prev_slot);
@@ -1752,7 +1773,7 @@ void FOClient::Net_OnCritterTeleport()
 
     CurMap->MoveCritter(cr, to_hex, false);
 
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
             CurMap->AutoScroll.CritterLastHex = cr->GetMapHex();
         }
@@ -1795,7 +1816,7 @@ void FOClient::Net_OnCritterPos()
     if (cr->GetMapHex() != hex) {
         CurMap->MoveCritter(cr, hex, true);
 
-        if (cr->IsChosen()) {
+        if (cr->GetIsChosen()) {
             CurMap->RebuildFog();
         }
     }
@@ -1806,6 +1827,62 @@ void FOClient::Net_OnCritterPos()
         cr->AddExtraOffs({cr_hex_offset.x - hex_offset.x, cr_hex_offset.y - hex_offset.y});
         cr->SetMapHexOffset(hex_offset);
         cr->RefreshOffs();
+    }
+}
+
+void FOClient::Net_OnCritterAttachments()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto is_attached = _conn.InBuf.Read<bool>();
+    const auto attach_master = _conn.InBuf.Read<ident_t>();
+
+    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    vector<ident_t> attached_critters;
+    attached_critters.resize(attached_critters_count);
+    for (uint16 i = 0; i < attached_critters_count; i++) {
+        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+    }
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap != nullptr) {
+        auto* cr = CurMap->GetCritter(cr_id);
+        if (cr == nullptr) {
+            return;
+        }
+
+        cr->SetAttachMaster(attach_master);
+
+        if (cr->GetIsAttached() != is_attached) {
+            cr->SetIsAttached(is_attached);
+
+            if (is_attached) {
+                for (auto* map_cr : CurMap->GetCritters()) {
+                    if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                        map_cr->MoveAttachedCritters();
+                        break;
+                    }
+                }
+            }
+        }
+
+        cr->AttachedCritters = std::move(attached_critters);
+
+        if (!cr->AttachedCritters.empty()) {
+            cr->MoveAttachedCritters();
+        }
+    }
+    else {
+        auto* cr = GetWorldmapCritter(cr_id);
+        if (cr == nullptr) {
+            return;
+        }
+
+        cr->SetIsAttached(is_attached);
+        cr->AttachedCritters = std::move(attached_critters);
     }
 }
 
@@ -2121,12 +2198,12 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
+        BreakIntoDebugger();
         WriteLog("Chosen is not created in end place to game");
         return;
     }
 
-    FlashGameWindow();
-    ScreenFadeOut();
+    int target_screen;
 
     if (CurMap != nullptr) {
         CurMap->FindSetCenter(chosen->GetMapHex());
@@ -2136,10 +2213,16 @@ void FOClient::Net_OnPlaceToGameComplete()
             CurMap->UpdateCritterLightSource(hex_chosen);
         }
 
-        ShowMainScreen(SCREEN_GAME, {});
+        target_screen = SCREEN_GAME;
     }
     else {
-        ShowMainScreen(SCREEN_GLOBAL_MAP, {});
+        target_screen = SCREEN_GLOBAL_MAP;
+    }
+
+    if (target_screen != GetMainScreen()) {
+        FlashGameWindow();
+        ScreenFadeOut();
+        ShowMainScreen(target_screen, {});
     }
 
     WriteLog("Entering to game complete");
@@ -2641,7 +2724,7 @@ void FOClient::TryExit()
     else {
         switch (GetMainScreen()) {
         case SCREEN_LOGIN:
-            Settings.Quit = true;
+            App->RequestQuit();
             break;
         case SCREEN_WAIT:
             _conn.Disconnect();
@@ -2766,7 +2849,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 
     auto* cr = dynamic_cast<CritterView*>(entity);
-    if (cr->IsChosen()) {
+    if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
     else if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -2788,7 +2871,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
-            if (cr != nullptr && cr->IsChosen()) {
+            if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
             else if (cr != nullptr && prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -2870,6 +2953,17 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
         cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
+    }
+}
+
+void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        cr->SetSpriteVisiblity(!cr->GetHideSprite());
     }
 }
 
@@ -2962,6 +3056,17 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
                 item->GetAnim()->Play({}, false, true);
             }
         }
+    }
+}
+
+void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->SetSpriteVisiblity(!item->GetHideSprite());
     }
 }
 
@@ -3579,9 +3684,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             }
         }*/
     }
-    else if (cmd == "Exit") {
-        Settings.Quit = true;
-    }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());
     }
@@ -3592,6 +3694,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
 {
     STACK_TRACE_ENTRY();
+
+    if (cr->GetIsAttached()) {
+        return;
+    }
 
     const auto prev_moving = cr->IsMoving();
 

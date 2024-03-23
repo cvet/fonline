@@ -45,8 +45,6 @@ auto AnyData::ValueToString(const Value& value) -> string
     constexpr auto default_buf_size = 1024;
 
     switch (value.index()) {
-    case INT_VALUE:
-        return _str("{}", std::get<INT_VALUE>(value)).str();
     case INT64_VALUE:
         return _str("{}", std::get<INT64_VALUE>(value)).str();
     case DOUBLE_VALUE:
@@ -67,9 +65,6 @@ auto AnyData::ValueToString(const Value& value) -> string
 
             const auto& arr_value = arr[i];
             switch (arr_value.index()) {
-            case INT_VALUE:
-                arr_str.append(_str("{}", std::get<INT_VALUE>(arr_value)).str());
-                break;
             case INT64_VALUE:
                 arr_str.append(_str("{}", std::get<INT64_VALUE>(arr_value)).str());
                 break;
@@ -107,9 +102,6 @@ auto AnyData::ValueToString(const Value& value) -> string
             dict_str.append(" ");
 
             switch (dict_value.index()) {
-            case INT_VALUE:
-                dict_str.append(_str("{}", std::get<INT_VALUE>(dict_value)).str());
-                break;
             case INT64_VALUE:
                 dict_str.append(_str("{}", std::get<INT64_VALUE>(dict_value)).str());
                 break;
@@ -134,9 +126,6 @@ auto AnyData::ValueToString(const Value& value) -> string
 
                     const auto& dict_arr_value = dict_arr[i];
                     switch (dict_arr_value.index()) {
-                    case INT_VALUE:
-                        dict_arr_str.append(_str("{}", std::get<INT_VALUE>(dict_arr_value)).str());
-                        break;
                     case INT64_VALUE:
                         dict_arr_str.append(_str("{}", std::get<INT64_VALUE>(dict_arr_value)).str());
                         break;
@@ -174,7 +163,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(value_type == INT_VALUE || value_type == INT64_VALUE || value_type == DOUBLE_VALUE || value_type == BOOL_VALUE || value_type == STRING_VALUE);
+    RUNTIME_ASSERT(value_type == INT64_VALUE || value_type == DOUBLE_VALUE || value_type == BOOL_VALUE || value_type == STRING_VALUE);
 
     if (as_dict) {
         Dict dict;
@@ -191,9 +180,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
                 string arr_entry;
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
-                    case INT_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toInt());
-                        break;
                     case INT64_VALUE:
                         dict_arr.emplace_back(_str("{}", arr_entry).toInt64());
                         break;
@@ -215,9 +201,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
             }
             else {
                 switch (value_type) {
-                case INT_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt());
-                    break;
                 case INT64_VALUE:
                     dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt64());
                     break;
@@ -245,9 +228,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
         string arr_entry;
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
-            case INT_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toInt());
-                break;
             case INT64_VALUE:
                 arr.emplace_back(_str("{}", arr_entry).toInt64());
                 break;
@@ -269,8 +249,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
     }
     else {
         switch (value_type) {
-        case INT_VALUE:
-            return _str("{}", str).toInt();
         case INT64_VALUE:
             return _str("{}", str).toInt64();
         case DOUBLE_VALUE:

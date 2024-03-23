@@ -94,7 +94,7 @@ auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallback
     return &_events.emplace(event_name, vector<EventCallbackData>()).first->second;
 }
 
-void Entity::SubscribeEvent(const string& event_name, EventCallbackData callback)
+void Entity::SubscribeEvent(const string& event_name, EventCallbackData&& callback)
 {
     STACK_TRACE_ENTRY();
 
@@ -129,7 +129,7 @@ auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& 
     return true;
 }
 
-void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback)
+void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData&& callback)
 {
     STACK_TRACE_ENTRY();
 
@@ -137,7 +137,20 @@ void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackD
 
     RUNTIME_ASSERT(callbacks);
 
+    if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
+        throw GenericException("Highest callback already added");
+    }
+
+    if (callback.Priority <= EventPriority::Lowest && std::find_if(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks->end()) {
+        throw GenericException("Lowest callback already added");
+    }
+
     callbacks->push_back(std::move(callback));
+
+    std::stable_sort(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
+        // From highest to lowest
+        return cb1.Priority > cb2.Priority;
+    });
 }
 
 void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr)
@@ -386,7 +399,7 @@ EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) :
     STACK_TRACE_ENTRY();
 }
 
-void EntityEventBase::Subscribe(Entity::EventCallbackData callback)
+void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
 {
     STACK_TRACE_ENTRY();
 

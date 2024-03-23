@@ -150,18 +150,24 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
+static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
 {
     STACK_TRACE_ENTRY();
 
     // Collect data
     auto files = resources.FilterFiles(ext);
+
     map<hstring, map<string, string>> files_protos;
     map<hstring, map<string, map<string, string>>> files_texts;
+
+    const auto rule_name = hash_resolver.ToHashedString("Proto");
+    const auto type_name = hash_resolver.ToHashedString(T::ENTITY_CLASS_NAME);
+
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
 
         auto fopro_options = ConfigFileOption::None;
+
         if constexpr (std::is_same_v<T, ProtoMap>) {
             fopro_options = ConfigFileOption::ReadFirstSection;
         }
@@ -169,6 +175,7 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &hash_resolver, fopro_options);
 
         auto protos_data = fopro.GetSections(section_name);
+
         if constexpr (std::is_same_v<T, ProtoMap>) {
             if (protos_data.empty()) {
                 protos_data = fopro.GetSections("Header");
@@ -177,10 +184,13 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
 
         for (auto& pkv : protos_data) {
             auto& kv = *pkv;
-            auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
+            const auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
             auto pid = hash_resolver.ToHashedString(name);
+
+            pid = name_resolver.CheckMigrationRule(rule_name, type_name, pid).value_or(pid);
+
             if (files_protos.count(pid) != 0) {
-                throw ProtoManagerException("Proto already loaded", name);
+                throw ProtoManagerException("Proto already loaded", pid);
             }
 
             files_protos.emplace(pid, kv);
@@ -202,28 +212,33 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
     }
 
     // Injection
-    auto injection = [&files_protos, &hash_resolver](const string& key_name, bool overwrite) {
+    auto injection = [&](const string& key_name, bool overwrite) {
         for (auto&& [pid, kv] : files_protos) {
             if (kv.count(key_name)) {
                 for (const auto& inject_name : _str(kv[key_name]).split(' ')) {
                     if (inject_name == "All") {
-                        for (auto&& [pid2, kv2] : files_protos) {
-                            if (pid2 != pid) {
-                                InsertMapValues(kv, kv2, overwrite);
+                        for (auto&& [other_pid, other_kv] : files_protos) {
+                            if (other_pid != pid) {
+                                InsertMapValues(kv, other_kv, overwrite);
                             }
                         }
                     }
                     else {
-                        auto inject_name_hashed = hash_resolver.ToHashedString(inject_name);
-                        if (!files_protos.count(inject_name_hashed)) {
+                        auto inject_pid = hash_resolver.ToHashedString(inject_name);
+
+                        inject_pid = name_resolver.CheckMigrationRule(rule_name, type_name, inject_pid).value_or(inject_pid);
+
+                        if (!files_protos.count(inject_pid)) {
                             throw ProtoManagerException("Proto not found for injection from another proto", inject_name, pid);
                         }
-                        InsertMapValues(kv, files_protos[inject_name_hashed], overwrite);
+
+                        InsertMapValues(kv, files_protos[inject_pid], overwrite);
                     }
                 }
             }
         }
     };
+
     injection("$Inject", false);
 
     // Protos
@@ -233,12 +248,17 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
 
         // Fill content from parents
         map<string, string> final_kv;
-        std::function<void(string_view, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv, &hash_resolver](string_view name, map<string, string>& cur_kv) {
+        std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
             const auto parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"] : string();
+
             for (auto& parent_name : _str(parent_name_line).split(' ')) {
-                const auto parent_pid = hash_resolver.ToHashedString(parent_name);
-                auto parent = files_protos.find(parent_pid);
-                if (parent == files_protos.end()) {
+                auto parent_pid = hash_resolver.ToHashedString(parent_name);
+
+                parent_pid = name_resolver.CheckMigrationRule(rule_name, type_name, parent_pid).value_or(parent_pid);
+
+                auto it_parent = files_protos.find(parent_pid);
+
+                if (it_parent == files_protos.end()) {
                     if (base_name == name) {
                         throw ProtoManagerException("Proto fail to load parent", base_name, parent_name);
                     }
@@ -246,10 +266,11 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
                     throw ProtoManagerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                 }
 
-                fill_parent(parent_name, parent->second);
-                InsertMapValues(parent->second, final_kv, true);
+                fill_parent(parent_name, it_parent->second);
+                InsertMapValues(it_parent->second, final_kv, true);
             }
         };
+
         fill_parent(base_name, kv);
 
         // Actual content
@@ -260,6 +281,7 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
 
         // Create proto
         auto props = Properties(property_registrator);
+
         if (!props.ApplyFromText(final_kv)) {
             throw ProtoManagerException("Proto item fail to load properties", base_name);
         }
@@ -270,9 +292,11 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
         if (final_kv.count("$Components")) {
             for (const auto& component_name : _str(final_kv["$Components"]).split(' ')) {
                 const auto component_name_hashed = hash_resolver.ToHashedString(component_name);
+
                 if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
                     throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 }
+
                 proto->EnableComponent(component_name_hashed);
             }
         }
@@ -318,7 +342,12 @@ static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, c
 }
 
 ProtoManager::ProtoManager(FOEngineBase* engine) :
-    _engine {engine}
+    _engine {engine},
+    _migrationRuleName {_engine->ToHashedString("Proto")},
+    _itemClassName {_engine->ToHashedString(ProtoItem::ENTITY_CLASS_NAME)},
+    _crClassName {_engine->ToHashedString(ProtoCritter::ENTITY_CLASS_NAME)},
+    _mapClassName {_engine->ToHashedString(ProtoMap::ENTITY_CLASS_NAME)},
+    _locClassName {_engine->ToHashedString(ProtoLocation::ENTITY_CLASS_NAME)}
 {
     STACK_TRACE_ENTRY();
 }
@@ -327,10 +356,10 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    ParseProtosExt<ProtoItem>(resources, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtosExt<ProtoCritter>(resources, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtosExt<ProtoMap>(resources, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtosExt<ProtoLocation>(resources, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+    ParseProtosExt<ProtoItem>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtosExt<ProtoCritter>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtosExt<ProtoMap>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtosExt<ProtoLocation>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto&& [pid, proto] : _itemProtos) {
@@ -396,7 +425,10 @@ auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
 {
     STACK_TRACE_ENTRY();
 
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemClassName, proto_id).value_or(proto_id);
+
     const auto it = _itemProtos.find(proto_id);
+
     return it != _itemProtos.end() ? it->second : nullptr;
 }
 
@@ -404,7 +436,10 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
 {
     STACK_TRACE_ENTRY();
 
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crClassName, proto_id).value_or(proto_id);
+
     const auto it = _crProtos.find(proto_id);
+
     return it != _crProtos.end() ? it->second : nullptr;
 }
 
@@ -412,7 +447,10 @@ auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
 {
     STACK_TRACE_ENTRY();
 
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapClassName, proto_id).value_or(proto_id);
+
     const auto it = _mapProtos.find(proto_id);
+
     return it != _mapProtos.end() ? it->second : nullptr;
 }
 
@@ -420,7 +458,10 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locClassName, proto_id).value_or(proto_id);
+
     const auto it = _locProtos.find(proto_id);
+
     return it != _locProtos.end() ? it->second : nullptr;
 }
 

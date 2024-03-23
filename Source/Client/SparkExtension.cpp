@@ -57,14 +57,17 @@ namespace SPK::FO
         vbuf.resize(vpos);
         ibuf.resize(ipos);
 
-        RUNTIME_ASSERT(ibuf.size() <= 0xFFFF);
+        if constexpr (sizeof(vindex_t) == 2) {
+            RUNTIME_ASSERT(ibuf.size() <= 0xFFFF);
+        }
+
         for (size_t i = 0; i < ibuf.size() / 6; i++) {
-            ibuf[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
-            ibuf[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
-            ibuf[i * 6 + 2] = static_cast<uint16>(i * 4 + 2);
-            ibuf[i * 6 + 3] = static_cast<uint16>(i * 4 + 2);
-            ibuf[i * 6 + 4] = static_cast<uint16>(i * 4 + 3);
-            ibuf[i * 6 + 5] = static_cast<uint16>(i * 4 + 0);
+            ibuf[i * 6 + 0] = static_cast<vindex_t>(i * 4 + 0);
+            ibuf[i * 6 + 1] = static_cast<vindex_t>(i * 4 + 1);
+            ibuf[i * 6 + 2] = static_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 3] = static_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 4] = static_cast<vindex_t>(i * 4 + 3);
+            ibuf[i * 6 + 5] = static_cast<vindex_t>(i * 4 + 0);
         }
     }
 

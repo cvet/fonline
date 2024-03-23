@@ -409,8 +409,8 @@ private:
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};
-    vector<PrimitivePoint> _lightPoints {};
-    vector<PrimitivePoint> _lightSoftPoints {};
+    vector<vector<PrimitivePoint>> _lightPoints {};
+    vector<vector<PrimitivePoint>> _lightSoftPoints {};
     size_t _globalLights {};
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};

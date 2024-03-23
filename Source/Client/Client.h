@@ -379,6 +379,7 @@ protected:
     void Net_OnCritterSetAnims();
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
+    void Net_OnCritterAttachments();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
@@ -405,11 +406,13 @@ protected:
 
     void OnSetCritterModelName(Entity* entity, const Property* prop);
     void OnSetCritterContourColor(Entity* entity, const Property* prop);
+    void OnSetCritterHideSprite(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);
     void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
     void OnSetItemOpened(Entity* entity, const Property* prop);
+    void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
     ServerConnection _conn;
 

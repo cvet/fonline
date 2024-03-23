@@ -84,6 +84,7 @@ void HexView::SetupSprite(MapSprite* mspr)
     STACK_TRACE_ENTRY();
 
     _mapSpr = mspr;
+    _mapSpr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
 void HexView::Finish()
@@ -201,4 +202,21 @@ void HexView::InvalidateSprite()
     _mapSpr = nullptr;
 
     RUNTIME_ASSERT(!_mapSprValid);
+}
+
+void HexView::SetSpriteVisiblity(bool enabled)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto hidden = !enabled;
+
+    if (_mapSprHidden == hidden) {
+        return;
+    }
+
+    _mapSprHidden = hidden;
+
+    if (_mapSpr != nullptr) {
+        SetupSprite(_mapSpr);
+    }
 }

@@ -152,6 +152,7 @@ codeGenTags = {
         'RemoteCall': [], # (target, subsystem, ns, name, [(type, name)], [flags], [comment])
         'Setting': [], #(target, type, name, init value, [flags], [comment])
         'EngineHook': [], #(name, [flags], [comment])
+        'MigrationRule': [], #([args], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
 
 def verbosePrint(*str):
@@ -1056,6 +1057,20 @@ def parseTags():
             
             except Exception as ex:
                 showError('Invalid tag EngineHook', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
+        
+        for tagMeta in tagsMetas['MigrationRule']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                ruleArgs = tokenize(tagInfo)
+                assert len(ruleArgs) and ruleArgs[0] in ['Property', 'Proto'], 'Invalid migration rule'
+                assert len(ruleArgs) == 4, 'Invalid migration rule args'
+                assert not len([t for t in codeGenTags['MigrationRule'] if t[0][0:3] == ruleArgs[0:3]]), 'Migration rule already added'
+                
+                codeGenTags['MigrationRule'].append((ruleArgs, comment))
+            
+            except Exception as ex:
+                showError('Invalid tag MigrationRule', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
                 
         for tagMeta in tagsMetas['CodeGen']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -1631,6 +1646,27 @@ def genDataRegistration(target, isASCompiler):
     #    restoreLines.append('};')
     #    restoreLines.append('')
     
+    # Migration rules
+    if target in ['Server', 'Baker'] and not isASCompiler:
+        registerLines.append('const auto to_hstring = [engine](string_view str) -> hstring { return engine->ToHashedString(str); };')
+        registerLines.append('')
+        registerLines.append('engine->SetMigrationRules({')
+        for arg0 in sorted(set(ruleTag[0][0] for ruleTag in codeGenTags['MigrationRule'])):
+            registerLines.append('    {')
+            registerLines.append('        to_hstring("' + arg0 + '"), {')
+            for arg1 in sorted(set(ruleTag[0][1] for ruleTag in codeGenTags['MigrationRule'] if ruleTag[0][0] == arg0)):
+                registerLines.append('            {')
+                registerLines.append('                to_hstring("' + arg1 + '"), {')
+                for ruleTag in codeGenTags['MigrationRule']:
+                    if ruleTag[0][0] == arg0 and ruleTag[0][1] == arg1:
+                        registerLines.append('                    {to_hstring("' + ruleTag[0][2] + '"), to_hstring("' + ruleTag[0][3] + '")},')
+                registerLines.append('                },')
+                registerLines.append('            },')
+            registerLines.append('        },')
+            registerLines.append('    },')
+        registerLines.append('});')
+        registerLines.append('')
+    
     createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
     writeCodeGenTemplate('DataRegistration')
     
@@ -2067,13 +2103,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 globalLines.append('    ' + mbr + ';')
                         globalLines.append('    return event_result;')
                         globalLines.append('}')
-                    globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
+                    globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func, Entity::EventPriority priority)')
                     globalLines.append('{')
                     if not isASCompiler:
                         globalLines.append('    STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
+                        globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         globalLines.append('    event_data.Callback = [self, func = RefCountHolder(func)](const initializer_list<void*>& args) {')
                         globalLines.append('        return ' + funcEntry + '_Callback(self, func.get(), args);')
@@ -2085,6 +2122,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
                         globalLines.append('    UNUSED_VARIABLE(func);')
+                        globalLines.append('    UNUSED_VARIABLE(priority);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
@@ -2244,6 +2282,24 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
+                    if target == 'Server' and targ == 'Client':
+                        globalLines.append('static void ASRemoteCall_CritterSend_' + rcName + '(Critter* self' + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
+                        globalLines.append('{')
+                        if not isASCompiler:
+                            globalLines.append('    STACK_TRACE_ENTRY();')
+                            globalLines.append('    ENTITY_VERIFY_NULL(self);')
+                            globalLines.append('    ENTITY_VERIFY(self);')
+                            globalLines.append('    Player* player = self->GetPlayer();')
+                            globalLines.append('    if (player != nullptr) {')
+                            globalLines.append('        ASRemoteCall_Send_' + rcName + '(player' + (', ' if rcArgs else '') + ', '.join(['std::forward<' + metaTypeToASEngineType(p[0]) + '>(' + p[1] + ')' for p in rcArgs]) + ');')
+                            globalLines.append('    }')
+                        else:
+                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            for p in rcArgs:
+                                globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                            globalLines.append('    throw ScriptCompilerException("Stub");')
+                        globalLines.append('}')
+                        globalLines.append('')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == target and subsystem == 'AngelScript':
@@ -2419,6 +2475,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
                             '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_Send_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
+                if target == 'Server' and targ == 'Client' and subsystem == 'AngelScript':
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("CritterRemoteCaller", "void ' + rcName +
+                            '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_CritterSend_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == target and subsystem == 'AngelScript':

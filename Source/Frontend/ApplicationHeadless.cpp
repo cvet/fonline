@@ -75,7 +75,7 @@ static void SignalHandler(int sig)
 {
     signal(sig, SignalHandler);
 
-    App->Settings.Quit = true;
+    App->RequestQuit();
 }
 #endif
 
@@ -241,6 +241,27 @@ void Application::EndFrame()
 #if FO_TRACY
     FrameMark;
 #endif
+}
+
+void Application::RequestQuit()
+{
+    STACK_TRACE_ENTRY();
+
+    WriteLog("Quit requested");
+
+    _quit = true;
+    _quitEvent.notify_all();
+}
+
+void Application::WaitForRequestedQuit()
+{
+    STACK_TRACE_ENTRY();
+
+    auto locker = std::unique_lock {_quitLocker};
+
+    while (!_quit) {
+        _quitEvent.wait(locker);
+    }
 }
 
 auto AppWindow::GetSize() const -> isize

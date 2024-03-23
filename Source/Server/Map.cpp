@@ -182,10 +182,10 @@ void Map::AddCritter(Critter* cr)
     _crittersMap.emplace(cr->GetId(), cr);
     _critters.emplace_back(cr);
 
-    if (cr->IsOwnedByPlayer()) {
+    if (cr->GetIsControlledByPlayer()) {
         _playerCritters.emplace_back(cr);
     }
-    if (cr->IsNpc()) {
+    else {
         _nonPlayerCritters.emplace_back(cr);
     }
 
@@ -208,7 +208,7 @@ void Map::EraseCritter(Critter* cr)
         _critters.erase(it);
     }
 
-    if (cr->IsOwnedByPlayer()) {
+    if (cr->GetIsControlledByPlayer()) {
         const auto it = std::find(_playerCritters.begin(), _playerCritters.end(), cr);
         RUNTIME_ASSERT(it != _playerCritters.end());
         _playerCritters.erase(it);

@@ -534,6 +534,7 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
+extern auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*;
 
 struct StackTraceScopeEntry
 {
@@ -2025,6 +2026,14 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+// Other helpers
+template<typename T>
+constexpr auto get_if_non_zero(const T& value, const T& extra_value) -> const T&
+{
+    return !!value ? value : extra_value;
+}
+
+// Hashing
 DECLARE_EXCEPTION(HashResolveException);
 DECLARE_EXCEPTION(HashInsertException);
 DECLARE_EXCEPTION(HashCollisionException);
@@ -2044,12 +2053,14 @@ class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
+    // Todo: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
     //[[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, size_t& size) const -> bool = 0;
     //[[nodiscard]] virtual auto GetTypeInfo(string_view type_name, TypeDesc& desc) const -> bool = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int = 0;
+    [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> = 0;
 };
 
 class FrameBalancer

@@ -159,9 +159,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
                     }
 
-                    if (!App->Settings.Quit) {
+                    if (!App->IsQuitRequested()) {
                         if (ImGui::Button("Quit", control_btn_size)) {
-                            App->Settings.Quit = true;
+                            App->RequestQuit();
                         }
                     }
                     else {
@@ -242,7 +242,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             App->EndFrame();
 
             // Process quit
-            if (App->Settings.Quit) {
+            if (App->IsQuitRequested()) {
                 for (auto&& client : Data->Clients) {
                     client->Shutdown();
                 }

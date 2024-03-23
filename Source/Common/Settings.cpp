@@ -67,20 +67,20 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-        entry = static_cast<T>(static_cast<int>(entry) | std::get<AnyData::INT_VALUE>(any_value));
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT64_VALUE);
+        entry = static_cast<T>(static_cast<int>(entry) | std::get<AnyData::INT64_VALUE>(any_value));
     }
     else if constexpr (is_strong_type_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-        entry = T {static_cast<T>(std::get<AnyData::INT_VALUE>(any_value))};
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT64_VALUE);
+        entry = T {static_cast<typename T::underlying_type>(std::get<AnyData::INT64_VALUE>(any_value))};
     }
     else if constexpr (is_valid_pod_type_v<T>) {
         auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
         entry = parse_from_string<T>(std::get<AnyData::STRING_VALUE>(any_value));
     }
     else {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-        entry += static_cast<T>(std::get<AnyData::INT_VALUE>(any_value));
+        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT64_VALUE);
+        entry += static_cast<T>(std::get<AnyData::INT64_VALUE>(any_value));
     }
 }
 
@@ -115,17 +115,17 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT64_VALUE);
         auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
         for (const auto& str : arr) {
-            entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+            entry.emplace_back(static_cast<std::underlying_type_t<T>>(std::get<AnyData::INT64_VALUE>(str)));
         }
     }
     else {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT64_VALUE);
         auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
         for (const auto& str : arr) {
-            entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+            entry.emplace_back(static_cast<T>(std::get<AnyData::INT64_VALUE>(str)));
         }
     }
 }

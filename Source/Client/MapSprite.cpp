@@ -153,21 +153,21 @@ auto MapSprite::CheckHit(ipos pos, bool check_transparent) const -> bool
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     EggAppearence = egg_appearence;
 }
 
 void MapSprite::SetContour(ContourType contour)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
 }
 
 void MapSprite::SetContour(ContourType contour, ucolor color)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
     ContourColor = color;
@@ -175,21 +175,21 @@ void MapSprite::SetContour(ContourType contour, ucolor color)
 
 void MapSprite::SetColor(ucolor color)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Color = color;
 }
 
 void MapSprite::SetAlpha(const uint8* alpha)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     Alpha = alpha;
 }
 
 void MapSprite::SetFixedAlpha(uint8 alpha)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
     *color_alpha = alpha;
@@ -198,7 +198,7 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
 
 void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (Hex.x >= 1 && Hex.x < size.width - 1 && Hex.y >= 1 && Hex.y < size.height - 1) {
         Light = &light[Hex.y * size.width + Hex.x];
@@ -231,6 +231,13 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
     }
 }
 
+void MapSprite::SetHidden(bool hidden)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    _hidden = hidden;
+}
+
 MapSpriteList::MapSpriteList(SpriteManager& spr_mngr) :
     _sprMngr {spr_mngr}
 {
@@ -243,16 +250,16 @@ MapSpriteList::~MapSpriteList()
 
     try {
         Invalidate();
-
-        for (const auto* spr : _invalidatedSprites) {
-            delete spr;
-        }
-        for (const auto* spr : _spritesPool) {
-            delete spr;
-        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+
+    for (const auto* spr : _invalidatedSprites) {
+        delete spr;
+    }
+    for (const auto* spr : _spritesPool) {
+        delete spr;
     }
 }
 

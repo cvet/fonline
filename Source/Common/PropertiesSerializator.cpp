@@ -155,13 +155,13 @@ auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, c
         } \
     } while (false)
 
-            PARSE_VALUE(IsBaseTypeInt8(), int8, int);
-            PARSE_VALUE(IsBaseTypeInt16(), int16, int);
-            PARSE_VALUE(IsBaseTypeInt32(), int, int);
+            PARSE_VALUE(IsBaseTypeInt8(), int8, int64);
+            PARSE_VALUE(IsBaseTypeInt16(), int16, int64);
+            PARSE_VALUE(IsBaseTypeInt32(), int, int64);
             PARSE_VALUE(IsBaseTypeInt64(), int64, int64);
-            PARSE_VALUE(IsBaseTypeUInt8(), uint8, int);
-            PARSE_VALUE(IsBaseTypeUInt16(), uint16, int);
-            PARSE_VALUE(IsBaseTypeUInt32(), uint, int);
+            PARSE_VALUE(IsBaseTypeUInt8(), uint8, int64);
+            PARSE_VALUE(IsBaseTypeUInt16(), uint16, int64);
+            PARSE_VALUE(IsBaseTypeUInt32(), uint, int64);
             PARSE_VALUE(IsBaseTypeUInt64(), uint64, int64);
             PARSE_VALUE(IsBaseTypeSingleFloat(), float, double);
             PARSE_VALUE(IsBaseTypeDoubleFloat(), double, double);
@@ -222,25 +222,25 @@ auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, c
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->GetBaseSize()))))
 
                     if (prop->IsBaseTypeInt8()) {
-                        PARSE_VALUE(int8, int);
+                        PARSE_VALUE(int8, int64);
                     }
                     else if (prop->IsBaseTypeInt16()) {
-                        PARSE_VALUE(int16, int);
+                        PARSE_VALUE(int16, int64);
                     }
                     else if (prop->IsBaseTypeInt32()) {
-                        PARSE_VALUE(int, int);
+                        PARSE_VALUE(int, int64);
                     }
                     else if (prop->IsBaseTypeInt64()) {
                         PARSE_VALUE(int64, int64);
                     }
                     else if (prop->IsBaseTypeUInt8()) {
-                        PARSE_VALUE(uint8, int);
+                        PARSE_VALUE(uint8, int64);
                     }
                     else if (prop->IsBaseTypeUInt16()) {
-                        PARSE_VALUE(uint16, int);
+                        PARSE_VALUE(uint16, int64);
                     }
                     else if (prop->IsBaseTypeUInt32()) {
-                        PARSE_VALUE(uint, int);
+                        PARSE_VALUE(uint, int64);
                     }
                     else if (prop->IsBaseTypeUInt64()) {
                         PARSE_VALUE(uint64, int64);
@@ -349,25 +349,25 @@ auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, c
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + static_cast<size_t>(i) * prop->GetBaseSize()))))
 
                                     if (prop->IsBaseTypeInt8()) {
-                                        PARSE_VALUE(int8, int);
+                                        PARSE_VALUE(int8, int64);
                                     }
                                     else if (prop->IsBaseTypeInt16()) {
-                                        PARSE_VALUE(int16, int);
+                                        PARSE_VALUE(int16, int64);
                                     }
                                     else if (prop->IsBaseTypeInt32()) {
-                                        PARSE_VALUE(int, int);
+                                        PARSE_VALUE(int, int64);
                                     }
                                     else if (prop->IsBaseTypeInt64()) {
                                         PARSE_VALUE(int64, int64);
                                     }
                                     else if (prop->IsBaseTypeUInt8()) {
-                                        PARSE_VALUE(uint8, int);
+                                        PARSE_VALUE(uint8, int64);
                                     }
                                     else if (prop->IsBaseTypeUInt16()) {
-                                        PARSE_VALUE(uint16, int);
+                                        PARSE_VALUE(uint16, int64);
                                     }
                                     else if (prop->IsBaseTypeUInt32()) {
-                                        PARSE_VALUE(uint, int);
+                                        PARSE_VALUE(uint, int64);
                                     }
                                     else if (prop->IsBaseTypeUInt64()) {
                                         PARSE_VALUE(uint64, int64);
@@ -442,25 +442,25 @@ auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, c
     data += prop->GetBaseSize()
 
                         if (prop->IsBaseTypeInt8()) {
-                            PARSE_VALUE(int8, int);
+                            PARSE_VALUE(int8, int64);
                         }
                         else if (prop->IsBaseTypeInt16()) {
-                            PARSE_VALUE(int16, int);
+                            PARSE_VALUE(int16, int64);
                         }
                         else if (prop->IsBaseTypeInt32()) {
-                            PARSE_VALUE(int, int);
+                            PARSE_VALUE(int, int64);
                         }
                         else if (prop->IsBaseTypeInt64()) {
                             PARSE_VALUE(int64, int64);
                         }
                         else if (prop->IsBaseTypeUInt8()) {
-                            PARSE_VALUE(uint8, int);
+                            PARSE_VALUE(uint8, int64);
                         }
                         else if (prop->IsBaseTypeUInt16()) {
-                            PARSE_VALUE(uint16, int);
+                            PARSE_VALUE(uint16, int64);
                         }
                         else if (prop->IsBaseTypeUInt32()) {
-                            PARSE_VALUE(uint, int);
+                            PARSE_VALUE(uint, int64);
                         }
                         else if (prop->IsBaseTypeUInt64()) {
                             PARSE_VALUE(uint64, int64);
@@ -509,16 +509,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
     string tmp_str;
 
     const auto can_read_to_string = [](const auto& some_value) -> bool {
-        return some_value.index() == AnyData::STRING_VALUE || some_value.index() == AnyData::INT_VALUE || //
-            some_value.index() == AnyData::INT64_VALUE || some_value.index() == AnyData::DOUBLE_VALUE || some_value.index() == AnyData::BOOL_VALUE;
+        return some_value.index() == AnyData::STRING_VALUE || some_value.index() == AnyData::INT64_VALUE || //
+            some_value.index() == AnyData::DOUBLE_VALUE || some_value.index() == AnyData::BOOL_VALUE;
     };
 
     const auto read_to_string = [&tmp_str](const auto& some_value) -> const string& {
         switch (some_value.index()) {
         case AnyData::STRING_VALUE:
             return std::get<string>(some_value);
-        case AnyData::INT_VALUE:
-            return tmp_str = _str("{}", std::get<int>(some_value));
         case AnyData::INT64_VALUE:
             return tmp_str = _str("{}", std::get<int64>(some_value));
         case AnyData::DOUBLE_VALUE:
@@ -596,9 +594,9 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
                     return false;
                 }
             }
-            else if (value.index() == AnyData::INT_VALUE || value.index() == AnyData::INT64_VALUE) {
+            else if (value.index() == AnyData::INT64_VALUE) {
                 // Todo: validate integer value to fit in enum range
-                enum_value = static_cast<int>(value.index() == AnyData::INT_VALUE ? std::get<int>(value) : std::get<int64>(value));
+                enum_value = static_cast<int>(std::get<int64>(value));
             }
             else {
                 WriteLog("Wrong enum value type, property {}", prop_name);
@@ -659,10 +657,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
     } while (false)
 
             uint8 pod_data[8];
-            if (value.index() == AnyData::INT_VALUE) {
-                PARSE_VALUE(int);
-            }
-            else if (value.index() == AnyData::INT64_VALUE) {
+            if (value.index() == AnyData::INT64_VALUE) {
                 PARSE_VALUE(int64);
             }
             else if (value.index() == AnyData::DOUBLE_VALUE) {
@@ -728,7 +723,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
             set_data(data.get(), data_size);
         }
         else if (prop->IsBaseTypeEnum()) {
-            if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
+            if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
                 WriteLog("Wrong array enum element value type, property {}", prop_name);
                 return false;
             }
@@ -749,7 +744,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
                     }
                 }
                 else {
-                    enum_value = static_cast<int>(arr[i].index() == AnyData::INT_VALUE ? std::get<int>(arr[i]) : std::get<int64>(arr[i]));
+                    enum_value = static_cast<int>(std::get<int64>(arr[i]));
                 }
 
                 std::memcpy(data.get() + i * prop->GetBaseSize(), &enum_value, prop->GetBaseSize());
@@ -781,10 +776,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
     do { \
         for (size_t i = 0; i < arr.size(); i++) { \
             RUNTIME_ASSERT(arr[i].index() == arr_element_index); \
-            if (arr_element_index == AnyData::INT_VALUE) { \
-                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->GetBaseSize())) = static_cast<t>(std::get<int>(arr[i])); \
-            } \
-            else if (arr_element_index == AnyData::INT64_VALUE) { \
+            if (arr_element_index == AnyData::INT64_VALUE) { \
                 *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->GetBaseSize())) = static_cast<t>(std::get<int64>(arr[i])); \
             } \
             else if (arr_element_index == AnyData::DOUBLE_VALUE) { \
@@ -981,7 +973,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
                 data_size += sizeof(hstring::hash_t);
             }
             else if (prop->IsBaseTypeEnum()) {
-                if (dict_value.index() != AnyData::STRING_VALUE && dict_value.index() != AnyData::INT_VALUE && dict_value.index() != AnyData::INT64_VALUE) {
+                if (dict_value.index() != AnyData::STRING_VALUE && dict_value.index() != AnyData::INT64_VALUE) {
                     WriteLog("Wrong dict enum element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
@@ -1079,7 +1071,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
                             }
                         }
                         else {
-                            enum_value = static_cast<int>(e.index() == AnyData::INT_VALUE ? std::get<int>(e) : std::get<int64>(e));
+                            enum_value = static_cast<int>(std::get<int64>(e));
                         }
 
                         std::memcpy(data.get() + data_pos, &enum_value, prop->GetBaseSize());
@@ -1108,10 +1100,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
 #define PARSE_VALUE(t) \
     do { \
         RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-        if (e.index() == AnyData::INT_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int>(e)); \
-        } \
-        else if (e.index() == AnyData::INT64_VALUE) { \
+        if (e.index() == AnyData::INT64_VALUE) { \
             *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(e)); \
         } \
         else if (e.index() == AnyData::DOUBLE_VALUE) { \
@@ -1196,7 +1185,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
                         }
                     }
                     else {
-                        enum_value = static_cast<int>(dict_value.index() == AnyData::INT_VALUE ? std::get<int>(dict_value) : std::get<int64>(dict_value));
+                        enum_value = static_cast<int>(std::get<int64>(dict_value));
                     }
 
                     std::memcpy(data.get() + data_pos, &enum_value, prop->GetBaseSize());
@@ -1205,10 +1194,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop,
 #define PARSE_VALUE(t) \
     do { \
         RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-        if (dict_value.index() == AnyData::INT_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int>(dict_value)); \
-        } \
-        else if (dict_value.index() == AnyData::INT64_VALUE) { \
+        if (dict_value.index() == AnyData::INT64_VALUE) { \
             *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(dict_value)); \
         } \
         else if (dict_value.index() == AnyData::DOUBLE_VALUE) { \

@@ -969,7 +969,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     string result = _str("Players in game: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
     for (auto&& [id, player] : players) {
-        const auto* cr = player->GetOwnedCritter();
+        const auto* cr = player->GetControlledCritter();
         const auto* map = MapMngr.GetMap(cr->GetMapId());
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
@@ -1092,11 +1092,12 @@ void FOServer::ProcessPlayer(Player* player)
     if (player->Connection->IsHardDisconnected()) {
         WriteLog("Disconnected player {}", player->GetName());
 
-        if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
+        OnPlayerLogout.Fire(player);
+
+        if (auto* cr = player->GetControlledCritter(); cr != nullptr) {
             cr->DetachPlayer();
         }
 
-        OnPlayerLogout.Fire(player);
         EntityMngr.UnregisterEntity(player);
 
         player->Release();
@@ -1231,7 +1232,7 @@ void FOServer::Process_Text(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    Critter* cr = player->GetOwnedCritter();
+    Critter* cr = player->GetControlledCritter();
 
     [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
     auto how_say = player->Connection->InBuf.Read<uint8>();
@@ -1363,7 +1364,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 {
     STACK_TRACE_ENTRY();
 
-    auto* player_cr = player->GetOwnedCritter();
+    auto* player_cr = player->GetControlledCritter();
 
     [[maybe_unused]] const auto msg_len = buf.Read<uint>();
     const auto cmd = buf.Read<uint8>();
@@ -1494,12 +1495,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.Transit(cr, map, cr_hex, cr->GetDir(), 3, ident_t {})) {
-            logcb("Critter move success");
-        }
-        else {
-            logcb("Critter move fail");
-        }
+        MapMngr.TransitToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1517,14 +1513,14 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (!cr->IsOwnedByPlayer()) {
-            logcb("Founded critter is not owned by player");
+        if (!cr->GetIsControlledByPlayer()) {
+            logcb("Founded critter is not controlled by player");
             return;
         }
 
-        if (auto* owner = cr->GetOwner()) {
-            owner->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
-            owner->Connection->GracefulDisconnect();
+        if (auto* player_ = cr->GetPlayer()) {
+            player_->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
+            player_->Connection->GracefulDisconnect();
             logcb("Player disconnected");
         }
         else {
@@ -1535,17 +1531,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (!player_cr->IsAlive()) {
-            logcb("To global fail, only life none");
-            break;
-        }
-
-        if (MapMngr.TransitToGlobal(player_cr, ident_t {})) {
-            logcb("To global success");
-        }
-        else {
-            logcb("To global fail");
-        }
+        MapMngr.TransitToGlobal(player_cr, {});
     } break;
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1687,9 +1673,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        const auto param0 = ResolveGenericValue(param0_str);
-        const auto param1 = ResolveGenericValue(param1_str);
-        const auto param2 = ResolveGenericValue(param2_str);
+        bool failed = false;
+        const auto param0 = ResolveGenericValue(param0_str, &failed);
+        const auto param1 = ResolveGenericValue(param1_str, &failed);
+        const auto param2 = ResolveGenericValue(param2_str, &failed);
 
         if (ScriptSys->CallFunc<void, Player*>(ToHashedString(func_name), player) || //
             ScriptSys->CallFunc<void, Player*, int>(ToHashedString(func_name), player, param0) || //
@@ -1739,7 +1726,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto hex = player_cr->GetMapHex();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(player_cr, map, hex, dir, 5, ident_t {});
+        MapMngr.TransitToMap(player_cr, map, hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_SETTIME: {
@@ -1929,22 +1916,133 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    // Remove player critter from game
-    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= std::chrono::milliseconds {Settings.MinimumOfflineTime}) {
-        LogoutCritter(cr);
+    // Auto unload player critter
+    if (cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr) {
+        const tick_t auto_unload_time = get_if_non_zero(cr->GetAutoUnloadOfflineTime(), tick_t {Settings.MinimumOfflineTime});
+
+        if (cr->GetOfflineTime() >= std::chrono::milliseconds {auto_unload_time.underlying_value()}) {
+            UnloadCritter(cr);
+        }
     }
 }
 
-void FOServer::LogoutCritter(Critter* cr)
+auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Logout critter {}", cr->GetName());
+    WriteLog(LogType::Info, "Create critter {}", pid);
+
+    const auto* proto = ProtoMngr.GetProtoCritter(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Invalid critter proto", pid);
+    }
+
+    auto* cr = new Critter(this, ident_t {}, proto);
+
+    EntityMngr.RegisterEntity(cr);
+
+    if (for_player) {
+        cr->MarkIsForPlayer();
+    }
+
+    MapMngr.AddCrToMap(cr, nullptr, {}, 0, {});
+
+    if (!cr->IsDestroyed()) {
+        EntityMngr.CallInit(cr, true);
+    }
+
+    if (cr->IsDestroyed()) {
+        throw GenericException("Critter destroyed during init");
+    }
+
+    return cr;
+}
+
+auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr_id);
+
+    WriteLog(LogType::Info, "Load critter {}", cr_id);
+
+    if (CrMngr.GetCritter(cr_id) != nullptr) {
+        throw GenericException("Critter already in game");
+    }
+
+    bool is_error = false;
+    Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
+
+    cr->SetMapId({});
+
+    if (is_error) {
+        if (cr != nullptr) {
+            cr->MarkAsDestroyed();
+            cr->Release();
+        }
+
+        throw GenericException("Critter data base loading error");
+    }
+
+    if (for_player) {
+        cr->MarkIsForPlayer();
+    }
+
+    MapMngr.AddCrToMap(cr, nullptr, {}, 0, {});
+
+    if (!cr->IsDestroyed()) {
+        OnCritterLoad.Fire(cr);
+    }
+
+    if (!cr->IsDestroyed()) {
+        EntityMngr.CallInit(cr, false);
+    }
+
+    if (cr->IsDestroyed()) {
+        throw GenericException("Player critter destroyed during loading");
+    }
+
+    return cr;
+}
+
+void FOServer::UnloadCritter(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
+
+    if (cr->IsDestroying()) {
+        throw GenericException("Critter in destroying state");
+    }
+    if (cr->GetPlayer() != nullptr) {
+        throw GenericException("Player critter not detached from player before unloading");
+    }
+
+    cr->MarkAsDestroying();
+
+    OnCritterUnload.Fire(cr);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto* map = MapMngr.GetMap(cr->GetMapId());
+    RUNTIME_ASSERT(!cr->GetMapId() || map);
     MapMngr.EraseCrFromMap(cr, map);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    if (cr->GetIsAttached()) {
+        cr->DetachFromCritter();
+    }
+
+    if (!cr->AttachedCritters.empty()) {
+        for (auto* attached_cr : copy(cr->AttachedCritters)) {
+            attached_cr->DetachFromCritter();
+        }
+    }
 
     auto& inv_items = cr->GetRawInvItems();
 
@@ -1989,6 +2087,138 @@ void FOServer::LogoutCritter(Critter* cr)
     EntityMngr.UnregisterEntity(cr);
     cr->MarkAsDestroyed();
     cr->Release();
+}
+
+void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(!player->IsDestroyed());
+    RUNTIME_ASSERT(cr);
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
+
+    Critter* prev_cr = player->GetControlledCritter();
+
+    if (prev_cr == cr) {
+        throw GenericException("Player critter already selected");
+    }
+    if (!cr->GetIsControlledByPlayer()) {
+        throw GenericException("Critter can't be controlled by player");
+    }
+
+    if (prev_cr != nullptr) {
+        prev_cr->DetachPlayer();
+    }
+
+    cr->AttachPlayer(player);
+
+    SendCritterInitialInfo(cr, prev_cr);
+
+    OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+}
+
+void FOServer::DestroyUnloadedCritter(ident_t cr_id)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr_id);
+
+    WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
+
+    if (CrMngr.GetCritter(cr_id) != nullptr) {
+        throw GenericException("Critter must be unloaded before destroying");
+    }
+
+    DbStorage.Delete(ToHashedString("Critters"), cr_id);
+}
+
+void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
+{
+    cr->Send_TimeSync();
+
+    if (cr->ViewMapId) {
+        auto* map = MapMngr.GetMap(cr->ViewMapId);
+        cr->ViewMapId = ident_t {};
+        if (map != nullptr) {
+            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
+            cr->Send_ViewMap();
+            return;
+        }
+    }
+
+    const auto* map = MapMngr.GetMap(cr->GetMapId());
+    const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
+
+    if (same_map) {
+        // Remove entities diff
+        cr->Send_RemoveCritter(prev_cr);
+
+        for (const auto* visible_cr : prev_cr->VisCrSelf) {
+            if (cr->VisCrSelfMap.count(visible_cr->GetId()) == 0) {
+                cr->Send_RemoveCritter(visible_cr);
+            }
+        }
+
+        for (const auto item_id : prev_cr->VisItem) {
+            if (cr->VisItem.count(item_id) == 0) {
+                if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                    cr->Send_EraseItemFromMap(item);
+                }
+            }
+        }
+    }
+    else {
+        cr->Send_LoadMap(map);
+    }
+
+    cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
+
+    if (!cr->GetMapId()) {
+        RUNTIME_ASSERT(cr->GlobalMapGroup);
+
+        cr->Send_GlobalInfo(GM_INFO_ALL);
+        cr->Send_AllAutomapsInfo();
+    }
+    else {
+        RUNTIME_ASSERT(map);
+
+        // Send chosen
+        cr->Send_AddCritter(cr);
+        cr->Send_AddAllItems();
+        cr->Send_AllAutomapsInfo();
+
+        // Send current critters
+        for (const auto* visible_cr : cr->VisCrSelf) {
+            if (same_map && prev_cr->VisCrSelfMap.count(visible_cr->GetId()) != 0) {
+                continue;
+            }
+
+            cr->Send_AddCritter(visible_cr);
+        }
+
+        // Send current items on map
+        for (const auto item_id : cr->VisItem) {
+            if (same_map && prev_cr->VisItem.count(item_id) != 0) {
+                continue;
+            }
+
+            if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                cr->Send_AddItemOnMap(item);
+            }
+        }
+    }
+
+    // Check active talk
+    if (cr->Talk.Type != TalkType::None) {
+        CrMngr.ProcessTalk(cr, true);
+        cr->Send_Talk();
+    }
+
+    // Notify about end of placing
+    cr->Send_PlaceToGameComplete();
 }
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
@@ -2260,9 +2490,9 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.emplace_back(static_cast<int>(unlogined_player->Connection->GetIp()));
+    reg_ip.emplace_back(static_cast<int64>(unlogined_player->Connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.emplace_back(static_cast<int>(unlogined_player->Connection->GetPort()));
+    reg_port.emplace_back(static_cast<int64>(unlogined_player->Connection->GetPort()));
 
     DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
@@ -2447,145 +2677,40 @@ void FOServer::Process_Login(Player* unlogined_player)
     player->Connection->OutBuf.SetEncryptKey(encrypt_key);
 
     // Attach critter
-    bool critter_reconnected = false;
-
     if (!player_reconnected) {
-        Critter* cr = nullptr;
-
-        const auto owned_critter_ids = player->GetOwnedCritterIds();
-        const auto cr_id = !owned_critter_ids.empty() ? owned_critter_ids.front() : ident_t {};
+        const auto cr_id = player->GetLastControlledCritterId();
 
         // Try find in game
         if (cr_id) {
-            cr = CrMngr.GetCritter(cr_id);
-            if (cr != nullptr) {
-                RUNTIME_ASSERT(cr->IsOwnedByPlayer());
+            auto* cr = CrMngr.GetCritter(cr_id);
 
-                if (cr->GetOwner() != nullptr) {
+            if (cr != nullptr) {
+                RUNTIME_ASSERT(cr->GetIsControlledByPlayer());
+
+                // Already attached to another player
+                if (cr->GetPlayer() != nullptr) {
                     player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_IN_GAME);
                     player->Connection->GracefulDisconnect();
                     return;
                 }
 
                 cr->AttachPlayer(player);
-                player->SetOwnedCritter(cr);
-                critter_reconnected = true;
 
-                WriteLog("Critter for player found in game");
+                SendCritterInitialInfo(cr, nullptr);
+
+                WriteLog(LogType::Info, "Critter for player found in game");
             }
-        }
-
-        // Try load critter from data base
-        if (cr == nullptr && cr_id) {
-            bool is_error = false;
-            cr = EntityMngr.LoadCritter(cr_id, player, is_error);
-            if (is_error) {
-                if (cr != nullptr) {
-                    cr->Release();
-                }
-                player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
-                player->Connection->GracefulDisconnect();
-                return;
-            }
-
-            cr->SetMapId(ident_t {});
-            cr->SetGlobalMapLeaderId(ident_t {});
-
-            player->SetOwnedCritter(cr);
-
-            WriteLog("Critter for player loaded from data base");
-
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, {}, ident_t {});
-            RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, {}, 0, ident_t {});
-
-            cr->Send_TimeSync();
-            cr->Send_LoadMap(nullptr);
-
-            EntityMngr.CallInit(cr, false);
-        }
-
-        // Create new critter
-        if (cr == nullptr) {
-            const auto* proto = ProtoMngr.GetProtoCritter(ToHashedString("Player"));
-            RUNTIME_ASSERT(proto);
-
-            cr = new Critter(this, ident_t {}, player, proto);
-
-            EntityMngr.RegisterEntity(cr);
-            player->SetOwnedCritterIds({cr->GetId()});
-            player->SetOwnedCritter(cr);
-
-            WriteLog("Critter for player created from scratch");
-
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, {}, ident_t {});
-            RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, {}, 0, ident_t {});
-
-            cr->Send_TimeSync();
-            cr->Send_LoadMap(nullptr);
-
-            EntityMngr.CallInit(cr, true);
         }
     }
     else {
-        critter_reconnected = true;
+        if (auto* cr = player->GetControlledCritter(); cr != nullptr) {
+            SendCritterInitialInfo(cr, nullptr);
+        }
     }
 
-    if (critter_reconnected) {
-        Critter* cr = player->GetOwnedCritter();
-
-        cr->Send_TimeSync();
-
-        if (cr->ViewMapId) {
-            auto* map = MapMngr.GetMap(cr->ViewMapId);
-            cr->ViewMapId = ident_t {};
-            if (map != nullptr) {
-                MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
-                cr->Send_ViewMap();
-                return;
-            }
-        }
-
-        auto* map = MapMngr.GetMap(cr->GetMapId());
-        cr->Send_LoadMap(map);
-        cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
-
-        if (!cr->GetMapId()) {
-            RUNTIME_ASSERT(cr->GlobalMapGroup);
-
-            cr->Send_GlobalInfo(GM_INFO_ALL);
-            cr->Send_AllAutomapsInfo();
-        }
-        else {
-            RUNTIME_ASSERT(map);
-
-            // Send chosen
-            cr->Send_AddCritter(cr);
-            cr->Send_AddAllItems();
-            cr->Send_AllAutomapsInfo();
-
-            // Send current critters
-            for (auto* visible_cr : cr->VisCrSelf) {
-                cr->Send_AddCritter(visible_cr);
-            }
-
-            // Send current items on map
-            for (const auto item_id : cr->VisItem) {
-                if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
-                    cr->Send_AddItemOnMap(item);
-                }
-            }
-        }
-
-        // Check active talk
-        if (cr->Talk.Type != TalkType::None) {
-            CrMngr.ProcessTalk(cr, true);
-            cr->Send_Talk();
-        }
-
-        // Notify about end of placing
-        cr->Send_PlaceToGameComplete();
+    if (!OnPlayerEnter.Fire(player)) {
+        player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
+        player->Connection->GracefulDisconnect();
     }
 }
 
@@ -2631,6 +2756,13 @@ void FOServer::Process_Move(Player* player)
 
     if (speed == 0) {
         BreakIntoDebugger();
+        player->Send_Moving(cr);
+        return;
+    }
+
+    if (cr->GetIsAttached()) {
+        BreakIntoDebugger();
+        player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
     }
@@ -2736,6 +2868,13 @@ void FOServer::Process_StopMove(Player* player)
         return;
     }
 
+    if (cr->GetIsAttached()) {
+        BreakIntoDebugger();
+        player->Send_Attachments(cr);
+        player->Send_Moving(cr);
+        return;
+    }
+
     uint zero_speed = 0;
     if (!OnPlayerCheckMove.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
@@ -2784,7 +2923,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
 {
     STACK_TRACE_ENTRY();
 
-    Critter* cr = player->GetOwnedCritter();
+    Critter* cr = player->GetControlledCritter();
 
     [[maybe_unused]] uint msg_len = 0;
 
@@ -3253,7 +3392,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     // Moving
     if (cr->IsMoving()) {
         auto* map = MapMngr.GetMap(cr->GetMapId());
-        if (map != nullptr && cr->IsAlive()) {
+        if (map != nullptr && cr->IsAlive() && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
 
             if (cr->IsDestroyed()) {
@@ -3266,13 +3405,23 @@ void FOServer::ProcessCritterMoving(Critter* cr)
         }
     }
 
-    // Path find
     if (cr->TargetMoving.State == MovingState::InProgress) {
-        if (!cr->IsAlive()) {
+        if (cr->GetIsAttached()) {
+            cr->TargetMoving.State = MovingState::Attached;
+        }
+        else if (!cr->IsAlive()) {
             cr->TargetMoving.State = MovingState::NotAlive;
         }
 
-        bool need_find_path = !cr->IsMoving() && cr->IsAlive();
+        if (cr->TargetMoving.State != MovingState::InProgress && cr->IsMoving()) {
+            cr->ClearMove();
+            cr->SendAndBroadcast_Moving();
+        }
+    }
+
+    // Path find
+    if (cr->TargetMoving.State == MovingState::InProgress) {
+        bool need_find_path = !cr->IsMoving();
 
         if (!need_find_path && cr->TargetMoving.TargId) {
             const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
@@ -3406,20 +3555,34 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId()](mpos expected_hex) -> bool {
-        if (cr->IsDestroyed()) {
+    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
+        const auto validate_moving_inner = [&]() -> bool {
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return false;
+            }
+            if (cr->Moving.Uid != expected_uid) {
+                return false;
+            }
+            if (cr->GetMapId() != expected_map_id) {
+                return false;
+            }
+            if (cr->GetMapHex() != expected_hex) {
+                return false;
+            }
+            return true;
+        };
+
+        if (!validate_moving_inner()) {
+            if (!cr->IsDestroyed() && cr->Moving.Uid == expected_uid) {
+                cr->ClearMove();
+                cr->SendAndBroadcast_Moving();
+            }
+
             return false;
         }
-        if (cr->Moving.Uid != expected_uid) {
-            return false;
+        else {
+            return true;
         }
-        if (cr->GetMapId() != expected_map_id) {
-            return false;
-        }
-        if (cr->GetMapHex() != expected_hex) {
-            return false;
-        }
-        return true;
     };
 
     auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
@@ -3479,9 +3642,9 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
 
             const auto old_hex = cr->GetMapHex();
+            const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
             if (old_hex != hex2) {
-                const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
                 const uint multihex = cr->GetMultihex();
 
                 if (map->IsHexesMovable(hex2, multihex, cr)) {
@@ -3491,17 +3654,17 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
                     RUNTIME_ASSERT(!cr->IsDestroyed());
 
+                    VerifyTrigger(map, cr, old_hex, hex2, dir);
+                    if (!validate_moving(hex2)) {
+                        return;
+                    }
+
                     MapMngr.ProcessVisibleCritters(cr);
                     if (!validate_moving(hex2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
-                    if (!validate_moving(hex2)) {
-                        return;
-                    }
-
-                    VerifyTrigger(map, cr, old_hex, hex2, dir);
                     if (!validate_moving(hex2)) {
                         return;
                     }
@@ -3539,9 +3702,19 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
 
             // Evaluate dir angle
-            const auto dir_angle = Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle_f = Geometry.GetLineDirAngle(0, 0, ox, oy);
+            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
 
-            cr->SetDirAngle(static_cast<int16>(dir_angle));
+            cr->SetDirAngle(dir_angle);
+
+            // Move attached critters
+            if (!cr->AttachedCritters.empty()) {
+                cr->MoveAttachedCritters();
+
+                if (!validate_moving(cr_hex)) {
+                    return;
+                }
+            }
 
             break;
         }
@@ -3568,6 +3741,10 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, bool send_self)
 {
     STACK_TRACE_ENTRY();
+
+    if (cr->GetIsAttached()) {
+        cr->DetachFromCritter();
+    }
 
     cr->ClearMove();
 
@@ -4194,7 +4371,7 @@ void FOServer::Process_Dialog(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    Critter* cr = player->GetOwnedCritter();
+    Critter* cr = player->GetControlledCritter();
 
     auto&& bin = player->Connection->InBuf;
 

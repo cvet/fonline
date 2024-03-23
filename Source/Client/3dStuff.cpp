@@ -47,10 +47,10 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
-    reader.ReadPtr(Vertices.data(), len * sizeof(Vertices[0]));
+    reader.ReadPtr(Vertices.data(), len * sizeof(Vertex3D));
     reader.ReadPtr(&len, sizeof(len));
     Indices.resize(len);
-    reader.ReadPtr(Indices.data(), len * sizeof(Indices[0]));
+    reader.ReadPtr(Indices.data(), len * sizeof(vindex_t));
     reader.ReadPtr(&len, sizeof(len));
     DiffuseTexture.resize(len);
     reader.ReadPtr(DiffuseTexture.data(), len);
@@ -66,7 +66,7 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
     }
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
-    reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
+    reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(mat44));
 }
 
 void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
@@ -1432,7 +1432,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         indices.insert(indices.end(), mesh_data->Indices.begin(), mesh_data->Indices.end());
 
         // Add indices offset
-        const auto index_offset = static_cast<uint16>(vertices.size() - mesh_data->Vertices.size());
+        const auto index_offset = static_cast<vindex_t>(vertices.size() - mesh_data->Vertices.size());
         const auto start_index = indices.size() - mesh_data->Indices.size();
         for (auto i = start_index, j = indices.size(); i < j; i++) {
             indices[i] += index_offset;
@@ -1574,7 +1574,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
-        vector<uint16> result_indices;
+        vector<vindex_t> result_indices;
         vector<uint> result_mesh_vertices;
         vector<uint> result_mesh_indices;
 
@@ -1613,9 +1613,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     result_vertices.push_back(v1);
                     result_vertices.push_back(v2);
                     result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
                     continue;
                 }
 
@@ -1643,17 +1643,17 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(vv1);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
 
                         // Second face
                         result_vertices.push_back(vv3);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv4);
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
                     }
                     else if (!ignore && sum == 1) {
                         // 1 1 -1, corner out
@@ -1665,9 +1665,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(vv1);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
                     }
                     else if (ignore || outside) {
                         if (ignore && sum == 0) {
@@ -1678,9 +1678,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(v1);
                         result_vertices.push_back(v2);
                         result_vertices.push_back(v3);
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
                     }
                 }
                 else {
@@ -1693,9 +1693,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     result_vertices.push_back(v1);
                     result_vertices.push_back(v2);
                     result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
-                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
                 }
             }
 

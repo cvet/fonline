@@ -78,7 +78,7 @@ struct MeshData
 
     ModelBone* Owner {};
     vector<Vertex3D> Vertices {};
-    vector<uint16> Indices {};
+    vector<vindex_t> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};

@@ -41,22 +41,14 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props) :
+Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
-    CritterProperties(GetInitRef()),
-    _player {owner}
+    CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    if (_player != nullptr) {
-        _player->AddRef();
-
-        _name = _player->GetName();
-    }
-    else {
-        _name = _str("{}_{}", proto->GetName(), id);
-    }
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 Critter::~Critter()
@@ -72,7 +64,7 @@ auto Critter::GetOfflineTime() const -> time_duration
 {
     STACK_TRACE_ENTRY();
 
-    return _playerDetached ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
+    return GetIsControlledByPlayer() && _player == nullptr ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
 }
 
 auto Critter::IsAlive() const -> bool
@@ -103,10 +95,10 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
@@ -118,29 +110,50 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
     return true;
 }
 
+void Critter::MarkIsForPlayer()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!GetIsControlledByPlayer());
+
+    SetIsControlledByPlayer(true);
+    _playerDetachTime = _engine->GameTime.FrameTime();
+}
+
+void Critter::AttachPlayer(Player* player)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(GetIsControlledByPlayer());
+    RUNTIME_ASSERT(player);
+    RUNTIME_ASSERT(!player->GetControlledCritterId());
+    RUNTIME_ASSERT(!_player);
+
+    _player = player;
+    _player->AddRef();
+
+    _player->SetControlledCritterId(GetId());
+    _player->SetLastControlledCritterId(GetId());
+    _player->SetControlledCritter(this);
+
+    _name = _player->GetName();
+}
+
 void Critter::DetachPlayer()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_player != nullptr);
-    RUNTIME_ASSERT(!_playerDetached);
+    RUNTIME_ASSERT(GetIsControlledByPlayer());
+    RUNTIME_ASSERT(_player);
+    RUNTIME_ASSERT(_player->GetControlledCritterId() == GetId());
+
+    _player->SetControlledCritterId({});
+    _player->SetControlledCritter(nullptr);
 
     _player->Release();
     _player = nullptr;
-    _playerDetached = true;
+
     _playerDetachTime = _engine->GameTime.FrameTime();
-}
-
-void Critter::AttachPlayer(Player* owner)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_player == nullptr);
-    RUNTIME_ASSERT(_playerDetached);
-
-    _playerDetached = false;
-    _player = owner;
-    _player->AddRef();
 }
 
 void Critter::ClearMove()
@@ -160,6 +173,125 @@ void Critter::ClearMove()
     Moving.EndHexOffset = {};
 }
 
+void Critter::AttachToCritter(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(cr != this);
+    RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+    RUNTIME_ASSERT(!cr->GetIsAttached());
+    RUNTIME_ASSERT(!GetIsAttached());
+    RUNTIME_ASSERT(AttachedCritters.empty());
+
+    if (IsMoving()) {
+        ClearMove();
+        SendAndBroadcast_Moving();
+    }
+
+    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    RUNTIME_ASSERT(it == cr->AttachedCritters.end());
+    cr->AttachedCritters.emplace_back(this);
+
+    SetIsAttached(true);
+    SetAttachMaster(cr->GetId());
+
+    SendAndBroadcast_Attachments();
+    cr->SendAndBroadcast_Attachments();
+}
+
+void Critter::DetachFromCritter()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(GetIsAttached());
+    RUNTIME_ASSERT(GetAttachMaster());
+
+    auto* cr = _engine->CrMngr.GetCritter(GetAttachMaster());
+    RUNTIME_ASSERT(cr);
+
+    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    RUNTIME_ASSERT(it != cr->AttachedCritters.end());
+    cr->AttachedCritters.erase(it);
+
+    SetIsAttached(false);
+    SetAttachMaster({});
+
+    SendAndBroadcast_Attachments();
+    cr->SendAndBroadcast_Attachments();
+}
+
+void Critter::MoveAttachedCritters()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!GetMapId()) {
+        return;
+    }
+
+    // Sync position
+    auto* map = _engine->MapMngr.GetMap(GetMapId());
+    RUNTIME_ASSERT(map);
+
+    vector<tuple<Critter*, mpos, RefCountHolder<Critter>>> moved_critters;
+
+    const auto new_hex = GetMapHex();
+    const auto new_hex_offset = GetMapHexOffset();
+
+    for (auto* cr : AttachedCritters) {
+        RUNTIME_ASSERT(!cr->IsDestroyed());
+        RUNTIME_ASSERT(cr->GetIsAttached());
+        RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
+        RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+
+        cr->SetMapHexOffset(new_hex_offset);
+
+        const auto hex = cr->GetMapHex();
+
+        if (hex != new_hex) {
+            map->RemoveCritterFromField(cr);
+            cr->SetMapHex(new_hex);
+            map->AddCritterToField(cr);
+
+            moved_critters.emplace_back(cr, hex, RefCountHolder {cr});
+        }
+    }
+
+    // Callbacks time
+    auto this_ref_holder = RefCountHolder(this);
+    auto map_ref_holder = RefCountHolder(map);
+    const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
+
+    for (auto&& [cr, prev_hex, cr_ref_holder] : moved_critters) {
+        const auto is_cr_valid = [cr = cr, map] {
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return false;
+            }
+            if (cr->GetMapId() != map->GetId()) {
+                return false;
+            }
+            return true;
+        };
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->VerifyTrigger(map, cr, prev_hex, new_hex, dir);
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->MapMngr.ProcessVisibleCritters(cr);
+
+        if (!is_cr_valid()) {
+            continue;
+        }
+
+        _engine->MapMngr.ProcessVisibleItems(cr);
+    }
+}
+
 void Critter::ClearVisible()
 {
     STACK_TRACE_ENTRY();
@@ -168,7 +300,7 @@ void Critter::ClearVisible()
         auto it_ = std::find(cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this);
         if (it_ != cr->VisCrSelf.end()) {
             cr->VisCrSelf.erase(it_);
-            cr->VisCrSelfMap.erase(this->GetId());
+            cr->VisCrSelfMap.erase(GetId());
         }
         cr->Send_RemoveCritter(this);
     }
@@ -179,7 +311,7 @@ void Critter::ClearVisible()
         auto it_ = std::find(cr->VisCr.begin(), cr->VisCr.end(), this);
         if (it_ != cr->VisCr.end()) {
             cr->VisCr.erase(it_);
-            cr->VisCrMap.erase(this->GetId());
+            cr->VisCrMap.erase(GetId());
         }
     }
     VisCrSelf.clear();
@@ -238,7 +370,7 @@ auto Critter::AddCrIntoVisVec(Critter* add_cr) -> bool
     VisCrMap.insert(std::make_pair(add_cr->GetId(), add_cr));
 
     add_cr->VisCrSelf.push_back(this);
-    add_cr->VisCrSelfMap.insert(std::make_pair(this->GetId(), this));
+    add_cr->VisCrSelfMap.insert(std::make_pair(GetId(), this));
     return true;
 }
 
@@ -257,70 +389,70 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
     const auto it = std::find(del_cr->VisCrSelf.begin(), del_cr->VisCrSelf.end(), this);
     if (it != del_cr->VisCrSelf.end()) {
         del_cr->VisCrSelf.erase(it);
-        del_cr->VisCrSelfMap.erase(this->GetId());
+        del_cr->VisCrSelfMap.erase(GetId());
     }
     return true;
 }
 
 auto Critter::AddCrIntoVisSet1(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr1.insert(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisSet2(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr2.insert(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisSet3(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr3.insert(cr_id).second;
 }
 
 auto Critter::DelCrFromVisSet1(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr1.erase(cr_id) != 0;
 }
 
 auto Critter::DelCrFromVisSet2(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr2.erase(cr_id) != 0;
 }
 
 auto Critter::DelCrFromVisSet3(ident_t cr_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisCr3.erase(cr_id) != 0;
 }
 
 auto Critter::AddIdVisItem(ident_t item_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.insert(item_id).second;
 }
 
 auto Critter::DelIdVisItem(ident_t item_id) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.erase(item_id) != 0;
 }
 
 auto Critter::CountIdVisItem(ident_t item_id) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return VisItem.count(item_id) != 0;
 }
@@ -737,6 +869,21 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_s
         else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
         }
+    }
+}
+
+void Critter::SendAndBroadcast_Attachments()
+{
+    STACK_TRACE_ENTRY();
+
+    Send_Attachments(this);
+
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        cr->Send_Attachments(this);
     }
 }
 
@@ -1238,6 +1385,17 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
 
     if (_player != nullptr) {
         _player->Send_SomeItems(items, param);
+    }
+}
+
+void Critter::Send_Attachments(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (_player != nullptr) {
+        _player->Send_Attachments(from_cr);
     }
 }
 

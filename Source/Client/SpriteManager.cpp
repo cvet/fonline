@@ -44,6 +44,8 @@ Sprite::Sprite(SpriteManager& spr_mngr) :
 
 auto Sprite::IsHitTest(ipos pos) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(pos);
 
     return false;
@@ -52,6 +54,7 @@ auto Sprite::IsHitTest(ipos pos) const -> bool
 void Sprite::StartUpdate()
 {
     STACK_TRACE_ENTRY();
+
     _sprMngr._updateSprites.emplace(this, weak_from_this());
 }
 
@@ -698,12 +701,12 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, i
             auto& ibuf = _spritesDrawBuf->Indices;
             auto& ipos = _spritesDrawBuf->IndCount;
 
-            ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
@@ -870,6 +873,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
     for (const auto* mspr = mspr_list.RootSprite(); mspr != nullptr; mspr = mspr->ChainChild) {
         RUNTIME_ASSERT(mspr->Valid);
 
+        if (mspr->IsHidden()) {
+            continue;
+        }
         if (mspr->DrawOrder < draw_oder_from) {
             continue;
         }
@@ -1139,6 +1145,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     // Check primitives
     const auto count = points.size();
     auto prim_count = static_cast<int>(count);
+
     switch (prim) {
     case RenderPrimitiveType::PointList:
         break;
@@ -1159,12 +1166,15 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         return;
     }
 
-    _primitiveDrawBuf->CheckAllocBuf(count, count);
-
     auto& vbuf = _primitiveDrawBuf->Vertices;
     auto& vpos = _primitiveDrawBuf->VertCount;
     auto& ibuf = _primitiveDrawBuf->Indices;
     auto& ipos = _primitiveDrawBuf->IndCount;
+
+    vpos = 0;
+    ipos = 0;
+
+    _primitiveDrawBuf->CheckAllocBuf(count, count);
 
     vpos = count;
     ipos = count;
@@ -1194,7 +1204,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         vbuf[i].PosY = y;
         vbuf[i].Color = point.PointColor;
 
-        ibuf[i] = static_cast<uint16>(i);
+        ibuf[i] = static_cast<vindex_t>(i);
     }
 
     _primitiveDrawBuf->PrimType = prim;
@@ -2477,12 +2487,12 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
             const auto x2 = texture_uv[2];
             const auto y2 = texture_uv[3];
 
-            ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-            ibuf[ipos++] = static_cast<uint16>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
 
             auto& v0 = vbuf[vpos++];
             v0.PosX = static_cast<float>(x);

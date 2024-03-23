@@ -91,6 +91,7 @@ public:
     void SetText(string_view str, ucolor color, time_duration text_delay);
     void DrawTextOnHead();
     void ClearMove();
+    void MoveAttachedCritters();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif

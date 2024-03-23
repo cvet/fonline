@@ -76,25 +76,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Server_Critter_IsOwnedByPlayer(Critter* self)
+[[maybe_unused]] Player* Server_Critter_GetPlayer(Critter* self)
 {
-    return self->IsOwnedByPlayer();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsNpc(Critter* self)
-{
-    return self->IsNpc();
-}
-
-///# ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] Player* Server_Critter_GetOwner(Critter* self)
-{
-    return self->GetOwner();
+    return self->GetPlayer();
 }
 
 ///# ...
@@ -108,12 +92,11 @@
 ///# ...
 ///# param hex ...
 ///# param dir ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 dir)
+[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 dir)
 {
-    if (!self->GetMapId()) {
-        return false;
+    if (self->LockMapTransfers != 0) {
+        throw ScriptException("Transfers locked");
     }
 
     auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
@@ -123,52 +106,75 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (self->LockMapTransfers != 0) {
-        return false;
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
     }
 
     if (hex != self->GetMapHex()) {
-        if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
-            self->ChangeDir(dir);
+        if (self->GetDir() != corrected_dir) {
+            self->ChangeDir(corrected_dir);
         }
 
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hex, self->GetDir(), 2, ident_t {})) {
-            return false;
-        }
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, self->GetDir(), 2);
     }
-    else if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
-        self->ChangeDir(dir);
+    else if (self->GetDir() != corrected_dir) {
+        self->ChangeDir(corrected_dir);
         self->Send_Dir(self);
         self->Broadcast_Dir();
     }
-
-    return true;
 }
 
 ///# ...
 ///# param map ...
 ///# param hex ...
 ///# param dir ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir)
 {
+    if (self->LockMapTransfers != 0) {
+        throw ScriptException("Transfers locked");
+    }
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
     }
 
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
+    }
+
+    self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
+
+    const auto* loc = map->GetLocation();
+    const auto wpos1 = ipos {self->GetWorldPos().x, self->GetWorldPos().y};
+    const auto wpos2 = ipos {loc->GetWorldPos().x, loc->GetWorldPos().y};
+
+    if (loc != nullptr && GenericUtils::DistSqrt(wpos1, wpos2) > loc->GetRadius()) {
+        self->SetWorldPos(loc->GetWorldPos());
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir, bool force_hex)
+{
     if (self->LockMapTransfers != 0) {
-        return false;
+        throw ScriptException("Transfers locked");
+    }
+    if (map == nullptr) {
+        throw ScriptException("Map arg is null");
     }
 
-    uint8 resolved_dir = dir;
-
-    if (resolved_dir >= GameSettings::MAP_DIR_COUNT) {
-        resolved_dir = static_cast<uint8>(GenericUtils::Random(0, static_cast<int>(GameSettings::MAP_DIR_COUNT) - 1));
+    auto corrected_dir = dir;
+    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
+        corrected_dir = self->GetDir();
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hex, resolved_dir, 2, ident_t {})) {
-        return false;
+    if (force_hex) {
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, std::nullopt);
+    }
+    else {
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
     }
 
     const auto* loc = map->GetLocation();
@@ -178,84 +184,60 @@
     if (GenericUtils::DistSqrt(ipos {loc_pos.x, loc_pos.y}, ipos {cr_pos.x, cr_pos.y}) > loc->GetRadius()) {
         self->SetWorldPos(loc->GetWorldPos());
     }
-
-    return true;
 }
 
 ///# ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_TransitToGlobal(Critter* self)
+[[maybe_unused]] void Server_Critter_TransitToGlobal(Critter* self)
 {
     if (self->LockMapTransfers != 0) {
-        return false;
+        throw ScriptException("Transfers locked");
     }
 
     if (!self->GetMapId()) {
-        return true;
+        return;
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
-        return false;
-    }
-
-    return true;
+    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
 }
 
 ///# ...
 ///# param group ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_TransitToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
+[[maybe_unused]] void Server_Critter_TransitToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
 {
     if (self->LockMapTransfers != 0) {
-        return 0;
+        throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId()) {
-        if (!self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
-            return 0;
-        }
-    }
-
-    uint result = 1;
+    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
 
     for (auto* cr : group) {
-        if (cr != nullptr && !cr->IsDestroyed()) {
-            if (self->GetEngine()->MapMngr.TransitToGlobal(cr, self->GetId())) {
-                result++;
-            }
+        if (cr != nullptr && !cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
+            self->GetEngine()->MapMngr.TransitToGlobal(cr, self->GetId());
         }
     }
-
-    return result;
 }
 
 ///# ...
-///# param leader ...
-///# return ...
+///# param globalCr ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_TransitToGlobalGroup(Critter* self, Critter* leader)
+[[maybe_unused]] void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* globalCr)
 {
-    if (leader == nullptr) {
-        throw ScriptException("Leader arg is null");
-    }
-    if (leader->GlobalMapGroup == nullptr) {
-        throw ScriptException("Leader is not on global map");
-    }
-
     if (self->LockMapTransfers != 0) {
-        return false;
+        throw ScriptException("Transfers locked");
     }
     if (!self->GetMapId()) {
-        return true;
+        throw ScriptException("Critter already on global");
+    }
+    if (globalCr == nullptr) {
+        throw ScriptException("Global critter arg is null");
+    }
+    if (globalCr->GetMapId()) {
+        throw ScriptException("Global critter is not on global map");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId())) {
-        return false;
-    }
-
-    return true;
+    self->GetEngine()->MapMngr.TransitToGlobal(self, globalCr->GetId());
 }
 
 ///# ...
@@ -305,7 +287,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         return;
     }
 
@@ -338,7 +320,7 @@
     if (howSay != SAY_FLASH_WINDOW && text.empty()) {
         return;
     }
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -357,7 +339,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr)
 {
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -377,7 +359,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr, string_view lexems)
 {
-    if (self->IsNpc() && !self->IsAlive()) {
+    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -453,10 +435,6 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
 {
-    if (!self->IsNpc()) {
-        throw ScriptException("Critter is not npc");
-    }
-
     vector<Critter*> result;
 
     for (auto* cr : self->VisCr) {
@@ -473,6 +451,18 @@
     });
 
     return result;
+}
+
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self)
+{
+    if (self->GetMapId()) {
+        throw ScriptException("Critter is not on global map");
+    }
+
+    RUNTIME_ASSERT(self->GlobalMapGroup);
+
+    return *self->GlobalMapGroup;
 }
 
 ///# ...
@@ -719,7 +709,7 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetInvItem(itemId, self->IsOwnedByPlayer());
+    auto* item = self->GetInvItem(itemId, self->GetIsControlledByPlayer());
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
@@ -1053,12 +1043,12 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Critter_Disconnect(Critter* self)
 {
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
-    if (const auto* owner = self->GetOwner(); owner != nullptr) {
-        owner->Connection->GracefulDisconnect();
+    if (const auto* player = self->GetPlayer(); player != nullptr) {
+        player->Connection->GracefulDisconnect();
     }
 }
 
@@ -1067,11 +1057,11 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Server_Critter_IsOnline(Critter* self)
 {
-    if (!self->IsOwnedByPlayer()) {
+    if (!self->GetIsControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
-    return self->GetOwner() != nullptr;
+    return self->GetPlayer() != nullptr;
 }
 
 ///# ...
@@ -1138,6 +1128,66 @@
 
     self->ClearMove();
     self->SendAndBroadcast_Moving();
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
+{
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+    if (cr == self) {
+        throw ScriptException("Critter can't attach to itself");
+    }
+    if (cr->GetMapId() != self->GetMapId()) {
+        throw ScriptException("Different maps with attached critter");
+    }
+    if (cr->GetIsAttached()) {
+        throw ScriptException("Can't attach to attached critter");
+    }
+    if (!self->AttachedCritters.empty()) {
+        throw ScriptException("Can't attach with attachments");
+    }
+
+    if (self->GetIsAttached()) {
+        if (self->GetAttachMaster() == cr->GetId()) {
+            return;
+        }
+
+        // Auto detach from previous critter
+        self->DetachFromCritter();
+    }
+
+    self->AttachToCritter(cr);
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+    cr->MoveAttachedCritters();
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DetachFromCritter(Critter* self)
+{
+    if (!self->GetIsAttached()) {
+        return;
+    }
+
+    self->DetachFromCritter();
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DetachAllCritters(Critter* self)
+{
+    for (auto* cr : copy(self->AttachedCritters)) {
+        cr->DetachFromCritter();
+    }
+
+    self->GetEngine()->MapMngr.ProcessVisibleCritters(self);
+}
+
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
+{
+    return self->AttachedCritters;
 }
 
 ///# ...

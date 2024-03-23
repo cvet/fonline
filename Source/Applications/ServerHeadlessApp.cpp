@@ -51,9 +51,7 @@ extern "C" int main(int argc, char** argv)
         {
             auto server = std::make_unique<FOServer>(App->Settings);
 
-            while (!App->Settings.Quit) {
-                std::this_thread::sleep_for(std::chrono::milliseconds {100});
-            }
+            App->WaitForRequestedQuit();
         }
 
         ExitApp(true);

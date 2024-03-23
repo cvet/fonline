@@ -67,9 +67,7 @@ static void ServerEntry()
     try {
         Data->Server = std::make_unique<FOServer>(App->Settings);
 
-        while (!App->Settings.Quit) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {100});
-        }
+        App->WaitForRequestedQuit();
 
         Data->Server.reset();
     }
@@ -233,7 +231,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         if (opcode == SERVICE_CONTROL_STOP) {
             SetFOServiceStatus(SERVICE_STOP_PENDING);
 
-            App->Settings.Quit = true;
+            App->RequestQuit();
 
             if (Data->ServerThread.joinable()) {
                 Data->ServerThread.join();

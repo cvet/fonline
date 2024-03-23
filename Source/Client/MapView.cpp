@@ -112,6 +112,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _hexLight.resize(static_cast<size_t>(_mapSize.GetSquare()) * 3);
     _hexField.SetSize(_mapSize);
 
+    _lightPoints.resize(1);
+    _lightSoftPoints.resize(1);
+
     ResizeView();
 
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
@@ -639,8 +642,8 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     AddItemToField(item);
 
-    if (!MeasureMapBorders(item->Spr, item->SprOffset) && !_mapLoading) {
-        if (IsHexToDraw(hex) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent() && item->IsVisible()) {
+    if (!MeasureMapBorders(item->Spr, item->SprOffset)) {
+        if (!_mapLoading && IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
             auto& field = _hexField.GetCellForWriting(hex);
             const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
             auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), mpos {hex.x, hex_y_with_offset}, &field.Offset);
@@ -667,10 +670,11 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
         item->InvalidateSprite();
     }
 
-    if (IsHexToDraw(hex) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
+    if (IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
         auto& field = _hexField.GetCellForWriting(hex);
         const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
         auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), {hex.x, hex_y_with_offset}, &field.Offset);
+
         AddSpriteToChain(field, spr);
     }
 }
@@ -827,7 +831,7 @@ auto MapView::GetRectForText(mpos hex) -> IRect
     if (const auto& field = _hexField.GetCellForReading(hex); field.IsView) {
         if (!field.Critters.empty()) {
             for (const auto* cr : field.Critters) {
-                if (cr->IsSpriteValid()) {
+                if (cr->IsSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
                     if (result.IsZero()) {
                         result = rect;
@@ -844,7 +848,7 @@ auto MapView::GetRectForText(mpos hex) -> IRect
 
         if (!field.Items.empty()) {
             for (const auto* item : field.Items) {
-                if (item->IsSpriteValid()) {
+                if (item->IsSpriteVisible()) {
                     const auto* spr = item->Spr;
                     if (spr != nullptr) {
                         const auto l = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->Offset.x;
@@ -1088,7 +1092,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Tiles
         if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
             for (auto* tile : field.GroundTiles) {
-                if (!tile->IsVisible()) {
+                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
                 }
 
@@ -1102,7 +1106,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Roof
         if (!field.RoofTiles.empty() && (_roofSkip == 0 || _roofSkip != field.RoofNum) && _engine->Settings.ShowRoof) {
             for (auto* tile : field.RoofTiles) {
-                if (!tile->IsVisible()) {
+                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
                 }
 
@@ -1117,12 +1121,8 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Items on hex
         if (!field.Items.empty()) {
             for (auto* item : field.Items) {
-                if (!item->IsVisible()) {
-                    continue;
-                }
-
                 if (!_mapperMode) {
-                    if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
+                    if (item->GetAlwaysHideSprite()) {
                         continue;
                     }
                     if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
@@ -1137,6 +1137,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                 }
                 else {
                     const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
+
                     if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
                         continue;
                     }
@@ -1164,10 +1165,6 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Critters
         if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
             for (auto* cr : field.Critters) {
-                if (!cr->IsVisible()) {
-                    continue;
-                }
-
                 auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
                 cr->RefreshOffs();
@@ -1177,7 +1174,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                 if (cr->GetId() == _critterContourCrId) {
                     contour = _critterContour;
                 }
-                else if (!cr->IsChosen()) {
+                else if (!cr->GetIsChosen()) {
                     contour = _crittersContour;
                 }
                 mspr->SetContour(contour, cr->GetContourColor());
@@ -1396,7 +1393,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
         // Tiles
         if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
             for (auto* tile : field.GroundTiles) {
-                if (!tile->IsVisible()) {
+                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
                 }
 
@@ -1410,7 +1407,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
         // Roof
         if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_roofSkip == 0 || _roofSkip != field.RoofNum)) {
             for (auto* tile : field.RoofTiles) {
-                if (!tile->IsVisible()) {
+                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
                 }
 
@@ -1425,12 +1422,8 @@ void MapView::RebuildMapOffset(ipos hex_offset)
         // Items on hex
         if (!field.Items.empty()) {
             for (auto* item : field.Items) {
-                if (!item->IsVisible()) {
-                    continue;
-                }
-
                 if (!_mapperMode) {
-                    if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
+                    if (item->GetAlwaysHideSprite()) {
                         continue;
                     }
                     if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
@@ -1445,6 +1438,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                 }
                 else {
                     const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
+
                     if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
                         continue;
                     }
@@ -1472,10 +1466,6 @@ void MapView::RebuildMapOffset(ipos hex_offset)
         // Critters
         if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
             for (auto* cr : field.Critters) {
-                if (!cr->IsVisible()) {
-                    continue;
-                }
-
                 auto* mspr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
                 cr->RefreshOffs();
@@ -1485,7 +1475,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                 if (cr->GetId() == _critterContourCrId) {
                     contour = _critterContour;
                 }
-                else if (!cr->IsChosen()) {
+                else if (!cr->GetIsChosen()) {
                     contour = _crittersContour;
                 }
                 mspr->SetContour(contour, cr->GetContourColor());
@@ -1611,13 +1601,32 @@ void MapView::ProcessLighting()
         _needRebuildLightPrimitives = false;
         need_render_light = true;
 
-        _lightPoints.clear();
-        _lightSoftPoints.clear();
+        for (auto& points : _lightPoints) {
+            points.clear();
+        }
+        for (auto& points : _lightSoftPoints) {
+            points.clear();
+        }
+
+        size_t cur_points = 0;
 
         for (auto&& [ls, count] : _visibleLightSources) {
             RUNTIME_ASSERT(ls->Applied);
 
-            LightFanToPrimitves(ls, _lightPoints, _lightSoftPoints);
+            // Split large entries to fit into 16-bit index
+            if constexpr (sizeof(vindex_t) == 2) {
+                while (_lightPoints[cur_points].size() > 0x7FFF || _lightSoftPoints.size() > 0x7FFF) {
+                    cur_points++;
+
+                    if (cur_points >= _lightPoints.size()) {
+                        _lightPoints.emplace_back();
+                        _lightSoftPoints.emplace_back();
+                        break;
+                    }
+                }
+            }
+
+            LightFanToPrimitves(ls, _lightPoints[cur_points], _lightSoftPoints[cur_points]);
         }
     }
 
@@ -1638,8 +1647,16 @@ void MapView::ProcessLighting()
         const auto zoom = GetSpritesZoom();
         const auto offset = fpos {static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy)};
 
-        _engine->SprMngr.DrawPoints(_lightPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-        _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+        for (auto& points : _lightPoints) {
+            if (!points.empty()) {
+                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+            }
+        }
+        for (auto& points : _lightPoints) {
+            if (!points.empty()) {
+                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+            }
+        }
 
         _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }
@@ -1662,7 +1679,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
     }
 
     // Default chosen light
-    if (!light_added && cr->IsChosen()) {
+    if (!light_added && cr->GetIsChosen()) {
         UpdateLightSource(cr->GetId(), cr->GetMapHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->SprOffset);
         light_added = true;
     }
@@ -2891,7 +2908,7 @@ void MapView::PrepareFogToDraw()
 
         CritterHexView* chosen;
 
-        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->IsChosen(); });
+        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->GetIsChosen(); });
         if (it != _critters.end()) {
             chosen = *it;
         }
@@ -3405,7 +3422,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
     UpdateCritterLightSource(cr);
 
-    if (!_mapLoading && IsHexToDraw(hex) && cr->IsVisible()) {
+    if (!_mapLoading && IsHexToDraw(hex)) {
         auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
         cr->RefreshOffs();
@@ -3415,7 +3432,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
         if (cr->GetId() == _critterContourCrId) {
             contour = _critterContour;
         }
-        else if (!cr->IsDead() && !cr->IsChosen()) {
+        else if (!cr->IsDead() && !cr->GetIsChosen()) {
             contour = _crittersContour;
         }
         spr->SetContour(contour, cr->GetContourColor());
@@ -3616,7 +3633,7 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
     if (_critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
         if (cr != nullptr && cr->IsSpriteValid()) {
-            if (!cr->IsDead() && !cr->IsChosen()) {
+            if (!cr->IsDead() && !cr->GetIsChosen()) {
                 cr->GetSprite()->SetContour(_crittersContour);
             }
             else {
@@ -3647,7 +3664,7 @@ void MapView::SetCrittersContour(ContourType contour)
     _crittersContour = contour;
 
     for (auto* cr : _critters) {
-        if (!cr->IsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
+        if (!cr->GetIsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
             cr->GetSprite()->SetContour(contour);
         }
     }
@@ -3781,7 +3798,7 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool
     const auto is_egg = _engine->SprMngr.IsEggTransp(pos);
 
     for (auto* item : _nonTileItems) {
-        if (!item->IsVisible() || !item->IsSpriteValid() || item->IsFinishing()) {
+        if (!item->IsSpriteVisible() || item->IsFinishing()) {
             continue;
         }
 
@@ -3796,39 +3813,6 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
-        }
-
-        if (!_mapperMode) {
-            if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowWall && item->GetIsWall()) {
-                continue;
-            }
-        }
-        else {
-            const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-            if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
-                continue;
-            }
-            if (!_engine->Settings.ShowFast && is_fast) {
-                continue;
-            }
-            if (_ignorePids.count(item->GetProtoId()) != 0) {
-                continue;
-            }
         }
 
         if (item->GetSprite()->CheckHit({pos.x - l + extra_range, pos.y - t + extra_range}, check_transparent)) {
@@ -3884,10 +3868,10 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int e
     vector<CritterHexView*> critters;
 
     for (auto* cr : _critters) {
-        if (!cr->IsVisible() || cr->IsFinishing() || !cr->IsSpriteValid()) {
+        if (!cr->IsSpriteVisible() || cr->IsFinishing()) {
             continue;
         }
-        if (ignore_dead_and_chosen && (cr->IsDead() || cr->IsChosen())) {
+        if (ignore_dead_and_chosen && (cr->IsDead() || cr->GetIsChosen())) {
             continue;
         }
 

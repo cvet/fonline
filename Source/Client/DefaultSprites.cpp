@@ -100,12 +100,12 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     auto& ibuf = dbuf->Indices;
     auto& ipos = dbuf->IndCount;
 
-    ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 3);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
+    ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
 
     auto& v0 = vbuf[vpos++];
     v0.PosX = pos.Left;

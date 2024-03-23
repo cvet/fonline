@@ -177,6 +177,7 @@ static auto GetMsgSize(uint msg) -> uint
     case NETMSG_ALL_PROPERTIES:
     case NETMSG_SEND_MOVE:
     case NETMSG_CRITTER_MOVE:
+    case NETMSG_CRITTER_ATTACHMENTS:
         return static_cast<uint>(-1);
     default:
         break;
@@ -345,6 +346,7 @@ void NetOutBuffer::Cut(size_t len)
     }
 
     if (len > _bufEndPos) {
+        BreakIntoDebugger();
         _isError = true;
         return;
     }
@@ -448,6 +450,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
     }
 
     if (_bufReadPos + len > _bufEndPos) {
+        BreakIntoDebugger();
         _isError = true;
         std::memset(buf, 0, len);
         return;
@@ -466,6 +469,7 @@ void NetInBuffer::ShrinkReadBuf()
     }
 
     if (_bufReadPos > _bufEndPos) {
+        BreakIntoDebugger();
         _isError = true;
         return;
     }
@@ -497,6 +501,7 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
         bool failed = false;
         result = hash_resolver.ResolveHash(h, &failed);
         if (failed) {
+            BreakIntoDebugger();
             _isError = true;
         }
     }
@@ -523,6 +528,7 @@ auto NetInBuffer::NeedProcess() -> bool
 
     // Unknown message
     if (msg_len == 0) {
+        BreakIntoDebugger();
         ResetBuf();
         _isError = true;
         return false;
