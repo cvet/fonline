@@ -137,7 +137,7 @@ genFileList = ['EmbeddedResources-Include.h',
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
-        'ExportType': [], # (name, native type, representation type, [flags], [comment])
+        'ExportValueType': [], # (name, native type, representation type, [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -264,7 +264,7 @@ def parseMetaFile(absPath):
                             if lines[i].lstrip().startswith('};'):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
                                 break
-                    elif tagName == 'ExportType':
+                    elif tagName == 'ExportValueType':
                         tagContext = True
                     elif tagName == 'ExportProperty':
                         tagContext = lines[lineIndex + 1].strip()
@@ -506,7 +506,7 @@ def parseTags():
     def parseTypeTags2():
         global codeGenTags
         
-        for tagMeta in tagsMetas['ExportType']:
+        for tagMeta in tagsMetas['ExportValueType']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
@@ -518,8 +518,10 @@ def parseTags():
                 exportFlags = tok[3:]
                 
                 assert rtype in ['RelaxedStrong', 'HardStrong'], 'Wrong type type'
+                assert 'Layout' in exportFlags, 'No Layout specified in ExportValueType'
+                assert exportFlags[exportFlags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
                 
-                codeGenTags['ExportType'].append((name, ntype, rtype, exportFlags, comment))
+                codeGenTags['ExportValueType'].append((name, ntype, rtype, exportFlags, comment))
                 assert name not in validTypes, 'Type already in valid types'
                 validTypes.add(name)
                 assert name not in customTypes, 'Type already in custom types'
@@ -528,7 +530,7 @@ def parseTags():
                 customTypesNativeMap[ntype] = name
                 
             except Exception as ex:
-                showError('Invalid tag ExportType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+                showError('Invalid tag ExportValueType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
 
         for tagMeta in tagsMetas['Enum']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -1391,7 +1393,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
     elif tt[0] in refTypes or tt[0] in entityRelatives:
         r = tt[0] + '*'
     elif tt[0] in customTypes:
-        for e in codeGenTags['ExportType']:
+        for e in codeGenTags['ExportValueType']:
             if e[0] == tt[0]:
                 r = e[1]
                 break
@@ -1515,6 +1517,18 @@ def genDataRegistration(target, isASCompiler):
                 registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
             registerLines.append('});')
             registerLines.append('')
+    
+    # Exported types
+    registerLines.append('// Exported types')
+    for et in codeGenTags['ExportValueType']:
+        name, ntype, rtype, flags, _ = et
+        registerLines.append('engine->AddAggregatedType("' + name + '", sizeof(' + ntype + '), {')
+        for t in flags[flags.index('Layout') + 2:]:
+            if t == '-':
+                continue
+            registerLines.append('    {engine->ResolveBaseType("' + t + '")},')
+        registerLines.append('});')
+        registerLines.append('')
     
     # Property registrators
     registerLines.append('// Properties')
@@ -1774,7 +1788,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] == 'ScriptFunc':
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
-                for e in codeGenTags['ExportType']:
+                for e in codeGenTags['ExportValueType']:
                     if e[0] == tt[0]:
                         r = e[1]
                         break
@@ -2351,7 +2365,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             
         # Register custom types
         registerLines.append('// Exported types')
-        for et in codeGenTags['ExportType']:
+        for et in codeGenTags['ExportValueType']:
             name, ntype, rtype, flags, _ = et
             if rtype == 'RelaxedStrong':
                 registerLines.append('REGISTER_RELAXED_STRONG_TYPE("' + name + '", ' + ntype + ');')
@@ -2702,7 +2716,7 @@ def genApiMarkdown(target):
         for m in methods:
             writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
             writeComm(m[2], 0)
-    for etTag in codeGenTags['ExportType']:
+    for etTag in codeGenTags['ExportValueType']:
         name, ntype, rtype, flags, comm = etTag
         writeFile('### ' + name + ' value object')
         writeComm(comm, 0)

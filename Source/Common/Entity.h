@@ -176,7 +176,7 @@ enum class CornerType : uint8
     EastWest = 5,
 };
 
-///@ ExportType mpos mpos HardStrong
+///@ ExportValueType mpos mpos HardStrong Layout = uint16-uint16
 struct mpos
 {
     constexpr mpos() noexcept = default;
@@ -206,7 +206,7 @@ struct std::hash<mpos>
     auto operator()(const mpos& v) const noexcept -> size_t { return hash_combine(std::hash<uint16> {}(v.x), std::hash<uint16> {}(v.y)); }
 };
 
-///@ ExportType msize msize HardStrong
+///@ ExportValueType msize msize HardStrong Layout = uint16-uint16
 struct msize
 {
     [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }

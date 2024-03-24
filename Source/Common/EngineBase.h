@@ -58,6 +58,9 @@ public:
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
+    [[nodiscard]] auto GetEnumInfo(const string& enum_name, size_t& size) const -> bool override;
+    [[nodiscard]] auto GetAggregatedTypeInfo(const string& type_name, size_t& size, const vector<BaseTypeInfo>** layout) const -> bool override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
@@ -67,7 +70,8 @@ public:
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> override;
 
     auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    void AddEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values);
+    void AddEnumGroup(const string& name, size_t size, unordered_map<string, int>&& key_values);
+    void AddAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout);
     void SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
@@ -91,6 +95,7 @@ private:
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, size_t> _enumSizes {};
+    unordered_map<string, tuple<size_t, vector<BaseTypeInfo>>> _aggregatedTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };

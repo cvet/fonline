@@ -41,9 +41,9 @@ class _str final
     // ReSharper disable CppInconsistentNaming
 
 public:
-    _str() = default;
-    _str(const _str&) = default;
-    explicit _str(string s) :
+    _str() noexcept = default;
+    _str(const _str&) noexcept = default;
+    explicit _str(string s) noexcept :
         _s(std::move(s))
     {
     }
@@ -66,28 +66,28 @@ public:
     ~_str() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&&() { return std::move(_s); }
+    operator string&&() noexcept { return std::move(_s); }
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const { return _s; }
-    auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
-    auto operator+(string_view r) const -> _str { return _str(_s + string(r)); }
-    friend auto operator+(const _str& l, string_view r) -> _str { return _str(l._s + string(r)); }
-    auto operator==(string_view r) const -> bool { return _s == r; }
-    auto operator!=(string_view r) const -> bool { return _s != r; }
-    friend auto operator!=(const _str& l, string_view r) -> bool { return l._s != r; }
+    operator string_view() const noexcept { return _s; }
+    auto operator+(const char* r) const noexcept -> _str { return _str(_s + string(r)); }
+    auto operator+(string_view r) const noexcept -> _str { return _str(_s + string(r)); }
+    friend auto operator+(const _str& l, string_view r) noexcept -> _str { return _str(l._s + string(r)); }
+    auto operator==(string_view r) const noexcept -> bool { return _s == r; }
+    auto operator!=(string_view r) const noexcept -> bool { return _s != r; }
+    friend auto operator!=(const _str& l, string_view r) noexcept -> bool { return l._s != r; }
 
-    [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
-    [[nodiscard]] auto str() const -> string { return _s; }
-    [[nodiscard]] auto strv() const -> string_view { return _s; }
+    [[nodiscard]] auto c_str() const noexcept -> const char* { return _s.c_str(); }
+    [[nodiscard]] auto str() const noexcept -> const string& { return _s; }
+    [[nodiscard]] auto strv() const noexcept -> string_view { return _s; }
 
-    [[nodiscard]] auto length() const -> size_t;
-    [[nodiscard]] auto empty() const -> bool;
-    [[nodiscard]] auto compareIgnoreCase(string_view r) const -> bool;
-    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const -> bool;
-    [[nodiscard]] auto startsWith(char r) const -> bool;
-    [[nodiscard]] auto startsWith(string_view r) const -> bool;
-    [[nodiscard]] auto endsWith(char r) const -> bool;
-    [[nodiscard]] auto endsWith(string_view r) const -> bool;
+    [[nodiscard]] auto length() const noexcept -> size_t;
+    [[nodiscard]] auto empty() const noexcept -> bool;
+    [[nodiscard]] auto compareIgnoreCase(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto startsWith(char r) const noexcept -> bool;
+    [[nodiscard]] auto startsWith(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto endsWith(char r) const noexcept -> bool;
+    [[nodiscard]] auto endsWith(string_view r) const noexcept -> bool;
     [[nodiscard]] auto isValidUtf8() const -> bool;
     [[nodiscard]] auto lengthUtf8() const -> size_t;
 

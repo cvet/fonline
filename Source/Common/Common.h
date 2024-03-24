@@ -92,6 +92,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <optional>
 #include <random>
 #include <set>
@@ -307,7 +308,7 @@ struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_t
 template<typename T>
 constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
-///@ ExportType ident ident_t HardStrong HasValueAccessor
+///@ ExportValueType ident ident_t HardStrong HasValueAccessor Layout = uint
 #define IDENT_T_NAME "ident"
 struct ident_t_traits
 {
@@ -319,7 +320,7 @@ using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
 static_assert(std::is_standard_layout_v<ident_t>);
 
-///@ ExportType tick_t tick_t RelaxedStrong HasValueAccessor
+///@ ExportValueType tick_t tick_t RelaxedStrong HasValueAccessor Layout = uint
 #define TICK_T_NAME "tick_t"
 struct tick_t_traits
 {
@@ -1238,7 +1239,7 @@ using IRect = TRect<int>; // Todo: move IRect to irect
 using FRect = TRect<float>; // Todo: move FRect to frect
 
 // Color type
-///@ ExportType ucolor ucolor HardStrong HasValueAccessor
+///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint
 struct ucolor
 {
     using underlying_type = uint;
@@ -1420,7 +1421,7 @@ inline auto parse_from_string(const string& str) -> T
     }
 
 // Position types
-///@ ExportType isize isize HardStrong
+///@ ExportValueType isize isize HardStrong Layout = int-int
 struct isize
 {
     [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
@@ -1440,7 +1441,7 @@ static_assert(sizeof(isize) == 8);
 DECLARE_FORMATTER(isize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
 
-///@ ExportType ipos ipos HardStrong
+///@ ExportValueType ipos ipos HardStrong Layout = int-int
 struct ipos
 {
     [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
@@ -1464,7 +1465,7 @@ struct std::hash<ipos>
     auto operator()(const ipos& v) const noexcept -> size_t { return hash_combine(std::hash<int> {}(v.x), std::hash<int> {}(v.y)); }
 };
 
-///@ ExportType irect irect HardStrong
+///@ ExportValueType irect irect HardStrong Layout = int-int-int-int
 struct irect
 {
     constexpr irect() noexcept = default;
@@ -1509,7 +1510,7 @@ static_assert(sizeof(irect) == 16);
 DECLARE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
 DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
 
-///@ ExportType ipos16 ipos16 HardStrong
+///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-int16
 struct ipos16
 {
     [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
@@ -1527,7 +1528,7 @@ static_assert(sizeof(ipos16) == 4);
 DECLARE_FORMATTER(ipos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
 
-///@ ExportType upos16 upos16 HardStrong
+///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-uint16
 struct upos16
 {
     [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
@@ -1545,7 +1546,7 @@ static_assert(sizeof(upos16) == 4);
 DECLARE_FORMATTER(upos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
 
-///@ ExportType ipos8 ipos8 HardStrong
+///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-int8
 struct ipos8
 {
     [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
@@ -1563,7 +1564,7 @@ static_assert(sizeof(ipos8) == 2);
 DECLARE_FORMATTER(ipos8, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
 
-///@ ExportType fsize fsize HardStrong
+///@ ExportValueType fsize fsize HardStrong Layout = float-float
 struct fsize
 {
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
@@ -1583,7 +1584,7 @@ static_assert(sizeof(fsize) == 8);
 DECLARE_FORMATTER(fsize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(fsize, sstr >> value.width, sstr >> value.height);
 
-///@ ExportType fpos fpos HardStrong
+///@ ExportValueType fpos fpos HardStrong Layout = float-float
 struct fpos
 {
     [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
@@ -1601,7 +1602,7 @@ static_assert(sizeof(fpos) == 8);
 DECLARE_FORMATTER(fpos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(fpos, sstr >> value.x, sstr >> value.y);
 
-///@ ExportType frect frect HardStrong
+///@ ExportValueType frect frect HardStrong Layout = float-float-float-float
 struct frect
 {
     constexpr frect() noexcept = default;
@@ -2049,13 +2050,38 @@ public:
 
 DECLARE_EXCEPTION(EnumResolveException);
 
+struct BaseTypeInfo
+{
+    string TypeName {};
+    bool IsString {};
+    bool IsHash {};
+    bool IsInt {};
+    bool IsSignedInt {};
+    bool IsInt8 {};
+    bool IsInt16 {};
+    bool IsInt32 {};
+    bool IsInt64 {};
+    bool IsUInt8 {};
+    bool IsUInt16 {};
+    bool IsUInt32 {};
+    bool IsUInt64 {};
+    bool IsFloat {};
+    bool IsSingleFloat {};
+    bool IsDoubleFloat {};
+    bool IsBool {};
+    bool IsEnum {};
+    bool IsAggregatedType {};
+    uint Size {};
+};
+
 class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
     // Todo: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
-    //[[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, size_t& size) const -> bool = 0;
-    //[[nodiscard]] virtual auto GetTypeInfo(string_view type_name, TypeDesc& desc) const -> bool = 0;
+    [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
+    [[nodiscard]] virtual auto GetEnumInfo(const string& enum_name, size_t& size) const -> bool = 0;
+    [[nodiscard]] virtual auto GetAggregatedTypeInfo(const string& type_name, size_t& size, const vector<BaseTypeInfo>** layout) const -> bool = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;

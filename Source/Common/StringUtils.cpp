@@ -38,17 +38,17 @@
 
 // ReSharper disable CppInconsistentNaming
 
-auto _str::length() const -> size_t
+auto _str::length() const noexcept -> size_t
 {
     return _s.length();
 }
 
-auto _str::empty() const -> bool
+auto _str::empty() const noexcept -> bool
 {
     return _s.empty();
 }
 
-auto _str::compareIgnoreCase(string_view r) const -> bool
+auto _str::compareIgnoreCase(string_view r) const noexcept -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -59,10 +59,11 @@ auto _str::compareIgnoreCase(string_view r) const -> bool
             return false;
         }
     }
+
     return true;
 }
 
-auto _str::compareIgnoreCaseUtf8(string_view r) const -> bool
+auto _str::compareIgnoreCaseUtf8(string_view r) const noexcept -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -71,22 +72,22 @@ auto _str::compareIgnoreCaseUtf8(string_view r) const -> bool
     return _str(_s).lowerUtf8() == _str(r).lowerUtf8();
 }
 
-auto _str::startsWith(char r) const -> bool
+auto _str::startsWith(char r) const noexcept -> bool
 {
     return _s.length() >= 1 && _s.front() == r;
 }
 
-auto _str::startsWith(string_view r) const -> bool
+auto _str::startsWith(string_view r) const noexcept -> bool
 {
     return _s.length() >= r.length() && _s.compare(0, r.length(), r) == 0;
 }
 
-auto _str::endsWith(char r) const -> bool
+auto _str::endsWith(char r) const noexcept -> bool
 {
     return _s.length() >= 1 && _s.back() == r;
 }
 
-auto _str::endsWith(string_view r) const -> bool
+auto _str::endsWith(string_view r) const noexcept -> bool
 {
     return _s.length() >= r.length() && _s.compare(_s.length() - r.length(), r.length(), r) == 0;
 }
@@ -101,6 +102,7 @@ auto _str::isValidUtf8() const -> bool
         }
         i += length;
     }
+
     return true;
 }
 
@@ -112,6 +114,7 @@ auto _str::lengthUtf8() const -> size_t
     while (*str != 0) {
         length += static_cast<uint>((*str++ & 0xC0) != 0x80);
     }
+
     return length;
 }
 
@@ -122,6 +125,7 @@ auto _str::substringUntil(char separator) -> _str&
     if (pos != string::npos) {
         _s = _s.substr(0, pos);
     }
+
     return *this;
 }
 
@@ -132,6 +136,7 @@ auto _str::substringUntil(string_view separator) -> _str&
     if (pos != string::npos) {
         _s = _s.substr(0, pos);
     }
+
     return *this;
 }
 
@@ -145,6 +150,7 @@ auto _str::substringAfter(char separator) -> _str&
     else {
         _s.erase();
     }
+
     return *this;
 }
 
@@ -158,6 +164,7 @@ auto _str::substringAfter(string_view separator) -> _str&
     else {
         _s.erase();
     }
+
     return *this;
 }
 
@@ -181,12 +188,14 @@ auto _str::trim() -> _str&
             _s.erase(r + 1);
         }
     }
+
     return *this;
 }
 
 auto _str::erase(char what) -> _str&
 {
     _s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
+
     return *this;
 }
 
@@ -207,18 +216,21 @@ auto _str::erase(char begin, char end) -> _str&
 
         _s.erase(begin_pos, end_pos - begin_pos + 1);
     }
+
     return *this;
 }
 
 auto _str::replace(char from, char to) -> _str&
 {
     std::replace(_s.begin(), _s.end(), from, to);
+
     return *this;
 }
 
 auto _str::replace(char from1, char from2, char to) -> _str&
 {
     replace(string({from1, from2}), string({to}));
+
     return *this;
 }
 
@@ -230,18 +242,21 @@ auto _str::replace(string_view from, string_view to) -> _str&
         _s.replace(pos, from.length(), to);
         pos += to.length();
     }
+
     return *this;
 }
 
 auto _str::lower() -> _str&
 {
     std::transform(_s.begin(), _s.end(), _s.begin(), tolower);
+
     return *this;
 }
 
 auto _str::upper() -> _str&
 {
     std::transform(_s.begin(), _s.end(), _s.begin(), toupper);
+
     return *this;
 }
 
@@ -260,6 +275,7 @@ auto _str::lowerUtf8() -> _str&
 
         i += new_length;
     }
+
     return *this;
 }
 
@@ -278,6 +294,7 @@ auto _str::upperUtf8() -> _str&
 
         i += new_length;
     }
+
     return *this;
 }
 
@@ -294,6 +311,7 @@ auto _str::split(char divider) const -> vector<string>
             result.push_back(entry);
         }
     }
+
     return result;
 }
 
@@ -310,6 +328,7 @@ auto _str::splitToInt(char divider) const -> vector<int>
             result.push_back(_str(entry).toInt());
         }
     }
+
     return result;
 }
 
@@ -460,6 +479,7 @@ auto _str::extractDir() -> _str&
     if (pos != string::npos) {
         _s = _s.substr(0, pos);
     }
+
     return *this;
 }
 
@@ -472,6 +492,7 @@ auto _str::extractFileName() -> _str&
     if (pos != string::npos) {
         _s = _s.substr(pos + 1);
     }
+
     return *this;
 }
 
@@ -480,8 +501,8 @@ auto _str::getFileExtension() -> _str&
     const auto dot = _s.find_last_of('.');
 
     _s = dot != string::npos ? _s.substr(dot + 1) : "";
-
     lower();
+
     return *this;
 }
 
@@ -492,12 +513,14 @@ auto _str::eraseFileExtension() -> _str&
     if (dot != string::npos) {
         _s = _s.substr(0, dot);
     }
+
     return *this;
 }
 
 auto _str::changeFileName(string_view new_name) -> _str&
 {
     const auto ext = _str(_s).getFileExtension();
+
     if (!ext.empty()) {
         const auto new_name_with_ext = _str("{}.{}", new_name, ext);
         _s = _str(_s).extractDir().combinePath(new_name_with_ext);
@@ -505,6 +528,7 @@ auto _str::changeFileName(string_view new_name) -> _str&
     else {
         _s = _str(_s).extractDir().combinePath(new_name);
     }
+
     return *this;
 }
 
@@ -525,6 +549,7 @@ auto _str::combinePath(string_view path) -> _str&
 auto _str::normalizePathSlashes() -> _str&
 {
     std::replace(_s.begin(), _s.end(), '\\', '/');
+
     return *this;
 }
 
@@ -532,6 +557,7 @@ auto _str::normalizeLineEndings() -> _str&
 {
     replace('\r', '\n', '\n');
     replace('\r', '\n');
+
     return *this;
 }
 
@@ -562,6 +588,7 @@ auto _str::toWideChar() const -> std::wstring
 
     auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
     _freea(buf);
+
     return result;
 }
 #endif
@@ -703,6 +730,7 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) -> uint
     buf[0] = static_cast<char>(0xef);
     buf[1] = static_cast<char>(0xbf);
     buf[2] = static_cast<char>(0xbd);
+
     return 3;
 }
 
@@ -788,6 +816,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     return ucs;
 }
 
@@ -818,5 +847,6 @@ auto utf8::Upper(uint ucs) -> uint
     if (ucs >= 0x10000) {
         return ucs;
     }
+
     return Data->UpperTable[ucs];
 }

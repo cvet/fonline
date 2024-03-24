@@ -56,10 +56,6 @@ auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> Pro
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
-    if (_registrationFinalized) {
-        return nullptr;
-    }
-
     const auto it = _registrators.find(string(class_name));
     if (it != _registrators.end()) {
         return const_cast<PropertyRegistrator*>(it->second);
@@ -70,39 +66,37 @@ auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> Pro
     return registrator;
 }
 
-void FOEngineBase::AddEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values)
+void FOEngineBase::AddEnumGroup(const string& name, size_t size, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-
-    if (_registrationFinalized) {
-        return;
-    }
-
-    RUNTIME_ASSERT(_enums.count(string(name)) == 0u);
+    RUNTIME_ASSERT(_enums.count(name) == 0);
 
     unordered_map<int, string> key_values_rev;
+
     for (auto&& [key, value] : key_values) {
-        RUNTIME_ASSERT(key_values_rev.count(value) == 0u);
+        RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev[value] = key;
         const auto full_key = _str("{}::{}", name, key).str();
-        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0u);
+        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0);
         _enumsFull[full_key] = value;
     }
 
-    _enums[string(name)] = std::move(key_values);
-    _enumsRev[string(name)] = std::move(key_values_rev);
-    _enumSizes[string(name)] = size;
+    _enums[name] = std::move(key_values);
+    _enumsRev[name] = std::move(key_values_rev);
+    _enumSizes[name] = size;
 }
 
-auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
+void FOEngineBase::AddAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _registrators.find(string(class_name));
-    RUNTIME_ASSERT(it != _registrators.end());
-    return it->second;
+    RUNTIME_ASSERT(!_registrationFinalized);
+    RUNTIME_ASSERT(_aggregatedTypes.count(name) == 0);
+    RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo& t) { return sum + t.Size; }));
+
+    _aggregatedTypes.emplace(name, tuple {size, std::move(layout)});
 }
 
 void FOEngineBase::SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
@@ -123,6 +117,167 @@ void FOEngineBase::FinalizeDataRegistration()
     _registrationFinalized = true;
 
     GetPropertiesForEdit().AllocData();
+}
+
+auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _registrators.find(string(class_name));
+    RUNTIME_ASSERT(it != _registrators.end());
+    return it->second;
+}
+
+auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
+{
+    STACK_TRACE_ENTRY();
+
+    static unordered_map<string_view, std::function<void(BaseTypeInfo&)>> base_types = {//
+        {"int8",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt8 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int8);
+            }},
+        {"int16",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt16 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int16);
+            }},
+        {"int",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt32 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int);
+            }},
+        {"int64",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt64 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int64);
+            }},
+        {"uint8",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt8 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint8);
+            }},
+        {"uint16",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt16 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint16);
+            }},
+        {"uint",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt32 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint);
+            }},
+        {"uint64",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt64 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint64);
+            }},
+        {"float",
+            [](BaseTypeInfo& info) {
+                info.IsFloat = true;
+                info.IsSingleFloat = true;
+                info.Size = sizeof(float);
+            }},
+        {"double",
+            [](BaseTypeInfo& info) {
+                info.IsFloat = true;
+                info.IsDoubleFloat = true;
+                info.Size = sizeof(double);
+            }},
+        {"bool",
+            [](BaseTypeInfo& info) {
+                info.IsBool = true;
+                info.Size = sizeof(bool);
+            }},
+        {"string",
+            [](BaseTypeInfo& info) {
+                info.IsString = true;
+                info.Size = 0;
+            }},
+        {"any",
+            [](BaseTypeInfo& info) {
+                info.IsString = true;
+                info.Size = 0;
+            }},
+        {"hstring", [](BaseTypeInfo& info) {
+             info.IsHash = true;
+             info.Size = sizeof(hstring::hash_t);
+         }}};
+
+    RUNTIME_ASSERT(!type_str.empty());
+
+    BaseTypeInfo info;
+
+    info.TypeName = type_str;
+
+    if (const auto it = base_types.find(type_str); it != base_types.end()) {
+        it->second(info);
+    }
+    else if (size_t enum_size; GetEnumInfo(info.TypeName, enum_size)) {
+        info.IsEnum = true;
+        info.Size = static_cast<uint>(enum_size);
+    }
+    else if (size_t type_size; GetAggregatedTypeInfo(info.TypeName, type_size, nullptr)) {
+        info.IsAggregatedType = true;
+        info.Size = static_cast<uint>(type_size);
+    }
+    else {
+        throw GenericException("Invalid base type", type_str);
+    }
+
+    return info;
+}
+
+auto FOEngineBase::GetEnumInfo(const string& enum_name, size_t& size) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    const auto enum_it = _enumSizes.find(enum_name);
+
+    if (enum_it == _enumSizes.end()) {
+        return false;
+    }
+
+    size = enum_it->second;
+    RUNTIME_ASSERT(size != 0);
+
+    return true;
+}
+
+auto FOEngineBase::GetAggregatedTypeInfo(const string& type_name, size_t& size, const vector<BaseTypeInfo>** layout) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _aggregatedTypes.find(type_name);
+
+    if (it == _aggregatedTypes.end()) {
+        return false;
+    }
+
+    size = std::get<0>(it->second);
+
+    if (layout != nullptr) {
+        *layout = &std::get<1>(it->second);
+    }
+
+    return true;
 }
 
 auto FOEngineBase::ResolveEnumValue(const string& enum_value_name, bool* failed) const -> int

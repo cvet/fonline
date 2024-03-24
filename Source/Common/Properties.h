@@ -105,94 +105,7 @@ using PropertyGetCallback = std::function<PropertyRawData(Entity*, const Propert
 using PropertySetCallback = std::function<void(Entity*, const Property*, PropertyRawData&)>;
 using PropertyPostSetCallback = std::function<void(Entity*, const Property*)>;
 
-class PropertyBaseInfo
-{
-    friend class PropertyRegistrator;
-
-public:
-    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
-    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
-    [[nodiscard]] auto IsBaseTypeInt() const -> bool { return _isInt; }
-    [[nodiscard]] auto IsBaseTypeSignedInt() const -> bool { return _isSignedInt; }
-    [[nodiscard]] auto IsBaseTypeInt8() const -> bool { return _isInt8; }
-    [[nodiscard]] auto IsBaseTypeInt16() const -> bool { return _isInt16; }
-    [[nodiscard]] auto IsBaseTypeInt32() const -> bool { return _isInt32; }
-    [[nodiscard]] auto IsBaseTypeInt64() const -> bool { return _isInt64; }
-    [[nodiscard]] auto IsBaseTypeUInt8() const -> bool { return _isUInt8; }
-    [[nodiscard]] auto IsBaseTypeUInt16() const -> bool { return _isUInt16; }
-    [[nodiscard]] auto IsBaseTypeUInt32() const -> bool { return _isUInt32; }
-    [[nodiscard]] auto IsBaseTypeUInt64() const -> bool { return _isUInt64; }
-    [[nodiscard]] auto IsBaseTypeFloat() const -> bool { return _isFloat; }
-    [[nodiscard]] auto IsBaseTypeSingleFloat() const -> bool { return _isSingleFloat; }
-    [[nodiscard]] auto IsBaseTypeDoubleFloat() const -> bool { return _isDoubleFloat; }
-    [[nodiscard]] auto IsBaseTypeBool() const -> bool { return _isBool; }
-    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
-    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
-    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
-    [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
-    [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
-    [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
-    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
-    [[nodiscard]] auto IsDict() const -> bool { return _dataType == DataType::Dict; }
-    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
-    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
-    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
-    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
-    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
-    [[nodiscard]] auto IsDictKeyString() const -> bool { return _isDictKeyString; }
-    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
-    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
-    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _asFullTypeName; }
-
-protected:
-    enum class DataType
-    {
-        PlainData,
-        String,
-        Array,
-        Dict,
-        Struct,
-    };
-
-    DataType _dataType {};
-
-    bool _isStringBase {};
-    bool _isHashBase {};
-    bool _isResourceHash {};
-    bool _isInt {};
-    bool _isSignedInt {};
-    bool _isFloat {};
-    bool _isBool {};
-    bool _isEnumBase {};
-    uint _baseSize {};
-    string _baseTypeName {};
-
-    bool _isInt8 {};
-    bool _isInt16 {};
-    bool _isInt32 {};
-    bool _isInt64 {};
-    bool _isUInt8 {};
-    bool _isUInt16 {};
-    bool _isUInt32 {};
-    bool _isUInt64 {};
-    bool _isSingleFloat {};
-    bool _isDoubleFloat {};
-
-    bool _isArrayOfString {};
-
-    bool _isDictOfString {};
-    bool _isDictOfArray {};
-    bool _isDictOfArrayOfString {};
-    bool _isDictKeyHash {};
-    bool _isDictKeyEnum {};
-    bool _isDictKeyString {};
-    uint _dictKeySize {};
-    string _dictKeyTypeName {};
-
-    string _asFullTypeName {};
-};
-
-class Property final : public PropertyBaseInfo
+class Property final
 {
     friend class PropertyRegistrator;
     friend class Properties;
@@ -237,6 +150,40 @@ public:
     [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
     [[nodiscard]] auto GetBaseScriptFuncType() const -> const string& { return _scriptFuncType; }
 
+    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseType.TypeName; }
+    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseType.Size; }
+    [[nodiscard]] auto IsBaseTypeInt() const -> bool { return _baseType.IsInt; }
+    [[nodiscard]] auto IsBaseTypeSignedInt() const -> bool { return _baseType.IsSignedInt; }
+    [[nodiscard]] auto IsBaseTypeInt8() const -> bool { return _baseType.IsInt8; }
+    [[nodiscard]] auto IsBaseTypeInt16() const -> bool { return _baseType.IsInt16; }
+    [[nodiscard]] auto IsBaseTypeInt32() const -> bool { return _baseType.IsInt32; }
+    [[nodiscard]] auto IsBaseTypeInt64() const -> bool { return _baseType.IsInt64; }
+    [[nodiscard]] auto IsBaseTypeUInt8() const -> bool { return _baseType.IsUInt8; }
+    [[nodiscard]] auto IsBaseTypeUInt16() const -> bool { return _baseType.IsUInt16; }
+    [[nodiscard]] auto IsBaseTypeUInt32() const -> bool { return _baseType.IsUInt32; }
+    [[nodiscard]] auto IsBaseTypeUInt64() const -> bool { return _baseType.IsUInt64; }
+    [[nodiscard]] auto IsBaseTypeFloat() const -> bool { return _baseType.IsFloat; }
+    [[nodiscard]] auto IsBaseTypeSingleFloat() const -> bool { return _baseType.IsSingleFloat; }
+    [[nodiscard]] auto IsBaseTypeDoubleFloat() const -> bool { return _baseType.IsDoubleFloat; }
+    [[nodiscard]] auto IsBaseTypeBool() const -> bool { return _baseType.IsBool; }
+    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _baseType.IsHash; }
+    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _baseType.IsEnum; }
+    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
+    [[nodiscard]] auto IsPlainData() const -> bool { return _isPlainData; }
+    [[nodiscard]] auto IsString() const -> bool { return _isString; }
+    [[nodiscard]] auto IsArray() const -> bool { return _isArray; }
+    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
+    [[nodiscard]] auto IsDict() const -> bool { return _isDict; }
+    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
+    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
+    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
+    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
+    [[nodiscard]] auto IsDictKeyString() const -> bool { return _isDictKeyString; }
+    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeyType.Size; }
+    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyType.TypeName; }
+    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _asFullTypeName; }
+
     [[nodiscard]] auto IsDisabled() const -> bool { return _isDisabled; }
     [[nodiscard]] auto IsVirtual() const -> bool { return _isVirtual; }
     [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
@@ -253,7 +200,7 @@ public:
     void AddPostSetter(PropertyPostSetCallback setter) const;
 
 private:
-    Property(const PropertyRegistrator* registrator, const PropertyBaseInfo& base_info);
+    explicit Property(const PropertyRegistrator* registrator);
 
     const PropertyRegistrator* _registrator;
 
@@ -266,6 +213,27 @@ private:
     hstring _component {};
     string _scriptFuncType {};
     AccessType _accessType {};
+
+    BaseTypeInfo _baseType {};
+
+    bool _isPlainData {};
+    bool _isResourceHash {};
+
+    bool _isString {};
+
+    bool _isArray {};
+    bool _isArrayOfString {};
+
+    bool _isDict {};
+    bool _isDictOfString {};
+    bool _isDictOfArray {};
+    bool _isDictOfArrayOfString {};
+    bool _isDictKeyHash {};
+    bool _isDictKeyEnum {};
+    bool _isDictKeyString {};
+    BaseTypeInfo _dictKeyType {};
+
+    string _asFullTypeName {};
 
     bool _isDisabled {};
     bool _isVirtual {};
@@ -333,7 +301,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(sizeof(T) == prop->GetBaseSize());
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
@@ -363,7 +331,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->GetBaseSize());
         RUNTIME_ASSERT(prop->IsPlainData());
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
@@ -390,7 +358,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
@@ -414,7 +382,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
@@ -484,7 +452,7 @@ public:
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(sizeof(T) == prop->GetBaseSize());
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
@@ -532,7 +500,7 @@ public:
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->GetBaseSize());
         RUNTIME_ASSERT(prop->IsPlainData());
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
@@ -575,7 +543,7 @@ public:
     void SetValue(const Property* prop, const T& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
@@ -613,7 +581,7 @@ public:
     void SetValue(const Property* prop, const vector<T>& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
@@ -731,7 +699,6 @@ public:
     void RegisterComponent(string_view name);
     void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }
     void RegisterProperty(const const_span<string_view>& flags);
-    auto ResolveType(string_view type_str) const -> const PropertyBaseInfo&;
 
 private:
     const hstring _className;
@@ -746,8 +713,6 @@ private:
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};
     unordered_map<string_view, Property::AccessType> _accessMap {};
-    unordered_map<string_view, Property::DataType> _dataTypeMap {};
-    mutable unordered_map<string_view, PropertyBaseInfo> _baseInfoCache {};
 
     // PlainData info
     uint _wholePodDataSize {};
