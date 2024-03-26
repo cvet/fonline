@@ -158,16 +158,10 @@ void Player::Send_LoadMap(const Map* map)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_controlledCr);
-
     const Location* loc = nullptr;
     hstring pid_map;
     hstring pid_loc;
     uint8 map_index_in_loc = 0;
-
-    if (map == nullptr) {
-        map = _engine->MapMngr.GetMap(_controlledCr->GetMapId());
-    }
 
     if (map != nullptr) {
         loc = map->GetLocation();
@@ -180,6 +174,7 @@ void Player::Send_LoadMap(const Map* map)
     vector<uint>* map_data_sizes = nullptr;
     vector<const uint8*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
+
     if (map != nullptr) {
         map->StoreData(false, &map_data, &map_data_sizes);
         loc->StoreData(false, &loc_data, &loc_data_sizes);
@@ -528,13 +523,15 @@ void Player::Send_EraseItem(const Item* item)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_GlobalInfo(uint8 info_flags)
+void Player::Send_GlobalInfo()
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_controlledCr);
+
+    constexpr uint8 info_flags = GM_INFO_LOCATIONS | GM_INFO_ZONES_FOG;
 
     const auto known_locs = _controlledCr->GetKnownLocations();
 
@@ -586,10 +583,6 @@ void Player::Send_GlobalInfo(uint8 info_flags)
 
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
-
-    if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
-        _engine->MapMngr.ProcessVisibleCritters(_controlledCr);
-    }
 }
 
 void Player::Send_GlobalLocation(const Location* loc, bool add)

@@ -1492,9 +1492,7 @@ static constexpr uint8 GM_FOG_NONE = 3;
 
 // GM Info
 static constexpr uint8 GM_INFO_LOCATIONS = 0x01;
-static constexpr uint8 GM_INFO_CRITTERS = 0x02;
 static constexpr uint8 GM_INFO_ZONES_FOG = 0x08;
-static constexpr uint8 GM_INFO_ALL = 0x0F;
 static constexpr uint8 GM_INFO_FOG = 0x10;
 static constexpr uint8 GM_INFO_LOCATION = 0x20;
 

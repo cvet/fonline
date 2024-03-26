@@ -1078,14 +1078,14 @@ void Critter::Send_EraseItem(const Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uint8 flags)
+void Critter::Send_GlobalInfo()
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GlobalInfo(flags);
+        _player->Send_GlobalInfo();
     }
 }
 

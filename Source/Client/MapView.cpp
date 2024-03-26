@@ -1420,7 +1420,6 @@ void MapView::RebuildMapOffset(int ox, int oy)
         // Items on hex
         if (!field.Items.empty()) {
             for (auto* item : field.Items) {
-
                 if (!_mapperMode) {
                     if (item->GetAlwaysHideSprite()) {
                         continue;

@@ -2181,20 +2181,22 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
-    if (!cr->GetMapId()) {
+    cr->Send_AddCritter(cr);
+    cr->Send_AddAllItems();
+    cr->Send_AllAutomapsInfo();
+
+    if (map == nullptr) {
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        cr->Send_GlobalInfo(GM_INFO_ALL);
-        cr->Send_AllAutomapsInfo();
+        for (const auto* group_cr : *cr->GlobalMapGroup) {
+            if (group_cr != cr) {
+                cr->Send_AddCritter(group_cr);
+            }
+        }
+
+        cr->Send_GlobalInfo();
     }
     else {
-        RUNTIME_ASSERT(map);
-
-        // Send chosen
-        cr->Send_AddCritter(cr);
-        cr->Send_AddAllItems();
-        cr->Send_AllAutomapsInfo();
-
         // Send current critters
         for (const auto* visible_cr : cr->VisCrSelf) {
             if (same_map && prev_cr->VisCrSelfMap.count(visible_cr->GetId()) != 0) {

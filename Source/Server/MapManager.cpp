@@ -1394,8 +1394,6 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-    const auto map_id = map != nullptr ? map->GetId() : ident_t {};
-
     const auto prev_map_id = cr->GetMapId();
     auto* prev_map = prev_map_id ? GetMap(prev_map_id) : nullptr;
     RUNTIME_ASSERT(!prev_map_id || !!prev_map);
@@ -1486,9 +1484,17 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
             return;
         }
 
-        cr->Send_LoadMap(nullptr);
+        cr->Send_LoadMap(map);
         cr->Send_AddCritter(cr);
         cr->Send_AddAllItems();
+
+        if (map == nullptr) {
+            for (const auto* group_cr : *cr->GlobalMapGroup) {
+                if (group_cr != cr) {
+                    cr->Send_AddCritter(group_cr);
+                }
+            }
+        }
 
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
@@ -1661,25 +1667,8 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
         return;
     }
 
-    if (!cr->GetMapId()) {
-        // Global map
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
-
-        if (cr->GetIsControlledByPlayer()) {
-            for (const auto* group_cr : *cr->GlobalMapGroup) {
-                if (cr == group_cr) {
-                    cr->Send_AddCritter(cr);
-                    cr->Send_AddAllItems();
-                }
-                else {
-                    cr->Send_AddCritter(group_cr);
-                }
-            }
-        }
-    }
-    else {
-        // Local map
-        auto* map = GetMap(cr->GetMapId());
+    if (const auto map_id = cr->GetMapId()) {
+        auto* map = GetMap(map_id);
         RUNTIME_ASSERT(map);
 
         for (auto* target : copy_hold_ref(map->GetCritters())) {
@@ -1687,6 +1676,9 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
             ProcessCritterLook(map, cr, target, trace_result);
             ProcessCritterLook(map, target, cr, trace_result);
         }
+    }
+    else {
+        RUNTIME_ASSERT(cr->GlobalMapGroup);
     }
 }
 

@@ -1110,6 +1110,14 @@ void FOClient::Net_OnAddCritter()
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
         RUNTIME_ASSERT(proto);
 
+        const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
+        if (it != _worldmapCritters.end()) {
+            BreakIntoDebugger();
+            (*it)->MarkAsDestroyed();
+            (*it)->Release();
+            _worldmapCritters.erase(it);
+        }
+
         cr = new CritterView(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
         _worldmapCritters.emplace_back(cr);
@@ -1891,6 +1899,7 @@ void FOClient::Net_OnCritterAttachments()
     if (CurMap != nullptr) {
         auto* cr = CurMap->GetCritter(cr_id);
         if (cr == nullptr) {
+            BreakIntoDebugger();
             return;
         }
 
@@ -1918,10 +1927,12 @@ void FOClient::Net_OnCritterAttachments()
     else {
         auto* cr = GetWorldmapCritter(cr_id);
         if (cr == nullptr) {
+            BreakIntoDebugger();
             return;
         }
 
         cr->SetIsAttached(is_attached);
+        cr->SetAttachMaster(attach_master);
         cr->AttachedCritters = std::move(attached_critters);
     }
 }
@@ -2623,14 +2634,6 @@ void FOClient::Net_OnGlobalInfo()
         const auto fog = _conn.InBuf.Read<uint8>();
 
         _worldmapFog.Set2Bit(zx, zy, fog);
-    }
-
-    if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
-        for (auto* cr : _worldmapCritters) {
-            cr->MarkAsDestroyed();
-            cr->Release();
-        }
-        _worldmapCritters.clear();
     }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);

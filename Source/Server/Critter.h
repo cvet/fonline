@@ -158,7 +158,7 @@ public:
     void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);
     void Send_AddItem(const Item* item);
     void Send_EraseItem(const Item* item);
-    void Send_GlobalInfo(uint8 flags);
+    void Send_GlobalInfo();
     void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
     void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
