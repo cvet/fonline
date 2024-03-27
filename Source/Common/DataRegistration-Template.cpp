@@ -110,18 +110,9 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
 
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
-        static unordered_map<string, const type_info*> enum_type_map = {
-            {"int8", &typeid(int8)},
-            {"int16", &typeid(int16)},
-            {"int", &typeid(int)},
-            {"uint8", &typeid(uint8)},
-            {"uint16", &typeid(uint16)},
-            {"uint", &typeid(uint)},
-        };
-
         const auto tokens = _str(info).split(' ');
         const auto& enum_name = tokens[0];
-        const auto* enum_type = enum_type_map[tokens[1]];
+        const auto enum_size = _str(tokens[1]).toInt();
 
         unordered_map<string, int> key_values;
         for (size_t i = 2; i < tokens.size(); i++) {
@@ -132,7 +123,7 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
             key_values.emplace(key, value);
         }
 
-        engine->AddEnumGroup(enum_name, *enum_type, std::move(key_values));
+        engine->AddEnumGroup(enum_name, enum_size, std::move(key_values));
     }
 
     // Restore property components

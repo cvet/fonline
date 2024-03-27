@@ -87,7 +87,11 @@ void LogToFile(string_view fname)
         Data->LogFileHandle = std::make_unique<DiskFile>(std::move(log_file));
     }
     else {
-        std::cout << "Can't create log file '" << fname << "'\n";
+        string log_err_msg = _str("Can't create log file '{}'", fname).str();
+
+        Platform::InfoLog(log_err_msg);
+
+        std::cout << log_err_msg << "\n";
         std::cout.flush();
     }
 }

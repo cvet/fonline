@@ -48,7 +48,7 @@ public:
     [[nodiscard]] auto IsPaused() const -> bool;
     [[nodiscard]] auto IsLooped() const -> bool;
     [[nodiscard]] auto GetTime() const -> time_duration;
-    [[nodiscard]] auto GetSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetSize() const -> isize;
 
     void Stop();
     void Pause();

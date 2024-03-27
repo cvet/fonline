@@ -303,11 +303,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         if (cr != nullptr) {
             RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
-            if (cr->GetHexX() >= map->GetWidth()) {
-                cr->SetHexX(map->GetWidth() - 1);
-            }
-            if (cr->GetHexY() >= map->GetHeight()) {
-                cr->SetHexY(map->GetHeight() - 1);
+            if (const auto hex = cr->GetMapHex(); !map->GetSize().IsValidPos(hex)) {
+                cr->SetMapHex(map->GetSize().ClampPos(hex));
             }
 
             map->AddCritter(cr);
@@ -322,14 +319,11 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         if (item != nullptr) {
             RUNTIME_ASSERT(item->GetMapId() == map->GetId());
 
-            if (item->GetHexX() >= map->GetWidth()) {
-                item->SetHexX(map->GetWidth() - 1);
-            }
-            if (item->GetHexY() >= map->GetHeight()) {
-                item->SetHexY(map->GetHeight() - 1);
+            if (const auto hex = item->GetMapHex(); !map->GetSize().IsValidPos(hex)) {
+                item->SetMapHex(map->GetSize().ClampPos(hex));
             }
 
-            map->SetItem(item, item->GetHexX(), item->GetHexY());
+            map->SetItem(item, item->GetMapHex());
         }
     }
 

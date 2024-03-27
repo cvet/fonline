@@ -35,27 +35,28 @@
 
 #include "Common.h"
 
+#include "Entity.h"
+
 class GeometryHelper;
 
 class LineTracer final
 {
 public:
     LineTracer() = delete;
-    LineTracer(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle);
+    LineTracer(mpos start_hex, mpos target_hex, msize map_size, float angle);
     LineTracer(const LineTracer&) = delete;
     LineTracer(LineTracer&&) noexcept = default;
     auto operator=(const LineTracer&) -> LineTracer& = delete;
     auto operator=(LineTracer&&) noexcept -> LineTracer& = delete;
     ~LineTracer() = default;
 
-    auto GetNextHex(uint16& cx, uint16& cy) const -> uint8;
-    void GetNextSquare(uint16& cx, uint16& cy);
+    auto GetNextHex(mpos& pos) const -> uint8;
+    void GetNextSquare(mpos& pos);
 
 private:
     void NormalizeDir();
 
-    uint16 _maxHx {};
-    uint16 _maxHy {};
+    msize _mapSize {};
     float _x1 {};
     float _y1 {};
     float _x2 {};

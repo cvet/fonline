@@ -70,7 +70,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
-    if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
+    if (!pid || self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid proto '{}' arg.", pid);
     }
 
@@ -91,11 +91,10 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, uint16& hx, uint16& hy)
+[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
     Map* map;
 
@@ -103,49 +102,89 @@
     case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
         if (cr == nullptr) {
-            throw ScriptException("Critter accessory, critter not found");
+            throw ScriptException("Critter ownership, critter not found");
         }
 
-        if (cr->GetMapId() == ident_t {}) {
-            hx = cr->GetWorldX();
-            hy = cr->GetWorldY();
+        if (!cr->GetMapId()) {
+            hex = {};
             return nullptr;
         }
 
         map = self->GetEngine()->MapMngr.GetMap(cr->GetMapId());
-        if (!map) {
-            throw ScriptException("Critter accessory, map not found");
+        if (map == nullptr) {
+            throw ScriptException("Critter ownership, map not found");
         }
 
-        hx = cr->GetHexX();
-        hy = cr->GetHexY();
+        hex = cr->GetMapHex();
     } break;
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
         if (map == nullptr) {
-            throw ScriptException("Hex accessory, map not found");
+            throw ScriptException("Hex ownership, map not found");
         }
 
-        hx = self->GetHexX();
-        hy = self->GetHexY();
+        hex = self->GetMapHex();
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
-            throw ScriptException("Container accessory, crosslink");
+            throw ScriptException("Container ownership, crosslink");
         }
 
         auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
         if (cont == nullptr) {
-            throw ScriptException("Container accessory, container not found");
+            throw ScriptException("Container ownership, container not found");
         }
 
-        map = Server_Item_GetMapPosition(cont, hx, hy);
+        map = Server_Item_GetMapPosition(cont, hex);
     } break;
     default:
-        throw ScriptException("Unknown accessory");
+        throw ScriptException("Unknown ownership");
     }
 
     return map;
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] upos16 Server_Item_GetWorldPosition(Item* self)
+{
+    upos16 wpos;
+
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
+        if (cr == nullptr) {
+            throw ScriptException("Critter ownership, critter not found");
+        }
+
+        wpos = cr->GetWorldPos();
+    } break;
+    case ItemOwnership::MapHex: {
+        Map* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+        if (map == nullptr) {
+            throw ScriptException("Hex ownership, map not found");
+        }
+
+        wpos = map->GetLocation()->GetWorldPos();
+    } break;
+    case ItemOwnership::ItemContainer: {
+        if (self->GetId() == self->GetContainerId()) {
+            throw ScriptException("Container ownership, crosslink");
+        }
+
+        auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
+        if (cont == nullptr) {
+            throw ScriptException("Container ownership, container not found");
+        }
+
+        wpos = Server_Item_GetWorldPosition(cont);
+    } break;
+    default:
+        throw ScriptException("Unknown ownership");
+    }
+
+    return wpos;
 }
 
 ///# ...

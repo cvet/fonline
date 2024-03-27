@@ -130,6 +130,13 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     uint data_size;
     const auto* data = props->GetRawData(prop, data_size);
 
+    return SavePropertyToValue(prop, data, data_size, hash_resolver, name_resolver);
+}
+
+auto PropertiesSerializator::SavePropertyToValue(const PropertyBaseInfo* prop, const uint8* data, uint data_size, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+{
+    STACK_TRACE_ENTRY();
+
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
             const auto hash = *reinterpret_cast<const hstring::hash_t*>(data);
@@ -140,7 +147,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             std::memcpy(&enum_value, data, prop->GetBaseSize());
             return name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value);
         }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
+        else if (prop->IsBaseTypeInt() || prop->IsBaseTypeFloat() || prop->IsBaseTypeBool()) {
 #define PARSE_VALUE(is, t, ret_t) \
     do { \
         if (prop->is) { \
@@ -148,17 +155,17 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         } \
     } while (false)
 
-            PARSE_VALUE(IsInt8(), int8, int64);
-            PARSE_VALUE(IsInt16(), int16, int64);
-            PARSE_VALUE(IsInt32(), int, int64);
-            PARSE_VALUE(IsInt64(), int64, int64);
-            PARSE_VALUE(IsUInt8(), uint8, int64);
-            PARSE_VALUE(IsUInt16(), uint16, int64);
-            PARSE_VALUE(IsUInt32(), uint, int64);
-            PARSE_VALUE(IsUInt64(), uint64, int64);
-            PARSE_VALUE(IsSingleFloat(), float, double);
-            PARSE_VALUE(IsDoubleFloat(), double, double);
-            PARSE_VALUE(IsBool(), bool, bool);
+            PARSE_VALUE(IsBaseTypeInt8(), int8, int64);
+            PARSE_VALUE(IsBaseTypeInt16(), int16, int64);
+            PARSE_VALUE(IsBaseTypeInt32(), int, int64);
+            PARSE_VALUE(IsBaseTypeInt64(), int64, int64);
+            PARSE_VALUE(IsBaseTypeUInt8(), uint8, int64);
+            PARSE_VALUE(IsBaseTypeUInt16(), uint16, int64);
+            PARSE_VALUE(IsBaseTypeUInt32(), uint, int64);
+            PARSE_VALUE(IsBaseTypeUInt64(), uint64, int64);
+            PARSE_VALUE(IsBaseTypeSingleFloat(), float, double);
+            PARSE_VALUE(IsBaseTypeDoubleFloat(), double, double);
+            PARSE_VALUE(IsBaseTypeBool(), bool, bool);
 
 #undef PARSE_VALUE
         }
@@ -194,7 +201,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             return AnyData::Array();
         }
         else {
-            uint arr_size = data_size / prop->GetBaseSize();
+            const uint arr_size = data_size / prop->GetBaseSize();
 
             AnyData::Array arr;
             arr.reserve(arr_size);
@@ -214,37 +221,37 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->GetBaseSize()))))
 
-                    if (prop->IsInt8()) {
+                    if (prop->IsBaseTypeInt8()) {
                         PARSE_VALUE(int8, int64);
                     }
-                    else if (prop->IsInt16()) {
+                    else if (prop->IsBaseTypeInt16()) {
                         PARSE_VALUE(int16, int64);
                     }
-                    else if (prop->IsInt32()) {
+                    else if (prop->IsBaseTypeInt32()) {
                         PARSE_VALUE(int, int64);
                     }
-                    else if (prop->IsInt64()) {
+                    else if (prop->IsBaseTypeInt64()) {
                         PARSE_VALUE(int64, int64);
                     }
-                    else if (prop->IsUInt8()) {
+                    else if (prop->IsBaseTypeUInt8()) {
                         PARSE_VALUE(uint8, int64);
                     }
-                    else if (prop->IsUInt16()) {
+                    else if (prop->IsBaseTypeUInt16()) {
                         PARSE_VALUE(uint16, int64);
                     }
-                    else if (prop->IsUInt32()) {
+                    else if (prop->IsBaseTypeUInt32()) {
                         PARSE_VALUE(uint, int64);
                     }
-                    else if (prop->IsUInt64()) {
+                    else if (prop->IsBaseTypeUInt64()) {
                         PARSE_VALUE(uint64, int64);
                     }
-                    else if (prop->IsSingleFloat()) {
+                    else if (prop->IsBaseTypeSingleFloat()) {
                         PARSE_VALUE(float, double);
                     }
-                    else if (prop->IsDoubleFloat()) {
+                    else if (prop->IsBaseTypeDoubleFloat()) {
                         PARSE_VALUE(double, double);
                     }
-                    else if (prop->IsBool()) {
+                    else if (prop->IsBaseTypeBool()) {
                         PARSE_VALUE(bool, bool);
                     }
                     else {
@@ -341,37 +348,37 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + static_cast<size_t>(i) * prop->GetBaseSize()))))
 
-                                    if (prop->IsInt8()) {
+                                    if (prop->IsBaseTypeInt8()) {
                                         PARSE_VALUE(int8, int64);
                                     }
-                                    else if (prop->IsInt16()) {
+                                    else if (prop->IsBaseTypeInt16()) {
                                         PARSE_VALUE(int16, int64);
                                     }
-                                    else if (prop->IsInt32()) {
+                                    else if (prop->IsBaseTypeInt32()) {
                                         PARSE_VALUE(int, int64);
                                     }
-                                    else if (prop->IsInt64()) {
+                                    else if (prop->IsBaseTypeInt64()) {
                                         PARSE_VALUE(int64, int64);
                                     }
-                                    else if (prop->IsUInt8()) {
+                                    else if (prop->IsBaseTypeUInt8()) {
                                         PARSE_VALUE(uint8, int64);
                                     }
-                                    else if (prop->IsUInt16()) {
+                                    else if (prop->IsBaseTypeUInt16()) {
                                         PARSE_VALUE(uint16, int64);
                                     }
-                                    else if (prop->IsUInt32()) {
+                                    else if (prop->IsBaseTypeUInt32()) {
                                         PARSE_VALUE(uint, int64);
                                     }
-                                    else if (prop->IsUInt64()) {
+                                    else if (prop->IsBaseTypeUInt64()) {
                                         PARSE_VALUE(uint64, int64);
                                     }
-                                    else if (prop->IsSingleFloat()) {
+                                    else if (prop->IsBaseTypeSingleFloat()) {
                                         PARSE_VALUE(float, double);
                                     }
-                                    else if (prop->IsDoubleFloat()) {
+                                    else if (prop->IsBaseTypeDoubleFloat()) {
                                         PARSE_VALUE(double, double);
                                     }
-                                    else if (prop->IsBool()) {
+                                    else if (prop->IsBaseTypeBool()) {
                                         PARSE_VALUE(bool, bool);
                                     }
                                     else {
@@ -434,37 +441,37 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     dict.insert(std::make_pair(std::move(key_str), static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data))))); \
     data += prop->GetBaseSize()
 
-                        if (prop->IsInt8()) {
+                        if (prop->IsBaseTypeInt8()) {
                             PARSE_VALUE(int8, int64);
                         }
-                        else if (prop->IsInt16()) {
+                        else if (prop->IsBaseTypeInt16()) {
                             PARSE_VALUE(int16, int64);
                         }
-                        else if (prop->IsInt32()) {
+                        else if (prop->IsBaseTypeInt32()) {
                             PARSE_VALUE(int, int64);
                         }
-                        else if (prop->IsInt64()) {
+                        else if (prop->IsBaseTypeInt64()) {
                             PARSE_VALUE(int64, int64);
                         }
-                        else if (prop->IsUInt8()) {
+                        else if (prop->IsBaseTypeUInt8()) {
                             PARSE_VALUE(uint8, int64);
                         }
-                        else if (prop->IsUInt16()) {
+                        else if (prop->IsBaseTypeUInt16()) {
                             PARSE_VALUE(uint16, int64);
                         }
-                        else if (prop->IsUInt32()) {
+                        else if (prop->IsBaseTypeUInt32()) {
                             PARSE_VALUE(uint, int64);
                         }
-                        else if (prop->IsUInt64()) {
+                        else if (prop->IsBaseTypeUInt64()) {
                             PARSE_VALUE(uint64, int64);
                         }
-                        else if (prop->IsSingleFloat()) {
+                        else if (prop->IsBaseTypeSingleFloat()) {
                             PARSE_VALUE(float, double);
                         }
-                        else if (prop->IsDoubleFloat()) {
+                        else if (prop->IsBaseTypeDoubleFloat()) {
                             PARSE_VALUE(double, double);
                         }
-                        else if (prop->IsBool()) {
+                        else if (prop->IsBaseTypeBool()) {
                             PARSE_VALUE(bool, bool);
                         }
                         else {
@@ -491,6 +498,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     RUNTIME_ASSERT(!prop->IsVirtual());
     RUNTIME_ASSERT(!prop->IsDisabled());
 
+    const auto set_data = [props, prop](const uint8* data, uint data_size) { props->SetRawData(prop, data, data_size); };
+
+    return LoadPropertyFromValue(prop, prop->GetName(), value, set_data, hash_resolver, name_resolver);
+}
+
+auto PropertiesSerializator::LoadPropertyFromValue(const PropertyBaseInfo* prop, string_view prop_name, const AnyData::Value& value, const std::function<void(const uint8*, uint)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
+{
     // Implicit conversion to string
     string tmp_str;
 
@@ -521,37 +535,37 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     };
 
     const auto convert_str_to_number = [prop](const auto& some_value, uint8* pod_data) {
-        if (prop->IsInt8()) {
+        if (prop->IsBaseTypeInt8()) {
             *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(_str(std::get<string>(some_value)).toInt());
         }
-        else if (prop->IsInt16()) {
+        else if (prop->IsBaseTypeInt16()) {
             *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toInt());
         }
-        else if (prop->IsInt32()) {
+        else if (prop->IsBaseTypeInt32()) {
             *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(_str(std::get<string>(some_value)).toInt());
         }
-        else if (prop->IsInt64()) {
+        else if (prop->IsBaseTypeInt64()) {
             *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(_str(std::get<string>(some_value)).toInt64());
         }
-        else if (prop->IsUInt8()) {
+        else if (prop->IsBaseTypeUInt8()) {
             *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(_str(std::get<string>(some_value)).toUInt());
         }
-        else if (prop->IsUInt16()) {
+        else if (prop->IsBaseTypeUInt16()) {
             *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toUInt());
         }
-        else if (prop->IsUInt32()) {
+        else if (prop->IsBaseTypeUInt32()) {
             *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(_str(std::get<string>(some_value)).toUInt());
         }
-        else if (prop->IsUInt64()) {
+        else if (prop->IsBaseTypeUInt64()) {
             *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(_str(std::get<string>(some_value)).toUInt64());
         }
-        else if (prop->IsSingleFloat()) {
+        else if (prop->IsBaseTypeSingleFloat()) {
             *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(_str(std::get<string>(some_value)).toFloat());
         }
-        else if (prop->IsDoubleFloat()) {
+        else if (prop->IsBaseTypeDoubleFloat()) {
             *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(_str(std::get<string>(some_value)).toDouble());
         }
-        else if (prop->IsBool()) {
+        else if (prop->IsBaseTypeBool()) {
             *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = static_cast<bool>(_str(std::get<string>(some_value)).toBool());
         }
         else {
@@ -563,12 +577,12 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
             if (value.index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong hash value type, property {}", prop->GetName());
+                WriteLog("Wrong hash value type, property {}", prop_name);
                 return false;
             }
 
             const auto h = hash_resolver.ToHashedString(std::get<string>(value)).as_hash();
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->GetBaseSize());
+            set_data(reinterpret_cast<const uint8*>(&h), prop->GetBaseSize());
         }
         else if (prop->IsBaseTypeEnum()) {
             int enum_value;
@@ -585,56 +599,56 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 enum_value = static_cast<int>(std::get<int64>(value));
             }
             else {
-                WriteLog("Wrong enum value type, property {}", prop->GetName());
+                WriteLog("Wrong enum value type, property {}", prop_name);
                 return false;
             }
 
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&enum_value), prop->GetBaseSize());
+            set_data(reinterpret_cast<const uint8*>(&enum_value), prop->GetBaseSize());
         }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
+        else if (prop->IsBaseTypeInt() || prop->IsBaseTypeFloat() || prop->IsBaseTypeBool()) {
             if (value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong integer value type (array or dict), property {}", prop->GetName());
+                WriteLog("Wrong integer value type (array or dict), property {}", prop_name);
                 return false;
             }
 
             if (value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value)) {
-                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop->GetName());
+                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop_name);
                 return false;
             }
 
 #define PARSE_VALUE(t) \
     do { \
-        if (prop->IsInt8()) { \
+        if (prop->IsBaseTypeInt8()) { \
             *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(std::get<t>(value)); \
         } \
-        else if (prop->IsInt16()) { \
+        else if (prop->IsBaseTypeInt16()) { \
             *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
         } \
-        else if (prop->IsInt32()) { \
+        else if (prop->IsBaseTypeInt32()) { \
             *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(std::get<t>(value)); \
         } \
-        else if (prop->IsInt64()) { \
+        else if (prop->IsBaseTypeInt64()) { \
             *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(std::get<t>(value)); \
         } \
-        else if (prop->IsUInt8()) { \
+        else if (prop->IsBaseTypeUInt8()) { \
             *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(std::get<t>(value)); \
         } \
-        else if (prop->IsUInt16()) { \
+        else if (prop->IsBaseTypeUInt16()) { \
             *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
         } \
-        else if (prop->IsUInt32()) { \
+        else if (prop->IsBaseTypeUInt32()) { \
             *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(std::get<t>(value)); \
         } \
-        else if (prop->IsUInt64()) { \
+        else if (prop->IsBaseTypeUInt64()) { \
             *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(std::get<t>(value)); \
         } \
-        else if (prop->IsSingleFloat()) { \
+        else if (prop->IsBaseTypeSingleFloat()) { \
             *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(std::get<t>(value)); \
         } \
-        else if (prop->IsDoubleFloat()) { \
+        else if (prop->IsBaseTypeDoubleFloat()) { \
             *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(std::get<t>(value)); \
         } \
-        else if (prop->IsBool()) { \
+        else if (prop->IsBaseTypeBool()) { \
             *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = (std::get<t>(value) != static_cast<t>(0)); \
         } \
         else { \
@@ -661,7 +675,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 #undef PARSE_VALUE
 
-            props->SetRawData(prop, pod_data, prop->GetBaseSize());
+            set_data(pod_data, prop->GetBaseSize());
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
@@ -669,34 +683,34 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
     else if (prop->IsString()) {
         if (!can_read_to_string(value)) {
-            WriteLog("Wrong string value type, property {}", prop->GetName());
+            WriteLog("Wrong string value type, property {}", prop_name);
             return false;
         }
 
         const auto& str = read_to_string(value);
 
-        props->SetRawData(prop, reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
+        set_data(reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
     }
     else if (prop->IsArray()) {
         if (value.index() != AnyData::ARRAY_VALUE) {
-            WriteLog("Wrong array value type, property {}", prop->GetName());
+            WriteLog("Wrong array value type, property {}", prop_name);
             return false;
         }
 
         const auto& arr = std::get<AnyData::Array>(value);
 
         if (arr.empty()) {
-            props->SetRawData(prop, nullptr, 0);
+            set_data(nullptr, 0);
             return true;
         }
 
         if (prop->IsBaseTypeHash()) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array hash element value type, property {}", prop->GetName());
+                WriteLog("Wrong array hash element value type, property {}", prop_name);
                 return false;
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
+            const uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
             auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
@@ -706,15 +720,15 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 *reinterpret_cast<hstring::hash_t*>(data.get() + i * sizeof(hstring::hash_t)) = h;
             }
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
         else if (prop->IsBaseTypeEnum()) {
             if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
-                WriteLog("Wrong array enum element value type, property {}", prop->GetName());
+                WriteLog("Wrong array enum element value type, property {}", prop_name);
                 return false;
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * prop->GetBaseSize();
+            const uint data_size = static_cast<uint>(arr.size()) * prop->GetBaseSize();
             auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
@@ -736,11 +750,11 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 std::memcpy(data.get() + i * prop->GetBaseSize(), &enum_value, prop->GetBaseSize());
             }
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
+        else if (prop->IsBaseTypeInt() || prop->IsBaseTypeFloat() || prop->IsBaseTypeBool()) {
             if (arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong array element value type (array or dict), property {}", prop->GetName());
+                WriteLog("Wrong array element value type (array or dict), property {}", prop_name);
                 return false;
             }
 
@@ -748,13 +762,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 for (size_t i = 0; i < arr.size(); i++) {
                     RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
                     if (!can_convert_str_to_number(arr[i])) {
-                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop->GetName());
+                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop_name);
                         return false;
                     }
                 }
             }
 
-            uint data_size = prop->GetBaseSize() * static_cast<uint>(arr.size());
+            const uint data_size = prop->GetBaseSize() * static_cast<uint>(arr.size());
             auto data = unique_ptr<uint8>(new uint8[data_size]);
             const auto arr_element_index = arr[0].index();
 
@@ -780,37 +794,37 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         } \
     } while (false)
 
-            if (prop->IsInt8()) {
+            if (prop->IsBaseTypeInt8()) {
                 PARSE_VALUE(int8);
             }
-            else if (prop->IsInt16()) {
+            else if (prop->IsBaseTypeInt16()) {
                 PARSE_VALUE(int16);
             }
-            else if (prop->IsInt32()) {
+            else if (prop->IsBaseTypeInt32()) {
                 PARSE_VALUE(int);
             }
-            else if (prop->IsInt64()) {
+            else if (prop->IsBaseTypeInt64()) {
                 PARSE_VALUE(int64);
             }
-            else if (prop->IsUInt8()) {
+            else if (prop->IsBaseTypeUInt8()) {
                 PARSE_VALUE(uint8);
             }
-            else if (prop->IsUInt16()) {
+            else if (prop->IsBaseTypeUInt16()) {
                 PARSE_VALUE(uint16);
             }
-            else if (prop->IsUInt32()) {
+            else if (prop->IsBaseTypeUInt32()) {
                 PARSE_VALUE(uint);
             }
-            else if (prop->IsUInt64()) {
+            else if (prop->IsBaseTypeUInt64()) {
                 PARSE_VALUE(uint64);
             }
-            else if (prop->IsSingleFloat()) {
+            else if (prop->IsBaseTypeSingleFloat()) {
                 PARSE_VALUE(float);
             }
-            else if (prop->IsDoubleFloat()) {
+            else if (prop->IsBaseTypeDoubleFloat()) {
                 PARSE_VALUE(double);
             }
-            else if (prop->IsBool()) {
+            else if (prop->IsBaseTypeBool()) {
                 PARSE_VALUE(bool);
             }
             else {
@@ -819,13 +833,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 #undef PARSE_VALUE
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
         else {
             RUNTIME_ASSERT(prop->IsArrayOfString());
 
             if (!can_read_to_string(arr[0])) {
-                WriteLog("Wrong array element value type, property {}", prop->GetName());
+                WriteLog("Wrong array element value type, property {}", prop_name);
                 return false;
             }
 
@@ -851,19 +865,19 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             RUNTIME_ASSERT(data_pos == data_size);
 
-            props->SetRawData(prop, data.get(), data_size);
+            set_data(data.get(), data_size);
         }
     }
     else if (prop->IsDict()) {
         if (value.index() != AnyData::DICT_VALUE) {
-            WriteLog("Wrong dict value type, property {}", prop->GetName());
+            WriteLog("Wrong dict value type, property {}", prop_name);
             return false;
         }
 
         const auto& dict = std::get<AnyData::Dict>(value);
 
         if (dict.empty()) {
-            props->SetRawData(prop, nullptr, 0);
+            set_data(nullptr, 0);
             return true;
         }
 
@@ -880,7 +894,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
             if (prop->IsDictOfArray()) {
                 if (dict_value.index() != AnyData::ARRAY_VALUE) {
-                    WriteLog("Wrong dict array value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict array value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -892,7 +906,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 if (prop->IsBaseTypeHash()) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element hash value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element hash value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -903,7 +917,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->IsBaseTypeEnum()) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element enum value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element enum value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -914,7 +928,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->IsDictOfArrayOfString()) {
                     for (const auto& e : arr) {
                         if (!can_read_to_string(e)) {
-                            WriteLog("Wrong dict array element string value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element string value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -925,13 +939,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else {
                     for (const auto& e : arr) {
                         if (e.index() == AnyData::ARRAY_VALUE || e.index() == AnyData::DICT_VALUE || e.index() != arr[0].index()) {
-                            WriteLog("Wrong dict array element value type, property {}", prop->GetName());
+                            WriteLog("Wrong dict array element value type, property {}", prop_name);
                             wrong_input = true;
                             break;
                         }
 
                         if (e.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(e)) {
-                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop->GetName());
+                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop_name);
                             wrong_input = true;
                             break;
                         }
@@ -942,7 +956,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->IsDictOfString()) {
                 if (!can_read_to_string(dict_value)) {
-                    WriteLog("Wrong dict string element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict string element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -951,7 +965,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->IsBaseTypeHash()) {
                 if (dict_value.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict hash element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict hash element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -960,7 +974,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->IsBaseTypeEnum()) {
                 if (dict_value.index() != AnyData::STRING_VALUE && dict_value.index() != AnyData::INT64_VALUE) {
-                    WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
+                    WriteLog("Wrong dict enum element value type, property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -969,13 +983,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else {
                 if (dict_value.index() == AnyData::ARRAY_VALUE || dict_value.index() == AnyData::DICT_VALUE) {
-                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop->GetName());
+                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop_name);
                     wrong_input = true;
                     break;
                 }
 
                 if (dict_value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(dict_value)) {
-                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(dict_value), prop->GetName());
+                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(dict_value), prop_name);
                     wrong_input = true;
                     break;
                 }
@@ -1102,38 +1116,37 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             throw UnreachablePlaceException(LINE_STR); \
         } \
     } while (false)
-
-                        if (prop->IsInt8()) {
+                        if (prop->IsBaseTypeInt8()) {
                             PARSE_VALUE(int8);
                         }
-                        else if (prop->IsInt16()) {
+                        else if (prop->IsBaseTypeInt16()) {
                             PARSE_VALUE(int16);
                         }
-                        else if (prop->IsInt32()) {
+                        else if (prop->IsBaseTypeInt32()) {
                             PARSE_VALUE(int);
                         }
-                        else if (prop->IsInt64()) {
+                        else if (prop->IsBaseTypeInt64()) {
                             PARSE_VALUE(int64);
                         }
-                        else if (prop->IsUInt8()) {
+                        else if (prop->IsBaseTypeUInt8()) {
                             PARSE_VALUE(uint8);
                         }
-                        else if (prop->IsUInt16()) {
+                        else if (prop->IsBaseTypeUInt16()) {
                             PARSE_VALUE(uint16);
                         }
-                        else if (prop->IsUInt32()) {
+                        else if (prop->IsBaseTypeUInt32()) {
                             PARSE_VALUE(uint);
                         }
-                        else if (prop->IsUInt64()) {
+                        else if (prop->IsBaseTypeUInt64()) {
                             PARSE_VALUE(uint64);
                         }
-                        else if (prop->IsSingleFloat()) {
+                        else if (prop->IsBaseTypeSingleFloat()) {
                             PARSE_VALUE(float);
                         }
-                        else if (prop->IsDoubleFloat()) {
+                        else if (prop->IsBaseTypeDoubleFloat()) {
                             PARSE_VALUE(double);
                         }
-                        else if (prop->IsBool()) {
+                        else if (prop->IsBaseTypeBool()) {
                             PARSE_VALUE(bool);
                         }
                         else {
@@ -1197,38 +1210,37 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             throw UnreachablePlaceException(LINE_STR); \
         } \
     } while (false)
-
-                    if (prop->IsInt8()) {
+                    if (prop->IsBaseTypeInt8()) {
                         PARSE_VALUE(int8);
                     }
-                    else if (prop->IsInt16()) {
+                    else if (prop->IsBaseTypeInt16()) {
                         PARSE_VALUE(int16);
                     }
-                    else if (prop->IsInt32()) {
+                    else if (prop->IsBaseTypeInt32()) {
                         PARSE_VALUE(int);
                     }
-                    else if (prop->IsInt64()) {
+                    else if (prop->IsBaseTypeInt64()) {
                         PARSE_VALUE(int64);
                     }
-                    else if (prop->IsUInt8()) {
+                    else if (prop->IsBaseTypeUInt8()) {
                         PARSE_VALUE(uint8);
                     }
-                    else if (prop->IsUInt16()) {
+                    else if (prop->IsBaseTypeUInt16()) {
                         PARSE_VALUE(uint16);
                     }
-                    else if (prop->IsUInt32()) {
+                    else if (prop->IsBaseTypeUInt32()) {
                         PARSE_VALUE(uint);
                     }
-                    else if (prop->IsUInt64()) {
+                    else if (prop->IsBaseTypeUInt64()) {
                         PARSE_VALUE(uint64);
                     }
-                    else if (prop->IsSingleFloat()) {
+                    else if (prop->IsBaseTypeSingleFloat()) {
                         PARSE_VALUE(float);
                     }
-                    else if (prop->IsDoubleFloat()) {
+                    else if (prop->IsBaseTypeDoubleFloat()) {
                         PARSE_VALUE(double);
                     }
-                    else if (prop->IsBool()) {
+                    else if (prop->IsBaseTypeBool()) {
                         PARSE_VALUE(bool);
                     }
                     else {
@@ -1244,7 +1256,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
         RUNTIME_ASSERT(data_pos == data_size);
 
-        props->SetRawData(prop, data.get(), data_size);
+        set_data(data.get(), data_size);
     }
     else {
         throw UnreachablePlaceException(LINE_STR);

@@ -32,6 +32,7 @@
 //
 
 #include "NetCommand.h"
+#include "Entity.h"
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
@@ -138,8 +139,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.Write(cr_id);
-        buf.Write(hex_x);
-        buf.Write(hex_y);
+        buf.Write(mpos {hex_x, hex_y});
         buf.EndMsg();
     } break;
     case CMD_DISCONCRIT: {
@@ -204,8 +204,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(hex_x);
-        buf.Write(hex_y);
+        buf.Write(mpos {hex_x, hex_y});
         buf.Write(pid);
         buf.Write(count);
         buf.EndMsg();
@@ -240,8 +239,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(hex_x);
-        buf.Write(hex_y);
+        buf.Write(mpos {hex_x, hex_y});
         buf.Write(dir);
         buf.Write(pid);
         buf.EndMsg();
@@ -259,8 +257,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(wx);
-        buf.Write(wy);
+        buf.Write(upos16 {wx, wy});
         buf.Write(pid);
         buf.EndMsg();
     } break;

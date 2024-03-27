@@ -1127,7 +1127,7 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
             }
         }
 
-        if (prop->IsBaseScriptFuncType()) {
+        if (!prop->GetBaseScriptFuncType().empty()) {
             if (prop->IsPlainData()) {
                 uint hash_data_size;
                 const auto* hash_data = props.GetRawData(prop, hash_data_size);

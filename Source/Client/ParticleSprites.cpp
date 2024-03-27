@@ -40,12 +40,11 @@ ParticleSprite::ParticleSprite(SpriteManager& spr_mngr) :
     STACK_TRACE_ENTRY();
 }
 
-auto ParticleSprite::IsHitTest(int x, int y) const -> bool
+auto ParticleSprite::IsHitTest(ipos pos) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(pos);
 
     return false;
 }
@@ -133,9 +132,9 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
         return nullptr;
     }
 
-    auto&& [draw_width, draw_height] = particle->GetDrawSize();
-    const auto frame_ratio = static_cast<float>(draw_width) / static_cast<float>(draw_height);
-    const auto proj_height = static_cast<float>(draw_height) * (1.0f / _settings.ModelProjFactor);
+    const auto draw_size = particle->GetDrawSize();
+    const auto frame_ratio = static_cast<float>(draw_size.width) / static_cast<float>(draw_size.height);
+    const auto proj_height = static_cast<float>(draw_size.height) * (1.0f / _settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
     const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     mat44 world;
@@ -147,20 +146,18 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     particle_spr->_factory = this;
     particle_spr->_particle = std::move(particle);
-    particle_spr->Width = draw_width;
-    particle_spr->Height = draw_height;
-    particle_spr->OffsY = static_cast<int16>(draw_height / 4);
+    particle_spr->Size.width = draw_size.width;
+    particle_spr->Size.height = draw_size.height;
+    particle_spr->Offset.y = static_cast<int16>(draw_size.height / 4);
 
-    int x = 0;
-    int y = 0;
-    auto&& [atlas, atlas_node] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_width, draw_height, x, y);
+    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
 
     particle_spr->Atlas = atlas;
     particle_spr->AtlasNode = atlas_node;
-    particle_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    particle_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    particle_spr->AtlasRect.Right = static_cast<float>(x + draw_width) / static_cast<float>(atlas->Width);
-    particle_spr->AtlasRect.Bottom = static_cast<float>(y + draw_height) / static_cast<float>(atlas->Height);
+    particle_spr->AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
+    particle_spr->AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
+    particle_spr->AtlasRect.Right = static_cast<float>(pos.x + draw_size.width) / static_cast<float>(atlas->Size.width);
+    particle_spr->AtlasRect.Bottom = static_cast<float>(pos.y + draw_size.height) / static_cast<float>(atlas->Size.height);
 
     return particle_spr;
 }
@@ -206,18 +203,18 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     RUNTIME_ASSERT(_particleMngr);
 
     // Find place for render
-    const auto frame_width = particle_spr->Width;
-    const auto frame_height = particle_spr->Height;
+    const auto frame_size = particle_spr->Size;
 
     RenderTarget* rt_intermediate = nullptr;
     for (auto* rt : _rtIntermediate) {
-        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
+        if (rt->MainTex->Size == frame_size) {
             rt_intermediate = rt;
             break;
         }
     }
+
     if (rt_intermediate == nullptr) {
-        rt_intermediate = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
+        rt_intermediate = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
         _rtIntermediate.push_back(rt_intermediate);
     }
 
@@ -236,17 +233,19 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     // Render to atlas
     if (rt_intermediate->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
-        const auto t = iround((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
-        const auto b = iround((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Height));
+        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto t = iround((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto b = iround((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Size.height));
+
         region_to = IRect(l, t, r, b);
     }
     else {
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
-        const auto t = iround(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
-        const auto b = iround(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Height));
+        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto t = iround(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto b = iround(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Size.height));
+
         region_to = IRect(l, t, r, b);
     }
 

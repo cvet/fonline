@@ -77,7 +77,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _sprMngr.BeginScene({0, 0, 0});
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
     }
     _sprMngr.EndScene();
 
@@ -169,18 +169,18 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene({0, 0, 0});
     {
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
         }
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {
             if (_settings.UpdaterInfoPos < 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _sprMngr.DrawText({0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else if (_settings.UpdaterInfoPos == 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _sprMngr.DrawText({0, 0, _settings.ScreenWidth, _settings.ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else {
-                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _sprMngr.DrawText({0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
         }
     }

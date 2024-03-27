@@ -135,7 +135,7 @@ public:
     void Broadcast_Moving();
     void Broadcast_Action(CritterAction action, int action_data, const Item* item);
     void Broadcast_Dir();
-    void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
+    void Broadcast_Teleport(mpos to_hex);
 
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item);
@@ -161,7 +161,7 @@ public:
     void Send_GlobalInfo();
     void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
-    void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
+    void Send_Teleport(const Critter* cr, mpos to_hex);
     void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
@@ -176,12 +176,12 @@ public:
     void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
     void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
-    void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
-    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
+    void Send_Effect(hstring eff_pid, mpos hex, uint16 radius);
+    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
-    void Send_MapText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text);
-    void Send_MapTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num);
-    void Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
+    void Send_MapText(mpos hex, ucolor color, string_view text, bool unsafe_text);
+    void Send_MapTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num);
+    void Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_AddAllItems();
@@ -224,7 +224,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
 
-    int LockMapTransfers {};
+    uint LockMapTransfers {};
     uint AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
@@ -243,8 +243,7 @@ public:
     ident_t ViewMapId {};
     hstring ViewMapPid {};
     uint16 ViewMapLook {};
-    uint16 ViewMapHx {};
-    uint16 ViewMapHy {};
+    mpos ViewMapHex {};
     uint8 ViewMapDir {};
     ident_t ViewMapLocId {};
     uint ViewMapLocEnt {};
@@ -253,8 +252,7 @@ public:
     {
         MovingState State {MovingState::Success};
         ident_t TargId {};
-        uint16 HexX {};
-        uint16 HexY {};
+        mpos TargHex {};
         uint Cut {};
         uint16 Speed {};
         uint TraceDist {};
@@ -263,21 +261,17 @@ public:
 
     struct MovingData
     {
-        uint16 Speed {};
         uint Uid {};
+        uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
         time_point StartTime {};
-        uint16 StartHexX {};
-        uint16 StartHexY {};
-        uint16 EndHexX {};
-        uint16 EndHexY {};
+        mpos StartHex {};
+        mpos EndHex {};
         float WholeTime {};
         float WholeDist {};
-        int16 StartOx {};
-        int16 StartOy {};
-        int16 EndOx {};
-        int16 EndOy {};
+        ipos16 StartHexOffset {};
+        ipos16 EndHexOffset {};
     } Moving {};
 
     vector<Critter*> AttachedCritters {};

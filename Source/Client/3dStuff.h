@@ -243,8 +243,8 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
-    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
+    [[nodiscard]] auto Convert2dTo3d(ipos pos) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
     [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
     [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
@@ -254,10 +254,10 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetViewSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetDrawSize() const -> isize;
+    [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
-    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
     [[nodiscard]] auto GetAnimDuration() const -> time_duration;
     [[nodiscard]] auto IsCombatMode() const -> bool;
 
@@ -274,7 +274,7 @@ public:
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
-    void MoveModel(int ox, int oy);
+    void MoveModel(ipos offset);
     void SetMoving(bool enabled, uint speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
@@ -308,7 +308,7 @@ private:
     void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
-    void ProcessAnimation(float elapsed, int x, int y, float scale);
+    void ProcessAnimation(float elapsed, ipos pos, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();

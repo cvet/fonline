@@ -113,8 +113,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     GameTime.FrameAdvance();
     _fpsTime = GameTime.FrameTime();
-
-    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
+    Settings.MousePos = App->Input.GetMousePosition();
 
     if (mapper_mode) {
         return;
@@ -255,8 +254,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::DrawOffset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
@@ -573,15 +571,15 @@ void FOClient::ScreenQuake(int noise, time_duration time)
 {
     STACK_TRACE_ENTRY();
 
-    Settings.ScrOx -= iround(_quakeScreenOffsX);
-    Settings.ScrOy -= iround(_quakeScreenOffsY);
+    Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
+    Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
 
     _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time_duration_to_ms<float>(time) / 30.0f);
 
-    Settings.ScrOx += iround(_quakeScreenOffsX);
-    Settings.ScrOy += iround(_quakeScreenOffsY);
+    Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
+    Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
     _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
 }
@@ -591,8 +589,8 @@ void FOClient::ProcessScreenEffectQuake()
     STACK_TRACE_ENTRY();
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GameplayTime() >= _quakeScreenOffsNextTime) {
-        Settings.ScrOx -= iround(_quakeScreenOffsX);
-        Settings.ScrOy -= iround(_quakeScreenOffsY);
+        Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
+        Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
 
         if (_quakeScreenOffsX < 0.0f) {
             _quakeScreenOffsX += _quakeScreenOffsStep;
@@ -611,8 +609,8 @@ void FOClient::ProcessScreenEffectQuake()
         _quakeScreenOffsX = -_quakeScreenOffsX;
         _quakeScreenOffsY = -_quakeScreenOffsY;
 
-        Settings.ScrOx += iround(_quakeScreenOffsX);
-        Settings.ScrOy += iround(_quakeScreenOffsY);
+        Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
+        Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
         _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
     }
@@ -629,7 +627,7 @@ void FOClient::ProcessInputEvents()
         }
     }
     else {
-        std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
+        Settings.MousePos = App->Input.GetMousePosition();
 
         Keyb.Lost();
         OnInputLost.Fire();
@@ -678,15 +676,9 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
         OnKeyUp.Fire(key_code);
     }
     else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
-        const auto mouse_x = ev.MouseMove.MouseX;
-        const auto mouse_y = ev.MouseMove.MouseY;
-        const auto delta_x = ev.MouseMove.DeltaX;
-        const auto delta_y = ev.MouseMove.DeltaY;
+        Settings.MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
 
-        Settings.MouseX = mouse_x;
-        Settings.MouseY = mouse_y;
-
-        OnMouseMove.Fire(delta_x, delta_y);
+        OnMouseMove.Fire(ev.MouseMove.DeltaX, ev.MouseMove.DeltaY);
     }
     else if (ev.Type == InputEvent::EventType::MouseDownEvent) {
         OnMouseDown.Fire(ev.MouseDown.Button);
@@ -829,8 +821,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->Moving.Speed);
-    _conn.OutBuf.Write(cr->Moving.StartHexX);
-    _conn.OutBuf.Write(cr->Moving.StartHexY);
+    _conn.OutBuf.Write(cr->Moving.StartHex);
     _conn.OutBuf.Write(static_cast<uint16>(cr->Moving.Steps.size()));
     for (const auto step : cr->Moving.Steps) {
         _conn.OutBuf.Write(step);
@@ -839,8 +830,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     for (const auto control_step : cr->Moving.ControlSteps) {
         _conn.OutBuf.Write(control_step);
     }
-    _conn.OutBuf.Write(cr->Moving.EndOx);
-    _conn.OutBuf.Write(cr->Moving.EndOy);
+    _conn.OutBuf.Write(cr->Moving.EndHexOffset);
     _conn.OutBuf.EndMsg();
 }
 
@@ -853,10 +843,8 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf.StartMsg(NETMSG_SEND_STOP_MOVE);
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
-    _conn.OutBuf.Write(cr->GetHexX());
-    _conn.OutBuf.Write(cr->GetHexY());
-    _conn.OutBuf.Write(cr->GetHexOffsX());
-    _conn.OutBuf.Write(cr->GetHexOffsY());
+    _conn.OutBuf.Write(cr->GetMapHex());
+    _conn.OutBuf.Write(cr->GetMapHexOffset());
     _conn.OutBuf.Write(cr->GetDirAngle());
     _conn.OutBuf.EndMsg();
 }
@@ -1073,10 +1061,8 @@ void FOClient::Net_OnAddCritter()
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(*this);
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
-    const auto hex_ox = _conn.InBuf.Read<int16>();
-    const auto hex_oy = _conn.InBuf.Read<int16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
+    const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
     const auto cond = _conn.InBuf.Read<CritterCondition>();
     const auto alive_state_anim = _conn.InBuf.Read<CritterStateAnim>();
@@ -1097,7 +1083,7 @@ void FOClient::Net_OnAddCritter()
     CritterHexView* hex_cr;
 
     if (CurMap != nullptr) {
-        hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hx, hy, dir_angle, _tempPropertiesData);
+        hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
         RUNTIME_ASSERT(hex_cr);
 
         if (_screenModeMain != SCREEN_WAIT) {
@@ -1125,8 +1111,7 @@ void FOClient::Net_OnAddCritter()
         hex_cr = nullptr;
     }
 
-    cr->SetHexOffsX(hex_ox);
-    cr->SetHexOffsY(hex_oy);
+    cr->SetMapHexOffset(hex_offset);
     cr->SetCondition(cond);
     cr->SetAliveStateAnim(alive_state_anim);
     cr->SetKnockoutStateAnim(knockout_state_anim);
@@ -1138,7 +1123,7 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
 
-    if ((hex_ox != 0 || hex_oy != 0) && hex_cr != nullptr) {
+    if (hex_offset != ipos16 {} && hex_cr != nullptr) {
         hex_cr->RefreshOffs();
     }
 
@@ -1365,21 +1350,23 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
     FlashGameWindow();
 }
 
-void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color)
+void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
 {
     STACK_TRACE_ENTRY();
-
-    auto sstr = _str(str).str();
-    uint show_time = 0;
-
-    OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    CurMap->AddMapText(sstr, hx, hy, color, std::chrono::milliseconds {show_time}, false, 0, 0);
+    RUNTIME_ASSERT(CurMap->GetSize().IsValidPos(hex));
+
+    auto processed_str = _str(str).str();
+    uint show_time = 0;
+
+    OnMapMessage.Fire(processed_str, hex, color, show_time);
+
+    CurMap->AddMapText(processed_str, hex, color, std::chrono::milliseconds {show_time}, false, {0, 0});
 
     FlashGameWindow();
 }
@@ -1389,23 +1376,12 @@ void FOClient::Net_OnMapText()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text = _conn.InBuf.Read<string>();
     const auto unsafe_text = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (CurMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
-        WriteLog("Invalid coords, hx {}, hy {}, text '{}'", hx, hy, text);
-        return;
-    }
 
     string str = text;
 
@@ -1413,15 +1389,14 @@ void FOClient::Net_OnMapText()
         Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hex, color);
 }
 
 void FOClient::Net_OnMapTextMsg()
 {
     STACK_TRACE_ENTRY();
 
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
@@ -1429,8 +1404,9 @@ void FOClient::Net_OnMapTextMsg()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
+
     FormatTags(str, GetChosen(), nullptr, "");
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hex, color);
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -1438,8 +1414,7 @@ void FOClient::Net_OnMapTextMsgLex()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
@@ -1448,8 +1423,9 @@ void FOClient::Net_OnMapTextMsgLex()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
+
     FormatTags(str, GetChosen(), nullptr, lexems);
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hex, color);
 }
 
 void FOClient::Net_OnCritterDir()
@@ -1481,8 +1457,7 @@ void FOClient::Net_OnCritterMove()
     const auto whole_time = _conn.InBuf.Read<uint>();
     const auto offset_time = _conn.InBuf.Read<uint>();
     const auto speed = _conn.InBuf.Read<uint16>();
-    const auto start_hx = _conn.InBuf.Read<uint16>();
-    const auto start_hy = _conn.InBuf.Read<uint16>();
+    const auto start_hex = _conn.InBuf.Read<mpos>();
 
     const auto steps_count = _conn.InBuf.Read<uint16>();
     vector<uint8> steps;
@@ -1498,8 +1473,7 @@ void FOClient::Net_OnCritterMove()
         control_steps[i] = _conn.InBuf.Read<uint16>();
     }
 
-    const auto end_hex_ox = _conn.InBuf.Read<int16>();
-    const auto end_hex_oy = _conn.InBuf.Read<int16>();
+    const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1519,48 +1493,41 @@ void FOClient::Net_OnCritterMove()
     cr->Moving.StartTime = GameTime.FrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
     cr->Moving.WholeTime = static_cast<float>(whole_time);
-
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
-    cr->Moving.StartHexX = start_hx;
-    cr->Moving.StartHexY = start_hy;
-    cr->Moving.StartOx = cr->GetHexOffsX();
-    cr->Moving.StartOy = cr->GetHexOffsY();
-    cr->Moving.EndOx = end_hex_ox;
-    cr->Moving.EndOy = end_hex_oy;
+    cr->Moving.StartHex = start_hex;
+    cr->Moving.StartHexOffset = cr->GetMapHexOffset();
+    cr->Moving.EndHexOffset = end_hex_offset;
 
-    if (offset_time == 0 && (start_hx != cr->GetHexX() || start_hy != cr->GetHexY())) {
-        auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(start_hx, start_hy, cr->GetHexX(), cr->GetHexY());
-        cr->Moving.StartOx = static_cast<int16>(cr->Moving.StartOx + cr_ox);
-        cr->Moving.StartOy = static_cast<int16>(cr->Moving.StartOy + cr_oy);
+    if (offset_time == 0 && start_hex != cr->GetMapHex()) {
+        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetMapHex());
+        cr->Moving.StartHexOffset = {static_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), static_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
     }
 
     cr->Moving.WholeDist = 0.0f;
 
-    auto next_start_hx = start_hx;
-    auto next_start_hy = start_hy;
+    mpos next_start_hex = start_hex;
     uint16 control_step_begin = 0;
 
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = next_start_hx;
-        auto hy = next_start_hy;
+        auto hex = next_start_hex;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], CurMap->GetWidth(), CurMap->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], CurMap->GetSize());
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
 
         if (i == 0) {
-            ox -= cr->Moving.StartOx;
-            oy -= cr->Moving.StartOy;
+            ox -= cr->Moving.StartHexOffset.x;
+            oy -= cr->Moving.StartHexOffset.y;
         }
         if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndOx;
-            oy += cr->Moving.EndOy;
+            ox += cr->Moving.EndHexOffset.x;
+            oy += cr->Moving.EndHexOffset.y;
         }
 
         const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
@@ -1569,11 +1536,9 @@ void FOClient::Net_OnCritterMove()
         cr->Moving.WholeDist += dist;
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hx = hx;
-        next_start_hy = hy;
+        next_start_hex = hex;
 
-        cr->Moving.EndHexX = hx;
-        cr->Moving.EndHexY = hy;
+        cr->Moving.EndHex = hex;
     }
 
     if (cr->Moving.WholeTime < 0.0001f) {
@@ -1800,8 +1765,7 @@ void FOClient::Net_OnCritterTeleport()
     STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto to_hx = _conn.InBuf.Read<uint16>();
-    const auto to_hy = _conn.InBuf.Read<uint16>();
+    const auto to_hex = _conn.InBuf.Read<mpos>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1815,15 +1779,14 @@ void FOClient::Net_OnCritterTeleport()
         return;
     }
 
-    CurMap->MoveCritter(cr, to_hx, to_hy, false);
+    CurMap->MoveCritter(cr, to_hex, false);
 
     if (cr->GetIsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
-            CurMap->AutoScroll.CritterLastHexX = cr->GetHexX();
-            CurMap->AutoScroll.CritterLastHexY = cr->GetHexY();
+            CurMap->AutoScroll.CritterLastHex = cr->GetMapHex();
         }
 
-        CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, false);
+        CurMap->ScrollToHex(cr->GetMapHex(), 0.1f, false);
 
         // Maybe changed some parameter influencing on look borders
         CurMap->RebuildFog();
@@ -1835,10 +1798,8 @@ void FOClient::Net_OnCritterPos()
     STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
-    const auto hex_ox = _conn.InBuf.Read<int16>();
-    const auto hex_oy = _conn.InBuf.Read<int16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
+    const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1848,12 +1809,10 @@ void FOClient::Net_OnCritterPos()
         return;
     }
 
+    RUNTIME_ASSERT(CurMap->GetSize().IsValidPos(hex));
+
     auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
-        return;
-    }
-
-    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return;
     }
 
@@ -1862,18 +1821,19 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeLookDirAngle(dir_angle);
     cr->ChangeMoveDirAngle(dir_angle);
 
-    if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        CurMap->MoveCritter(cr, hx, hy, true);
+    if (cr->GetMapHex() != hex) {
+        CurMap->MoveCritter(cr, hex, true);
 
         if (cr->GetIsChosen()) {
             CurMap->RebuildFog();
         }
     }
 
-    if (cr->GetHexOffsX() != hex_ox || cr->GetHexOffsY() != hex_oy) {
-        cr->AddExtraOffs(cr->GetHexOffsX() - hex_ox, cr->GetHexOffsY() - hex_oy);
-        cr->SetHexOffsX(hex_ox);
-        cr->SetHexOffsY(hex_oy);
+    const auto cr_hex_offset = cr->GetMapHexOffset();
+
+    if (cr_hex_offset != hex_offset) {
+        cr->AddExtraOffs({cr_hex_offset.x - hex_offset.x, cr_hex_offset.y - hex_offset.y});
+        cr->SetMapHexOffset(hex_offset);
         cr->RefreshOffs();
     }
 }
@@ -2097,8 +2057,7 @@ void FOClient::Net_OnAddItemOnMap()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(*this);
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -2109,7 +2068,7 @@ void FOClient::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = CurMap->AddReceivedItem(item_id, pid, hx, hy, _tempPropertiesData);
+    auto* item = CurMap->AddReceivedItem(item_id, pid, hex, _tempPropertiesData);
 
     if (item != nullptr) {
         if (_screenModeMain != SCREEN_WAIT) {
@@ -2173,8 +2132,7 @@ void FOClient::Net_OnEffect()
     STACK_TRACE_ENTRY();
 
     const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
     const auto radius = _conn.InBuf.Read<uint16>();
     RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
 
@@ -2185,18 +2143,17 @@ void FOClient::Net_OnEffect()
         return;
     }
 
-    CurMap->RunEffectItem(eff_pid, hx, hy, hx, hy);
+    CurMap->RunEffectItem(eff_pid, hex, hex);
 
-    const auto [sx, sy] = Geometry.GetHexOffsets((hx % 2) != 0);
-    const auto maxhx = CurMap->GetWidth();
-    const auto maxhy = CurMap->GetHeight();
+    const auto [sx, sy] = Geometry.GetHexOffsets(hex);
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (uint i = 0; i < count; i++) {
-        const auto ex = static_cast<int16>(hx) + sx[i];
-        const auto ey = static_cast<int16>(hy) + sy[i];
-        if (ex >= 0 && ey >= 0 && ex < maxhx && ey < maxhy) {
-            CurMap->RunEffectItem(eff_pid, static_cast<uint16>(ex), static_cast<uint16>(ey), static_cast<uint16>(ex), static_cast<uint16>(ey));
+        const auto ex = static_cast<int16>(hex.x) + sx[i];
+        const auto ey = static_cast<int16>(hex.y) + sy[i];
+
+        if (CurMap->GetSize().IsValidPos(ipos {ex, ey})) {
+            CurMap->RunEffectItem(eff_pid, {static_cast<uint16>(ex), static_cast<uint16>(ey)}, {static_cast<uint16>(ex), static_cast<uint16>(ey)});
         }
     }
 }
@@ -2209,10 +2166,8 @@ void FOClient::Net_OnFlyEffect()
     const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
     const auto eff_cr2_id = _conn.InBuf.Read<ident_t>();
 
-    auto eff_cr1_hx = _conn.InBuf.Read<uint16>();
-    auto eff_cr1_hy = _conn.InBuf.Read<uint16>();
-    auto eff_cr2_hx = _conn.InBuf.Read<uint16>();
-    auto eff_cr2_hy = _conn.InBuf.Read<uint16>();
+    auto eff_cr1_hex = _conn.InBuf.Read<mpos>();
+    auto eff_cr2_hex = _conn.InBuf.Read<mpos>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2223,17 +2178,15 @@ void FOClient::Net_OnFlyEffect()
 
     const auto* cr1 = CurMap->GetCritter(eff_cr1_id);
     if (cr1 != nullptr) {
-        eff_cr1_hx = cr1->GetHexX();
-        eff_cr1_hy = cr1->GetHexY();
+        eff_cr1_hex = cr1->GetMapHex();
     }
 
     const auto* cr2 = CurMap->GetCritter(eff_cr2_id);
     if (cr2 != nullptr) {
-        eff_cr2_hx = cr2->GetHexX();
-        eff_cr2_hy = cr2->GetHexY();
+        eff_cr2_hex = cr2->GetMapHex();
     }
 
-    CurMap->RunEffectItem(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy);
+    CurMap->RunEffectItem(eff_pid, eff_cr1_hex, eff_cr2_hex);
 }
 
 void FOClient::Net_OnPlaySound()
@@ -2264,7 +2217,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     int target_screen;
 
     if (CurMap != nullptr) {
-        CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
+        CurMap->FindSetCenter(chosen->GetMapHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->AnimateStay();
@@ -2457,9 +2410,12 @@ void FOClient::Net_OnChosenTalk()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
+
     FormatTags(str, GetChosen(), npc, lexems);
+
     const auto text_to_script = str;
     string answers_to_script;
+
     for (const auto answers_text : answers_texts) {
         str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answers_text));
         FormatTags(str, GetChosen(), npc, lexems);
@@ -2583,8 +2539,7 @@ void FOClient::Net_OnGlobalInfo()
             GmapLocation loc;
             loc.LocId = _conn.InBuf.Read<ident_t>();
             loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-            loc.LocWx = _conn.InBuf.Read<uint16>();
-            loc.LocWy = _conn.InBuf.Read<uint16>();
+            loc.LocPos = _conn.InBuf.Read<upos16>();
             loc.Radius = _conn.InBuf.Read<uint16>();
             loc.Color = _conn.InBuf.Read<ucolor>();
             loc.Entrances = _conn.InBuf.Read<uint8>();
@@ -2601,8 +2556,7 @@ void FOClient::Net_OnGlobalInfo()
         GmapLocation loc;
         loc.LocId = _conn.InBuf.Read<ident_t>();
         loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-        loc.LocWx = _conn.InBuf.Read<uint16>();
-        loc.LocWy = _conn.InBuf.Read<uint16>();
+        loc.LocPos = _conn.InBuf.Read<upos16>();
         loc.Radius = _conn.InBuf.Read<uint16>();
         loc.Color = _conn.InBuf.Read<ucolor>();
         loc.Entrances = _conn.InBuf.Read<uint8>();
@@ -2729,8 +2683,7 @@ void FOClient::Net_OnViewMap()
 {
     STACK_TRACE_ENTRY();
 
-    const auto hx = _conn.InBuf.Read<uint16>();
-    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex = _conn.InBuf.Read<mpos>();
     const auto loc_id = _conn.InBuf.Read<ident_t>();
     const auto loc_ent = _conn.InBuf.Read<uint>();
 
@@ -2741,7 +2694,7 @@ void FOClient::Net_OnViewMap()
         return;
     }
 
-    CurMap->FindSetCenter(hx, hy);
+    CurMap->FindSetCenter(hex);
     ShowMainScreen(SCREEN_GAME, {});
     ScreenFadeOut();
 
@@ -3039,7 +2992,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsLightThru()) {
-            item->GetMap()->UpdateHexLightSources(item->GetHexX(), item->GetHexY());
+            item->GetMap()->UpdateHexLightSources(item->GetMapHex());
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsNoBlock()) {
@@ -3047,7 +3000,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
         }
 
         if (rebuild_cache) {
-            item->GetMap()->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+            item->GetMap()->RecacheHexFlags(item->GetMapHex());
         }
     }
 }
@@ -3081,7 +3034,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    // OffsetX, OffsetY
+    // DrawOffset
 
     UNUSED_VARIABLE(prop);
 
@@ -3404,12 +3357,13 @@ void FOClient::LmapPrepareMap()
         return;
     }
 
+    const auto hex = chosen->GetMapHex();
     const auto maxpixx = (_lmapWMap[2] - _lmapWMap[0]) / 2 / _lmapZoom;
     const auto maxpixy = (_lmapWMap[3] - _lmapWMap[1]) / 2 / _lmapZoom;
-    const auto bx = chosen->GetHexX() - maxpixx;
-    const auto by = chosen->GetHexY() - maxpixy;
-    const auto ex = chosen->GetHexX() + maxpixx;
-    const auto ey = chosen->GetHexY() + maxpixy;
+    const auto bx = hex.x - maxpixx;
+    const auto by = hex.y - maxpixy;
+    const auto ex = hex.x + maxpixx;
+    const auto ey = hex.y + maxpixy;
 
     const auto vis = chosen->GetLookDistance();
     auto pix_x = _lmapWMap[2] - _lmapWMap[0];
@@ -3418,20 +3372,20 @@ void FOClient::LmapPrepareMap()
     for (auto i1 = bx; i1 < ex; i1++) {
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
-            if (i1 < 0 || i2 < 0 || i1 >= CurMap->GetWidth() || i2 >= CurMap->GetHeight()) {
+            if (i1 < 0 || i2 < 0 || i1 >= CurMap->GetSize().width || i2 >= CurMap->GetSize().height) {
                 continue;
             }
 
             auto is_far = false;
-            const auto dist = GeometryHelper::DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
+            const auto dist = GeometryHelper::DistGame(hex.x, hex.y, i1, i2);
             if (dist > vis) {
                 is_far = true;
             }
 
-            const auto& field = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
+            const auto& field = CurMap->GetField({static_cast<uint16>(i1), static_cast<uint16>(i2)});
             ucolor cur_color;
 
-            if (const auto* cr = CurMap->GetNonDeadCritter(static_cast<uint16>(i1), static_cast<uint16>(i2)); cr != nullptr) {
+            if (const auto* cr = CurMap->GetNonDeadCritter({static_cast<uint16>(i1), static_cast<uint16>(i2)}); cr != nullptr) {
                 cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
@@ -3483,7 +3437,7 @@ void FOClient::WaitDraw()
     STACK_TRACE_ENTRY();
 
     if (_waitPic) {
-        SprMngr.DrawSpriteSize(_waitPic.get(), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, COLOR_SPRITE);
+        SprMngr.DrawSpriteSize(_waitPic.get(), {0, 0}, {Settings.ScreenWidth, Settings.ScreenHeight}, true, true, COLOR_SPRITE);
         SprMngr.Flush();
     }
 }
@@ -3606,8 +3560,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto w = _str(args[1]).toInt();
         auto h = _str(args[2]).toInt();
 
-        SprMngr.SetScreenSize(w, h);
-        SprMngr.SetWindowSize(w, h);
+        SprMngr.SetScreenSize({w, h});
+        SprMngr.SetWindowSize({w, h});
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
@@ -3709,7 +3663,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         if (CurMap != nullptr) {
             auto hx = _str(args[1]).toUInt();
             auto hy = _str(args[2]).toUInt();
-            CurMap->SetSkipRoof(static_cast<uint16>(hx), static_cast<uint16>(hy));
+            CurMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
@@ -3740,7 +3694,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     return "";
 }
 
-void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed)
+void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
 {
     STACK_TRACE_ENTRY();
 
@@ -3753,23 +3707,19 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
     cr->ClearMove();
 
     bool try_move = false;
-    uint16 hx = 0;
-    uint16 hy = 0;
-    int ox = 0;
-    int oy = 0;
+    mpos hex;
+    ipos16 hex_offset;
     vector<uint8> steps;
     vector<uint16> control_steps;
 
     if (speed != 0 && cr->IsAlive()) {
         if (pos_or_dir.index() == 0) {
-            hx = std::get<0>(std::get<0>(pos_or_dir));
-            hy = std::get<1>(std::get<0>(pos_or_dir));
-            ox = std::get<2>(std::get<0>(pos_or_dir));
-            oy = std::get<3>(std::get<0>(pos_or_dir));
+            hex = std::get<0>(std::get<0>(pos_or_dir));
+            hex_offset = std::get<1>(std::get<0>(pos_or_dir));
 
-            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHexX(), cr->GetHexY(), hx, hy, -1);
-            if (find_path && !find_path->Steps.empty()) {
-                steps = find_path->Steps;
+            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetMapHex(), hex, -1);
+            if (find_path && !find_path->DirSteps.empty()) {
+                steps = find_path->DirSteps;
                 control_steps = find_path->ControlSteps;
                 try_move = true;
             }
@@ -3778,9 +3728,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
             const auto quad_dir = std::get<1>(pos_or_dir);
 
             if (quad_dir != -1) {
-                hx = cr->GetHexX();
-                hy = cr->GetHexY();
-                if (cr->GetMap()->TraceMoveWay(hx, hy, ox, oy, steps, quad_dir)) {
+                hex = cr->GetMapHex();
+                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
                     control_steps.push_back(static_cast<uint16>(steps.size()));
                     try_move = true;
                 }
@@ -3793,14 +3742,10 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
         cr->Moving.ControlSteps = control_steps;
         cr->Moving.StartTime = GameTime.FrameTime();
         cr->Moving.Speed = static_cast<uint16>(speed);
-        cr->Moving.StartHexX = cr->GetHexX();
-        cr->Moving.StartHexY = cr->GetHexY();
-        cr->Moving.EndHexX = hx;
-        cr->Moving.EndHexY = hy;
-        cr->Moving.StartOx = cr->GetHexOffsX();
-        cr->Moving.StartOy = cr->GetHexOffsY();
-        cr->Moving.EndOx = static_cast<int16>(ox);
-        cr->Moving.EndOy = static_cast<int16>(oy);
+        cr->Moving.StartHex = cr->GetMapHex();
+        cr->Moving.EndHex = hex;
+        cr->Moving.StartHexOffset = cr->GetMapHexOffset();
+        cr->Moving.EndHexOffset = hex_offset;
 
         cr->Moving.WholeTime = {};
         cr->Moving.WholeDist = {};
@@ -3808,45 +3753,41 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
         RUNTIME_ASSERT(cr->Moving.Speed > 0);
         const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
-        auto next_start_hx = cr->Moving.StartHexX;
-        auto next_start_hy = cr->Moving.StartHexY;
+        auto next_start_hex = cr->Moving.StartHex;
         uint16 control_step_begin = 0;
 
         for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-            auto hx2 = next_start_hx;
-            auto hy2 = next_start_hy;
+            auto hex2 = next_start_hex;
 
             RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
             RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
             for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, cr->Moving.Steps[j], cr->GetMap()->GetWidth(), cr->GetMap()->GetHeight());
+                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j], cr->GetMap()->GetSize());
                 RUNTIME_ASSERT(move_ok);
             }
 
-            auto&& [ox2, oy2] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx2, hy2);
+            auto offset2 = Geometry.GetHexInterval(next_start_hex, hex2);
 
             if (i == 0) {
-                ox2 -= cr->Moving.StartOx;
-                oy2 -= cr->Moving.StartOy;
+                offset2.x -= cr->Moving.StartHexOffset.x;
+                offset2.y -= cr->Moving.StartHexOffset.y;
             }
             if (i == cr->Moving.ControlSteps.size() - 1) {
-                ox2 += cr->Moving.EndOx;
-                oy2 += cr->Moving.EndOy;
+                offset2.x += cr->Moving.EndHexOffset.x;
+                offset2.y += cr->Moving.EndHexOffset.y;
             }
 
-            const auto proj_oy = static_cast<float>(oy2) * Geometry.GetYProj();
-            const auto dist = std::sqrt(static_cast<float>(ox2 * ox2) + proj_oy * proj_oy);
+            const auto proj_oy = static_cast<float>(offset2.y) * Geometry.GetYProj();
+            const auto dist = std::sqrt(static_cast<float>(offset2.x * offset2.x) + proj_oy * proj_oy);
 
             cr->Moving.WholeDist += dist;
             cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
 
             control_step_begin = cr->Moving.ControlSteps[i];
-            next_start_hx = hx2;
-            next_start_hy = hy2;
+            next_start_hex = hex2;
 
             if (i == cr->Moving.ControlSteps.size() - 1) {
-                RUNTIME_ASSERT(hx2 == cr->Moving.EndHexX);
-                RUNTIME_ASSERT(hy2 == cr->Moving.EndHexY);
+                RUNTIME_ASSERT(hex2 == cr->Moving.EndHex);
             }
         }
 
@@ -3917,7 +3858,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
     }
 
     _video = std::make_unique<VideoClip>(file.GetData());
-    _videoTex = unique_ptr<RenderTexture> {App->Render.CreateTexture(std::get<0>(_video->GetSize()), std::get<1>(_video->GetSize()), true, false)};
+    _videoTex = unique_ptr<RenderTexture> {App->Render.CreateTexture(_video->GetSize(), true, false)};
 
     if (names.size() > 1) {
         SndMngr.StopMusic();
@@ -3933,7 +3874,7 @@ void FOClient::ProcessVideo()
     STACK_TRACE_ENTRY();
 
     if (_video) {
-        _videoTex->UpdateTextureRegion({0, 0, _videoTex->Width, _videoTex->Height}, _video->RenderFrame().data());
+        _videoTex->UpdateTextureRegion({}, _videoTex->Size, _video->RenderFrame().data());
         SprMngr.DrawTexture(_videoTex.get(), false);
 
         if (_video->IsStopped()) {

@@ -33,7 +33,6 @@
 
 #include "Entity.h"
 #include "Application.h"
-#include "Log.h"
 
 Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) :
     _props {registrator}

@@ -90,21 +90,19 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, uint16 hx, uint16 hy, uint8 dir)
+[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 dir)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
 
     auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-    if (map == nullptr) {
-        throw ScriptException("Critter is on global");
-    }
-    if (hx >= map->GetWidth() || hy >= map->GetHeight()) {
+    RUNTIME_ASSERT(map);
+
+    if (!map->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -113,12 +111,12 @@
         corrected_dir = self->GetDir();
     }
 
-    if (hx != self->GetHexX() || hy != self->GetHexY()) {
+    if (hex != self->GetMapHex()) {
         if (self->GetDir() != corrected_dir) {
             self->ChangeDir(corrected_dir);
         }
 
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, self->GetDir(), 2);
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, self->GetDir(), 2);
     }
     else if (self->GetDir() != corrected_dir) {
         self->ChangeDir(corrected_dir);
@@ -129,11 +127,10 @@
 
 ///# ...
 ///# param map ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -147,17 +144,19 @@
         corrected_dir = self->GetDir();
     }
 
-    self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, 2);
+    self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
 
     const auto* loc = map->GetLocation();
-    if (loc != nullptr && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
-        self->SetWorldX(loc->GetWorldX());
-        self->SetWorldY(loc->GetWorldY());
+    const auto wpos1 = ipos {self->GetWorldPos().x, self->GetWorldPos().y};
+    const auto wpos2 = ipos {loc->GetWorldPos().x, loc->GetWorldPos().y};
+
+    if (loc != nullptr && GenericUtils::DistSqrt(wpos1, wpos2) > loc->GetRadius()) {
+        self->SetWorldPos(loc->GetWorldPos());
     }
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir, bool force_hex)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir, bool force_hex)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -172,16 +171,18 @@
     }
 
     if (force_hex) {
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, std::nullopt);
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, std::nullopt);
     }
     else {
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hx, hy, corrected_dir, 2);
+        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
     }
 
     const auto* loc = map->GetLocation();
-    if (loc != nullptr && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
-        self->SetWorldX(loc->GetWorldX());
-        self->SetWorldY(loc->GetWorldY());
+    const auto loc_pos = loc->GetWorldPos();
+    const auto cr_pos = self->GetWorldPos();
+
+    if (GenericUtils::DistSqrt(ipos {loc_pos.x, loc_pos.y}, ipos {cr_pos.x, cr_pos.y}) > loc->GetRadius()) {
+        self->SetWorldPos(loc->GetWorldPos());
     }
 }
 
@@ -207,9 +208,6 @@
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
-    }
-    if (!self->GetMapId()) {
-        throw ScriptException("Critter already on global");
     }
 
     self->GetEngine()->MapMngr.TransitToGlobal(self, {});
@@ -277,16 +275,15 @@
 ///# ...
 ///# param map ...
 ///# param look ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, uint16 hx, uint16 hy, uint8 dir)
+[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, mpos hex, uint8 dir)
 {
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (hx >= map->GetWidth() || hy >= map->GetHeight()) {
+    if (!map->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -307,8 +304,7 @@
     self->ViewMapId = map->GetId();
     self->ViewMapPid = map->GetProtoId();
     self->ViewMapLook = static_cast<uint16>(look_);
-    self->ViewMapHx = hx;
-    self->ViewMapHy = hy;
+    self->ViewMapHex = hex;
     self->ViewMapDir = dir_;
     self->ViewMapLocId = ident_t {};
     self->ViewMapLocEnt = 0;
@@ -424,11 +420,10 @@
         }
     }
 
-    int hx = self->GetHexX();
-    int hy = self->GetHexY();
-    std::sort(critters.begin(), critters.end(), [hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    std::sort(critters.begin(), critters.end(), [hex = self->GetMapHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+
         return dist1 < dist2;
     });
 
@@ -448,11 +443,10 @@
         }
     }
 
-    int hx = self->GetHexX();
-    int hy = self->GetHexY();
-    std::sort(result.begin(), result.end(), [hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    std::sort(result.begin(), result.end(), [hex = self->GetMapHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+
         return dist1 < dist2;
     });
 
@@ -486,6 +480,7 @@
     }
 
     const auto& critters = self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup;
+
     return std::find(critters.begin(), critters.end(), cr) != critters.end();
 }
 
@@ -929,8 +924,8 @@
         self->Send_GlobalLocation(loc, true);
     }
 
-    const auto zx = loc->GetWorldX() / self->GetEngine()->Settings.GlobalMapZoneLength;
-    const auto zy = loc->GetWorldY() / self->GetEngine()->Settings.GlobalMapZoneLength;
+    const auto zx = loc->GetWorldPos().x / self->GetEngine()->Settings.GlobalMapZoneLength;
+    const auto zy = loc->GetWorldPos().y / self->GetEngine()->Settings.GlobalMapZoneLength;
 
     auto gmap_fog = self->GetGlobalMapFog();
 
@@ -1083,24 +1078,21 @@
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;
     self->TargetMoving.TargId = target->GetId();
-    self->TargetMoving.HexX = target->GetHexX();
-    self->TargetMoving.HexY = target->GetHexY();
+    self->TargetMoving.TargHex = target->GetMapHex();
     self->TargetMoving.Cut = cut;
     self->TargetMoving.Speed = static_cast<uint16>(speed);
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
+///# param hex ...
 ///# param cut ...
 ///# param speed ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, uint16 hx, uint16 hy, uint cut, uint speed)
+[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, mpos hex, uint cut, uint speed)
 {
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;
-    self->TargetMoving.HexX = hx;
-    self->TargetMoving.HexY = hy;
+    self->TargetMoving.TargHex = hex;
     self->TargetMoving.Cut = cut;
     self->TargetMoving.Speed = static_cast<uint16>(speed);
 }
