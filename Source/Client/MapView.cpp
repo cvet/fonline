@@ -3712,6 +3712,10 @@ void MapView::MoveCritter(CritterHexView* cr, uint16 hx, uint16 hy, bool smoothl
     }
 
     AddCritterToField(cr);
+
+    if (cr->GetIsChosen()) {
+        RebuildFog();
+    }
 }
 
 void MapView::SetMultihexCritter(CritterHexView* cr, bool set)

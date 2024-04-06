@@ -1824,9 +1824,6 @@ void FOClient::Net_OnCritterTeleport()
         }
 
         CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, false);
-
-        // Maybe changed some parameter influencing on look borders
-        CurMap->RebuildFog();
     }
 }
 
