@@ -132,11 +132,11 @@ public:
     void ChangeDirAngle(int dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
-    void Broadcast_Moving();
     void Broadcast_Action(CritterAction action, int action_data, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
+    void SendAndBroadcast(const Player* ignore_player, const std::function<void(Critter*)>& callback);
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);

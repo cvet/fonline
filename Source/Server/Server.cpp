@@ -2848,7 +2848,7 @@ void FOServer::Process_Move(Player* player)
     const auto clamped_end_hex_ox = std::clamp(end_hex_ox, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
     const auto clamped_end_hex_oy = std::clamp(end_hex_oy, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
 
-    StartCritterMoving(cr, static_cast<uint16>(checked_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, false);
+    StartCritterMoving(cr, static_cast<uint16>(checked_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, player);
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2896,7 +2896,7 @@ void FOServer::Process_StopMove(Player* player)
     }
 
     cr->ClearMove();
-    cr->Broadcast_Moving();
+    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
 void FOServer::Process_Dir(Player* player)
@@ -2929,7 +2929,7 @@ void FOServer::Process_Dir(Player* player)
     }
 
     cr->ChangeDirAngle(checked_dir_angle);
-    cr->Broadcast_Dir();
+    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
 void FOServer::Process_Property(Player* player, uint data_size)
@@ -3559,7 +3559,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             }
 
             // Success
-            StartCritterMoving(cr, cr->TargetMoving.Speed, find_path.Steps, find_path.ControlSteps, 0, 0, true);
+            StartCritterMoving(cr, cr->TargetMoving.Speed, find_path.Steps, find_path.ControlSteps, 0, 0, nullptr);
         }
     }
 }
@@ -3764,7 +3764,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     }
 }
 
-void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self)
+void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, const Player* initiator)
 {
     STACK_TRACE_ENTRY();
 
@@ -3849,11 +3849,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-    if (send_self) {
-        cr->Send_Moving(cr);
-    }
-
-    cr->Broadcast_Moving();
+    cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
