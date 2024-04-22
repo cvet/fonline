@@ -145,20 +145,17 @@
     }
 
     const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
-    if (hex_cr1 == nullptr) {
-        throw ScriptException("Critter 1 is not on map");
-    }
-
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
-    if (hex_cr2 == nullptr) {
-        throw ScriptException("Critter 2 is not on map");
-    }
 
-    if (hex_cr1->GetMap()->GetId() != hex_cr2->GetMap()->GetId()) {
-        throw ScriptException("Critters different maps");
+    if (hex_cr1 != nullptr && hex_cr2 != nullptr) {
+        return GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
     }
-
-    return GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
+    else if (hex_cr1 == nullptr && hex_cr2 == nullptr) {
+        return 0;
+    }
+    else {
+        throw ScriptException("Critters unknown positions");
+    }
 }
 
 ///# ...

@@ -273,9 +273,7 @@ public:
     ENTITY_PROPERTY(Protected, uint16, WorldX);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint16, WorldY);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, ident_t, GlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastMapId);
@@ -285,8 +283,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, ident_t, LastLocationId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexX);
     ///@ ExportProperty ReadOnly

@@ -1568,10 +1568,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
         const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->CrMngr.GetCritter(global_cr_id) : nullptr;
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
-            cr->SetGlobalMapLeaderId(cr->GetId());
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
-
-            cr->SetLastGlobalMapLeaderId(cr->GetId());
 
             cr->GlobalMapGroup = new vector<Critter*>();
             cr->GlobalMapGroup->push_back(cr);
@@ -1581,10 +1578,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
 
             cr->SetWorldX(global_cr->GetWorldX());
             cr->SetWorldY(global_cr->GetWorldY());
-            cr->SetGlobalMapLeaderId(global_cr_id);
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
-
-            cr->SetLastGlobalMapLeaderId(global_cr_id);
 
             for (auto* group_cr : *global_cr->GlobalMapGroup) {
                 group_cr->Send_AddCritter(cr);
@@ -1640,10 +1634,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         cr->GlobalMapGroup->erase(it);
 
         if (!cr->GlobalMapGroup->empty()) {
-            const auto* new_leader = *cr->GlobalMapGroup->begin();
             for (auto* group_cr : *cr->GlobalMapGroup) {
-                group_cr->SetGlobalMapLeaderId(new_leader->GetId());
-                group_cr->SetLastGlobalMapLeaderId(new_leader->GetId());
                 group_cr->Send_RemoveCritter(cr);
             }
         }
@@ -1652,8 +1643,6 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         }
 
         cr->GlobalMapGroup = nullptr;
-        cr->SetGlobalMapLeaderId(ident_t {});
-        cr->SetLastGlobalMapLeaderId(ident_t {});
     }
 }
 
