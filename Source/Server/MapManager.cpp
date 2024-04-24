@@ -1629,6 +1629,8 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
 
+        cr->SetGlobalMapTripId({});
+
         const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
         RUNTIME_ASSERT(it != cr->GlobalMapGroup->end());
         cr->GlobalMapGroup->erase(it);
