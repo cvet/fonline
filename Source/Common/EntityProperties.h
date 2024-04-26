@@ -67,6 +67,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, LastDeferredCallId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, HistoryRecordsId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
 };
 
 class PlayerProperties : public EntityProperties

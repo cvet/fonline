@@ -1568,7 +1568,9 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
         const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->CrMngr.GetCritter(global_cr_id) : nullptr;
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
-            cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
+            const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
+            _engine->SetLastGlobalMapTripId(trip_id);
+            cr->SetGlobalMapTripId(trip_id);
 
             cr->GlobalMapGroup = new vector<Critter*>();
             cr->GlobalMapGroup->push_back(cr);
