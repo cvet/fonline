@@ -234,8 +234,8 @@ void Critter::MoveAttachedCritters()
 
     vector<tuple<Critter*, mpos, RefCountHolder<Critter>>> moved_critters;
 
-    const auto new_hex = GetMapHex();
-    const auto new_hex_offset = GetMapHexOffset();
+    const auto new_hex = GetHex();
+    const auto new_hex_offset = GetHexOffset();
 
     for (auto* cr : AttachedCritters) {
         RUNTIME_ASSERT(!cr->IsDestroyed());
@@ -243,13 +243,13 @@ void Critter::MoveAttachedCritters()
         RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
         RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
-        cr->SetMapHexOffset(new_hex_offset);
+        cr->SetHexOffset(new_hex_offset);
 
-        const auto hex = cr->GetMapHex();
+        const auto hex = cr->GetHex();
 
         if (hex != new_hex) {
             map->RemoveCritterFromField(cr);
-            cr->SetMapHex(new_hex);
+            cr->SetHex(new_hex);
             map->AddCritterToField(cr);
 
             moved_critters.emplace_back(cr, hex, RefCountHolder {cr});
@@ -800,7 +800,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -833,7 +833,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint8 how_say,
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsg(this, how_say, text_pack, str_num);
         }
-        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, how_say, text_pack, str_num);
         }
     }
@@ -866,7 +866,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_s
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
         }
-        else if (GeometryHelper::CheckDist(GetMapHex(), cr->GetMapHex(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
         }
     }

@@ -111,7 +111,7 @@
         corrected_dir = self->GetDir();
     }
 
-    if (hex != self->GetMapHex()) {
+    if (hex != self->GetHex()) {
         if (self->GetDir() != corrected_dir) {
             self->ChangeDir(corrected_dir);
         }
@@ -420,9 +420,9 @@
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [hex = self->GetMapHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+    std::sort(critters.begin(), critters.end(), [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
 
         return dist1 < dist2;
     });
@@ -443,9 +443,9 @@
         }
     }
 
-    std::sort(result.begin(), result.end(), [hex = self->GetMapHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+    std::sort(result.begin(), result.end(), [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
 
         return dist1 < dist2;
     });
@@ -1078,7 +1078,7 @@
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;
     self->TargetMoving.TargId = target->GetId();
-    self->TargetMoving.TargHex = target->GetMapHex();
+    self->TargetMoving.TargHex = target->GetHex();
     self->TargetMoving.Cut = cut;
     self->TargetMoving.Speed = static_cast<uint16>(speed);
 }

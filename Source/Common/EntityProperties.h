@@ -114,7 +114,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, mpos, MapHex);
+    ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
     ///@ MigrationRule Property Item CritId CritterId
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
@@ -284,9 +284,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, mpos, MapLeaveHex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, mpos, MapHex);
+    ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ipos16, MapHexOffset);
+    ENTITY_PROPERTY(PrivateCommon, ipos16, HexOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, Dir);
     ///@ ExportProperty ReadOnly

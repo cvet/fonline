@@ -69,10 +69,10 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
             throw ScriptException("Invalid critter ownership, critter not found");
         }
 
-        hex = cr->GetMapHex();
+        hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
-        hex = self->GetMapHex();
+        hex = self->GetHex();
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {

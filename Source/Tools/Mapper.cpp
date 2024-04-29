@@ -1349,7 +1349,7 @@ void FOMapper::IntLMouseDown()
             if (Keyb.ShiftDwn) {
                 for (auto* entity : SelectedEntities) {
                     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                        auto hex = cr->GetMapHex();
+                        auto hex = cr->GetHex();
 
                         if (const auto find_path = CurMap->FindPath(nullptr, hex, SelectHex1, -1)) {
                             for (const auto dir : find_path->DirSteps) {
@@ -2070,7 +2070,7 @@ void FOMapper::SelectClear()
     // Delete intersected tiles
     for (auto* entity : SelectedEntities) {
         if (const auto* tile = dynamic_cast<ItemHexView*>(entity); tile != nullptr && tile->GetIsTile()) {
-            for (auto* sibling_tile : copy(CurMap->GetTiles(tile->GetMapHex(), tile->GetIsRoofTile()))) {
+            for (auto* sibling_tile : copy(CurMap->GetTiles(tile->GetHex(), tile->GetIsRoofTile()))) {
                 const auto is_sibling_selected = std::find(SelectedEntities.begin(), SelectedEntities.end(), sibling_tile) != SelectedEntities.end();
                 if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
                     CurMap->DestroyItem(sibling_tile);
@@ -2215,10 +2215,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 
     if (!SelectedEntities.empty()) {
         if (const auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
-            switcher = std::abs(cr->GetMapHex().x % 2);
+            switcher = std::abs(cr->GetHex().x % 2);
         }
         else if (const auto* item = dynamic_cast<ItemHexView*>(SelectedEntities[0]); item != nullptr) {
-            switcher = std::abs(item->GetMapHex().x % 2);
+            switcher = std::abs(item->GetHex().x % 2);
         }
     }
 
@@ -2250,10 +2250,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             ipos raw_hex;
 
             if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                raw_hex = ipos {cr->GetMapHex().x, cr->GetMapHex().y};
+                raw_hex = ipos {cr->GetHex().x, cr->GetHex().y};
             }
             else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                raw_hex = ipos {item->GetMapHex().x, item->GetMapHex().y};
+                raw_hex = ipos {item->GetHex().x, item->GetHex().y};
             }
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -2298,10 +2298,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             ipos raw_hex;
 
             if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                raw_hex = ipos {cr->GetMapHex().x, cr->GetMapHex().y};
+                raw_hex = ipos {cr->GetHex().x, cr->GetHex().y};
             }
             else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                raw_hex = ipos {item->GetMapHex().x, item->GetMapHex().y};
+                raw_hex = ipos {item->GetHex().x, item->GetHex().y};
             }
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -2450,7 +2450,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     RUNTIME_ASSERT(CurMap);
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        auto* cr_clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetMapHex(), cr->GetDirAngle(), &cr->GetProperties());
+        auto* cr_clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
 
         for (const auto* inv_item : cr->GetConstInvItems()) {
             auto* inv_item_clone = cr_clone->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
@@ -2462,7 +2462,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     }
 
     if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        auto* item_clone = CurMap->AddMapperItem(item->GetProtoId(), item->GetMapHex(), &item->GetProperties());
+        auto* item_clone = CurMap->AddMapperItem(item->GetProtoId(), item->GetHex(), &item->GetProperties());
 
         CloneInnerItems(item_clone, item);
 
@@ -2510,10 +2510,10 @@ void FOMapper::BufferCopy()
         mpos hex;
 
         if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-            hex = cr->GetMapHex();
+            hex = cr->GetHex();
         }
         else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-            hex = item->GetMapHex();
+            hex = item->GetHex();
         }
 
         entity_buf->Hex = hex;

@@ -119,7 +119,7 @@ void ItemHexView::Process()
         const auto proc = GenericUtils::Percent(_effDist, dist);
         const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
 
-        if (const auto hex = GetMapHex(); hex != step_hex) {
+        if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
             _effCurOffset.x -= static_cast<float>(x);
@@ -139,7 +139,7 @@ void ItemHexView::SetEffect(mpos to_hex)
     _isEffect = true;
     _isDynamicEffect = false;
 
-    const auto cur_hex = GetMapHex();
+    const auto cur_hex = GetHex();
 
     if (cur_hex != to_hex) {
         _isDynamicEffect = true;

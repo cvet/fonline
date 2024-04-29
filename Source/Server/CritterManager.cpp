@@ -432,7 +432,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
-            hex = talker->GetMapHex();
+            hex = talker->GetHex();
             talk_distance = talker->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
         }
@@ -442,7 +442,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetMapHex(), hex, talk_distance)) {
+        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHex(), hex, talk_distance)) {
             cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
             CloseTalk(cr);
         }

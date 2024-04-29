@@ -168,17 +168,17 @@ void CritterHexView::MoveAttachedCritters()
 
     NON_CONST_METHOD_HINT();
 
-    const auto hex = GetMapHex();
-    const auto hex_offset = GetMapHexOffset();
+    const auto hex = GetHex();
+    const auto hex_offset = GetHexOffset();
 
     for (const auto cr_id : AttachedCritters) {
         if (auto* cr = _map->GetCritter(cr_id); cr != nullptr) {
-            if (cr->GetMapHex() != hex) {
+            if (cr->GetHex() != hex) {
                 _map->MoveCritter(cr, hex, false);
             }
 
-            if (cr->GetMapHexOffset() != hex_offset) {
-                cr->SetMapHexOffset(hex_offset);
+            if (cr->GetHexOffset() != hex_offset) {
+                cr->SetHexOffset(hex_offset);
                 cr->RefreshOffs();
             }
         }
@@ -775,11 +775,11 @@ void CritterHexView::ProcessMoving()
                 RUNTIME_ASSERT(move_ok);
             }
 
-            const auto prev_hex = GetMapHex();
+            const auto prev_hex = GetHex();
 
             _map->MoveCritter(this, hex2, false);
 
-            const auto cur_hex = GetMapHex();
+            const auto cur_hex = GetHex();
             const auto moved = cur_hex != prev_hex;
 
             if (moved && GetIsChosen()) {
@@ -803,7 +803,7 @@ void CritterHexView::ProcessMoving()
 
             const auto mxi = static_cast<int16>(iround(mx));
             const auto myi = static_cast<int16>(iround(my));
-            const auto hex_offset = GetMapHexOffset();
+            const auto hex_offset = GetHexOffset();
 
             if (moved || hex_offset.x != mxi || hex_offset.y != myi) {
 #if FO_ENABLE_3D
@@ -821,7 +821,7 @@ void CritterHexView::ProcessMoving()
                 }
 #endif
 
-                SetMapHexOffset(ipos16 {mxi, myi});
+                SetHexOffset(ipos16 {mxi, myi});
                 RefreshOffs();
             }
 
@@ -853,7 +853,7 @@ void CritterHexView::ProcessMoving()
         cur_dist += dist;
     }
 
-    if (normalized_time == 1.0f && GetMapHex() == Moving.EndHex) {
+    if (normalized_time == 1.0f && GetHex() == Moving.EndHex) {
         ClearMove();
         AnimateStay();
     }
@@ -911,12 +911,12 @@ void CritterHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex_offset = GetMapHexOffset();
+    const auto hex_offset = GetHexOffset();
 
     SprOffset = ipos {hex_offset.x, hex_offset.y} + ipos {iround(_offsExt.x), iround(_offsExt.y)} + _offsAnim;
 
     if (IsSpriteValid() && GetIsChosen()) {
-        _engine->SprMngr.SetEgg(GetMapHex(), GetSprite());
+        _engine->SprMngr.SetEgg(GetHex(), GetSprite());
     }
 }
 

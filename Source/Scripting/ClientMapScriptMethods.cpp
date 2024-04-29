@@ -320,14 +320,14 @@
     vector<CritterView*> critters;
 
     for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetMapHex(), radius + cr->GetMultihex())) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
     }
 
     std::sort(critters.begin(), critters.end(), [&hex](const CritterView* cr1, const CritterView* cr2) {
-        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
-        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
+        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
 
@@ -464,9 +464,9 @@
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) <= 1 + cr->GetMultihex()) {
-        if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) > cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetFarDir(cr->GetMapHex(), toHex)};
+    if (GeometryHelper::DistGame(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
+        if (GeometryHelper::DistGame(cr->GetHex(), toHex) > cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetFarDir(cr->GetHex(), toHex)};
         }
         return {};
     }
@@ -474,15 +474,15 @@
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetMapHex(), to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, static_cast<int>(cut))) {
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetMapHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetMapHex(), to_hex) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
-    auto result = self->FindPath(hex_cr, cr->GetMapHex(), to_hex, -1);
+    auto result = self->FindPath(hex_cr, cr->GetHex(), to_hex, -1);
     if (!result) {
         return {};
     }
@@ -545,22 +545,22 @@
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::DistGame(cr->GetMapHex(), toHex) <= 1 + cr->GetMultihex()) {
+    if (GeometryHelper::DistGame(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
         return cut > 0 ? 0 : 1;
     }
 
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetMapHex(), to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, static_cast<int>(cut))) {
         return 0;
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetMapHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetMapHex(), to_hex) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 
-    const auto result = self->FindPath(hex_cr, cr->GetMapHex(), to_hex, -1);
+    const auto result = self->FindPath(hex_cr, cr->GetHex(), to_hex, -1);
     if (!result) {
         return 0;
     }
@@ -613,7 +613,7 @@
             self->AutoScroll.SoftLockedCritter = id;
         }
 
-        self->AutoScroll.CritterLastHex = cr != nullptr ? cr->GetMapHex() : mpos {};
+        self->AutoScroll.CritterLastHex = cr != nullptr ? cr->GetHex() : mpos {};
     }
     else {
         if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
@@ -839,7 +839,7 @@
 ///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexPassed(MapView* self, mpos hex)
+[[maybe_unused]] bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -852,7 +852,7 @@
 ///# param hex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexShooted(MapView* self, mpos hex)
+[[maybe_unused]] bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");

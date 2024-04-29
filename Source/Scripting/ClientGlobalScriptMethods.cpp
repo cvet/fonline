@@ -158,7 +158,7 @@
         throw ScriptException("Critters different maps");
     }
 
-    return GeometryHelper::DistGame(hex_cr1->GetMapHex(), hex_cr2->GetMapHex());
+    return GeometryHelper::DistGame(hex_cr1->GetHex(), hex_cr2->GetHex());
 }
 
 ///# ...

@@ -974,7 +974,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), cr->GetWorldPos(), cr->GetMapHex(), map != nullptr ? str_loc : "Global map");
+        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), cr->GetWorldPos(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -1723,7 +1723,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         // Regenerate
-        auto hex = player_cr->GetMapHex();
+        auto hex = player_cr->GetHex();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
         MapMngr.TransitToMap(player_cr, map, hex, dir, 5);
@@ -2798,7 +2798,7 @@ void FOServer::Process_Move(Player* player)
     }
 
     // Fix async errors
-    const auto cr_hex = cr->GetMapHex();
+    const auto cr_hex = cr->GetHex();
 
     if (cr_hex != start_hex) {
         FindPathInput find_input;
@@ -3301,7 +3301,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             map->ChangeViewItem(item);
 
             if (prop == item->GetPropertyIsTrap()) {
-                map->RecacheHexFlags(item->GetMapHex());
+                map->RecacheHexFlags(item->GetHex());
             }
         }
     }
@@ -3331,7 +3331,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
-            map->RecacheHexFlags(item->GetMapHex());
+            map->RecacheHexFlags(item->GetHex());
         }
     }
 }
@@ -3426,7 +3426,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
         if (!need_find_path && cr->TargetMoving.TargId) {
             const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
 
-            if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetMapHex(), cr->TargetMoving.TargHex, 0)) {
+            if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHex(), cr->TargetMoving.TargHex, 0)) {
                 need_find_path = true;
             }
         }
@@ -3444,7 +3444,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
                     return;
                 }
 
-                hex = targ->GetMapHex();
+                hex = targ->GetHex();
                 cut = cr->TargetMoving.Cut;
                 trace_dist = cr->TargetMoving.TraceDist;
                 trace_cr = targ;
@@ -3461,7 +3461,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             FindPathInput find_input;
             find_input.MapId = cr->GetMapId();
             find_input.FromCritter = cr;
-            find_input.FromHex = cr->GetMapHex();
+            find_input.FromHex = cr->GetHex();
             find_input.ToHex = hex;
             find_input.Multihex = cr->GetMultihex();
             find_input.Cut = cut;
@@ -3566,7 +3566,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             if (cr->GetMapId() != expected_map_id) {
                 return false;
             }
-            if (cr->GetMapHex() != expected_hex) {
+            if (cr->GetHex() != expected_hex) {
                 return false;
             }
             return true;
@@ -3641,7 +3641,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                 RUNTIME_ASSERT(move_ok);
             }
 
-            const auto old_hex = cr->GetMapHex();
+            const auto old_hex = cr->GetHex();
             const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
             if (old_hex != hex2) {
@@ -3649,7 +3649,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
                 if (map->IsHexesMovable(hex2, multihex, cr)) {
                     map->RemoveCritterFromField(cr);
-                    cr->SetMapHex(hex2);
+                    cr->SetHex(hex2);
                     map->AddCritterToField(cr);
 
                     RUNTIME_ASSERT(!cr->IsDestroyed());
@@ -3677,7 +3677,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
 
             // Evaluate current position
-            const auto cr_hex = cr->GetMapHex();
+            const auto cr_hex = cr->GetHex();
             const auto moved = cr_hex != old_hex;
 
             auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
@@ -3697,8 +3697,8 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto mxi = static_cast<int16>(std::round(mx));
             const auto myi = static_cast<int16>(std::round(my));
 
-            if (moved || cr->GetMapHexOffset() != ipos16 {mxi, myi}) {
-                cr->SetMapHexOffset({mxi, myi});
+            if (moved || cr->GetHexOffset() != ipos16 {mxi, myi}) {
+                cr->SetHexOffset({mxi, myi});
             }
 
             // Evaluate dir angle
@@ -3727,7 +3727,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     }
 
     if (normalized_time == 1.0f) {
-        const bool incorrect_final_position = cr->GetMapHex() != cr->Moving.EndHex;
+        const bool incorrect_final_position = cr->GetHex() != cr->Moving.EndHex;
 
         cr->ClearMove();
         cr->TargetMoving.State = MovingState::Success;
@@ -3751,14 +3751,14 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     const auto* map = MapMngr.GetMap(cr->GetMapId());
     RUNTIME_ASSERT(map);
 
-    const auto start_hex = cr->GetMapHex();
+    const auto start_hex = cr->GetHex();
 
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.FrameTime();
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHex = start_hex;
-    cr->Moving.StartHexOffset = cr->GetMapHexOffset();
+    cr->Moving.StartHexOffset = cr->GetHexOffset();
     cr->Moving.EndHexOffset = end_hex_offset;
 
     cr->Moving.WholeTime = 0.0f;
@@ -4189,7 +4189,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
             auto talk_distance = npc->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-            if (!GeometryHelper::CheckDist(cl->GetMapHex(), npc->GetMapHex(), talk_distance)) {
+            if (!GeometryHelper::CheckDist(cl->GetHex(), npc->GetHex(), talk_distance)) {
                 cl->Send_Moving(cl);
                 cl->Send_Moving(npc);
                 cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
@@ -4204,8 +4204,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
             TraceData trace;
             trace.TraceMap = map;
-            trace.StartHex = cl->GetMapHex();
-            trace.TargetHex = npc->GetMapHex();
+            trace.StartHex = cl->GetHex();
+            trace.TargetHex = npc->GetHex();
             trace.Dist = talk_distance;
             trace.FindCr = npc;
             MapMngr.TraceBullet(trace);
@@ -4240,7 +4240,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
         }
 
         if (!ignore_distance) {
-            const auto dir = GeometryHelper::GetFarDir(cl->GetMapHex(), npc->GetMapHex());
+            const auto dir = GeometryHelper::GetFarDir(cl->GetHex(), npc->GetHex());
 
             npc->ChangeDir(GeometryHelper::ReverseDir(dir));
             npc->Broadcast_Dir();
@@ -4251,7 +4251,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     }
     // Talk with hex
     else {
-        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetMapHex(), dlg_hex, Settings.TalkDistance + cl->GetMultihex())) {
+        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHex(), dlg_hex, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Moving(cl);
             cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
             WriteLog("Wrong distance to hexes, hex {}, client '{}'", dlg_hex, cl->GetName());

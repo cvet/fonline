@@ -107,8 +107,8 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
     Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.Write(cr->GetProtoId());
-    Connection->OutBuf.Write(cr->GetMapHex());
-    Connection->OutBuf.Write(cr->GetMapHexOffset());
+    Connection->OutBuf.Write(cr->GetHex());
+    Connection->OutBuf.Write(cr->GetHexOffset());
     Connection->OutBuf.Write(cr->GetDirAngle());
     Connection->OutBuf.Write(cr->GetCondition());
     Connection->OutBuf.Write(cr->GetAliveStateAnim());
@@ -306,8 +306,8 @@ void Player::Send_Moving(const Critter* from_cr)
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_POS);
         Connection->OutBuf.Write(from_cr->GetId());
-        Connection->OutBuf.Write(from_cr->GetMapHex());
-        Connection->OutBuf.Write(from_cr->GetMapHexOffset());
+        Connection->OutBuf.Write(from_cr->GetHex());
+        Connection->OutBuf.Write(from_cr->GetHexOffset());
         Connection->OutBuf.Write(from_cr->GetDirAngle());
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
@@ -449,7 +449,7 @@ void Player::Send_AddItemOnMap(const Item* item)
     Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM_ON_MAP);
     Connection->OutBuf.Write(item->GetId());
     Connection->OutBuf.Write(item->GetProtoId());
-    Connection->OutBuf.Write(item->GetMapHex());
+    Connection->OutBuf.Write(item->GetHex());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);

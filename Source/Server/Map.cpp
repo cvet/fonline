@@ -226,7 +226,7 @@ void Map::AddCritterToField(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = cr->GetMapHex();
+    const auto hex = cr->GetHex();
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     auto& field = _hexField.GetCellForWriting(hex);
@@ -243,7 +243,7 @@ void Map::RemoveCritterFromField(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = cr->GetMapHex();
+    const auto hex = cr->GetHex();
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     auto& field = _hexField.GetCellForWriting(hex);
@@ -264,7 +264,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
     const uint multihex = cr->GetMultihex();
 
     if (multihex != 0) {
-        const auto hex = cr->GetMapHex();
+        const auto hex = cr->GetHex();
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
@@ -319,7 +319,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetMapHex(), hex));
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHex(), hex));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -348,7 +348,7 @@ void Map::SetItem(Item* item, mpos hex)
 
     item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
-    item->SetMapHex(hex);
+    item->SetHex(hex);
 
     _items.emplace_back(item);
     _itemsMap.emplace(item->GetId(), item);
@@ -392,7 +392,7 @@ void Map::EraseItem(ident_t item_id)
         _items.erase(it);
     }
 
-    const auto hex = item->GetMapHex();
+    const auto hex = item->GetHex();
     auto& field = _hexField.GetCellForWriting(hex);
 
     {
@@ -403,7 +403,7 @@ void Map::EraseItem(ident_t item_id)
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetMapId(ident_t {});
-    item->SetMapHex({});
+    item->SetHex({});
 
     {
         auto item_ids = GetItemIds();
@@ -555,7 +555,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetMapHex(), item->GetMapHex()));
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -579,7 +579,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetMapHex(), item->GetMapHex()));
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -711,7 +711,7 @@ auto Map::GetItemsInRadius(mpos hex, uint radius, hstring pid) -> vector<Item*>
 
     // Todo: optimize iterms radius search by using GetHexOffsets
     for (auto* item : _items) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::CheckDist(item->GetMapHex(), hex, radius)) {
+        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::CheckDist(item->GetHex(), hex, radius)) {
             items.emplace_back(item);
         }
     }
@@ -994,7 +994,7 @@ auto Map::GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vecto
 
     // Todo: optimize critters radius search by using GetHexOffsets
     for (auto* cr : _critters) {
-        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetMapHex(), radius + cr->GetMultihex())) {
+        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
             critters.emplace_back(cr);
         }
     }
@@ -1057,7 +1057,7 @@ void Map::SendEffect(hstring eff_pid, mpos hex, uint16 radius)
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (GeometryHelper::CheckDist(cr->GetMapHex(), hex, cr->GetLookDistance() + radius)) {
+        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
             cr->Send_Effect(eff_pid, hex, radius);
         }
     }
@@ -1070,7 +1070,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, m
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (GenericUtils::IntersectCircleLine(cr->GetMapHex().x, cr->GetMapHex().y, static_cast<int>(cr->GetLookDistance()), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
+        if (GenericUtils::IntersectCircleLine(cr->GetHex().x, cr->GetHex().y, static_cast<int>(cr->GetLookDistance()), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
             cr->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
         }
     }
@@ -1083,7 +1083,7 @@ void Map::SetText(mpos hex, ucolor color, string_view text, bool unsafe_text)
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetMapHex())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
             cr->Send_MapText(hex, color, text, unsafe_text);
         }
     }
@@ -1096,7 +1096,7 @@ void Map::SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetMapHex())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
             cr->Send_MapTextMsg(hex, color, text_pack, str_num);
         }
     }
@@ -1109,7 +1109,7 @@ void Map::SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPack
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetMapHex())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
             cr->Send_MapTextMsgLex(hex, color, text_pack, str_num, lexems);
         }
     }
@@ -1173,7 +1173,7 @@ auto Map::GetStaticItemsHexEx(mpos hex, uint radius, hstring pid) -> vector<Stat
     vector<StaticItem*> items;
 
     for (auto* item : _staticMap->StaticItems) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::DistGame(item->GetMapHex(), hex) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::DistGame(item->GetHex(), hex) <= radius) {
             items.emplace_back(item);
         }
     }

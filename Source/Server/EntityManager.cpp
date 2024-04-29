@@ -303,8 +303,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         if (cr != nullptr) {
             RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
-            if (const auto hex = cr->GetMapHex(); !map->GetSize().IsValidPos(hex)) {
-                cr->SetMapHex(map->GetSize().ClampPos(hex));
+            if (const auto hex = cr->GetHex(); !map->GetSize().IsValidPos(hex)) {
+                cr->SetHex(map->GetSize().ClampPos(hex));
             }
 
             map->AddCritter(cr);
@@ -319,11 +319,11 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         if (item != nullptr) {
             RUNTIME_ASSERT(item->GetMapId() == map->GetId());
 
-            if (const auto hex = item->GetMapHex(); !map->GetSize().IsValidPos(hex)) {
-                item->SetMapHex(map->GetSize().ClampPos(hex));
+            if (const auto hex = item->GetHex(); !map->GetSize().IsValidPos(hex)) {
+                item->SetHex(map->GetSize().ClampPos(hex));
             }
 
-            map->SetItem(item, item->GetMapHex());
+            map->SetItem(item, item->GetHex());
         }
     }
 

@@ -843,8 +843,8 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf.StartMsg(NETMSG_SEND_STOP_MOVE);
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
-    _conn.OutBuf.Write(cr->GetMapHex());
-    _conn.OutBuf.Write(cr->GetMapHexOffset());
+    _conn.OutBuf.Write(cr->GetHex());
+    _conn.OutBuf.Write(cr->GetHexOffset());
     _conn.OutBuf.Write(cr->GetDirAngle());
     _conn.OutBuf.EndMsg();
 }
@@ -1103,7 +1103,7 @@ void FOClient::Net_OnAddCritter()
         hex_cr = nullptr;
     }
 
-    cr->SetMapHexOffset(hex_offset);
+    cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
     cr->SetAliveStateAnim(alive_state_anim);
     cr->SetKnockoutStateAnim(knockout_state_anim);
@@ -1488,11 +1488,11 @@ void FOClient::Net_OnCritterMove()
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHex = start_hex;
-    cr->Moving.StartHexOffset = cr->GetMapHexOffset();
+    cr->Moving.StartHexOffset = cr->GetHexOffset();
     cr->Moving.EndHexOffset = end_hex_offset;
 
-    if (offset_time == 0 && start_hex != cr->GetMapHex()) {
-        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetMapHex());
+    if (offset_time == 0 && start_hex != cr->GetHex()) {
+        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
         cr->Moving.StartHexOffset = {static_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), static_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
     }
 
@@ -1775,10 +1775,10 @@ void FOClient::Net_OnCritterTeleport()
 
     if (cr->GetIsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
-            CurMap->AutoScroll.CritterLastHex = cr->GetMapHex();
+            CurMap->AutoScroll.CritterLastHex = cr->GetHex();
         }
 
-        CurMap->ScrollToHex(cr->GetMapHex(), 0.1f, false);
+        CurMap->ScrollToHex(cr->GetHex(), 0.1f, false);
 
         // Maybe changed some parameter influencing on look borders
         CurMap->RebuildFog();
@@ -1813,7 +1813,7 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeLookDirAngle(dir_angle);
     cr->ChangeMoveDirAngle(dir_angle);
 
-    if (cr->GetMapHex() != hex) {
+    if (cr->GetHex() != hex) {
         CurMap->MoveCritter(cr, hex, true);
 
         if (cr->GetIsChosen()) {
@@ -1821,11 +1821,11 @@ void FOClient::Net_OnCritterPos()
         }
     }
 
-    const auto cr_hex_offset = cr->GetMapHexOffset();
+    const auto cr_hex_offset = cr->GetHexOffset();
 
     if (cr_hex_offset != hex_offset) {
         cr->AddExtraOffs({cr_hex_offset.x - hex_offset.x, cr_hex_offset.y - hex_offset.y});
-        cr->SetMapHexOffset(hex_offset);
+        cr->SetHexOffset(hex_offset);
         cr->RefreshOffs();
     }
 }
@@ -2167,12 +2167,12 @@ void FOClient::Net_OnFlyEffect()
 
     const auto* cr1 = CurMap->GetCritter(eff_cr1_id);
     if (cr1 != nullptr) {
-        eff_cr1_hex = cr1->GetMapHex();
+        eff_cr1_hex = cr1->GetHex();
     }
 
     const auto* cr2 = CurMap->GetCritter(eff_cr2_id);
     if (cr2 != nullptr) {
-        eff_cr2_hex = cr2->GetMapHex();
+        eff_cr2_hex = cr2->GetHex();
     }
 
     CurMap->RunEffectItem(eff_pid, eff_cr1_hex, eff_cr2_hex);
@@ -2206,7 +2206,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     int target_screen;
 
     if (CurMap != nullptr) {
-        CurMap->FindSetCenter(chosen->GetMapHex());
+        CurMap->FindSetCenter(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->AnimateStay();
@@ -2989,7 +2989,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsLightThru()) {
-            item->GetMap()->UpdateHexLightSources(item->GetMapHex());
+            item->GetMap()->UpdateHexLightSources(item->GetHex());
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsNoBlock()) {
@@ -2997,7 +2997,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
         }
 
         if (rebuild_cache) {
-            item->GetMap()->RecacheHexFlags(item->GetMapHex());
+            item->GetMap()->RecacheHexFlags(item->GetHex());
         }
     }
 }
@@ -3354,7 +3354,7 @@ void FOClient::LmapPrepareMap()
         return;
     }
 
-    const auto hex = chosen->GetMapHex();
+    const auto hex = chosen->GetHex();
     const auto maxpixx = (_lmapWMap[2] - _lmapWMap[0]) / 2 / _lmapZoom;
     const auto maxpixy = (_lmapWMap[3] - _lmapWMap[1]) / 2 / _lmapZoom;
     const auto bx = hex.x - maxpixx;
@@ -3714,7 +3714,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
             hex = std::get<0>(std::get<0>(pos_or_dir));
             hex_offset = std::get<1>(std::get<0>(pos_or_dir));
 
-            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetMapHex(), hex, -1);
+            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, -1);
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
                 control_steps = find_path->ControlSteps;
@@ -3725,7 +3725,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
             const auto quad_dir = std::get<1>(pos_or_dir);
 
             if (quad_dir != -1) {
-                hex = cr->GetMapHex();
+                hex = cr->GetHex();
                 if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
                     control_steps.push_back(static_cast<uint16>(steps.size()));
                     try_move = true;
@@ -3739,9 +3739,9 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         cr->Moving.ControlSteps = control_steps;
         cr->Moving.StartTime = GameTime.FrameTime();
         cr->Moving.Speed = static_cast<uint16>(speed);
-        cr->Moving.StartHex = cr->GetMapHex();
+        cr->Moving.StartHex = cr->GetHex();
         cr->Moving.EndHex = hex;
-        cr->Moving.StartHexOffset = cr->GetMapHexOffset();
+        cr->Moving.StartHexOffset = cr->GetHexOffset();
         cr->Moving.EndHexOffset = hex_offset;
 
         cr->Moving.WholeTime = {};

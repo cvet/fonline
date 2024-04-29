@@ -195,8 +195,8 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             auto* cr = new CritterHexView(this, id, proto, &props);
 
-            if (const auto hex = cr->GetMapHex(); !_mapSize.IsValidPos(hex)) {
-                cr->SetMapHex(_mapSize.ClampPos(hex));
+            if (const auto hex = cr->GetHex(); !_mapSize.IsValidPos(hex)) {
+                cr->SetHex(_mapSize.ClampPos(hex));
             }
 
             AddCritterInternal(cr);
@@ -214,8 +214,8 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto* item = new ItemHexView(this, id, proto, &props);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
-                if (const auto hex = item->GetMapHex(); !_mapSize.IsValidPos(hex)) {
-                    item->SetMapHex(_mapSize.ClampPos(hex));
+                if (const auto hex = item->GetHex(); !_mapSize.IsValidPos(hex)) {
+                    item->SetHex(_mapSize.ClampPos(hex));
                 }
 
                 AddItemInternal(item);
@@ -452,7 +452,7 @@ void MapView::AddItemToField(ItemHexView* item)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = item->GetMapHex();
+    const auto hex = item->GetHex();
     auto& field = _hexField.GetCellForWriting(hex);
 
     if (item->GetIsTile()) {
@@ -491,7 +491,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = item->GetMapHex();
+    const auto hex = item->GetHex();
     auto& field = _hexField.GetCellForWriting(hex);
 
     if (item->GetIsTile()) {
@@ -544,7 +544,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto* item = new ItemHexView(this, id, proto);
 
     item->RestoreData(data);
-    item->SetMapHex(hex);
+    item->SetHex(hex);
 
     if (!item->GetIsShootThru()) {
         RebuildFog();
@@ -570,7 +570,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
 
     auto* item = new ItemHexView(this, GetTempEntityId(), proto, props);
 
-    item->SetMapHex(hex);
+    item->SetHex(hex);
 
     return AddItemInternal(item);
 }
@@ -592,7 +592,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
 
     auto* item = new ItemHexView(this, GetTempEntityId(), proto);
 
-    item->SetMapHex(hex);
+    item->SetHex(hex);
     item->SetIsTile(true);
     item->SetIsRoofTile(is_roof);
     item->SetTileLayer(layer);
@@ -604,7 +604,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = item->GetMapHex();
+    const auto hex = item->GetHex();
 
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
@@ -663,7 +663,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     RemoveItemFromField(item);
-    item->SetMapHex(hex);
+    item->SetHex(hex);
     AddItemToField(item);
 
     if (item->IsSpriteValid()) {
@@ -885,7 +885,7 @@ void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
 
     auto* effect_item = new ItemHexView(this, ident_t {}, proto);
 
-    effect_item->SetMapHex(from_hex);
+    effect_item->SetHex(from_hex);
     effect_item->SetEffect(to_hex);
 
     AddItemInternal(effect_item);
@@ -951,7 +951,7 @@ void MapView::SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool r
             return;
         }
 
-        const auto cr_hex = cr->GetMapHex();
+        const auto cr_hex = cr->GetHex();
         const auto multihex = cr->GetMultihex();
 
         if (cr_hex == hex || (field.Flags.IsMoveBlocked && (multihex == 0 || !GeometryHelper::CheckDist(cr_hex, hex, multihex)))) {
@@ -1672,7 +1672,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     for (const auto* item : cr->GetConstInvItems()) {
         if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            UpdateLightSource(cr->GetId(), cr->GetMapHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOffset);
+            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOffset);
             light_added = true;
             break;
         }
@@ -1680,7 +1680,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     // Default chosen light
     if (!light_added && cr->GetIsChosen()) {
-        UpdateLightSource(cr->GetId(), cr->GetMapHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->SprOffset);
+        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->SprOffset);
         light_added = true;
     }
 
@@ -1696,7 +1696,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
     RUNTIME_ASSERT(item->GetMap() == this);
 
     if (item->GetIsLight()) {
-        UpdateLightSource(item->GetId(), item->GetMapHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->SprOffset);
+        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->SprOffset);
     }
     else {
         FinishLightSource(item->GetId());
@@ -2918,7 +2918,7 @@ void MapView::PrepareFogToDraw()
 
         if (chosen != nullptr && (_drawLookBorders || _drawShootBorders)) {
             const auto dist = chosen->GetLookDistance() + _engine->Settings.FogExtraLength;
-            const auto base_hex = chosen->GetMapHex();
+            const auto base_hex = chosen->GetHex();
             const int chosen_dir = chosen->GetDir();
             const auto dist_shoot = chosen->GetAttackDist();
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
@@ -3073,17 +3073,17 @@ auto MapView::Scroll() -> bool
     // Check critter scroll lock
     if (AutoScroll.HardLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.HardLockedCritter);
-        if (cr != nullptr && ipos {cr->GetMapHex().x, cr->GetMapHex().y} != _screenRawHex) {
-            ScrollToHex(cr->GetMapHex(), 0.02f, true);
+        if (cr != nullptr && ipos {cr->GetHex().x, cr->GetHex().y} != _screenRawHex) {
+            ScrollToHex(cr->GetHex(), 0.02f, true);
         }
     }
 
     if (AutoScroll.SoftLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
-        if (cr != nullptr && cr->GetMapHex() != AutoScroll.CritterLastHex) {
-            const auto hex_offset = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHex, cr->GetMapHex());
+        if (cr != nullptr && cr->GetHex() != AutoScroll.CritterLastHex) {
+            const auto hex_offset = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHex, cr->GetHex());
             ScrollOffset(hex_offset, 0.02f, true);
-            AutoScroll.CritterLastHex = cr->GetMapHex();
+            AutoScroll.CritterLastHex = cr->GetHex();
         }
     }
 
@@ -3408,7 +3408,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = cr->GetMapHex();
+    const auto hex = cr->GetHex();
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     auto& field = _hexField.GetCellForWriting(hex);
@@ -3445,7 +3445,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hex = cr->GetMapHex();
+    const auto hex = cr->GetHex();
     auto& field = _hexField.GetCellForWriting(hex);
 
     const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
@@ -3515,7 +3515,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     auto* cr = new CritterHexView(this, id, proto);
 
     cr->RestoreData(data);
-    cr->SetMapHex(hex);
+    cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
 
     return AddCritterInternal(cr);
@@ -3538,7 +3538,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
 
     auto* cr = new CritterHexView(this, GetTempEntityId(), proto, props);
 
-    cr->SetMapHex(hex);
+    cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
 
     return AddCritterInternal(cr);
@@ -3677,7 +3677,7 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
     RUNTIME_ASSERT(cr->GetMap() == this);
     RUNTIME_ASSERT(_mapSize.IsValidPos(to_hex));
 
-    const auto cur_hex = cr->GetMapHex();
+    const auto cur_hex = cr->GetHex();
 
     if (cur_hex == to_hex) {
         return;
@@ -3685,7 +3685,7 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
 
     RemoveCritterFromField(cr);
 
-    cr->SetMapHex(to_hex);
+    cr->SetHex(to_hex);
 
     if (smoothly) {
         const auto hex_offset = _engine->Geometry.GetHexInterval(to_hex, cur_hex);
@@ -3703,7 +3703,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
     const uint multihex = cr->GetMultihex();
 
     if (multihex != 0) {
-        const auto hex = cr->GetMapHex();
+        const auto hex = cr->GetHex();
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
@@ -3803,7 +3803,7 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool
         }
 
         const auto* spr = item->Spr;
-        const auto hex = item->GetMapHex();
+        const auto hex = item->GetHex();
         const auto& field = _hexField.GetCellForReading(hex);
         const auto spr_zoom = GetSpritesZoom();
         const auto l = iround(static_cast<float>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScreenOffset.x - spr->Size.width / 2) / spr_zoom) - extra_range;
@@ -4763,8 +4763,8 @@ auto MapView::ValidateForSave() const -> vector<string>
 
     for (const auto* cr : _critters) {
         for (const auto* cr2 : _critters) {
-            if (cr != cr2 && cr->GetMapHex() == cr2->GetMapHex() && cr_reported.count(cr) == 0 && cr_reported.count(cr2) == 0) {
-                errors.emplace_back(_str("Critters have same hex coords at {}", cr->GetMapHex()));
+            if (cr != cr2 && cr->GetHex() == cr2->GetHex() && cr_reported.count(cr) == 0 && cr_reported.count(cr2) == 0) {
+                errors.emplace_back(_str("Critters have same hex coords at {}", cr->GetHex()));
                 cr_reported.emplace(cr);
                 cr_reported.emplace(cr2);
             }

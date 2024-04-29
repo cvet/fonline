@@ -115,7 +115,7 @@
             throw ScriptException("Critter ownership, map not found");
         }
 
-        hex = cr->GetMapHex();
+        hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
@@ -123,7 +123,7 @@
             throw ScriptException("Hex ownership, map not found");
         }
 
-        hex = self->GetMapHex();
+        hex = self->GetHex();
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {

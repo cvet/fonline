@@ -223,7 +223,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     // Reset ownership properties
     if (props != nullptr) {
         item->SetMapId(ident_t {});
-        item->SetMapHex({});
+        item->SetHex({});
         item->SetCritterId(ident_t {});
         item->SetCritterSlot(CritterItemSlot::Inventory);
         item->SetContainerId(ident_t {});
@@ -357,7 +357,7 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex, boo
 {
     STACK_TRACE_ENTRY();
 
-    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetMapHex() == to_hex) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
         return;
     }
 
@@ -733,13 +733,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     }
 
                     if (!text.empty()) {
-                        map->SetText(radio->GetMapHex(), ucolor {255, 255, 254, 255}, text, unsafe_text);
+                        map->SetText(radio->GetHex(), ucolor {255, 255, 254, 255}, text, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetMapHex(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
+                        map->SetTextMsgLex(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
                     }
                     else {
-                        map->SetTextMsg(radio->GetMapHex(), ucolor {255, 255, 254, 255}, text_pack, str_num);
+                        map->SetTextMsg(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num);
                     }
                 }
             }

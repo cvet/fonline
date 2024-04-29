@@ -650,8 +650,8 @@
     auto critters = self->GetCritters(hex, radius, findType);
 
     std::sort(critters.begin(), critters.end(), [hex](const Critter* cr1, const Critter* cr2) {
-        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetMapHex());
-        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetMapHex());
+        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
+        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
 
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
@@ -817,7 +817,7 @@
     const auto& map_critters = self->GetCritters();
 
     for (auto* cr : map_critters) {
-        const auto hex = cr->GetMapHex();
+        const auto hex = cr->GetHex();
 
         if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, static_cast<int>(cr->GetLookDistance()), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.push_back(cr);
@@ -953,7 +953,7 @@
     FindPathInput input;
     input.MapId = self->GetId();
     input.FromCritter = cr;
-    input.FromHex = cr->GetMapHex();
+    input.FromHex = cr->GetHex();
     input.ToHex = toHex;
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
@@ -1249,7 +1249,7 @@
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (GeometryHelper::CheckDist(hex, cr->GetMapHex(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
+        if (GeometryHelper::CheckDist(hex, cr->GetHex(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }

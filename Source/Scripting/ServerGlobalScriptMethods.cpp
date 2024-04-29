@@ -182,7 +182,7 @@
         throw ScriptException("Differernt maps");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr1->GetMapHex(), cr2->GetMapHex());
+    const auto dist = GeometryHelper::DistGame(cr1->GetHex(), cr2->GetHex());
 
     return static_cast<int>(dist);
 }
