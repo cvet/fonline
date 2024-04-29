@@ -975,7 +975,7 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
         }
 
         if (proto == nullptr) {
-            WriteLog("Proto {} for custom entity {} with type {} not found", pid ? pid : "Default", id, type_name);
+            WriteLog("Proto {} for custom entity {} with type {} not found", pid, id, type_name);
             is_error = true;
             return nullptr;
         }

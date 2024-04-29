@@ -2213,7 +2213,6 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
     cr->Send_AddCritter(cr);
-    cr->Send_AddAllItems();
     cr->Send_AllAutomapsInfo();
 
     if (map == nullptr) {
