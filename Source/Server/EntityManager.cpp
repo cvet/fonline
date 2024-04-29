@@ -440,7 +440,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         if (inner_item != nullptr) {
             RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
 
-            _engine->ItemMngr.SetItemToContainer(item, inner_item); // NOLINT(readability-suspicious-call-argument)
+            item->SetItemToContainer(inner_item);
         }
     }
 
