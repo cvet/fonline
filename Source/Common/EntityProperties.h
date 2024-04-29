@@ -67,6 +67,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, LastDeferredCallId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, HistoryRecordsId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
 };
 
 class PlayerProperties : public EntityProperties
@@ -273,9 +275,7 @@ public:
     ENTITY_PROPERTY(Protected, uint16, WorldX);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint16, WorldY);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, ident_t, GlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastMapId);
@@ -285,8 +285,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, ident_t, LastLocationId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexX);
     ///@ ExportProperty ReadOnly
@@ -413,7 +411,7 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateCommon, bool, IsAttached);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, ident_t, AttachMaster);
+    ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
 };

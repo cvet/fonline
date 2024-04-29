@@ -179,11 +179,21 @@
         throw ScriptException("Critter2 arg is null");
     }
     if (cr1->GetMapId() != cr2->GetMapId()) {
-        throw ScriptException("Differernt maps");
+        throw ScriptException("Critters different maps");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
-    return static_cast<int>(dist);
+    if (!cr1->GetMapId()) {
+        if (cr1->GlobalMapGroup != cr2->GlobalMapGroup) {
+            throw ScriptException("Critters different group on global map");
+        }
+
+        return 0;
+    }
+    else {
+        const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+
+        return dist;
+    }
 }
 
 ///# ...

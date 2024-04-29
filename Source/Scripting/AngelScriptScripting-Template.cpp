@@ -640,7 +640,6 @@ static void AngelScriptEndCall(asIScriptContext* ctx)
 
 static void AngelScriptException(asIScriptContext* ctx, void* param)
 {
-    const string ex_string = ctx->GetExceptionString();
     auto* ex_func = ctx->GetExceptionFunction();
     const auto ex_line = ctx->GetExceptionLineNumber();
 

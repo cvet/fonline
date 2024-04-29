@@ -641,21 +641,6 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Moving()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (VisCr.empty()) {
-        return;
-    }
-
-    for (auto* cr : VisCr) {
-        cr->Send_Moving(this);
-    }
-}
-
 void Critter::Broadcast_Action(CritterAction action, int action_data, const Item* item)
 {
     STACK_TRACE_ENTRY();
@@ -698,6 +683,25 @@ void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
 
     for (auto* cr : VisCr) {
         cr->Send_Teleport(this, to_hx, to_hy);
+    }
+}
+
+void Critter::SendAndBroadcast(const Player* ignore_player, const std::function<void(Critter*)>& callback)
+{
+    STACK_TRACE_ENTRY();
+
+    if (ignore_player == nullptr || ignore_player != GetPlayer()) {
+        callback(this);
+    }
+
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        if (ignore_player == nullptr || ignore_player != cr->GetPlayer()) {
+            callback(cr);
+        }
     }
 }
 
@@ -1078,14 +1082,14 @@ void Critter::Send_ChosenRemoveItem(const Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uint8 flags)
+void Critter::Send_GlobalInfo()
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GlobalInfo(flags);
+        _player->Send_GlobalInfo();
     }
 }
 

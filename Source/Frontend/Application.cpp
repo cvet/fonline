@@ -1058,10 +1058,11 @@ void Application::RequestQuit()
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Quit requested");
+    if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
+        WriteLog("Quit requested");
 
-    _quit = true;
-    _quitEvent.notify_all();
+        _quitEvent.notify_all();
+    }
 }
 
 void Application::WaitForRequestedQuit()

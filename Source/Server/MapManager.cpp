@@ -1416,8 +1416,6 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-    const auto map_id = map != nullptr ? map->GetId() : ident_t {};
-
     const auto prev_map_id = cr->GetMapId();
     auto* prev_map = prev_map_id ? GetMap(prev_map_id) : nullptr;
     RUNTIME_ASSERT(!prev_map_id || !!prev_map);
@@ -1508,8 +1506,16 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
             return;
         }
 
-        cr->Send_LoadMap(nullptr);
+        cr->Send_LoadMap(map);
         cr->Send_AddCritter(cr);
+
+        if (map == nullptr) {
+            for (const auto* group_cr : *cr->GlobalMapGroup) {
+                if (group_cr != cr) {
+                    cr->Send_AddCritter(group_cr);
+                }
+            }
+        }
 
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
@@ -1583,10 +1589,9 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
         const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->CrMngr.GetCritter(global_cr_id) : nullptr;
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
-            cr->SetGlobalMapLeaderId(cr->GetId());
-            cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
-
-            cr->SetLastGlobalMapLeaderId(cr->GetId());
+            const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
+            _engine->SetLastGlobalMapTripId(trip_id);
+            cr->SetGlobalMapTripId(trip_id);
 
             cr->GlobalMapGroup = new vector<Critter*>();
             cr->GlobalMapGroup->push_back(cr);
@@ -1596,10 +1601,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
 
             cr->SetWorldX(global_cr->GetWorldX());
             cr->SetWorldY(global_cr->GetWorldY());
-            cr->SetGlobalMapLeaderId(global_cr_id);
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
-
-            cr->SetLastGlobalMapLeaderId(global_cr_id);
 
             for (auto* group_cr : *global_cr->GlobalMapGroup) {
                 group_cr->Send_AddCritter(cr);
@@ -1632,7 +1634,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         cr->ClearVisible();
         map->RemoveCritter(cr);
 
-        cr->SetMapId(ident_t {});
+        cr->SetMapId({});
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
@@ -1650,15 +1652,14 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
 
+        cr->SetGlobalMapTripId({});
+
         const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
         RUNTIME_ASSERT(it != cr->GlobalMapGroup->end());
         cr->GlobalMapGroup->erase(it);
 
         if (!cr->GlobalMapGroup->empty()) {
-            const auto* new_leader = *cr->GlobalMapGroup->begin();
             for (auto* group_cr : *cr->GlobalMapGroup) {
-                group_cr->SetGlobalMapLeaderId(new_leader->GetId());
-                group_cr->SetLastGlobalMapLeaderId(new_leader->GetId());
                 group_cr->Send_RemoveCritter(cr);
             }
         }
@@ -1667,8 +1668,6 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
 
         cr->GlobalMapGroup = nullptr;
-        cr->SetGlobalMapLeaderId(ident_t {});
-        cr->SetLastGlobalMapLeaderId(ident_t {});
     }
 }
 
@@ -1682,24 +1681,8 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
         return;
     }
 
-    if (!cr->GetMapId()) {
-        // Global map
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
-
-        if (cr->GetIsControlledByPlayer()) {
-            for (const auto* group_cr : *cr->GlobalMapGroup) {
-                if (cr == group_cr) {
-                    cr->Send_AddCritter(cr);
-                }
-                else {
-                    cr->Send_AddCritter(group_cr);
-                }
-            }
-        }
-    }
-    else {
-        // Local map
-        auto* map = GetMap(cr->GetMapId());
+    if (const auto map_id = cr->GetMapId()) {
+        auto* map = GetMap(map_id);
         RUNTIME_ASSERT(map);
 
         for (auto* target : copy_hold_ref(map->GetCritters())) {
@@ -1707,6 +1690,9 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
             ProcessCritterLook(map, cr, target, trace_result);
             ProcessCritterLook(map, target, cr, trace_result);
         }
+    }
+    else {
+        RUNTIME_ASSERT(cr->GlobalMapGroup);
     }
 }
 

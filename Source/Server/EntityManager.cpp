@@ -197,6 +197,7 @@ void EntityManager::LoadEntities()
     bool is_error = false;
 
     const auto loc_ids = _engine->DbStorage.GetAllIds(_engine->LocationsCollectionName);
+
     for (const auto loc_id : loc_ids) {
         LoadLocation(ident_t {loc_id}, is_error);
     }
@@ -235,11 +236,13 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     STACK_TRACE_ENTRY();
 
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_engine->LocationsCollectionName, loc_id, true, is_error);
+
     if (!loc_pid) {
         return {};
     }
 
     const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
+
     if (loc_proto == nullptr) {
         WriteLog("Location proto {} not found", loc_pid);
         is_error = true;
@@ -247,6 +250,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     }
 
     auto* loc = new Location(_engine, loc_id, loc_proto);
+
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
@@ -258,9 +262,13 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     RegisterEntity(loc);
 
     const auto map_ids = loc->GetMapIds();
+
     for (const auto& map_id : map_ids) {
         auto* map = LoadMap(map_id, is_error);
+
         if (map != nullptr) {
+            RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
+
             const auto loc_map_index = map->GetLocMapIndex();
 
             auto& loc_maps = loc->GetMapsRaw();
@@ -282,11 +290,13 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     STACK_TRACE_ENTRY();
 
     auto&& [map_doc, map_pid] = LoadEntityDoc(_engine->MapsCollectionName, map_id, true, is_error);
+
     if (!map_pid) {
         return {};
     }
 
     const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+
     if (map_proto == nullptr) {
         WriteLog("Map proto {} not found", map_pid);
         is_error = true;
@@ -294,8 +304,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     }
 
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
-
     auto* map = new Map(_engine, map_id, map_proto, nullptr, static_map);
+
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
@@ -305,9 +315,13 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     RegisterEntity(map);
 
     const auto cr_ids = map->GetCritterIds();
+
     for (const auto& cr_id : cr_ids) {
         auto* cr = LoadCritter(cr_id, is_error);
+
         if (cr != nullptr) {
+            RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+
             if (cr->GetHexX() >= map->GetWidth()) {
                 cr->SetHexX(map->GetWidth() - 1);
             }
@@ -320,13 +334,18 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     }
 
     const auto item_ids = map->GetItemIds();
+
     for (const auto& item_id : item_ids) {
         auto* item = LoadItem(item_id, is_error);
+
         if (item != nullptr) {
-            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
-                WriteLog("Invalid item {} {} map {} {} hex pos {} {}", item->GetName(), item->GetId(), map_pid, map_id, item->GetHexX(), item->GetHexY());
-                is_error = true;
-                continue;
+            RUNTIME_ASSERT(item->GetMapId() == map->GetId());
+
+            if (item->GetHexX() >= map->GetWidth()) {
+                item->SetHexX(map->GetWidth() - 1);
+            }
+            if (item->GetHexY() >= map->GetHeight()) {
+                item->SetHexY(map->GetHeight() - 1);
             }
 
             map->SetItem(item, item->GetHexX(), item->GetHexY());
@@ -341,11 +360,13 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     STACK_TRACE_ENTRY();
 
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_engine->CrittersCollectionName, cr_id, true, is_error);
+
     if (!cr_pid) {
         return {};
     }
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+
     if (proto == nullptr) {
         WriteLog("Proto critter {} not found", cr_pid);
         is_error = true;
@@ -353,6 +374,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     }
 
     auto* cr = new Critter(_engine, cr_id, proto);
+
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
@@ -362,9 +384,13 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     RegisterEntity(cr);
 
     const auto item_ids = cr->GetItemIds();
+
     for (const auto& item_id : item_ids) {
         auto* inv_item = LoadItem(item_id, is_error);
+
         if (inv_item != nullptr) {
+            RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
+
             cr->SetItem(inv_item);
         }
     }
@@ -377,11 +403,13 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     STACK_TRACE_ENTRY();
 
     auto&& [item_doc, item_pid] = LoadEntityDoc(_engine->ItemsCollectionName, item_id, true, is_error);
+
     if (!item_pid) {
         return {};
     }
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+
     if (proto == nullptr) {
         WriteLog("Proto item {} is not loaded", item_pid);
         is_error = true;
@@ -389,6 +417,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     }
 
     auto* item = new Item(_engine, item_id, proto);
+
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
@@ -404,10 +433,14 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     RegisterEntity(item);
 
     const auto inner_item_ids = item->GetInnerItemIds();
+
     for (const auto& inner_item_id : inner_item_ids) {
         auto* inner_item = LoadItem(inner_item_id, is_error);
+
         if (inner_item != nullptr) {
-            item->SetItemToContainer(inner_item); // NOLINT(readability-suspicious-call-argument)
+            RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
+
+            _engine->ItemMngr.SetItemToContainer(item, inner_item); // NOLINT(readability-suspicious-call-argument)
         }
     }
 

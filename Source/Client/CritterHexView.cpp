@@ -787,11 +787,7 @@ void CritterHexView::ProcessMoving()
 
             const auto cur_hx = GetHexX();
             const auto cur_hy = GetHexY();
-            const auto moved = (cur_hx != old_hx || cur_hy != old_hy);
-
-            if (moved && GetIsChosen()) {
-                _map->RebuildFog();
-            }
+            const auto moved = cur_hx != old_hx || cur_hy != old_hy;
 
             // Evaluate current position
             const auto cr_hx = GetHexX();
