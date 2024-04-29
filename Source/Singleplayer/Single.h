@@ -39,7 +39,7 @@
 #include "Client.h"
 #include "Server.h"
 
-class FOSingle final : virtual public FOEngineBase, public FOServer, public FOClient
+class FOSingle final : SINGLEPLAYER_VIRTUAL public FOEngineBase, public FOServer, public FOClient
 {
 public:
     explicit FOSingle(GlobalSettings& settings, AppWindow* window);
