@@ -118,4 +118,7 @@ private:
     std::mutex _interthreadReceivedLocker {};
     std::atomic_bool _interthreadRequestDisconnect {};
     optional<time_point> _artificalLagTime {};
+#if FO_DEBUG
+    vector<uint> _msgHistory {};
+#endif
 };

@@ -200,6 +200,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NETMSG_PLAY_SOUND, [this] { Net_OnPlaySound(); });
     _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NETMSG_ADD_CUSTOM_ENTITY, [this] { Net_OnAddCustomEntity(); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_CUSTOM_ENTITY, [this] { Net_OnRemoveCustomEntity(); });
 
     // Properties that sending to clients
     {

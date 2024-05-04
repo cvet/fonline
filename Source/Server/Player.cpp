@@ -1165,6 +1165,14 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
     Connection->OutBuf.Write(entity->GetCustomHolderId());
     Connection->OutBuf.Write(entity->GetCustomHolderEntry());
     Connection->OutBuf.Write(entity->GetId());
+    if (const auto* entity_with_proto = dynamic_cast<CustomEntityWithProto*>(entity); entity_with_proto != nullptr) {
+        RUNTIME_ASSERT(_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        Connection->OutBuf.Write(entity_with_proto->GetProtoId());
+    }
+    else {
+        RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        Connection->OutBuf.Write(hstring());
+    }
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);

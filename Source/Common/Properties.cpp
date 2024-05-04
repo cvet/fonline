@@ -291,7 +291,7 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
 
     // Read plain properties data
     const auto whole_pod_data_size = reader.Read<uint>();
-    RUNTIME_ASSERT(whole_pod_data_size == _registrator->_wholePodDataSize);
+    RUNTIME_ASSERT_STR(whole_pod_data_size == _registrator->_wholePodDataSize, "Run ForceBakeResources");
 
     while (true) {
         const auto start_pos = reader.Read<uint>();

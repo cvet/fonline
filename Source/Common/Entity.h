@@ -189,9 +189,9 @@ class EntityProperties
 {
 public:
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, CustomHolderId);
+    ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, CustomHolderEntry);
+    ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
 
