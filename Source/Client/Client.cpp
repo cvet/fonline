@@ -2334,6 +2334,7 @@ void FOClient::Net_OnProperty(uint data_size)
     STACK_TRACE_ENTRY();
 
     uint msg_len;
+
     if (data_size == 0) {
         msg_len = _conn.InBuf.Read<uint>();
     }
@@ -2345,8 +2346,10 @@ void FOClient::Net_OnProperty(uint data_size)
 
     ident_t cr_id;
     ident_t item_id;
+    ident_t entity_id;
 
     uint additional_args = 0;
+
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
@@ -2365,6 +2368,10 @@ void FOClient::Net_OnProperty(uint data_size)
         additional_args = 1;
         item_id = _conn.InBuf.Read<ident_t>();
         break;
+    case NetProperty::CustomEntity:
+        additional_args = 1;
+        entity_id = _conn.InBuf.Read<ident_t>();
+        break;
     default:
         break;
     }
@@ -2378,6 +2385,7 @@ void FOClient::Net_OnProperty(uint data_size)
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
+
         if (len != 0) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
@@ -2386,6 +2394,7 @@ void FOClient::Net_OnProperty(uint data_size)
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     Entity* entity = nullptr;
+
     switch (type) {
     case NetProperty::Game:
         entity = this;
@@ -2420,15 +2429,22 @@ void FOClient::Net_OnProperty(uint data_size)
     case NetProperty::Location:
         entity = _curLocation;
         break;
+    case NetProperty::CustomEntity:
+        entity = GetEntity(entity_id);
+        break;
     default:
         throw UnreachablePlaceException(LINE_STR);
     }
+
     if (entity == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(property_index);
+
     if (prop == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
