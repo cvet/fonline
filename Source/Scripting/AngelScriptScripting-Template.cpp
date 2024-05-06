@@ -3488,12 +3488,13 @@ static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const Pr
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    UNUSED_VARIABLE(engine);
-    UNUSED_VARIABLE(pid);
-    return nullptr;
+    const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
+    const auto* proto = engine->ProtoMngr.GetProtoEntity(entity_type, pid);
+    const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
+    RUNTIME_ASSERT(casted_proto);
+    return casted_proto;
 #else
-    UNUSED_VARIABLE(engine);
-    UNUSED_VARIABLE(pid);
+    UNUSED_VARIABLE(engine, pid);
     return nullptr;
 #endif
 }
@@ -3504,8 +3505,21 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    UNUSED_VARIABLE(engine);
-    return nullptr;
+    const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
+    const auto protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+
+    vector<const ProtoCustomEntity*> result;
+    result.reserve(protos.size());
+
+    for (auto&& [pid, proto] : protos) {
+        const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
+        RUNTIME_ASSERT(casted_proto);
+        result.emplace_back(casted_proto);
+    }
+
+    auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
+    CScriptArray* result_arr = MarshalBackArray(as_engine, _str("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
+    return result_arr;
 #else
     UNUSED_VARIABLE(engine);
     return nullptr;
@@ -3996,7 +4010,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_get_value_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetValue<Entity>))); \
     entity_has_abstract.emplace(class_name)
 
-#define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class) \
+#define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class, entity_info) \
     REGISTER_BASE_ENTITY("Proto" class_name, proto_real_class); \
     REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Proto" class_name, class_name, proto_real_class); \
@@ -4007,8 +4021,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_is_custom.count(class_name) != 0) { \
-        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@+ GetProto" class_name "(hstring pid)", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntity<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@[]@ GetProto" class_name "s()", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntities<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@+ GetProto" class_name "(hstring pid)", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntity<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@[]@ GetProto" class_name "s()", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntities<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
     entity_get_component_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetComponent<proto_real_class>))); \
     entity_get_value_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetValue<proto_real_class>))); \

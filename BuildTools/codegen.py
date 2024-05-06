@@ -2508,9 +2508,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if gameEntitiesInfo[entity]['HasProtos']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 if gameEntitiesInfo[entity]['Exported']:
-                    registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', Proto' + entity + ');')
+                    registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', Proto' + entity + ', ' + engineEntityType + ');')
                 else:
-                    registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', ProtoCustomEntity);')
+                    registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', ProtoCustomEntity' + ', ' + entity + 'Info);')
             if gameEntitiesInfo[entity]['HasStatics']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
