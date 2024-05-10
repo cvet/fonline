@@ -520,8 +520,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // DAT 2.1 Arcanum
-    if (version == 0x44415431) // 1TAD
-    {
+    if (version == 0x44415431) { // 1TAD
         if (!_datFile.SetReadPos(-4, DiskFileSeek::End)) {
             return false;
         }
@@ -558,8 +557,7 @@ auto FalloutDat::ReadTree() -> bool
             uint type = 0;
             std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
-            if (fnsz != 0 && type != 0x400) // Not folder
-            {
+            if (fnsz != 0 && type != 0x400) { // Not folder
                 string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
 
                 if (type == 2) {
@@ -631,11 +629,11 @@ auto FalloutDat::ReadTree() -> bool
     auto* ptr = _memTree;
     const auto* end_ptr = _memTree + tree_size;
 
-    while (ptr < end_ptr + 4) {
+    while (ptr < end_ptr) {
         uint name_len = 0;
         std::memcpy(&name_len, ptr, 4);
 
-        if (ptr + 4 + name_len >= end_ptr) {
+        if (ptr + 4 + name_len > end_ptr) {
             return false;
         }
 
