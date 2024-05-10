@@ -76,7 +76,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
-FIXED_SETTING(uint, MinimumOfflineTime, 180000);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
 FIXED_SETTING(uint, DlgTalkMaxTime, 0);

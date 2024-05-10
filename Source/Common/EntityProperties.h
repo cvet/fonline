@@ -382,8 +382,6 @@ public:
     ENTITY_PROPERTY(Public, bool, IsNoTalk);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
-    ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, tick_t, AutoUnloadOfflineTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
     ///@ ExportProperty

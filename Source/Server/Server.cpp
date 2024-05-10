@@ -1916,19 +1916,6 @@ void FOServer::ProcessCritter(Critter* cr)
 
     // Time events
     cr->ProcessTimeEvents();
-
-    if (cr->IsDestroyed()) {
-        return;
-    }
-
-    // Auto unload player critter
-    if (cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr) {
-        const tick_t auto_unload_time = get_if_non_zero(cr->GetAutoUnloadOfflineTime(), tick_t {Settings.MinimumOfflineTime});
-
-        if (cr->GetOfflineTime() >= std::chrono::milliseconds {auto_unload_time.underlying_value()}) {
-            UnloadCritter(cr);
-        }
-    }
 }
 
 auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
