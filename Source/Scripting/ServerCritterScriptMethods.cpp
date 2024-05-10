@@ -1398,3 +1398,9 @@
 
     return count;
 }
+
+///@ ExportMethod
+[[maybe_unused]] tick_t Server_Critter_GetPlayerOfflineTime(Critter* self)
+{
+    return tick_t {time_duration_to_ms<tick_t::underlying_type>(self->GetOfflineTime())};
+}

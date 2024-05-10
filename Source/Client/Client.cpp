@@ -325,11 +325,11 @@ auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, Critte
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool
+auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, state_anim_ex, action_anim_ex, flags);
+    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
 }
 
 auto FOClient::IsConnecting() const -> bool

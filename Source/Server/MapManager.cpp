@@ -645,6 +645,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*
     if (!loc_pid) {
         return nullptr;
     }
+
     return _engine->EntityMngr.GetLocationByPid(loc_pid, skip_count);
 }
 

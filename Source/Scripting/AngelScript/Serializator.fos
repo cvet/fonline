@@ -247,6 +247,17 @@ class Serializator
         return Set(value.value);
     }
 
+    Serializator Set(const ucolor& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializator Set(const TextPackName& value)
+    {
+        int i = value;
+        return Set(i);
+    }
+
     Serializator Set(const any& value)
     {
         return Set(string(value));
@@ -588,6 +599,20 @@ class Serializator
     Serializator Get(tick_t& value)
     {
         Get(value.value);
+        return this;
+    }
+
+    Serializator Get(ucolor& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializator Get(TextPackName& value)
+    {
+        int i = 0;
+        Get(i);
+        value = TextPackName(i);
         return this;
     }
 

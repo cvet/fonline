@@ -374,7 +374,6 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     auto file = _sprMngr.GetResources().ReadFile(path);
     if (!file) {
-        BreakIntoDebugger();
         return nullptr;
     }
 
