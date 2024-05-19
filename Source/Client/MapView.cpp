@@ -3196,32 +3196,34 @@ auto MapView::Scroll() -> bool
 
     auto xmod = 0;
     auto ymod = 0;
-    if (scr_ox >= _engine->Settings.MapHexWidth) {
-        xmod = 1;
-        scr_ox -= _engine->Settings.MapHexWidth;
-        if (scr_ox > _engine->Settings.MapHexWidth) {
-            scr_ox = _engine->Settings.MapHexWidth;
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        if (scr_ox >= _engine->Settings.MapHexWidth) {
+            xmod = 1;
+            scr_ox -= _engine->Settings.MapHexWidth;
+            if (scr_ox > _engine->Settings.MapHexWidth) {
+                scr_ox = _engine->Settings.MapHexWidth;
+            }
         }
-    }
-    else if (scr_ox <= -_engine->Settings.MapHexWidth) {
-        xmod = -1;
-        scr_ox += _engine->Settings.MapHexWidth;
-        if (scr_ox < -_engine->Settings.MapHexWidth) {
-            scr_ox = -_engine->Settings.MapHexWidth;
+        else if (scr_ox <= -_engine->Settings.MapHexWidth) {
+            xmod = -1;
+            scr_ox += _engine->Settings.MapHexWidth;
+            if (scr_ox < -_engine->Settings.MapHexWidth) {
+                scr_ox = -_engine->Settings.MapHexWidth;
+            }
         }
-    }
-    if (scr_oy >= (_engine->Settings.MapHexLineHeight * 2)) {
-        ymod = -2;
-        scr_oy -= (_engine->Settings.MapHexLineHeight * 2);
-        if (scr_oy > (_engine->Settings.MapHexLineHeight * 2)) {
-            scr_oy = (_engine->Settings.MapHexLineHeight * 2);
+        if (scr_oy >= (_engine->Settings.MapHexLineHeight * 2)) {
+            ymod = -2;
+            scr_oy -= (_engine->Settings.MapHexLineHeight * 2);
+            if (scr_oy > (_engine->Settings.MapHexLineHeight * 2)) {
+                scr_oy = (_engine->Settings.MapHexLineHeight * 2);
+            }
         }
-    }
-    else if (scr_oy <= -(_engine->Settings.MapHexLineHeight * 2)) {
-        ymod = 2;
-        scr_oy += (_engine->Settings.MapHexLineHeight * 2);
-        if (scr_oy < -(_engine->Settings.MapHexLineHeight * 2)) {
-            scr_oy = -(_engine->Settings.MapHexLineHeight * 2);
+        else if (scr_oy <= -(_engine->Settings.MapHexLineHeight * 2)) {
+            ymod = 2;
+            scr_oy += (_engine->Settings.MapHexLineHeight * 2);
+            if (scr_oy < -(_engine->Settings.MapHexLineHeight * 2)) {
+                scr_oy = -(_engine->Settings.MapHexLineHeight * 2);
+            }
         }
     }
 
@@ -3798,8 +3800,8 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                     hy = static_cast<uint16>(hy_);
 
                     if (hex_ox != nullptr && hex_oy != nullptr) {
-                        *hex_ox = iround((xf - x_) * GetSpritesZoom()) - 16;
-                        *hex_oy = iround((yf - y_) * GetSpritesZoom()) - 8;
+                        *hex_ox = iround((xf - x_) * GetSpritesZoom()) - _engine->Settings.MapHexWidth / 2;
+                        *hex_oy = iround((yf - y_) * GetSpritesZoom()) - _engine->Settings.MapHexHeight / 2;
                     }
                     return true;
                 }
@@ -4107,59 +4109,109 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 }
             }
         };
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            if ((x1 % 2) != 0) {
+                check_hex(3, x1 - 1, y1 - 1);
+                check_hex(2, x1, y1 - 1);
+                check_hex(5, x1, y1 + 1);
+                check_hex(0, x1 + 1, y1);
+                check_hex(4, x1 - 1, y1);
+                check_hex(1, x1 + 1, y1 - 1);
 
-        if ((x1 % 2) != 0) {
-            check_hex(3, x1 - 1, y1 - 1);
-            check_hex(2, x1, y1 - 1);
-            check_hex(5, x1, y1 + 1);
-            check_hex(0, x1 + 1, y1);
-            check_hex(4, x1 - 1, y1);
-            check_hex(1, x1 + 1, y1 - 1);
+                if (best_step_dir == 3) {
+                    raw_steps[numindex - 1] = 3;
+                    x1--;
+                    y1--;
+                    continue;
+                }
+                if (best_step_dir == 2) {
+                    raw_steps[numindex - 1] = 2;
+                    y1--;
+                    continue;
+                }
+                if (best_step_dir == 5) {
+                    raw_steps[numindex - 1] = 5;
+                    y1++;
+                    continue;
+                }
+                if (best_step_dir == 0) {
+                    raw_steps[numindex - 1] = 0;
+                    x1++;
+                    continue;
+                }
+                if (best_step_dir == 4) {
+                    raw_steps[numindex - 1] = 4;
+                    x1--;
+                    continue;
+                }
+                if (best_step_dir == 1) {
+                    raw_steps[numindex - 1] = 1;
+                    x1++;
+                    y1--;
+                    continue;
+                }
+            }
+            else {
+                check_hex(3, x1 - 1, y1);
+                check_hex(2, x1, y1 - 1);
+                check_hex(5, x1, y1 + 1);
+                check_hex(0, x1 + 1, y1 + 1);
+                check_hex(4, x1 - 1, y1 + 1);
+                check_hex(1, x1 + 1, y1);
 
-            if (best_step_dir == 3) {
-                raw_steps[numindex - 1] = 3;
-                x1--;
-                y1--;
-                continue;
-            }
-            if (best_step_dir == 2) {
-                raw_steps[numindex - 1] = 2;
-                y1--;
-                continue;
-            }
-            if (best_step_dir == 5) {
-                raw_steps[numindex - 1] = 5;
-                y1++;
-                continue;
-            }
-            if (best_step_dir == 0) {
-                raw_steps[numindex - 1] = 0;
-                x1++;
-                continue;
-            }
-            if (best_step_dir == 4) {
-                raw_steps[numindex - 1] = 4;
-                x1--;
-                continue;
-            }
-            if (best_step_dir == 1) {
-                raw_steps[numindex - 1] = 1;
-                x1++;
-                y1--;
-                continue;
+                if (best_step_dir == 3) {
+                    raw_steps[numindex - 1] = 3;
+                    x1--;
+                    continue;
+                }
+                if (best_step_dir == 2) {
+                    raw_steps[numindex - 1] = 2;
+                    y1--;
+                    continue;
+                }
+                if (best_step_dir == 5) {
+                    raw_steps[numindex - 1] = 5;
+                    y1++;
+                    continue;
+                }
+                if (best_step_dir == 0) {
+                    raw_steps[numindex - 1] = 0;
+                    x1++;
+                    y1++;
+                    continue;
+                }
+                if (best_step_dir == 4) {
+                    raw_steps[numindex - 1] = 4;
+                    x1--;
+                    y1++;
+                    continue;
+                }
+                if (best_step_dir == 1) {
+                    raw_steps[numindex - 1] = 1;
+                    x1++;
+                    continue;
+                }
             }
         }
         else {
-            check_hex(3, x1 - 1, y1);
+            check_hex(0, x1 + 1, y1);
+            check_hex(1, x1 + 1, y1 - 1);
             check_hex(2, x1, y1 - 1);
-            check_hex(5, x1, y1 + 1);
-            check_hex(0, x1 + 1, y1 + 1);
-            check_hex(4, x1 - 1, y1 + 1);
-            check_hex(1, x1 + 1, y1);
+            check_hex(3, x1 - 1, y1 - 1);
+            check_hex(4, x1 - 1, y1);
+            check_hex(5, x1 - 1, y1 + 1);
+            check_hex(6, x1, y1 + 1);
+            check_hex(7, x1 + 1, y1 + 1);
 
-            if (best_step_dir == 3) {
-                raw_steps[numindex - 1] = 3;
-                x1--;
+            if (best_step_dir == 0) {
+                raw_steps[numindex - 1] = 0;
+                x1++;
+                continue;
+            }
+            if (best_step_dir == 1) {
+                raw_steps[numindex - 1] = 1;
+                x1++;
+                y1--;
                 continue;
             }
             if (best_step_dir == 2) {
@@ -4167,26 +4219,32 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 y1--;
                 continue;
             }
-            if (best_step_dir == 5) {
-                raw_steps[numindex - 1] = 5;
-                y1++;
-                continue;
-            }
-            if (best_step_dir == 0) {
-                raw_steps[numindex - 1] = 0;
-                x1++;
-                y1++;
+            if (best_step_dir == 3) {
+                raw_steps[numindex - 1] = 3;
+                x1--;
+                y1--;
                 continue;
             }
             if (best_step_dir == 4) {
                 raw_steps[numindex - 1] = 4;
                 x1--;
+                continue;
+            }
+            if (best_step_dir == 5) {
+                raw_steps[numindex - 1] = 5;
+                x1--;
                 y1++;
                 continue;
             }
-            if (best_step_dir == 1) {
-                raw_steps[numindex - 1] = 1;
+            if (best_step_dir == 6) {
+                raw_steps[numindex - 1] = 6;
+                y1++;
+                continue;
+            }
+            if (best_step_dir == 7) {
+                raw_steps[numindex - 1] = 7;
                 x1++;
+                y1++;
                 continue;
             }
         }

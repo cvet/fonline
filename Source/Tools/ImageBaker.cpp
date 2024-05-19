@@ -1021,11 +1021,13 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     collection.AnimTicks = static_cast<uint16>(1000u / frm_fps * frm_count_anim);
     collection.HaveDirs = (header.RotationCount == 8);
 
+    auto curpos = sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * frm_count * header.RotationCount;
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
-        auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        // auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
 
         auto dir_art = dir;
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+
             switch (dir_art) {
             case 0:
                 dir_art = 1;
@@ -1050,7 +1052,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             }
         }
         else {
-            dir_art = (dir + 1) % 8;
+            // dir_art = (dir + 1) % 8;
         }
 
         // Read data
@@ -1066,11 +1068,23 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             vector<uint8> data(static_cast<size_t>(w) * h * 4);
             auto* ptr = reinterpret_cast<uint*>(data.data());
 
-            auto& shot = sequence.Frames[frm_write];
+            FrameShot shot;
             shot.Width = static_cast<uint16>(w);
             shot.Height = static_cast<uint16>(h);
             shot.NextX = static_cast<int16>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
             shot.NextY = static_cast<int16>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
+
+            if (frm_read != frm_from) {
+                file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + \
+                    sizeof(ArtFrameInfo) * (frm_to > frm_from ? frm_read - 1 : frm_read + 1));
+                ArtFrameInfo frame_info_prev;
+                file.CopyData(&frame_info_prev, sizeof(ArtFrameInfo));
+                shot.NextX -= static_cast<int16>(-frame_info_prev.OffsetX + frame_info_prev.FrameWidth / 2);
+                shot.NextY -= static_cast<int16>(-frame_info_prev.OffsetY + frame_info_prev.FrameHeight);
+            }
+
+            file.SetCurPos(curpos);
+            curpos += frame_info.FrameSize;
 
             auto color = 0u;
             auto art_get_color = [&color, &file, &palette, &palette_index, &transparent]() {
@@ -1135,6 +1149,26 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             }
 
             shot.Data = std::move(data);
+
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                if (dir_art == 0) {
+                    collection.Main.Frames[frm_write] = std::move(shot);
+                }
+                else {
+                    collection.Dirs[dir - 1].Frames[frm_write] = std::move(shot);
+                }
+            }
+            else if (header.RotationCount != 8) {
+                collection.Main.Frames[frm_write] = std::move(shot);
+            }
+            else {
+                if (dir_art == 1) {
+                    collection.Main.Frames[frm_write] = std::move(shot);
+                }
+                else {
+                    collection.Dirs[(dir_art + 6)% 8].Frames[frm_write] = std::move(shot);
+                }
+            }
 
             if (frm_read == frm_to) {
                 break;

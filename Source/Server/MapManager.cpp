@@ -1070,59 +1070,109 @@ label_FindOk:
                     }
                 }
             };
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                if ((x1 % 2) != 0) {
+                    check_hex(3, x1 - 1, y1 - 1);
+                    check_hex(2, x1, y1 - 1);
+                    check_hex(5, x1, y1 + 1);
+                    check_hex(0, x1 + 1, y1);
+                    check_hex(4, x1 - 1, y1);
+                    check_hex(1, x1 + 1, y1 - 1);
 
-            if ((x1 % 2) != 0) {
-                check_hex(3, x1 - 1, y1 - 1);
-                check_hex(2, x1, y1 - 1);
-                check_hex(5, x1, y1 + 1);
-                check_hex(0, x1 + 1, y1);
-                check_hex(4, x1 - 1, y1);
-                check_hex(1, x1 + 1, y1 - 1);
+                    if (best_step_dir == 3) {
+                        raw_steps[numindex - 1] = 3;
+                        x1--;
+                        y1--;
+                        return true;
+                    }
+                    if (best_step_dir == 2) {
+                        raw_steps[numindex - 1] = 2;
+                        y1--;
+                        return true;
+                    }
+                    if (best_step_dir == 5) {
+                        raw_steps[numindex - 1] = 5;
+                        y1++;
+                        return true;
+                    }
+                    if (best_step_dir == 0) {
+                        raw_steps[numindex - 1] = 0;
+                        x1++;
+                        return true;
+                    }
+                    if (best_step_dir == 4) {
+                        raw_steps[numindex - 1] = 4;
+                        x1--;
+                        return true;
+                    }
+                    if (best_step_dir == 1) {
+                        raw_steps[numindex - 1] = 1;
+                        x1++;
+                        y1--;
+                        return true;
+                    }
+                }
+                else {
+                    check_hex(3, x1 - 1, y1);
+                    check_hex(2, x1, y1 - 1);
+                    check_hex(5, x1, y1 + 1);
+                    check_hex(0, x1 + 1, y1 + 1);
+                    check_hex(4, x1 - 1, y1 + 1);
+                    check_hex(1, x1 + 1, y1);
 
-                if (best_step_dir == 3) {
-                    raw_steps[numindex - 1] = 3;
-                    x1--;
-                    y1--;
-                    return true;
-                }
-                if (best_step_dir == 2) {
-                    raw_steps[numindex - 1] = 2;
-                    y1--;
-                    return true;
-                }
-                if (best_step_dir == 5) {
-                    raw_steps[numindex - 1] = 5;
-                    y1++;
-                    return true;
-                }
-                if (best_step_dir == 0) {
-                    raw_steps[numindex - 1] = 0;
-                    x1++;
-                    return true;
-                }
-                if (best_step_dir == 4) {
-                    raw_steps[numindex - 1] = 4;
-                    x1--;
-                    return true;
-                }
-                if (best_step_dir == 1) {
-                    raw_steps[numindex - 1] = 1;
-                    x1++;
-                    y1--;
-                    return true;
+                    if (best_step_dir == 3) {
+                        raw_steps[numindex - 1] = 3;
+                        x1--;
+                        return true;
+                    }
+                    if (best_step_dir == 2) {
+                        raw_steps[numindex - 1] = 2;
+                        y1--;
+                        return true;
+                    }
+                    if (best_step_dir == 5) {
+                        raw_steps[numindex - 1] = 5;
+                        y1++;
+                        return true;
+                    }
+                    if (best_step_dir == 0) {
+                        raw_steps[numindex - 1] = 0;
+                        x1++;
+                        y1++;
+                        return true;
+                    }
+                    if (best_step_dir == 4) {
+                        raw_steps[numindex - 1] = 4;
+                        x1--;
+                        y1++;
+                        return true;
+                    }
+                    if (best_step_dir == 1) {
+                        raw_steps[numindex - 1] = 1;
+                        x1++;
+                        return true;
+                    }
                 }
             }
             else {
-                check_hex(3, x1 - 1, y1);
+                check_hex(0, x1 + 1, y1);
+                check_hex(1, x1 + 1, y1 - 1);
                 check_hex(2, x1, y1 - 1);
-                check_hex(5, x1, y1 + 1);
-                check_hex(0, x1 + 1, y1 + 1);
-                check_hex(4, x1 - 1, y1 + 1);
-                check_hex(1, x1 + 1, y1);
+                check_hex(3, x1 - 1, y1 - 1);
+                check_hex(4, x1 - 1, y1);
+                check_hex(5, x1 - 1, y1 + 1);
+                check_hex(6, x1, y1 + 1);
+                check_hex(7, x1 + 1, y1 + 1);
 
-                if (best_step_dir == 3) {
-                    raw_steps[numindex - 1] = 3;
-                    x1--;
+                if (best_step_dir == 0) {
+                    raw_steps[numindex - 1] = 0;
+                    x1++;
+                    return true;
+                }
+                if (best_step_dir == 1) {
+                    raw_steps[numindex - 1] = 1;
+                    x1++;
+                    y1--;
                     return true;
                 }
                 if (best_step_dir == 2) {
@@ -1130,26 +1180,32 @@ label_FindOk:
                     y1--;
                     return true;
                 }
-                if (best_step_dir == 5) {
-                    raw_steps[numindex - 1] = 5;
-                    y1++;
-                    return true;
-                }
-                if (best_step_dir == 0) {
-                    raw_steps[numindex - 1] = 0;
-                    x1++;
-                    y1++;
+                if (best_step_dir == 3) {
+                    raw_steps[numindex - 1] = 3;
+                    x1--;
+                    y1--;
                     return true;
                 }
                 if (best_step_dir == 4) {
                     raw_steps[numindex - 1] = 4;
                     x1--;
+                    return true;
+                }
+                if (best_step_dir == 5) {
+                    raw_steps[numindex - 1] = 5;
+                    x1--;
                     y1++;
                     return true;
                 }
-                if (best_step_dir == 1) {
-                    raw_steps[numindex - 1] = 1;
+                if (best_step_dir == 6) {
+                    raw_steps[numindex - 1] = 6;
+                    y1++;
+                    return true;
+                }
+                if (best_step_dir == 7) {
+                    raw_steps[numindex - 1] = 7;
                     x1++;
+                    y1++;
                     return true;
                 }
             }
