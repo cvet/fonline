@@ -1022,38 +1022,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     collection.HaveDirs = (header.RotationCount == 8);
 
     auto curpos = sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * frm_count * header.RotationCount;
-    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
-        // auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-
-        auto dir_art = dir;
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-
-            switch (dir_art) {
-            case 0:
-                dir_art = 1;
-                break;
-            case 1:
-                dir_art = 2;
-                break;
-            case 2:
-                dir_art = 3;
-                break;
-            case 3:
-                dir_art = 5;
-                break;
-            case 4:
-                dir_art = 6;
-                break;
-            case 5:
-                dir_art = 7;
-                break;
-            default:
-                throw ImageBakerException("Invalid ART direction", fname);
-            }
-        }
-        else {
-            // dir_art = (dir + 1) % 8;
-        }
+    for (const auto dir_art : xrange(header.RotationCount)) {
 
         // Read data
         auto frm_read = frm_from;
@@ -1151,11 +1120,33 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             shot.Data = std::move(data);
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-                if (dir_art == 0) {
-                    collection.Main.Frames[frm_write] = std::move(shot);
+                auto dir = 0;
+                switch (dir_art) {
+                    case 1:
+                        collection.Main.Frames[frm_write] = std::move(shot);
+                        dir = 5;
+                        break;
+                    case 2:
+                        dir = 0;
+                        break;
+                    case 3:
+                        dir = 1;
+                        break;
+                    case 5:
+                        dir = 2;
+                        break;
+                    case 6:
+                        dir = 3;
+                        break;
+                    case 7:
+                        dir = 4;
+                        break;
+                    default:
+                        dir = 5;
+                        break;
                 }
-                else {
-                    collection.Dirs[dir - 1].Frames[frm_write] = std::move(shot);
+                if (dir < 5) {
+                    collection.Dirs[dir].Frames[frm_write] = std::move(shot);
                 }
             }
             else if (header.RotationCount != 8) {
@@ -1182,10 +1173,6 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             }
 
             frm_write++;
-        }
-
-        if (header.RotationCount != 8) {
-            break;
         }
     }
 
