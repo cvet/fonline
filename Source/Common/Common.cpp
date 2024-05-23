@@ -377,7 +377,7 @@ auto IsRunInDebugger() noexcept -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
