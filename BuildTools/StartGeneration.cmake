@@ -162,6 +162,8 @@ add_compile_definitions($<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Add
 set(expr_FullOptimization $<OR:$<CONFIG:Release>,$<CONFIG:Release_Ext>,$<CONFIG:MinSizeRel>>)
 set(expr_DebugInfo $<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:Release_Ext>,$<CONFIG:MinSizeRel>>>)
 set(expr_PrefixConfig $<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>>)
+set(expr_TracyEnabled $<OR:$<CONFIG:Profiling>,$<CONFIG:Debug_Profiling>,$<CONFIG:Profiling_OnDemand>>)
+set(expr_StandaloneRpmallocEnabled $<NOT:${expr_TracyEnabled}>)
 
 # Headless configuration (without video/audio/input)
 if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_SINGLE OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER)
