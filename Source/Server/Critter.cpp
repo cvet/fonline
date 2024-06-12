@@ -907,7 +907,7 @@ auto Critter::IsTalking() const -> bool
     return Talk.Type != TalkType::None;
 }
 
-auto Critter::GetTalkedPlayers() const -> uint
+auto Critter::GetTalkingCritters() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -922,19 +922,7 @@ auto Critter::GetTalkedPlayers() const -> uint
     return talkers;
 }
 
-auto Critter::IsTalkedPlayers() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* cr : VisCr) {
-        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-auto Critter::GetBarterPlayers() const -> uint
+auto Critter::GetBarterCritters() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -958,7 +946,7 @@ auto Critter::IsFreeToTalk() const -> bool
         max_talkers = _engine->Settings.NpcMaxTalkers;
     }
 
-    return GetTalkedPlayers() < max_talkers;
+    return GetTalkingCritters() < max_talkers;
 }
 
 void Critter::Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
