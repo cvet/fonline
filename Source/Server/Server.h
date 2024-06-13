@@ -166,9 +166,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
