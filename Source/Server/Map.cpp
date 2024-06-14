@@ -57,7 +57,12 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _width = GetWidth();
     _height = GetHeight();
 
-    _hexField.SetSize(_width, _height);
+    if (engine->Settings.MapInstanceStaticGrid) {
+        _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
+    }
+    else {
+        _hexField = std::make_unique<DynamicTwoDimensionalGrid<Field, uint16>>(_width, _height);
+    }
 }
 
 Map::~Map()
@@ -239,7 +244,7 @@ void Map::AddCritterToField(Critter* cr)
     const auto hy = cr->GetHexY();
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
     field.Critters.emplace_back(cr);
@@ -257,7 +262,7 @@ void Map::RemoveCritterFromField(Critter* cr)
     const auto hy = cr->GetHexY();
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
     RUNTIME_ASSERT(it != field.Critters.end());
@@ -284,7 +289,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
             const auto ny = static_cast<int>(hy) + sy[i];
 
             if (nx >= 0 && ny >= 0 && nx < _width && ny < _height) {
-                auto& field = _hexField.GetCellForWriting(static_cast<uint16>(nx), static_cast<uint16>(ny));
+                auto& field = _hexField->GetCellForWriting(static_cast<uint16>(nx), static_cast<uint16>(ny));
 
                 if (set) {
                     RUNTIME_ASSERT(std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr) == field.MultihexCritters.end());
@@ -370,7 +375,7 @@ void Map::SetItem(Item* item, uint16 hx, uint16 hy)
     _items.emplace_back(item);
     _itemsMap.emplace(item->GetId(), item);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     field.Items.emplace_back(item);
 
@@ -382,7 +387,7 @@ void Map::SetItem(Item* item, uint16 hx, uint16 hy)
 
     if (item->IsNonEmptyBlockLines()) {
         GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
-            auto& field2 = _hexField.GetCellForWriting(hx2, hy2);
+            auto& field2 = _hexField->GetCellForWriting(hx2, hy2);
             field2.BlockLines.emplace_back(item);
             RecacheHexFlags(field2);
         });
@@ -411,7 +416,7 @@ void Map::EraseItem(ident_t item_id)
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     {
         const auto it = std::find(field.Items.begin(), field.Items.end(), item);
@@ -440,7 +445,7 @@ void Map::EraseItem(ident_t item_id)
 
     if (item->IsNonEmptyBlockLines()) {
         GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
-            auto& field2 = _hexField.GetCellForWriting(hx2, hy2);
+            auto& field2 = _hexField->GetCellForWriting(hx2, hy2);
             const auto it = std::find(field2.BlockLines.begin(), field2.BlockLines.end(), item);
             RUNTIME_ASSERT(it != field2.BlockLines.end());
             field2.BlockLines.erase(it);
@@ -490,8 +495,8 @@ auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     return !field.IsMoveBlocked && !static_field.IsMoveBlocked;
 }
@@ -500,8 +505,8 @@ auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     return !field.IsShootBlocked && !static_field.IsShootBlocked;
 }
@@ -637,7 +642,7 @@ auto Map::IsBlockItem(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsNoMoveItem;
 }
@@ -646,7 +651,7 @@ auto Map::IsItemTrigger(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsTriggerItem;
 }
@@ -655,7 +660,7 @@ auto Map::IsItemGag(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsGagItem;
 }
@@ -674,7 +679,7 @@ auto Map::GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) ->
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     for (auto* item : field.Items) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
@@ -691,7 +696,7 @@ auto Map::GetItemGag(uint16 hx, uint16 hy) -> Item*
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     for (auto* item : field.Items) {
         if (item->GetIsGag()) {
@@ -717,7 +722,7 @@ auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.Items;
 }
@@ -763,7 +768,7 @@ auto Map::GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
     vector<Item*> triggers;
     triggers.reserve(field.Items.size());
 
@@ -796,7 +801,7 @@ void Map::RecacheHexFlags(uint16 hx, uint16 hy)
     RUNTIME_ASSERT(hx < _width);
     RUNTIME_ASSERT(hy < _height);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     RecacheHexFlags(field);
 }
@@ -886,7 +891,7 @@ void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
 {
     STACK_TRACE_ENTRY();
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     field.ManualBlock = enable;
     field.ManualBlockFull = full;
@@ -898,7 +903,7 @@ auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsNonDeadCritter || field.IsDeadCritter;
 }
@@ -907,7 +912,7 @@ auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsNonDeadCritter;
 }
@@ -916,7 +921,7 @@ auto Map::IsDeadCritter(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     return field.IsDeadCritter;
 }
@@ -927,7 +932,7 @@ auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
 
     RUNTIME_ASSERT(cr);
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (field.IsNonDeadCritter || field.IsDeadCritter) {
         const auto it1 = std::find(field.Critters.begin(), field.Critters.end(), cr);
@@ -963,7 +968,7 @@ auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (field.IsNonDeadCritter) {
         for (auto* cr : field.Critters) {
@@ -988,7 +993,7 @@ auto Map::GetDeadCritter(uint16 hx, uint16 hy) -> Critter*
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (field.IsDeadCritter) {
         for (auto* cr : field.Critters) {
@@ -1152,7 +1157,7 @@ auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     return !static_field.TriggerItems.empty();
 }
@@ -1176,7 +1181,7 @@ auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
 
     NON_CONST_METHOD_HINT();
 
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     for (auto* item : static_field.StaticItems) {
         if (!pid || item->GetProtoId() == pid) {
@@ -1193,7 +1198,7 @@ auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     NON_CONST_METHOD_HINT();
 
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     return static_field.StaticItems;
 }
@@ -1238,7 +1243,7 @@ auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     NON_CONST_METHOD_HINT();
 
-    const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
     return static_field.TriggerItems;
 }
