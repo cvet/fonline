@@ -1291,7 +1291,7 @@
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
+        if (GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }

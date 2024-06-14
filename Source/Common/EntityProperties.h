@@ -333,7 +333,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, uint, LookDistance);
+    ENTITY_PROPERTY(Protected, uint, LookDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int, ReplicationTime);
     ///@ ExportProperty
