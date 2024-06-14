@@ -1183,6 +1183,7 @@ auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
             return item;
         }
     }
+
     return nullptr;
 }
 
