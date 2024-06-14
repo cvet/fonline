@@ -331,7 +331,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient);
+    ENTITY_PROPERTY(PrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint, LookDistance);
     ///@ ExportProperty
