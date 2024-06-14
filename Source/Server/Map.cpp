@@ -488,7 +488,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
 
 auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
     const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
@@ -498,7 +498,7 @@ auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
     const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
@@ -508,7 +508,7 @@ auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     // Base
     if (!IsHexMovable(hx, hy)) {
@@ -538,10 +538,11 @@ auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
 
 auto Map::IsHexesMovable(uint16 to_hx, uint16 to_hy, uint radius, Critter* skip_cr) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_engine->Settings.CritterBlockHex) {
         if (skip_cr != nullptr && !skip_cr->IsDead()) {
+            // Todo: make movable checks without critter removing
             RemoveCritterFromField(skip_cr);
             const auto result = IsHexesMovable(to_hx, to_hy, radius);
             AddCritterToField(skip_cr);
@@ -634,7 +635,7 @@ void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
 
 auto Map::IsBlockItem(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -643,7 +644,7 @@ auto Map::IsBlockItem(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsItemTrigger(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -652,7 +653,7 @@ auto Map::IsItemTrigger(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsItemGag(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -716,7 +717,7 @@ auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
 
     NON_CONST_METHOD_HINT();
 
-    auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField.GetCellForReading(hx, hy);
 
     return field.Items;
 }
@@ -895,7 +896,7 @@ void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
 
 auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -904,7 +905,7 @@ auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -913,7 +914,7 @@ auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsDeadCritter(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -922,7 +923,7 @@ auto Map::IsDeadCritter(uint16 hx, uint16 hy) const -> bool
 
 auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr);
 
@@ -959,6 +960,8 @@ auto Map::GetCritter(ident_t cr_id) -> Critter*
 auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField.GetCellForReading(hx, hy);
 
@@ -1147,7 +1150,7 @@ void Map::SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pa
 
 auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto& static_field = _staticMap->HexField.GetCellForReading(hx, hy);
 
