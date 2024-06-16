@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const -> int;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
-    [[nodiscard]] auto GetSectionNames() const -> set<string>;
+    [[nodiscard]] auto GetSections() -> multimap<string, map<string, string>>&;
     [[nodiscard]] auto GetSectionKeyValues(string_view section_name) -> const map<string, string>*;
     [[nodiscard]] auto GetSectionContent(string_view section_name) -> const string&;
 

@@ -56,7 +56,7 @@ public:
 
     void SetString(string_view entry_name, string_view str);
     void SetData(string_view entry_name, const_span<uint8> data);
-    void EraseEntry(string_view entry_name);
+    void RemoveEntry(string_view entry_name);
 
 private:
     unique_ptr<CacheStorageImpl> _impl {};

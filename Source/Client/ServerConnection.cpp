@@ -152,11 +152,13 @@ void ServerConnection::Process()
     }
 
     if (_isConnected) {
-        uint msg = 0;
-
         if (ReceiveData(true) >= 0) {
             while (_isConnected && _netIn.NeedProcess()) {
-                msg = _netIn.Read<uint>();
+                const auto msg = _netIn.Read<uint>();
+
+#if FO_DEBUG
+                _msgHistory.insert(_msgHistory.begin(), msg);
+#endif
 
                 CHECK_SERVER_IN_BUF_ERROR(*this);
 
@@ -173,6 +175,7 @@ void ServerConnection::Process()
                 }
                 else {
                     WriteLog("No handler for message {}. Disconnect", msg);
+                    BreakIntoDebugger();
                     Disconnect();
                     return;
                 }

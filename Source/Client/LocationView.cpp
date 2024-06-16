@@ -36,7 +36,7 @@
 #include "StringUtils.h"
 
 LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
@@ -45,10 +45,7 @@ LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* pr
     _name = _str("{}_{}", proto->GetName(), id);
 }
 
-void LocationView::MarkAsDestroyed()
+void LocationView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
-
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
 }

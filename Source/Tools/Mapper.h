@@ -61,7 +61,7 @@
 
 DECLARE_EXCEPTION(MapperException);
 
-class FOMapper final : virtual public FOEngineBase, public FOClient
+class FOMapper final : public FOClient
 {
     friend class MapperScriptSystem;
 

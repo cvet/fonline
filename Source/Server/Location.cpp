@@ -38,7 +38,7 @@
 #include "StringUtils.h"
 
 Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
@@ -94,9 +94,7 @@ auto Location::GetMaps() const -> vector<const Map*>
 {
     STACK_TRACE_ENTRY();
 
-    vector<const Map*> maps;
-    maps.insert(maps.begin(), _locMaps.begin(), _locMaps.end());
-    return maps;
+    return vec_static_cast<const Map*>(_locMaps);
 }
 
 auto Location::GetMapsCount() const -> uint

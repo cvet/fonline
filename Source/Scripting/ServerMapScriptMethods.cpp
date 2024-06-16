@@ -126,7 +126,7 @@
     }
 
     if (!props.empty()) {
-        Properties props_(self->GetEngine()->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
+        Properties props_(self->GetEngine()->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME));
         props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {

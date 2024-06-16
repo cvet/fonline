@@ -38,7 +38,7 @@
 #include "StringUtils.h"
 
 Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
@@ -146,7 +146,7 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
     return items;
 }
 
-auto Item::IsInnerItems() const -> bool
+auto Item::HasInnerItems() const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -162,4 +162,85 @@ auto Item::GetRawInnerItems() -> vector<Item*>&
     RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
+}
+
+void Item::SetItemToContainer(Item* item)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(item);
+
+    if (!_innerItems) {
+        _innerItems = std::make_unique<vector<Item*>>();
+    }
+
+    RUNTIME_ASSERT(std::find(_innerItems->begin(), _innerItems->end(), item) == _innerItems->end());
+
+    _innerItems->push_back(item);
+    item->SetOwnership(ItemOwnership::ItemContainer);
+    item->SetContainerId(GetId());
+}
+
+auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
+
+    if (!_innerItems) {
+        _innerItems = std::make_unique<vector<Item*>>();
+    }
+
+    if (item->GetStackable()) {
+        auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
+        if (item_already != nullptr) {
+            const auto count = item->GetCount();
+            _engine->ItemMngr.DestroyItem(item);
+            item_already->SetCount(item_already->GetCount() + count);
+            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
+            return item_already;
+        }
+    }
+
+    item->SetContainerStack(stack_id);
+    item->EvaluateSortValue(*_innerItems);
+    SetItemToContainer(item);
+
+    auto inner_item_ids = GetInnerItemIds();
+    RUNTIME_ASSERT(std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId()) == inner_item_ids.end());
+    inner_item_ids.emplace_back(item->GetId());
+    SetInnerItemIds(std::move(inner_item_ids));
+
+    return item;
+}
+
+void Item::RemoveItemFromContainer(Item* item)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_innerItems);
+    RUNTIME_ASSERT(item);
+
+    const auto it = std::find(_innerItems->begin(), _innerItems->end(), item);
+    RUNTIME_ASSERT(it != _innerItems->end());
+    _innerItems->erase(it);
+
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetContainerId(ident_t {});
+    item->SetContainerStack(ContainerItemStack::Root);
+
+    if (_innerItems->empty()) {
+        _innerItems.reset();
+    }
+
+    auto inner_item_ids = GetInnerItemIds();
+    const auto inner_item_id_it = std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(inner_item_id_it != inner_item_ids.end());
+    inner_item_ids.erase(inner_item_id_it);
+    SetInnerItemIds(std::move(inner_item_ids));
 }

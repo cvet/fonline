@@ -201,10 +201,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_CLASS_NAME, static_cast<int>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool

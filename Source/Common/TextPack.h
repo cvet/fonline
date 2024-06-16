@@ -45,6 +45,7 @@ enum class TextPackName : uint8
     Dialogs = 2,
     Items = 3,
     Locations = 4,
+    Protos = 5,
 };
 
 class FileSystem;
@@ -74,6 +75,7 @@ public:
     auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(TextPackKey num, string_view str);
+    void AddStr(TextPackKey num, string&& str);
     void EraseStr(TextPackKey num);
     void Merge(const TextPack& other);
     void Clear();

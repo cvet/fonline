@@ -32,6 +32,7 @@
 //
 
 #include "ClientEntity.h"
+#include "Client.h"
 #include "StringUtils.h"
 
 ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
@@ -41,19 +42,59 @@ ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrat
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", GetClassName(), _id);
+    _name = _str("{}_{}", GetTypeName(), _id);
+
+    if (_id) {
+        _engine->RegisterEntity(this);
+        _registered = true;
+    }
 }
 
-void ClientEntity::SetId(ident_t id)
+void ClientEntity::SetId(ident_t id, bool register_entity)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_id);
+    RUNTIME_ASSERT(id);
 
     _id = id;
+
+    if (register_entity) {
+        _engine->RegisterEntity(this);
+        _registered = true;
+    }
 }
 
-void ClientEntity::MarkAsDestroyed()
+void ClientEntity::DestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    throw UnreachablePlaceException(LINE_STR);
+    MarkAsDestroying();
+
+    OnDestroySelf();
+
+    if (_registered) {
+        _engine->UnregisterEntity(this);
+    }
+
+    if (HasInnerEntities()) {
+        for (auto&& [entry, entities] : GetRawInnerEntities()) {
+            for (auto* entity : entities) {
+                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+                RUNTIME_ASSERT(custom_entity);
+
+                custom_entity->DestroySelf();
+            }
+        }
+
+        ClearInnerEntities();
+    }
+
+    MarkAsDestroyed();
+    Release();
+}
+
+void CustomEntityView::OnDestroySelf()
+{
+    STACK_TRACE_ENTRY();
 }

@@ -37,7 +37,7 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this, *this), nullptr),
+    Entity(new PropertyRegistrator(ENTITY_TYPE_NAME, props_relation, *this, *this), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),
@@ -47,47 +47,51 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
 {
     STACK_TRACE_ENTRY();
 
-    _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
+    _entityTypesInfo.emplace(FOEngineBase::ToHashedString(ENTITY_TYPE_NAME), EntityTypeInfo {_propsRef.GetRegistrator(), true, false});
 }
 
-auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+auto FOEngineBase::RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
-    if (_registrationFinalized) {
-        return nullptr;
-    }
+    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    RUNTIME_ASSERT(it == _entityTypesInfo.end());
 
-    const auto it = _registrators.find(string(class_name));
-    if (it != _registrators.end()) {
-        return const_cast<PropertyRegistrator*>(it->second);
-    }
+    auto* registrator = new PropertyRegistrator(type_name, _propsRelation, *this, *this);
 
-    auto* registrator = new PropertyRegistrator(class_name, _propsRelation, *this, *this);
-    _registrators.emplace(class_name, registrator);
+    _entityTypesInfo.emplace(ToHashedString(type_name), EntityTypeInfo {registrator, exported, has_protos});
+
     return registrator;
 }
 
-void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
+void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(IsValidEntityType(ToHashedString(target_type)));
+
+    const auto it = _entityTypesInfo.find(ToHashedString(holder_type));
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+    RUNTIME_ASSERT(it->second.HolderEntries.count(ToHashedString(entry)) == 0);
+
+    it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
+}
+
+void FOEngineBase::RegisterEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-
-    if (_registrationFinalized) {
-        return;
-    }
-
-    RUNTIME_ASSERT(_enums.count(string(name)) == 0u);
+    RUNTIME_ASSERT(_enums.count(string(name)) == 0);
 
     unordered_map<int, string> key_values_rev;
     for (auto&& [key, value] : key_values) {
-        RUNTIME_ASSERT(key_values_rev.count(value) == 0u);
+        RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev[value] = key;
         const auto full_key = _str("{}::{}", name, key).str();
-        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0u);
+        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0);
         _enumsFull[full_key] = value;
     }
 
@@ -96,16 +100,61 @@ void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_ty
     _enumTypes[string(name)] = &underlying_type;
 }
 
-auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
+auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const -> const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _registrators.find(string(class_name));
-    RUNTIME_ASSERT(it != _registrators.end());
+    const auto it = _entityTypesInfo.find(type_name);
+
+    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+}
+
+auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _entityTypesInfo.find(ToHashedStringMustExists(type_name));
+
+    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+}
+
+auto FOEngineBase::GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+
+    return const_cast<PropertyRegistrator*>(it->second.PropRegistrator);
+}
+
+auto FOEngineBase::IsValidEntityType(hstring type_name) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return _entityTypesInfo.count(type_name) != 0;
+}
+
+auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _entityTypesInfo.find(type_name);
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+
     return it->second;
 }
 
-void FOEngineBase::SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+auto FOEngineBase::GetEntityTypesInfo() const -> const unordered_map<hstring, EntityTypeInfo>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _entityTypesInfo;
+}
+
+void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
 {
     STACK_TRACE_ENTRY();
 

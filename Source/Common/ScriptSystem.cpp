@@ -102,21 +102,21 @@ void ScriptSystem::Process()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
+    const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
     RUNTIME_ASSERT(prop_reg);
     const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
     if (prop == nullptr) {
-        throw ScriptException("Invalid property index", class_name, prop_index);
+        throw ScriptException("Invalid property index", type_name, prop_index);
     }
     if (prop->IsDisabled()) {
-        throw ScriptException("Property is disabled", class_name, prop_index);
+        throw ScriptException("Property is disabled", type_name, prop_index);
     }
     if (!prop->IsPlainData()) {
-        throw ScriptException("Property is not plain data", class_name, prop_index);
+        throw ScriptException("Property is not plain data", type_name, prop_index);
     }
     return prop;
 }

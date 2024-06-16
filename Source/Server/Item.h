@@ -47,7 +47,6 @@ using StaticItem = Item;
 class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
-    friend class ItemManager;
 
 public:
     Item() = delete;
@@ -65,9 +64,12 @@ public:
     [[nodiscard]] auto GetAllInnerItems(bool skip_hidden) -> vector<Item*>;
     [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*;
     [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
-    [[nodiscard]] auto IsInnerItems() const -> bool;
+    [[nodiscard]] auto HasInnerItems() const -> bool;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
 
+    auto AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*;
+    void RemoveItemFromContainer(Item* item);
+    void SetItemToContainer(Item* item);
     void EvaluateSortValue(const vector<Item*>& items);
 
     ///@ ExportEvent

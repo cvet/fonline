@@ -50,5 +50,6 @@ public:
     auto operator=(PlayerView&&) noexcept = delete;
     ~PlayerView() override = default;
 
-    void MarkAsDestroyed() override;
+private:
+    void OnDestroySelf() override;
 };

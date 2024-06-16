@@ -16,12 +16,6 @@
 #define SAY_APPEND        (13)
 #define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
 
-// Msg nums
-#define DLGSTR  #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
-#define LOCSTR  #(locPid, strNum)((locPid.uhash & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
-#define ITEMSTR #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
-#define CRSTR   #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
-
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
 #define IS_TIMEOUT      #(to)((to)> Game.GetFullSecond())

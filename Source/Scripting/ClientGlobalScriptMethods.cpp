@@ -1784,7 +1784,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_RemoveCacheEntry(FOClient* client, string_view name)
 {
-    client->Cache.EraseEntry(name);
+    client->Cache.RemoveEntry(name);
 }
 
 ///# ...

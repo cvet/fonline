@@ -701,14 +701,15 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver);
+    PropertyRegistrator(string_view type_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    [[nodiscard]] auto GetClassName() const -> hstring;
+    [[nodiscard]] auto GetTypeName() const -> hstring { return _typeName; }
+    [[nodiscard]] auto GetTypeNamePlural() const -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
@@ -726,7 +727,8 @@ public:
     void RegisterProperty(const const_span<string_view>& flags);
 
 private:
-    const hstring _className;
+    const hstring _typeName;
+    const hstring _typeNamePlural;
     const PropertiesRelationType _relation;
     const hstring _migrationRuleName;
     HashResolver& _hashResolver;

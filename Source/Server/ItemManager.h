@@ -70,13 +70,10 @@ public:
     auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
-    void DeleteItem(Item* item);
+    void DestroyItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks);
-    auto AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*;
-    void EraseItemFromContainer(Item* cont, Item* item);
-    void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
@@ -87,7 +84,7 @@ private:
     [[nodiscard]] auto ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool;
     [[nodiscard]] auto GetItemHolder(Item* item) -> Entity*;
 
-    void EraseItemHolder(Item* item, Entity* holder);
+    void RemoveItemHolder(Item* item, Entity* holder);
 
     FOServer* _engine;
     unordered_set<Item*> _radioItems {};

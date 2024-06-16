@@ -61,9 +61,9 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
         if (item_already != nullptr) {
             const auto count = item->GetCount();
-            _engine->ItemMngr.DeleteItem(item);
+            _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
+            _engine->OnItemStackChanged.Fire(item_already, static_cast<int>(count));
             return item_already;
         }
     }
@@ -76,8 +76,9 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     item_ids.emplace_back(item->GetId());
     cr->SetItemIds(std::move(item_ids));
 
-    if (send) {
-        cr->Send_AddItem(item);
+    if (send && !item->GetIsHidden()) {
+        cr->Send_ChosenAddItem(item);
+
         if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
             cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
@@ -88,7 +89,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     return item;
 }
 
-void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
+void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
 {
     STACK_TRACE_ENTRY();
 
@@ -108,7 +109,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     item->SetOwnership(ItemOwnership::Nowhere);
 
     if (send) {
-        cr->Send_EraseItem(item);
+        cr->Send_ChosenRemoveItem(item);
     }
     if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
         cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
@@ -205,7 +206,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     cr->SetHomeHexY(hy);
     cr->SetHomeDir(dir);
 
-    _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr, map, hx, hy, dir, ident_t {});
 
     _engine->EntityMngr.CallInit(cr, true);
 
@@ -214,7 +215,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     return cr;
 }
 
-void CritterManager::DeleteCritter(Critter* cr)
+void CritterManager::DestroyCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -237,17 +238,21 @@ void CritterManager::DeleteCritter(Critter* cr)
         cr->LockMapTransfers++;
         auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        while (cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountInvItems() != 0 || cr->GetIsAttached() || !cr->AttachedCritters.empty()) {
-            DeleteInventory(cr);
+        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountInvItems() != 0 || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
+            DestroyInventory(cr);
+
+            if (cr->HasInnerEntities()) {
+                _engine->EntityMngr.DestroyInnerEntities(cr);
+            }
 
             if (cr->GetMapId()) {
                 auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
                 RUNTIME_ASSERT(map);
-                _engine->MapMngr.EraseCrFromMap(cr, map);
+                _engine->MapMngr.RemoveCritterFromMap(cr, map);
             }
             else {
                 RUNTIME_ASSERT(cr->GlobalMapGroup);
-                _engine->MapMngr.EraseCrFromMap(cr, nullptr);
+                _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
             }
 
             if (cr->GetIsAttached()) {
@@ -270,14 +275,14 @@ void CritterManager::DeleteCritter(Critter* cr)
     cr->Release();
 }
 
-void CritterManager::DeleteInventory(Critter* cr)
+void CritterManager::DestroyInventory(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    while (!cr->_invItems.empty()) {
-        _engine->ItemMngr.DeleteItem(*cr->_invItems.begin());
+    for (InfinityLoopDetector detector {cr->_invItems.size()}; !cr->_invItems.empty(); detector.AddLoop()) {
+        _engine->ItemMngr.DestroyItem(*cr->_invItems.begin());
     }
 }
 

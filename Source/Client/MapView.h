@@ -185,7 +185,6 @@ public:
     [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
-    void MarkAsDestroyed() override;
     void EnableMapperMode();
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
@@ -311,6 +310,8 @@ private:
     [[nodiscard]] auto GetViewHeight() const -> int;
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) const -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) const -> bool;
+
+    void OnDestroySelf() override;
 
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);

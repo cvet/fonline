@@ -64,3 +64,9 @@ class ProtoLocation final : public ProtoEntity, public LocationProperties
 public:
     ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 };
+
+class ProtoCustomEntity final : public ProtoEntity, public EntityProperties
+{
+public:
+    ProtoCustomEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
+};

@@ -40,7 +40,6 @@
 #include "StringUtils.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOEngineBase(settings, PropertiesRelationType::BothRelative),
     FOClient(settings, window, true)
 {
     STACK_TRACE_ENTRY();
@@ -927,9 +926,7 @@ void FOMapper::IntDraw()
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
             auto it = std::find_if(proto_item->Texts.begin(), proto_item->Texts.end(), [this](auto&& pack_pair) { return pack_pair.first == _curLang.GetName(); });
             if (it != proto_item->Texts.end()) {
-                auto info = it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
-                info += " - ";
-                info += it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
+                const auto info = it->second.GetStr(proto_item->GetProtoId().as_uint());
                 SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
             }
         }
@@ -1377,7 +1374,7 @@ void FOMapper::IntLMouseDown()
             IntHold = INT_SELECT;
         }
         else if (CurMode == CUR_MODE_PLACE_OBJECT) {
-            if (IsItemMode() && !(*CurItemProtos).empty() != 0u) {
+            if (IsItemMode() && !CurItemProtos->empty()) {
                 CreateItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1, nullptr);
             }
             else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -1416,7 +1413,7 @@ void FOMapper::IntLMouseDown()
     if (IsCurInRect(IntWWork, IntX, IntY)) {
         int ind = (Settings.MouseX - IntX - IntWWork[0]) / ProtoWidth;
 
-        if (IsItemMode() && !(*CurItemProtos).empty()) {
+        if (IsItemMode() && !CurItemProtos->empty()) {
             ind += *CurProtoScroll;
             if (ind >= static_cast<int>((*CurItemProtos).size())) {
                 ind = static_cast<int>((*CurItemProtos).size()) - 1;
@@ -1493,7 +1490,7 @@ void FOMapper::IntLMouseDown()
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = CurMap->GetItem(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
-                        owner->DeleteInnerItem(InContItem);
+                        owner->DestroyInnerItem(InContItem);
                     }
                     else {
                         throw UnreachablePlaceException(LINE_STR);
@@ -1509,7 +1506,7 @@ void FOMapper::IntLMouseDown()
                     // Change child slot
                     if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
                         auto to_slot = static_cast<int>(InContItem->GetCritterSlot()) + 1;
-                        while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
+                        while (static_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                             to_slot++;
                         }
                         to_slot %= 256;
@@ -2999,7 +2996,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
 
             pmap->SetWidth(MAXHEX_DEFAULT);
             pmap->SetHeight(MAXHEX_DEFAULT);
@@ -3079,13 +3076,14 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     if (!pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"))) {
         throw MapLoaderException("Invalid map header", map_name);
     }
 
     auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
+
     new_map->EnableMapperMode();
 
     try {

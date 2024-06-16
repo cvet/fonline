@@ -42,7 +42,7 @@
 #include "StringUtils.h"
 
 Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
@@ -1026,14 +1026,14 @@ void Critter::Send_AddItemOnMap(const Item* item)
     }
 }
 
-void Critter::Send_EraseItemFromMap(const Item* item)
+void Critter::Send_RemoveItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_EraseItemFromMap(item);
+        _player->Send_RemoveItemFromMap(item);
     }
 }
 
@@ -1048,25 +1048,25 @@ void Critter::Send_AnimateItem(const Item* item, hstring anim_name, bool looped,
     }
 }
 
-void Critter::Send_AddItem(const Item* item)
+void Critter::Send_ChosenAddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_AddItem(item);
+        _player->Send_ChosenAddItem(item);
     }
 }
 
-void Critter::Send_EraseItem(const Item* item)
+void Critter::Send_ChosenRemoveItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_EraseItem(item);
+        _player->Send_ChosenRemoveItem(item);
     }
 }
 
@@ -1111,17 +1111,6 @@ void Critter::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
 
     if (_player != nullptr) {
         _player->Send_Teleport(cr, to_hx, to_hy);
-    }
-}
-
-void Critter::Send_AllProperties()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_AllProperties();
     }
 }
 
@@ -1356,17 +1345,6 @@ void Critter::Send_PlaceToGameComplete()
     }
 }
 
-void Critter::Send_AddAllItems()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_AddAllItems();
-    }
-}
-
 void Critter::Send_AllAutomapsInfo()
 {
     STACK_TRACE_ENTRY();
@@ -1378,14 +1356,14 @@ void Critter::Send_AllAutomapsInfo()
     }
 }
 
-void Critter::Send_SomeItems(const vector<Item*>* items, int param)
+void Critter::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_SomeItems(items, param);
+        _player->Send_SomeItems(items, owned, with_inner_entities, context_param);
     }
 }
 
@@ -1435,7 +1413,7 @@ void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, const 
     SetTE_Identifier(te_identifiers);
 }
 
-void Critter::EraseTimeEvent(size_t index)
+void Critter::RemoveTimeEvent(size_t index)
 {
     STACK_TRACE_ENTRY();
 

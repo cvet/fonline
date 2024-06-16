@@ -56,7 +56,7 @@ public:
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
-    virtual void EraseEntry(string_view entry_name) = 0;
+    virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
 class FileCacheStorage final : public CacheStorageImpl
@@ -75,7 +75,7 @@ public:
 
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
-    void EraseEntry(string_view entry_name) override;
+    void RemoveEntry(string_view entry_name) override;
 
 private:
     [[nodiscard]] auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
@@ -100,7 +100,7 @@ public:
 
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
-    void EraseEntry(string_view entry_name) override;
+    void RemoveEntry(string_view entry_name) override;
 
 private:
     unique_ptr<unqlite, std::function<void(unqlite*)>> _db {};
@@ -161,13 +161,13 @@ void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
     _impl->SetData(entry_name, data);
 }
 
-void CacheStorage::EraseEntry(string_view entry_name)
+void CacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    _impl->EraseEntry(entry_name);
+    _impl->RemoveEntry(entry_name);
 }
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
@@ -269,7 +269,7 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
     }
 }
 
-void FileCacheStorage::EraseEntry(string_view entry_name)
+void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 
@@ -314,7 +314,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
     return r == UNQLITE_OK;
 }
 
-void UnqliteCacheStorage::EraseEntry(string_view entry_name)
+void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 

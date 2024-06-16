@@ -49,5 +49,6 @@ public:
     auto operator=(LocationView&&) noexcept = delete;
     ~LocationView() override = default;
 
-    void MarkAsDestroyed() override;
+private:
+    void OnDestroySelf() override;
 };
