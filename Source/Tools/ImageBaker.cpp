@@ -2096,7 +2096,6 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     }
     else {
         collection.SequenceSize = static_cast<uint16>((int)n / dirs);
-        collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * n);
         collection.HaveDirs = true;
 
         for (uint i=0; i<n; i++) {
@@ -2120,6 +2119,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
         if (delay_den == 0) {
             delay_den = 100;
         }
+
         collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * collection.SequenceSize);
     }
 
