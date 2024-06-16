@@ -1306,41 +1306,73 @@ void MapView::RebuildMapOffset(int ox, int oy)
     _screenHexX += _viewField[vpos2].HexX - _viewField[vpos1].HexX;
     _screenHexY += _viewField[vpos2].HexY - _viewField[vpos1].HexY;
 
-    for (const auto i : xrange(_wVisible * _hVisible)) {
-        auto& vf = _viewField[i];
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        for (const auto i : xrange(_wVisible * _hVisible)) {
+            auto& vf = _viewField[i];
 
-        if (ox < 0) {
-            vf.HexX--;
-            if ((vf.HexX % 2) != 0) {
+            if (ox < 0) {
+                vf.HexX--;
+                if ((vf.HexX % 2) != 0) {
+                    vf.HexY++;
+                }
+            }
+            else if (ox > 0) {
+                vf.HexX++;
+                if ((vf.HexX % 2) == 0) {
+                    vf.HexY--;
+                }
+            }
+
+            if (oy < 0) {
+                vf.HexX--;
+                vf.HexY--;
+                if ((vf.HexX % 2) == 0) {
+                    vf.HexY--;
+                }
+            }
+            else if (oy > 0) {
+                vf.HexX++;
+                vf.HexY++;
+                if ((vf.HexX % 2) != 0) {
+                    vf.HexY++;
+                }
+            }
+
+            if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
+                auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+                field.ScrX = vf.ScrX;
+                field.ScrY = vf.ScrY;
+            }
+        }
+    }
+
+    else {
+        for (const auto i : xrange(_wVisible * _hVisible)) {
+            auto& vf = _viewField[i];
+
+            if (ox < 0) {
+                vf.HexX--;
                 vf.HexY++;
             }
-        }
-        else if (ox > 0) {
-            vf.HexX++;
-            if ((vf.HexX % 2) == 0) {
+            else if (ox > 0) {
+                vf.HexX++;
                 vf.HexY--;
             }
-        }
 
-        if (oy < 0) {
-            vf.HexX--;
-            vf.HexY--;
-            if ((vf.HexX % 2) == 0) {
+            if (oy < 0) {
+                vf.HexX--;
                 vf.HexY--;
             }
-        }
-        else if (oy > 0) {
-            vf.HexX++;
-            vf.HexY++;
-            if ((vf.HexX % 2) != 0) {
+            else if (oy > 0) {
+                vf.HexX++;
                 vf.HexY++;
             }
-        }
 
-        if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
-            auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
-            field.ScrX = vf.ScrX;
-            field.ScrY = vf.ScrY;
+            if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
+                auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+                field.ScrX = vf.ScrX;
+                field.ScrY = vf.ScrY;
+            }
         }
     }
 
@@ -3196,36 +3228,36 @@ auto MapView::Scroll() -> bool
 
     auto xmod = 0;
     auto ymod = 0;
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        if (scr_ox >= _engine->Settings.MapHexWidth) {
-            xmod = 1;
-            scr_ox -= _engine->Settings.MapHexWidth;
-            if (scr_ox > _engine->Settings.MapHexWidth) {
-                scr_ox = _engine->Settings.MapHexWidth;
-            }
-        }
-        else if (scr_ox <= -_engine->Settings.MapHexWidth) {
-            xmod = -1;
-            scr_ox += _engine->Settings.MapHexWidth;
-            if (scr_ox < -_engine->Settings.MapHexWidth) {
-                scr_ox = -_engine->Settings.MapHexWidth;
-            }
-        }
-        if (scr_oy >= (_engine->Settings.MapHexLineHeight * 2)) {
-            ymod = -2;
-            scr_oy -= (_engine->Settings.MapHexLineHeight * 2);
-            if (scr_oy > (_engine->Settings.MapHexLineHeight * 2)) {
-                scr_oy = (_engine->Settings.MapHexLineHeight * 2);
-            }
-        }
-        else if (scr_oy <= -(_engine->Settings.MapHexLineHeight * 2)) {
-            ymod = 2;
-            scr_oy += (_engine->Settings.MapHexLineHeight * 2);
-            if (scr_oy < -(_engine->Settings.MapHexLineHeight * 2)) {
-                scr_oy = -(_engine->Settings.MapHexLineHeight * 2);
-            }
+
+    if (scr_ox >= _engine->Settings.MapHexWidth) {
+        xmod = 1;
+        scr_ox -= _engine->Settings.MapHexWidth;
+        if (scr_ox > _engine->Settings.MapHexWidth) {
+            scr_ox = _engine->Settings.MapHexWidth;
         }
     }
+    else if (scr_ox <= -_engine->Settings.MapHexWidth) {
+        xmod = -1;
+        scr_ox += _engine->Settings.MapHexWidth;
+        if (scr_ox < -_engine->Settings.MapHexWidth) {
+            scr_ox = -_engine->Settings.MapHexWidth;
+        }
+    }
+    if (scr_oy >= (_engine->Settings.MapHexLineHeight * 2)) {
+        ymod = -2;
+        scr_oy -= (_engine->Settings.MapHexLineHeight * 2);
+        if (scr_oy > (_engine->Settings.MapHexLineHeight * 2)) {
+            scr_oy = (_engine->Settings.MapHexLineHeight * 2);
+        }
+    }
+    else if (scr_oy <= -(_engine->Settings.MapHexLineHeight * 2)) {
+        ymod = 2;
+        scr_oy += (_engine->Settings.MapHexLineHeight * 2);
+        if (scr_oy < -(_engine->Settings.MapHexLineHeight * 2)) {
+            scr_oy = -(_engine->Settings.MapHexLineHeight * 2);
+        }
+    }
+
 
     _engine->Settings.ScrOx = scr_ox;
     _engine->Settings.ScrOy = scr_oy;
