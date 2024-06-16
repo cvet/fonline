@@ -43,7 +43,7 @@
 
 #include "png.h"
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den) -> uint8*;
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den, int16& offs_x, int16& offs_y) -> uint8*;
 static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*;
 
 ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
@@ -2066,8 +2066,10 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     uint n = 0;
     uint delay_num = 0;
     uint delay_den = 0;
+    int16 offs_x = 0;
+    int16 offs_y = 0;
 
-    const auto* png_data = PngLoad(file.GetBuf(), w, h, n, delay_num, delay_den);
+    const auto* png_data = PngLoad(file.GetBuf(), w, h, n, delay_num, delay_den, offs_x, offs_y);
     if (png_data == nullptr) {
         throw ImageBakerException("Can't read PNG", fname);
     }
@@ -2075,22 +2077,18 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     auto dirs = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 8;
 
     FrameCollection collection;
-    if (n > 1) {
-        // According to APNG specs
-        if (delay_den == 0) {
-            delay_den = 100;
-        }
-        collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * n);
-    }
-    else {
-        collection.AnimTicks = 100;
-    }
     collection.HaveDirs = false;
+
     if (n % dirs != 0) {
         collection.SequenceSize = static_cast<uint16>(n);
+        collection.Main.OffsX = static_cast<int16>(offs_x);
+        collection.Main.OffsY = static_cast<int16>(offs_y);
+
         for (uint i=0; i<n; i++) {
             vector<uint8> data(static_cast<size_t>(w) * h * 4);
+
             std::memcpy(data.data(), png_data + i * static_cast<size_t>(w) * h * 4, static_cast<size_t>(w) * h * 4);
+
             collection.Main.Frames[i].Width = static_cast<uint16>(w);
             collection.Main.Frames[i].Height = static_cast<uint16>(h);
             collection.Main.Frames[i].Data = std::move(data);
@@ -2098,18 +2096,37 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     }
     else {
         collection.SequenceSize = static_cast<uint16>((int)n / dirs);
+        collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * n);
         collection.HaveDirs = true;
+
         for (uint i=0; i<n; i++) {
             auto dir = (int)i / (n / dirs);
             auto num = (int)i % (n / dirs);
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
             vector<uint8> data(static_cast<size_t>(w) * h * 4);
+
             std::memcpy(data.data(), png_data + i * static_cast<size_t>(w) * h * 4, static_cast<size_t>(w) * h * 4);
+
             sequence.Frames[num].Width = static_cast<uint16>(w);
             sequence.Frames[num].Height = static_cast<uint16>(h);
             sequence.Frames[num].Data = std::move(data);
+            sequence.OffsX = static_cast<int16>(offs_x);
+            sequence.OffsY = static_cast<int16>(offs_y);
         }
     }
+
+    if (n > 1) {
+        // According to APNG specs
+        if (delay_den == 0) {
+            delay_den = 100;
+        }
+        collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * collection.SequenceSize);
+    }
+
+    else {
+        collection.AnimTicks = 100;
+    }
+
     return collection;
 }
 
@@ -2140,7 +2157,8 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     return collection;
 }
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den) -> uint8*
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number,
+                    uint& result_delay_num, uint& result_delay_den, int16& result_offs_x, int16& result_offs_y) -> uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -2273,6 +2291,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
             std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4,
                 result + static_cast<size_t>(cur_frame) * width * height * 4, static_cast<size_t>(width) * height * 4);
         }
+
         else if (frame_dispose_op == PNG_DISPOSE_OP_PREVIOUS && cur_frame > 1) {
             std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4,
                 result + static_cast<size_t>(cur_frame - 1) * width * height * 4, static_cast<size_t>(width) * height * 4);
@@ -2285,9 +2304,31 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
 
     // Clean up
     png_read_end(png_ptr, info_ptr);
+
+    png_textp text_ptr;
+    int num_text;
+    int16 offs_x = 0;
+    int16 offs_y = 0;
+
+    // Read tEXt chunks, and assign offsets if present
+    png_get_text(png_ptr, info_ptr, &text_ptr, &num_text);
+
+    for (int i = 0; i < num_text; i++) {
+
+        if (strcmp(text_ptr[i].key, "fo_offset_x") == 0) {
+            offs_x = std::atoi(text_ptr[i].text);
+        }
+
+        else if (strcmp(text_ptr[i].key, "fo_offset_y") == 0) {
+            offs_y = std::atoi(text_ptr[i].text);
+        }
+    }
+
     png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
 
     // Return
+    result_offs_x = offs_x;
+    result_offs_y = offs_y;
     result_width = width;
     result_height = height;
     result_number = frames_count_anim;
