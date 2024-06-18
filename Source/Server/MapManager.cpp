@@ -206,7 +206,7 @@ void MapManager::LoadFromResources()
 
                         if (!item->GetIsHiddenInStatic()) {
                             static_map->StaticItems.emplace_back(item);
-                            static_map->StaticItemsById.emplace(item->GetId(), item);
+                            static_map->StaticItemsById.emplace(item_id, item);
                             static_map->HexField->GetCellForWriting(hx, hy).StaticItems.emplace_back(item);
                         }
                         if (item->GetIsTrigger() || item->GetIsTrap()) {
