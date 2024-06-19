@@ -207,10 +207,15 @@ void MapManager::LoadFromResources()
                         if (!item->GetIsHiddenInStatic()) {
                             static_map->StaticItems.emplace_back(item);
                             static_map->StaticItemsById.emplace(item_id, item);
-                            static_map->HexField->GetCellForWriting(hx, hy).StaticItems.emplace_back(item);
+
+                            auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
+                            make_if_not_exists(static_field.StaticItems);
+                            static_field.StaticItems->emplace_back(item);
                         }
                         if (item->GetIsTrigger() || item->GetIsTrap()) {
-                            static_map->HexField->GetCellForWriting(hx, hy).TriggerItems.emplace_back(item);
+                            auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
+                            make_if_not_exists(static_field.TriggerItems);
+                            static_field.TriggerItems->emplace_back(item);
                         }
                     }
                     else {
@@ -277,6 +282,18 @@ void MapManager::LoadFromResources()
         static_map->HexItemBillets.shrink_to_fit();
         static_map->ChildItemBillets.shrink_to_fit();
         static_map->StaticItems.shrink_to_fit();
+
+        for (uint16 hy = 0; hy < map_height; hy++) {
+            for (uint16 hx = 0; hx < map_width; hx++) {
+                const auto& static_field = static_map->HexField->GetCellForReading(hx, hy);
+                if (static_field.StaticItems) {
+                    static_map->HexField->GetCellForWriting(hx, hy).StaticItems->shrink_to_fit();
+                }
+                if (static_field.TriggerItems) {
+                    static_map->HexField->GetCellForWriting(hx, hy).TriggerItems->shrink_to_fit();
+                }
+            }
+        }
 
         _staticMaps.emplace(pmap, std::move(static_map));
     }

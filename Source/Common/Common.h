@@ -95,7 +95,6 @@
 #include <optional>
 #include <random>
 #include <set>
-#include <span.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -108,6 +107,9 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include <small_vector.hpp>
+#include <span.hpp>
 
 // OS specific API
 #if FO_MAC || FO_IOS
@@ -198,6 +200,8 @@ using std::unordered_set;
 using std::variant;
 using std::vector;
 using std::weak_ptr;
+
+using gch::small_vector;
 using tcb::span;
 
 template<typename T>
@@ -236,6 +240,14 @@ static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 {
     if (!ptr) {
         ptr = std::make_unique<T>();
+    }
+}
+
+template<typename T>
+static constexpr void destroy_if_empty(unique_ptr<vector<T>>& ptr) noexcept
+{
+    if (ptr && ptr->empty()) {
+        ptr = nullptr;
     }
 }
 
@@ -1779,14 +1791,25 @@ constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_v
     return ref_vec;
 }
 
-// Vector pointer cast
+// Vector helpers
 template<typename T, typename T2>
-constexpr auto vec_cast(const vector<T2>& value) -> vector<T>
+constexpr auto vec_cast(const vector<T2>& vec) -> vector<T>
 {
     vector<T> result;
-    result.reserve(value.size());
-    for (auto&& v : value) {
+    result.reserve(vec.size());
+    for (auto&& v : vec) {
         result.emplace_back(static_cast<T>(v));
+    }
+    return result;
+}
+
+template<typename T, unsigned T2, typename T3>
+constexpr auto small_vec_to_vec(const small_vector<T, T2, T3>& svec) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(svec.size());
+    for (auto&& v : svec) {
+        result.emplace_back(v);
     }
     return result;
 }

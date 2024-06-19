@@ -542,6 +542,9 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
 endif()
 
+# small_vector
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
+
 # span
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")
 

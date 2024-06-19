@@ -50,13 +50,12 @@ class Location;
 
 struct StaticMap
 {
-    // Todo: memory optimization - improve dynamic grid for map hex fields
     struct Field
     {
         bool IsMoveBlocked {};
         bool IsShootBlocked {};
-        vector<StaticItem*> StaticItems {};
-        vector<StaticItem*> TriggerItems {};
+        unique_ptr<vector<StaticItem*>> StaticItems {};
+        unique_ptr<vector<StaticItem*>> TriggerItems {};
     };
 
     unique_ptr<BaseTwoDimensionalGrid<Field, uint16>> HexField {};
@@ -96,7 +95,7 @@ public:
     [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) -> Item*;
     [[nodiscard]] auto GetItems() -> const vector<Item*>&;
-    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&;
+    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> vector<Item*>;
     [[nodiscard]] auto GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
@@ -167,10 +166,10 @@ private:
         bool IsNoShootItem {};
         bool IsMoveBlocked {};
         bool IsShootBlocked {};
-        vector<Critter*> Critters {};
-        vector<Critter*> MultihexCritters {};
-        vector<Item*> Items {};
-        vector<Item*> BlockLines {};
+        small_vector<Critter*, 3> Critters {};
+        small_vector<Critter*, 3> MultihexCritters {};
+        small_vector<Item*, 3> Items {};
+        small_vector<Item*, 3> BlockLines {};
         bool ManualBlock {};
         bool ManualBlockFull {};
     };

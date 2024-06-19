@@ -687,9 +687,9 @@ private:
     const PropertyRegistrator* _registrator;
     vector<uint8> _podData {};
     vector<vector<uint8>> _complexData {};
-    mutable vector<const uint8*> _storeData {};
-    mutable vector<uint> _storeDataSizes {};
-    mutable vector<uint16> _storeDataComplexIndices {};
+    mutable unique_ptr<vector<const uint8*>> _storeData {};
+    mutable unique_ptr<vector<uint>> _storeDataSizes {};
+    mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
     Entity* _entity {};
     bool _nonConstHelper {};
 };

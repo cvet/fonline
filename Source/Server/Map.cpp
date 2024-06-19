@@ -716,7 +716,7 @@ auto Map::GetItems() -> const vector<Item*>&
     return _items;
 }
 
-auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
+auto Map::GetItems(uint16 hx, uint16 hy) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -724,7 +724,7 @@ auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.Items;
+    return small_vec_to_vec(field.Items);
 }
 
 auto Map::GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>
@@ -1159,7 +1159,7 @@ auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return !static_field.TriggerItems.empty();
+    return static_field.TriggerItems && !static_field.TriggerItems->empty();
 }
 
 auto Map::GetStaticItem(ident_t id) -> StaticItem*
@@ -1183,9 +1183,11 @@ auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    for (auto* item : static_field.StaticItems) {
-        if (!pid || item->GetProtoId() == pid) {
-            return item;
+    if (static_field.StaticItems) {
+        for (auto* item : *static_field.StaticItems) {
+            if (!pid || item->GetProtoId() == pid) {
+                return item;
+            }
         }
     }
 
@@ -1200,7 +1202,7 @@ auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return static_field.StaticItems;
+    return static_field.StaticItems ? *static_field.StaticItems : vector<StaticItem*> {};
 }
 
 auto Map::GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>
@@ -1245,5 +1247,5 @@ auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return static_field.TriggerItems;
+    return static_field.TriggerItems ? *static_field.TriggerItems : vector<StaticItem*> {};
 }
