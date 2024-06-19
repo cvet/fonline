@@ -12,6 +12,7 @@
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.26.25](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
+* small_vector - [small_vector](https://github.com/gharveymn/small_vector)
 * span - [span](https://github.com/tcbrindle/span)
 * SPIRV-Cross - [SPIRV-Cross-1.3.261.1](https://github.com/KhronosGroup/SPIRV-Cross)
 * tracy - [tracy-0.10.0](https://github.com/wolfpld/tracy)
