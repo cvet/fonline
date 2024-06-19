@@ -231,6 +231,14 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
     return {};
 }
 
+template<typename T>
+static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
+{
+    if (!ptr) {
+        ptr = std::make_unique<T>();
+    }
+}
+
 struct pair_hash
 {
     template<typename T, typename U>
@@ -565,7 +573,7 @@ struct ExceptionStackTraceData
     { \
     public: \
         exception_name() = delete; \
-        exception_name(const exception_name&) = delete; \
+        exception_name(const exception_name&) = default; \
         exception_name(exception_name&&) = default; \
         auto operator=(const exception_name&) = delete; \
         auto operator=(exception_name&&) noexcept = delete; \
