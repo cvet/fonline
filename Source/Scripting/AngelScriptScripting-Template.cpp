@@ -1526,7 +1526,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                vector<pair<void*, void*>> dict_map;
+                std::vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
@@ -1639,7 +1639,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                vector<pair<void*, void*>> dict_map;
+                std::vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
@@ -1701,7 +1701,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                vector<pair<void*, void*>> dict_map;
+                std::vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 const auto value_element_size = prop->GetBaseSize();
@@ -1745,7 +1745,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
 
-                vector<pair<void*, void*>> dict_map;
+                std::vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
@@ -4304,7 +4304,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 class BinaryStream : public asIBinaryStream
 {
 public:
-    explicit BinaryStream(std::vector<asBYTE>& buf) :
+    explicit BinaryStream(vector<asBYTE>& buf) :
         _binBuf {buf}
     {
     }
@@ -4330,10 +4330,10 @@ public:
         _readPos += size;
     }
 
-    auto GetBuf() -> std::vector<asBYTE>& { return _binBuf; }
+    auto GetBuf() -> vector<asBYTE>& { return _binBuf; }
 
 private:
-    std::vector<asBYTE>& _binBuf;
+    vector<asBYTE>& _binBuf;
     size_t _readPos {};
     size_t _writePos {};
 };
@@ -4358,7 +4358,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
             //
         }
 
-        auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
+        auto LoadFile(const string& dir, const string& file_name, std::vector<char>& data, string& file_path) -> bool override
         {
             STACK_TRACE_ENTRY();
 
@@ -4516,7 +4516,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     }
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
-    vector<uint8> lnt_data;
+    std::vector<uint8> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
     vector<uint8> data;
@@ -4556,7 +4556,7 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_
     auto reader = DataReader({script_bin.data(), script_bin.size()});
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
-    vector<uint8> lnt_data(reader.Read<uint>());
+    std::vector<uint8> lnt_data(reader.Read<uint>());
     std::memcpy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
     reader.VerifyEnd();
     RUNTIME_ASSERT(!buf.empty());

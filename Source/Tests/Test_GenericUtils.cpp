@@ -72,7 +72,7 @@ TEST_CASE("xrange")
     REQUIRE(t1 == 5);
     REQUIRE(t2 == 10);
 
-    const auto v = vector {3, 4, 5, 6, 7};
+    const auto v = vector<int> {3, 4, 5, 6, 7};
     auto t3 = 0;
     auto t4 = 0;
     for (const auto i : xrange(v)) {

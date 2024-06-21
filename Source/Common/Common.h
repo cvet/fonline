@@ -108,7 +108,9 @@
 #include <variant>
 #include <vector>
 
+#define GCH_SMALL_VECTOR_DEFAULT_SIZE 64
 #include <small_vector.hpp>
+
 #include <span.hpp>
 
 // OS specific API
@@ -198,9 +200,10 @@ using std::unordered_map;
 using std::unordered_multimap;
 using std::unordered_set;
 using std::variant;
-using std::vector;
 using std::weak_ptr;
 
+template<typename T>
+using vector = gch::small_vector<T>;
 using gch::small_vector;
 using tcb::span;
 
@@ -453,36 +456,44 @@ using color4 = aiColor4t<float>;
 using dcolor4 = aiColor4t<double>;
 
 // Template helpers
-template<typename T>
-class has_size
-{
-    using one = char;
-    struct two
-    {
-        char x[2];
+#define TEMPLATE_HAS_MEMBER(name, member) \
+    template<typename T> \
+    class name \
+    { \
+        using one = char; \
+        struct two \
+        { \
+            char x[2]; \
+        }; \
+        template<typename C> \
+        static auto test(decltype(&C::member)) -> one; \
+        template<typename C> \
+        static auto test(...) -> two; \
+\
+    public: \
+        enum \
+        { \
+            value = sizeof(test<T>(0)) == sizeof(char) \
+        }; \
     };
 
-    template<typename C>
-    static auto test(decltype(&C::size)) -> one;
-    template<typename C>
-    static auto test(...) -> two;
+TEMPLATE_HAS_MEMBER(has_size, size);
+TEMPLATE_HAS_MEMBER(has_inlined, inlined);
 
-public:
-    enum
-    {
-        value = sizeof(test<T>(0)) == sizeof(char)
-    };
-};
-
-template<typename Test, template<typename...> class Ref>
+template<typename Test, template<typename...> typename Ref>
 struct is_specialization : std::false_type
 {
 };
 
-template<template<typename...> class Ref, typename... Args>
+template<template<typename...> typename Ref, typename... Args>
 struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
 };
+
+template<typename T>
+static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value;
+template<typename T>
+static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value;
 
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)
@@ -1755,8 +1766,8 @@ constexpr auto copy(const T& value) -> T
     return T(value);
 }
 
-template<typename T, typename... Args>
-class ref_vector : public vector<T, Args...>
+template<typename T>
+class ref_vector : public vector<T>
 {
 public:
     ~ref_vector()
@@ -1767,10 +1778,10 @@ public:
     }
 };
 
-template<typename T, typename... Args>
-constexpr auto copy_hold_ref(const vector<T, Args...>& value) -> ref_vector<T, Args...>
+template<typename T>
+constexpr auto copy_hold_ref(const vector<T>& value) -> ref_vector<T>
 {
-    ref_vector<T, Args...> ref_vec;
+    ref_vector<T> ref_vec;
     ref_vec.reserve(value.size());
     for (auto* ref : value) {
         ref->AddRef();
