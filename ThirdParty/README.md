@@ -9,7 +9,7 @@
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-1.3.261.1](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
-* PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
+* PNG/APNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html) [libpng-apng](https://github.com/rickytan/libpng-apng)
 * SDL2 - [SDL2-2.26.25](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
 * span - [span](https://github.com/tcbrindle/span)
