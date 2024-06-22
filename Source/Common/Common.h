@@ -109,6 +109,7 @@
 #include <vector>
 
 #define GCH_SMALL_VECTOR_DEFAULT_SIZE 64
+#define GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
 #include <small_vector.hpp>
 
 #include <span.hpp>
@@ -478,7 +479,9 @@ using dcolor4 = aiColor4t<double>;
     };
 
 TEMPLATE_HAS_MEMBER(has_size, size);
-TEMPLATE_HAS_MEMBER(has_inlined, inlined);
+TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
+
+#undef TEMPLATE_HAS_MEMBER
 
 template<typename Test, template<typename...> typename Ref>
 struct is_specialization : std::false_type
