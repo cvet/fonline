@@ -1026,33 +1026,33 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
         auto frm_read = frm_from;
         uint frm_write = 0;
         bool skip_frame = false;
-        FrameSequence *sequence;
+        FrameSequence* sequence;
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             auto dir = 0;
             switch (dir_art) {
-                case 1:
-                    sequence = &collection.Main;
-                    dir = 5;
-                    break;
-                case 2:
-                    dir = 0;
-                    break;
-                case 3:
-                    dir = 1;
-                    break;
-                case 5:
-                    dir = 2;
-                    break;
-                case 6:
-                    dir = 3;
-                    break;
-                case 7:
-                    dir = 4;
-                    break;
-                default:
-                    dir = 5;
-                    skip_frame = true;
-                    break;
+            case 1:
+                sequence = &collection.Main;
+                dir = 5;
+                break;
+            case 2:
+                dir = 0;
+                break;
+            case 3:
+                dir = 1;
+                break;
+            case 5:
+                dir = 2;
+                break;
+            case 6:
+                dir = 3;
+                break;
+            case 7:
+                dir = 4;
+                break;
+            default:
+                dir = 5;
+                skip_frame = true;
+                break;
             }
             if (dir < 5) {
                 sequence = &collection.Dirs[dir];
@@ -1066,7 +1066,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
                 sequence = &collection.Main;
             }
             else {
-                sequence = &collection.Dirs[(dir_art + 6)% 8];
+                sequence = &collection.Dirs[(dir_art + 6) % 8];
             }
         }
 
@@ -1088,8 +1088,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
                 sequence->Frames[frm_write].NextY = static_cast<int16>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
 
                 if (frm_read != frm_from) {
-                    file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + \
-                        sizeof(ArtFrameInfo) * (frm_to > frm_from ? frm_read - 1 : frm_read + 1));
+                    file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * (frm_to > frm_from ? frm_read - 1 : frm_read + 1));
                     ArtFrameInfo frame_info_prev;
                     file.CopyData(&frame_info_prev, sizeof(ArtFrameInfo));
                     sequence->Frames[frm_write].NextX -= static_cast<int16>(-frame_info_prev.OffsetX + frame_info_prev.FrameWidth / 2);

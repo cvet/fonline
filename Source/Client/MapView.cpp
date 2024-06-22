@@ -3258,7 +3258,6 @@ auto MapView::Scroll() -> bool
         }
     }
 
-
     _engine->Settings.ScrOx = scr_ox;
     _engine->Settings.ScrOy = scr_oy;
 
