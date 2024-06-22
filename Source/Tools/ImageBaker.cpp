@@ -2084,7 +2084,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
         collection.Main.OffsX = static_cast<int16>(offs_x);
         collection.Main.OffsY = static_cast<int16>(offs_y);
 
-        for (uint i=0; i<n; i++) {
+        for (uint i = 0; i < n; i++) {
             vector<uint8> data(static_cast<size_t>(w) * h * 4);
 
             std::memcpy(data.data(), png_data + i * static_cast<size_t>(w) * h * 4, static_cast<size_t>(w) * h * 4);
@@ -2098,7 +2098,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
         collection.SequenceSize = static_cast<uint16>((int)n / dirs);
         collection.HaveDirs = true;
 
-        for (uint i=0; i<n; i++) {
+        for (uint i = 0; i < n; i++) {
             auto dir = (int)i / (n / dirs);
             auto num = (int)i % (n / dirs);
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -2157,8 +2157,7 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     return collection;
 }
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number,
-                    uint& result_delay_num, uint& result_delay_den, int16& result_offs_x, int16& result_offs_y) -> uint8*
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den, int16& result_offs_x, int16& result_offs_y) -> uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -2274,8 +2273,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
 
         // Set the individual row_pointers to point at the correct offsets
         for (uint i = 0; i < frame_height; i++) {
-            row_pointers[i] = result + static_cast<size_t>(i) * width * 4 + static_cast<size_t>(cur_frame) * width * height * 4 + \
-                static_cast<size_t>(frame_x_offset) * 4 + static_cast<size_t>(frame_y_offset) * width * 4;
+            row_pointers[i] = result + static_cast<size_t>(i) * width * 4 + static_cast<size_t>(cur_frame) * width * height * 4 + static_cast<size_t>(frame_x_offset) * 4 + static_cast<size_t>(frame_y_offset) * width * 4;
         }
 
         // Read image
@@ -2288,13 +2286,11 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
 
         // Handle frame dispose options
         if (frame_dispose_op == PNG_DISPOSE_OP_NONE) {
-            std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4,
-                result + static_cast<size_t>(cur_frame) * width * height * 4, static_cast<size_t>(width) * height * 4);
+            std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4, result + static_cast<size_t>(cur_frame) * width * height * 4, static_cast<size_t>(width) * height * 4);
         }
 
         else if (frame_dispose_op == PNG_DISPOSE_OP_PREVIOUS && cur_frame > 1) {
-            std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4,
-                result + static_cast<size_t>(cur_frame - 1) * width * height * 4, static_cast<size_t>(width) * height * 4);
+            std::memcpy(result + static_cast<size_t>(cur_frame + 1) * width * height * 4, result + static_cast<size_t>(cur_frame - 1) * width * height * 4, static_cast<size_t>(width) * height * 4);
         }
 
         if (frame_blend_op == PNG_BLEND_OP_OVER) {
@@ -2314,7 +2310,6 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
     png_get_text(png_ptr, info_ptr, &text_ptr, &num_text);
 
     for (int i = 0; i < num_text; i++) {
-
         if (strcmp(text_ptr[i].key, "fo_offset_x") == 0) {
             offs_x = std::atoi(text_ptr[i].text);
         }
