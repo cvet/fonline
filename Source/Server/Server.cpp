@@ -4185,10 +4185,6 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
     // Talk with npc
     if (npc != nullptr) {
-        if (npc->GetIsNoTalk()) {
-            return;
-        }
-
         if (!selected_dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
             if (!npc_dlg_id) {

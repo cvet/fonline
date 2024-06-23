@@ -379,8 +379,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoTalk);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
