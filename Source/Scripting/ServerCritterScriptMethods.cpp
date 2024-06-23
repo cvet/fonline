@@ -460,6 +460,20 @@
 }
 
 ///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_GetTalkingCrittersCount(Critter* self)
+{
+    uint result = 0;
+
+    for (const auto* cr : self->VisCr) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == self->GetId()) {
+            result++;
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self)
 {
     if (self->GetMapId()) {

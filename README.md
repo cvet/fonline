@@ -127,6 +127,7 @@ They are located in ThirdParty directory.
 * [PNG/APNG](https://github.com/rickytan/libpng-apng) - png/apng image loader
 * [SDL2](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
+* [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
 * [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [tracy](https://github.com/wolfpld/tracy) - profiler

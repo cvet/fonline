@@ -800,13 +800,15 @@ auto MapView::GetItems() -> const vector<ItemHexView*>&
     return _allItems;
 }
 
-auto MapView::GetItems(uint16 hx, uint16 hy) -> const vector<ItemHexView*>&
+auto MapView::GetItems(uint16 hx, uint16 hy) -> vector<ItemHexView*>
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    return _hexField.GetCellForReading(hx, hy).Items;
+    const auto& field = _hexField.GetCellForReading(hx, hy);
+
+    return small_vec_to_vec(field.Items);
 }
 
 auto MapView::GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexView*
@@ -815,9 +817,9 @@ auto MapView::GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexV
 
     NON_CONST_METHOD_HINT();
 
-    const auto& tiles = is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
+    const auto& field_tiles = is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
 
-    for (auto* tile : tiles) {
+    for (auto* tile : field_tiles) {
         if (layer < 0 || tile->GetTileLayer() == layer) {
             return tile;
         }
@@ -826,13 +828,15 @@ auto MapView::GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexV
     return nullptr;
 }
 
-auto MapView::GetTiles(uint16 hx, uint16 hy, bool is_roof) -> const vector<ItemHexView*>&
+auto MapView::GetTiles(uint16 hx, uint16 hy, bool is_roof) -> vector<ItemHexView*>
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    return is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
+    const auto& field_tiles = is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
+
+    return small_vec_to_vec(field_tiles);
 }
 
 auto MapView::GetRectForText(uint16 hx, uint16 hy) -> IRect

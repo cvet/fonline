@@ -95,7 +95,6 @@
 #include <optional>
 #include <random>
 #include <set>
-#include <span.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -108,6 +107,12 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#define GCH_SMALL_VECTOR_DEFAULT_SIZE 64
+#define GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
+#include <small_vector.hpp>
+
+#include <span.hpp>
 
 // OS specific API
 #if FO_MAC || FO_IOS
@@ -196,8 +201,11 @@ using std::unordered_map;
 using std::unordered_multimap;
 using std::unordered_set;
 using std::variant;
-using std::vector;
 using std::weak_ptr;
+
+template<typename T>
+using vector = gch::small_vector<T>;
+using gch::small_vector;
 using tcb::span;
 
 template<typename T>
@@ -229,6 +237,22 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
         return std::unique_ptr<T> {casted};
     }
     return {};
+}
+
+template<typename T>
+static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
+{
+    if (!ptr) {
+        ptr = std::make_unique<T>();
+    }
+}
+
+template<typename T>
+static constexpr void destroy_if_empty(unique_ptr<vector<T>>& ptr) noexcept
+{
+    if (ptr && ptr->empty()) {
+        ptr = nullptr;
+    }
 }
 
 struct pair_hash
@@ -433,36 +457,46 @@ using color4 = aiColor4t<float>;
 using dcolor4 = aiColor4t<double>;
 
 // Template helpers
-template<typename T>
-class has_size
-{
-    using one = char;
-    struct two
-    {
-        char x[2];
+#define TEMPLATE_HAS_MEMBER(name, member) \
+    template<typename T> \
+    class name \
+    { \
+        using one = char; \
+        struct two \
+        { \
+            char x[2]; \
+        }; \
+        template<typename C> \
+        static auto test(decltype(&C::member)) -> one; \
+        template<typename C> \
+        static auto test(...) -> two; \
+\
+    public: \
+        enum \
+        { \
+            value = sizeof(test<T>(0)) == sizeof(char) \
+        }; \
     };
 
-    template<typename C>
-    static auto test(decltype(&C::size)) -> one;
-    template<typename C>
-    static auto test(...) -> two;
+TEMPLATE_HAS_MEMBER(has_size, size);
+TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
 
-public:
-    enum
-    {
-        value = sizeof(test<T>(0)) == sizeof(char)
-    };
-};
+#undef TEMPLATE_HAS_MEMBER
 
-template<typename Test, template<typename...> class Ref>
+template<typename Test, template<typename...> typename Ref>
 struct is_specialization : std::false_type
 {
 };
 
-template<template<typename...> class Ref, typename... Args>
+template<template<typename...> typename Ref, typename... Args>
 struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
 };
+
+template<typename T>
+static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value;
+template<typename T>
+static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value;
 
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)
@@ -565,7 +599,7 @@ struct ExceptionStackTraceData
     { \
     public: \
         exception_name() = delete; \
-        exception_name(const exception_name&) = delete; \
+        exception_name(const exception_name&) = default; \
         exception_name(exception_name&&) = default; \
         auto operator=(const exception_name&) = delete; \
         auto operator=(exception_name&&) noexcept = delete; \
@@ -1735,8 +1769,8 @@ constexpr auto copy(const T& value) -> T
     return T(value);
 }
 
-template<typename T, typename... Args>
-class ref_vector : public vector<T, Args...>
+template<typename T>
+class ref_vector : public vector<T>
 {
 public:
     ~ref_vector()
@@ -1747,10 +1781,10 @@ public:
     }
 };
 
-template<typename T, typename... Args>
-constexpr auto copy_hold_ref(const vector<T, Args...>& value) -> ref_vector<T, Args...>
+template<typename T>
+constexpr auto copy_hold_ref(const vector<T>& value) -> ref_vector<T>
 {
-    ref_vector<T, Args...> ref_vec;
+    ref_vector<T> ref_vec;
     ref_vec.reserve(value.size());
     for (auto* ref : value) {
         ref->AddRef();
@@ -1771,14 +1805,25 @@ constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_v
     return ref_vec;
 }
 
-// Vector pointer cast
+// Vector helpers
 template<typename T, typename T2>
-constexpr auto vec_cast(const vector<T2>& value) -> vector<T>
+constexpr auto vec_cast(const vector<T2>& vec) -> vector<T>
 {
     vector<T> result;
-    result.reserve(value.size());
-    for (auto&& v : value) {
+    result.reserve(vec.size());
+    for (auto&& v : vec) {
         result.emplace_back(static_cast<T>(v));
+    }
+    return result;
+}
+
+template<typename T, unsigned T2, typename T3>
+constexpr auto small_vec_to_vec(const small_vector<T, T2, T3>& svec) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(svec.size());
+    for (auto&& v : svec) {
+        result.emplace_back(v);
     }
     return result;
 }

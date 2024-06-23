@@ -4247,7 +4247,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkedPlayers() + 1) || !OnCritterTalk.Fire(npc, cl, true, npc->GetTalkedPlayers() + 1)) {
+        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkingCritters() + 1) || !OnCritterTalk.Fire(cl, npc, true, npc->GetTalkingCritters() + 1)) {
             return;
         }
 
@@ -4454,7 +4454,7 @@ void FOServer::Process_Dialog(Player* player)
                 return;
             }
 
-            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(talker, cr, true, talker->GetBarterPlayers() + 1)) {
+            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterCritters() + 1) || !OnCritterBarter.Fire(cr, talker, true, talker->GetBarterCritters() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTime = GameTime.GameplayTime();
                 cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgBarterMaxTime};
@@ -4529,8 +4529,8 @@ void FOServer::Process_Dialog(Player* player)
         cr->Talk.Barter = false;
         next_dlg_id = cur_dialog->Id;
         if (talker != nullptr) {
-            talker->OnBarter.Fire(cr, false, talker->GetBarterPlayers() + 1);
-            OnCritterBarter.Fire(talker, cr, false, talker->GetBarterPlayers() + 1);
+            talker->OnBarter.Fire(cr, false, talker->GetBarterCritters() + 1);
+            OnCritterBarter.Fire(cr, talker, false, talker->GetBarterCritters() + 1);
         }
     }
 

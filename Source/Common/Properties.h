@@ -403,7 +403,7 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -678,7 +678,7 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_map_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
     template<typename T, typename U>
     void SetValue(const Property* prop, const map<T, U>& new_value) = delete;
@@ -687,9 +687,9 @@ private:
     const PropertyRegistrator* _registrator;
     vector<uint8> _podData {};
     vector<vector<uint8>> _complexData {};
-    mutable vector<const uint8*> _storeData {};
-    mutable vector<uint> _storeDataSizes {};
-    mutable vector<uint16> _storeDataComplexIndices {};
+    mutable unique_ptr<vector<const uint8*>> _storeData {};
+    mutable unique_ptr<vector<uint>> _storeDataSizes {};
+    mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
     Entity* _entity {};
     bool _nonConstHelper {};
 };

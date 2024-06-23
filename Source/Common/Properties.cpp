@@ -319,27 +319,31 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
 {
     STACK_TRACE_ENTRY();
 
-    *all_data = &_storeData;
-    *all_data_sizes = &_storeDataSizes;
-    _storeData.resize(0);
-    _storeDataSizes.resize(0);
+    make_if_not_exists(_storeData);
+    make_if_not_exists(_storeDataSizes);
+    make_if_not_exists(_storeDataComplexIndices);
 
-    _storeDataComplexIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+    *all_data = &*_storeData;
+    *all_data_sizes = &*_storeDataSizes;
+    _storeData->resize(0);
+    _storeDataSizes->resize(0);
 
-    const auto preserve_size = 1u + (!_storeDataComplexIndices.empty() ? 1u + _storeDataComplexIndices.size() : 0);
-    _storeData.reserve(preserve_size);
-    _storeDataSizes.reserve(preserve_size);
+    *_storeDataComplexIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+
+    const auto preserve_size = 1u + (!_storeDataComplexIndices->empty() ? 1u + _storeDataComplexIndices->size() : 0);
+    _storeData->reserve(preserve_size);
+    _storeDataSizes->reserve(preserve_size);
 
     // Store plain properties data
-    _storeData.push_back(_podData.data());
-    _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
+    _storeData->push_back(_podData.data());
+    _storeDataSizes->push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
 
     // Filter complex data to send
-    for (size_t i = 0; i < _storeDataComplexIndices.size();) {
-        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndices[i]];
+    for (size_t i = 0; i < _storeDataComplexIndices->size();) {
+        const auto* prop = _registrator->_registeredProperties[(*_storeDataComplexIndices)[i]];
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         if (_complexData[prop->_complexDataIndex].empty()) {
-            _storeDataComplexIndices.erase(_storeDataComplexIndices.begin() + static_cast<int>(i));
+            _storeDataComplexIndices->erase(_storeDataComplexIndices->begin() + static_cast<int>(i));
         }
         else {
             i++;
@@ -347,14 +351,14 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
     }
 
     // Store complex properties data
-    if (!_storeDataComplexIndices.empty()) {
-        _storeData.push_back(reinterpret_cast<uint8*>(_storeDataComplexIndices.data()));
-        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(uint16));
+    if (!_storeDataComplexIndices->empty()) {
+        _storeData->push_back(reinterpret_cast<uint8*>(_storeDataComplexIndices->data()));
+        _storeDataSizes->push_back(static_cast<uint>(_storeDataComplexIndices->size()) * sizeof(uint16));
 
-        for (const auto index : _storeDataComplexIndices) {
+        for (const auto index : *_storeDataComplexIndices) {
             const auto* prop = _registrator->_registeredProperties[index];
-            _storeData.push_back(_complexData[prop->_complexDataIndex].data());
-            _storeDataSizes.push_back(static_cast<uint>(_complexData[prop->_complexDataIndex].size()));
+            _storeData->push_back(_complexData[prop->_complexDataIndex].data());
+            _storeDataSizes->push_back(static_cast<uint>(_complexData[prop->_complexDataIndex].size()));
         }
     }
 }

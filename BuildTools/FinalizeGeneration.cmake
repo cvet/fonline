@@ -129,7 +129,7 @@ DisableLibWarnings(SDL2main SDL2-static)
 StatusMessage("+ Tracy")
 set(FO_TRACY_DIR "${FO_ENGINE_ROOT}/ThirdParty/tracy")
 add_compile_definitions($<${expr_TracyEnabled}:TRACY_ENABLE>)
-add_compile_definitions($<$<CONFIG:Profiling_OnDemand>:TRACY_ON_DEMAND>)
+add_compile_definitions($<${expr_TracyOnDemand}:TRACY_ON_DEMAND>)
 add_compile_definitions(FO_TRACY=${expr_TracyEnabled})
 set(TRACY_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_TRACY_DIR}")
@@ -541,6 +541,9 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     list(APPEND FO_BAKER_LIBS "spirv-cross-core" "spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl")
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
 endif()
+
+# small_vector
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
 
 # span
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")

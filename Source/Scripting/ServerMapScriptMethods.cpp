@@ -175,7 +175,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemComponent component)
 {
-    const auto& map_items = self->GetItems(hx, hy);
+    auto&& map_items = self->GetItems(hx, hy);
 
     for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
@@ -196,7 +196,7 @@
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint16 hx, uint16 hy, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_items = self->GetItems(hx, hy);
+    auto&& map_items = self->GetItems(hx, hy);
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -366,7 +366,7 @@
     }
 
     vector<Item*> items;
-    const auto& map_items = self->GetItems(hx, hy);
+    auto&& map_items = self->GetItems(hx, hy);
 
     items.reserve(map_items.size());
 
@@ -395,7 +395,7 @@
     }
 
     vector<Item*> items;
-    const auto& map_items = self->GetItems(hx, hy);
+    auto&& map_items = self->GetItems(hx, hy);
 
     items.reserve(map_items.size());
 
@@ -1291,7 +1291,7 @@
     }
 
     for (Critter* cr : self->GetPlayerCritters()) {
-        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
+        if (GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), (radius == 0 ? cr->GetLookDistance() : radius) + cr->GetMultihex())) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }
     }

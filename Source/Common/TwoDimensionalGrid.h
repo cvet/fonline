@@ -35,6 +35,165 @@
 
 #include "Common.h"
 
+template<typename TCell, typename TIndex>
+class BaseTwoDimensionalGrid
+{
+public:
+    BaseTwoDimensionalGrid(TIndex width, TIndex height)
+    {
+        STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_signed_v<TIndex>) {
+            RUNTIME_ASSERT(width >= 0);
+            RUNTIME_ASSERT(height >= 0);
+        }
+
+        _width = width;
+        _height = height;
+    }
+
+    BaseTwoDimensionalGrid(const BaseTwoDimensionalGrid&) = default;
+    BaseTwoDimensionalGrid(BaseTwoDimensionalGrid&&) noexcept = default;
+    auto operator=(const BaseTwoDimensionalGrid&) -> BaseTwoDimensionalGrid& = default;
+    auto operator=(BaseTwoDimensionalGrid&&) noexcept -> BaseTwoDimensionalGrid& = default;
+    virtual ~BaseTwoDimensionalGrid() = default;
+
+    [[nodiscard]] virtual auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& = 0;
+    [[nodiscard]] virtual auto GetCellForWriting(TIndex x, TIndex y) -> TCell& = 0;
+
+protected:
+    TIndex _width {};
+    TIndex _height {};
+};
+
+template<typename TCell, typename TIndex>
+class DynamicTwoDimensionalGrid : public BaseTwoDimensionalGrid<TCell, TIndex>
+{
+    using base = BaseTwoDimensionalGrid<TCell, TIndex>;
+
+public:
+    DynamicTwoDimensionalGrid(TIndex width, TIndex height) :
+        base(width, height)
+    {
+        STACK_TRACE_ENTRY();
+    }
+
+    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& override
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_signed_v<TIndex>) {
+            RUNTIME_ASSERT(x >= 0);
+            RUNTIME_ASSERT(y >= 0);
+        }
+
+        RUNTIME_ASSERT(x < base::_width);
+        RUNTIME_ASSERT(y < base::_height);
+
+        const auto it = _cells.find(tuple {x, y});
+
+        if (it == _cells.end()) {
+            return _emptyCell;
+        }
+        else {
+            return it->second;
+        }
+    }
+
+    [[nodiscard]] auto GetCellForWriting(TIndex x, TIndex y) -> TCell& override
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_signed_v<TIndex>) {
+            RUNTIME_ASSERT(x >= 0);
+            RUNTIME_ASSERT(y >= 0);
+        }
+
+        RUNTIME_ASSERT(x < base::_width);
+        RUNTIME_ASSERT(y < base::_height);
+
+        const auto it = _cells.find(tuple {x, y});
+
+        if (it == _cells.end()) {
+            return _cells.emplace(tuple {x, y}, TCell {}).first->second;
+        }
+        else {
+            return it->second;
+        }
+    }
+
+private:
+    struct IndexHasher
+    {
+        auto operator()(const tuple<TIndex, TIndex>& index) const noexcept -> size_t;
+    };
+
+    unordered_map<tuple<TIndex, TIndex>, TCell, IndexHasher> _cells {};
+    const TCell _emptyCell {};
+};
+
+template<typename TCell, typename TIndex>
+auto DynamicTwoDimensionalGrid<TCell, TIndex>::IndexHasher::operator()(const tuple<TIndex, TIndex>& index) const noexcept -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if constexpr (sizeof(TIndex) <= sizeof(size_t) / 2) {
+        return (static_cast<size_t>(std::get<0>(index)) << (sizeof(size_t) / 2 * 8)) | static_cast<size_t>(std::get<1>(index));
+    }
+    else {
+        return static_cast<size_t>(std::get<0>(index)) ^ static_cast<size_t>(std::get<1>(index));
+    }
+}
+
+template<typename TCell, typename TIndex>
+class StaticTwoDimensionalGrid : public BaseTwoDimensionalGrid<TCell, TIndex>
+{
+    using base = BaseTwoDimensionalGrid<TCell, TIndex>;
+
+public:
+    StaticTwoDimensionalGrid(TIndex width, TIndex height) :
+        base(width, height)
+    {
+        STACK_TRACE_ENTRY();
+
+        _preallocatedCells.resize(static_cast<size_t>(base::_width) * base::_height);
+    }
+
+    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& override
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_signed_v<TIndex>) {
+            RUNTIME_ASSERT(x >= 0);
+            RUNTIME_ASSERT(y >= 0);
+        }
+
+        RUNTIME_ASSERT(x < base::_width);
+        RUNTIME_ASSERT(y < base::_height);
+
+        return _preallocatedCells[static_cast<size_t>(y) * base::_width + x];
+    }
+
+    [[nodiscard]] auto GetCellForWriting(TIndex x, TIndex y) -> TCell& override
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_signed_v<TIndex>) {
+            RUNTIME_ASSERT(x >= 0);
+            RUNTIME_ASSERT(y >= 0);
+        }
+
+        RUNTIME_ASSERT(x < base::_width);
+        RUNTIME_ASSERT(y < base::_height);
+
+        return _preallocatedCells[static_cast<size_t>(y) * base::_width + x];
+    }
+
+private:
+    vector<TCell> _preallocatedCells {};
+    const TCell _emptyCell {};
+};
+
 template<typename TCell, typename TIndex, bool MemoryOptimized>
 class TwoDimensionalGrid
 {

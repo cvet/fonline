@@ -486,7 +486,7 @@ private:
 
     asio::ip::tcp::socket* _socket {};
     std::atomic_bool _writePending {};
-    vector<uint8> _inBuf {};
+    std::vector<uint8> _inBuf {};
     asio::error_code _dummyError {};
 };
 
