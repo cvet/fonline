@@ -78,7 +78,7 @@ General steps:
 * Use main CMakeLists.txt jointly with your .cmake to build game
 
 Reference project:
-* FOnline: The Life After https://guthub.com/cvet/fonline-tla
+* FOnline: The Life After https://github.com/cvet/fonline-tla
 
 ### Package dependencies
 
@@ -124,7 +124,7 @@ They are located in ThirdParty directory.
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
+* [PNG/APNG](https://github.com/rickytan/libpng-apng) - png/apng image loader
 * [SDL2](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
