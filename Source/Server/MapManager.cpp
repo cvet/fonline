@@ -85,12 +85,7 @@ void MapManager::LoadFromResources()
         const auto map_width = pmap->GetWidth();
         const auto map_height = pmap->GetHeight();
 
-        if (_engine->Settings.ProtoMapStaticGrid) {
-            static_map->HexField = std::make_unique<StaticTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
-        }
-        else {
-            static_map->HexField = std::make_unique<DynamicTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
-        }
+        static_map->HexField = std::make_unique<StaticTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
 
         // Read hashes
         {
@@ -209,13 +204,11 @@ void MapManager::LoadFromResources()
                             static_map->StaticItemsById.emplace(item_id, item);
 
                             auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
-                            make_if_not_exists(static_field.StaticItems);
-                            static_field.StaticItems->emplace_back(item);
+                            static_field.StaticItems.emplace_back(item);
                         }
                         if (item->GetIsTrigger() || item->GetIsTrap()) {
                             auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
-                            make_if_not_exists(static_field.TriggerItems);
-                            static_field.TriggerItems->emplace_back(item);
+                            static_field.TriggerItems.emplace_back(item);
                         }
                     }
                     else {

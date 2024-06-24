@@ -57,12 +57,7 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _width = GetWidth();
     _height = GetHeight();
 
-    if (engine->Settings.MapInstanceStaticGrid) {
-        _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
-    }
-    else {
-        _hexField = std::make_unique<DynamicTwoDimensionalGrid<Field, uint16>>(_width, _height);
-    }
+    _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
 }
 
 Map::~Map()
@@ -716,7 +711,7 @@ auto Map::GetItems() -> const vector<Item*>&
     return _items;
 }
 
-auto Map::GetItems(uint16 hx, uint16 hy) -> vector<Item*>
+auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -724,7 +719,7 @@ auto Map::GetItems(uint16 hx, uint16 hy) -> vector<Item*>
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return small_vec_to_vec(field.Items);
+    return field.Items;
 }
 
 auto Map::GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>
@@ -1159,7 +1154,7 @@ auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return static_field.TriggerItems && !static_field.TriggerItems->empty();
+    return !static_field.TriggerItems.empty();
 }
 
 auto Map::GetStaticItem(ident_t id) -> StaticItem*
@@ -1183,18 +1178,16 @@ auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    if (static_field.StaticItems) {
-        for (auto* item : *static_field.StaticItems) {
-            if (!pid || item->GetProtoId() == pid) {
-                return item;
-            }
+    for (auto* item : static_field.StaticItems) {
+        if (!pid || item->GetProtoId() == pid) {
+            return item;
         }
     }
 
     return nullptr;
 }
 
-auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>
+auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> const vector<StaticItem*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -1202,7 +1195,7 @@ auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return static_field.StaticItems ? *static_field.StaticItems : vector<StaticItem*> {};
+    return static_field.StaticItems;
 }
 
 auto Map::GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>
@@ -1239,7 +1232,7 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
     return items;
 }
 
-auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>
+auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> const vector<StaticItem*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -1247,5 +1240,5 @@ auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return static_field.TriggerItems ? *static_field.TriggerItems : vector<StaticItem*> {};
+    return static_field.TriggerItems;
 }

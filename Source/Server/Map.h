@@ -54,11 +54,11 @@ struct StaticMap
     {
         bool IsMoveBlocked {};
         bool IsShootBlocked {};
-        unique_ptr<vector<StaticItem*>> StaticItems {};
-        unique_ptr<vector<StaticItem*>> TriggerItems {};
+        vector<StaticItem*> StaticItems {};
+        vector<StaticItem*> TriggerItems {};
     };
 
-    unique_ptr<BaseTwoDimensionalGrid<Field, uint16>> HexField {};
+    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> HexField {};
     vector<pair<uint, const Critter*>> CritterBillets {};
     vector<pair<uint, const Item*>> ItemBillets {};
     vector<pair<uint, const Item*>> HexItemBillets {};
@@ -95,7 +95,7 @@ public:
     [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) -> Item*;
     [[nodiscard]] auto GetItems() -> const vector<Item*>&;
-    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> vector<Item*>;
+    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&;
     [[nodiscard]] auto GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
@@ -118,10 +118,10 @@ public:
     [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
-    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
     [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
-    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc);
     void Process();
@@ -166,10 +166,10 @@ private:
         bool IsNoShootItem {};
         bool IsMoveBlocked {};
         bool IsShootBlocked {};
-        small_vector<Critter*, 3> Critters {};
-        small_vector<Critter*, 3> MultihexCritters {};
-        small_vector<Item*, 3> Items {};
-        small_vector<Item*, 3> BlockLines {};
+        vector<Critter*> Critters {};
+        vector<Critter*> MultihexCritters {};
+        vector<Item*> Items {};
+        vector<Item*> BlockLines {};
         bool ManualBlock {};
         bool ManualBlockFull {};
     };
@@ -180,7 +180,7 @@ private:
     const StaticMap* _staticMap {};
     uint16 _width {};
     uint16 _height {};
-    unique_ptr<BaseTwoDimensionalGrid<Field, uint16>> _hexField {};
+    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};

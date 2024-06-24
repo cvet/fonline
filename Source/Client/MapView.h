@@ -117,12 +117,12 @@ struct Field
     CornerType Corner {};
     FieldFlags Flags {};
     MapSprite* SpriteChain {};
-    small_vector<CritterHexView*, 3> Critters {};
-    small_vector<CritterHexView*, 3> MultihexCritters {};
-    small_vector<ItemHexView*, 3> Items {};
-    small_vector<ItemHexView*, 3> BlockLineItems {};
-    small_vector<ItemHexView*, 3> GroundTiles {};
-    small_vector<ItemHexView*, 3> RoofTiles {};
+    vector<CritterHexView*> Critters {};
+    vector<CritterHexView*> MultihexCritters {};
+    vector<ItemHexView*> Items {};
+    vector<ItemHexView*> BlockLineItems {};
+    vector<ItemHexView*> GroundTiles {};
+    vector<ItemHexView*> RoofTiles {};
     unordered_map<LightSource*, ucolor> LightSources {};
 };
 
@@ -176,8 +176,8 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField.GetCellForReading(hx, hy); }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField.GetCellForReading(hx, hy).IsView; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(hx, hy); }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField->GetCellForReading(hx, hy).IsView; }
     [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
     [[nodiscard]] auto GetLightData() -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
@@ -248,9 +248,9 @@ public:
     auto GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
     auto GetItems() -> const vector<ItemHexView*>&;
-    auto GetItems(uint16 hx, uint16 hy) -> vector<ItemHexView*>;
+    auto GetItems(uint16 hx, uint16 hy) -> const vector<ItemHexView*>&;
     auto GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexView*;
-    auto GetTiles(uint16 hx, uint16 hy, bool is_roof) -> vector<ItemHexView*>;
+    auto GetTiles(uint16 hx, uint16 hy, bool is_roof) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, uint16 hx, uint16 hy);
     void DestroyItem(ItemHexView* item);
 
@@ -365,7 +365,7 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    TwoDimensionalGrid<Field, uint16, false> _hexField {};
+    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> _hexField {};
     vector<int16> _findPathGrid {};
 
     MapSpriteList _mapSprites;

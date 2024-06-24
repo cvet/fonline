@@ -1817,17 +1817,6 @@ constexpr auto vec_cast(const vector<T2>& vec) -> vector<T>
     return result;
 }
 
-template<typename T, unsigned T2, typename T3>
-constexpr auto small_vec_to_vec(const small_vector<T, T2, T3>& svec) -> vector<T>
-{
-    vector<T> result;
-    result.reserve(svec.size());
-    for (auto&& v : svec) {
-        result.emplace_back(v);
-    }
-    return result;
-}
-
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
 constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t)
