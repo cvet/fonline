@@ -1025,41 +1025,56 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     collection.AnimTicks = static_cast<uint16>(1000u / frm_fps * frm_count_anim);
     collection.HaveDirs = (header.RotationCount == 8);
 
-    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
-        auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-
-        auto dir_art = dir;
+    auto curpos = sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * frm_count * header.RotationCount;
+    for (const auto dir_art : xrange(header.RotationCount)) {
+        auto frm_read = frm_from;
+        uint frm_write = 0;
+        bool skip_frame = false;
+        FrameSequence* sequence;
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            auto dir = 0;
             switch (dir_art) {
-            case 0:
-                dir_art = 1;
-                break;
             case 1:
-                dir_art = 2;
+                sequence = &collection.Main;
+                dir = 5;
                 break;
             case 2:
-                dir_art = 3;
+                dir = 0;
                 break;
             case 3:
-                dir_art = 5;
-                break;
-            case 4:
-                dir_art = 6;
+                dir = 1;
                 break;
             case 5:
-                dir_art = 7;
+                dir = 2;
+                break;
+            case 6:
+                dir = 3;
+                break;
+            case 7:
+                dir = 4;
                 break;
             default:
-                throw ImageBakerException("Invalid ART direction", fname);
+                dir = 5;
+                skip_frame = true;
+                break;
+            }
+            if (dir < 5) {
+                sequence = &collection.Dirs[dir];
             }
         }
+        else if (header.RotationCount != 8) {
+            sequence = &collection.Main;
+        }
         else {
-            dir_art = (dir + 1) % 8;
+            if (dir_art == 1) {
+                sequence = &collection.Main;
+            }
+            else {
+                sequence = &collection.Dirs[(dir_art + 6) % 8];
+            }
         }
 
         // Read data
-        auto frm_read = frm_from;
-        uint frm_write = 0;
         while (true) {
             file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
 
@@ -1070,75 +1085,89 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             vector<uint8> data(static_cast<size_t>(w) * h * 4);
             auto* ptr = reinterpret_cast<uint*>(data.data());
 
-            auto& shot = sequence.Frames[frm_write];
-            shot.Width = static_cast<uint16>(w);
-            shot.Height = static_cast<uint16>(h);
-            shot.NextX = static_cast<int16>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
-            shot.NextY = static_cast<int16>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
+            if (!skip_frame) {
+                sequence->Frames[frm_write].Width = static_cast<uint16>(w);
+                sequence->Frames[frm_write].Height = static_cast<uint16>(h);
+                sequence->Frames[frm_write].NextX = static_cast<int16>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
+                sequence->Frames[frm_write].NextY = static_cast<int16>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
 
-            auto color = 0u;
-            auto art_get_color = [&color, &file, &palette, &palette_index, &transparent]() {
-                const auto index = file.GetUChar();
-                color = palette[palette_index][index];
-                std::swap(reinterpret_cast<uint8*>(&color)[0], reinterpret_cast<uint8*>(&color)[2]);
-                if (index == 0u) {
-                    color = 0u;
-                }
-                else if (transparent) {
-                    color |= std::max((color >> 16) & 0xFFu, std::max((color >> 8) & 0xFFu, color & 0xFFu)) << 24u;
-                }
-                else {
-                    color |= 0xFF000000u;
-                }
-            };
-
-            auto pos = 0u;
-            auto x = 0u;
-            auto y = 0u;
-            auto mirror = mirror_hor || mirror_ver;
-            auto art_write_color = [&color, &pos, &x, &y, &w, &h, ptr, &mirror, &mirror_hor, &mirror_ver]() {
-                if (mirror) {
-                    *(ptr + ((mirror_ver ? h - y - 1 : y) * w + (mirror_hor ? w - x - 1 : x))) = color;
-                    x++;
-                    if (x >= w) {
-                        x = 0;
-                        y++;
-                    }
-                }
-                else {
-                    *(ptr + pos) = color;
-                    pos++;
-                }
-            };
-
-            if (w * h == frame_info.FrameSize) {
-                for (uint i = 0; i < frame_info.FrameSize; i++) {
-                    art_get_color();
-                    art_write_color();
+                if (frm_read != frm_from) {
+                    file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * (frm_to > frm_from ? frm_read - 1 : frm_read + 1));
+                    ArtFrameInfo frame_info_prev;
+                    file.CopyData(&frame_info_prev, sizeof(ArtFrameInfo));
+                    sequence->Frames[frm_write].NextX -= static_cast<int16>(-frame_info_prev.OffsetX + frame_info_prev.FrameWidth / 2);
+                    sequence->Frames[frm_write].NextY -= static_cast<int16>(-frame_info_prev.OffsetY + frame_info_prev.FrameHeight);
                 }
             }
-            else {
-                for (uint i = 0; i < frame_info.FrameSize; i++) {
-                    auto cmd = file.GetUChar();
-                    if (cmd > 128) {
-                        cmd -= 128;
-                        i += cmd;
-                        for (; cmd > 0; cmd--) {
-                            art_get_color();
-                            art_write_color();
+
+            // Shift even if skipped
+            file.SetCurPos(curpos);
+            curpos += frame_info.FrameSize;
+
+            if (!skip_frame) {
+                auto color = 0u;
+                auto art_get_color = [&color, &file, &palette, &palette_index, &transparent]() {
+                    const auto index = file.GetUChar();
+                    color = palette[palette_index][index];
+                    std::swap(reinterpret_cast<uint8*>(&color)[0], reinterpret_cast<uint8*>(&color)[2]);
+                    if (index == 0u) {
+                        color = 0u;
+                    }
+                    else if (transparent) {
+                        color |= std::max((color >> 16) & 0xFFu, std::max((color >> 8) & 0xFFu, color & 0xFFu)) << 24u;
+                    }
+                    else {
+                        color |= 0xFF000000u;
+                    }
+                };
+
+                auto pos = 0u;
+                auto x = 0u;
+                auto y = 0u;
+                auto mirror = mirror_hor || mirror_ver;
+                auto art_write_color = [&color, &pos, &x, &y, &w, &h, ptr, &mirror, &mirror_hor, &mirror_ver]() {
+                    if (mirror) {
+                        *(ptr + ((mirror_ver ? h - y - 1 : y) * w + (mirror_hor ? w - x - 1 : x))) = color;
+                        x++;
+                        if (x >= w) {
+                            x = 0;
+                            y++;
                         }
                     }
                     else {
+                        *(ptr + pos) = color;
+                        pos++;
+                    }
+                };
+
+                if (w * h == frame_info.FrameSize) {
+                    for (uint i = 0; i < frame_info.FrameSize; i++) {
                         art_get_color();
-                        for (; cmd > 0; cmd--) {
-                            art_write_color();
-                        }
-                        i++;
+                        art_write_color();
                     }
                 }
+                else {
+                    for (uint i = 0; i < frame_info.FrameSize; i++) {
+                        auto cmd = file.GetUChar();
+                        if (cmd > 128) {
+                            cmd -= 128;
+                            i += cmd;
+                            for (; cmd > 0; cmd--) {
+                                art_get_color();
+                                art_write_color();
+                            }
+                        }
+                        else {
+                            art_get_color();
+                            for (; cmd > 0; cmd--) {
+                                art_write_color();
+                            }
+                            i++;
+                        }
+                    }
+                }
+                sequence->Frames[frm_write].Data = std::move(data);
             }
-
-            shot.Data = std::move(data);
 
             if (frm_read == frm_to) {
                 break;
@@ -1152,10 +1181,6 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
             }
 
             frm_write++;
-        }
-
-        if (header.RotationCount != 8) {
-            break;
         }
     }
 
