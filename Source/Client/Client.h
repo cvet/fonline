@@ -404,6 +404,7 @@ protected:
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
+    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
     void OnSetCritterContourColor(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);

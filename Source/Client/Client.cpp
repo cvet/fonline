@@ -241,6 +241,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             prop->AddPostSetter(std::move(callback));
         };
 
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
@@ -2975,6 +2976,18 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     }
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
+    }
+}
+
+void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
+        cr->GetMap()->RefreshMap();
+        cr->GetMap()->RebuildFog();
     }
 }
 
