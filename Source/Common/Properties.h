@@ -685,8 +685,8 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    vector<uint8> _podData {};
-    vector<vector<uint8>> _complexData {};
+    small_vector<uint8, 0> _podData {};
+    small_vector<small_vector<uint8, 0>, 0> _complexData {};
     mutable unique_ptr<vector<const uint8*>> _storeData {};
     mutable unique_ptr<vector<uint>> _storeDataSizes {};
     mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
