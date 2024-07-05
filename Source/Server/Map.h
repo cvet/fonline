@@ -58,11 +58,11 @@ struct StaticMap
         vector<StaticItem*> TriggerItems {};
     };
 
-    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> HexField {};
-    vector<pair<uint, const Critter*>> CritterBillets {};
-    vector<pair<uint, const Item*>> ItemBillets {};
-    vector<pair<uint, const Item*>> HexItemBillets {};
-    vector<pair<uint, const Item*>> ChildItemBillets {};
+    unique_ptr<TwoDimensionalGrid<Field, uint16>> HexField {};
+    vector<pair<ident_t, const Critter*>> CritterBillets {};
+    vector<pair<ident_t, const Item*>> ItemBillets {};
+    vector<pair<ident_t, const Item*>> HexItemBillets {};
+    vector<pair<ident_t, const Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
     unordered_map<ident_t, StaticItem*> StaticItemsById {};
 };
@@ -180,7 +180,7 @@ private:
     const StaticMap* _staticMap {};
     uint16 _width {};
     uint16 _height {};
-    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> _hexField {};
+    unique_ptr<TwoDimensionalGrid<Field, uint16>> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};

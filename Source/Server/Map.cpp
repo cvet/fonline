@@ -57,7 +57,12 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _width = GetWidth();
     _height = GetHeight();
 
-    _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
+    if (engine->Settings.MapInstanceStaticGrid) {
+        _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
+    }
+    else {
+        _hexField = std::make_unique<DynamicTwoDimensionalGrid<Field, uint16>>(_width, _height);
+    }
 }
 
 Map::~Map()

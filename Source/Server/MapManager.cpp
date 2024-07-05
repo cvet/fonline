@@ -85,7 +85,12 @@ void MapManager::LoadFromResources()
         const auto map_width = pmap->GetWidth();
         const auto map_height = pmap->GetHeight();
 
-        static_map->HexField = std::make_unique<StaticTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
+        if (_engine->Settings.ProtoMapStaticGrid) {
+            static_map->HexField = std::make_unique<StaticTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
+        }
+        else {
+            static_map->HexField = std::make_unique<DynamicTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
+        }
 
         // Read hashes
         {
