@@ -672,7 +672,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties
 // ************************************************************************
 
-#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x)*10)
+#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x) * 10)
 #define NETMSG_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
@@ -692,7 +692,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint8 data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x)*10)
+#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x) * 10)
 #define NETMSG_SEND_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Client change property

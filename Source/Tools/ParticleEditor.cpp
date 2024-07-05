@@ -986,8 +986,7 @@ void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
     DRAW_SPK_FLOAT_FLOAT("MinForce", "MaxForce", getForceMin, getForceMax, setForce);
     DRAW_SPK_BOOL("UseFullZone", isFullZone, setUseFullZone);
-    DrawSparkInnerZone(
-        "Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto zone) { obj->setZone(zone); });
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
@@ -1026,8 +1025,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& o
     STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
-    DrawSparkInnerZone(
-        "NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto zone) { obj->setNormalZone(zone); });
+    DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto zone) { obj->setNormalZone(zone); });
     DRAW_SPK_BOOL("NormalEmitter InvertedNormals", isInverted, setInverted);
 }
 
@@ -1046,8 +1044,7 @@ void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModif
     STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
-    DrawSparkInnerZone(
-        "Zone", [obj] { return obj->getZone(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto zone) { obj->setZone(zone); });
     DRAW_SPK_COMBO("ZoneTest", getZoneTest, setZoneTest, "ZONE_TEST_INSIDE", "ZONE_TEST_OUTSIDE", "ZONE_TEST_INTERSECT", "ZONE_TEST_ENTER", "ZONE_TEST_LEAVE", "ZONE_TEST_ALWAYS");
 }
 

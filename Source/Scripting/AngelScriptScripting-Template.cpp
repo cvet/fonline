@@ -1816,8 +1816,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>) && //
+            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
@@ -1869,8 +1869,8 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || std::is_enum_v<T> || is_strong_type_v<T>) && //
+            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || std::is_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {

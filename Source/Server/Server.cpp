@@ -1133,8 +1133,7 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Text(player);
             break;
         case NETMSG_SEND_COMMAND:
-            Process_Command(
-                player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
+            Process_Command(player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
             break;
         case NETMSG_DIR:
             Process_Dir(player);

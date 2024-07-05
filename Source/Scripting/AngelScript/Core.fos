@@ -17,14 +17,14 @@
 #define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
 
 // Msg nums
-#define DLGSTR  #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
-#define LOCSTR  #(locPid, strNum)((locPid.uhash & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
-#define ITEMSTR #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
-#define CRSTR   #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define DLGSTR  #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) | ((12000 + (strNum)) & ~0xFFFFC000))
+#define LOCSTR  #(locPid, strNum)((locPid.uhash & 0xFFFFF000) | ((strNum) & ~0xFFFFF000))
+#define ITEMSTR #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) | ((strNum) & ~0xFFFFFFF0))
+#define CRSTR   #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) | ((strNum) & ~0xFFFFFFF0))
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
-#define IS_TIMEOUT      #(to)((to)> Game.GetFullSecond())
+#define IS_TIMEOUT      #(to)((to) > Game.GetFullSecond())
 
 // Combat modes
 #define COMBAT_MODE_ANY        (0)
@@ -68,11 +68,11 @@
 #define RADIO_DISABLE_SHIFT_BC_RECV (0x0800)
 #define RADIO_DISABLE_SHIFT_CHANNEL (0x1000)
 // Broadcast, Item::RadioBroadcastSend/RadioBroadcastRecv, Hardcoded
-#define RADIO_BROADCAST_WORLD     (0)            // Send/recv in all world
-#define RADIO_BROADCAST_MAP       (20)           // Send/recv only on one map
-#define RADIO_BROADCAST_LOCATION  (40)           // Send/recv only on one location
-#define RADIO_BROADCAST_ZONE      #(x)(100 +(x)) // Send/recv only in x (1..100) zones radius on global map
-#define RADIO_BROADCAST_FORCE_ALL (250)          // Force send/recv in any place
+#define RADIO_BROADCAST_WORLD     (0)             // Send/recv in all world
+#define RADIO_BROADCAST_MAP       (20)            // Send/recv only on one map
+#define RADIO_BROADCAST_LOCATION  (40)            // Send/recv only on one location
+#define RADIO_BROADCAST_ZONE      #(x)(100 + (x)) // Send/recv only in x (1..100) zones radius on global map
+#define RADIO_BROADCAST_FORCE_ALL (250)           // Force send/recv in any place
 
 // Internal server commands
 #define COMMAND_EXIT                  (1)

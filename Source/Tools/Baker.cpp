@@ -60,7 +60,7 @@ public:
 
     static auto GetRestoreInfo() -> vector<uint8>
     {
-        extern auto Baker_GetRestoreInfo()->vector<uint8>;
+        extern auto Baker_GetRestoreInfo() -> vector<uint8>;
         return Baker_GetRestoreInfo();
     }
 
@@ -476,8 +476,8 @@ void Baker::BakeAll()
 
                     string config_content;
 #if !FO_SINGLEPLAYER
-                    extern auto GetServerSettings()->unordered_set<string>;
-                    extern auto GetClientSettings()->unordered_set<string>;
+                    extern auto GetServerSettings() -> unordered_set<string>;
+                    extern auto GetClientSettings() -> unordered_set<string>;
                     auto server_settings = GetServerSettings();
                     auto client_settings = GetClientSettings();
                     string client_config_content;

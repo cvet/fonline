@@ -3962,7 +3962,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
     RUNTIME_ASSERT(!cr || cr->GetMap() == this);
 
-#define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y)-grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x)-grid_ox)]
+#define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y) - grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x) - grid_ox)]
 
     if (start_x == end_x && start_y == end_y) {
         return FindPathResult();
