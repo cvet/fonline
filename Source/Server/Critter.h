@@ -148,6 +148,7 @@ public:
 
     void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Send_Moving(const Critter* from_cr);
+    void Send_MovingSpeed(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
@@ -267,6 +268,7 @@ public:
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
         time_point StartTime {};
+        time_duration OffsetTime {};
         uint16 StartHexX {};
         uint16 StartHexY {};
         uint16 EndHexX {};

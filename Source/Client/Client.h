@@ -372,6 +372,7 @@ protected:
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
+    void Net_OnCritterMoveSpeed();
     void Net_OnSomeItem();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();

@@ -162,6 +162,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_SPEED, [this] { Net_OnCritterMoveSpeed(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
@@ -1590,6 +1591,44 @@ void FOClient::Net_OnCritterMove()
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
     cr->AnimateStay();
+}
+
+void FOClient::Net_OnCritterMoveSpeed()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto speed = _conn.InBuf.Read<uint16>();
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    auto* cr = CurMap->GetCritter(cr_id);
+    if (cr == nullptr) {
+        return;
+    }
+    if (!cr->IsMoving()) {
+        return;
+    }
+    if (speed == cr->Moving.Speed) {
+        return;
+    }
+
+    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto elapsed_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime);
+
+    cr->Moving.WholeTime /= diff;
+    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.Speed = speed;
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
 }
 
 void FOClient::Net_OnSomeItem()

@@ -1067,6 +1067,7 @@ def parseTags():
                 assert len(ruleArgs) and ruleArgs[0] in ['Property', 'Proto'], 'Invalid migration rule'
                 assert len(ruleArgs) == 4, 'Invalid migration rule args'
                 assert not len([t for t in codeGenTags['MigrationRule'] if t[0][0:3] == ruleArgs[0:3]]), 'Migration rule already added'
+                assert ruleArgs[2] != ruleArgs[3], 'Migration rule same last args'
                 
                 codeGenTags['MigrationRule'].append((ruleArgs, comment))
             

@@ -3589,7 +3589,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
+    auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime) / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3768,6 +3768,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
 
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = {};
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHexX = start_hx;
@@ -3835,7 +3836,46 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
+    cr->SetMovingSpeed(speed);
+
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
+}
+
+void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (!cr->IsMoving()) {
+        return;
+    }
+    if (cr->Moving.Speed == speed) {
+        return;
+    }
+
+    if (speed == 0) {
+        cr->ClearMove();
+        cr->SendAndBroadcast_Moving();
+        return;
+    }
+
+    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto cur_time = GameTime.FrameTime();
+    const auto elapsed_time = time_duration_to_ms<float>(cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime);
+
+    cr->Moving.WholeTime /= diff;
+    cr->Moving.StartTime = cur_time;
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.Speed = speed;
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
+
+    cr->SetMovingSpeed(speed);
+
+    cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
 }
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool

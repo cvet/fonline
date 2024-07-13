@@ -1127,29 +1127,31 @@
     return self->TargetMoving.State;
 }
 
-///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self)
-{
-    self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::Success;
-
-    self->ClearMove();
-    self->SendAndBroadcast_Moving();
-}
-
-///# ...
-///# param gagId ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, ident_t& gagId)
+[[maybe_unused]] MovingState Server_Critter_GetMovingState(Critter* self, ident_t& gagId)
 {
     gagId = self->TargetMoving.GagEntityId;
 
+    return self->TargetMoving.State;
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_StopMoving(Critter* self)
+{
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::Success;
 
-    self->ClearMove();
-    self->SendAndBroadcast_Moving();
+    if (self->IsMoving()) {
+        self->ClearMove();
+        self->SendAndBroadcast_Moving();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_ChangeMovingSpeed(Critter* self, uint speed)
+{
+    self->GetEngine()->ChangeCritterMovingSpeed(self, static_cast<uint16>(speed));
 }
 
 ///@ ExportMethod

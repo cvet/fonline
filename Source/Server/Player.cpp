@@ -284,7 +284,7 @@ void Player::Send_Moving(const Critter* from_cr)
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE);
         Connection->OutBuf.Write(from_cr->GetId());
         Connection->OutBuf.Write(static_cast<uint>(std::ceil(from_cr->Moving.WholeTime)));
-        Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime));
+        Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime + from_cr->Moving.OffsetTime));
         Connection->OutBuf.Write(from_cr->Moving.Speed);
         Connection->OutBuf.Write(from_cr->Moving.StartHexX);
         Connection->OutBuf.Write(from_cr->Moving.StartHexY);
@@ -313,6 +313,20 @@ void Player::Send_Moving(const Critter* from_cr)
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
     }
+}
+
+void Player::Send_MovingSpeed(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE_SPEED);
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(from_cr->Moving.Speed);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
 }
 
 void Player::Send_Dir(const Critter* from_cr)

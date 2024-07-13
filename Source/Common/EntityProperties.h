@@ -410,6 +410,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateServer, uint, MovingSpeed);
 };
 
 class MapProperties : public EntityProperties

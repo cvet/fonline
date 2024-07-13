@@ -97,6 +97,9 @@ public:
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
+    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, const Player* initiator);
+    void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
+
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
     ///@ ExportEvent
@@ -283,7 +286,6 @@ private:
     void ProcessCritter(Critter* cr);
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, const Player* initiator);
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;

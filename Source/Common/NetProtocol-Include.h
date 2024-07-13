@@ -339,6 +339,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // char end_hex_oy - -8..8
 // ////////////////////////////////////////////////////////////////////////
 
+#define NETMSG_CRITTER_MOVE_SPEED MAKE_NETMSG_HEADER(48)
+#define NETMSG_CRITTER_MOVE_SPEED_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16))
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// ident_t cr_id
+// uint16 speed
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
 #define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16) * 2 + sizeof(int16) * 2 + sizeof(int16))
 // ////////////////////////////////////////////////////////////////////////

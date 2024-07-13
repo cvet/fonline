@@ -164,6 +164,7 @@ void Critter::ClearMove()
     Moving.Steps = {};
     Moving.ControlSteps = {};
     Moving.StartTime = {};
+    Moving.OffsetTime = {};
     Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
@@ -175,6 +176,8 @@ void Critter::ClearMove()
     Moving.StartOy = {};
     Moving.EndOx = {};
     Moving.EndOy = {};
+
+    SetMovingSpeed(0);
 }
 
 void Critter::AttachToCritter(Critter* cr)
@@ -968,6 +971,17 @@ void Critter::Send_Moving(const Critter* from_cr)
 
     if (_player != nullptr) {
         _player->Send_Moving(from_cr);
+    }
+}
+
+void Critter::Send_MovingSpeed(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (_player != nullptr) {
+        _player->Send_MovingSpeed(from_cr);
     }
 }
 
