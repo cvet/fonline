@@ -338,7 +338,7 @@ void Entity::AddInnerEntity(hstring entry, Entity* entity)
     }
 
     if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
-        _innerEntities->emplace(entry, vector {entity});
+        _innerEntities->emplace(entry, vector<Entity*> {entity});
     }
     else {
         it->second.emplace_back(entity);

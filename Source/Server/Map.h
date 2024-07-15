@@ -50,7 +50,6 @@ class Location;
 
 struct StaticMap
 {
-    // Todo: memory optimization - improve dynamic grid for map hex fields
     struct Field
     {
         bool IsMoveBlocked {};
@@ -59,11 +58,11 @@ struct StaticMap
         vector<StaticItem*> TriggerItems {};
     };
 
-    TwoDimensionalGrid<Field, uint16, true> HexField {};
-    vector<pair<uint, const Critter*>> CritterBillets {};
-    vector<pair<uint, const Item*>> ItemBillets {};
-    vector<pair<uint, const Item*>> HexItemBillets {};
-    vector<pair<uint, const Item*>> ChildItemBillets {};
+    unique_ptr<TwoDimensionalGrid<Field, uint16>> HexField {};
+    vector<pair<ident_t, const Critter*>> CritterBillets {};
+    vector<pair<ident_t, const Item*>> ItemBillets {};
+    vector<pair<ident_t, const Item*>> HexItemBillets {};
+    vector<pair<ident_t, const Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
     unordered_map<ident_t, StaticItem*> StaticItemsById {};
 };
@@ -119,10 +118,10 @@ public:
     [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
-    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
     [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
-    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc);
     void Process();
@@ -181,7 +180,7 @@ private:
     const StaticMap* _staticMap {};
     uint16 _width {};
     uint16 _height {};
-    TwoDimensionalGrid<Field, uint16, true> _hexField {};
+    unique_ptr<TwoDimensionalGrid<Field, uint16>> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};

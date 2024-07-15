@@ -111,7 +111,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     _findPathGrid.resize((static_cast<size_t>(MAX_FIND_PATH) * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
     _hexLight.resize(static_cast<size_t>(_width) * _height);
-    _hexField.SetSize(_width, _height);
+    _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, uint16>>(_width, _height);
 
     _lightPoints.resize(1);
     _lightSoftPoints.resize(1);
@@ -310,7 +310,7 @@ void MapView::LoadStaticData()
     auto roof_num = 1;
     for (const auto hx : xrange(_width)) {
         for (const auto hy : xrange(_height)) {
-            if (!_hexField.GetCellForReading(hx, hy).RoofTiles.empty()) {
+            if (!_hexField->GetCellForReading(hx, hy).RoofTiles.empty()) {
                 MarkRoofNum(hx, hy, static_cast<int16>(roof_num));
                 roof_num++;
             }
@@ -320,13 +320,13 @@ void MapView::LoadStaticData()
     // Scroll blocks borders
     for (const auto hx : xrange(_width)) {
         for (const auto hy : xrange(_height)) {
-            const auto& field = _hexField.GetCellForReading(hx, hy);
+            const auto& field = _hexField->GetCellForReading(hx, hy);
             if (field.Flags.ScrollBlock) {
                 for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
                     auto hx_ = hx;
                     auto hy_ = hy;
                     GeometryHelper::MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _width, _height);
-                    _hexField.GetCellForWriting(hx_, hy_).Flags.IsMoveBlocked = true;
+                    _hexField->GetCellForWriting(hx_, hy_).Flags.IsMoveBlocked = true;
                 }
             }
         }
@@ -465,7 +465,7 @@ void MapView::AddItemToField(ItemHexView* item)
     const uint16 hx = item->GetHexX();
     const uint16 hy = item->GetHexY();
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     if (item->GetIsTile()) {
         if (item->GetIsRoofTile()) {
@@ -485,7 +485,7 @@ void MapView::AddItemToField(ItemHexView* item)
 
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
-                auto& field2 = _hexField.GetCellForWriting(hx2, hy2);
+                auto& field2 = _hexField->GetCellForWriting(hx2, hy2);
                 field2.BlockLineItems.emplace_back(item);
                 RecacheHexFlags(field2);
             });
@@ -506,7 +506,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
     const uint16 hx = item->GetHexX();
     const uint16 hy = item->GetHexY();
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     if (item->GetIsTile()) {
         if (item->GetIsRoofTile()) {
@@ -529,7 +529,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
 
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](uint16 hx2, uint16 hy2) {
-                auto& field2 = _hexField.GetCellForWriting(hx2, hy2);
+                auto& field2 = _hexField->GetCellForWriting(hx2, hy2);
                 const auto it2 = std::find(field2.BlockLineItems.begin(), field2.BlockLineItems.end(), item);
                 RUNTIME_ASSERT(it2 != field2.BlockLineItems.end());
                 field2.BlockLineItems.erase(it2);
@@ -661,7 +661,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     if (!MeasureMapBorders(item->Spr, item->ScrX, item->ScrY)) {
         if (!_mapLoading && IsHexToDraw(hx, hy) && (_mapperMode || !item->GetAlwaysHideSprite())) {
-            auto& field = _hexField.GetCellForWriting(hx, hy);
+            auto& field = _hexField->GetCellForWriting(hx, hy);
             auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
             AddSpriteToChain(field, spr);
         }
@@ -686,7 +686,7 @@ void MapView::MoveItem(ItemHexView* item, uint16 hx, uint16 hy)
     }
 
     if (IsHexToDraw(hx, hy) && (_mapperMode || !item->GetAlwaysHideSprite())) {
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
         auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
         AddSpriteToChain(field, spr);
     }
@@ -747,11 +747,11 @@ auto MapView::GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= _width || hy >= _height || _hexField.GetCellForReading(hx, hy).Items.empty()) {
+    if (hx >= _width || hy >= _height || _hexField->GetCellForReading(hx, hy).Items.empty()) {
         return nullptr;
     }
 
-    for (auto* item : _hexField.GetCellForReading(hx, hy).Items) {
+    for (auto* item : _hexField->GetCellForReading(hx, hy).Items) {
         if (item->GetProtoId() == pid) {
             return item;
         }
@@ -766,11 +766,11 @@ auto MapView::GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= _width || hy >= _height || _hexField.GetCellForReading(hx, hy).Items.empty()) {
+    if (hx >= _width || hy >= _height || _hexField->GetCellForReading(hx, hy).Items.empty()) {
         return nullptr;
     }
 
-    for (auto* item : _hexField.GetCellForReading(hx, hy).Items) {
+    for (auto* item : _hexField->GetCellForReading(hx, hy).Items) {
         if (item->GetId() == id) {
             return item;
         }
@@ -803,7 +803,9 @@ auto MapView::GetItems(uint16 hx, uint16 hy) -> const vector<ItemHexView*>&
 
     NON_CONST_METHOD_HINT();
 
-    return _hexField.GetCellForReading(hx, hy).Items;
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+
+    return field.Items;
 }
 
 auto MapView::GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexView*
@@ -812,9 +814,10 @@ auto MapView::GetTile(uint16 hx, uint16 hy, bool is_roof, int layer) -> ItemHexV
 
     NON_CONST_METHOD_HINT();
 
-    const auto& tiles = is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+    const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
-    for (auto* tile : tiles) {
+    for (auto* tile : field_tiles) {
         if (layer < 0 || tile->GetTileLayer() == layer) {
             return tile;
         }
@@ -829,7 +832,10 @@ auto MapView::GetTiles(uint16 hx, uint16 hy, bool is_roof) -> const vector<ItemH
 
     NON_CONST_METHOD_HINT();
 
-    return is_roof ? _hexField.GetCellForReading(hx, hy).RoofTiles : _hexField.GetCellForReading(hx, hy).GroundTiles;
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+    const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
+
+    return field_tiles;
 }
 
 auto MapView::GetRectForText(uint16 hx, uint16 hy) -> IRect
@@ -840,7 +846,7 @@ auto MapView::GetRectForText(uint16 hx, uint16 hy) -> IRect
 
     auto result = IRect();
 
-    if (const auto& field = _hexField.GetCellForReading(hx, hy); field.IsView) {
+    if (const auto& field = _hexField->GetCellForReading(hx, hy); field.IsView) {
         if (!field.Critters.empty()) {
             for (const auto* cr : field.Critters) {
                 if (cr->IsSpriteVisible()) {
@@ -953,7 +959,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
     uint16 hx = 0;
     uint16 hy = 0;
     if (GetHexAtScreenPos(x, y, hx, hy, nullptr, nullptr)) {
-        const auto& field = _hexField.GetCellForReading(hx, hy);
+        const auto& field = _hexField->GetCellForReading(hx, hy);
 
         _cursorX = field.ScrX + 1 - 1;
         _cursorY = field.ScrY - 1 - 1;
@@ -1046,7 +1052,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
 
         field.IsView = false;
         InvalidateSpriteChain(field);
@@ -1070,7 +1076,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
 
         RUNTIME_ASSERT(!field.IsView);
 
@@ -1251,7 +1257,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
 
         if (!field.IsView) {
             return;
@@ -1335,7 +1341,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
         }
 
         if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
-            auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+            auto& field = _hexField->GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
             field.ScrX = vf.ScrX;
             field.ScrY = vf.ScrY;
         }
@@ -1348,7 +1354,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         const auto hx = static_cast<uint16>(vf.HexX);
         const auto hy = static_cast<uint16>(vf.HexY);
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
 
         if (field.IsView) {
             return;
@@ -1698,7 +1704,7 @@ void MapView::UpdateHexLightSources(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     for (auto&& ls_pair : copy(field.LightSources)) {
         ApplyLightFan(ls_pair.first);
@@ -1907,7 +1913,7 @@ void MapView::CleanLightFan(LightSource* ls)
     }
 
     for (auto&& [hx, hy] : ls->MarkedHexes) {
-        auto& field = _hexField.GetCellForWriting(hx, hy);
+        auto& field = _hexField->GetCellForWriting(hx, hy);
 
         field.LightSources.erase(ls);
         CalculateHexLight(hx, hy, field);
@@ -1995,7 +2001,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
             // Left side
             ox = old_curx1_i + ox;
 
-            if (ox < 0 || ox >= _width || _hexField.GetCellForReading(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.IsLightBlocked) {
+            if (ox < 0 || ox >= _width || _hexField->GetCellForReading(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.IsLightBlocked) {
                 hx = static_cast<uint16>(ox < 0 || ox >= _width ? old_curx1_i : ox);
                 hy = static_cast<uint16>(old_cury1_i);
 
@@ -2008,7 +2014,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
             // Right side
             oy = old_cury1_i + oy;
 
-            if (oy < 0 || oy >= _height || _hexField.GetCellForReading(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.IsLightBlocked) {
+            if (oy < 0 || oy >= _height || _hexField->GetCellForReading(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.IsLightBlocked) {
                 hx = static_cast<uint16>(old_curx1_i);
                 hy = static_cast<uint16>(oy < 0 || oy >= _height ? old_cury1_i : oy);
 
@@ -2020,7 +2026,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || _hexField.GetCellForReading(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.IsLightBlocked) {
+        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || _hexField->GetCellForReading(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.IsLightBlocked) {
             hx = static_cast<uint16>(curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
             hy = static_cast<uint16>(cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
 
@@ -2040,7 +2046,7 @@ void MapView::MarkLightStep(LightSource* ls, uint16 from_hx, uint16 from_hy, uin
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
+    const auto& field = _hexField->GetCellForReading(to_hx, to_hy);
 
     if (field.Flags.IsWallTransp) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
@@ -2061,7 +2067,7 @@ void MapView::MarkLightEnd(LightSource* ls, uint16 from_hx, uint16 from_hy, uint
 
     bool is_wall = false;
     bool north_south = false;
-    const auto& field = _hexField.GetCellForReading(to_hx, to_hy);
+    const auto& field = _hexField->GetCellForReading(to_hx, to_hy);
 
     if (field.Flags.IsWall) {
         is_wall = true;
@@ -2115,7 +2121,7 @@ void MapView::MarkLightEndNeighbor(LightSource* ls, uint16 hx, uint16 hy, bool n
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (field.Flags.IsWall) {
         const auto corner = field.Corner;
@@ -2136,7 +2142,7 @@ void MapView::MarkLight(LightSource* ls, uint16 hx, uint16 hy, uint intensity)
     const auto light_value_b = static_cast<uint8>(light_value * ls->CenterColor.comp.b / 255);
     const auto light_color = ucolor {light_value_r, light_value_g, light_value_b, 0};
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
     const auto it = field.LightSources.find(ls);
 
     if (it == field.LightSources.end()) {
@@ -2245,8 +2251,8 @@ void MapView::SetSkipRoof(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
-    if (_roofSkip != _hexField.GetCellForReading(hx, hy).RoofNum) {
-        _roofSkip = _hexField.GetCellForReading(hx, hy).RoofNum;
+    if (_roofSkip != _hexField->GetCellForReading(hx, hy).RoofNum) {
+        _roofSkip = _hexField->GetCellForReading(hx, hy).RoofNum;
         RefreshMap();
     }
 }
@@ -2261,17 +2267,17 @@ void MapView::MarkRoofNum(int hxi, int hyi, int16 num)
 
     const auto hx = static_cast<uint16>(hxi);
     const auto hy = static_cast<uint16>(hyi);
-    if (_hexField.GetCellForReading(hx, hy).RoofTiles.empty()) {
+    if (_hexField->GetCellForReading(hx, hy).RoofTiles.empty()) {
         return;
     }
-    if (_hexField.GetCellForReading(hx, hy).RoofNum != 0) {
+    if (_hexField->GetCellForReading(hx, hy).RoofNum != 0) {
         return;
     }
 
     for (auto x = 0; x < _engine->Settings.MapTileStep; x++) {
         for (auto y = 0; y < _engine->Settings.MapTileStep; y++) {
             if (hxi + x >= 0 && hxi + x < _width && hyi + y >= 0 && hyi + y < _height) {
-                _hexField.GetCellForWriting(static_cast<uint16>(hxi + x), static_cast<uint16>(hyi + y)).RoofNum = num;
+                _hexField->GetCellForWriting(static_cast<uint16>(hxi + x), static_cast<uint16>(hyi + y)).RoofNum = num;
             }
         }
     }
@@ -2342,7 +2348,7 @@ void MapView::RecacheHexFlags(uint16 hx, uint16 hy)
     RUNTIME_ASSERT(hx < _width);
     RUNTIME_ASSERT(hy < _height);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     RecacheHexFlags(field);
 }
@@ -2441,7 +2447,7 @@ void MapView::Resize(uint16 width, uint16 height)
     for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
         const auto& vf = _viewField[i];
         if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
-            auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+            auto& field = _hexField->GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
             field.IsView = false;
             InvalidateSpriteChain(field);
         }
@@ -2451,7 +2457,7 @@ void MapView::Resize(uint16 width, uint16 height)
     for (uint16 hy = 0; hy < std::max(height, _height); hy++) {
         for (uint16 hx = 0; hx < std::max(width, _width); hx++) {
             if (hx >= width || hy >= height) {
-                const auto& field = _hexField.GetCellForReading(hx, hy);
+                const auto& field = _hexField->GetCellForReading(hx, hy);
 
                 if (!field.Critters.empty()) {
                     for (auto* cr : copy(field.Critters)) {
@@ -2496,11 +2502,11 @@ void MapView::Resize(uint16 width, uint16 height)
     _hexTrack.resize(static_cast<size_t>(_width) * _height);
     std::memset(_hexTrack.data(), 0, _hexTrack.size());
     _hexLight.resize(static_cast<size_t>(_width) * _height);
-    _hexField.SetSize(_width, _height);
+    _hexField->Resize(_width, _height);
 
     for (uint16 hy = 0; hy < _height; hy++) {
         for (uint16 hx = 0; hx < _width; hx++) {
-            CalculateHexLight(hx, hy, _hexField.GetCellForReading(hx, hy));
+            CalculateHexLight(hx, hy, _hexField->GetCellForReading(hx, hy));
         }
     }
 
@@ -2650,7 +2656,7 @@ void MapView::ResizeView()
         for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
             const auto& vf = _viewField[i];
             if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
-                auto& field = _hexField.GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+                auto& field = _hexField->GetCellForWriting(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
                 field.IsView = false;
                 InvalidateSpriteChain(field);
             }
@@ -2859,7 +2865,7 @@ void MapView::DrawMapTexts()
         const auto& map_text = *it;
 
         if (time < map_text.StartTime + map_text.Duration) {
-            const auto& field = _hexField.GetCellForReading(map_text.HexX, map_text.HexY);
+            const auto& field = _hexField->GetCellForReading(map_text.HexX, map_text.HexY);
 
             if (field.IsView) {
                 const auto dt = time_duration_to_ms<uint>(time - map_text.StartTime);
@@ -3273,13 +3279,13 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) const -> b
         auto hy = static_cast<uint16>(_viewField[pos].HexY);
 
         GeometryHelper::MoveHexByDir(hx, hy, static_cast<uint8>(dir1), _width, _height);
-        if (_hexField.GetCellForReading(hx, hy).Flags.ScrollBlock) {
+        if (_hexField->GetCellForReading(hx, hy).Flags.ScrollBlock) {
             return true;
         }
 
         if (dir2 >= 0) {
             GeometryHelper::MoveHexByDir(hx, hy, static_cast<uint8>(dir2), _width, _height);
-            if (_hexField.GetCellForReading(hx, hy).Flags.ScrollBlock) {
+            if (_hexField->GetCellForReading(hx, hy).Flags.ScrollBlock) {
                 return true;
             }
         }
@@ -3424,7 +3430,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     const auto hy = cr->GetHexY();
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
     field.Critters.emplace_back(cr);
@@ -3461,7 +3467,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
 
-    auto& field = _hexField.GetCellForWriting(hx, hy);
+    auto& field = _hexField->GetCellForWriting(hx, hy);
 
     const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
     RUNTIME_ASSERT(it != field.Critters.end());
@@ -3494,7 +3500,7 @@ auto MapView::GetNonDeadCritter(uint16 hx, uint16 hy) -> CritterHexView*
 
     NON_CONST_METHOD_HINT();
 
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (!field.Critters.empty()) {
         for (auto* cr : field.Critters) {
@@ -3617,7 +3623,7 @@ auto MapView::GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> ve
     NON_CONST_METHOD_HINT();
 
     vector<CritterHexView*> critters;
-    const auto& field = _hexField.GetCellForReading(hx, hy);
+    const auto& field = _hexField->GetCellForReading(hx, hy);
 
     if (!field.Critters.empty()) {
         for (auto* cr : field.Critters) {
@@ -3729,7 +3735,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
             const auto cy = static_cast<int>(hy) + sy[i];
 
             if (cx >= 0 && cy >= 0 && cx < _width && cy < _height) {
-                auto& field = _hexField.GetCellForWriting(static_cast<uint16>(cx), static_cast<uint16>(cy));
+                auto& field = _hexField->GetCellForWriting(static_cast<uint16>(cx), static_cast<uint16>(cy));
 
                 if (set) {
                     RUNTIME_ASSERT(std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr) == field.MultihexCritters.end());
@@ -3824,7 +3830,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
         const auto* spr = item->Spr;
         const auto hx = item->GetHexX();
         const auto hy = item->GetHexY();
-        const auto& field = _hexField.GetCellForReading(hx, hy);
+        const auto& field = _hexField->GetCellForReading(hx, hy);
         const auto l = iround(static_cast<float>(field.ScrX + item->ScrX + spr->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - spr->Width / 2) / GetSpritesZoom()) - extra_range;
         const auto r = iround(static_cast<float>(field.ScrX + item->ScrX + spr->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + spr->Width / 2) / GetSpritesZoom()) + extra_range;
         const auto t = iround(static_cast<float>(field.ScrY + item->ScrY + spr->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - spr->Height) / GetSpritesZoom()) - extra_range;
@@ -3951,7 +3957,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
     RUNTIME_ASSERT(!cr || cr->GetMap() == this);
 
-#define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y)-grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x)-grid_ox)]
+#define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y) - grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x) - grid_ox)]
 
     if (start_x == end_x && start_y == end_y) {
         return FindPathResult();
@@ -3997,7 +4003,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 GRID_AT(nx, ny) = -1;
 
                 if (mh == 0) {
-                    if (_hexField.GetCellForReading(static_cast<uint16>(nx), static_cast<uint16>(ny)).Flags.IsMoveBlocked) {
+                    if (_hexField->GetCellForReading(static_cast<uint16>(nx), static_cast<uint16>(ny)).Flags.IsMoveBlocked) {
                         continue;
                     }
                 }
@@ -4011,7 +4017,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     if (nx_ < 0 || ny_ < 0 || nx_ >= _width || ny_ >= _height) {
                         continue;
                     }
-                    if (_hexField.GetCellForReading(static_cast<uint16>(nx_), static_cast<uint16>(ny_)).Flags.IsMoveBlocked) {
+                    if (_hexField->GetCellForReading(static_cast<uint16>(nx_), static_cast<uint16>(ny_)).Flags.IsMoveBlocked) {
                         continue;
                     }
 
@@ -4028,7 +4034,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     auto ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
-                        not_passed = _hexField.GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
+                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -4044,7 +4050,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
-                        not_passed = _hexField.GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
+                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -4293,7 +4299,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
             return false;
         }
 
-        const auto& field = _hexField.GetCellForReading(check_hx, check_hy);
+        const auto& field = _hexField->GetCellForReading(check_hx, check_hy);
         if (field.Flags.IsMoveBlocked) {
             return false;
         }
@@ -4377,7 +4383,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
             continue;
         }
 
-        if (check_passed && _hexField.GetCellForReading(cx, cy).Flags.IsShootBlocked) {
+        if (check_passed && _hexField->GetCellForReading(cx, cy).Flags.IsShootBlocked) {
             break;
         }
         if (critters != nullptr) {
@@ -4433,7 +4439,7 @@ void MapView::FindSetCenter(int cx, int cy)
                 GetHexTrack(sx, sy) = 1;
             }
 
-            if (_hexField.GetCellForReading(sx, sy).Flags.ScrollBlock) {
+            if (_hexField->GetCellForReading(sx, sy).Flags.ScrollBlock) {
                 break;
             }
 
@@ -4721,7 +4727,7 @@ void MapView::MarkBlockedHexes()
 
     for (uint16 hx = 0; hx < _width; hx++) {
         for (uint16 hy = 0; hy < _height; hy++) {
-            const auto& field = _hexField.GetCellForReading(hx, hy);
+            const auto& field = _hexField->GetCellForReading(hx, hy);
             auto& track = GetHexTrack(hx, hy);
 
             track = 0;

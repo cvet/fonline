@@ -187,7 +187,6 @@ public:
 
     auto CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*;
     auto CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*;
-    void CreateTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof);
     auto CloneEntity(Entity* entity) -> Entity*;
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
 

@@ -113,6 +113,9 @@ struct Field
     bool IsView {};
     int ScrX {};
     int ScrY {};
+    int16 RoofNum {};
+    CornerType Corner {};
+    FieldFlags Flags {};
     MapSprite* SpriteChain {};
     vector<CritterHexView*> Critters {};
     vector<CritterHexView*> MultihexCritters {};
@@ -120,9 +123,6 @@ struct Field
     vector<ItemHexView*> BlockLineItems {};
     vector<ItemHexView*> GroundTiles {};
     vector<ItemHexView*> RoofTiles {};
-    int16 RoofNum {};
-    CornerType Corner {};
-    FieldFlags Flags {};
     unordered_map<LightSource*, ucolor> LightSources {};
 };
 
@@ -176,8 +176,8 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField.GetCellForReading(hx, hy); }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField.GetCellForReading(hx, hy).IsView; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(hx, hy); }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField->GetCellForReading(hx, hy).IsView; }
     [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
     [[nodiscard]] auto GetLightData() -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
@@ -366,7 +366,7 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    TwoDimensionalGrid<Field, uint16, false> _hexField {};
+    unique_ptr<StaticTwoDimensionalGrid<Field, uint16>> _hexField {};
     vector<int16> _findPathGrid {};
 
     MapSpriteList _mapSprites;

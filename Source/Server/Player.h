@@ -69,6 +69,7 @@ public:
 
     void Send_LoginSuccess();
     void Send_Moving(const Critter* from_cr);
+    void Send_MovingSpeed(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);

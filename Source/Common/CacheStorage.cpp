@@ -304,8 +304,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
         return false;
     }
 
-    const auto r = unqlite_kv_fetch_callback(
-        _db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+    const auto r = unqlite_kv_fetch_callback(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
         return false;

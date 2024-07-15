@@ -47,9 +47,9 @@ uint RealYear(uint value)
     return value * Game.TimeMultiplier * 31536000;
 }
 
-#define IS_MORNING          #(hour)((hour) >= 7 &&(hour) <= 11)  // 5 hours
-#define IS_AFTERNOON        #(hour)((hour) >= 12 &&(hour) <= 21) // 10 hours
-#define IS_NIGHT            #(hour)((hour) >= 22 ||(hour) <= 6)  // 9 hours
+#define IS_MORNING          #(hour)((hour) >= 7 && (hour) <= 11)  // 5 hours
+#define IS_AFTERNOON        #(hour)((hour) >= 12 && (hour) <= 21) // 10 hours
+#define IS_NIGHT            #(hour)((hour) >= 22 || (hour) <= 6)  // 9 hours
 
 #define SECOND_TICKS        #(x)((x) * 1000)
 #define MINUTE_TICKS        #(x)((x) * 60000)
@@ -63,8 +63,8 @@ uint RealYear(uint value)
 #define GAME_MONTH_TO_TICK  #(x)(uint(x) * 2592000 / Game.TimeMultiplier * 1000)
 #define GAME_YEAR_TO_TICK   #(x)(uint(x) * 31536000 / Game.TimeMultiplier * 1000)
 
-#define STR_MONTH           #(m)(20 +(m))
-#define STR_DAY_OF_WEEK     #(dow)(33 +(dow))
+#define STR_MONTH           #(m)(20 + (m))
+#define STR_DAY_OF_WEEK     #(dow)(33 + (dow))
 
 uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {

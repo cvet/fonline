@@ -339,6 +339,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // char end_hex_oy - -8..8
 // ////////////////////////////////////////////////////////////////////////
 
+#define NETMSG_CRITTER_MOVE_SPEED MAKE_NETMSG_HEADER(48)
+#define NETMSG_CRITTER_MOVE_SPEED_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16))
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// ident_t cr_id
+// uint16 speed
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
 #define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16) * 2 + sizeof(int16) * 2 + sizeof(int16))
 // ////////////////////////////////////////////////////////////////////////
@@ -650,7 +659,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties
 // ************************************************************************
 
-#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x)*10)
+#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x) * 10)
 #define NETMSG_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
@@ -670,7 +679,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint8 data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x)*10)
+#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x) * 10)
 #define NETMSG_SEND_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Client change property

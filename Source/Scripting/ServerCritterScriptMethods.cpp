@@ -460,6 +460,20 @@
 }
 
 ///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_GetTalkingCrittersCount(Critter* self)
+{
+    uint result = 0;
+
+    for (const auto* cr : self->VisCr) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == self->GetId()) {
+            result++;
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self)
 {
     if (self->GetMapId()) {
@@ -1113,29 +1127,31 @@
     return self->TargetMoving.State;
 }
 
-///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self)
-{
-    self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::Success;
-
-    self->ClearMove();
-    self->SendAndBroadcast_Moving();
-}
-
-///# ...
-///# param gagId ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, ident_t& gagId)
+[[maybe_unused]] MovingState Server_Critter_GetMovingState(Critter* self, ident_t& gagId)
 {
     gagId = self->TargetMoving.GagEntityId;
 
+    return self->TargetMoving.State;
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_StopMoving(Critter* self)
+{
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::Success;
 
-    self->ClearMove();
-    self->SendAndBroadcast_Moving();
+    if (self->IsMoving()) {
+        self->ClearMove();
+        self->SendAndBroadcast_Moving();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_ChangeMovingSpeed(Critter* self, uint speed)
+{
+    self->GetEngine()->ChangeCritterMovingSpeed(self, static_cast<uint16>(speed));
 }
 
 ///@ ExportMethod
@@ -1397,4 +1413,10 @@
     }
 
     return count;
+}
+
+///@ ExportMethod
+[[maybe_unused]] tick_t Server_Critter_GetPlayerOfflineTime(Critter* self)
+{
+    return tick_t {time_duration_to_ms<tick_t::underlying_type>(self->GetOfflineTime())};
 }

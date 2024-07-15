@@ -76,7 +76,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
-FIXED_SETTING(uint, MinimumOfflineTime, 180000);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
 FIXED_SETTING(uint, DlgTalkMaxTime, 0);
@@ -335,6 +334,8 @@ FIXED_SETTING(uint, DataBaseCommitPeriod, 10);
 FIXED_SETTING(uint, DataBaseMaxCommitJobs, 100);
 FIXED_SETTING(uint, LoopAverageTimeInterval, 1000);
 FIXED_SETTING(bool, WriteHealthFile, false);
+FIXED_SETTING(bool, ProtoMapStaticGrid, false);
+FIXED_SETTING(bool, MapInstanceStaticGrid, false);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

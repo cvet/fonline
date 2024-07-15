@@ -331,9 +331,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient);
+    ENTITY_PROPERTY(PrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, uint, LookDistance);
+    ENTITY_PROPERTY(Protected, uint, LookDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int, ReplicationTime);
     ///@ ExportProperty
@@ -379,11 +379,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoTalk);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
-    ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, tick_t, AutoUnloadOfflineTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
     ///@ ExportProperty
@@ -414,6 +410,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateServer, uint, MovingSpeed);
 };
 
 class MapProperties : public EntityProperties

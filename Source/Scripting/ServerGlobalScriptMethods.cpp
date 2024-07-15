@@ -965,11 +965,13 @@
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, ident_t mapId)
 {
-    if (!mapId) {
-        throw ScriptException("Map id arg is zero");
-    }
-
     return server->MapMngr.GetMap(mapId);
+}
+
+///@ ExportMethod
+[[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, hstring mapPid)
+{
+    return server->MapMngr.GetMapByPid(mapPid, 0);
 }
 
 ///# ...
@@ -977,12 +979,8 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Game_GetMapByPid(FOServer* server, hstring mapPid, uint skipCount)
+[[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, hstring mapPid, uint skipCount)
 {
-    if (!mapPid) {
-        throw ScriptException("Invalid zero map proto id arg");
-    }
-
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
 }
 
@@ -1028,10 +1026,6 @@
 ///@ ExportMethod
 [[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, ident_t locId)
 {
-    if (!locId) {
-        throw ScriptException("Location id arg is zero");
-    }
-
     return server->MapMngr.GetLocation(locId);
 }
 
@@ -1041,10 +1035,6 @@
 ///@ ExportMethod
 [[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid)
 {
-    if (!locPid) {
-        throw ScriptException("Invalid zero location proto id arg");
-    }
-
     return server->MapMngr.GetLocationByPid(locPid, 0);
 }
 
@@ -1055,10 +1045,6 @@
 ///@ ExportMethod
 [[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid, uint skipCount)
 {
-    if (!locPid) {
-        throw ScriptException("Invalid zero location proto id arg");
-    }
-
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
 

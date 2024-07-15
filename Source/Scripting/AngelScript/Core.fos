@@ -18,7 +18,7 @@
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
-#define IS_TIMEOUT      #(to)((to)> Game.GetFullSecond())
+#define IS_TIMEOUT      #(to)((to) > Game.GetFullSecond())
 
 // Combat modes
 #define COMBAT_MODE_ANY        (0)
@@ -65,7 +65,7 @@
 #define RADIO_BROADCAST_WORLD     (0)            // Send/recv in all world
 #define RADIO_BROADCAST_MAP       (20)           // Send/recv only on one map
 #define RADIO_BROADCAST_LOCATION  (40)           // Send/recv only on one location
-#define RADIO_BROADCAST_ZONE      #(x)(100 +(x)) // Send/recv only in x (1..100) zones radius on global map
+#define RADIO_BROADCAST_ZONE      #(x)(100 + (x)) // Send/recv only in x (1..100) zones radius on global map
 #define RADIO_BROADCAST_FORCE_ALL (250)          // Force send/recv in any place
 
 // Internal server commands

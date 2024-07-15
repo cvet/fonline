@@ -1144,8 +1144,7 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Text(player);
             break;
         case NETMSG_SEND_COMMAND:
-            Process_Command(
-                player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
+            Process_Command(player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
             break;
         case NETMSG_DIR:
             Process_Dir(player);
@@ -1927,19 +1926,6 @@ void FOServer::ProcessCritter(Critter* cr)
 
     // Time events
     cr->ProcessTimeEvents();
-
-    if (cr->IsDestroyed()) {
-        return;
-    }
-
-    // Auto unload player critter
-    if (cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr) {
-        const tick_t auto_unload_time = get_if_non_zero(cr->GetAutoUnloadOfflineTime(), tick_t {Settings.MinimumOfflineTime});
-
-        if (cr->GetOfflineTime() >= std::chrono::milliseconds {auto_unload_time.underlying_value()}) {
-            UnloadCritter(cr);
-        }
-    }
 }
 
 auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
@@ -3628,7 +3614,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
+    auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime) / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3807,6 +3793,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
 
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = {};
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHexX = start_hx;
@@ -3874,7 +3861,46 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
+    cr->SetMovingSpeed(speed);
+
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
+}
+
+void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (!cr->IsMoving()) {
+        return;
+    }
+    if (cr->Moving.Speed == speed) {
+        return;
+    }
+
+    if (speed == 0) {
+        cr->ClearMove();
+        cr->SendAndBroadcast_Moving();
+        return;
+    }
+
+    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto cur_time = GameTime.FrameTime();
+    const auto elapsed_time = time_duration_to_ms<float>(cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime);
+
+    cr->Moving.WholeTime /= diff;
+    cr->Moving.StartTime = cur_time;
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.Speed = speed;
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
+
+    cr->SetMovingSpeed(speed);
+
+    cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
 }
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
@@ -4223,10 +4249,6 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
     // Talk with npc
     if (npc != nullptr) {
-        if (npc->GetIsNoTalk()) {
-            return;
-        }
-
         if (!selected_dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
             if (!npc_dlg_id) {
@@ -4285,7 +4307,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkedPlayers() + 1) || !OnCritterTalk.Fire(npc, cl, true, npc->GetTalkedPlayers() + 1)) {
+        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkingCritters() + 1) || !OnCritterTalk.Fire(cl, npc, true, npc->GetTalkingCritters() + 1)) {
             return;
         }
 
@@ -4492,7 +4514,7 @@ void FOServer::Process_Dialog(Player* player)
                 return;
             }
 
-            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(talker, cr, true, talker->GetBarterPlayers() + 1)) {
+            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterCritters() + 1) || !OnCritterBarter.Fire(cr, talker, true, talker->GetBarterCritters() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTime = GameTime.GameplayTime();
                 cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgBarterMaxTime};
@@ -4567,8 +4589,8 @@ void FOServer::Process_Dialog(Player* player)
         cr->Talk.Barter = false;
         next_dlg_id = cur_dialog->Id;
         if (talker != nullptr) {
-            talker->OnBarter.Fire(cr, false, talker->GetBarterPlayers() + 1);
-            OnCritterBarter.Fire(talker, cr, false, talker->GetBarterPlayers() + 1);
+            talker->OnBarter.Fire(cr, false, talker->GetBarterCritters() + 1);
+            OnCritterBarter.Fire(cr, talker, false, talker->GetBarterCritters() + 1);
         }
     }
 

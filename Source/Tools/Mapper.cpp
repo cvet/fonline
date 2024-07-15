@@ -1752,12 +1752,13 @@ void FOMapper::IntLMouseUp()
                 }
 
                 vector<ItemHexView*> items;
-                vector<CritterView*> critters;
+                vector<CritterHexView*> critters;
                 for (auto&& [hx, hy] : hexes) {
                     // Items, critters
                     auto&& hex_items = CurMap->GetItems(hx, hy);
                     items.insert(items.end(), hex_items.begin(), hex_items.end());
-                    auto hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
+
+                    auto&& hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
                     critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
 
                     // Tile, roof

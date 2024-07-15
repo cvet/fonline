@@ -101,9 +101,8 @@ public:
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
     [[nodiscard]] auto IsTalking() const -> bool;
-    [[nodiscard]] auto GetTalkedPlayers() const -> uint;
-    [[nodiscard]] auto IsTalkedPlayers() const -> bool;
-    [[nodiscard]] auto GetBarterPlayers() const -> uint;
+    [[nodiscard]] auto GetTalkingCritters() const -> uint;
+    [[nodiscard]] auto GetBarterCritters() const -> uint;
     [[nodiscard]] auto IsFreeToTalk() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
 
@@ -149,6 +148,7 @@ public:
 
     void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Send_Moving(const Critter* from_cr);
+    void Send_MovingSpeed(const Critter* from_cr);
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
@@ -266,6 +266,7 @@ public:
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
         time_point StartTime {};
+        time_duration OffsetTime {};
         uint16 StartHexX {};
         uint16 StartHexY {};
         uint16 EndHexX {};

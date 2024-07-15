@@ -43,7 +43,7 @@
 
 #include "png.h"
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*;
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den, int16& result_offs_x, int16& result_offs_y) -> uint8*;
 static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*;
 
 ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
@@ -84,6 +84,7 @@ void ImageBaker::AutoBake()
     ProcessImages("mos", [this](string_view fname, string_view opt, File& file) { return LoadMos(fname, opt, file); });
     ProcessImages("bam", [this](string_view fname, string_view opt, File& file) { return LoadBam(fname, opt, file); });
     ProcessImages("png", [this](string_view fname, string_view opt, File& file) { return LoadPng(fname, opt, file); });
+    ProcessImages("apng", [this](string_view fname, string_view opt, File& file) { return LoadPng(fname, opt, file); });
     ProcessImages("tga", [this](string_view fname, string_view opt, File& file) { return LoadTga(fname, opt, file); });
 
     if (_errors > 0) {
@@ -239,6 +240,9 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
         return LoadBam(fname, opt, file);
     }
     if (ext == "png") {
+        return LoadPng(fname, opt, file);
+    }
+    if (ext == "apng") {
         return LoadPng(fname, opt, file);
     }
     if (ext == "tga") {
@@ -875,9 +879,9 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> Fram
 
     for (auto i = 0, j = w * h; i < j; i++) {
         const auto index = static_cast<uint>(file.GetUChar()) * 3;
-        const uint8 r = static_cast<uint8>(*(palette + index + 2) * 4);
-        const uint8 g = static_cast<uint8>(*(palette + index + 1) * 4);
-        const uint8 b = static_cast<uint8>(*(palette + index + 0) * 4);
+        const auto r = static_cast<uint8>(*(palette + index + 2) * 4);
+        const auto g = static_cast<uint8>(*(palette + index + 1) * 4);
+        const auto b = static_cast<uint8>(*(palette + index + 0) * 4);
         *(ptr + i) = ucolor {r, g, b};
     }
 
@@ -2057,22 +2061,71 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
     UNUSED_VARIABLE(opt);
 
-    uint w = 0;
-    uint h = 0;
-    const auto* png_data = PngLoad(file.GetBuf(), w, h);
+    uint width = 0;
+    uint height = 0;
+    uint frames_count = 0;
+    uint delay_num = 0;
+    uint delay_den = 0;
+    int16 offs_x = 0;
+    int16 offs_y = 0;
+
+    const auto* png_data = PngLoad(file.GetBuf(), width, height, frames_count, delay_num, delay_den, offs_x, offs_y);
     if (png_data == nullptr) {
         throw ImageBakerException("Can't read PNG", fname);
     }
 
-    vector<uint8> data(static_cast<size_t>(w) * h * 4);
-    std::memcpy(data.data(), png_data, static_cast<size_t>(w) * h * 4);
-
     FrameCollection collection;
-    collection.SequenceSize = 1;
-    collection.AnimTicks = 100;
-    collection.Main.Frames[0].Width = static_cast<uint16>(w);
-    collection.Main.Frames[0].Height = static_cast<uint16>(h);
-    collection.Main.Frames[0].Data = std::move(data);
+    collection.HaveDirs = false;
+
+    if (opt.find('d') != string::npos) {
+        collection.SequenceSize = static_cast<uint16>(static_cast<int>(frames_count) / GameSettings::MAP_DIR_COUNT);
+        collection.HaveDirs = true;
+
+        for (uint i = 0; i < frames_count; i++) {
+            const auto dir = static_cast<int>(i) / (frames_count / GameSettings::MAP_DIR_COUNT);
+            const auto num = static_cast<int>(i) % (frames_count / GameSettings::MAP_DIR_COUNT);
+            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+            vector<uint8> data(static_cast<size_t>(width) * height * 4);
+
+            std::memcpy(data.data(), png_data + i * static_cast<size_t>(width) * height * 4, static_cast<size_t>(width) * height * 4);
+
+            sequence.Frames[num].Width = static_cast<uint16>(width);
+            sequence.Frames[num].Height = static_cast<uint16>(height);
+            sequence.Frames[num].Data = std::move(data);
+            sequence.OffsX = offs_x;
+            sequence.OffsY = offs_y;
+        }
+    }
+    else {
+        collection.SequenceSize = static_cast<uint16>(frames_count);
+        collection.Main.OffsX = offs_x;
+        collection.Main.OffsY = offs_y;
+
+        for (uint i = 0; i < frames_count; i++) {
+            vector<uint8> data(static_cast<size_t>(width) * height * 4);
+
+            std::memcpy(data.data(), png_data + i * static_cast<size_t>(width) * height * 4, static_cast<size_t>(width) * height * 4);
+
+            collection.Main.Frames[i].Width = static_cast<uint16>(width);
+            collection.Main.Frames[i].Height = static_cast<uint16>(height);
+            collection.Main.Frames[i].Data = std::move(data);
+        }
+    }
+
+    if (frames_count > 1) {
+        // According to APNG specs
+        if (delay_den == 0) {
+            delay_den = 100;
+        }
+
+        collection.AnimTicks = static_cast<uint16>(1000u * delay_num / delay_den * collection.SequenceSize);
+    }
+    else {
+        collection.AnimTicks = 100;
+    }
+
+    delete[] png_data;
+
     return collection;
 }
 
@@ -2100,10 +2153,13 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     collection.Main.Frames[0].Width = static_cast<uint16>(w);
     collection.Main.Frames[0].Height = static_cast<uint16>(h);
     collection.Main.Frames[0].Data = std::move(data);
+
+    delete[] tga_data;
+
     return collection;
 }
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, uint& result_number, uint& result_delay_num, uint& result_delay_den, int16& result_offs_x, int16& result_offs_y) -> uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -2180,30 +2236,90 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) 
     png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
     png_read_update_info(png_ptr, info_ptr);
 
-    // Allocate row pointers
-    auto* row_pointers = static_cast<png_bytepp>(malloc(height * sizeof(png_bytep)));
-    if (row_pointers == nullptr) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
-    }
+    const png_uint_32 frames_count_anim = png_get_num_frames(png_ptr, info_ptr);
+    auto* result = new uint8[static_cast<size_t>(width) * height * frames_count_anim * 4];
 
-    // Set the individual row_pointers to point at the correct offsets
-    auto* result = new uint8[static_cast<size_t>(width) * height * 4];
-    for (uint i = 0; i < height; i++) {
-        row_pointers[i] = result + static_cast<size_t>(i) * width * 4;
-    }
+    // Set all pixels to transparent background, defalut blend PNG_DISPOSE_OP_BACKGROUND
+    std::memset(result, 0, static_cast<size_t>(width) * height * frames_count_anim * 4);
 
-    // Read image
-    png_read_image(png_ptr, row_pointers);
+    png_uint_32 frame_height = height;
+    png_uint_32 frame_x_offset = 0;
+    png_uint_32 frame_y_offset = 0;
+
+    png_byte frame_dispose_op = PNG_DISPOSE_OP_NONE;
+    const png_uint_16 delay_num = png_get_next_frame_delay_num(png_ptr, info_ptr);
+    const png_uint_16 delay_den = png_get_next_frame_delay_den(png_ptr, info_ptr);
+
+    size_t cur_frame = 0;
+    vector<png_byte*> row_pointers;
+
+    while (true) {
+        if (frames_count_anim > 1) {
+            png_read_frame_head(png_ptr, info_ptr);
+
+            frame_height = png_get_next_frame_height(png_ptr, info_ptr);
+            frame_x_offset = png_get_next_frame_x_offset(png_ptr, info_ptr);
+            frame_y_offset = png_get_next_frame_y_offset(png_ptr, info_ptr);
+            frame_dispose_op = png_get_next_frame_dispose_op(png_ptr, info_ptr);
+        }
+
+        // Allocate row pointers, frame_height <= height
+        row_pointers.resize(frame_height);
+
+        // Set the individual row_pointers to point at the correct offsets
+        for (png_uint_32 i = 0; i < frame_height; i++) {
+            row_pointers[i] = result + static_cast<size_t>(i) * width * 4 + cur_frame * width * height * 4 + //
+                static_cast<size_t>(frame_x_offset) * 4 + static_cast<size_t>(frame_y_offset) * width * 4;
+        }
+
+        // Read image
+        png_read_image(png_ptr, row_pointers.data());
+
+        if (++cur_frame == frames_count_anim) {
+            break;
+        }
+
+        // Handle frame dispose options
+        if (frame_dispose_op == PNG_DISPOSE_OP_NONE) {
+            std::memcpy(result + cur_frame * width * height * 4, result + (cur_frame - 1) * width * height * 4, static_cast<size_t>(width) * height * 4);
+        }
+        else if (frame_dispose_op == PNG_DISPOSE_OP_PREVIOUS) {
+            RUNTIME_ASSERT(cur_frame > 1);
+            std::memcpy(result + cur_frame * width * height * 4, result + (cur_frame - 2) * width * height * 4, static_cast<size_t>(width) * height * 4);
+        }
+    }
 
     // Clean up
     png_read_end(png_ptr, info_ptr);
-    png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
-    free(row_pointers);
+
+    png_textp text_ptr;
+    int num_text;
+    int16 offs_x = 0;
+    int16 offs_y = 0;
+
+    // Read tEXt chunks, and assign offsets if present
+    png_get_text(png_ptr, info_ptr, &text_ptr, &num_text);
+
+    for (int i = 0; i < num_text; i++) {
+        if (strcmp(text_ptr[i].key, "fo_offset_x") == 0) {
+            offs_x = static_cast<int16>(_str(text_ptr[i].text).toInt());
+        }
+        else if (strcmp(text_ptr[i].key, "fo_offset_y") == 0) {
+            offs_y = static_cast<int16>(_str(text_ptr[i].text).toInt());
+        }
+    }
+
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
 
     // Return
+    result_offs_x = offs_x;
+    result_offs_y = offs_y;
     result_width = width;
     result_height = height;
+    result_number = frames_count_anim;
+    result_delay_num = delay_num;
+    result_delay_den = delay_den;
+
     return result;
 }
 

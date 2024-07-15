@@ -161,6 +161,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_SPEED, [this] { Net_OnCritterMoveSpeed(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
@@ -239,6 +240,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             prop->AddPostSetter(std::move(callback));
         };
 
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
@@ -322,11 +324,11 @@ auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, Critte
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool
+auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, state_anim_ex, action_anim_ex, flags);
+    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
 }
 
 auto FOClient::IsConnecting() const -> bool
@@ -1659,6 +1661,44 @@ void FOClient::Net_OnCritterMove()
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
     cr->AnimateStay();
+}
+
+void FOClient::Net_OnCritterMoveSpeed()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto speed = _conn.InBuf.Read<uint16>();
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    auto* cr = CurMap->GetCritter(cr_id);
+    if (cr == nullptr) {
+        return;
+    }
+    if (!cr->IsMoving()) {
+        return;
+    }
+    if (speed == cr->Moving.Speed) {
+        return;
+    }
+
+    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto elapsed_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime);
+
+    cr->Moving.WholeTime /= diff;
+    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.Speed = speed;
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
 }
 
 void FOClient::Net_OnCritterAction()
@@ -3225,6 +3265,18 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     }
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
+    }
+}
+
+void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
+        cr->GetMap()->RefreshMap();
+        cr->GetMap()->RebuildFog();
     }
 }
 

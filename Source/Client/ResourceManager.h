@@ -63,7 +63,7 @@ public:
 
 private:
     [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>;
-    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> const SpriteSheet*;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint state_anim, uint action_anim) -> const SpriteSheet*;
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*;
 #endif

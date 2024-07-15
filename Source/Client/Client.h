@@ -137,7 +137,7 @@ public:
 
     [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool override;
 
     [[nodiscard]] auto IsConnecting() const -> bool;
     [[nodiscard]] auto IsConnected() const -> bool;
@@ -263,7 +263,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, CritterStateAnim& /*stateAnimEx*/, CritterActionAnim& /*actionAnimEx*/, uint& /*flags*/);
+    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, CritterItemSlot /*toSlot*/);
     ///@ ExportEvent
@@ -379,6 +379,7 @@ protected:
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
+    void Net_OnCritterMoveSpeed();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
@@ -411,6 +412,7 @@ protected:
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
+    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
     void OnSetCritterContourColor(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
