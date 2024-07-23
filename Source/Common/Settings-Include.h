@@ -218,9 +218,9 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
-FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true, true);
-FIXED_SETTING(vector<bool>, CritterSlotSendData, true, false, true);
-FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false, false);
+FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true);
+FIXED_SETTING(vector<bool>, CritterSlotSendData, false, true);
+FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

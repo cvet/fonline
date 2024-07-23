@@ -138,23 +138,9 @@ void Player::Send_AddCritter(const Critter* cr)
     send_items.reserve(inv_items.size());
 
     for (const auto* item : inv_items) {
-        const auto slot = static_cast<size_t>(item->GetCritterSlot());
-
-        if (slot >= _engine->Settings.CritterSlotEnabled.size() || !_engine->Settings.CritterSlotEnabled[slot]) {
-            continue;
+        if (item->CanSendItem(!is_chosen)) {
+            send_items.emplace_back(item);
         }
-
-        if (!is_chosen) {
-            if (slot >= _engine->Settings.CritterSlotSendData.size() || !_engine->Settings.CritterSlotSendData[slot]) {
-                continue;
-            }
-        }
-
-        if (item->GetIsHidden()) {
-            continue;
-        }
-
-        send_items.emplace_back(item);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -449,20 +435,9 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
         send_items.reserve(inv_items.size());
 
         for (const auto* item : inv_items) {
-            const auto slot = static_cast<size_t>(item->GetCritterSlot());
-
-            if (slot >= _engine->Settings.CritterSlotEnabled.size() || !_engine->Settings.CritterSlotEnabled[slot]) {
-                continue;
+            if (item->CanSendItem(true)) {
+                send_items.emplace_back(item);
             }
-            if (slot >= _engine->Settings.CritterSlotSendData.size() || !_engine->Settings.CritterSlotSendData[slot]) {
-                continue;
-            }
-
-            if (item->GetIsHidden()) {
-                continue;
-            }
-
-            send_items.emplace_back(item);
         }
     }
 

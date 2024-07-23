@@ -3229,10 +3229,14 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
                 auto* cr = CrMngr.GetCritter(item->GetCritterId());
                 if (cr != nullptr) {
                     if (is_public || is_protected) {
-                        cr->Send_Property(NetProperty::ChosenItem, prop, item);
+                        if (item->CanSendItem(false)) {
+                            cr->Send_Property(NetProperty::ChosenItem, prop, item);
+                        }
                     }
                     if (is_public) {
-                        cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
+                        if (item->CanSendItem(true)) {
+                            cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
+                        }
                     }
                 }
             }
@@ -3241,7 +3245,9 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
             if (is_public) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
-                    map->SendProperty(NetProperty::MapItem, prop, item);
+                    if (item->CanSendItem(true)) {
+                        map->SendProperty(NetProperty::MapItem, prop, item);
+                    }
                 }
             }
         } break;

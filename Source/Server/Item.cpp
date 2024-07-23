@@ -244,3 +244,35 @@ void Item::RemoveItemFromContainer(Item* item)
     inner_item_ids.erase(inner_item_id_it);
     SetInnerItemIds(std::move(inner_item_ids));
 }
+
+auto Item::CanSendItem(bool as_public) const -> bool
+{
+    switch (GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        const auto slot = GetCritterSlot();
+        const auto slot_num = static_cast<size_t>(slot);
+
+        if (slot_num >= _engine->Settings.CritterSlotEnabled.size() || !_engine->Settings.CritterSlotEnabled[slot_num]) {
+            return false;
+        }
+
+        if (as_public) {
+            if (slot_num >= _engine->Settings.CritterSlotSendData.size() || !_engine->Settings.CritterSlotSendData[slot_num]) {
+                return false;
+            }
+        }
+    } break;
+    case ItemOwnership::MapHex:
+        break;
+    case ItemOwnership::ItemContainer:
+        return false;
+    default:
+        return false;
+    }
+
+    if (GetIsHidden()) {
+        return false;
+    }
+
+    return true;
+}

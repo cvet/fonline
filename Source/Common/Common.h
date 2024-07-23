@@ -203,11 +203,16 @@ using std::unordered_set;
 using std::variant;
 using std::weak_ptr;
 
+#if !FO_DEBUG
 template<typename T>
 using vector = gch::small_vector<T>;
+#else
+template<typename T>
+using vector = std::vector<T>; // To see vector entries in debugger
+#endif
 using gch::small_vector;
-using tcb::span;
 
+using tcb::span;
 template<typename T>
 using const_span = span<const T>;
 

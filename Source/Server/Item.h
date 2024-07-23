@@ -66,6 +66,7 @@ public:
     [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
     [[nodiscard]] auto HasInnerItems() const -> bool;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
+    [[nodiscard]] auto CanSendItem(bool as_public) const -> bool;
 
     auto AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);
