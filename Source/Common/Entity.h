@@ -328,7 +328,6 @@ public:
 
     void EnableComponent(hstring component);
 
-    map<string, TextPack> Texts {};
     string CollectionName {};
 
 protected:

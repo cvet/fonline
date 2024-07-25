@@ -35,6 +35,7 @@
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 void TextPack::AddStr(TextPackKey num, string_view str)
@@ -152,17 +153,20 @@ auto TextPack::GetSize() const -> size_t
     return _strData.size();
 }
 
-auto TextPack::IsIntersects(const TextPack& other) const -> bool
+auto TextPack::CheckIntersections(const TextPack& other) const -> bool
 {
     STACK_TRACE_ENTRY();
 
+    bool result = false;
+
     for (auto&& [key, value] : _strData) {
         if (other._strData.count(key) != 0) {
-            return true;
+            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other._strData.count(key), value, other._strData.find(key)->second);
+            result = true;
         }
     }
 
-    return false;
+    return result;
 }
 
 auto TextPack::GetBinaryData() const -> vector<uint8>

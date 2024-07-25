@@ -116,12 +116,10 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 
     // Processing
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite) {
-        STACK_TRACE_ENTRY();
-
         for (auto&& [key, value] : from_kv) {
             RUNTIME_ASSERT(!key.empty());
 
-            if (key[0] != '$') {
+            if (key[0] != '$' || _str(key).startsWith("$Text")) {
                 if (overwrite) {
                     to_kv[key] = value;
                 }
@@ -240,12 +238,14 @@ void ProtoManager::ParseProtos(FileSystem& resources)
             // Texts
             const string default_lang = !_engine->Settings.Languages.empty() ? _engine->Settings.Languages.front() : "";
 
+            _parsedTexts[type_name][pid] = {};
+
             for (auto& kv : final_kv) {
                 if (_str(kv.first).startsWith("$Text")) {
                     const auto key_tok = _str(kv.first).split(' ');
                     const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
-                    TextPackKey text_key = proto->GetProtoId().as_uint();
+                    TextPackKey text_key = pid.as_uint();
 
                     for (size_t i = 2; i < key_tok.size(); i++) {
                         const string& num = key_tok[i];
@@ -260,7 +260,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
                         }
                     }
 
-                    proto->Texts[lang].AddStr(text_key, kv.second);
+                    _parsedTexts[type_name][pid][lang].AddStr(text_key, kv.second);
                 }
             }
         }

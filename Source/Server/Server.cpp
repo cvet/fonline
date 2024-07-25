@@ -198,7 +198,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Setup engine data");
 
         // Properties that saving to data base
-        for (auto&& [reg_name, entity_info] : GetEntityTypesInfo()) {
+        for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
             const auto* registrator = entity_info.PropRegistrator;
 
             for (size_t i = 0; i < registrator->GetCount(); i++) {
@@ -270,7 +270,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
             set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
 
-            for (auto&& [reg_name, entity_info] : GetEntityTypesInfo()) {
+            for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
                 if (entity_info.Exported) {
                     continue;
                 }

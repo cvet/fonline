@@ -64,6 +64,7 @@ public:
     [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const -> const unordered_map<hstring, const ProtoEntity*>&;
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
+    [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
 
     void ParseProtos(FileSystem& resources);
     void LoadFromResources();
@@ -83,4 +84,5 @@ private:
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
     unordered_map<hstring, unordered_map<hstring, const ProtoEntity*>> _protos {};
     const unordered_map<hstring, const ProtoEntity*> _emptyProtos {};
+    unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };
