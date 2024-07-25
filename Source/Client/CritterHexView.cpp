@@ -978,6 +978,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
     name_visible = false;
 
     string str;
+
     if (_strTextOnHead.empty()) {
         name_visible = IsNameVisible();
 
