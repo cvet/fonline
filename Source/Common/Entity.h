@@ -54,7 +54,7 @@
     { \
         return _propsRef.GetValue<prop_type>(GetProperty##prop()); \
     } \
-    inline void Set##prop(prop_type value) \
+    inline void Set##prop(const prop_type& value) \
     { \
         _propsRef.SetValue(GetProperty##prop(), value); \
     } \
