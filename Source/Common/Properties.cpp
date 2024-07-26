@@ -1140,7 +1140,7 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 
     const auto hkey = _hashResolver.ToHashedString(key);
 
-    if (const auto& rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _typeName, hkey); rule.has_value()) {
+    if (const auto rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
     }
 

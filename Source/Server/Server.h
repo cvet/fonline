@@ -197,6 +197,7 @@ public:
     const hstring GameCollectionName = ToHashedString("Game");
     const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
     const hstring HistoryCollectionName = ToHashedString("History");
+    const hstring PlayersCollectionName = ToHashedString("Players");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

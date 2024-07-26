@@ -572,7 +572,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
     auto proto_id = _engine->ToHashedString(proto_name);
 
-    if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id)) {
+    if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id).has_value()) {
         return {};
     }
 
