@@ -105,12 +105,13 @@ public:
     void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
 
 private:
-    auto LoadEntityDoc(hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
 
     FOServer* _engine;
+
     unordered_map<ident_t, Player*> _allPlayers {};
     unordered_map<ident_t, Location*> _allLocations {};
     unordered_map<ident_t, Map*> _allMaps {};
@@ -118,6 +119,19 @@ private:
     unordered_map<ident_t, Item*> _allItems {};
     unordered_map<hstring, unordered_map<ident_t, CustomEntity*>> _allCustomEntities {};
     unordered_map<ident_t, ServerEntity*> _allEntities {};
+
     const hstring _entityTypeMapCollection {};
+    const hstring _playerTypeName {};
+    const hstring _locationTypeName {};
+    const hstring _mapTypeName {};
+    const hstring _critterTypeName {};
+    const hstring _itemTypeName {};
+    const hstring _playerCollectionName {};
+    const hstring _locationCollectionName {};
+    const hstring _mapCollectionName {};
+    const hstring _critterCollectionName {};
+    const hstring _itemCollectionName {};
+    const hstring _removeMigrationRuleName {};
+
     bool _nonConstHelper {};
 };

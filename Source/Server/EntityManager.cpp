@@ -43,7 +43,18 @@
 
 EntityManager::EntityManager(FOServer* engine) :
     _engine {engine},
-    _entityTypeMapCollection {engine->ToHashedString("EntityTypeMap")}
+    _entityTypeMapCollection {engine->ToHashedString("EntityTypeMap")},
+    _playerTypeName {engine->ToHashedString(Player::ENTITY_TYPE_NAME)},
+    _locationTypeName {engine->ToHashedString(Location::ENTITY_TYPE_NAME)},
+    _mapTypeName {engine->ToHashedString(Map::ENTITY_TYPE_NAME)},
+    _critterTypeName {engine->ToHashedString(Critter::ENTITY_TYPE_NAME)},
+    _itemTypeName {engine->ToHashedString(Item::ENTITY_TYPE_NAME)},
+    _playerCollectionName {engine->ToHashedString(_str("{}s", Player::ENTITY_TYPE_NAME))},
+    _locationCollectionName {engine->ToHashedString(_str("{}s", Location::ENTITY_TYPE_NAME))},
+    _mapCollectionName {engine->ToHashedString(_str("{}s", Map::ENTITY_TYPE_NAME))},
+    _critterCollectionName {engine->ToHashedString(_str("{}s", Critter::ENTITY_TYPE_NAME))},
+    _itemCollectionName {engine->ToHashedString(_str("{}s", Item::ENTITY_TYPE_NAME))},
+    _removeMigrationRuleName {engine->ToHashedString("Remove")}
 {
     STACK_TRACE_ENTRY();
 }
@@ -196,7 +207,7 @@ void EntityManager::LoadEntities()
 
     bool is_error = false;
 
-    const auto loc_ids = _engine->DbStorage.GetAllIds(_engine->LocationsCollectionName);
+    const auto loc_ids = _engine->DbStorage.GetAllIds(_locationCollectionName);
 
     for (const auto loc_id : loc_ids) {
         LoadLocation(ident_t {loc_id}, is_error);
@@ -235,7 +246,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [loc_doc, loc_pid] = LoadEntityDoc(_engine->LocationsCollectionName, loc_id, true, is_error);
+    auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
     if (!loc_pid) {
         return {};
@@ -262,6 +273,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     RegisterEntity(loc);
 
     const auto map_ids = loc->GetMapIds();
+    bool map_ids_changed = false;
 
     for (const auto& map_id : map_ids) {
         auto* map = LoadMap(map_id, is_error);
@@ -280,6 +292,19 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
 
             map->SetLocation(loc);
         }
+        else {
+            map_ids_changed = true;
+        }
+    }
+
+    if (map_ids_changed) {
+        vector<ident_t> actual_map_ids;
+
+        for (const auto* item : loc->GetMapsRaw()) {
+            actual_map_ids.emplace_back(item->GetId());
+        }
+
+        loc->SetMapIds(actual_map_ids);
     }
 
     return loc;
@@ -289,7 +314,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [map_doc, map_pid] = LoadEntityDoc(_engine->MapsCollectionName, map_id, true, is_error);
+    auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
     if (!map_pid) {
         return {};
@@ -314,7 +339,9 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 
     RegisterEntity(map);
 
+    // Map critters
     const auto cr_ids = map->GetCritterIds();
+    bool cr_ids_changed = false;
 
     for (const auto& cr_id : cr_ids) {
         auto* cr = LoadCritter(cr_id, is_error);
@@ -331,9 +358,24 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 
             map->AddCritter(cr);
         }
+        else {
+            cr_ids_changed = true;
+        }
     }
 
+    if (cr_ids_changed) {
+        vector<ident_t> actual_cr_ids;
+
+        for (const auto* cr : map->GetCritters()) {
+            actual_cr_ids.emplace_back(cr->GetId());
+        }
+
+        map->SetCritterIds(actual_cr_ids);
+    }
+
+    // Map items
     const auto item_ids = map->GetItemIds();
+    bool item_ids_changed = false;
 
     for (const auto& item_id : item_ids) {
         auto* item = LoadItem(item_id, is_error);
@@ -350,6 +392,19 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
 
             map->SetItem(item, item->GetHexX(), item->GetHexY());
         }
+        else {
+            item_ids_changed = true;
+        }
+    }
+
+    if (item_ids_changed) {
+        vector<ident_t> actual_item_ids;
+
+        for (const auto* item : map->GetItems()) {
+            actual_item_ids.emplace_back(item->GetId());
+        }
+
+        map->SetItemIds(actual_item_ids);
     }
 
     return map;
@@ -359,7 +414,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [cr_doc, cr_pid] = LoadEntityDoc(_engine->CrittersCollectionName, cr_id, true, is_error);
+    auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
     if (!cr_pid) {
         return {};
@@ -383,7 +438,9 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
 
     RegisterEntity(cr);
 
+    // Inventory
     const auto item_ids = cr->GetItemIds();
+    bool item_ids_changed = false;
 
     for (const auto& item_id : item_ids) {
         auto* inv_item = LoadItem(item_id, is_error);
@@ -393,6 +450,20 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
 
             cr->SetItem(inv_item);
         }
+        else {
+            item_ids_changed = true;
+        }
+    }
+
+    if (item_ids_changed) {
+        vector<ident_t> actual_item_ids;
+        actual_item_ids.reserve(item_ids.size());
+
+        for (const auto* item : cr->GetRawInvItems()) {
+            actual_item_ids.emplace_back(item->GetId());
+        }
+
+        cr->SetItemIds(actual_item_ids);
     }
 
     return cr;
@@ -402,7 +473,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& [item_doc, item_pid] = LoadEntityDoc(_engine->ItemsCollectionName, item_id, true, is_error);
+    auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
     if (!item_pid) {
         return {};
@@ -432,7 +503,9 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
 
     RegisterEntity(item);
 
+    // Inner items
     const auto inner_item_ids = item->GetInnerItemIds();
+    bool inner_item_ids_changed = false;
 
     for (const auto& inner_item_id : inner_item_ids) {
         auto* inner_item = LoadItem(inner_item_id, is_error);
@@ -442,12 +515,25 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
 
             item->SetItemToContainer(inner_item);
         }
+        else {
+            inner_item_ids_changed = true;
+        }
+    }
+
+    if (inner_item_ids_changed) {
+        vector<ident_t> actual_inner_item_ids;
+
+        for (const auto* inner_item : item->GetRawInnerItems()) {
+            actual_inner_item_ids.emplace_back(inner_item->GetId());
+        }
+
+        item->SetInnerItemIds(actual_inner_item_ids);
     }
 
     return item;
 }
 
-auto EntityManager::LoadEntityDoc(hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>
+auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>
 {
     STACK_TRACE_ENTRY();
 
@@ -485,6 +571,10 @@ auto EntityManager::LoadEntityDoc(hstring collection_name, ident_t id, bool expe
     }
 
     auto proto_id = _engine->ToHashedString(proto_name);
+
+    if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id)) {
+        return {};
+    }
 
     return {std::move(doc), proto_id};
 }
@@ -955,7 +1045,7 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
     RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
 
     const auto collection_name = _engine->ToHashedString(_str("{}s", type_name));
-    auto&& [doc, pid] = LoadEntityDoc(collection_name, id, false, is_error);
+    auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
     if (doc.empty()) {
         WriteLog("Custom entity {} with type {} not found", id, type_name);

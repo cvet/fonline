@@ -195,11 +195,6 @@ public:
 
     DataBase DbStorage {};
     const hstring GameCollectionName = ToHashedString("Game");
-    const hstring PlayersCollectionName = ToHashedString("Players");
-    const hstring LocationsCollectionName = ToHashedString("Locations");
-    const hstring MapsCollectionName = ToHashedString("Maps");
-    const hstring CrittersCollectionName = ToHashedString("Critters");
-    const hstring ItemsCollectionName = ToHashedString("Items");
     const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
     const hstring HistoryCollectionName = ToHashedString("History");
 

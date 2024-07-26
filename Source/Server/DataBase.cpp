@@ -71,6 +71,7 @@ public:
     void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges();
+    void ClearChanges() noexcept;
     void WaitCommitThread();
 
 protected:
@@ -173,6 +174,15 @@ void DataBase::CommitChanges(bool wait_commit_complete)
     if (wait_commit_complete) {
         _impl->WaitCommitThread();
     }
+}
+
+void DataBase::ClearChanges() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    _impl->ClearChanges();
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
@@ -558,7 +568,7 @@ void DataBaseImpl::CommitChanges()
 {
     STACK_TRACE_ENTRY();
 
-    const auto is_changes_empty = [](const auto& collection) {
+    const auto is_changes_empty = [](const auto& collection) noexcept {
         for (auto&& [key, value] : collection) {
             if (!value.empty()) {
                 return false;
@@ -605,6 +615,15 @@ void DataBaseImpl::CommitChanges()
 
         return std::nullopt;
     });
+
+    _recordChanges.clear();
+    _newRecords.clear();
+    _deletedRecords.clear();
+}
+
+void DataBaseImpl::ClearChanges() noexcept
+{
+    STACK_TRACE_ENTRY();
 
     _recordChanges.clear();
     _newRecords.clear();

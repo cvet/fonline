@@ -406,72 +406,80 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Start game logic");
 
-        // Globals
-        const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
-        if (globals_doc.empty()) {
-            DbStorage.Insert(GameCollectionName, ident_t {1}, {});
+        try {
+            // Globals
+            const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
+            if (globals_doc.empty()) {
+                DbStorage.Insert(GameCollectionName, ident_t {1}, {});
+            }
+            else {
+                if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
+                    throw ServerInitException("Failed to load globals document");
+                }
+
+                GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+            }
+
+            GameTime.FrameAdvance();
+
+            // Scripting
+            WriteLog("Init script modules");
+
+            extern void InitServerEngine(FOServer * server);
+            InitServerEngine(this);
+
+            ScriptSys->InitModules();
+
+            if (!OnInit.Fire()) {
+                throw ServerInitException("Initialization script failed");
+            }
+
+            // Init world
+            if (globals_doc.empty()) {
+                WriteLog("Generate world");
+
+                if (!OnGenerateWorld.Fire()) {
+                    throw ServerInitException("Generate world script failed");
+                }
+            }
+            else {
+                WriteLog("Restore world");
+
+                int errors = 0;
+
+                try {
+                    ServerDeferredCalls.LoadDeferredCalls();
+                }
+                catch (std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    errors++;
+                }
+
+                try {
+                    EntityMngr.LoadEntities();
+                }
+                catch (std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    errors++;
+                }
+
+                if (errors != 0) {
+                    throw ServerInitException("Something went wrong during world restoring");
+                }
+            }
+
+            WriteLog("Start world");
+
+            // Start script
+            if (!OnStart.Fire()) {
+                throw ServerInitException("Start script failed");
+            }
         }
-        else {
-            if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
-                throw ServerInitException("Failed to load globals document");
-            }
+        catch (...) {
+            // Don't change data base
+            DbStorage.ClearChanges();
 
-            GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
-        }
-
-        GameTime.FrameAdvance();
-
-        // Scripting
-        WriteLog("Init script modules");
-
-        extern void InitServerEngine(FOServer * server);
-        InitServerEngine(this);
-
-        ScriptSys->InitModules();
-
-        if (!OnInit.Fire()) {
-            throw ServerInitException("Initialization script failed");
-        }
-
-        // Init world
-        if (globals_doc.empty()) {
-            WriteLog("Generate world");
-
-            if (!OnGenerateWorld.Fire()) {
-                throw ServerInitException("Generate world script failed");
-            }
-        }
-        else {
-            WriteLog("Restore world");
-
-            int errors = 0;
-
-            try {
-                ServerDeferredCalls.LoadDeferredCalls();
-            }
-            catch (std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
-            }
-
-            try {
-                EntityMngr.LoadEntities();
-            }
-            catch (std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
-            }
-
-            if (errors != 0) {
-                throw ServerInitException("Something went wrong during world restoring");
-            }
-        }
-
-        WriteLog("Start world");
-
-        // Start script
-        if (!OnStart.Fire()) {
-            throw ServerInitException("Start script failed");
+            throw;
         }
 
         // Commit initial data base changes
