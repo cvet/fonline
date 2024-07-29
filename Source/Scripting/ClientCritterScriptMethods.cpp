@@ -533,3 +533,14 @@
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetContour(CritterView* self, ContourType contour)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->GetMap()->SetCritterContour(self->GetId(), contour);
+}

@@ -944,3 +944,15 @@
 
     self->SetCursorPos(hex_cr, mouseX, mouseY, showSteps, forceRefresh);
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_SetCrittersContour(MapView* self, ContourType contour)
+{
+    self->SetCrittersContour(contour);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_ResetCritterContour(MapView* self)
+{
+    self->SetCritterContour(ident_t {}, ContourType::None);
+}

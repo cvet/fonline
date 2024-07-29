@@ -3648,7 +3648,11 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
 {
     STACK_TRACE_ENTRY();
 
-    if (_critterContourCrId) {
+    if (_critterContourCrId == cr_id && _critterContour == contour) {
+        return;
+    }
+
+    if (cr_id != _critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
         if (cr != nullptr && cr->IsSpriteValid()) {
             if (!cr->IsDead() && !cr->GetIsChosen()) {

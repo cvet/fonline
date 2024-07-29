@@ -4006,19 +4006,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
-    else if (cmd == "SetCrittersContour" && args.size() == 2) {
-        if (CurMap != nullptr) {
-            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            CurMap->SetCrittersContour(countour_type);
-        }
-    }
-    else if (cmd == "SetCritterContour" && args.size() == 3) {
-        if (CurMap != nullptr) {
-            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            const auto cr_id = ident_t {_str(args[2]).toUInt()};
-            CurMap->SetCritterContour(cr_id, countour_type);
-        }
-    }
     else if (cmd == "DrawWait") {
         WaitDraw();
     }
