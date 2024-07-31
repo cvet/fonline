@@ -821,6 +821,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
     NON_CONST_METHOD_HINT();
 
     if (entity->GetId()) {
+        const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
+        RUNTIME_ASSERT(inserted);
         return;
     }
 
@@ -832,7 +834,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
     entity->SetId(id);
 
-    _allEntities.emplace(id, entity);
+    const auto [it, inserted] = _allEntities.emplace(id, entity);
+    RUNTIME_ASSERT(inserted);
 
     if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
         const auto* proto = entity_with_proto->GetProto();
@@ -864,12 +867,14 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
 
     RUNTIME_ASSERT(entity->GetId());
 
+    const auto it = _allEntities.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allEntities.end());
+    _allEntities.erase(it);
+
     if (delete_from_db) {
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         _engine->DbStorage.Delete(_entityTypeMapCollection, entity->GetId());
     }
-
-    _allEntities.erase(entity->GetId());
 
     entity->SetId({});
 }
@@ -945,13 +950,12 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     RUNTIME_ASSERT(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.count(entry));
 
     const hstring type_name = std::get<0>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
-    auto* entity = CreateCustomEntity(type_name, pid);
 
-    if (entity == nullptr) {
-        return nullptr;
-    }
+    auto* entity = CreateCustomEntity(type_name, pid);
+    RUNTIME_ASSERT(entity);
 
     if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
+        RUNTIME_ASSERT(holder_with_id->GetId());
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
