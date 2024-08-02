@@ -195,9 +195,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
 
-protected:
     explicit EntityProperties(Properties& props);
 
+protected:
     Properties& _propsRef;
 };
 
@@ -270,9 +270,9 @@ public:
     [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
-    [[nodiscard]] auto HasInnerEntities() const -> bool { return _innerEntities && !_innerEntities->empty(); }
-    [[nodiscard]] auto GetRawInnerEntities() const -> const auto& { return *_innerEntities; }
-    [[nodiscard]] auto GetInnerEntities(hstring entry) -> const vector<Entity*>*;
+    [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
+    [[nodiscard]] auto GetRawInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
+    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);

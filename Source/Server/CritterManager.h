@@ -63,8 +63,8 @@ public:
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCritter(ident_t cr_id) const -> const Critter*;
+    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> size_t;
     [[nodiscard]] auto CrittersInGame() const -> size_t;

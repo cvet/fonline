@@ -163,6 +163,17 @@ auto EntityManager::GetMaps() -> const unordered_map<ident_t, Map*>&
     return _allMaps;
 }
 
+auto EntityManager::GetCritter(ident_t id) const -> const Critter*
+{
+    STACK_TRACE_ENTRY();
+
+    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetCritter(ident_t id) -> Critter*
 {
     STACK_TRACE_ENTRY();
@@ -207,6 +218,8 @@ void EntityManager::LoadEntities()
 
     bool is_error = false;
 
+    LoadInnerEntities(_engine, is_error);
+
     const auto loc_ids = _engine->DbStorage.GetAllIds(_locationCollectionName);
 
     for (const auto loc_id : loc_ids) {
@@ -223,6 +236,7 @@ void EntityManager::LoadEntities()
     WriteLog("Loaded {} maps", _allMaps.size());
     WriteLog("Loaded {} critters", _allCritters.size());
     WriteLog("Loaded {} items", _allItems.size());
+    WriteLog("Loaded {} other entities", _allEntities.size() - _allLocations.size() - _allMaps.size() - _allCritters.size() - _allItems.size());
 
     WriteLog("Init entities");
 
@@ -298,14 +312,12 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     }
 
     if (map_ids_changed) {
-        vector<ident_t> actual_map_ids;
-
-        for (const auto* item : loc->GetMapsRaw()) {
-            actual_map_ids.emplace_back(item->GetId());
-        }
-
+        const auto actual_map_ids = vec_transform(loc->GetMapsRaw(), [](const Map* map) -> ident_t { return map->GetId(); });
         loc->SetMapIds(actual_map_ids);
     }
+
+    // Inner entities
+    LoadInnerEntities(loc, is_error);
 
     return loc;
 }
@@ -364,12 +376,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     }
 
     if (cr_ids_changed) {
-        vector<ident_t> actual_cr_ids;
-
-        for (const auto* cr : map->GetCritters()) {
-            actual_cr_ids.emplace_back(cr->GetId());
-        }
-
+        const auto actual_cr_ids = vec_transform(map->GetCritters(), [](const Critter* cr) -> ident_t { return cr->GetId(); });
         map->SetCritterIds(actual_cr_ids);
     }
 
@@ -381,6 +388,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         auto* item = LoadItem(item_id, is_error);
 
         if (item != nullptr) {
+            RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
             RUNTIME_ASSERT(item->GetMapId() == map->GetId());
 
             if (item->GetHexX() >= map->GetWidth()) {
@@ -390,7 +398,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
                 item->SetHexY(map->GetHeight() - 1);
             }
 
-            map->SetItem(item, item->GetHexX(), item->GetHexY());
+            map->SetItem(item);
         }
         else {
             item_ids_changed = true;
@@ -398,14 +406,12 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     }
 
     if (item_ids_changed) {
-        vector<ident_t> actual_item_ids;
-
-        for (const auto* item : map->GetItems()) {
-            actual_item_ids.emplace_back(item->GetId());
-        }
-
+        const auto actual_item_ids = vec_transform(map->GetItems(), [](const Item* item) -> ident_t { return item->GetId(); });
         map->SetItemIds(actual_item_ids);
     }
+
+    // Inner entities
+    LoadInnerEntities(map, is_error);
 
     return map;
 }
@@ -446,6 +452,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
         auto* inv_item = LoadItem(item_id, is_error);
 
         if (inv_item != nullptr) {
+            RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
             RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
 
             cr->SetItem(inv_item);
@@ -456,15 +463,12 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     }
 
     if (item_ids_changed) {
-        vector<ident_t> actual_item_ids;
-        actual_item_ids.reserve(item_ids.size());
-
-        for (const auto* item : cr->GetRawInvItems()) {
-            actual_item_ids.emplace_back(item->GetId());
-        }
-
+        const auto actual_item_ids = vec_transform(cr->GetInvItems(), [](const Item* item) -> ident_t { return item->GetId(); });
         cr->SetItemIds(actual_item_ids);
     }
+
+    // Inner entities
+    LoadInnerEntities(cr, is_error);
 
     return cr;
 }
@@ -511,6 +515,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         auto* inner_item = LoadItem(inner_item_id, is_error);
 
         if (inner_item != nullptr) {
+            RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
             RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
 
             item->SetItemToContainer(inner_item);
@@ -521,16 +526,63 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     }
 
     if (inner_item_ids_changed) {
-        vector<ident_t> actual_inner_item_ids;
-
-        for (const auto* inner_item : item->GetRawInnerItems()) {
-            actual_inner_item_ids.emplace_back(inner_item->GetId());
-        }
-
+        const auto actual_inner_item_ids = vec_transform(item->GetRawInnerItems(), [](const Item* inner_item) -> ident_t { return inner_item->GetId(); });
         item->SetInnerItemIds(actual_inner_item_ids);
     }
 
+    // Inner entities
+    LoadInnerEntities(item, is_error);
+
     return item;
+}
+
+void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error)
+{
+    STACK_TRACE_ENTRY();
+
+    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
+    auto&& inner_entity_ids = holder_props.GetInnerEntityIds();
+
+    if (inner_entity_ids.empty()) {
+        return;
+    }
+
+    bool inner_entity_ids_changed = false;
+    ident_t holder_id = {};
+
+    if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder)) {
+        holder_id = holder_with_id->GetId();
+    }
+
+    for (const auto& id : inner_entity_ids) {
+        auto* custom_entity = LoadCustomEntity(id, is_error);
+
+        if (custom_entity != nullptr) {
+            RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
+
+            holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+
+            // Inner entities
+            LoadInnerEntities(custom_entity, is_error);
+        }
+        else {
+            inner_entity_ids_changed = true;
+        }
+    }
+
+    if (inner_entity_ids_changed) {
+        vector<ident_t> actual_inner_entity_ids;
+
+        if (holder->HasInnerEntities()) {
+            for (auto&& [entry, inner_entities] : holder->GetRawInnerEntities()) {
+                for (const auto* inner_entity : inner_entities) {
+                    actual_inner_entity_ids.emplace_back(static_cast<const CustomEntity*>(inner_entity)->GetId()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                }
+            }
+        }
+
+        holder_props.SetInnerEntityIds(actual_inner_entity_ids);
+    }
 }
 
 auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>
@@ -666,7 +718,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
     }
 
     if (!cr->IsDestroyed()) {
-        for (auto* item : copy_hold_ref(cr->GetRawInvItems())) {
+        for (auto* item : copy_hold_ref(cr->GetInvItems())) {
             if (!item->IsDestroyed()) {
                 CallInit(item, first_time);
             }
@@ -966,6 +1018,11 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
 
     holder->AddInnerEntity(entry, entity);
 
+    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
+    auto inner_entity_ids = holder_props.GetInnerEntityIds();
+    vec_add_unique_value(inner_entity_ids, entity->GetId());
+    holder_props.SetInnerEntityIds(inner_entity_ids);
+
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
 
     return entity;
@@ -1143,10 +1200,14 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 
     holder->RemoveInnerEntity(entity->GetCustomHolderEntry(), entity);
 
+    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
+    auto inner_entity_ids = holder_props.GetInnerEntityIds();
+    vec_remove_unique_value(inner_entity_ids, entity->GetId());
+    holder_props.SetInnerEntityIds(inner_entity_ids);
+
     auto& custom_entities = _allCustomEntities[entity->GetTypeName()];
     const auto it = custom_entities.find(entity->GetId());
     RUNTIME_ASSERT(it != custom_entities.end());
-
     custom_entities.erase(it);
 
     UnregisterEntity(entity, true);
@@ -1211,13 +1272,13 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::fun
         else if (const auto* item = dynamic_cast<Item*>(holder)) {
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
-                if (auto* item_cr = _engine->CrMngr.GetCritter(item->GetCritterId()); item_cr != nullptr) {
+                if (auto* item_cr = GetCritter(item->GetCritterId()); item_cr != nullptr) {
                     find_players_recursively(item_cr, derived_access);
                 }
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_access == EntityHolderEntryAccess::Public) {
-                    if (auto* item_map = _engine->MapMngr.GetMap(item->GetMapId()); item_map != nullptr) {
+                    if (auto* item_map = GetMap(item->GetMapId()); item_map != nullptr) {
                         for (auto* map_cr : item_map->GetPlayerCritters()) {
                             if (map_cr->VisItem.count(item->GetId()) != 0) {
                                 view_callback(map_cr->GetPlayer(), false);
@@ -1227,7 +1288,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::fun
                 }
             } break;
             case ItemOwnership::ItemContainer: {
-                if (auto* item_cont = _engine->ItemMngr.GetItem(item->GetContainerId()); item_cont != nullptr) {
+                if (auto* item_cont = GetItem(item->GetContainerId()); item_cont != nullptr) {
                     find_players_recursively(item_cont, derived_access);
                 }
             } break;

@@ -88,7 +88,8 @@ public:
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto GetRawInvItems() -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetConstRawInvItems() const -> const vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetInvItems() -> const vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetConstInvItems() const -> vector<const Item*> { return vec_static_cast<const Item*>(_invItems); }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> Item*;
     [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) -> Item*;
     [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) -> Item*;
@@ -127,6 +128,7 @@ public:
     void MoveAttachedCritters();
     void ClearVisible();
     void SetItem(Item* item);
+    void RemoveItem(Item* item);
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
 

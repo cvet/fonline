@@ -137,13 +137,9 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
         return {};
     }
 
-    vector<Item*> items;
-    for (auto* item : *_innerItems) {
-        if (stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id) {
-            items.push_back(item);
-        }
-    }
-    return items;
+    return vec_filter(*_innerItems, [stack_id](const Item* item) -> bool { //
+        return stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id;
+    });
 }
 
 auto Item::HasInnerItems() const -> bool
@@ -172,13 +168,9 @@ void Item::SetItemToContainer(Item* item)
 
     RUNTIME_ASSERT(item);
 
-    if (!_innerItems) {
-        _innerItems = std::make_unique<vector<Item*>>();
-    }
+    make_if_not_exists(_innerItems);
+    vec_add_unique_value(*_innerItems, item);
 
-    RUNTIME_ASSERT(std::find(_innerItems->begin(), _innerItems->end(), item) == _innerItems->end());
-
-    _innerItems->push_back(item);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
 }
@@ -190,29 +182,29 @@ auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
     RUNTIME_ASSERT(item);
     RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
 
-    if (!_innerItems) {
-        _innerItems = std::make_unique<vector<Item*>>();
-    }
-
     if (item->GetStackable()) {
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
+
         if (item_already != nullptr) {
             const auto count = item->GetCount();
+
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
             _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
+
             return item_already;
         }
     }
+
+    make_if_not_exists(_innerItems);
 
     item->SetContainerStack(stack_id);
     item->EvaluateSortValue(*_innerItems);
     SetItemToContainer(item);
 
     auto inner_item_ids = GetInnerItemIds();
-    RUNTIME_ASSERT(std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId()) == inner_item_ids.end());
-    inner_item_ids.emplace_back(item->GetId());
-    SetInnerItemIds(std::move(inner_item_ids));
+    vec_add_unique_value(inner_item_ids, item->GetId());
+    SetInnerItemIds(inner_item_ids);
 
     return item;
 }
@@ -226,23 +218,16 @@ void Item::RemoveItemFromContainer(Item* item)
     RUNTIME_ASSERT(_innerItems);
     RUNTIME_ASSERT(item);
 
-    const auto it = std::find(_innerItems->begin(), _innerItems->end(), item);
-    RUNTIME_ASSERT(it != _innerItems->end());
-    _innerItems->erase(it);
-
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(ident_t {});
     item->SetContainerStack(ContainerItemStack::Root);
 
-    if (_innerItems->empty()) {
-        _innerItems.reset();
-    }
+    vec_remove_unique_value(*_innerItems, item);
+    destroy_if_empty(_innerItems);
 
     auto inner_item_ids = GetInnerItemIds();
-    const auto inner_item_id_it = std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId());
-    RUNTIME_ASSERT(inner_item_id_it != inner_item_ids.end());
-    inner_item_ids.erase(inner_item_id_it);
-    SetInnerItemIds(std::move(inner_item_ids));
+    vec_remove_unique_value(inner_item_ids, item->GetId());
+    SetInnerItemIds(inner_item_ids);
 }
 
 auto Item::CanSendItem(bool as_public) const -> bool

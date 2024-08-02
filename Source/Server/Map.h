@@ -132,7 +132,7 @@ public:
     void AddCritter(Critter* cr);
     void RemoveCritter(Critter* cr);
     auto AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool;
-    void SetItem(Item* item, uint16 hx, uint16 hy);
+    void SetItem(Item* item);
     void RemoveItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);

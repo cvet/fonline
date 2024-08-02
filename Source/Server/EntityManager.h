@@ -64,6 +64,7 @@ public:
     [[nodiscard]] auto GetMap(ident_t id) -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
+    [[nodiscard]] auto GetCritter(ident_t id) const -> const Critter*;
     [[nodiscard]] auto GetCritter(ident_t id) -> Critter*;
     [[nodiscard]] auto GetCritters() -> const unordered_map<ident_t, Critter*>&;
     [[nodiscard]] auto GetItem(ident_t id) -> Item*;
@@ -105,6 +106,7 @@ public:
     void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
 
 private:
+    void LoadInnerEntities(Entity* holder, bool& is_error);
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntityEx(ServerEntity* entity);

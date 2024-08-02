@@ -40,7 +40,8 @@ class HashStorage : public HashResolver
 public:
     auto ToHashedString(string_view s) -> hstring override;
     auto ToHashedStringMustExists(string_view s) const -> hstring override;
-    auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
+    auto ResolveHash(hstring::hash_t h) const -> hstring override;
+    auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
 
 private:
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
@@ -51,8 +52,8 @@ class Hashing final
 public:
     Hashing() = delete;
 
-    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) -> uint;
-    [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) -> uint64;
+    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) noexcept -> uint;
+    [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) noexcept -> uint64;
 };
 
 class Compressor final

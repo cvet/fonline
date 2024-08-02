@@ -133,7 +133,7 @@ void Player::Send_AddCritter(const Critter* cr)
     vector<uint>* cr_data_sizes = nullptr;
     cr->StoreData(is_chosen, &cr_data, &cr_data_sizes);
 
-    const auto& inv_items = cr->GetConstRawInvItems();
+    const auto& inv_items = cr->GetConstInvItems();
     vector<const Item*> send_items;
     send_items.reserve(inv_items.size());
 
@@ -431,7 +431,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
     vector<const Item*> send_items;
 
     if (!is_chosen) {
-        const auto& inv_items = from_cr->GetConstRawInvItems();
+        const auto& inv_items = from_cr->GetConstInvItems();
         send_items.reserve(inv_items.size());
 
         for (const auto* item : inv_items) {

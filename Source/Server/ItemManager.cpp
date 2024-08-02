@@ -523,7 +523,7 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     STACK_TRACE_ENTRY();
 
     vector<Item*> radios;
-    for (auto* item : cr->GetRawInvItems()) {
+    for (auto* item : cr->GetInvItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
             channels.push_back(item->GetRadioChannel());
             radios.push_back(item);

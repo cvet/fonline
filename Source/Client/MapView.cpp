@@ -3432,13 +3432,10 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
-    field.Critters.emplace_back(cr);
+    vec_add_unique_value(field.Critters, cr);
 
     RecacheHexFlags(field);
-
     SetMultihexCritter(cr, true);
-
     UpdateCritterLightSource(cr);
 
     if (!_mapLoading && IsHexToDraw(hx, hy)) {
@@ -3469,9 +3466,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
-    RUNTIME_ASSERT(it != field.Critters.end());
-    field.Critters.erase(it);
+    vec_remove_unique_value(field.Critters, cr);
 
     RecacheHexFlags(field);
     SetMultihexCritter(cr, false);
@@ -3580,7 +3575,7 @@ auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
 
     cr->Init();
 
-    _critters.emplace_back(cr);
+    vec_add_unique_value(_critters, cr);
 
     AddCritterToField(cr);
 
@@ -3593,9 +3588,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
 
     RUNTIME_ASSERT(cr->GetMap() == this);
 
-    const auto it = std::find(_critters.begin(), _critters.end(), cr);
-    RUNTIME_ASSERT(it != _critters.end());
-    _critters.erase(it);
+    vec_remove_unique_value(_critters, cr);
 
     if (cr->GetId()) {
         const auto it_map = _crittersMap.find(cr->GetId());

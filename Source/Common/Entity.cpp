@@ -310,7 +310,7 @@ void Entity::SetValueAsAny(int prop_index, const any_t& value)
     _props.SetValueAsAny(prop_index, value);
 }
 
-auto Entity::GetInnerEntities(hstring entry) -> const vector<Entity*>*
+auto Entity::GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*
 {
     STACK_TRACE_ENTRY();
 
@@ -320,7 +320,7 @@ auto Entity::GetInnerEntities(hstring entry) -> const vector<Entity*>*
         return nullptr;
     }
 
-    const auto it_entry = _innerEntities->find(entry);
+    const auto it_entry = safe_find(*_innerEntities, entry);
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -333,15 +333,13 @@ void Entity::AddInnerEntity(hstring entry, Entity* entity)
 {
     STACK_TRACE_ENTRY();
 
-    if (_innerEntities == nullptr) {
-        _innerEntities = std::make_unique<unordered_map<hstring, vector<Entity*>>>();
-    }
+    make_if_not_exists(_innerEntities);
 
     if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
         _innerEntities->emplace(entry, vector<Entity*> {entity});
     }
     else {
-        it->second.emplace_back(entity);
+        vec_add_unique_value(it->second, entity);
     }
 }
 
@@ -355,16 +353,12 @@ void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 
     auto& entities = _innerEntities->at(entry);
 
-    const auto it = std::find(entities.begin(), entities.end(), entity);
-    RUNTIME_ASSERT(it != entities.end());
-    entities.erase(it);
+    vec_remove_unique_value(entities, entity);
 
     if (entities.empty()) {
         _innerEntities->erase(entry);
 
-        if (_innerEntities->empty()) {
-            _innerEntities.reset();
-        }
+        destroy_if_empty(_innerEntities);
     }
 }
 

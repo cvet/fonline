@@ -253,17 +253,28 @@ static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 }
 
 template<typename T>
-static constexpr void destroy_if_empty(unique_ptr<vector<T>>& ptr) noexcept
+static constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
 {
     if (ptr && ptr->empty()) {
-        ptr = nullptr;
+        ptr.reset();
+    }
+}
+
+template<typename T, typename U>
+static auto safe_find(T& cont, const U& key) noexcept -> decltype(cont.find(key))
+{
+    try {
+        return cont.find(key);
+    }
+    catch (...) {
+        return cont.end();
     }
 }
 
 struct pair_hash
 {
     template<typename T, typename U>
-    std::size_t operator()(const std::pair<T, U>& p) const
+    std::size_t operator()(const std::pair<T, U>& p) const noexcept
     {
         return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
     }
@@ -896,12 +907,12 @@ private:
 };
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) -> uint
+constexpr auto const_hash(const char* input) noexcept -> uint
 {
     return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
-auto constexpr operator""_hash(const char* str, size_t size) -> uint
+auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint
 {
     (void)size;
     return const_hash(str);
@@ -1818,7 +1829,62 @@ constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
     vector<T> result;
     result.reserve(value.size());
     for (auto&& v : value) {
-        result.emplace_back(dynamic_cast<T>(v));
+        if (auto* casted = dynamic_cast<T>(v); casted != nullptr) {
+            result.emplace_back(casted);
+        }
+    }
+    return result;
+}
+
+template<typename T>
+constexpr auto vec_add_unique_value(vector<T>& vec, const T& value) -> vector<T>&
+{
+    const auto it = std::find(vec.begin(), vec.end(), value);
+    RUNTIME_ASSERT(it == vec.end());
+    vec.emplace_back(value);
+    return vec;
+}
+
+template<typename T>
+constexpr auto vec_remove_unique_value(vector<T>& vec, const T& value) -> vector<T>&
+{
+    const auto it = std::find(vec.begin(), vec.end(), value);
+    RUNTIME_ASSERT(it != vec.end());
+    vec.erase(it);
+    return vec;
+}
+
+template<typename T, typename U>
+constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(vec.size());
+    for (const auto& value : vec) {
+        if (static_cast<bool>(filter(value))) {
+            result.emplace_back(value);
+        }
+    }
+    return result;
+}
+
+template<typename T, typename U>
+constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) -> T
+{
+    for (const auto& value : vec) {
+        if (static_cast<bool>(filter(value))) {
+            return value;
+        }
+    }
+    return T {};
+}
+
+template<typename T, typename U>
+constexpr auto vec_transform(const vector<T>& vec, const U& transfromer) -> auto
+{
+    vector<decltype(transfromer(nullptr))> result;
+    result.reserve(vec.size());
+    for (const auto& value : vec) {
+        result.emplace_back(transfromer(value));
     }
     return result;
 }
@@ -1859,7 +1925,8 @@ public:
     virtual ~HashResolver() = default;
     [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
     [[nodiscard]] virtual auto ToHashedStringMustExists(string_view s) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring = 0;
 };
 
 DECLARE_EXCEPTION(EnumResolveException);

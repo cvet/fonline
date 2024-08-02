@@ -503,14 +503,16 @@ void Critter::SetItem(Item* item)
 
     RUNTIME_ASSERT(item);
 
-    _invItems.push_back(item);
+    vec_add_unique_value(_invItems, item);
+}
 
-    if (item->GetOwnership() != ItemOwnership::CritterInventory) {
-        item->SetCritterSlot(CritterItemSlot::Inventory);
-    }
+void Critter::RemoveItem(Item* item)
+{
+    STACK_TRACE_ENTRY();
 
-    item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritterId(GetId());
+    RUNTIME_ASSERT(item);
+
+    vec_remove_unique_value(_invItems, item);
 }
 
 auto Critter::GetInvItem(ident_t item_id, bool skip_hidden) -> Item*
@@ -568,12 +570,7 @@ auto Critter::GetInvItemSlot(CritterItemSlot slot) -> Item*
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _invItems) {
-        if (item->GetCritterSlot() == slot) {
-            return item;
-        }
-    }
-    return nullptr;
+    return vec_filter_first(_invItems, [&](const Item* item) { return item->GetCritterSlot() == slot; });
 }
 
 auto Critter::GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>
@@ -582,15 +579,7 @@ auto Critter::GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>
 
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
-    items.reserve(_invItems.size());
-
-    for (auto* item : _invItems) {
-        if (item->GetCritterSlot() == slot) {
-            items.push_back(item);
-        }
-    }
-    return items;
+    return vec_filter(_invItems, [&](const Item* item) { return item->GetCritterSlot() == slot; });
 }
 
 auto Critter::CountInvItemPid(hstring pid) const -> uint

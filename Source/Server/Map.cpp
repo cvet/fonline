@@ -191,16 +191,16 @@ void Map::AddCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_crittersMap.count(cr->GetId()) == 0);
+    RUNTIME_ASSERT(!_crittersMap.count(cr->GetId()));
 
     _crittersMap.emplace(cr->GetId(), cr);
-    _critters.emplace_back(cr);
+    vec_add_unique_value(_critters, cr);
 
     if (cr->GetIsControlledByPlayer()) {
-        _playerCritters.emplace_back(cr);
+        vec_add_unique_value(_playerCritters, cr);
     }
     else {
-        _nonPlayerCritters.emplace_back(cr);
+        vec_add_unique_value(_nonPlayerCritters, cr);
     }
 
     AddCritterToField(cr);
@@ -210,27 +210,17 @@ void Map::RemoveCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    {
-        const auto it = _crittersMap.find(cr->GetId());
-        RUNTIME_ASSERT(it != _crittersMap.end());
-        _crittersMap.erase(it);
-    }
+    const auto it = _crittersMap.find(cr->GetId());
+    RUNTIME_ASSERT(it != _crittersMap.end());
+    _crittersMap.erase(it);
 
-    {
-        const auto it = std::find(_critters.begin(), _critters.end(), cr);
-        RUNTIME_ASSERT(it != _critters.end());
-        _critters.erase(it);
-    }
+    vec_remove_unique_value(_critters, cr);
 
     if (cr->GetIsControlledByPlayer()) {
-        const auto it = std::find(_playerCritters.begin(), _playerCritters.end(), cr);
-        RUNTIME_ASSERT(it != _playerCritters.end());
-        _playerCritters.erase(it);
+        vec_remove_unique_value(_playerCritters, cr);
     }
     else {
-        const auto it = std::find(_nonPlayerCritters.begin(), _nonPlayerCritters.end(), cr);
-        RUNTIME_ASSERT(it != _nonPlayerCritters.end());
-        _nonPlayerCritters.erase(it);
+        vec_remove_unique_value(_nonPlayerCritters, cr);
     }
 
     RemoveCritterFromField(cr);
@@ -246,11 +236,8 @@ void Map::AddCritterToField(Critter* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
-    field.Critters.emplace_back(cr);
-
+    vec_add_unique_value(field.Critters, cr);
     RecacheHexFlags(field);
-
     SetMultihexCritter(cr, true);
 }
 
@@ -264,12 +251,8 @@ void Map::RemoveCritterFromField(Critter* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
-    RUNTIME_ASSERT(it != field.Critters.end());
-    field.Critters.erase(it);
-
+    vec_remove_unique_value(field.Critters, cr);
     RecacheHexFlags(field);
-
     SetMultihexCritter(cr, false);
 }
 
@@ -292,13 +275,10 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
                 auto& field = _hexField->GetCellForWriting(static_cast<uint16>(nx), static_cast<uint16>(ny));
 
                 if (set) {
-                    RUNTIME_ASSERT(std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr) == field.MultihexCritters.end());
-                    field.MultihexCritters.emplace_back(cr);
+                    vec_add_unique_value(field.MultihexCritters, cr);
                 }
                 else {
-                    const auto it = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
-                    RUNTIME_ASSERT(it != field.MultihexCritters.end());
-                    field.MultihexCritters.erase(it);
+                    vec_remove_unique_value(field.MultihexCritters, cr);
                 }
 
                 RecacheHexFlags(field);
@@ -318,12 +298,16 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
         return false;
     }
 
-    SetItem(item, hx, hy);
+    item->SetOwnership(ItemOwnership::MapHex);
+    item->SetMapId(GetId());
+    item->SetHexX(hx);
+    item->SetHexY(hy);
+
+    SetItem(item);
 
     auto item_ids = GetItemIds();
-    RUNTIME_ASSERT(std::find(item_ids.begin(), item_ids.end(), item->GetId()) == item_ids.end());
-    item_ids.emplace_back(item->GetId());
-    SetItemIds(std::move(item_ids));
+    vec_add_unique_value(item_ids, item->GetId());
+    SetItemIds(item_ids);
 
     // Process critters view
     for (auto* cr : copy_hold_ref(GetCritters())) {
@@ -361,23 +345,20 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
     return true;
 }
 
-void Map::SetItem(Item* item, uint16 hx, uint16 hy)
+void Map::SetItem(Item* item)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
 
-    item->SetOwnership(ItemOwnership::MapHex);
-    item->SetMapId(GetId());
-    item->SetHexX(hx);
-    item->SetHexY(hy);
-
-    _items.emplace_back(item);
     _itemsMap.emplace(item->GetId(), item);
+    vec_add_unique_value(_items, item);
 
+    const auto hx = item->GetHexX();
+    const auto hy = item->GetHexY();
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    field.Items.emplace_back(item);
+    vec_add_unique_value(field.Items, item);
 
     if (item->GetIsGeck()) {
         _mapLocation->GeckCount++;
@@ -408,34 +389,22 @@ void Map::RemoveItem(ident_t item_id)
         _itemsMap.erase(it);
     }
 
-    {
-        const auto it = std::find(_items.begin(), _items.end(), item);
-        RUNTIME_ASSERT(it != _items.end());
-        _items.erase(it);
-    }
+    vec_remove_unique_value(_items, item);
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    {
-        const auto it = std::find(field.Items.begin(), field.Items.end(), item);
-        RUNTIME_ASSERT(it != field.Items.end());
-        field.Items.erase(it);
-    }
+    vec_remove_unique_value(field.Items, item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetMapId(ident_t {});
     item->SetHexX(0);
     item->SetHexY(0);
 
-    {
-        auto item_ids = GetItemIds();
-        const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
-        RUNTIME_ASSERT(item_id_it != item_ids.end());
-        item_ids.erase(item_id_it);
-        SetItemIds(std::move(item_ids));
-    }
+    auto item_ids = GetItemIds();
+    vec_remove_unique_value(item_ids, item->GetId());
+    SetItemIds(item_ids);
 
     if (item->GetIsGeck()) {
         _mapLocation->GeckCount--;
@@ -670,6 +639,7 @@ auto Map::GetItem(ident_t item_id) -> Item*
     STACK_TRACE_ENTRY();
 
     const auto it = _itemsMap.find(item_id);
+
     return it != _itemsMap.end() ? it->second : nullptr;
 }
 
@@ -769,16 +739,10 @@ auto Map::GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>
     NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
-    vector<Item*> triggers;
-    triggers.reserve(field.Items.size());
 
-    for (auto* item : field.Items) {
-        if (item->GetIsTrigger() || item->GetIsTrap()) {
-            triggers.emplace_back(item);
-        }
-    }
-
-    return triggers;
+    return vec_filter(field.Items, [](const Item* item) -> bool { //
+        return item->GetIsTrigger() || item->GetIsTrap();
+    });
 }
 
 auto Map::IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool
@@ -1018,17 +982,10 @@ auto Map::GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_ty
 
     NON_CONST_METHOD_HINT();
 
-    vector<Critter*> critters;
-    critters.reserve(_critters.size());
-
     // Todo: optimize critters radius search by using GetHexOffsets
-    for (auto* cr : _critters) {
-        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
-            critters.emplace_back(cr);
-        }
-    }
-
-    return critters;
+    return vec_filter(_critters, [&](const Critter* cr) -> bool { //
+        return cr->CheckFind(find_type) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex());
+    });
 }
 
 auto Map::GetCritters() -> const vector<Critter*>&

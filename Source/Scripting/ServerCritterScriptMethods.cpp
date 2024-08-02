@@ -626,7 +626,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
 {
-    for (auto* item : self->GetRawInvItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -644,7 +644,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    for (auto* item : self->GetRawInvItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -658,7 +658,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self)
 {
-    return self->GetRawInvItems();
+    return self->GetInvItems();
 }
 
 ///# ...
@@ -668,9 +668,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
 {
     vector<Item*> items;
-    items.reserve(self->GetRawInvItems().size());
+    items.reserve(self->GetInvItems().size());
 
-    for (auto* item : self->GetRawInvItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
@@ -689,9 +689,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     vector<Item*> items;
-    items.reserve(self->GetRawInvItems().size());
+    items.reserve(self->GetInvItems().size());
 
-    for (auto* item : self->GetRawInvItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
@@ -707,9 +707,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
 {
     vector<Item*> items;
-    items.reserve(self->GetRawInvItems().size());
+    items.reserve(self->GetInvItems().size());
 
-    for (auto* item : self->GetRawInvItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetProtoId() == protoId) {
             items.push_back(item);
         }

@@ -43,7 +43,7 @@ ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrat
     _name = GetTypeName();
 }
 
-void ServerEntity::SetId(ident_t id)
+void ServerEntity::SetId(ident_t id) noexcept
 {
     STACK_TRACE_ENTRY();
 

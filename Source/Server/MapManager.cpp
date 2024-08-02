@@ -458,8 +458,7 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
             throw MapManagerException("Create map for location failed", proto_id, map_pid);
         }
 
-        RUNTIME_ASSERT(std::find(map_ids.begin(), map_ids.end(), map->GetId()) == map_ids.end());
-        map_ids.emplace_back(map->GetId());
+        vec_add_unique_value(map_ids, map->GetId());
     }
 
     loc->SetMapIds(map_ids);
@@ -1583,8 +1582,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
-            RUNTIME_ASSERT(std::find(cr_ids.begin(), cr_ids.end(), cr->GetId()) == cr_ids.end());
-            cr_ids.emplace_back(cr->GetId());
+            vec_add_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
         }
 
@@ -1603,7 +1601,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
             cr->SetGlobalMapTripId(trip_id);
 
             cr->GlobalMapGroup = new vector<Critter*>();
-            cr->GlobalMapGroup->push_back(cr);
+            cr->GlobalMapGroup->emplace_back(cr);
         }
         else {
             RUNTIME_ASSERT(global_cr->GlobalMapGroup);
@@ -1617,7 +1615,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
             }
 
             cr->GlobalMapGroup = global_cr->GlobalMapGroup;
-            cr->GlobalMapGroup->push_back(cr);
+            cr->GlobalMapGroup->emplace_back(cr);
         }
 
         _engine->OnGlobalMapCritterIn.Fire(cr);
@@ -1647,10 +1645,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
-            const auto cr_id_it = std::find(cr_ids.begin(), cr_ids.end(), cr->GetId());
-            RUNTIME_ASSERT(cr_id_it != cr_ids.end());
-            cr_ids.erase(cr_id_it);
-            map->SetCritterIds(std::move(cr_ids));
+            vec_remove_unique_value(cr_ids, cr->GetId());
+            map->SetCritterIds(cr_ids);
         }
 
         _runGarbager = true;
@@ -1663,9 +1659,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
         cr->SetGlobalMapTripId({});
 
-        const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
-        RUNTIME_ASSERT(it != cr->GlobalMapGroup->end());
-        cr->GlobalMapGroup->erase(it);
+        vec_remove_unique_value(*cr->GlobalMapGroup, cr);
 
         if (!cr->GlobalMapGroup->empty()) {
             for (auto* group_cr : *cr->GlobalMapGroup) {
