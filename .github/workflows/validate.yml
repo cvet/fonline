@@ -91,7 +91,7 @@ jobs:
       run: BuildTools/prepare-workspace.sh packages android-x86
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
-    runs-on: macos-11
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:
