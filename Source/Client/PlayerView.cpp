@@ -35,16 +35,13 @@
 #include "Client.h"
 
 PlayerView::PlayerView(FOClient* engine, ident_t id, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }
 
-void PlayerView::MarkAsDestroyed()
+void PlayerView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
-
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
 }

@@ -36,7 +36,7 @@
 #include "ItemView.h"
 
 CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
@@ -52,18 +52,15 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
 #endif
 }
 
-void CritterView::MarkAsDestroyed()
+void CritterView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
     for (auto* item : _invItems) {
-        item->MarkAsDestroyed();
-        item->Release();
+        item->DestroySelf();
     }
-    _invItems.clear();
 
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
+    _invItems.clear();
 }
 
 void CritterView::SetName(string_view name)
@@ -119,12 +116,7 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
     RUNTIME_ASSERT(it != _invItems.end());
     _invItems.erase(it);
 
-    item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetCritterId(ident_t {});
-    item->SetCritterSlot(CritterItemSlot::Inventory);
-
-    item->MarkAsDestroyed();
-    item->Release();
+    item->DestroySelf();
 }
 
 void CritterView::DeleteAllInvItems()
@@ -177,7 +169,7 @@ auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
 {
     STACK_TRACE_ENTRY();
 
-    return vec_cast<const ItemView*>(_invItems);
+    return vec_static_cast<const ItemView*>(_invItems);
 }
 
 auto CritterView::CheckFind(CritterFindType find_type) const -> bool

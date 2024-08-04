@@ -57,24 +57,32 @@ public:
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
     [[nodiscard]] auto GetProtoLocation(hstring proto_id) -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) -> const ProtoEntity*;
     [[nodiscard]] auto GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&;
     [[nodiscard]] auto GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&;
     [[nodiscard]] auto GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
-    [[nodiscard]] auto GetAllProtos() const -> vector<const ProtoEntity*>;
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const -> const unordered_map<hstring, const ProtoEntity*>&;
+    [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
+    [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
 
     void ParseProtos(FileSystem& resources);
     void LoadFromResources();
 
 private:
+    auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;
+
     FOEngineBase* _engine;
     const hstring _migrationRuleName;
-    const hstring _itemClassName;
-    const hstring _crClassName;
-    const hstring _mapClassName;
-    const hstring _locClassName;
+    const hstring _itemTypeName;
+    const hstring _crTypeName;
+    const hstring _mapTypeName;
+    const hstring _locTypeName;
     unordered_map<hstring, const ProtoItem*> _itemProtos {};
     unordered_map<hstring, const ProtoCritter*> _crProtos {};
     unordered_map<hstring, const ProtoMap*> _mapProtos {};
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
+    unordered_map<hstring, unordered_map<hstring, const ProtoEntity*>> _protos {};
+    const unordered_map<hstring, const ProtoEntity*> _emptyProtos {};
+    unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };

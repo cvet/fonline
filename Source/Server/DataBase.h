@@ -68,6 +68,7 @@ public:
     void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges(bool wait_commit_complete);
+    void ClearChanges() noexcept;
 
 private:
     explicit DataBase(DataBaseImpl* impl);

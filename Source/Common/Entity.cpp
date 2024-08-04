@@ -63,23 +63,30 @@ void Entity::Release() const noexcept
     }
 }
 
-auto Entity::GetClassName() const -> string_view
+auto Entity::GetTypeName() const -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _props.GetRegistrator()->GetClassName();
+    return _props.GetRegistrator()->GetTypeName();
+}
+
+auto Entity::GetTypeNamePlural() const -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _props.GetRegistrator()->GetTypeNamePlural();
 }
 
 auto Entity::GetProperties() const -> const Properties&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _props;
 }
 
 auto Entity::GetPropertiesForEdit() -> Properties&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _props;
 }
@@ -206,20 +213,6 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
     return true;
 }
 
-auto Entity::IsDestroying() const -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _isDestroying;
-}
-
-auto Entity::IsDestroyed() const -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _isDestroyed;
-}
-
 void Entity::MarkAsDestroying()
 {
     STACK_TRACE_ENTRY();
@@ -317,6 +310,65 @@ void Entity::SetValueAsAny(int prop_index, const any_t& value)
     _props.SetValueAsAny(prop_index, value);
 }
 
+auto Entity::GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (!_innerEntities) {
+        return nullptr;
+    }
+
+    const auto it_entry = safe_find(*_innerEntities, entry);
+
+    if (it_entry == _innerEntities->end()) {
+        return nullptr;
+    }
+
+    return &it_entry->second;
+}
+
+void Entity::AddInnerEntity(hstring entry, Entity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    make_if_not_exists(_innerEntities);
+
+    if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
+        _innerEntities->emplace(entry, vector<Entity*> {entity});
+    }
+    else {
+        vec_add_unique_value(it->second, entity);
+    }
+}
+
+void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_innerEntities);
+    RUNTIME_ASSERT(entry);
+    RUNTIME_ASSERT(_innerEntities->count(entry));
+
+    auto& entities = _innerEntities->at(entry);
+
+    vec_remove_unique_value(entities, entity);
+
+    if (entities.empty()) {
+        _innerEntities->erase(entry);
+
+        destroy_if_empty(_innerEntities);
+    }
+}
+
+void Entity::ClearInnerEntities()
+{
+    STACK_TRACE_ENTRY();
+
+    _innerEntities.reset();
+}
+
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     Entity(registrator, props),
     _protoId {proto_id}
@@ -352,14 +404,14 @@ auto ProtoEntity::HasComponent(hstring name) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _components.count(name) != 0u;
+    return _components.count(name) != 0;
 }
 
 auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _componentHashes.count(hash) != 0u;
+    return _componentHashes.count(hash) != 0;
 }
 
 EntityWithProto::EntityWithProto(const ProtoEntity* proto) :

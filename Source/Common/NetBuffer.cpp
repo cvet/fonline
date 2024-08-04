@@ -76,20 +76,12 @@ static auto GetMsgSize(uint msg) -> uint
         return NETMSG_CRITTER_POS_SIZE;
     case NETMSG_CRITTER_TELEPORT:
         return NETMSG_CRITTER_TELEPORT_SIZE;
-    case NETMSG_CLEAR_ITEMS:
-        return NETMSG_CLEAR_ITEMS_SIZE;
-    case NETMSG_REMOVE_ITEM:
-        return NETMSG_REMOVE_ITEM_SIZE;
-    case NETMSG_ALL_ITEMS_SEND:
-        return NETMSG_ALL_ITEMS_SEND_SIZE;
-    case NETMSG_ERASE_ITEM_FROM_MAP:
-        return NETMSG_ERASE_ITEM_FROM_MAP_SIZE;
+    case NETMSG_CHOSEN_REMOVE_ITEM:
+        return NETMSG_CHOSEN_REMOVE_ITEM_SIZE;
+    case NETMSG_REMOVE_ITEM_FROM_MAP:
+        return NETMSG_REMOVE_ITEM_FROM_MAP_SIZE;
     case NETMSG_ANIMATE_ITEM:
         return NETMSG_ANIMATE_ITEM_SIZE;
-    case NETMSG_CRITTER_ACTION:
-        return NETMSG_CRITTER_ACTION_SIZE;
-    case NETMSG_CRITTER_ANIMATE:
-        return NETMSG_CRITTER_ANIMATE_SIZE;
     case NETMSG_CRITTER_SET_ANIMS:
         return NETMSG_CRITTER_SET_ANIMS_SIZE;
     case NETMSG_EFFECT:
@@ -102,6 +94,8 @@ static auto GetMsgSize(uint msg) -> uint
         return NETMSG_TIME_SYNC_SIZE;
     case NETMSG_VIEW_MAP:
         return NETMSG_VIEW_MAP_SIZE;
+    case NETMSG_REMOVE_CUSTOM_ENTITY:
+        return NETMSG_REMOVE_CUSTOM_ENTITY_SIZE;
     case NETMSG_SEND_POD_PROPERTY(1, 0):
         return NETMSG_SEND_POD_PROPERTY_SIZE(1, 0);
     case NETMSG_SEND_POD_PROPERTY(2, 0):
@@ -154,7 +148,7 @@ static auto GetMsgSize(uint msg) -> uint
     case NETMSG_UPDATE_FILE_DATA:
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
-    case NETMSG_LOADMAP:
+    case NETMSG_LOAD_MAP:
     case NETMSG_REGISTER:
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_CRITTER:
@@ -164,22 +158,23 @@ static auto GetMsgSize(uint msg) -> uint
     case NETMSG_MSG_LEX:
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_ADD_ITEM:
+    case NETMSG_CHOSEN_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:
-    case NETMSG_SOME_ITEM:
     case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
-    case NETMSG_RPC:
+    case NETMSG_REMOTE_CALL:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_AUTOMAPS_INFO:
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
-    case NETMSG_ALL_PROPERTIES:
     case NETMSG_SEND_MOVE:
     case NETMSG_CRITTER_MOVE:
     case NETMSG_CRITTER_ATTACHMENTS:
+    case NETMSG_ADD_CUSTOM_ENTITY:
+    case NETMSG_CRITTER_ACTION:
+    case NETMSG_CRITTER_ANIMATE:
         return static_cast<uint>(-1);
     default:
         break;

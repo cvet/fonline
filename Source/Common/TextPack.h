@@ -44,7 +44,9 @@ enum class TextPackName : uint8
     Game = 1,
     Dialogs = 2,
     Items = 3,
-    Locations = 4,
+    Maps = 4,
+    Locations = 5,
+    Protos = 6,
 };
 
 class FileSystem;
@@ -67,13 +69,14 @@ public:
     [[nodiscard]] auto GetStrNumLower(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto IsIntersects(const TextPack& other) const -> bool;
+    [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
     auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(TextPackKey num, string_view str);
+    void AddStr(TextPackKey num, string&& str);
     void EraseStr(TextPackKey num);
     void Merge(const TextPack& other);
     void Clear();
@@ -109,5 +112,4 @@ private:
     const NameResolver* _nameResolver {};
     vector<unique_ptr<TextPack>> _textPacks {};
     TextPack _emptyPack {};
-    bool _nonConstHelper {};
 };

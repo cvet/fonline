@@ -36,7 +36,7 @@
 #include "StringUtils.h"
 
 ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
@@ -45,25 +45,30 @@ ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const P
     _name = _str("{}_{}", proto->GetName(), id);
 }
 
-void ItemView::MarkAsDestroyed()
+void ItemView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* item : _innerItems) {
-        item->MarkAsDestroyed();
-        item->Release();
-    }
-    _innerItems.clear();
+    SetOwnership(ItemOwnership::Nowhere);
+    SetCritterId(ident_t {});
+    SetCritterSlot(CritterItemSlot::Inventory);
 
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
+    for (auto* item : _innerItems) {
+        item->DestroySelf();
+    }
+
+    _innerItems.clear();
 }
 
 auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    return new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
+    auto* ref_item = new ItemView(_engine, {}, dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
+
+    ref_item->SetId(GetId(), false);
+
+    return ref_item;
 }
 
 auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*
@@ -77,7 +82,7 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    _innerItems.push_back(item);
+    vec_add_unique_value(_innerItems, item);
 
     std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -102,20 +107,13 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
     return item;
 }
 
-void ItemView::DeleteInnerItem(ItemView* item)
+void ItemView::DestroyInnerItem(ItemView* item)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find(_innerItems.begin(), _innerItems.end(), item);
-    RUNTIME_ASSERT(it != _innerItems.end());
-    _innerItems.erase(it);
+    vec_remove_unique_value(_innerItems, item);
 
-    item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetContainerId(ident_t {});
-    item->SetContainerStack(ContainerItemStack::Root);
-
-    item->MarkAsDestroyed();
-    item->Release();
+    item->DestroySelf();
 }
 
 auto ItemView::GetInnerItems() -> const vector<ItemView*>&
@@ -129,5 +127,5 @@ auto ItemView::GetConstInnerItems() const -> vector<const ItemView*>
 {
     STACK_TRACE_ENTRY();
 
-    return vec_cast<const ItemView*>(_innerItems);
+    return vec_static_cast<const ItemView*>(_innerItems);
 }

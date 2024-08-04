@@ -60,3 +60,10 @@ ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* regist
 {
     STACK_TRACE_ENTRY();
 }
+
+ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    ProtoEntity(proto_id, registrator, props),
+    EntityProperties(GetInitRef())
+{
+    STACK_TRACE_ENTRY();
+}

@@ -228,6 +228,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, int width, int he
     if (atlas == nullptr) {
         atlas = CreateAtlas(atlas_type, request_width, request_height);
         atlas_node = atlas->RootNode->FindPosition(request_width, request_height);
+        RUNTIME_ASSERT(atlas_node);
     }
 
     x = atlas_node->PosX + ATLAS_SPRITES_PADDING;

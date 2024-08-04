@@ -332,7 +332,7 @@ void MapManager::GenerateMapContent(Map* map)
 
         if (!map->AddItem(item, base_item->GetHexX(), base_item->GetHexY(), nullptr)) {
             WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
-            _engine->ItemMngr.DeleteItem(item);
+            _engine->ItemMngr.DestroyItem(item);
         }
     }
 
@@ -371,7 +371,7 @@ void MapManager::GenerateMapContent(Map* map)
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(parent_id);
             RUNTIME_ASSERT(item_cont);
-            _engine->ItemMngr.AddItemToContainer(item_cont, item, ContainerItemStack::Root);
+            item_cont->AddItemToContainer(item, ContainerItemStack::Root);
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
@@ -379,24 +379,19 @@ void MapManager::GenerateMapContent(Map* map)
     }
 }
 
-void MapManager::DeleteMapContent(Map* map)
+void MapManager::DestroyMapContent(Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    while (!map->_critters.empty() || !map->_items.empty()) {
-        // Transit players to global map
+    for (InfinityLoopDetector detector; !map->_critters.empty() || !map->_items.empty(); detector.AddLoop()) {
         KickPlayersToGlobalMap(map);
 
-        // Delete npc
-        auto del_npcs = map->_nonPlayerCritters;
-        for (auto* del_npc : del_npcs) {
-            _engine->CrMngr.DeleteCritter(del_npc);
+        for (auto* del_npc : copy(map->_nonPlayerCritters)) {
+            _engine->CrMngr.DestroyCritter(del_npc);
         }
 
-        // Delete items
-        auto del_items = map->_items;
-        for (auto* del_item : del_items) {
-            _engine->ItemMngr.DeleteItem(del_item);
+        for (auto* del_item : copy(map->_items)) {
+            _engine->ItemMngr.DestroyItem(del_item);
         }
     }
 
@@ -463,8 +458,7 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
             throw MapManagerException("Create map for location failed", proto_id, map_pid);
         }
 
-        RUNTIME_ASSERT(std::find(map_ids.begin(), map_ids.end(), map->GetId()) == map_ids.end());
-        map_ids.emplace_back(map->GetId());
+        vec_add_unique_value(map_ids, map->GetId());
     }
 
     loc->SetMapIds(map_ids);
@@ -530,7 +524,7 @@ void MapManager::RegenerateMap(Map* map)
 
     auto map_holder = RefCountHolder(map);
 
-    DeleteMapContent(map);
+    DestroyMapContent(map);
 
     if (!map->IsDestroyed()) {
         GenerateMapContent(map);
@@ -720,13 +714,13 @@ void MapManager::LocationGarbager()
 
         for (auto* loc : copy_hold_ref(_engine->EntityMngr.GetLocations())) {
             if (!loc->IsDestroyed() && loc->GetAutoGarbage() && loc->IsCanDelete()) {
-                DeleteLocation(loc);
+                DestroyLocation(loc);
             }
         }
     }
 }
 
-void MapManager::DeleteLocation(Location* loc)
+void MapManager::DestroyLocation(Location* loc)
 {
     STACK_TRACE_ENTRY();
 
@@ -740,14 +734,37 @@ void MapManager::DeleteLocation(Location* loc)
     }
 
     loc->MarkAsDestroying();
+
     for (auto* map : maps) {
         map->MarkAsDestroying();
     }
 
     // Finish events
     _engine->OnLocationFinish.Fire(loc);
+
     for (auto* map : maps) {
         _engine->OnMapFinish.Fire(map);
+    }
+
+    // Inner entites
+    for (InfinityLoopDetector detector;; detector.AddLoop()) {
+        bool has_entities = false;
+
+        if (loc->HasInnerEntities()) {
+            _engine->EntityMngr.DestroyInnerEntities(loc);
+            has_entities = true;
+        }
+
+        for (auto* map : maps) {
+            if (map->HasInnerEntities()) {
+                _engine->EntityMngr.DestroyInnerEntities(map);
+                has_entities = true;
+            }
+        }
+
+        if (!has_entities) {
+            break;
+        }
     }
 
     // Inform players on global map about this
@@ -757,14 +774,16 @@ void MapManager::DeleteLocation(Location* loc)
         }
     }
 
-    // Delete maps
+    // Destroy maps
     for (auto* map : maps) {
-        DeleteMapContent(map);
+        DestroyMapContent(map);
     }
+
     loc->GetMapsRaw().clear();
 
     // Erase from main collections
     _engine->EntityMngr.UnregisterEntity(loc);
+
     for (auto* map : maps) {
         _engine->EntityMngr.UnregisterEntity(map);
     }
@@ -773,12 +792,14 @@ void MapManager::DeleteLocation(Location* loc)
     for (auto* map : maps) {
         map->MarkAsDestroyed();
     }
+
     loc->MarkAsDestroyed();
 
     // Release
     for (const auto* map : maps) {
         map->Release();
     }
+
     loc->Release();
 }
 
@@ -1486,8 +1507,8 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
         cr->SetMapLeaveHexX(cr->GetHexX());
         cr->SetMapLeaveHexY(cr->GetHexY());
 
-        EraseCrFromMap(cr, prev_map);
-        AddCrToMap(cr, map, start_hx, start_hy, dir, global_cr_id);
+        RemoveCritterFromMap(cr, prev_map);
+        AddCritterToMap(cr, map, start_hx, start_hy, dir, global_cr_id);
 
         if (cr->IsDestroyed()) {
             return;
@@ -1495,7 +1516,6 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
 
         cr->Send_LoadMap(map);
         cr->Send_AddCritter(cr);
-        cr->Send_AddAllItems();
 
         if (map == nullptr) {
             for (const auto* group_cr : *cr->GlobalMapGroup) {
@@ -1538,7 +1558,7 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
     }
 }
 
-void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id)
+void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -1562,8 +1582,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
-            RUNTIME_ASSERT(std::find(cr_ids.begin(), cr_ids.end(), cr->GetId()) == cr_ids.end());
-            cr_ids.emplace_back(cr->GetId());
+            vec_add_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
         }
 
@@ -1582,7 +1601,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
             cr->SetGlobalMapTripId(trip_id);
 
             cr->GlobalMapGroup = new vector<Critter*>();
-            cr->GlobalMapGroup->push_back(cr);
+            cr->GlobalMapGroup->emplace_back(cr);
         }
         else {
             RUNTIME_ASSERT(global_cr->GlobalMapGroup);
@@ -1596,14 +1615,14 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 d
             }
 
             cr->GlobalMapGroup = global_cr->GlobalMapGroup;
-            cr->GlobalMapGroup->push_back(cr);
+            cr->GlobalMapGroup->emplace_back(cr);
         }
 
         _engine->OnGlobalMapCritterIn.Fire(cr);
     }
 }
 
-void MapManager::EraseCrFromMap(Critter* cr, Map* map)
+void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     STACK_TRACE_ENTRY();
 
@@ -1620,16 +1639,14 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         }
 
         cr->ClearVisible();
-        map->EraseCritter(cr);
+        map->RemoveCritter(cr);
 
         cr->SetMapId({});
 
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
-            const auto cr_id_it = std::find(cr_ids.begin(), cr_ids.end(), cr->GetId());
-            RUNTIME_ASSERT(cr_id_it != cr_ids.end());
-            cr_ids.erase(cr_id_it);
-            map->SetCritterIds(std::move(cr_ids));
+            vec_remove_unique_value(cr_ids, cr->GetId());
+            map->SetCritterIds(cr_ids);
         }
 
         _runGarbager = true;
@@ -1642,9 +1659,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         cr->SetGlobalMapTripId({});
 
-        const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
-        RUNTIME_ASSERT(it != cr->GlobalMapGroup->end());
-        cr->GlobalMapGroup->erase(it);
+        vec_remove_unique_value(*cr->GlobalMapGroup, cr);
 
         if (!cr->GlobalMapGroup->empty()) {
             for (auto* group_cr : *cr->GlobalMapGroup) {
@@ -1921,7 +1936,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
             }
             else {
                 if (cr->DelIdVisItem(item->GetId())) {
-                    cr->Send_EraseItemFromMap(item);
+                    cr->Send_RemoveItemFromMap(item);
                     cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
             }
@@ -2067,7 +2082,7 @@ void MapManager::AddKnownLoc(Critter* cr, ident_t loc_id)
     cr->SetKnownLocations(known_locs);
 }
 
-void MapManager::EraseKnownLoc(Critter* cr, ident_t loc_id)
+void MapManager::RemoveKnownLoc(Critter* cr, ident_t loc_id)
 {
     STACK_TRACE_ENTRY();
 

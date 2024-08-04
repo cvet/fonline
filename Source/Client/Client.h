@@ -121,7 +121,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : virtual public FOEngineBase, public AnimationResolver
+class FOClient : SINGLEPLAYER_VIRTUAL public FOEngineBase, public AnimationResolver
 {
     friend class ClientScriptSystem;
 
@@ -180,6 +180,10 @@ public:
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
+    auto GetEntity(ident_t id) -> ClientEntity*;
+    void RegisterEntity(ClientEntity* entity);
+    void UnregisterEntity(ClientEntity* entity);
+
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
     ///@ ExportEvent
@@ -225,19 +229,21 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemInvAllIn);
-    ///@ ExportEvent
     ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnCustomEntityIn, ClientEntity* /*entity*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
+    ///@ ExportEvent
     ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
     ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
-    ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
+    ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, ucolor& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
@@ -330,6 +336,7 @@ protected:
     void FlashGameWindow();
     void WaitDraw();
     void CleanupSpriteCache();
+    void DestroyInnerEntities();
 
     void ProcessInputEvents();
     void ProcessScreenEffectFading();
@@ -363,7 +370,7 @@ protected:
     void Net_OnMapTextMsg();
     void Net_OnMapTextMsgLex();
     void Net_OnAddItemOnMap();
-    void Net_OnEraseItemFromMap();
+    void Net_OnRemoveItemFromMap();
     void Net_OnAnimateItem();
     void Net_OnEffect();
     void Net_OnFlyEffect();
@@ -373,7 +380,6 @@ protected:
     void Net_OnCritterDir();
     void Net_OnCritterMove();
     void Net_OnCritterMoveSpeed();
-    void Net_OnSomeItem();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
@@ -381,11 +387,8 @@ protected:
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
     void Net_OnCritterAttachments();
-    void Net_OnAllProperties();
-    void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
-    void Net_OnChosenEraseItem();
-    void Net_OnAllItemsSend();
+    void Net_OnChosenRemoveItem();
     void Net_OnChosenTalk();
     void Net_OnTimeSync();
     void Net_OnLoadMap();
@@ -394,9 +397,13 @@ protected:
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
     void Net_OnRemoteCall();
+    void Net_OnAddCustomEntity();
+    void Net_OnRemoveCustomEntity();
 
     void OnText(string_view str, ident_t cr_id, int how_say);
     void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
+    void ReceiveCustomEntities(Entity* holder);
+    auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*;
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
@@ -436,8 +443,6 @@ protected:
     uint _curMapIndexInLoc {};
 
     int _initNetReason {INIT_NET_REASON_NONE};
-    bool _initialItemsSend {};
-    ItemView* _someItem {};
 
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
@@ -446,6 +451,7 @@ protected:
     vector<vector<uint8>> _playerPropertiesData {};
     vector<vector<uint8>> _tempPropertiesData {};
     vector<vector<uint8>> _tempPropertiesDataExt {};
+    vector<vector<uint8>> _tempPropertiesDataCustomEntity {};
 
     uint _ifaceAnimIndex {};
     unordered_map<uint, unique_ptr<IfaceAnim>> _ifaceAnimations {};
@@ -468,6 +474,8 @@ protected:
 
     uint _holoInfo[MAX_HOLO_INFO] {};
     vector<Automap> _automaps {};
+
+    unordered_map<ident_t, ClientEntity*> _allEntities {};
 
     vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};

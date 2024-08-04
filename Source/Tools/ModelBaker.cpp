@@ -89,7 +89,7 @@ struct MeshData
 
 struct Bone
 {
-    auto Find(string name) -> Bone*
+    auto Find(const string& name) -> Bone*
     {
         STACK_TRACE_ENTRY();
 
@@ -546,7 +546,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uint8>
                     fbx_node = fbx_node->GetParent();
                 }
 
-                anim_set->BoneOutputs.push_back(AnimSet::BoneOutput());
+                anim_set->BoneOutputs.emplace_back();
                 AnimSet::BoneOutput& o = anim_set->BoneOutputs.back();
                 o.Name = hierarchy.back();
                 o.ScaleTime = st;

@@ -70,7 +70,6 @@ public:
 #endif
 
     void Init();
-    void MarkAsDestroyed() override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView* override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
@@ -132,6 +131,7 @@ private:
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
+    void OnDestroySelf() override;
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);

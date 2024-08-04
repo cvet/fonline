@@ -2621,9 +2621,6 @@ auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_
     }
 
     if (str.empty()) {
-        tw = width;
-        th = height;
-        lines = height / (font->LineHeight + font->YAdvance);
         return true;
     }
 

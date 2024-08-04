@@ -350,7 +350,7 @@
 {
     vector<CritterHexView*> critters;
     self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-    return vec_cast<CritterView*>(critters);
+    return vec_static_cast<CritterView*>(critters);
 }
 
 ///# ...
@@ -377,7 +377,7 @@
     preBlockHy = pre_block.second;
     blockHx = block.first;
     blockHy = block.second;
-    return vec_cast<CritterView*>(critters);
+    return vec_static_cast<CritterView*>(critters);
 }
 
 ///# ...
@@ -723,7 +723,7 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    return vec_cast<ItemView*>(self->GetTiles(hx, hy, roof));
+    return vec_static_cast<ItemView*>(self->GetTiles(hx, hy, roof));
 }
 
 ///# ...
@@ -943,4 +943,16 @@
     }
 
     self->SetCursorPos(hex_cr, mouseX, mouseY, showSteps, forceRefresh);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_SetCrittersContour(MapView* self, ContourType contour)
+{
+    self->SetCrittersContour(contour);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_ResetCritterContour(MapView* self)
+{
+    self->SetCritterContour(ident_t {}, ContourType::None);
 }

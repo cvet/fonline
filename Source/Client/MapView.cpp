@@ -68,7 +68,7 @@ static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 }
 
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _mapSprites(engine->SprMngr)
@@ -143,28 +143,27 @@ MapView::~MapView()
     }
 }
 
-void MapView::MarkAsDestroyed()
+void MapView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
     for (auto* cr : copy(_critters)) {
         DestroyCritter(cr);
     }
+
     RUNTIME_ASSERT(_critters.empty());
     RUNTIME_ASSERT(_crittersMap.empty());
 
     for (auto* item : copy(_allItems)) {
         DestroyItem(item);
     }
+
     RUNTIME_ASSERT(_allItems.empty());
     RUNTIME_ASSERT(_staticItems.empty());
     RUNTIME_ASSERT(_dynamicItems.empty());
     RUNTIME_ASSERT(_nonTileItems.empty());
     RUNTIME_ASSERT(_processingItems.empty());
     RUNTIME_ASSERT(_itemsMap.empty());
-
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
 }
 
 void MapView::EnableMapperMode()
@@ -274,6 +273,7 @@ void MapView::LoadStaticData()
     // Read static items
     {
         _mapLoading = true;
+        auto reset_loading = ScopeCallback([this]() noexcept { _mapLoading = false; });
 
         const auto items_count = reader.Read<uint>();
 
@@ -302,8 +302,6 @@ void MapView::LoadStaticData()
 
             AddItemInternal(static_item);
         }
-
-        _mapLoading = false;
     }
 
     reader.VerifyEnd();
@@ -740,8 +738,7 @@ void MapView::DestroyItem(ItemHexView* item)
     RemoveItemFromField(item);
     CleanLightSourceOffsets(item->GetId());
 
-    item->MarkAsDestroyed();
-    item->Release();
+    item->DestroySelf();
 }
 
 auto MapView::GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*
@@ -3435,13 +3432,10 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
-    field.Critters.emplace_back(cr);
+    vec_add_unique_value(field.Critters, cr);
 
     RecacheHexFlags(field);
-
     SetMultihexCritter(cr, true);
-
     UpdateCritterLightSource(cr);
 
     if (!_mapLoading && IsHexToDraw(hx, hy)) {
@@ -3472,9 +3466,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 
     auto& field = _hexField->GetCellForWriting(hx, hy);
 
-    const auto it = std::find(field.Critters.begin(), field.Critters.end(), cr);
-    RUNTIME_ASSERT(it != field.Critters.end());
-    field.Critters.erase(it);
+    vec_remove_unique_value(field.Critters, cr);
 
     RecacheHexFlags(field);
     SetMultihexCritter(cr, false);
@@ -3583,7 +3575,7 @@ auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
 
     cr->Init();
 
-    _critters.emplace_back(cr);
+    vec_add_unique_value(_critters, cr);
 
     AddCritterToField(cr);
 
@@ -3596,9 +3588,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
 
     RUNTIME_ASSERT(cr->GetMap() == this);
 
-    const auto it = std::find(_critters.begin(), _critters.end(), cr);
-    RUNTIME_ASSERT(it != _critters.end());
-    _critters.erase(it);
+    vec_remove_unique_value(_critters, cr);
 
     if (cr->GetId()) {
         const auto it_map = _crittersMap.find(cr->GetId());
@@ -3609,9 +3599,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
     RemoveCritterFromField(cr);
     CleanLightSourceOffsets(cr->GetId());
 
-    cr->DeleteAllInvItems();
-    cr->MarkAsDestroyed();
-    cr->Release();
+    cr->DestroySelf();
 }
 
 auto MapView::GetCritters() -> const vector<CritterHexView*>&
@@ -3653,7 +3641,11 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
 {
     STACK_TRACE_ENTRY();
 
-    if (_critterContourCrId) {
+    if (_critterContourCrId == cr_id && _critterContour == contour) {
+        return;
+    }
+
+    if (cr_id != _critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
         if (cr != nullptr && cr->IsSpriteValid()) {
             if (!cr->IsDead() && !cr->GetIsChosen()) {

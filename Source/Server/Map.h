@@ -130,10 +130,10 @@ public:
     void SetTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num);
     void SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void AddCritter(Critter* cr);
-    void EraseCritter(Critter* cr);
+    void RemoveCritter(Critter* cr);
     auto AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool;
-    void SetItem(Item* item, uint16 hx, uint16 hy);
-    void EraseItem(ident_t item_id);
+    void SetItem(Item* item);
+    void RemoveItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);

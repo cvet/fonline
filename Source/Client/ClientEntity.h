@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "EntityProperties.h"
 #include "EntityProtos.h"
 
 class FOClient;
@@ -55,15 +54,40 @@ public:
     [[nodiscard]] auto GetEngine() -> FOClient* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
     [[nodiscard]] auto GetName() const -> string_view override { return _name; }
 
-    void SetId(ident_t id);
-    void MarkAsDestroyed() override;
+    void SetId(ident_t id, bool register_entity);
+    void DestroySelf();
 
 protected:
     ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
+
+    virtual void OnDestroySelf() = 0;
 
     FOClient* _engine;
     string _name {};
 
 private:
     ident_t _id;
+    bool _registered {};
+};
+
+class CustomEntityView : public ClientEntity, public EntityProperties
+{
+public:
+    CustomEntityView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+        ClientEntity(engine, id, registrator, props),
+        EntityProperties(GetInitRef())
+    {
+    }
+
+    void OnDestroySelf() override;
+};
+
+class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProto
+{
+public:
+    CustomEntityWithProtoView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) :
+        CustomEntityView(engine, id, registrator, props),
+        EntityWithProto(proto)
+    {
+    }
 };

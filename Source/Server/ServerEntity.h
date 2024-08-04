@@ -36,8 +36,6 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "EntityProperties.h"
-#include "EntityProtos.h"
 
 class FOServer;
 
@@ -53,12 +51,12 @@ public:
     auto operator=(ServerEntity&&) noexcept = delete;
     ~ServerEntity() override = default;
 
-    [[nodiscard]] auto GetId() const -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
-    [[nodiscard]] auto GetName() const -> string_view override { return _name; }
-    [[nodiscard]] auto IsInitCalled() const -> bool { return _initCalled; }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
+    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
+    [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
 
-    void SetInitCalled() { _initCalled = true; }
+    void SetInitCalled() noexcept { _initCalled = true; }
 
 protected:
     ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
@@ -67,8 +65,28 @@ protected:
     string _name {};
 
 private:
-    void SetId(ident_t id); // Invoked by EntityManager
+    void SetId(ident_t id) noexcept; // Invoked by EntityManager
 
     ident_t _id;
     bool _initCalled {};
+};
+
+class CustomEntity : public ServerEntity, public EntityProperties
+{
+public:
+    CustomEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+        ServerEntity(engine, id, registrator, props),
+        EntityProperties(GetInitRef())
+    {
+    }
+};
+
+class CustomEntityWithProto : public CustomEntity, public EntityWithProto
+{
+public:
+    CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) :
+        CustomEntity(engine, id, registrator, props != nullptr ? props : &proto->GetProperties()),
+        EntityWithProto(proto)
+    {
+    }
 };

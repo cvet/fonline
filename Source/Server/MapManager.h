@@ -156,12 +156,12 @@ public:
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Location*;
     auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-    void DeleteLocation(Location* loc);
+    void DestroyLocation(Location* loc);
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
-    void AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id);
-    void EraseCrFromMap(Critter* cr, Map* map);
+    void AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id);
+    void RemoveCritterFromMap(Critter* cr, Map* map);
     void TransitToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, optional<uint> safe_radius);
     void TransitToGlobal(Critter* cr, ident_t global_cr_id);
     void KickPlayersToGlobalMap(Map* map);
@@ -169,7 +169,7 @@ public:
     void ProcessVisibleItems(Critter* cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint16 hy, int dir);
     void AddKnownLoc(Critter* cr, ident_t loc_id);
-    void EraseKnownLoc(Critter* cr, ident_t loc_id);
+    void RemoveKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
     [[nodiscard]] FORCE_INLINE auto GridAt(int x, int y) -> int16&;
@@ -178,7 +178,7 @@ private:
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
     void Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
-    void DeleteMapContent(Map* map);
+    void DestroyMapContent(Map* map);
 
     FOServer* _engine;
     bool _runGarbager {true};

@@ -65,11 +65,11 @@ void CritterHexView::Init()
     DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
 
-void CritterHexView::MarkAsDestroyed()
+void CritterHexView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    CritterView::MarkAsDestroyed();
+    CritterView::OnDestroySelf();
 
     Spr = nullptr;
 
@@ -237,12 +237,6 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         SetIsPlayerOffline(true);
         break;
     case CritterAction::Refresh:
-#if FO_ENABLE_3D
-        if (_model != nullptr) {
-            _model->PrewarmParticles();
-            _model->StartMeshGeneration();
-        }
-#endif
         break;
     default:
         break;
@@ -984,6 +978,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
     name_visible = false;
 
     string str;
+
     if (_strTextOnHead.empty()) {
         name_visible = IsNameVisible();
 

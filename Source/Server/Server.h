@@ -61,7 +61,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer : virtual public FOEngineBase
+class FOServer : SINGLEPLAYER_VIRTUAL public FOEngineBase
 {
     friend class ServerScriptSystem;
 
@@ -195,13 +195,9 @@ public:
 
     DataBase DbStorage {};
     const hstring GameCollectionName = ToHashedString("Game");
-    const hstring PlayersCollectionName = ToHashedString("Players");
-    const hstring LocationsCollectionName = ToHashedString("Locations");
-    const hstring MapsCollectionName = ToHashedString("Maps");
-    const hstring CrittersCollectionName = ToHashedString("Critters");
-    const hstring ItemsCollectionName = ToHashedString("Items");
     const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
     const hstring HistoryCollectionName = ToHashedString("History");
+    const hstring PlayersCollectionName = ToHashedString("Players");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -275,6 +271,7 @@ private:
     void OnSendCritterValue(Entity* entity, const Property* prop);
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop);

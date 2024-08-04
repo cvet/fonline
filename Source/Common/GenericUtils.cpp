@@ -100,7 +100,7 @@ auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
     throw HashInsertException("String value is not in hash storage", s);
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
+auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -114,16 +114,28 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 
     BreakIntoDebugger("Can't resolve hash");
 
-    if (failed != nullptr) {
-        WriteLog("Can't resolve hash {}", h);
-        *failed = true;
-        return {};
-    }
-
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
+auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (h == 0) {
+        return {};
+    }
+
+    if (const auto it = safe_find(_hashStorage, h); it != _hashStorage.end()) {
+        return hstring(&it->second);
+    }
+
+    BreakIntoDebugger("Can't resolve hash");
+    *failed = true;
+
+    return {};
+}
+
+auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -175,7 +187,7 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
     return h;
 }
 
-auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
+auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
 {
     NO_STACK_TRACE_ENTRY();
 

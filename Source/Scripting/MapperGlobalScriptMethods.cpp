@@ -130,7 +130,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, uint16 hx, uint16 hy, CritterFindType findType)
 {
-    return vec_cast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
+    return vec_static_cast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
 }
 
 ///# ...

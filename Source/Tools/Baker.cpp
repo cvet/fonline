@@ -593,7 +593,7 @@ void Baker::BakeAll()
                         return true;
                     };
 
-                    if (check_up_to_date("foitem") && check_up_to_date("focr") && check_up_to_date("fomap") && check_up_to_date("foloc")) {
+                    if (check_up_to_date("foitem") && check_up_to_date("focr") && check_up_to_date("fomap") && check_up_to_date("foloc") && check_up_to_date("fopro")) {
                         WriteLog("Protos up to date, skip");
                     }
                     else {
@@ -619,8 +619,10 @@ void Baker::BakeAll()
 
                 auto proto_errors = 0;
 
-                for (const auto* proto : proto_mngr.GetAllProtos()) {
-                    proto_errors += ValidateProperties(proto->GetProperties(), _str("proto {}", proto->GetName()), validation_engine->ScriptSys, resource_hashes);
+                for (auto&& [type_name, protos] : proto_mngr.GetAllProtos()) {
+                    for (auto&& [pid, proto] : protos) {
+                        proto_errors += ValidateProperties(proto->GetProperties(), _str("proto {} {}", type_name, proto->GetName()), validation_engine->ScriptSys, resource_hashes);
+                    }
                 }
 
                 // Check maps for locations
@@ -987,7 +989,7 @@ void Baker::BakeAll()
 
                         auto& text_pack = lang.GetTextPackForEdit(TextPackName::Dialogs);
 
-                        if (text_pack.IsIntersects(pack->Texts[i].second)) {
+                        if (text_pack.CheckIntersections(pack->Texts[i].second)) {
                             throw GenericException("Dialog text intersection detected", pack->PackName);
                         }
 
@@ -997,21 +999,26 @@ void Baker::BakeAll()
             }
 
             // Proto texts
-            const auto fill_proto_texts = [&lang_packs](const auto& protos, TextPackName pack_name) {
+            bool text_intersected = false;
+
+            const auto fill_proto_texts = [&parsed_texts = proto_mngr.GetParsedTexts(), &lang_packs, &text_intersected](const auto& protos, TextPackName pack_name) {
                 for (auto&& [pid, proto] : protos) {
-                    for (size_t i = 0; i < proto->Texts.size(); i++) {
-                        for (auto& lang : lang_packs) {
-                            if (proto->Texts[i].first != lang.GetName()) {
-                                continue;
+                    for (const auto& proto_text : parsed_texts.at(proto->GetTypeName()).at(pid)) {
+                        const auto lang_predicate = [&lang_name = proto_text.first](const LanguagePack& lang) { return lang.GetName() == lang_name; };
+                        const auto it_lang = std::find_if(lang_packs.begin(), lang_packs.end(), lang_predicate);
+
+                        if (it_lang != lang_packs.end()) {
+                            auto& text_pack = it_lang->GetTextPackForEdit(pack_name);
+
+                            if (text_pack.CheckIntersections(proto_text.second)) {
+                                WriteLog("Proto text intersection detected for proto {} and pack {}", proto->GetName(), pack_name);
+                                text_intersected = true;
                             }
 
-                            auto& text_pack = lang.GetTextPackForEdit(pack_name);
-
-                            if (text_pack.IsIntersects(proto->Texts[i].second)) {
-                                throw GenericException("Proto text intersection detected", proto->GetName(), pack_name);
-                            }
-
-                            text_pack.Merge(proto->Texts[i].second);
+                            text_pack.Merge(proto_text.second);
+                        }
+                        else {
+                            throw GenericException("Unsupported language in proto", proto->GetName(), proto_text.first);
                         }
                     }
                 }
@@ -1019,7 +1026,18 @@ void Baker::BakeAll()
 
             fill_proto_texts(proto_mngr.GetProtoCritters(), TextPackName::Dialogs);
             fill_proto_texts(proto_mngr.GetProtoItems(), TextPackName::Items);
+            fill_proto_texts(proto_mngr.GetProtoMaps(), TextPackName::Maps);
             fill_proto_texts(proto_mngr.GetProtoLocations(), TextPackName::Locations);
+
+            for (auto&& [type_name, entity_info] : baker_engine.GetEntityTypesInfo()) {
+                if (!entity_info.Exported && entity_info.HasProtos) {
+                    fill_proto_texts(proto_mngr.GetProtoEntities(type_name), TextPackName::Protos);
+                }
+            }
+
+            if (text_intersected) {
+                throw GenericException("Proto text intersection detected");
+            }
 
             // Save parsed packs
             for (const auto& lang_pack : lang_packs) {
