@@ -1713,7 +1713,7 @@ void FOClient::Net_OnCritterAction()
 
     ItemView* context_item = nullptr;
 
-    auto context_item_release = ScopeCallback([&context_item] {
+    auto context_item_release = ScopeCallback([&context_item]() noexcept {
         if (context_item != nullptr) {
             context_item->Release();
         }
@@ -1763,7 +1763,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     ItemView* moved_item = nullptr;
 
-    auto moved_item_release = ScopeCallback([&moved_item] {
+    auto moved_item_release = ScopeCallback([&moved_item]() noexcept {
         if (moved_item != nullptr) {
             moved_item->Release();
         }
@@ -1857,7 +1857,7 @@ void FOClient::Net_OnCritterAnimate()
 
     ItemView* context_item = nullptr;
 
-    auto context_item_release = ScopeCallback([&context_item] {
+    auto context_item_release = ScopeCallback([&context_item]() noexcept {
         if (context_item != nullptr) {
             context_item->Release();
         }
@@ -2158,7 +2158,7 @@ void FOClient::Net_OnChosenRemoveItem()
     }
 
     auto* item_clone = item->CreateRefClone();
-    auto item_clone_release = ScopeCallback([item_clone] { item_clone->Release(); });
+    auto item_clone_release = ScopeCallback([item_clone]() noexcept { item_clone->Release(); });
 
     chosen->DeleteInvItem(item, true);
 
@@ -3289,7 +3289,12 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
 #if FO_ENABLE_3D
         cr->RefreshModel();
+
+        if (cr->IsModel()) {
+            cr->GetModel()->StartMeshGeneration();
+        }
 #endif
+
         cr->Action(CritterAction::Refresh, 0, nullptr, false);
     }
 }

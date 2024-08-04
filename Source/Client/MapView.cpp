@@ -273,7 +273,7 @@ void MapView::LoadStaticData()
     // Read static items
     {
         _mapLoading = true;
-        auto reset_loading = ScopeCallback([this] { _mapLoading = false; });
+        auto reset_loading = ScopeCallback([this]() noexcept { _mapLoading = false; });
 
         const auto items_count = reader.Read<uint>();
 

@@ -82,7 +82,7 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    _innerItems.push_back(item);
+    vec_add_unique_value(_innerItems, item);
 
     std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -111,9 +111,7 @@ void ItemView::DestroyInnerItem(ItemView* item)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find(_innerItems.begin(), _innerItems.end(), item);
-    RUNTIME_ASSERT(it != _innerItems.end());
-    _innerItems.erase(it);
+    vec_remove_unique_value(_innerItems, item);
 
     item->DestroySelf();
 }

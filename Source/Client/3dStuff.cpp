@@ -227,7 +227,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     STACK_TRACE_ENTRY();
 
     // Find in already loaded
-    const auto take_first = (anim_name == "Base");
+    const auto take_first = anim_name == "Base";
     const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
     for (auto&& anim_set : _loadedAnimSets) {
         if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
@@ -2680,14 +2680,14 @@ auto ModelInformation::Load(string_view name) -> bool
         }
 
         // Load x file
-        auto* xfile = _modelMngr.GetHierarchy(model);
-        if (xfile == nullptr) {
+        auto* hierarchy = _modelMngr.GetHierarchy(model);
+        if (hierarchy == nullptr) {
             return false;
         }
 
         // Create animation
         _fileName = name;
-        _hierarchy = xfile;
+        _hierarchy = hierarchy;
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
@@ -2753,16 +2753,16 @@ auto ModelInformation::Load(string_view name) -> bool
             }
         }
     }
-    // Load just x file
     else {
-        auto* xfile = _modelMngr.GetHierarchy(name);
-        if (xfile == nullptr) {
+        // Load just model
+        auto* hierarchy = _modelMngr.GetHierarchy(name);
+        if (hierarchy == nullptr) {
             return false;
         }
 
         // Create animation
         _fileName = name;
-        _hierarchy = xfile;
+        _hierarchy = hierarchy;
 
         // Todo: process default animations
     }
