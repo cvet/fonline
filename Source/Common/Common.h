@@ -611,53 +611,108 @@ struct ExceptionStackTraceData
 
 // Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public std::exception, public ExceptionInfo \
+    class exception_name : public BaseEngineException \
     { \
     public: \
         exception_name() = delete; \
-        exception_name(const exception_name&) = default; \
-        exception_name(exception_name&&) = default; \
         auto operator=(const exception_name&) = delete; \
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-        explicit exception_name(string_view message, Args... args) : \
-            _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        explicit exception_name(string_view message, Args... args) noexcept : \
+            BaseEngineException(#exception_name, nullptr, message, std::forward<Args>(args)...) \
         { \
-            _exceptionMessage = #exception_name ": "; \
-            _exceptionMessage.append(message); \
-            for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n- ").append(param); \
-            } \
-            _stackTrace = GetStackTrace(); \
         } \
         template<typename... Args> \
-        exception_name(ExceptionStackTraceData data, string_view message, Args... args) : \
-            _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        exception_name(ExceptionStackTraceData data, string_view message, Args... args) noexcept : \
+            BaseEngineException(#exception_name, &data, message, std::forward<Args>(args)...) \
         { \
-            _exceptionMessage = #exception_name ": "; \
-            _exceptionMessage.append(message); \
-            for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n- ").append(param); \
-            } \
-            _stackTrace = std::move(data.StackTrace); \
         } \
-        [[nodiscard]] auto what() const noexcept -> const char* override \
+        exception_name(const exception_name& other) noexcept : \
+            BaseEngineException(other) \
         { \
-            return _exceptionMessage.c_str(); \
         } \
-        [[nodiscard]] auto StackTrace() const noexcept -> const string& override \
+        exception_name(exception_name&& other) noexcept : \
+            BaseEngineException(other) \
         { \
-            return _stackTrace; \
         } \
-\
-    private: \
-        string _exceptionMessage {}; \
-        string _stackTrace {}; \
-        vector<string> _exceptionParams {}; \
     }
 
-// Todo: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
+class BaseEngineException : public std::exception, public ExceptionInfo
+{
+public:
+    BaseEngineException() = delete;
+    auto operator=(const BaseEngineException&) = delete;
+    auto operator=(BaseEngineException&&) noexcept = delete;
+    ~BaseEngineException() override = default;
+
+    template<typename... Args>
+    explicit BaseEngineException(const char* name, ExceptionStackTraceData* st_data, string_view message, Args... args) noexcept :
+        _name {name}
+    {
+        try {
+            _exceptionMessage = _name;
+            _exceptionMessage.append(": ");
+            _exceptionMessage.append(message);
+
+            const vector<string> params = {fmt::format("{}", std::forward<Args>(args))...};
+
+            for (const auto& param : params) {
+                _exceptionMessage.append("\n- ");
+                _exceptionMessage.append(param);
+            }
+        }
+        catch (...) {
+        }
+
+        if (st_data != nullptr) {
+            _stackTrace = std::move(st_data->StackTrace);
+        }
+        else {
+            try {
+                _stackTrace = GetStackTrace();
+            }
+            catch (...) {
+            }
+        }
+    }
+
+    BaseEngineException(const BaseEngineException& other) noexcept :
+        std::exception(other),
+        ExceptionInfo(other),
+        _name {other._name}
+    {
+        try {
+            _exceptionMessage = other._exceptionMessage;
+        }
+        catch (...) {
+        }
+
+        try {
+            _stackTrace = other._stackTrace;
+        }
+        catch (...) {
+        }
+    }
+
+    BaseEngineException(BaseEngineException&& other) noexcept :
+        std::exception(other),
+        ExceptionInfo(other),
+        _name {other._name}
+    {
+        _exceptionMessage = std::move(other._exceptionMessage);
+        _stackTrace = std::move(other._stackTrace);
+    }
+
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_exceptionMessage.empty() ? _exceptionMessage.c_str() : _name; }
+    [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; }
+
+private:
+    const char* _name;
+    string _exceptionMessage {};
+    string _stackTrace {};
+};
+
 #if !FO_NO_EXTRA_ASSERTS
 #define RUNTIME_ASSERT(expr) \
     if (!(expr)) \
