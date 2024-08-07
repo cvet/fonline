@@ -151,7 +151,6 @@ public:
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
     [[nodiscard]] auto IsVideoPlaying() const -> bool { return !!_video || !_videoQueue.empty(); }
 
-    void Shutdown();
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ConsoleMessage(string_view msg);

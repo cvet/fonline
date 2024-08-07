@@ -63,7 +63,7 @@
 struct ServerConnection::Impl
 {
     auto GetLastSocketError() -> string;
-    auto FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) -> bool;
+    void FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port);
 
     z_stream ZStream {};
     bool ZStreamActive {};
@@ -81,6 +81,9 @@ ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
+    _connectCallback = [](bool) {};
+    _disconnectCallback = [] {};
+
     _incomeBuf.resize(_settings.NetBufferSize);
 
     AddMessageHandler(NETMSG_DISCONNECT, [this] { Disconnect(); });
@@ -97,12 +100,15 @@ ServerConnection::~ServerConnection()
     if (_impl->ZStreamActive) {
         ::inflateEnd(&_impl->ZStream);
     }
+
     delete _impl;
 }
 
 void ServerConnection::AddConnectHandler(ConnectCallback handler)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(handler);
 
     _connectCallback = std::move(handler);
 }
@@ -111,6 +117,8 @@ void ServerConnection::AddDisconnectHandler(DisconnectCallback handler)
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(handler);
+
     _disconnectCallback = std::move(handler);
 }
 
@@ -118,6 +126,7 @@ void ServerConnection::AddMessageHandler(uint msg, MessageCallback handler)
 {
     STACK_TRACE_ENTRY();
 
+    RUNTIME_ASSERT(handler);
     RUNTIME_ASSERT(_handlers.count(msg) == 0);
 
     _handlers.emplace(msg, std::move(handler));
@@ -130,14 +139,47 @@ void ServerConnection::Connect()
     RUNTIME_ASSERT(!_isConnected);
     RUNTIME_ASSERT(!_isConnecting);
 
-    if (!ConnectToHost(_settings.ServerHost, static_cast<uint16>(_settings.ServerPort))) {
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+    try {
+        ConnectToHost();
+    }
+    catch (const ServerConnectionException& ex) {
+        WriteLog("Connecting error: {}", ex.what());
+        Disconnect();
+        _connectCallback(false);
+    }
+    catch (const NetBufferException& ex) {
+        WriteLog("Connecting error: {}", ex.what());
+        Disconnect();
+        _connectCallback(false);
+    }
+    catch (...) {
+        safe_call([this] { Disconnect(); });
+        throw;
     }
 }
 
 void ServerConnection::Process()
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        ProcessConnection();
+    }
+    catch (const ServerConnectionException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        Disconnect();
+    }
+    catch (const NetBufferException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        Disconnect();
+    }
+    catch (...) {
+        safe_call([this] { Disconnect(); });
+        throw;
+    }
+}
+
+void ServerConnection::ProcessConnection()
 {
     STACK_TRACE_ENTRY();
 
@@ -151,52 +193,40 @@ void ServerConnection::Process()
         }
     }
 
-    if (_isConnected) {
-        if (ReceiveData(true) >= 0) {
-            while (_isConnected && _netIn.NeedProcess()) {
-                const auto msg = _netIn.Read<uint>();
+    if (_isConnected && ReceiveData(true)) {
+        while (_isConnected && _netIn.NeedProcess()) {
+            const auto msg = _netIn.Read<uint>();
 
 #if FO_DEBUG
-                _msgHistory.insert(_msgHistory.begin(), msg);
+            _msgHistory.insert(_msgHistory.begin(), msg);
 #endif
 
-                CHECK_SERVER_IN_BUF_ERROR(*this);
-
-                if (_settings.DebugNet) {
-                    _msgCount++;
-                    WriteLog("{}) Input net message {}", _msgCount, msg);
-                }
-
-                const auto it = _handlers.find(msg);
-                if (it != _handlers.end()) {
-                    it->second();
-
-                    CHECK_SERVER_IN_BUF_ERROR(*this);
-                }
-                else {
-                    WriteLog("No handler for message {}. Disconnect", msg);
-                    BreakIntoDebugger();
-                    Disconnect();
-                    return;
-                }
+            if (_settings.DebugNet) {
+                _msgCount++;
+                WriteLog("{}) Input net message {}", _msgCount, msg);
             }
 
-            if (_interthreadCommunication && _isConnected) {
-                RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
+            const auto it = _handlers.find(msg);
+            if (it != _handlers.end()) {
+                it->second();
             }
-
-            if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
-                _netOut.StartMsg(NETMSG_PING);
-                _netOut.Write(PING_SERVER);
-                _pingTime = Timer::CurTime();
-                _netOut.EndMsg();
+            else {
+                throw ServerConnectionException("No handler for message", msg);
             }
-
-            DispatchData();
         }
-        else {
-            Disconnect();
+
+        if (_interthreadCommunication && _isConnected) {
+            RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
         }
+
+        if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
+            _netOut.StartMsg(NETMSG_PING);
+            _netOut.Write(PING_SERVER);
+            _pingTime = Timer::CurTime();
+            _netOut.EndMsg();
+        }
+
+        DispatchData();
     }
 }
 
@@ -234,20 +264,18 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     if (r == 1) {
         if (_isConnecting) {
             WriteLog("Connection established");
+
             _isConnecting = false;
             _isConnected = true;
-
             Net_SendHandshake();
-
-            if (_connectCallback) {
-                _connectCallback(true);
-            }
+            _connectCallback(true);
         }
+
         return true;
     }
 
     if (r == 0) {
-        auto error = 0;
+        int error = 0;
 #if FO_WINDOWS
         int len = sizeof(error);
 #else
@@ -257,30 +285,22 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
             return false;
         }
 
-        WriteLog("Socket error '{}'", _impl->GetLastSocketError());
+        throw ServerConnectionException("Socket error", _impl->GetLastSocketError());
     }
     else {
-        // Error
-        WriteLog("Socket select error '{}'", _impl->GetLastSocketError());
+        throw ServerConnectionException("Socket select error", _impl->GetLastSocketError());
     }
-
-    if (_isConnecting) {
-        WriteLog("Can't connect to server");
-        _isConnecting = false;
-
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
-    }
-
-    Disconnect();
-    return false;
 }
 
-auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
+void ServerConnection::ConnectToHost()
 {
     STACK_TRACE_ENTRY();
 
+    string_view host = _settings.ServerHost;
+    auto port = numeric_cast<uint16>(_settings.ServerPort);
+
+    _netIn.ResetBuf();
+    _netOut.ResetBuf();
     _netIn.SetEncryptKey(0);
     _netOut.SetEncryptKey(0);
 
@@ -313,20 +333,13 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
 
         WriteLog("Connected to server via interthread communication");
 
-        _isConnecting = false;
         _isConnected = true;
-
         Net_SendHandshake();
+        _connectCallback(true);
 
-        if (_connectCallback) {
-            _connectCallback(true);
-        }
-
-        return true;
+        return;
     }
     else {
-        auto locker = std::unique_lock {_interthreadReceivedLocker};
-
         _interthreadCommunication = false;
     }
 
@@ -347,16 +360,14 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
 #if FO_WINDOWS
     WSADATA wsa;
     if (::WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        WriteLog("WSAStartup error '{}'", _impl->GetLastSocketError());
-        return false;
+        throw ServerConnectionException("WSAStartup error", _impl->GetLastSocketError());
     }
 #endif
 
-    if (!_impl->FillSockAddr(_impl->SockAddr, host, port)) {
-        return false;
-    }
-    if (_settings.ProxyType != 0 && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<uint16>(_settings.ProxyPort))) {
-        return false;
+    _impl->FillSockAddr(_impl->SockAddr, host, port);
+
+    if (_settings.ProxyType != 0) {
+        _impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, numeric_cast<uint16>(_settings.ProxyPort));
     }
 
 #if FO_LINUX
@@ -365,8 +376,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
     constexpr auto sock_type = SOCK_STREAM;
 #endif
     if ((_impl->NetSock = ::socket(PF_INET, sock_type, IPPROTO_TCP)) == INVALID_SOCKET) {
-        WriteLog("Create socket error '{}'", _impl->GetLastSocketError());
-        return false;
+        throw ServerConnectionException("Create socket error", _impl->GetLastSocketError());
     }
 
     // Nagle
@@ -391,8 +401,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
         if (::fcntl(_impl->NetSock, F_SETFL, flags | O_NONBLOCK))
 #endif
         {
-            WriteLog("Can't set non-blocking mode to socket, error '{}'", _impl->GetLastSocketError());
-            return false;
+            throw ServerConnectionException("Can't set non-blocking mode to socket", _impl->GetLastSocketError());
         }
 
         const auto r = ::connect(_impl->NetSock, reinterpret_cast<sockaddr*>(&_impl->SockAddr), sizeof(sockaddr_in));
@@ -402,133 +411,109 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
         if (r == SOCKET_ERROR && errno != EINPROGRESS)
 #endif
         {
-            WriteLog("Can't connect to game server, error '{}'", _impl->GetLastSocketError());
-            return false;
+            throw ServerConnectionException("Can't connect to the game server", _impl->GetLastSocketError());
         }
     }
     else {
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
         // Proxy connect
         if (::connect(_impl->NetSock, reinterpret_cast<sockaddr*>(&_impl->ProxyAddr), sizeof(sockaddr_in)) != 0) {
-            WriteLog("Can't connect to proxy server, error '{}'", _impl->GetLastSocketError());
-            return false;
+            throw ServerConnectionException("Can't connect to proxy server", _impl->GetLastSocketError());
         }
 
         auto send_recv = [this]() {
             if (!DispatchData()) {
-                WriteLog("Net output error");
-                return false;
+                throw ServerConnectionException("Net output error");
             }
 
             const auto time = Timer::CurTime();
 
             while (true) {
-                const auto receive = ReceiveData(false);
-                if (receive > 0) {
+                if (ReceiveData(false)) {
                     break;
                 }
 
-                if (receive < 0) {
-                    WriteLog("Net input error");
-                    return false;
-                }
-
                 if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
-                    WriteLog("Proxy answer timeout");
-                    return false;
+                    throw ServerConnectionException("Proxy answer timeout");
                 }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-
-            return true;
         };
 
         uint8 b1 = 0;
         uint8 b2 = 0;
+
+        UNUSED_VARIABLE(b1);
+
         _netIn.ResetBuf();
         _netOut.ResetBuf();
 
         // Authentication
         if (_settings.ProxyType == PROXY_SOCKS4) {
             // Connect
-            _netOut.Write(static_cast<uint8>(4)); // Socks version
-            _netOut.Write(static_cast<uint8>(1)); // Connect command
-            _netOut.Write(static_cast<uint16>(_impl->SockAddr.sin_port));
-            _netOut.Write(static_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
-            _netOut.Write(static_cast<uint8>(0));
+            _netOut.Write(numeric_cast<uint8>(4)); // Socks version
+            _netOut.Write(numeric_cast<uint8>(1)); // Connect command
+            _netOut.Write(numeric_cast<uint16>(_impl->SockAddr.sin_port));
+            _netOut.Write(numeric_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
+            _netOut.Write(numeric_cast<uint8>(0));
 
-            if (!send_recv()) {
-                return false;
-            }
+            send_recv();
 
             b1 = _netIn.Read<uint8>(); // Null byte
             b2 = _netIn.Read<uint8>(); // Answer code
+
             if (b2 != 0x5A) {
                 switch (b2) {
                 case 0x5B:
-                    WriteLog("Proxy connection error, request rejected or failed");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, request rejected or failed");
                 case 0x5C:
-                    WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
                 case 0x5D:
-                    WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
                 default:
-                    WriteLog("Proxy connection error, Unknown error {}", b2);
-                    break;
+                    throw ServerConnectionException("Proxy connection error, unknown error", b2);
                 }
-                return false;
             }
         }
         else if (_settings.ProxyType == PROXY_SOCKS5) {
-            _netOut.Write(static_cast<uint8>(5)); // Socks version
-            _netOut.Write(static_cast<uint8>(1)); // Count methods
-            _netOut.Write(static_cast<uint8>(2)); // Method
+            _netOut.Write(numeric_cast<uint8>(5)); // Socks version
+            _netOut.Write(numeric_cast<uint8>(1)); // Count methods
+            _netOut.Write(numeric_cast<uint8>(2)); // Method
 
-            if (!send_recv()) {
-                return false;
-            }
+            send_recv();
 
             b1 = _netIn.Read<uint8>(); // Socks version
             b2 = _netIn.Read<uint8>(); // Method
-            if (b2 == 2) // User/Password
-            {
-                _netOut.Write(static_cast<uint8>(1)); // Subnegotiation version
-                _netOut.Write(static_cast<uint8>(_settings.ProxyUser.length())); // Name length
+
+            if (b2 == 2) { // User/Password
+                _netOut.Write(numeric_cast<uint8>(1)); // Subnegotiation version
+                _netOut.Write(numeric_cast<uint8>(_settings.ProxyUser.length())); // Name length
                 _netOut.Push(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
-                _netOut.Write(static_cast<uint8>(_settings.ProxyPass.length())); // Pass length
+                _netOut.Write(numeric_cast<uint8>(_settings.ProxyPass.length())); // Pass length
                 _netOut.Push(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
 
-                if (!send_recv()) {
-                    return false;
-                }
+                send_recv();
 
                 b1 = _netIn.Read<uint8>(); // Subnegotiation version
                 b2 = _netIn.Read<uint8>(); // Status
                 if (b2 != 0) {
-                    WriteLog("Invalid proxy user or password");
-                    return false;
+                    throw ServerConnectionException("Invalid proxy user or password");
                 }
             }
-            else if (b2 != 0) // Other authorization
-            {
-                WriteLog("Socks server connect fail");
-                return false;
+            else if (b2 != 0) { // Other authorization
+                throw ServerConnectionException("Socks server connect fail");
             }
 
             // Connect
-            _netOut.Write(static_cast<uint8>(5)); // Socks version
-            _netOut.Write(static_cast<uint8>(1)); // Connect command
-            _netOut.Write(static_cast<uint8>(0)); // Reserved
-            _netOut.Write(static_cast<uint8>(1)); // IP v4 address
-            _netOut.Write(static_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
-            _netOut.Write(static_cast<uint16>(_impl->SockAddr.sin_port));
+            _netOut.Write(numeric_cast<uint8>(5)); // Socks version
+            _netOut.Write(numeric_cast<uint8>(1)); // Connect command
+            _netOut.Write(numeric_cast<uint8>(0)); // Reserved
+            _netOut.Write(numeric_cast<uint8>(1)); // IP v4 address
+            _netOut.Write(numeric_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
+            _netOut.Write(numeric_cast<uint16>(_impl->SockAddr.sin_port));
 
-            if (!send_recv()) {
-                return false;
-            }
+            send_recv();
 
             b1 = _netIn.Read<uint8>(); // Socks version
             b2 = _netIn.Read<uint8>(); // Answer code
@@ -536,65 +521,59 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
             if (b2 != 0) {
                 switch (b2) {
                 case 1:
-                    WriteLog("Proxy connection error, SOCKS-server error");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, SOCKS-server error");
                 case 2:
-                    WriteLog("Proxy connection error, connections fail by proxy rules");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, connections fail by proxy rules");
                 case 3:
-                    WriteLog("Proxy connection error, network is not aviable");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, network is not aviable");
                 case 4:
-                    WriteLog("Proxy connection error, host is not aviable");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, host is not aviable");
                 case 5:
-                    WriteLog("Proxy connection error, connection denied");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, connection denied");
                 case 6:
-                    WriteLog("Proxy connection error, TTL expired");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, TTL expired");
                 case 7:
-                    WriteLog("Proxy connection error, command not supported");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, command not supported");
                 case 8:
-                    WriteLog("Proxy connection error, address type not supported");
-                    break;
+                    throw ServerConnectionException("Proxy connection error, address type not supported");
                 default:
-                    WriteLog("Proxy connection error, unknown error {}", b2);
-                    break;
+                    throw ServerConnectionException("Proxy connection error, unknown error", b2);
                 }
-                return false;
             }
         }
         else if (_settings.ProxyType == PROXY_HTTP) {
-            string buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_impl->SockAddr.sin_addr), port);
-            _netOut.Push(buf.c_str(), buf.length());
+            string buf;
 
-            if (!send_recv()) {
-                return false;
+            {
+                static std::mutex inet_ntoa_locker;
+                auto locker = std::scoped_lock {inet_ntoa_locker};
+
+                buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_impl->SockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
             }
 
+            _netOut.Push(buf.c_str(), buf.length());
+
+            send_recv();
+
             buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
+
             if (buf.find(" 200 ") == string::npos) {
-                WriteLog("Proxy connection error, receive message '{}'", buf);
-                return false;
+                throw ServerConnectionException("Proxy connection error", buf);
             }
         }
         else {
-            WriteLog("Unknown proxy type {}", _settings.ProxyType);
-            return false;
+            throw ServerConnectionException("Unknown proxy type", _settings.ProxyType);
         }
 
         _netIn.ResetBuf();
         _netOut.ResetBuf();
 
 #else
-        throw GenericException("Proxy connection is not supported on this platform");
+        throw ServerConnectionException("Proxy connection is not supported on this platform");
 #endif
     }
 
     _isConnecting = true;
-    return true;
 }
 
 void ServerConnection::Disconnect()
@@ -628,28 +607,27 @@ void ServerConnection::Disconnect()
     }
 
     if (_isConnecting) {
-        _isConnecting = false;
+        WriteLog("Can't connect to the server");
 
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+        _isConnecting = false;
+        _connectCallback(false);
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}", _bytesSend, _bytesReceived, _bytesReceived + _bytesSend, _bytesRealReceived);
-
-        _isConnected = false;
+        WriteLog("Disconnect from server");
+        WriteLog("Session statistics:");
+        WriteLog("- Sent {} bytes", _bytesSend);
+        WriteLog("- Received {} bytes", _bytesReceived);
+        WriteLog("- Whole traffic {} bytes", _bytesReceived + _bytesSend);
+        WriteLog("- Receive unpacked {} bytes", _bytesRealReceived);
 
         _netIn.ResetBuf();
         _netOut.ResetBuf();
         _netIn.SetEncryptKey(0);
         _netOut.SetEncryptKey(0);
-        _netIn.SetError(false);
-        _netOut.SetError(false);
 
-        if (_disconnectCallback) {
-            _disconnectCallback();
-        }
+        _isConnected = false;
+        _disconnectCallback();
     }
 }
 
@@ -669,6 +647,7 @@ auto ServerConnection::DispatchData() -> bool
 
     const auto tosend = _netOut.GetEndPos();
     size_t sendpos = 0;
+
     while (sendpos < tosend) {
         if (_interthreadCommunication) {
             _interthreadSend({_netOut.GetData(), tosend});
@@ -679,7 +658,7 @@ auto ServerConnection::DispatchData() -> bool
 #if FO_WINDOWS
             WSABUF buf;
             buf.buf = reinterpret_cast<CHAR*>(_netOut.GetData() + sendpos);
-            buf.len = static_cast<ULONG>(tosend - sendpos);
+            buf.len = numeric_cast<ULONG>(tosend - sendpos);
             DWORD len;
             if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
 #else
@@ -687,9 +666,7 @@ auto ServerConnection::DispatchData() -> bool
             if (len <= 0)
 #endif
             {
-                WriteLog("Socket error while send to server, error '{}'", _impl->GetLastSocketError());
-                Disconnect();
-                return false;
+                throw ServerConnectionException("Socket error while send to server", _impl->GetLastSocketError());
             }
 
             sendpos += len;
@@ -698,15 +675,16 @@ auto ServerConnection::DispatchData() -> bool
     }
 
     _netOut.ResetBuf();
+
     return true;
 }
 
-auto ServerConnection::ReceiveData(bool unpack) -> int
+auto ServerConnection::ReceiveData(bool unpack) -> bool
 {
     STACK_TRACE_ENTRY();
 
     if (!CheckSocketStatus(false)) {
-        return 0;
+        return false;
     }
 
     size_t whole_len;
@@ -726,20 +704,18 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         DWORD flags = 0;
         WSABUF buf;
         buf.buf = reinterpret_cast<CHAR*>(_incomeBuf.data());
-        buf.len = static_cast<ULONG>(_incomeBuf.size());
+        buf.len = numeric_cast<ULONG>(_incomeBuf.size());
         DWORD len;
         if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-        int len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
+        int len = numeric_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
         if (len == SOCKET_ERROR)
 #endif
         {
-            WriteLog("Socket error while receive from server, error '{}'", _impl->GetLastSocketError());
-            return -1;
+            throw ServerConnectionException("Socket error while receive from server", _impl->GetLastSocketError());
         }
         if (len == 0) {
-            WriteLog("Socket is closed");
-            return -2;
+            throw ServerConnectionException("Socket is closed");
         }
 
         whole_len = len;
@@ -749,10 +725,10 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
 #if FO_WINDOWS
             flags = 0;
             buf.buf = reinterpret_cast<CHAR*>(_incomeBuf.data() + whole_len);
-            buf.len = static_cast<ULONG>(_incomeBuf.size() - whole_len);
+            buf.len = numeric_cast<ULONG>(_incomeBuf.size() - whole_len);
             if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-            len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
+            len = numeric_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
             if (len == SOCKET_ERROR)
 #endif
             {
@@ -764,12 +740,10 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
                     break;
                 }
 
-                WriteLog("Socket error (2) while receive from server, error '{}'", _impl->GetLastSocketError());
-                return -1;
+                throw ServerConnectionException("Socket error (2) while receive from server", _impl->GetLastSocketError());
             }
             if (len == 0) {
-                WriteLog("Socket is closed (2)");
-                return -2;
+                throw ServerConnectionException("Socket is closed (2)");
             }
 
             whole_len += len;
@@ -782,9 +756,9 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
 
     if (unpack && !_settings.DisableZlibCompression) {
         _impl->ZStream.next_in = static_cast<Bytef*>(_incomeBuf.data());
-        _impl->ZStream.avail_in = static_cast<uInt>(whole_len);
+        _impl->ZStream.avail_in = numeric_cast<uInt>(whole_len);
         _impl->ZStream.next_out = static_cast<Bytef*>(_netIn.GetData() + _netIn.GetEndPos());
-        _impl->ZStream.avail_out = static_cast<uInt>(_netIn.GetAvailLen());
+        _impl->ZStream.avail_out = numeric_cast<uInt>(_netIn.GetAvailLen());
 
         const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(first_inflate == Z_OK);
@@ -796,7 +770,7 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
             _netIn.GrowBuf(_settings.NetBufferSize);
 
             _impl->ZStream.next_out = static_cast<Bytef*>(_netIn.GetData() + _netIn.GetEndPos());
-            _impl->ZStream.avail_out = static_cast<uInt>(_netIn.GetAvailLen());
+            _impl->ZStream.avail_out = numeric_cast<uInt>(_netIn.GetAvailLen());
 
             const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
             RUNTIME_ASSERT(next_inflate == Z_OK);
@@ -812,23 +786,28 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     _bytesReceived += whole_len;
     _bytesRealReceived += _netIn.GetEndPos() - old_pos;
 
-    return static_cast<int>(_netIn.GetEndPos() - old_pos);
+    RUNTIME_ASSERT(_netIn.GetEndPos() > old_pos);
+
+    return _netIn.GetEndPos() - old_pos > 0;
 }
 
-auto ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) -> bool
+void ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port)
 {
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
+
     if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == static_cast<uint>(-1)) {
-        const auto* h = ::gethostbyname(string(host).c_str());
+        static std::mutex gethostbyname_locker;
+        auto locker = std::scoped_lock {gethostbyname_locker};
+
+        const auto* h = ::gethostbyname(string(host).c_str()); // NOLINT(concurrency-mt-unsafe)
+
         if (h == nullptr) {
-            WriteLog("Can't resolve remote host '{}', error '{}'.", host, GetLastSocketError());
-            return false;
+            throw ServerConnectionException("Can't resolve remote host", host, GetLastSocketError());
         }
 
         std::memcpy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));
     }
-    return true;
 }
 
 auto ServerConnection::Impl::GetLastSocketError() -> string
@@ -838,22 +817,22 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
     wchar_t* ws = nullptr;
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
         nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
+    auto free_ws = ScopeCallback([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
     const string error_str = _str().parseWideChar(ws).trim();
-    ::LocalFree(ws);
 
-    return _str("{} ({})", error_str, error_code);
+    return _str("{} ({})", error_str, error_code).str();
 
 #else
     const string error_str = _str(::strerror(errno)).trim();
 
-    return _str("{} ({})", error_str, errno);
+    return _str("{} ({})", error_str, errno).str();
 #endif
 }
 
 void ServerConnection::Net_SendHandshake()
 {
     _netOut.StartMsg(NETMSG_HANDSHAKE);
-    _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
+    _netOut.Write(numeric_cast<uint>(FO_COMPATIBILITY_VERSION));
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     _netOut.Write(encrypt_key);
@@ -869,8 +848,6 @@ void ServerConnection::Net_SendHandshake()
 void ServerConnection::Net_OnPing()
 {
     const auto ping = _netIn.Read<uint8>();
-
-    CHECK_SERVER_IN_BUF_ERROR(*this);
 
     if (ping == PING_CLIENT) {
         _netOut.StartMsg(NETMSG_PING);

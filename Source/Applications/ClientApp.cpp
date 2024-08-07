@@ -47,9 +47,9 @@
 
 struct ClientAppData
 {
-    FOClient* Client {};
+    unique_ptr<FOClient> Client {};
     bool ResourcesSynced {};
-    Updater* ResourceUpdater {};
+    unique_ptr<Updater> ResourceUpdater {};
 };
 GLOBAL_DATA(ClientAppData, Data);
 
@@ -68,7 +68,7 @@ static void MainEntry([[maybe_unused]] void* data)
         App->BeginFrame();
 
         // Synchronize files and start client
-        if (Data->Client == nullptr) {
+        if (!Data->Client) {
             try {
                 // Synchronize files
                 if (!Data->ResourcesSynced) {
@@ -78,8 +78,8 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    if (Data->ResourceUpdater == nullptr) {
-                        Data->ResourceUpdater = new Updater(App->Settings, &App->MainWindow);
+                    if (!Data->ResourceUpdater) {
+                        Data->ResourceUpdater = std::make_unique<Updater>(App->Settings, &App->MainWindow);
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
@@ -87,13 +87,12 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    delete Data->ResourceUpdater;
-                    Data->ResourceUpdater = nullptr;
+                    Data->ResourceUpdater.reset();
                     Data->ResourcesSynced = true;
                 }
 
                 // Create game module
-                Data->Client = new FOClient(App->Settings, &App->MainWindow, false);
+                Data->Client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -105,15 +104,8 @@ static void MainEntry([[maybe_unused]] void* data)
             Data->Client->MainLoop();
         }
         catch (const ResourcesOutdatedException&) {
-            try {
-                Data->ResourcesSynced = false;
-                Data->Client->Shutdown();
-                Data->Client->Release();
-                Data->Client = nullptr;
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
+            Data->ResourcesSynced = false;
+            Data->Client.reset();
         }
         catch (const EngineDataNotFoundException& ex) {
             ReportExceptionAndExit(ex);
@@ -123,14 +115,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
             // Recreate client on unhandled error
             if (App->Settings.RecreateClientOnError) {
-                try {
-                    Data->Client->Shutdown();
-                    Data->Client->Release();
-                    Data->Client = nullptr;
-                }
-                catch (const std::exception& ex2) {
-                    ReportExceptionAndExit(ex2);
-                }
+                Data->Client.reset();
             }
         }
 
@@ -191,10 +176,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
-        if (Data->Client != nullptr) {
-            Data->Client->Shutdown();
-            delete Data->Client;
-        }
+        Data->Client.reset();
 
         ExitApp(true);
     }

@@ -38,6 +38,8 @@
 // ReSharper disable once CppUnusedIncludeDirective
 #include "NetProtocol-Include.h"
 
+DECLARE_EXCEPTION(NetBufferException);
+
 class NetBuffer
 {
 public:
@@ -52,11 +54,9 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto IsError() const -> bool;
     [[nodiscard]] auto GetData() -> uint8*;
     [[nodiscard]] auto GetEndPos() const -> size_t;
 
-    void SetError(bool value);
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
     virtual void ResetBuf();
@@ -66,7 +66,6 @@ protected:
     auto EncryptKey(int move) -> uint8;
     void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
 
-    bool _isError {};
     unique_ptr<uint8[]> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufLen {};
@@ -90,7 +89,7 @@ public:
     auto operator=(NetOutBuffer&&) noexcept -> NetOutBuffer& = default;
     ~NetOutBuffer() override = default;
 
-    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0u; }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0; }
 
     void Push(const void* buf, size_t len);
     void Cut(size_t len);

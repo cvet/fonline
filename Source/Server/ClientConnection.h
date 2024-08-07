@@ -37,18 +37,9 @@
 
 #include "NetBuffer.h"
 
-#define CHECK_CLIENT_IN_BUF_ERROR(conn) \
-    do { \
-        if ((conn)->InBuf.IsError()) { \
-            WriteLog("Wrong network data from host '{}'", (conn)->GetHost()); \
-            (conn)->HardDisconnect(); \
-            return; \
-        } \
-    } while (0)
-
 #define CONNECTION_OUTPUT_BEGIN(conn) \
     { \
-        std::lock_guard conn_locker__((conn)->OutBufLocker)
+        std::scoped_lock conn_locker__((conn)->OutBufLocker)
 #define CONNECTION_OUTPUT_END(conn) \
     } \
     (conn)->Dispatch()

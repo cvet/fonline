@@ -81,7 +81,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    _invItems.push_back(item);
+    vec_add_unique_value(_invItems, item);
 
     std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -112,9 +112,7 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 
     UNUSED_VARIABLE(animate);
 
-    const auto it = std::find(_invItems.begin(), _invItems.end(), item);
-    RUNTIME_ASSERT(it != _invItems.end());
-    _invItems.erase(it);
+    vec_remove_unique_value(_invItems, item);
 
     item->DestroySelf();
 }

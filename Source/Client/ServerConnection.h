@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// Todo: automatically reconnect on network failtures
+// Todo: automatically reconnect on network failures
 
 #pragma once
 
@@ -40,14 +40,7 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-#define CHECK_SERVER_IN_BUF_ERROR(conn) \
-    do { \
-        if ((conn).InBuf.IsError()) { \
-            WriteLog("Wrong network data!"); \
-            (conn).Disconnect(); \
-            return; \
-        } \
-    } while (0)
+DECLARE_EXCEPTION(ServerConnectionException);
 
 // Proxy types
 constexpr auto PROXY_SOCKS4 = 1;
@@ -88,8 +81,9 @@ public:
 private:
     struct Impl;
 
-    auto ConnectToHost(string_view host, uint16 port) -> bool;
-    auto ReceiveData(bool unpack) -> int;
+    void ConnectToHost();
+    void ProcessConnection();
+    auto ReceiveData(bool unpack) -> bool;
     auto DispatchData() -> bool;
     auto CheckSocketStatus(bool for_write) -> bool;
 

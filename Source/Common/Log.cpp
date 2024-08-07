@@ -70,7 +70,7 @@ void LogWithoutTimestamp()
 {
     STACK_TRACE_ENTRY();
 
-    std::lock_guard locker(Data->LogLocker);
+    std::scoped_lock locker(Data->LogLocker);
 
     Data->LogDisableTimestamp = true;
 }
@@ -79,7 +79,7 @@ void LogToFile(string_view fname)
 {
     STACK_TRACE_ENTRY();
 
-    std::lock_guard locker(Data->LogLocker);
+    std::scoped_lock locker(Data->LogLocker);
 
     auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
 
@@ -96,7 +96,7 @@ void SetLogCallback(string_view key, LogFunc callback)
 {
     STACK_TRACE_ENTRY();
 
-    std::lock_guard locker(Data->LogLocker);
+    std::scoped_lock locker(Data->LogLocker);
 
     if (!key.empty()) {
         if (callback) {
@@ -122,7 +122,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             return;
         }
 
-        std::lock_guard locker(Data->LogLocker);
+        std::scoped_lock locker(Data->LogLocker);
 
         // Make message
         string result;

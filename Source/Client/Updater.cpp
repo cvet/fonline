@@ -116,7 +116,7 @@ void Updater::Net_OnDisconnect()
     STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(STR_CONNECTION_FAILTURE, "Connection failture!");
+        Abort(STR_CONNECTION_FAILURE, "Connection failure!");
     }
 }
 
@@ -229,8 +229,6 @@ void Updater::Net_OnUpdateFilesResponse()
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
@@ -238,8 +236,6 @@ void Updater::Net_OnUpdateFilesResponse()
     if (!outdated) {
         NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
     }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (outdated) {
         Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
@@ -310,8 +306,6 @@ void Updater::Net_OnUpdateFileData()
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto& update_file = _filesToUpdate.front();
 

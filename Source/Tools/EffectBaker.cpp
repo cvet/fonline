@@ -204,7 +204,7 @@ void EffectBaker::AutoBake()
 
         {
 #if FO_ASYNC_BAKE
-            std::lock_guard locker(_bakedFilesLocker);
+            std::scoped_lock locker(_bakedFilesLocker);
 #endif
             if (_bakeChecker && !_bakeChecker(file_header)) {
                 continue;
@@ -377,7 +377,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
         {
 #if FO_ASYNC_BAKE
-            std::lock_guard locker(_bakedFilesLocker);
+            std::scoped_lock locker(_bakedFilesLocker);
 #endif
             _writeData(_str("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
         }
@@ -385,7 +385,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
     {
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(fname, vector<uint8>(content.begin(), content.end()));
     }
@@ -413,7 +413,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         vector<uint8> data(spirv.size() * sizeof(uint32_t));
         std::memcpy(data.data(), spirv.data(), data.size());
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.spv", fname_wo_ext), data);
     };
@@ -428,7 +428,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
@@ -443,7 +443,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.glsl-es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
@@ -456,7 +456,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
@@ -469,7 +469,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_msl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.msl-mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
@@ -482,7 +482,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         compiler.set_msl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
-        std::lock_guard locker(_bakedFilesLocker);
+        std::scoped_lock locker(_bakedFilesLocker);
 #endif
         _writeData(_str("{}.msl-ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };

@@ -299,7 +299,7 @@ protected:
     Entity(const PropertyRegistrator* registrator, const Properties* props);
     virtual ~Entity() = default;
 
-    auto GetInitRef() -> Properties& { return _props; }
+    auto GetInitRef() noexcept -> Properties& { return _props; }
 
     bool _nonConstHelper {};
 

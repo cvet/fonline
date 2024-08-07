@@ -44,7 +44,6 @@
 // Todo: use more noexcept
 // Todo: use more constexpr
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
-// Todo: cast between numeric types via numeric_cast<to>(from)
 // Todo: improve custom exceptions for every subsustem
 // Todo: temporary entities, disable writing to data base
 // Todo: RUNTIME_ASSERT to assert?
@@ -245,7 +244,7 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
 }
 
 template<typename T>
-static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
+inline constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 {
     if (!ptr) {
         ptr = std::make_unique<T>();
@@ -253,21 +252,10 @@ static constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 }
 
 template<typename T>
-static constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
+inline constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
 {
     if (ptr && ptr->empty()) {
         ptr.reset();
-    }
-}
-
-template<typename T, typename U>
-static auto safe_find(T& cont, const U& key) noexcept -> decltype(cont.find(key))
-{
-    try {
-        return cont.find(key);
-    }
-    catch (...) {
-        return cont.end();
     }
 }
 
@@ -279,6 +267,13 @@ struct pair_hash
         return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
     }
 };
+
+template<typename T, typename U>
+inline constexpr auto numeric_cast(U src) -> T
+{
+    // Todo: cast between numeric types via numeric_cast<to>(from)
+    return static_cast<T>(src);
+}
 
 // Strong types
 template<typename T>
@@ -374,7 +369,7 @@ using time_duration = time_point::clock::duration;
 static_assert(sizeof(time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<time_point::clock::period, std::micro>);
 
-static inline auto time_point_to_unix_time(const time_point& t) -> time_t
+inline auto time_point_to_unix_time(const time_point& t) -> time_t
 {
     const auto system_clock_now = std::chrono::system_clock::now();
     const auto system_clock_time = system_clock_now + std::chrono::duration_cast<std::chrono::system_clock::duration>(t - time_point::clock::now());
@@ -382,7 +377,7 @@ static inline auto time_point_to_unix_time(const time_point& t) -> time_t
     return unix_time;
 }
 
-static inline auto time_point_desc(const time_point& t) -> std::tm
+inline auto time_point_desc(const time_point& t) -> std::tm
 {
     const auto unix_time = time_point_to_unix_time(t);
     const auto tm_struct = fmt::localtime(unix_time);
@@ -390,12 +385,12 @@ static inline auto time_point_desc(const time_point& t) -> std::tm
 }
 
 template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
+inline constexpr auto time_duration_to_ms(const time_duration& duration) -> T
 {
     return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 }
 
-static constexpr auto time_duration_div(time_duration duration1, time_duration duration2) -> float
+inline constexpr auto time_duration_div(time_duration duration1, time_duration duration2) -> float
 {
     return static_cast<float>(static_cast<double>(duration1.count()) / static_cast<double>(duration2.count()));
 }
@@ -651,15 +646,15 @@ public:
         _name {name}
     {
         try {
-            _exceptionMessage = _name;
-            _exceptionMessage.append(": ");
-            _exceptionMessage.append(message);
+            _message = _name;
+            _message.append(": ");
+            _message.append(message);
 
             const vector<string> params = {fmt::format("{}", std::forward<Args>(args))...};
 
             for (const auto& param : params) {
-                _exceptionMessage.append("\n- ");
-                _exceptionMessage.append(param);
+                _message.append("\n- ");
+                _message.append(param);
             }
         }
         catch (...) {
@@ -683,7 +678,7 @@ public:
         _name {other._name}
     {
         try {
-            _exceptionMessage = other._exceptionMessage;
+            _message = other._message;
         }
         catch (...) {
         }
@@ -700,16 +695,16 @@ public:
         ExceptionInfo(other),
         _name {other._name}
     {
-        _exceptionMessage = std::move(other._exceptionMessage);
+        _message = std::move(other._message);
         _stackTrace = std::move(other._stackTrace);
     }
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_exceptionMessage.empty() ? _exceptionMessage.c_str() : _name; }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_message.empty() ? _message.c_str() : _name; }
     [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; }
 
 private:
     const char* _name;
-    string _exceptionMessage {};
+    string _message {};
     string _stackTrace {};
 };
 
@@ -867,100 +862,6 @@ private:
     ObserverType& _observer;
 };
 
-// Raw pointer observation
-// Todo: improve ptr<> system for leng term pointer observing
-class RefCounter
-{
-    template<typename>
-    friend class ptr;
-
-public:
-    RefCounter() = default;
-    RefCounter(const RefCounter&) = delete;
-    RefCounter(RefCounter&&) = delete;
-    auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter&&) -> RefCounter& = delete;
-    virtual ~RefCounter();
-
-private:
-    std::atomic_int _ptrCounter {};
-};
-
-template<typename T>
-class ptr final
-{
-    static_assert(std::is_base_of_v<RefCounter, T>, "T must inherit from RefCounter");
-    using type = ptr<T>;
-
-public:
-    ptr() = default;
-
-    explicit ptr(T* p) :
-        _value {p}
-    {
-        if (_value != nullptr) {
-            ++_value->ptrCounter;
-        }
-    }
-
-    ptr(const type& other)
-    {
-        _value = other._value;
-        ++_value->ptrCounter;
-    }
-
-    auto operator=(const type& other) -> ptr&
-    {
-        if (this != &other) {
-            if (_value != nullptr) {
-                --_value->ptrCounter;
-            }
-            _value = other._value;
-            if (_value != nullptr) {
-                ++_value->ptrCounter;
-            }
-        }
-        return *this;
-    }
-
-    ptr(type&& other) noexcept
-    {
-        _value = other._value;
-        other._value = nullptr;
-    }
-
-    auto operator=(type&& other) noexcept -> ptr&
-    {
-        if (this != &other) {
-            if (_value != nullptr) {
-                --_value->ptrCounter;
-            }
-            _value = other._value;
-            other._value = nullptr;
-        }
-        return *this;
-    }
-
-    ~ptr()
-    {
-        if (_value != nullptr) {
-            --_value->ptrCounter;
-        }
-    }
-
-    auto operator->() -> T* { return _value; }
-    auto operator*() -> T& { return *_value; }
-    explicit operator bool() { return !!_value; }
-    auto operator==(const T* other) -> bool { return _value == other; }
-    auto operator==(const type& other) -> bool { return _value == other._value; }
-    auto operator!=(const T* other) -> bool { return _value != other; }
-    auto operator!=(const type& other) -> bool { return _value != other._value; }
-    auto get() -> T* { return _value; }
-
-private:
-    T* _value {};
-};
-
 // C-strings literal helpers
 constexpr auto const_hash(const char* input) noexcept -> uint
 {
@@ -1038,27 +939,14 @@ public:
     explicit ScopeCallback(T callback) :
         _callback {std::move(callback)}
     {
+        static_assert(std::is_nothrow_invocable_v<T>);
     }
 
     ScopeCallback(const ScopeCallback& other) = delete;
     ScopeCallback(ScopeCallback&& other) noexcept = default;
     auto operator=(const ScopeCallback& other) = delete;
     auto operator=(ScopeCallback&& other) noexcept = delete;
-
-    ~ScopeCallback()
-    {
-        if constexpr (std::is_nothrow_invocable_v<T>) {
-            _callback();
-        }
-        else {
-            try {
-                _callback();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-        }
-    }
+    ~ScopeCallback() { _callback(); }
 
 private:
     T _callback;
@@ -1713,7 +1601,7 @@ static constexpr auto CMD_LOG = 37;
 #define STR_CANT_CONNECT_TO_SERVER (7)
 #define STR_CONNECTION_ESTABLISHED (8)
 #define STR_DATA_SYNCHRONIZATION (9)
-#define STR_CONNECTION_FAILTURE (10)
+#define STR_CONNECTION_FAILURE (10)
 #define STR_FILESYSTEM_ERROR (11)
 #define STR_CLIENT_OUTDATED (12)
 #define STR_CLIENT_OUTDATED_APP_STORE (13)
@@ -1830,6 +1718,65 @@ constexpr auto copy(const T& value) -> T
     return T(value);
 }
 
+// Noexcept wrappers
+template<typename T, typename... Args>
+inline void safe_call(const T& callable, Args... args)
+{
+    static_assert(!std::is_nothrow_invocable_v<T, Args...>);
+
+    try {
+        std::invoke(callable, std::forward<Args>(args)...);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+}
+
+template<typename... Args>
+inline auto safe_format(string_view message, Args... args) noexcept -> string
+{
+    try {
+        return fmt::format(message, std::forward<Args>(args)...);
+    }
+    catch (const std::exception& ex) {
+        BreakIntoDebugger(ex.what());
+
+        try {
+            string result;
+            result.append("Format error: ");
+            result.append(ex.what());
+            return result;
+        }
+        catch (...) {
+            // Handle bad alloc
+            return {};
+        }
+    }
+}
+
+template<typename T>
+inline auto safe_copy(const T& value) noexcept -> T
+{
+    try {
+        return T(value);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}
+
+template<typename T, typename U>
+inline auto safe_find(T& cont, const U& key) noexcept -> decltype(cont.find(key))
+{
+    try {
+        return cont.find(key);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}
+
+// Ref holders
 template<typename T>
 class ref_vector : public vector<T>
 {

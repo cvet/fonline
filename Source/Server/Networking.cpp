@@ -177,7 +177,8 @@ public:
 
         // Nothing to send
         {
-            std::lock_guard locker(OutBufLocker);
+            std::scoped_lock locker(OutBufLocker);
+
             if (OutBuf.IsEmpty()) {
                 return;
             }
@@ -204,7 +205,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(OutBufLocker);
+        std::scoped_lock locker(OutBufLocker);
 
         if (OutBuf.IsEmpty()) {
             return nullptr;
@@ -263,7 +264,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(InBufLocker);
+        std::scoped_lock locker(InBufLocker);
 
         if (InBuf.GetReadPos() + len < _settings.FloodSize) {
             InBuf.AddData(buf, len);

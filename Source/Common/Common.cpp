@@ -422,16 +422,6 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-RefCounter::~RefCounter()
-{
-    try {
-        throw GenericException("Some of pointers still alive", _ptrCounter.load());
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
-    }
-}
-
 FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
     _sleep {sleep},

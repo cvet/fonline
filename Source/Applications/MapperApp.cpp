@@ -47,7 +47,7 @@
 
 struct MapperAppData
 {
-    FOMapper* Mapper {};
+    unique_ptr<FOMapper> Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
 
@@ -65,9 +65,9 @@ static void MapperEntry([[maybe_unused]] void* data)
     try {
         App->BeginFrame();
 
-        if (Data->Mapper == nullptr) {
+        if (!Data->Mapper) {
             try {
-                Data->Mapper = new FOMapper(App->Settings, &App->MainWindow);
+                Data->Mapper = std::make_unique<FOMapper>(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

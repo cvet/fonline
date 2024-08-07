@@ -243,9 +243,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->IsQuitRequested()) {
-                for (auto&& client : Data->Clients) {
-                    client->Shutdown();
-                }
                 Data->Clients.clear();
 
                 if (Data->Server) {

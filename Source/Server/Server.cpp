@@ -545,7 +545,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
             {
-                std::lock_guard locker(_newConnectionsLocker);
+                std::scoped_lock locker(_newConnectionsLocker);
 
                 if (!_newConnections.empty()) {
                     for (auto* conn : _newConnections) {
@@ -559,6 +559,10 @@ FOServer::FOServer(GlobalSettings& settings) :
                 try {
                     ProcessConnection(player->Connection);
                     ProcessUnloginedPlayer(player);
+                }
+                catch (const NetBufferException& ex) {
+                    ReportExceptionAndContinue(ex);
+                    player->Connection->HardDisconnect();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
@@ -581,6 +585,10 @@ FOServer::FOServer(GlobalSettings& settings) :
 
                     ProcessConnection(player->Connection);
                     ProcessPlayer(player);
+                }
+                catch (const NetBufferException& ex) {
+                    ReportExceptionAndContinue(ex);
+                    player->Connection->HardDisconnect();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
@@ -790,7 +798,7 @@ FOServer::~FOServer()
 
         // New connections
         {
-            std::lock_guard locker(_newConnectionsLocker);
+            std::scoped_lock locker(_newConnectionsLocker);
 
             for (auto* conn : _newConnections) {
                 conn->HardDisconnect();
@@ -909,7 +917,7 @@ void FOServer::DrawGui(string_view server_name)
                 Lock(std::nullopt);
             }
 
-            auto unlocker = ScopeCallback([this] { Unlock(); });
+            auto unlocker = ScopeCallback([this]() noexcept { safe_call([this] { Unlock(); }); });
 
             // Info
             ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
@@ -1007,7 +1015,7 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
         return;
     }
 
-    std::lock_guard locker(_newConnectionsLocker);
+    std::scoped_lock locker(_newConnectionsLocker);
 
     _newConnections.emplace_back(new ClientConnection(net_connection));
 }
@@ -1027,7 +1035,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         return;
     }
 
-    std::lock_guard locker(connection->InBufLocker);
+    std::scoped_lock locker(connection->InBufLocker);
 
     if (connection->IsGracefulDisconnected()) {
         connection->InBuf.ResetBuf();
@@ -1124,18 +1132,17 @@ void FOServer::ProcessPlayer(Player* player)
     }
 
     if (player->Connection->IsGracefulDisconnected()) {
-        std::lock_guard locker(player->Connection->InBufLocker);
+        std::scoped_lock locker(player->Connection->InBufLocker);
         player->Connection->InBuf.ResetBuf();
         return;
     }
 
     while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
-        std::lock_guard locker(player->Connection->InBufLocker);
+        std::scoped_lock locker(player->Connection->InBufLocker);
 
         player->Connection->InBuf.ShrinkReadBuf();
 
         if (!player->Connection->InBuf.NeedProcess()) {
-            CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
             if (IsRunInDebugger() && player->Connection->IsInterthreadConnection()) {
                 RUNTIME_ASSERT(player->Connection->InBuf.GetReadPos() == player->Connection->InBuf.GetEndPos());
             }
@@ -1198,8 +1205,6 @@ void FOServer::ProcessPlayer(Player* player)
         }
 
         player->Connection->LastActivityTime = GameTime.FrameTime();
-
-        CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
     }
 }
 
@@ -1213,18 +1218,12 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         return;
     }
 
-    if (connection->InBuf.IsError()) {
-        WriteLog("Wrong network data from connection '{}'", connection->GetHost());
-        connection->HardDisconnect();
-        return;
-    }
-
     if (connection->LastActivityTime == time_point {}) {
         connection->LastActivityTime = GameTime.FrameTime();
     }
 
     if (Settings.InactivityDisconnectTime != 0 && GameTime.FrameTime() - connection->LastActivityTime >= std::chrono::milliseconds {Settings.InactivityDisconnectTime}) {
-        WriteLog("Connection activity timeout from ip '{}'", connection->GetHost());
+        WriteLog("Connection activity timeout from host '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
@@ -1255,8 +1254,6 @@ void FOServer::Process_Text(Player* player)
     [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
     auto how_say = player->Connection->InBuf.Read<uint8>();
     const auto str = player->Connection->InBuf.Read<string>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     if (!cr->IsAlive() && how_say >= SAY_NORM && how_say <= SAY_RADIO) {
         how_say = SAY_WHISP;
@@ -2342,8 +2339,6 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->InBuf.Pop(padding, sizeof(padding));
     UNUSED_VARIABLE(padding);
 
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
-
     connection->InBuf.SetEncryptKey(encrypt_key);
     connection->OutBuf.SetEncryptKey(encrypt_key);
 
@@ -2375,8 +2370,6 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     const auto ping = connection->InBuf.Read<uint8>();
 
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
-
     if (ping == PING_CLIENT) {
         connection->PingOk = true;
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
@@ -2400,8 +2393,6 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
     STACK_TRACE_ENTRY();
 
     const auto file_index = connection->InBuf.Read<uint>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     if (file_index >= _updateFilesData.size()) {
         WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
@@ -2456,8 +2447,6 @@ void FOServer::Process_Register(Player* unlogined_player)
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();
     const auto password = unlogined_player->Connection->InBuf.Read<string>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
     // Check data
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
@@ -2547,8 +2536,6 @@ void FOServer::Process_Login(Player* unlogined_player)
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();
     const auto password = unlogined_player->Connection->InBuf.Read<string>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
     // If only cache checking than disconnect
     if (name.empty()) {
@@ -2755,8 +2742,6 @@ void FOServer::Process_Move(Player* player)
     const auto end_hex_ox = player->Connection->InBuf.Read<int16>();
     const auto end_hex_oy = player->Connection->InBuf.Read<int16>();
 
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-
     auto* map = MapMngr.GetMap(map_id);
     if (map == nullptr) {
         BreakIntoDebugger();
@@ -2872,8 +2857,6 @@ void FOServer::Process_StopMove(Player* player)
     [[maybe_unused]] const auto hex_oy = player->Connection->InBuf.Read<int16>();
     [[maybe_unused]] const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-
     auto* map = MapMngr.GetMap(map_id);
     if (map == nullptr) {
         BreakIntoDebugger();
@@ -2913,8 +2896,6 @@ void FOServer::Process_Dir(Player* player)
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto dir_angle = player->Connection->InBuf.Read<int16>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     auto* map = MapMngr.GetMap(map_id);
     if (map == nullptr) {
@@ -2979,8 +2960,6 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     const auto property_index = player->Connection->InBuf.Read<uint16>();
 
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-
     PropertyRawData prop_data;
 
     if (data_size != 0) {
@@ -2999,8 +2978,6 @@ void FOServer::Process_Property(Player* player, uint data_size)
             player->Connection->InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     auto is_public = false;
     const Property* prop = nullptr;
@@ -4680,8 +4657,6 @@ void FOServer::Process_RemoteCall(Player* player)
 
     [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
     const auto rpc_num = player->Connection->InBuf.Read<uint>();
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     ScriptSys->HandleRemoteCall(rpc_num, player);
 }
