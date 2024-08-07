@@ -384,16 +384,15 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     }
 
     size = file.GetSize();
+    auto buf = std::make_unique<uint8[]>(size + 1);
 
-    auto* buf = new uint8[static_cast<size_t>(size) + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file from non cached dir", _basePath, path);
     }
 
     write_time = file.GetWriteTime();
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -463,15 +462,15 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     size = fe.FileSize;
-    auto* buf = new uint8[size + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    auto buf = std::make_unique<uint8[]>(size + 1);
+
+    if (!file.Read(buf.get(), size)) {
         return nullptr;
     }
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto CachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -697,47 +696,47 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     size = real_size;
-    auto* buf = new uint8[static_cast<size_t>(size) + 1];
+    auto buf = std::make_unique<uint8[]>(size + 1);
 
     if (type == 0) {
         // Plane data
-        if (!_datFile.Read(buf, size)) {
-            delete[] buf;
+        if (!_datFile.Read(buf.get(), size)) {
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
     else {
         // Packed data
-        z_stream stream;
-        stream.zalloc = nullptr;
-        stream.zfree = nullptr;
-        stream.opaque = nullptr;
-        stream.next_in = nullptr;
-        stream.avail_in = 0;
+        z_stream stream = {};
+        stream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
+        stream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+
         if (inflateInit(&stream) != Z_OK) {
-            delete[] buf;
             throw DataSourceException("Can't read file from fallout dat (3)", path);
         }
 
-        stream.next_out = buf;
+        stream.next_in = nullptr;
+        stream.avail_in = 0;
+        stream.next_out = buf.get();
         stream.avail_out = real_size;
 
         auto left = packed_size;
+
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 stream.next_in = _readBuf.data();
                 const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
+
                 if (!_datFile.Read(_readBuf.data(), len)) {
-                    delete[] buf;
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
+
                 stream.avail_in = len;
                 left -= len;
             }
 
             const auto r = inflate(&stream, Z_NO_FLUSH);
+
             if (r != Z_OK && r != Z_STREAM_END) {
-                delete[] buf;
                 throw DataSourceException("Can't read file from fallout dat (5)", path);
             }
             if (r == Z_STREAM_END) {
@@ -750,7 +749,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     write_time = _writeTime;
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 ZipFile::ZipFile(string_view fname)
@@ -982,17 +981,17 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         throw DataSourceException("Can't read file from zip (2)", path);
     }
 
-    auto* buf = new uint8[static_cast<size_t>(info.UncompressedSize) + 1];
-    const auto read = unzReadCurrentFile(_zipHandle, buf, info.UncompressedSize);
+    auto buf = std::make_unique<uint8[]>(static_cast<size_t>(info.UncompressedSize) + 1);
+    const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
+
     if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
-        delete[] buf;
         throw DataSourceException("Can't read file from zip (3)", path);
     }
 
     write_time = _writeTime;
     size = info.UncompressedSize;
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 AndroidAssets::AndroidAssets()
@@ -1070,15 +1069,15 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     }
 
     size = fe.FileSize;
-    auto* buf = new uint8[size + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    auto buf = std::make_unique<uint8[]>(size + 1);
+
+    if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file in android assets", path);
     }
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto AndroidAssets::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>

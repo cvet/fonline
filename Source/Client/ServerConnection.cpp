@@ -98,7 +98,7 @@ ServerConnection::~ServerConnection()
         ::closesocket(_impl->NetSock);
     }
     if (_impl->ZStreamActive) {
-        ::inflateEnd(&_impl->ZStream);
+        inflateEnd(&_impl->ZStream);
     }
 
     delete _impl;
@@ -306,11 +306,13 @@ void ServerConnection::ConnectToHost()
 
     // Init Zlib
     if (!_impl->ZStreamActive) {
-        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) { return calloc(items, size); };
-        _impl->ZStream.zfree = [](voidpf, voidpf address) { free(address); };
-        _impl->ZStream.opaque = nullptr;
-        const auto inf_init = ::inflateInit(&_impl->ZStream);
+        _impl->ZStream = {};
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
+        _impl->ZStream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+
+        const auto inf_init = inflateInit(&_impl->ZStream);
         RUNTIME_ASSERT(inf_init == Z_OK);
+
         _impl->ZStreamActive = true;
     }
 
@@ -602,7 +604,7 @@ void ServerConnection::Disconnect()
     }
 
     if (_impl->ZStreamActive) {
-        ::inflateEnd(&_impl->ZStream);
+        inflateEnd(&_impl->ZStream);
         _impl->ZStreamActive = false;
     }
 
