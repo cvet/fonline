@@ -2354,7 +2354,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->OutBuf.Write(static_cast<uint>(_updateFilesDesc.size()));
     connection->OutBuf.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
     if (!outdated) {
-        NET_WRITE_PROPERTIES(connection->OutBuf, global_vars_data, global_vars_data_sizes);
+        connection->OutBuf.WritePropsData(global_vars_data, global_vars_data_sizes);
     }
     connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);

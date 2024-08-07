@@ -122,6 +122,8 @@ public:
         Push(&hash, sizeof(hash));
     }
 
+    void WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes);
+
     void StartMsg(uint msg);
     void EndMsg();
 
@@ -187,6 +189,8 @@ public:
     {
         return ReadHashedString(hash_resolver);
     }
+
+    void ReadPropsData(vector<vector<uint8>>& props_data);
 
 private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;

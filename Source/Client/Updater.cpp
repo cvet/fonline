@@ -234,7 +234,7 @@ void Updater::Net_OnUpdateFilesResponse()
     _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
-        NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     }
 
     if (outdated) {

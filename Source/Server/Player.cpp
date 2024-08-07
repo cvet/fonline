@@ -114,8 +114,8 @@ void Player::Send_LoginSuccess()
     Connection->OutBuf.StartMsg(NETMSG_LOGIN_SUCCESS);
     Connection->OutBuf.Write(encrypt_key);
     Connection->OutBuf.Write(GetId());
-    NET_WRITE_PROPERTIES(Connection->OutBuf, global_vars_data, global_vars_data_sizes);
-    NET_WRITE_PROPERTIES(Connection->OutBuf, player_data, player_data_sizes);
+    Connection->OutBuf.WritePropsData(global_vars_data, global_vars_data_sizes);
+    Connection->OutBuf.WritePropsData(player_data, player_data_sizes);
     SendInnerEntities(_engine, false);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -163,8 +163,7 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetIsControlledByPlayer());
     Connection->OutBuf.Write(cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr);
     Connection->OutBuf.Write(is_chosen);
-
-    NET_WRITE_PROPERTIES(Connection->OutBuf, cr_data, cr_data_sizes);
+    Connection->OutBuf.WritePropsData(cr_data, cr_data_sizes);
 
     SendInnerEntities(cr, is_chosen);
 
@@ -238,8 +237,8 @@ void Player::Send_LoadMap(const Map* map)
     Connection->OutBuf.Write(pid_map);
     Connection->OutBuf.Write(map_index_in_loc);
     if (map != nullptr) {
-        NET_WRITE_PROPERTIES(Connection->OutBuf, map_data, map_data_sizes);
-        NET_WRITE_PROPERTIES(Connection->OutBuf, loc_data, loc_data_sizes);
+        Connection->OutBuf.WritePropsData(map_data, map_data_sizes);
+        Connection->OutBuf.WritePropsData(loc_data, loc_data_sizes);
         SendInnerEntities(loc, false);
         SendInnerEntities(map, false);
     }
@@ -1162,7 +1161,7 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
         RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
         Connection->OutBuf.Write(hstring());
     }
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
+    Connection->OutBuf.WritePropsData(data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -1194,7 +1193,7 @@ void Player::SendItem(const Item* item, bool owned, bool with_slot, bool with_in
     vector<const uint8*>* item_data = nullptr;
     vector<uint>* item_data_sizes = nullptr;
     item->StoreData(owned, &item_data, &item_data_sizes);
-    NET_WRITE_PROPERTIES(Connection->OutBuf, item_data, item_data_sizes);
+    Connection->OutBuf.WritePropsData(item_data, item_data_sizes);
 
     if (with_inner_entities) {
         SendInnerEntities(item, false);
@@ -1249,7 +1248,7 @@ void Player::SendInnerEntities(const Entity* holder, bool owned)
                 Connection->OutBuf.Write(hstring());
             }
 
-            NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
+            Connection->OutBuf.WritePropsData(data, data_sizes);
 
             SendInnerEntities(entity, owned);
         }

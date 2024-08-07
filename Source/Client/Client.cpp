@@ -964,7 +964,7 @@ void FOClient::Net_OnUpdateFilesResponse()
     _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
-        NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     }
 
     if (outdated) {
@@ -1034,9 +1034,8 @@ void FOClient::Net_OnLoginSuccess()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto encrypt_key = _conn.InBuf.Read<uint>();
     const auto player_id = _conn.InBuf.Read<ident_t>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
-    NET_READ_PROPERTIES(_conn.InBuf, _playerPropertiesData);
+    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+    _conn.InBuf.ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
 
@@ -1076,8 +1075,7 @@ void FOClient::Net_OnAddCritter()
     const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     CritterView* cr;
     CritterHexView* hex_cr;
@@ -1133,7 +1131,7 @@ void FOClient::Net_OnAddCritter()
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto item_pid = _conn.InBuf.Read<hstring>(*this);
         const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
         RUNTIME_ASSERT(proto_item);
@@ -1681,7 +1679,7 @@ void FOClient::Net_OnCritterAction()
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto item_pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         RUNTIME_ASSERT(proto);
@@ -1729,7 +1727,7 @@ void FOClient::Net_OnCritterMoveItem()
     if (is_moved_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto item_pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         RUNTIME_ASSERT(proto);
@@ -1759,7 +1757,7 @@ void FOClient::Net_OnCritterMoveItem()
             (void)_conn.InBuf.Read<ident_t>();
             (void)_conn.InBuf.Read<hstring>(*this);
             (void)_conn.InBuf.Read<CritterItemSlot>();
-            NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+            _conn.InBuf.ReadPropsData(_tempPropertiesData);
             ReceiveCustomEntities(nullptr);
         }
 
@@ -1778,7 +1776,7 @@ void FOClient::Net_OnCritterMoveItem()
             const auto item_id = _conn.InBuf.Read<ident_t>();
             const auto item_pid = _conn.InBuf.Read<hstring>(*this);
             const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-            NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+            _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
             const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
             RUNTIME_ASSERT(proto_item);
@@ -1830,7 +1828,7 @@ void FOClient::Net_OnCritterAnimate()
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto item_pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         RUNTIME_ASSERT(proto);
@@ -2053,8 +2051,7 @@ void FOClient::Net_OnChosenAddItem()
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
     const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     auto* chosen = GetChosen();
 
@@ -2133,7 +2130,7 @@ void FOClient::Net_OnAddItemOnMap()
     const auto hy = _conn.InBuf.Read<uint16>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2550,8 +2547,8 @@ void FOClient::Net_OnLoadMap()
     const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
     if (map_pid) {
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataExt);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesDataExt);
     }
 
     OnMapUnload.Fire();
@@ -2680,7 +2677,7 @@ void FOClient::Net_OnSomeItems()
     for (uint i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -2793,8 +2790,7 @@ void FOClient::Net_OnAddCustomEntity()
     const auto holder_entry = _conn.InBuf.Read<hstring>(*this);
     const auto id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(*this);
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataCustomEntity);
+    _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
 
     Entity* holder;
 
@@ -2873,7 +2869,7 @@ void FOClient::ReceiveCustomEntities(Entity* holder)
         for (uint j = 0; j < entities_count; j++) {
             const auto id = _conn.InBuf.Read<ident_t>();
             const auto pid = _conn.InBuf.Read<hstring>(*this);
-            NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataCustomEntity);
+            _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder != nullptr) {
                 auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
