@@ -252,15 +252,19 @@ auto NetBuffer::EncryptKey(int move) -> uint8
     return key;
 }
 
-void NetBuffer::ResetBuf()
+void NetBuffer::ResetBuf() noexcept
 {
     STACK_TRACE_ENTRY();
 
     _bufEndPos = 0;
 
     if (_bufLen > _defaultBufLen) {
-        _bufLen = _defaultBufLen;
-        _bufData = std::make_unique<uint8[]>(_bufLen);
+        auto* new_buf = new (std::nothrow) uint8[_defaultBufLen];
+
+        if (new_buf != nullptr) {
+            _bufLen = _defaultBufLen;
+            _bufData = unique_ptr<uint8[]>(new_buf);
+        }
     }
 }
 
@@ -387,7 +391,7 @@ void NetOutBuffer::EndMsg()
     RUNTIME_ASSERT(actual_msg_len == intended_msg_len);
 }
 
-void NetInBuffer::ResetBuf()
+void NetInBuffer::ResetBuf() noexcept
 {
     STACK_TRACE_ENTRY();
 

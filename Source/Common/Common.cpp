@@ -781,6 +781,9 @@ extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 #else
     auto* p = rpmalloc(size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
@@ -793,6 +796,9 @@ extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
 #else
     auto* p = rpmalloc(size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
@@ -902,6 +908,9 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noex
 #else
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
@@ -914,6 +923,9 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) no
 #else
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 

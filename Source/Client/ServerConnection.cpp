@@ -623,8 +623,6 @@ void ServerConnection::Disconnect()
 
         _netIn.ResetBuf();
         _netOut.ResetBuf();
-        _netIn.SetEncryptKey(0);
-        _netOut.SetEncryptKey(0);
 
         _isConnected = false;
         _disconnectCallback();

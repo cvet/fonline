@@ -59,7 +59,7 @@ public:
 
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
-    virtual void ResetBuf();
+    virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);
 
 protected:
@@ -153,7 +153,7 @@ public:
     void SkipMsg(uint msg);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
-    void ResetBuf() override;
+    void ResetBuf() noexcept override;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     [[nodiscard]] auto Read() -> T
