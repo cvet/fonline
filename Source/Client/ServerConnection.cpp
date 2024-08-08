@@ -193,30 +193,32 @@ void ServerConnection::ProcessConnection()
         }
     }
 
-    if (_isConnected && ReceiveData(true)) {
-        while (_isConnected && _netIn.NeedProcess()) {
-            const auto msg = _netIn.Read<uint>();
+    if (_isConnected) {
+        if (ReceiveData(true)) {
+            while (_isConnected && _netIn.NeedProcess()) {
+                const auto msg = _netIn.Read<uint>();
 
 #if FO_DEBUG
-            _msgHistory.insert(_msgHistory.begin(), msg);
+                _msgHistory.insert(_msgHistory.begin(), msg);
 #endif
 
-            if (_settings.DebugNet) {
-                _msgCount++;
-                WriteLog("{}) Input net message {}", _msgCount, msg);
+                if (_settings.DebugNet) {
+                    _msgCount++;
+                    WriteLog("{}) Input net message {}", _msgCount, msg);
+                }
+
+                const auto it = _handlers.find(msg);
+                if (it != _handlers.end()) {
+                    it->second();
+                }
+                else {
+                    throw ServerConnectionException("No handler for message", msg);
+                }
             }
 
-            const auto it = _handlers.find(msg);
-            if (it != _handlers.end()) {
-                it->second();
+            if (_interthreadCommunication && _isConnected) {
+                RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
             }
-            else {
-                throw ServerConnectionException("No handler for message", msg);
-            }
-        }
-
-        if (_interthreadCommunication && _isConnected) {
-            RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
         }
 
         if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
