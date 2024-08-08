@@ -131,14 +131,8 @@ void InitApp(int argc, char** argv, bool client_mode)
     App = new Application(argc, argv, client_mode);
 
 #if FO_LINUX || FO_MAC
-    const auto set_signal = [](int sig) {
-        void (*ohandler)(int) = signal(sig, SignalHandler);
-        if (ohandler != SIG_DFL) {
-            signal(sig, ohandler);
-        }
-    };
-    set_signal(SIGINT);
-    set_signal(SIGTERM);
+    signal(SIGINT, SignalHandler);
+    signal(SIGTERM, SignalHandler);
 #endif
 }
 
@@ -245,7 +239,7 @@ void Application::EndFrame()
 #endif
 }
 
-void Application::RequestQuit()
+void Application::RequestQuit() noexcept
 {
     STACK_TRACE_ENTRY();
 

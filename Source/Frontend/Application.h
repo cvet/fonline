@@ -381,7 +381,7 @@ public:
 #endif
     void BeginFrame();
     void EndFrame();
-    void RequestQuit();
+    void RequestQuit() noexcept;
     void WaitForRequestedQuit();
 
     GlobalSettings Settings;

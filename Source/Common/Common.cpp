@@ -187,7 +187,7 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
     }
 }
 
-void ShowExceptionMessageBox(bool enabled)
+void ShowExceptionMessageBox(bool enabled) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -257,7 +257,7 @@ auto GetStackTrace() -> string
 #endif
 }
 
-auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*
+auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
 {
     NO_STACK_TRACE_ENTRY();
 

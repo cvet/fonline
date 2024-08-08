@@ -1054,7 +1054,7 @@ void Application::EndFrame()
 #endif
 }
 
-void Application::RequestQuit()
+void Application::RequestQuit() noexcept
 {
     STACK_TRACE_ENTRY();
 

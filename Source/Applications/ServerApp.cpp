@@ -218,6 +218,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             for (auto&& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
+                auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                 try {
                     App->Input.ClearEvents();
@@ -235,8 +236,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
-
-                ShowExceptionMessageBox(false);
             }
 
             App->EndFrame();

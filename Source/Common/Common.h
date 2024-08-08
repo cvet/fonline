@@ -617,7 +617,7 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
-extern auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*;
+extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*;
 
 struct StackTraceScopeEntry
 {
@@ -637,7 +637,7 @@ extern auto BreakIntoDebugger(string_view error_message = "") noexcept -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
-extern void ShowExceptionMessageBox(bool enabled);
+extern void ShowExceptionMessageBox(bool enabled) noexcept;
 
 class ExceptionInfo
 {
