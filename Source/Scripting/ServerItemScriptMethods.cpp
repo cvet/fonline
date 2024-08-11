@@ -71,7 +71,7 @@
 [[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
     if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
-        throw ScriptException("Invalid item proto {} arg", pid);
+        throw ScriptException("Invalid item proto arg", pid);
     }
 
     if (count == 0) {

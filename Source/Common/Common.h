@@ -1825,10 +1825,16 @@ inline auto safe_find(T& cont, const U& key) noexcept -> decltype(cont.find(key)
 
 // Ref holders
 template<typename T>
-class ref_vector : public vector<T>
+class ref_hold_vector : public vector<T>
 {
 public:
-    ~ref_vector()
+    static_assert(!std::is_polymorphic_v<vector<T>>);
+    ref_hold_vector() = default;
+    ref_hold_vector(const ref_hold_vector&) = delete;
+    ref_hold_vector(ref_hold_vector&&) noexcept = default;
+    auto operator=(const ref_hold_vector&) -> ref_hold_vector& = delete;
+    auto operator=(ref_hold_vector&&) noexcept -> ref_hold_vector& = delete;
+    ~ref_hold_vector()
     {
         for (auto* ref : *this) {
             ref->Release();
@@ -1837,11 +1843,12 @@ public:
 };
 
 template<typename T>
-constexpr auto copy_hold_ref(const vector<T>& value) -> ref_vector<T>
+constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
 {
-    ref_vector<T> ref_vec;
+    ref_hold_vector<T> ref_vec;
     ref_vec.reserve(value.size());
     for (auto* ref : value) {
+        RUNTIME_ASSERT(ref);
         ref->AddRef();
         ref_vec.emplace_back(ref);
     }
@@ -1849,11 +1856,12 @@ constexpr auto copy_hold_ref(const vector<T>& value) -> ref_vector<T>
 }
 
 template<typename T, typename U, typename... Args>
-constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_vector<U>
+constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_hold_vector<U>
 {
-    ref_vector<U> ref_vec;
+    ref_hold_vector<U> ref_vec;
     ref_vec.reserve(value.size());
     for (auto&& [id, ref] : value) {
+        RUNTIME_ASSERT(ref);
         ref->AddRef();
         ref_vec.emplace_back(ref);
     }

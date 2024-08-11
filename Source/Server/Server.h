@@ -94,6 +94,7 @@ public:
     auto CreateCritter(hstring pid, bool for_player) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
     void UnloadCritter(Critter* cr);
+    void UnloadCritterInnerEntities(Critter* cr);
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 

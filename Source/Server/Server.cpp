@@ -1984,10 +1984,15 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     cr->SetMapId({});
 
     if (is_error) {
-        if (cr != nullptr) {
-            cr->MarkAsDestroyed();
-            cr->Release();
+        cr->MarkAsDestroying();
+
+        if (EntityMngr.GetCritter(cr_id) != nullptr) {
+            UnloadCritterInnerEntities(cr);
+            EntityMngr.UnregisterEntity(cr);
         }
+
+        cr->MarkAsDestroyed();
+        cr->Release();
 
         throw GenericException("Critter data base loading error");
     }
@@ -2052,6 +2057,17 @@ void FOServer::UnloadCritter(Critter* cr)
         }
     }
 
+    UnloadCritterInnerEntities(cr);
+
+    EntityMngr.UnregisterEntity(cr);
+    cr->MarkAsDestroyed();
+    cr->Release();
+}
+
+void FOServer::UnloadCritterInnerEntities(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
     std::function<void(Entity*)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](Entity* holder) {
@@ -2110,10 +2126,6 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     inv_items.clear();
-
-    EntityMngr.UnregisterEntity(cr);
-    cr->MarkAsDestroyed();
-    cr->Release();
 }
 
 void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)

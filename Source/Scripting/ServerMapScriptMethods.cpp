@@ -86,7 +86,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (proto == nullptr) {
-        throw ScriptException("Invalid proto '{}' arg", protoId);
+        throw ScriptException("Invalid proto arg", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
@@ -115,7 +115,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (proto == nullptr) {
-        throw ScriptException("Invalid proto '{}' arg", protoId);
+        throw ScriptException("Invalid proto arg", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
@@ -1014,7 +1014,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (proto == nullptr) {
-        throw ScriptException("Proto '{}' not found.", protoId);
+        throw ScriptException("Proto not found", protoId);
     }
 
     Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hx, hy, dir, false);
@@ -1041,7 +1041,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (proto == nullptr) {
-        throw ScriptException("Proto '{}' not found.", protoId);
+        throw ScriptException("Proto not found", protoId);
     }
 
     Properties props_(proto->GetProperties());
@@ -1073,7 +1073,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (proto == nullptr) {
-        throw ScriptException("Proto '{}' not found.", protoId);
+        throw ScriptException("Proto not found", protoId);
     }
 
     Properties props_(proto->GetProperties());
