@@ -268,60 +268,6 @@ struct pair_hash
     }
 };
 
-template<typename T, typename U>
-inline constexpr auto numeric_cast(U value) -> T
-{
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(std::is_integral_v<T>);
-    static_assert(std::is_integral_v<U>);
-
-    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw std::overflow_error("numeric cast overflow");
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw std::overflow_error("numeric cast overflow");
-        }
-        if (value < std::numeric_limits<T>::min()) {
-            throw std::underflow_error("numeric cast underflow");
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        if (value < 0) {
-            throw std::underflow_error("numeric cast underflow");
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw std::overflow_error("numeric cast overflow");
-        }
-        if (value < 0) {
-            throw std::underflow_error("numeric cast underflow");
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw std::overflow_error("numeric cast overflow");
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw std::overflow_error("numeric cast overflow");
-        }
-    }
-
-    return static_cast<T>(value);
-}
-
 // Strong types
 template<typename T>
 struct strong_type
@@ -1944,6 +1890,63 @@ constexpr auto vec_transform(const vector<T>& vec, const U& transfromer) -> auto
         result.emplace_back(transfromer(value));
     }
     return result;
+}
+
+// Numeric cast
+DECLARE_EXCEPTION(OverflowException);
+
+template<typename T, typename U>
+inline constexpr auto numeric_cast(U value) -> T
+{
+    static_assert(std::is_arithmetic_v<T>);
+    static_assert(std::is_arithmetic_v<U>);
+    static_assert(std::is_integral_v<T>);
+    static_assert(std::is_integral_v<U>);
+
+    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > std::numeric_limits<T>::max()) {
+            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > std::numeric_limits<T>::max()) {
+            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        }
+        if (value < std::numeric_limits<T>::min()) {
+            throw OverflowException("Numeric cast underflow", value, std::numeric_limits<T>::min());
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        if (value < 0) {
+            throw OverflowException("Numeric cast underflow", value, 0);
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > std::numeric_limits<T>::max()) {
+            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        }
+        if (value < 0) {
+            throw OverflowException("Numeric cast underflow", value, 0);
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        if (value > std::numeric_limits<T>::max()) {
+            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > std::numeric_limits<T>::max()) {
+            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        }
+    }
+
+    return static_cast<T>(value);
 }
 
 // Lerp
