@@ -834,7 +834,7 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 void ServerConnection::Net_SendHandshake()
 {
     _netOut.StartMsg(NETMSG_HANDSHAKE);
-    _netOut.Write(numeric_cast<uint>(FO_COMPATIBILITY_VERSION));
+    _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     _netOut.Write(encrypt_key);

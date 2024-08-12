@@ -1595,6 +1595,8 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
 
         const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->CrMngr.GetCritter(global_cr_id) : nullptr;
 
+        cr->SetMapId({});
+
         if (global_cr == nullptr || global_cr->GetMapId()) {
             const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
             _engine->SetLastGlobalMapTripId(trip_id);

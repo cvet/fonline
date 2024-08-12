@@ -1981,8 +1981,6 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     bool is_error = false;
     Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
 
-    cr->SetMapId({});
-
     if (is_error) {
         cr->MarkAsDestroying();
 
