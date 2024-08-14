@@ -47,6 +47,7 @@ enum class LogType
 
 // Write formatted text
 extern void WriteLogMessage(LogType type, string_view message) noexcept;
+extern void WriteLogFatalMessage(string_view message) noexcept;
 
 template<typename... Args>
 void WriteLog(string_view message, Args... args) noexcept

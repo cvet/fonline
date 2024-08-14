@@ -4244,7 +4244,10 @@ public:
 
     Printer printer;
     printer.address = true;
-    printer.print(st, stderr);
+    // (FOnline Patch)
+    // printer.print(st, stderr);
+    extern std::ostream BackwardOStream;
+    printer.print(st, BackwardOStream);
 
 #if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
     psiginfo(info, nullptr);
@@ -4443,7 +4446,10 @@ private:
     st.skip_n_firsts(skip_frames);
 
     printer.address = true;
-    printer.print(st, std::cerr);
+    // (FOnline Patch)
+    // printer.print(st, std::cerr);
+    extern std::ostream BackwardOStream;
+    printer.print(st, BackwardOStream);
   }
 };
 

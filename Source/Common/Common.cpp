@@ -80,6 +80,47 @@ struct StackTraceData
 
 static thread_local StackTraceData StackTrace;
 
+class BackwardOStreamBuffer : public std::streambuf
+{
+public:
+    BackwardOStreamBuffer() = default;
+    BackwardOStreamBuffer(const BackwardOStreamBuffer&) = delete;
+    BackwardOStreamBuffer(BackwardOStreamBuffer&&) noexcept = delete;
+    auto operator=(const BackwardOStreamBuffer&) = delete;
+    auto operator=(BackwardOStreamBuffer&&) noexcept -> BackwardOStreamBuffer& = delete;
+    ~BackwardOStreamBuffer() override = default;
+
+    auto underflow() -> int_type override
+    {
+        //
+        return traits_type::eof();
+    }
+
+    auto overflow(int_type ch) -> int_type override
+    {
+        const char s[] = {static_cast<char>(ch)};
+        WriteLogFatalMessage(string_view {s, 1});
+        return ch;
+    }
+
+    auto xsputn(const char_type* s, std::streamsize count) -> std::streamsize override
+    {
+        if (_firstCall) {
+            WriteLogFatalMessage("\nFATAL ERROR!\n\n");
+            _firstCall = false;
+        }
+
+        WriteLogFatalMessage(string_view {s, static_cast<string_view::size_type>(count)});
+        return count;
+    }
+
+private:
+    bool _firstCall = true;
+};
+
+static BackwardOStreamBuffer BackwardOStreamBuf;
+std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
+
 void CreateGlobalData()
 {
     STACK_TRACE_ENTRY();

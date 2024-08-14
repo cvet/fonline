@@ -186,3 +186,21 @@ void WriteLogMessage(LogType type, string_view message) noexcept
     catch (...) {
     }
 }
+
+extern void WriteLogFatalMessage(string_view message) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::scoped_lock locker(Data->LogLocker);
+
+        if (Data->LogFileHandle) {
+            Data->LogFileHandle->Write(message);
+        }
+
+        std::cout << message;
+        std::cout.flush();
+    }
+    catch (...) {
+    }
+}
