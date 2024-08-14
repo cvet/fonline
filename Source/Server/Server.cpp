@@ -1982,15 +1982,17 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
 
     if (is_error) {
-        cr->MarkAsDestroying();
+        if (cr != nullptr) {
+            cr->MarkAsDestroying();
 
-        if (EntityMngr.GetCritter(cr_id) != nullptr) {
-            UnloadCritterInnerEntities(cr);
-            EntityMngr.UnregisterEntity(cr);
+            if (EntityMngr.GetCritter(cr_id) != nullptr) {
+                UnloadCritterInnerEntities(cr);
+                EntityMngr.UnregisterEntity(cr);
+            }
+
+            cr->MarkAsDestroyed();
+            cr->Release();
         }
-
-        cr->MarkAsDestroyed();
-        cr->Release();
 
         throw GenericException("Critter data base loading error");
     }
@@ -4720,7 +4722,7 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
 
     NON_CONST_METHOD_HINT();
 
-    bool result;
+    bool result = false;
 
     switch (demand.ValuesCount) {
     case 0:
