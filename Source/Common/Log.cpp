@@ -46,6 +46,8 @@ struct LogData
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     LogData()
     {
+        NO_STACK_TRACE_ENTRY();
+
         const auto result = std::at_quick_exit(FlushLogAtExit);
         UNUSED_VARIABLE(result);
     }
@@ -61,8 +63,14 @@ GLOBAL_DATA(LogData, Data);
 
 static void FlushLogAtExit()
 {
-    if (Data != nullptr && Data->LogFileHandle) {
-        Data->LogFileHandle.reset();
+    NO_STACK_TRACE_ENTRY();
+
+    if (Data != nullptr && Data->LogLocker.try_lock()) {
+        std::scoped_lock locker(std::adopt_lock, Data->LogLocker);
+
+        if (Data->LogFileHandle) {
+            Data->LogFileHandle.reset();
+        }
     }
 }
 
