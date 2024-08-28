@@ -1997,6 +1997,8 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         throw GenericException("Critter data base loading error");
     }
 
+    RUNTIME_ASSERT(cr);
+
     if (for_player) {
         cr->MarkIsForPlayer();
     }

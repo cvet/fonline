@@ -263,15 +263,17 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
     if (!loc_pid) {
-        return {};
+        WriteLog("Location {} invalid document", loc_id);
+        is_error = true;
+        return nullptr;
     }
 
     const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
 
     if (loc_proto == nullptr) {
-        WriteLog("Location proto {} not found", loc_pid);
+        WriteLog("Location {} proto {} not found", loc_id, loc_pid);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     auto* loc = new Location(_engine, loc_id, loc_proto);
@@ -279,7 +281,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     loc->BindScript();
@@ -329,15 +331,17 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
     if (!map_pid) {
-        return {};
+        WriteLog("Map {} invalid document", map_pid);
+        is_error = true;
+        return nullptr;
     }
 
     const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
     if (map_proto == nullptr) {
-        WriteLog("Map proto {} not found", map_pid);
+        WriteLog("Map {} proto {} not found", map_id, map_pid);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
@@ -346,7 +350,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     RegisterEntity(map);
@@ -423,15 +427,17 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
     if (!cr_pid) {
-        return {};
+        WriteLog("Critter {} invalid document", cr_id);
+        is_error = true;
+        return nullptr;
     }
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
     if (proto == nullptr) {
-        WriteLog("Proto critter {} not found", cr_pid);
+        WriteLog("Critter {} proto {} not found", cr_id, cr_pid);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     auto* cr = new Critter(_engine, cr_id, proto);
@@ -439,7 +445,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     RegisterEntity(cr);
@@ -480,15 +486,17 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
     if (!item_pid) {
-        return {};
+        WriteLog("Item {} invalid document", item_id);
+        is_error = true;
+        return nullptr;
     }
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
     if (proto == nullptr) {
-        WriteLog("Proto item {} is not loaded", item_pid);
+        WriteLog("Item {} proto {} not found", item_id, item_pid);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     auto* item = new Item(_engine, item_id, proto);
@@ -496,7 +504,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
-        return {};
+        return nullptr;
     }
 
     item->SetIsStatic(false);
@@ -1109,7 +1117,7 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
     auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
     if (doc.empty()) {
-        WriteLog("Custom entity {} with type {} not found", id, type_name);
+        WriteLog("Custom entity {} with type {} invalid document", id, type_name);
         is_error = true;
         return nullptr;
     }
