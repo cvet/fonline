@@ -335,8 +335,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint, LookDistance);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, int, ReplicationTime);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, TalkDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, int, ScaleFactor);
