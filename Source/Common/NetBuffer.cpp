@@ -348,6 +348,8 @@ void NetOutBuffer::Cut(size_t len)
 
 void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(props_data->size() == props_data_sizes->size());
     RUNTIME_ASSERT(props_data->size() <= 0xFFFF);
     Write<uint16>(static_cast<uint16>(props_data->size()));
@@ -361,6 +363,8 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
 
 void NetOutBuffer::StartMsg(uint msg)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(!_msgStarted);
 
     _msgStarted = true;
@@ -380,6 +384,8 @@ void NetOutBuffer::StartMsg(uint msg)
 
 void NetOutBuffer::EndMsg()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_msgStarted);
     RUNTIME_ASSERT(_bufEndPos > _startedBufPos);
 
@@ -479,6 +485,8 @@ void NetInBuffer::ShrinkReadBuf()
 
 void NetInBuffer::ReadPropsData(vector<vector<uint8>>& props_data)
 {
+    STACK_TRACE_ENTRY();
+
     const auto data_count = Read<uint16>();
     props_data.resize(data_count);
 
