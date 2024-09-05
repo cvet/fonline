@@ -101,29 +101,6 @@ void Map::ProcessLoop(int index, uint time, uint tick)
     }
 }
 
-auto Map::GetProtoMap() const -> const ProtoMap*
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<const ProtoMap*>(_proto);
-}
-
-auto Map::GetLocation() -> Location*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _mapLocation;
-}
-
-auto Map::GetLocation() const -> const Location*
-{
-    STACK_TRACE_ENTRY();
-
-    return _mapLocation;
-}
-
 void Map::SetLocation(Location* loc)
 {
     STACK_TRACE_ENTRY();
@@ -460,7 +437,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     }
 }
 
-auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
+auto Map::IsHexMovable(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -470,7 +447,7 @@ auto Map::IsHexMovable(uint16 hx, uint16 hy) const -> bool
     return !field.IsMoveBlocked && !static_field.IsMoveBlocked;
 }
 
-auto Map::IsHexShootable(uint16 hx, uint16 hy) const -> bool
+auto Map::IsHexShootable(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -607,7 +584,7 @@ void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
     }
 }
 
-auto Map::IsBlockItem(uint16 hx, uint16 hy) const -> bool
+auto Map::IsBlockItem(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -616,7 +593,7 @@ auto Map::IsBlockItem(uint16 hx, uint16 hy) const -> bool
     return field.IsNoMoveItem;
 }
 
-auto Map::IsItemTrigger(uint16 hx, uint16 hy) const -> bool
+auto Map::IsItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -625,7 +602,7 @@ auto Map::IsItemTrigger(uint16 hx, uint16 hy) const -> bool
     return field.IsTriggerItem;
 }
 
-auto Map::IsItemGag(uint16 hx, uint16 hy) const -> bool
+auto Map::IsItemGag(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -634,9 +611,9 @@ auto Map::IsItemGag(uint16 hx, uint16 hy) const -> bool
     return field.IsGagItem;
 }
 
-auto Map::GetItem(ident_t item_id) -> Item*
+auto Map::GetItem(ident_t item_id) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto it = _itemsMap.find(item_id);
 
@@ -660,7 +637,7 @@ auto Map::GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) ->
     return nullptr;
 }
 
-auto Map::GetItemGag(uint16 hx, uint16 hy) -> Item*
+auto Map::GetItemGag(uint16 hx, uint16 hy) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -677,18 +654,18 @@ auto Map::GetItemGag(uint16 hx, uint16 hy) -> Item*
     return nullptr;
 }
 
-auto Map::GetItems() -> const vector<Item*>&
+auto Map::GetItems() noexcept -> const vector<Item*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     return _items;
 }
 
-auto Map::GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&
+auto Map::GetItems(uint16 hx, uint16 hy) noexcept -> const vector<Item*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -863,7 +840,7 @@ void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
     RecacheHexFlags(field);
 }
 
-auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
+auto Map::IsAnyCritter(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -872,7 +849,7 @@ auto Map::IsAnyCritter(uint16 hx, uint16 hy) const -> bool
     return field.IsNonDeadCritter || field.IsDeadCritter;
 }
 
-auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool
+auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -881,7 +858,7 @@ auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool
     return field.IsNonDeadCritter;
 }
 
-auto Map::IsDeadCritter(uint16 hx, uint16 hy) const -> bool
+auto Map::IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -913,9 +890,9 @@ auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
     return false;
 }
 
-auto Map::GetCritter(ident_t cr_id) -> Critter*
+auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -926,7 +903,7 @@ auto Map::GetCritter(ident_t cr_id) -> Critter*
     return nullptr;
 }
 
-auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*
+auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -951,7 +928,7 @@ auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*
     return nullptr;
 }
 
-auto Map::GetDeadCritter(uint16 hx, uint16 hy) -> Critter*
+auto Map::GetDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -988,7 +965,7 @@ auto Map::GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_ty
     });
 }
 
-auto Map::GetCritters() -> const vector<Critter*>&
+auto Map::GetCritters() noexcept -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -997,7 +974,7 @@ auto Map::GetCritters() -> const vector<Critter*>&
     return _critters;
 }
 
-auto Map::GetPlayerCritters() -> const vector<Critter*>&
+auto Map::GetPlayerCritters() noexcept -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -1006,7 +983,7 @@ auto Map::GetPlayerCritters() -> const vector<Critter*>&
     return _playerCritters;
 }
 
-auto Map::GetNonPlayerCritters() -> const vector<Critter*>&
+auto Map::GetNonPlayerCritters() noexcept -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -1015,21 +992,21 @@ auto Map::GetNonPlayerCritters() -> const vector<Critter*>&
     return _nonPlayerCritters;
 }
 
-auto Map::GetCrittersCount() const -> uint
+auto Map::GetCrittersCount() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_critters.size());
 }
 
-auto Map::GetPlayerCrittersCount() const -> uint
+auto Map::GetPlayerCrittersCount() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_playerCritters.size());
 }
 
-auto Map::GetNonPlayerCrittersCount() const -> uint
+auto Map::GetNonPlayerCrittersCount() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -1110,7 +1087,7 @@ void Map::SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pa
     }
 }
 
-auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
+auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1119,9 +1096,9 @@ auto Map::IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool
     return !static_field.TriggerItems.empty();
 }
 
-auto Map::GetStaticItem(ident_t id) -> StaticItem*
+auto Map::GetStaticItem(ident_t id) noexcept -> StaticItem*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1132,9 +1109,9 @@ auto Map::GetStaticItem(ident_t id) -> StaticItem*
     return nullptr;
 }
 
-auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
+auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) noexcept -> StaticItem*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1149,9 +1126,9 @@ auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
     return nullptr;
 }
 
-auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> const vector<StaticItem*>&
+auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1194,9 +1171,9 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
     return items;
 }
 
-auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> const vector<StaticItem*>&
+auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 

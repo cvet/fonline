@@ -96,7 +96,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> ide
     return _deferredCalls.back().Id;
 }
 
-auto DeferredCallManager::IsDeferredCallPending(ident_t id) const -> bool
+auto DeferredCallManager::IsDeferredCallPending(ident_t id) const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 

@@ -335,6 +335,8 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint, LookDistance);
     ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, uint, AttackDistanceHint);
+    ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, TalkDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, int, ScaleFactor);
@@ -391,9 +393,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
+    ENTITY_PROPERTY(PrivateClient, bool, IsSexTagFemale);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
+    ENTITY_PROPERTY(PrivateClient, bool, IsModelInCombatMode);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
     ///@ ExportProperty ReadOnly Temporary

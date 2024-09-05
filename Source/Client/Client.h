@@ -139,17 +139,16 @@ public:
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool override;
 
-    [[nodiscard]] auto IsConnecting() const -> bool;
-    [[nodiscard]] auto IsConnected() const -> bool;
-    [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
-    [[nodiscard]] auto GetChosen() -> CritterView*;
-    [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool;
+    [[nodiscard]] auto IsConnected() const noexcept -> bool;
+    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection& { return _conn; }
+    [[nodiscard]] auto GetChosen() noexcept -> CritterView*;
+    [[nodiscard]] auto GetMapChosen() noexcept -> CritterHexView*;
     [[nodiscard]] auto GetWorldmapCritter(ident_t cr_id) -> CritterView*;
-    [[nodiscard]] auto GetWorldmapCritters() -> vector<CritterView*> { return _worldmapCritters; }
-    [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
-    [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
-    [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
-    [[nodiscard]] auto IsVideoPlaying() const -> bool { return !!_video || !_videoQueue.empty(); }
+    [[nodiscard]] auto GetWorldmapCritters() noexcept -> vector<CritterView*> { return _worldmapCritters; }
+    [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
+    [[nodiscard]] auto GetWorldmapFog() const noexcept -> const TwoBitMask& { return _worldmapFog; }
+    [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -182,6 +181,8 @@ public:
     auto GetEntity(ident_t id) -> ClientEntity*;
     void RegisterEntity(ClientEntity* entity);
     void UnregisterEntity(ClientEntity* entity);
+
+    auto CustomCall(string_view command, string_view separator) -> string;
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -265,8 +266,6 @@ public:
     ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, CritterItemSlot /*toSlot*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
 

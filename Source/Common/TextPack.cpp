@@ -146,7 +146,7 @@ void TextPack::Merge(const TextPack& other)
     }
 }
 
-auto TextPack::GetSize() const -> size_t
+auto TextPack::GetSize() const noexcept -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -304,14 +304,14 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
     _textPacks[static_cast<size_t>(TextPackName::Locations)] = std::make_unique<TextPack>();
 }
 
-auto LanguagePack::GetName() const -> const string&
+auto LanguagePack::GetName() const noexcept -> const string&
 {
     STACK_TRACE_ENTRY();
 
     return _langName;
 }
 
-auto LanguagePack::GetTextPack(TextPackName pack_name) const -> const TextPack&
+auto LanguagePack::GetTextPack(TextPackName pack_name) const noexcept -> const TextPack&
 {
     STACK_TRACE_ENTRY();
 

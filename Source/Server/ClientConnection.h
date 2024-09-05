@@ -57,24 +57,26 @@ public:
     auto operator=(ClientConnection&&) noexcept = delete;
     ~ClientConnection();
 
-    [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> string_view;
-    [[nodiscard]] auto GetPort() const -> uint16;
-    [[nodiscard]] auto IsHardDisconnected() const -> bool;
-    [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
-    [[nodiscard]] auto IsWebConnection() const -> bool;
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool;
+    [[nodiscard]] auto GetIp() const noexcept -> uint;
+    [[nodiscard]] auto GetHost() const noexcept -> string_view;
+    [[nodiscard]] auto GetPort() const noexcept -> uint16;
+    [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
+    [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool;
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool;
 
     void DisableCompression();
     void Dispatch();
     void HardDisconnect();
     void GracefulDisconnect();
 
+    // Todo: make auto-RAII locker for InBuf/InBufLocker writing/reading
     NetInBuffer& InBuf;
     std::mutex& InBufLocker;
     NetOutBuffer& OutBuf;
     std::mutex& OutBufLocker;
 
+    // Todo: incapsulate ClientConnection data
     bool WasHandshake {};
     time_point PingNextTime {};
     bool PingOk {true};

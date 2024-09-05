@@ -42,7 +42,7 @@ ParticleSprite::ParticleSprite(SpriteManager& spr_mngr) :
 
 auto ParticleSprite::IsHitTest(int x, int y) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);

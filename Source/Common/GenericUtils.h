@@ -74,12 +74,12 @@ public:
     [[nodiscard]] static auto Random(uint minimum, uint maximum) -> uint;
     [[nodiscard]] static auto Percent(int full, int peace) -> int;
     [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
-    [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
-    [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
+    [[nodiscard]] static auto NumericalNumber(uint num) noexcept -> uint;
+    [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
-    [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
-    [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
+    [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) noexcept -> uint;
+    [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) noexcept -> tuple<float, float>;
+    [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) noexcept -> tuple<float, float>;
 
     static void SetRandomSeed(int seed);
     static void WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data);
@@ -90,6 +90,6 @@ class MatrixHelper final
 public:
     MatrixHelper() = delete;
 
-    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool;
-    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool;
+    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool;
+    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool;
 };

@@ -127,6 +127,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         ShowExceptionMessageBox(true);
+                        auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
+
                         try {
                             auto&& client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(std::move(client));
@@ -135,7 +137,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         catch (const std::exception& ex) {
                             ReportExceptionAndContinue(ex);
                         }
-                        ShowExceptionMessageBox(false);
                     }
 
                     if (ImGui::Button("Create dump", control_btn_size)) {

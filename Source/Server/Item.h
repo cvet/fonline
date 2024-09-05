@@ -57,16 +57,16 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
-    [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
-    [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
-    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
-    [[nodiscard]] auto GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*;
+    [[nodiscard]] auto RadioIsSendActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
+    [[nodiscard]] auto RadioIsRecvActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
+    [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
+    [[nodiscard]] auto GetInnerItem(ident_t item_id, bool skip_hidden) noexcept -> Item*;
     [[nodiscard]] auto GetAllInnerItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
-    [[nodiscard]] auto HasInnerItems() const -> bool;
+    [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
-    [[nodiscard]] auto CanSendItem(bool as_public) const -> bool;
+    [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
 
     auto AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);

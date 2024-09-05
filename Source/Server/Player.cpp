@@ -73,21 +73,21 @@ void Player::SetControlledCritter(Critter* cr)
     _controlledCr = cr;
 }
 
-auto Player::GetIp() const -> uint
+auto Player::GetIp() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return Connection->GetIp();
 }
 
-auto Player::GetHost() const -> string_view
+auto Player::GetHost() const noexcept -> string_view
 {
     STACK_TRACE_ENTRY();
 
     return Connection->GetHost();
 }
 
-auto Player::GetPort() const -> uint16
+auto Player::GetPort() const noexcept -> uint16
 {
     STACK_TRACE_ENTRY();
 
@@ -279,14 +279,17 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
         break;
     }
 
-    uint data_size = 0;
-    const void* data = entity->GetProperties().GetRawData(prop, data_size);
+    const auto& props = entity->GetProperties();
+
+    props.ValidateForRawData(prop);
+
+    const auto prop_raw_data = props.GetRawData(prop);
+    const auto is_pod = prop->IsPlainData();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
-    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
-        Connection->OutBuf.StartMsg(NETMSG_POD_PROPERTY(data_size, additional_args));
+        Connection->OutBuf.StartMsg(NETMSG_POD_PROPERTY(prop_raw_data.size(), additional_args));
     }
     else {
         Connection->OutBuf.StartMsg(NETMSG_COMPLEX_PROPERTY);
@@ -315,16 +318,8 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
         break;
     }
 
-    if (is_pod) {
-        Connection->OutBuf.Write(prop->GetRegIndex());
-        Connection->OutBuf.Push(data, data_size);
-    }
-    else {
-        Connection->OutBuf.Write(prop->GetRegIndex());
-        if (data_size != 0) {
-            Connection->OutBuf.Push(data, data_size);
-        }
-    }
+    Connection->OutBuf.Write(prop->GetRegIndex());
+    Connection->OutBuf.Push(prop_raw_data);
 
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -591,7 +586,7 @@ void Player::Send_GlobalInfo()
 
         for (uint16 i = 0; i < loc_count;) {
             const auto loc_id = known_locs[i];
-            const auto* loc = _engine->MapMngr.GetLocation(loc_id);
+            const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
             if (loc != nullptr && !loc->GetToGarbage()) {
                 i++;
                 Connection->OutBuf.Write(loc_id);
@@ -1092,7 +1087,7 @@ void Player::Send_AllAutomapsInfo()
     vector<Location*> locs;
 
     for (const auto loc_id : _controlledCr->GetKnownLocations()) {
-        auto* loc = _engine->MapMngr.GetLocation(loc_id);
+        auto* loc = _engine->EntityMngr.GetLocation(loc_id);
         if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
             locs.push_back(loc);
         }

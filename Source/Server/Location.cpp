@@ -62,28 +62,28 @@ void Location::BindScript()
     }
 }
 
-auto Location::GetProtoLoc() const -> const ProtoLocation*
+auto Location::GetProtoLoc() const noexcept -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<const ProtoLocation*>(_proto);
 }
 
-auto Location::IsLocVisible() const -> bool
+auto Location::IsLocVisible() const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
     return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
 }
 
-auto Location::GetMapsRaw() -> vector<Map*>&
+auto Location::GetMapsRaw() noexcept -> vector<Map*>&
 {
     STACK_TRACE_ENTRY();
 
     return _locMaps;
 };
 
-auto Location::GetMaps() -> vector<Map*>
+auto Location::GetMaps() noexcept -> const vector<Map*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -97,14 +97,14 @@ auto Location::GetMaps() const -> vector<const Map*>
     return vec_static_cast<const Map*>(_locMaps);
 }
 
-auto Location::GetMapsCount() const -> uint
+auto Location::GetMapsCount() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_locMaps.size());
 }
 
-auto Location::GetMapByIndex(uint index) -> Map*
+auto Location::GetMapByIndex(uint index) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -113,10 +113,11 @@ auto Location::GetMapByIndex(uint index) -> Map*
     if (index >= _locMaps.size()) {
         return nullptr;
     }
+
     return _locMaps[index];
 }
 
-auto Location::GetMapByPid(hstring map_pid) -> Map*
+auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -127,24 +128,28 @@ auto Location::GetMapByPid(hstring map_pid) -> Map*
             return map;
         }
     }
+
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) const -> uint
+auto Location::GetMapIndex(hstring map_pid) const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     uint index = 0;
+
     for (const auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
             return index;
         }
+
         index++;
     }
+
     return static_cast<uint>(-1);
 }
 
-auto Location::IsCanDelete() const -> bool
+auto Location::IsCanDelete() const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 

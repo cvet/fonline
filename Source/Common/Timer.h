@@ -60,20 +60,20 @@ public:
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
-    [[nodiscard]] auto GetTime(bool gameplay_timer) const -> time_point;
-    [[nodiscard]] auto GetDeltaTime(bool gameplay_timer) const -> time_duration;
-    [[nodiscard]] auto FrameTime() const -> time_point;
-    [[nodiscard]] auto FrameDeltaTime() const -> time_duration;
-    [[nodiscard]] auto GameplayTime() const -> time_point;
-    [[nodiscard]] auto GameplayDeltaTime() const -> time_duration;
+    [[nodiscard]] auto GetTime(bool gameplay_timer) const noexcept -> time_point;
+    [[nodiscard]] auto GetDeltaTime(bool gameplay_timer) const noexcept -> time_duration;
+    [[nodiscard]] auto FrameTime() const noexcept -> time_point;
+    [[nodiscard]] auto FrameDeltaTime() const noexcept -> time_duration;
+    [[nodiscard]] auto GameplayTime() const noexcept -> time_point;
+    [[nodiscard]] auto GameplayDeltaTime() const noexcept -> time_duration;
 
-    [[nodiscard]] auto GetFullSecond() const -> tick_t;
-    [[nodiscard]] auto EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> tick_t;
-    [[nodiscard]] auto EvaluateGameTime(tick_t full_second) const -> DateTimeStamp;
-    [[nodiscard]] auto GameTimeMonthDays(uint16 year, uint16 month) const -> uint16;
+    [[nodiscard]] auto GetFullSecond() const noexcept -> tick_t;
+    [[nodiscard]] auto EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
+    [[nodiscard]] auto EvaluateGameTime(tick_t full_second) const noexcept -> DateTimeStamp;
+    [[nodiscard]] auto GameTimeMonthDays(uint16 year, uint16 month) const noexcept -> uint16;
 
 #if FO_SINGLEPLAYER
-    [[nodiscard]] auto IsGameplayPaused() const -> bool;
+    [[nodiscard]] auto IsGameplayPaused() const noexcept -> bool;
 #endif
 
     void Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
@@ -107,10 +107,10 @@ class Timer final // Todo: remove Timer class, use directly std::chrono instead
 public:
     Timer() = delete;
 
-    [[nodiscard]] static auto CurTime() -> time_point;
+    [[nodiscard]] static auto CurTime() noexcept -> time_point;
     [[nodiscard]] static auto GetCurrentDateTime() -> DateTimeStamp;
-    [[nodiscard]] static auto DateTimeToFullTime(const DateTimeStamp& dt) -> uint64;
-    [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) -> DateTimeStamp;
-    [[nodiscard]] static auto GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) -> int;
-    [[nodiscard]] static auto AdvanceTime(const DateTimeStamp& dt, int seconds) -> DateTimeStamp;
+    [[nodiscard]] static auto DateTimeToFullTime(const DateTimeStamp& dt) noexcept -> uint64;
+    [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) noexcept -> DateTimeStamp;
+    [[nodiscard]] static auto GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) noexcept -> int;
+    [[nodiscard]] static auto AdvanceTime(const DateTimeStamp& dt, int seconds) noexcept -> DateTimeStamp;
 };

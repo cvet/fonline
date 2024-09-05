@@ -53,18 +53,20 @@ public:
     ~ProtoManager() = default;
 
     [[nodiscard]] auto GetProtosBinaryData() const -> vector<uint8>;
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) -> const ProtoEntity*;
-    [[nodiscard]] auto GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&;
-    [[nodiscard]] auto GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&;
-    [[nodiscard]] auto GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&;
-    [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
-    [[nodiscard]] auto GetProtoEntities(hstring type_name) const -> const unordered_map<hstring, const ProtoEntity*>&;
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
     [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
+
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) noexcept -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) noexcept -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*;
+
+    [[nodiscard]] auto GetProtoItems() const noexcept -> const unordered_map<hstring, const ProtoItem*>& { return _itemProtos; }
+    [[nodiscard]] auto GetProtoCritters() const noexcept -> const unordered_map<hstring, const ProtoCritter*>& { return _crProtos; }
+    [[nodiscard]] auto GetProtoMaps() const noexcept -> const unordered_map<hstring, const ProtoMap*>& { return _mapProtos; }
+    [[nodiscard]] auto GetProtoLocations() const noexcept -> const unordered_map<hstring, const ProtoLocation*>& { return _locProtos; }
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&;
 
     void ParseProtos(FileSystem& resources);
     void LoadFromResources();

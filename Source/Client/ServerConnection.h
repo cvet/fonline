@@ -62,11 +62,11 @@ public:
     auto operator=(ServerConnection&&) noexcept = delete;
     ~ServerConnection();
 
-    [[nodiscard]] auto IsConnecting() const -> bool { return _isConnecting; }
-    [[nodiscard]] auto IsConnected() const -> bool { return _isConnected; }
-    [[nodiscard]] auto GetBytesSend() const -> size_t { return _bytesSend; }
-    [[nodiscard]] auto GetBytesReceived() const -> size_t { return _bytesReceived; }
-    [[nodiscard]] auto GetUnpackedBytesReceived() const -> size_t { return _bytesRealReceived; }
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
+    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
+    [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
+    [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+    [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
 
     void AddConnectHandler(ConnectCallback handler);
     void AddDisconnectHandler(DisconnectCallback handler);

@@ -179,6 +179,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 
             // Fill content from parents
             map<string, string> final_kv;
+
             std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
                 const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv["$Parent"] : string();
 
@@ -224,7 +225,6 @@ void ProtoManager::ParseProtos(FileSystem& resources)
             if (final_kv.count("$Components") != 0) {
                 for (const auto& component_name : _str(final_kv["$Components"]).split(' ')) {
                     auto component_name_hashed = _engine->ToHashedString(component_name);
-
                     component_name_hashed = _engine->CheckMigrationRule(component_rule_name, type_name, component_name_hashed).value_or(component_name_hashed);
 
                     if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
@@ -292,21 +292,25 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
             auto* proto = new ProtoLocation(pid, registrator, props);
             _locProtos.emplace(pid, proto);
+
             return proto;
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
             auto* proto = new ProtoMap(pid, registrator, props);
             _mapProtos.emplace(pid, proto);
+
             return proto;
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
             auto* proto = new ProtoCritter(pid, registrator, props);
             _crProtos.emplace(pid, proto);
+
             return proto;
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
             auto* proto = new ProtoItem(pid, registrator, props);
             _itemProtos.emplace(pid, proto);
+
             return proto;
         }
         else {
@@ -343,6 +347,7 @@ void ProtoManager::LoadFromResources()
 #endif
 
     const auto protos_file = _engine->Resources.ReadFile(protos_fname);
+
     if (!protos_file) {
         throw ProtoManagerException("Protos binary file not found", protos_fname);
     }
@@ -387,6 +392,7 @@ void ProtoManager::LoadFromResources()
                 auto* proto = CreateProto(type_name, proto_id, nullptr);
 
                 const auto components_count = reader.Read<uint16>();
+
                 for (uint16 k = 0; k < components_count; k++) {
                     const auto component_name_len = reader.Read<uint16>();
                     const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
@@ -432,6 +438,7 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
                 writer.WritePtr(proto_name.data(), proto_name.length());
 
                 writer.Write<uint16>(static_cast<uint16>(proto->GetComponents().size()));
+
                 for (const auto& component : proto->GetComponents()) {
                     const auto& component_str = component.as_str();
                     writer.Write<uint16>(static_cast<uint16>(component_str.length()));
@@ -464,7 +471,7 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
     return data;
 }
 
-auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
+auto ProtoManager::GetProtoItem(hstring proto_id) noexcept -> const ProtoItem*
 {
     STACK_TRACE_ENTRY();
 
@@ -475,7 +482,7 @@ auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
     return it != _itemProtos.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
+auto ProtoManager::GetProtoCritter(hstring proto_id) noexcept -> const ProtoCritter*
 {
     STACK_TRACE_ENTRY();
 
@@ -486,7 +493,7 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
     return it != _crProtos.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
+auto ProtoManager::GetProtoMap(hstring proto_id) noexcept -> const ProtoMap*
 {
     STACK_TRACE_ENTRY();
 
@@ -497,7 +504,7 @@ auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
     return it != _mapProtos.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
+auto ProtoManager::GetProtoLocation(hstring proto_id) noexcept -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
@@ -508,7 +515,7 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
     return it != _locProtos.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) -> const ProtoEntity*
+auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*
 {
     STACK_TRACE_ENTRY();
 
@@ -525,35 +532,7 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) -> const 
     return it != it_type->second.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _itemProtos;
-}
-
-auto ProtoManager::GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _crProtos;
-}
-
-auto ProtoManager::GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _mapProtos;
-}
-
-auto ProtoManager::GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _locProtos;
-}
-
-auto ProtoManager::GetProtoEntities(hstring type_name) const -> const unordered_map<hstring, const ProtoEntity*>&
+auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&
 {
     STACK_TRACE_ENTRY();
 

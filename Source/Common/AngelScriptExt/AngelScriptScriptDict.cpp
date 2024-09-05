@@ -128,7 +128,7 @@ struct DictMapComparator
     int TypeId;
 };
 
-typedef map<void*, void*, DictMapComparator> DictMap;
+typedef std::map<void*, void*, DictMapComparator> DictMap;
 
 CScriptDict* CScriptDict::Create(asITypeInfo* ot)
 {

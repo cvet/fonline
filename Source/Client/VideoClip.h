@@ -43,10 +43,10 @@ public:
     explicit VideoClip(vector<uint8> video_data);
     ~VideoClip();
 
-    [[nodiscard]] auto IsPlaying() const -> bool;
-    [[nodiscard]] auto IsStopped() const -> bool;
-    [[nodiscard]] auto IsPaused() const -> bool;
-    [[nodiscard]] auto IsLooped() const -> bool;
+    [[nodiscard]] auto IsPlaying() const noexcept -> bool;
+    [[nodiscard]] auto IsStopped() const noexcept -> bool;
+    [[nodiscard]] auto IsPaused() const noexcept -> bool;
+    [[nodiscard]] auto IsLooped() const noexcept -> bool;
     [[nodiscard]] auto GetTime() const -> time_duration;
     [[nodiscard]] auto GetSize() const -> tuple<int, int>;
 

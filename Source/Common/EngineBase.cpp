@@ -100,7 +100,7 @@ void FOEngineBase::RegisterEnumGroup(string_view name, const type_info& underlyi
     _enumTypes[string(name)] = &underlying_type;
 }
 
-auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const -> const PropertyRegistrator*
+auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
@@ -113,7 +113,8 @@ auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const -> const 
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _entityTypesInfo.find(ToHashedStringMustExists(type_name));
+    const auto type_name_hashed = ToHashedStringMustExists(type_name);
+    const auto it = _entityTypesInfo.find(type_name_hashed);
 
     return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
 }
@@ -130,16 +131,16 @@ auto FOEngineBase::GetPropertyRegistratorForEdit(string_view type_name) -> Prope
     return const_cast<PropertyRegistrator*>(it->second.PropRegistrator);
 }
 
-auto FOEngineBase::IsValidEntityType(hstring type_name) const -> bool
+auto FOEngineBase::IsValidEntityType(hstring type_name) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
-    return _entityTypesInfo.count(type_name) != 0;
+    return _entityTypesInfo.find(type_name) != _entityTypesInfo.end();
 }
 
 auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto it = _entityTypesInfo.find(type_name);
     RUNTIME_ASSERT(it != _entityTypesInfo.end());
@@ -147,9 +148,9 @@ auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTyp
     return it->second;
 }
 
-auto FOEngineBase::GetEntityTypesInfo() const -> const unordered_map<hstring, EntityTypeInfo>&
+auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _entityTypesInfo;
 }
@@ -280,7 +281,7 @@ auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
     return ResolveEnumValue(str, failed);
 }
 
-auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring>
+auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>
 {
     STACK_TRACE_ENTRY();
 

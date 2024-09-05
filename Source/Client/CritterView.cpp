@@ -126,7 +126,7 @@ void CritterView::DeleteAllInvItems()
     }
 }
 
-auto CritterView::GetInvItem(ident_t item_id) -> ItemView*
+auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -137,10 +137,11 @@ auto CritterView::GetInvItem(ident_t item_id) -> ItemView*
             return item;
         }
     }
+
     return nullptr;
 }
 
-auto CritterView::GetInvItemByPid(hstring item_pid) -> ItemView*
+auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -151,12 +152,13 @@ auto CritterView::GetInvItemByPid(hstring item_pid) -> ItemView*
             return item;
         }
     }
+
     return nullptr;
 }
 
-auto CritterView::GetInvItems() -> const vector<ItemView*>&
+auto CritterView::GetInvItems() noexcept -> const vector<ItemView*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -170,9 +172,9 @@ auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
     return vec_static_cast<const ItemView*>(_invItems);
 }
 
-auto CritterView::CheckFind(CritterFindType find_type) const -> bool
+auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (find_type == CritterFindType::Any) {
         return true;
@@ -189,12 +191,13 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
     if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
+
     return true;
 }
 
-auto CritterView::GetStateAnim() const -> CritterStateAnim
+auto CritterView::GetStateAnim() const noexcept -> CritterStateAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     switch (GetCondition()) {
     case CritterCondition::Alive:

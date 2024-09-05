@@ -174,16 +174,16 @@ public:
     auto operator=(MapView&&) noexcept = delete;
     ~MapView() override;
 
-    [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
-    [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(hx, hy); }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField->GetCellForReading(hx, hy).IsView; }
-    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
-    [[nodiscard]] auto GetLightData() -> ucolor* { return _hexLight.data(); }
-    [[nodiscard]] auto GetGlobalDayTime() const -> int;
-    [[nodiscard]] auto GetMapDayTime() const -> int;
-    [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
-    [[nodiscard]] auto IsScrollEnabled() const -> bool;
+    [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
+    [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) noexcept -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(hx, hy); }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const noexcept -> bool { return _hexField->GetCellForReading(hx, hy).IsView; }
+    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) noexcept -> char& { return _hexTrack[static_cast<size_t>(hy) * _width + hx]; }
+    [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
+    [[nodiscard]] auto GetGlobalDayTime() const noexcept -> int;
+    [[nodiscard]] auto GetMapDayTime() const noexcept -> int;
+    [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
+    [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
 
     void EnableMapperMode();
     void LoadFromFile(string_view map_name, const string& str);

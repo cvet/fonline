@@ -63,43 +63,45 @@ void Entity::Release() const noexcept
     }
 }
 
-auto Entity::GetTypeName() const -> hstring
+auto Entity::GetTypeName() const noexcept -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
     return _props.GetRegistrator()->GetTypeName();
 }
 
-auto Entity::GetTypeNamePlural() const -> hstring
+auto Entity::GetTypeNamePlural() const noexcept -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
     return _props.GetRegistrator()->GetTypeNamePlural();
 }
 
-auto Entity::GetProperties() const -> const Properties&
+auto Entity::GetProperties() const noexcept -> const Properties&
 {
     NO_STACK_TRACE_ENTRY();
 
     return _props;
 }
 
-auto Entity::GetPropertiesForEdit() -> Properties&
+auto Entity::GetPropertiesForEdit() noexcept -> Properties&
 {
     NO_STACK_TRACE_ENTRY();
 
     return _props;
 }
 
-auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*
+auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>&
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto it = _events.find(event_name); it != _events.end()) {
-        return &it->second;
+    make_if_not_exists(_events);
+
+    if (const auto it = _events->find(event_name); it != _events->end()) {
+        return it->second;
     }
 
-    return &_events.emplace(event_name, vector<EventCallbackData>()).first->second;
+    return _events->emplace(event_name, vector<EventCallbackData>()).first->second;
 }
 
 void Entity::SubscribeEvent(const string& event_name, EventCallbackData&& callback)
@@ -109,84 +111,91 @@ void Entity::SubscribeEvent(const string& event_name, EventCallbackData&& callba
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
 
-void Entity::UnsubscribeEvent(const string& event_name, const void* subscription_ptr)
+void Entity::UnsubscribeEvent(const string& event_name, const void* subscription_ptr) noexcept
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto it = _events.find(event_name); it != _events.end()) {
-        UnsubscribeEvent(&it->second, subscription_ptr);
+    if (_events) {
+        if (const auto it = _events->find(event_name); it != _events->end()) {
+            UnsubscribeEvent(it->second, subscription_ptr);
+        }
     }
 }
 
-void Entity::UnsubscribeAllEvent(const string& event_name)
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _events.find(event_name); it != _events.end()) {
-        it->second.clear();
-    }
-}
-
-auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _events.find(event_name); it != _events.end()) {
-        return FireEvent(&it->second, args);
-    }
-    return true;
-}
-
-void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData&& callback)
+void Entity::UnsubscribeAllEvent(const string& event_name) noexcept
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(callbacks);
+    if (_events) {
+        if (const auto it = _events->find(event_name); it != _events->end()) {
+            it->second.clear();
+        }
+    }
+}
 
-    if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
+auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& args) noexcept -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    if (_events) {
+        if (const auto it = _events->find(event_name); it != _events->end()) {
+            return FireEvent(it->second, args);
+        }
+    }
+
+    return true;
+}
+
+void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
         throw GenericException("Highest callback already added");
     }
 
-    if (callback.Priority <= EventPriority::Lowest && std::find_if(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks->end()) {
+    if (callback.Priority <= EventPriority::Lowest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
         throw GenericException("Lowest callback already added");
     }
 
-    callbacks->push_back(std::move(callback));
+    callbacks.emplace_back(std::move(callback));
 
-    std::stable_sort(callbacks->begin(), callbacks->end(), [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
+    std::stable_sort(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
         // From highest to lowest
         return cb1.Priority > cb2.Priority;
     });
 }
 
-void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr)
+void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(callbacks);
-
-    if (const auto it = std::find_if(callbacks->begin(), callbacks->end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks->end()) {
-        callbacks->erase(it);
+    if (const auto it = std::find_if(callbacks.begin(), callbacks.end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
+        callbacks.erase(it);
     }
 }
 
-// Param callbacks mutable beacuse callbacks may change it, so make it explicit
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
-auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool
+auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(callbacks);
+    NON_CONST_METHOD_HINT();
 
-    if (callbacks->empty()) {
+    if (callbacks.empty()) {
         return true;
     }
 
-    for (const auto& cb : copy(*callbacks)) {
+    // Callbacks vector may be changed/invalidated during cycle work
+    vector<EventCallbackData> callbacks_copy;
+    safe_call([&] { callbacks_copy = copy(callbacks); });
+
+    for (const auto& cb : callbacks_copy) {
         const auto ex_policy = cb.ExPolicy;
 
         try {
@@ -195,12 +204,11 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
             }
         }
         catch (const std::exception& ex) {
-            if (ex_policy == EventExceptionPolicy::PropogateException) {
-                throw;
-            }
-
             ReportExceptionAndContinue(ex);
 
+            if (ex_policy == EventExceptionPolicy::IgnoreAndContinueChain) {
+                continue;
+            }
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
                 return true;
             }
@@ -320,7 +328,7 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*
         return nullptr;
     }
 
-    const auto it_entry = safe_find(*_innerEntities, entry);
+    const auto it_entry = _innerEntities->find(entry);
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -378,14 +386,14 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
     RUNTIME_ASSERT(_protoId);
 }
 
-auto ProtoEntity::GetName() const -> string_view
+auto ProtoEntity::GetName() const noexcept -> string_view
 {
     NO_STACK_TRACE_ENTRY();
 
     return _protoId.as_str();
 }
 
-auto ProtoEntity::GetProtoId() const -> hstring
+auto ProtoEntity::GetProtoId() const noexcept -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -400,18 +408,18 @@ void ProtoEntity::EnableComponent(hstring component)
     _componentHashes.emplace(component.as_hash());
 }
 
-auto ProtoEntity::HasComponent(hstring name) const -> bool
+auto ProtoEntity::HasComponent(hstring name) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _components.count(name) != 0;
+    return _components.find(name) != _components.end();
 }
 
-auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
+auto ProtoEntity::HasComponent(hstring::hash_t hash) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _componentHashes.count(hash) != 0;
+    return _componentHashes.find(hash) != _componentHashes.end();
 }
 
 EntityWithProto::EntityWithProto(const ProtoEntity* proto) :
@@ -431,14 +439,14 @@ EntityWithProto::~EntityWithProto()
     _proto->Release();
 }
 
-auto EntityWithProto::GetProtoId() const -> hstring
+auto EntityWithProto::GetProtoId() const noexcept -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
     return _proto->GetProtoId();
 }
 
-auto EntityWithProto::GetProto() const -> const ProtoEntity*
+auto EntityWithProto::GetProto() const noexcept -> const ProtoEntity*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -457,14 +465,14 @@ void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
     STACK_TRACE_ENTRY();
 
     if (_callbacks == nullptr) {
-        _callbacks = _entity->GetEventCallbacks(_callbackName);
+        _callbacks = &_entity->GetEventCallbacks(_callbackName);
     }
 
-    _entity->SubscribeEvent(_callbacks, std::move(callback));
+    _entity->SubscribeEvent(*_callbacks, std::move(callback));
 }
 
 // ReSharper disable once CppMemberFunctionMayBeConst
-void EntityEventBase::Unsubscribe(const void* subscription_ptr)
+void EntityEventBase::Unsubscribe(const void* subscription_ptr) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -472,10 +480,10 @@ void EntityEventBase::Unsubscribe(const void* subscription_ptr)
         return;
     }
 
-    _entity->UnsubscribeEvent(_callbacks, subscription_ptr);
+    _entity->UnsubscribeEvent(*_callbacks, subscription_ptr);
 }
 
-void EntityEventBase::UnsubscribeAll()
+void EntityEventBase::UnsubscribeAll() noexcept
 {
     STACK_TRACE_ENTRY();
 

@@ -66,30 +66,30 @@ public:
     ~_str() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&&() { return std::move(_s); }
+    operator string&&() noexcept { return std::move(_s); }
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const { return _s; }
+    operator string_view() const noexcept { return _s; }
     auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
     auto operator+(string_view r) const -> _str { return _str(_s + string(r)); }
     friend auto operator+(const _str& l, string_view r) -> _str { return _str(l._s + string(r)); }
-    auto operator==(string_view r) const -> bool { return _s == r; }
-    auto operator!=(string_view r) const -> bool { return _s != r; }
-    friend auto operator!=(const _str& l, string_view r) -> bool { return l._s != r; }
+    auto operator==(string_view r) const noexcept -> bool { return _s == r; }
+    auto operator!=(string_view r) const noexcept -> bool { return _s != r; }
+    friend auto operator!=(const _str& l, string_view r) noexcept -> bool { return l._s != r; }
 
-    [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
+    [[nodiscard]] auto c_str() const noexcept -> const char* { return _s.c_str(); }
     [[nodiscard]] auto str() const -> string { return _s; }
-    [[nodiscard]] auto strv() const -> string_view { return _s; }
+    [[nodiscard]] auto strv() const noexcept -> string_view { return _s; }
 
-    [[nodiscard]] auto length() const -> size_t;
-    [[nodiscard]] auto empty() const -> bool;
-    [[nodiscard]] auto compareIgnoreCase(string_view r) const -> bool;
+    [[nodiscard]] auto length() const noexcept -> size_t;
+    [[nodiscard]] auto empty() const noexcept -> bool;
+    [[nodiscard]] auto compareIgnoreCase(string_view r) const noexcept -> bool;
     [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const -> bool;
-    [[nodiscard]] auto startsWith(char r) const -> bool;
-    [[nodiscard]] auto startsWith(string_view r) const -> bool;
-    [[nodiscard]] auto endsWith(char r) const -> bool;
-    [[nodiscard]] auto endsWith(string_view r) const -> bool;
-    [[nodiscard]] auto isValidUtf8() const -> bool;
-    [[nodiscard]] auto lengthUtf8() const -> size_t;
+    [[nodiscard]] auto startsWith(char r) const noexcept -> bool;
+    [[nodiscard]] auto startsWith(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto endsWith(char r) const noexcept -> bool;
+    [[nodiscard]] auto endsWith(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto isValidUtf8() const noexcept -> bool;
+    [[nodiscard]] auto lengthUtf8() const noexcept -> size_t;
 
     auto substringUntil(char separator) -> _str&;
     auto substringUntil(string_view separator) -> _str&;
@@ -109,17 +109,17 @@ public:
     [[nodiscard]] auto split(char divider) const -> vector<string>;
     [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
-    [[nodiscard]] auto isNumber() const -> bool;
-    [[nodiscard]] auto isInt() const -> bool;
-    [[nodiscard]] auto isFloat() const -> bool;
-    [[nodiscard]] auto isExplicitBool() const -> bool;
-    [[nodiscard]] auto toInt() const -> int;
-    [[nodiscard]] auto toUInt() const -> uint;
-    [[nodiscard]] auto toInt64() const -> int64;
-    [[nodiscard]] auto toUInt64() const -> uint64;
-    [[nodiscard]] auto toFloat() const -> float;
-    [[nodiscard]] auto toDouble() const -> double;
-    [[nodiscard]] auto toBool() const -> bool;
+    [[nodiscard]] auto isNumber() const noexcept -> bool;
+    [[nodiscard]] auto isInt() const noexcept -> bool;
+    [[nodiscard]] auto isFloat() const noexcept -> bool;
+    [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
+    [[nodiscard]] auto toInt() const noexcept -> int;
+    [[nodiscard]] auto toUInt() const noexcept -> uint;
+    [[nodiscard]] auto toInt64() const noexcept -> int64;
+    [[nodiscard]] auto toUInt64() const noexcept -> uint64;
+    [[nodiscard]] auto toFloat() const noexcept -> float;
+    [[nodiscard]] auto toDouble() const noexcept -> double;
+    [[nodiscard]] auto toBool() const noexcept -> bool;
 
     auto formatPath() -> _str&;
     auto extractDir() -> _str&;
@@ -144,11 +144,11 @@ private:
 
 namespace utf8
 {
-    auto IsValid(uint ucs) -> bool;
-    auto Decode(string_view str, uint* length) -> uint;
-    auto Encode(uint ucs, char (&buf)[4]) -> uint;
-    auto Lower(uint ucs) -> uint;
-    auto Upper(uint ucs) -> uint;
+    auto IsValid(uint ucs) noexcept -> bool;
+    auto Decode(string_view str, uint* length) noexcept -> uint;
+    auto Encode(uint ucs, char (&buf)[4]) noexcept -> uint;
+    auto Lower(uint ucs) noexcept -> uint;
+    auto Upper(uint ucs) noexcept -> uint;
 }
 
 template<>

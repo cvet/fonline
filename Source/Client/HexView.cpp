@@ -97,9 +97,9 @@ void HexView::Finish()
     _finishingTime = _fadingTime;
 }
 
-auto HexView::IsFinished() const -> bool
+auto HexView::IsFinished() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _finishing && _map->GetEngine()->GameTime.GameplayTime() >= _finishingTime;
 }

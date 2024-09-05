@@ -209,7 +209,7 @@ public:
     void BeginScene(ucolor clear_color);
     void EndScene();
 
-    void SetSpritesZoom(float zoom) noexcept;
+    void SetSpritesZoom(float zoom);
 
     void DrawSprite(const Sprite* spr, int x, int y, ucolor color);
     void DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, ucolor color);
@@ -325,7 +325,7 @@ private:
         RenderEffect* DrawEffect {};
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
-        map<uint, Letter> Letters {};
+        unordered_map<uint, Letter> Letters {};
         int SpaceWidth {};
         int LineHeight {};
         int YAdvance {};

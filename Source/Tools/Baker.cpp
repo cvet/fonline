@@ -1110,13 +1110,14 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
     const auto* registrator = props.GetRegistrator();
 
     for (size_t i = 0; i < registrator->GetCount(); i++) {
-        const auto* prop = registrator->GetByIndexFast(static_cast<int>(i));
+        const auto* prop = registrator->GetByIndexFast(i);
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
-                uint hash_data_size;
-                const auto* hash_data = props.GetRawData(prop, hash_data_size);
-                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                const auto hash_data = props.GetRawData(prop);
+                RUNTIME_ASSERT(hash_data.size() == sizeof(hstring::hash_t));
+
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data.data()) == 0) {
                     continue;
                 }
 
@@ -1147,9 +1148,10 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
         if (prop->IsBaseScriptFuncType()) {
             if (prop->IsPlainData()) {
-                uint hash_data_size;
-                const auto* hash_data = props.GetRawData(prop, hash_data_size);
-                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                auto hash_data = props.GetRawData(prop);
+                RUNTIME_ASSERT(hash_data.size() == sizeof(hstring::hash_t));
+
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data.data()) == 0) {
                     continue;
                 }
 

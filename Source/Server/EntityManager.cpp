@@ -59,9 +59,9 @@ EntityManager::EntityManager(FOServer* engine) :
     STACK_TRACE_ENTRY();
 }
 
-auto EntityManager::GetEntity(ident_t id) -> ServerEntity*
+auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return it->second;
@@ -70,16 +70,9 @@ auto EntityManager::GetEntity(ident_t id) -> ServerEntity*
     return nullptr;
 }
 
-auto EntityManager::GetEntities() -> const unordered_map<ident_t, ServerEntity*>&
+auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
 {
-    STACK_TRACE_ENTRY();
-
-    return _allEntities;
-}
-
-auto EntityManager::GetPlayer(ident_t id) -> Player*
-{
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second;
@@ -88,16 +81,9 @@ auto EntityManager::GetPlayer(ident_t id) -> Player*
     return nullptr;
 }
 
-auto EntityManager::GetPlayers() -> const unordered_map<ident_t, Player*>&
+auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
 {
-    STACK_TRACE_ENTRY();
-
-    return _allPlayers;
-}
-
-auto EntityManager::GetLocation(ident_t id) -> Location*
-{
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
@@ -106,32 +92,9 @@ auto EntityManager::GetLocation(ident_t id) -> Location*
     return nullptr;
 }
 
-auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
+auto EntityManager::GetMap(ident_t id) noexcept -> Map*
 {
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [id, loc] : _allLocations) {
-        if (loc->GetProtoId() == pid) {
-            if (skip_count == 0u) {
-                return loc;
-            }
-            skip_count--;
-        }
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetLocations() -> const unordered_map<ident_t, Location*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allLocations;
-}
-
-auto EntityManager::GetMap(ident_t id) -> Map*
-{
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second;
@@ -140,32 +103,9 @@ auto EntityManager::GetMap(ident_t id) -> Map*
     return nullptr;
 }
 
-auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
+auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
 {
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [id, map] : _allMaps) {
-        if (map->GetProtoId() == pid) {
-            if (skip_count == 0u) {
-                return map;
-            }
-            skip_count--;
-        }
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetMaps() -> const unordered_map<ident_t, Map*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allMaps;
-}
-
-auto EntityManager::GetCritter(ident_t id) const -> const Critter*
-{
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second;
@@ -174,40 +114,15 @@ auto EntityManager::GetCritter(ident_t id) const -> const Critter*
     return nullptr;
 }
 
-auto EntityManager::GetCritter(ident_t id) -> Critter*
+auto EntityManager::GetItem(ident_t id) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetCritters() -> const unordered_map<ident_t, Critter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allCritters;
-}
-
-auto EntityManager::GetItem(ident_t id) -> Item*
-{
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
     }
 
     return nullptr;
-}
-
-auto EntityManager::GetItems() -> const unordered_map<ident_t, Item*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allItems;
 }
 
 void EntityManager::LoadEntities()
@@ -608,6 +523,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
     }
 
     const auto proto_it = doc.find("_Proto");
+
     if (proto_it == doc.end()) {
         if (expect_proto) {
             WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
@@ -624,6 +540,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
     }
 
     const auto& proto_name = std::get<string>(proto_it->second);
+
     if (proto_name.empty()) {
         WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
         is_error = true;

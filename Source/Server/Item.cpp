@@ -65,13 +65,11 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
     SetSortValue(sort_value);
 }
 
-auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*
+auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(item_id);
 
     if (!_innerItems) {
         return nullptr;
@@ -82,9 +80,11 @@ auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*
             if (skip_hidden && item->GetIsHidden()) {
                 return nullptr;
             }
+
             return item;
         }
     }
+
     return nullptr;
 }
 
@@ -106,10 +106,11 @@ auto Item::GetAllInnerItems(bool skip_hidden) -> vector<Item*>
             items.push_back(item);
         }
     }
+
     return items;
 }
 
-auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*
+auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -124,6 +125,7 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*
             return item;
         }
     }
+
     return nullptr;
 }
 
@@ -142,7 +144,7 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
     });
 }
 
-auto Item::HasInnerItems() const -> bool
+auto Item::HasInnerItems() const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -230,7 +232,7 @@ void Item::RemoveItemFromContainer(Item* item)
     SetInnerItemIds(inner_item_ids);
 }
 
-auto Item::CanSendItem(bool as_public) const -> bool
+auto Item::CanSendItem(bool as_public) const noexcept -> bool
 {
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {

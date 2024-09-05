@@ -49,11 +49,11 @@ public:
     auto operator=(ModelAnimation&&) noexcept = delete;
     ~ModelAnimation() = default;
 
-    [[nodiscard]] auto GetFileName() const -> string_view;
-    [[nodiscard]] auto GetName() const -> string_view;
-    [[nodiscard]] auto GetBoneOutputCount() const -> uint;
-    [[nodiscard]] auto GetDuration() const -> float;
-    [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hstring>>&;
+    [[nodiscard]] auto GetFileName() const noexcept -> string_view;
+    [[nodiscard]] auto GetName() const noexcept -> string_view;
+    [[nodiscard]] auto GetBoneOutputCount() const noexcept -> uint;
+    [[nodiscard]] auto GetDuration() const noexcept -> float;
+    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&;
 
     void Load(DataReader& reader, HashResolver& hash_resolver);
     void SetData(string_view fname, string_view name, float ticks, float tps);
@@ -90,12 +90,12 @@ public:
     ~ModelAnimationController();
 
     [[nodiscard]] auto Clone() const -> ModelAnimationController*;
-    [[nodiscard]] auto GetAnimationSet(uint index) const -> const ModelAnimation*;
-    [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> const ModelAnimation*;
-    [[nodiscard]] auto GetTrackEnable(uint track) const -> bool;
-    [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
-    [[nodiscard]] auto GetNumAnimationSets() const -> uint;
-    [[nodiscard]] auto GetTime() const -> float;
+    [[nodiscard]] auto GetAnimationSet(uint index) const noexcept -> const ModelAnimation*;
+    [[nodiscard]] auto GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*;
+    [[nodiscard]] auto GetTrackEnable(uint track) const noexcept -> bool;
+    [[nodiscard]] auto GetTrackPosition(uint track) const noexcept -> float;
+    [[nodiscard]] auto GetNumAnimationSets() const noexcept -> uint;
+    [[nodiscard]] auto GetTime() const noexcept -> float;
 
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);

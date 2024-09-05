@@ -136,15 +136,6 @@ void CritterHexView::DeleteInvItem(ItemView* item, bool animate)
     }
 }
 
-auto CritterHexView::GetAttackDist() -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    uint dist = 0;
-    _engine->OnCritterGetAttackDistantion.Fire(this, nullptr, 0, dist);
-    return dist;
-}
-
 void CritterHexView::ClearMove()
 {
     STACK_TRACE_ENTRY();
@@ -431,9 +422,9 @@ void CritterHexView::ClearAnim()
     _animSequence.clear();
 }
 
-auto CritterHexView::IsNeedReset() const -> bool
+auto CritterHexView::IsNeedReset() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _needReset && _engine->GameTime.GameplayTime() >= _resetTime;
 }
@@ -445,9 +436,9 @@ void CritterHexView::ResetOk()
     _needReset = false;
 }
 
-auto CritterHexView::GetActionAnim() const -> CritterActionAnim
+auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     switch (GetCondition()) {
     case CritterCondition::Alive:
@@ -487,10 +478,9 @@ auto CritterHexView::GetModelLayersData() const -> const int*
 {
     STACK_TRACE_ENTRY();
 
-    uint data_size;
-    const auto* data = GetProperties().GetRawData(GetPropertyModelLayers(), data_size);
-    RUNTIME_ASSERT(data_size == sizeof(int) * MODEL_LAYERS_COUNT);
-    return reinterpret_cast<const int*>(data);
+    const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
+    RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int) * MODEL_LAYERS_COUNT);
+    return reinterpret_cast<const int*>(prop_raw_data.data());
 }
 
 void CritterHexView::RefreshModel()
@@ -953,8 +943,10 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
     }
 }
 
-auto CritterHexView::IsNameVisible() const -> bool
+auto CritterHexView::IsNameVisible() const noexcept -> bool
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (!_engine->Settings.ShowCritterName) {
         return false;
     }

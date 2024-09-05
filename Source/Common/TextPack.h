@@ -68,7 +68,7 @@ public:
     [[nodiscard]] auto GetStrNumUpper(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrNumLower(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
-    [[nodiscard]] auto GetSize() const -> size_t;
+    [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
@@ -98,8 +98,8 @@ public:
     auto operator==(string_view lang_name) const -> bool { return lang_name == _langName; }
     ~LanguagePack() = default;
 
-    [[nodiscard]] auto GetName() const -> const string&;
-    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const -> const TextPack&;
+    [[nodiscard]] auto GetName() const noexcept -> const string&;
+    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const noexcept -> const TextPack&;
     [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
     [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
 

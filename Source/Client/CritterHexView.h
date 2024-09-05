@@ -56,17 +56,16 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
-    [[nodiscard]] auto IsNeedReset() const -> bool;
-    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
+    [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
-    [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
-    [[nodiscard]] auto GetAttackDist() -> uint;
-    [[nodiscard]] auto IsNameVisible() const -> bool;
+    [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+    [[nodiscard]] auto IsModel() const noexcept -> bool { return _model != nullptr; }
+    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
 #endif
 
     void Init();

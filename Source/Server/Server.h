@@ -74,10 +74,10 @@ public:
     auto operator=(FOServer&&) noexcept = delete;
     ~FOServer() override;
 
-    [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
+    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { return this; }
 
-    [[nodiscard]] auto IsStarted() const -> bool { return _started; }
-    [[nodiscard]] auto IsStartingError() const -> bool { return _startingError; }
+    [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
+    [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
@@ -173,8 +173,6 @@ public:
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent

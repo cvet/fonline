@@ -50,16 +50,19 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
-        return _engine->CrMngr.GetCritter(item->GetCritterId());
+        return _engine->EntityMngr.GetCritter(item->GetCritterId());
     case ItemOwnership::MapHex:
-        return _engine->MapMngr.GetMap(item->GetMapId());
+        return _engine->EntityMngr.GetMap(item->GetMapId());
     case ItemOwnership::ItemContainer:
-        return GetItem(item->GetContainerId());
+        return _engine->EntityMngr.GetItem(item->GetContainerId());
     default:
         break;
     }
+
     return nullptr;
 }
 
@@ -104,27 +107,12 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
-auto ItemManager::GetItems() -> const unordered_map<ident_t, Item*>&
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine->EntityMngr.GetItems();
-}
-
-auto ItemManager::GetItemsCount() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->EntityMngr.GetItems().size();
-}
-
 auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
     if (proto == nullptr) {
         WriteLog("Proto item {} not found", pid);
         return nullptr;
@@ -218,6 +206,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     RUNTIME_ASSERT(count < item_count);
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
+
     if (new_item == nullptr) {
         WriteLog("Create item {} failed, count {}", item->GetName(), count);
         return nullptr;
@@ -231,20 +220,6 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     return new_item;
 }
 
-auto ItemManager::GetItem(ident_t item_id) -> Item*
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->EntityMngr.GetItem(item_id);
-}
-
-auto ItemManager::GetItem(ident_t item_id) const -> const Item*
-{
-    STACK_TRACE_ENTRY();
-
-    return const_cast<ItemManager*>(this)->GetItem(item_id);
-}
-
 void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
 {
     STACK_TRACE_ENTRY();
@@ -254,6 +229,7 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
     }
 
     auto* holder = GetItemHolder(item);
+
     if (holder == nullptr) {
         return;
     }
@@ -268,6 +244,7 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
     }
     else {
         auto* item_ = SplitItem(item, count);
+
         if (item_ != nullptr) {
             _engine->CrMngr.AddItemToCritter(to_cr, item_, true);
         }
@@ -283,6 +260,7 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
     }
 
     auto* holder = GetItemHolder(item);
+
     if (holder == nullptr) {
         return;
     }
@@ -297,6 +275,7 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
     }
     else {
         auto* item_ = SplitItem(item, count);
+
         if (item_ != nullptr) {
             to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
         }
@@ -312,6 +291,7 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemS
     }
 
     auto* holder = GetItemHolder(item);
+
     if (holder == nullptr) {
         return;
     }
@@ -326,6 +306,7 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemS
     }
     else {
         auto* item_ = SplitItem(item, count);
+
         if (item_ != nullptr) {
             to_cont->AddItemToContainer(item_, stack_id);
         }
@@ -353,9 +334,11 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
+
                 if (item == nullptr) {
                     continue;
                 }
+
                 item = cont->AddItemToContainer(item, stack_id);
                 result = item;
             }
@@ -363,15 +346,18 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
     }
     else {
         const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
+
         if (proto_item == nullptr) {
             return result;
         }
 
         if (proto_item->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
+
             if (item == nullptr) {
                 return result;
             }
+
             item = cont->AddItemToContainer(item, stack_id);
             result = item;
         }
@@ -381,6 +367,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
+
                 if (item == nullptr) {
                     continue;
                 }
@@ -412,15 +399,18 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
     }
     else {
         const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
+
         if (proto_item == nullptr) {
             return result;
         }
 
         if (proto_item->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
+
             if (item == nullptr) {
                 return result;
             }
+
             item = _engine->CrMngr.AddItemToCritter(cr, item, true);
             result = item;
         }
@@ -428,11 +418,14 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
             if (count > MAX_ADDED_NOGROUP_ITEMS) {
                 count = MAX_ADDED_NOGROUP_ITEMS;
             }
+
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
+
                 if (item == nullptr) {
                     break;
                 }
+
                 item = _engine->CrMngr.AddItemToCritter(cr, item, true);
                 result = item;
             }
@@ -451,6 +444,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
     }
 
     auto* item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+
     if (item == nullptr) {
         return;
     }
@@ -469,6 +463,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
             DestroyItem(item);
 
             item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+
             if (item == nullptr) {
                 break;
             }
@@ -481,6 +476,7 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
     STACK_TRACE_ENTRY();
 
     const auto cur_count = cr->CountInvItemPid(pid);
+
     if (cur_count > count) {
         SubItemCritter(cr, pid, cur_count - count);
     }
@@ -501,6 +497,7 @@ void ItemManager::RegisterRadio(Item* radio)
     STACK_TRACE_ENTRY();
 
     const auto it = _radioItems.find(radio);
+
     if (it == _radioItems.end()) {
         _radioItems.emplace(radio);
         radio->AddRef();
@@ -512,6 +509,7 @@ void ItemManager::UnregisterRadio(Item* radio)
     STACK_TRACE_ENTRY();
 
     const auto it = _radioItems.find(radio);
+
     if (it != _radioItems.end()) {
         _radioItems.erase(it);
         radio->Release();
@@ -523,6 +521,7 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     STACK_TRACE_ENTRY();
 
     vector<Item*> radios;
+
     for (auto* item : cr->GetInvItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
             channels.push_back(item->GetRadioChannel());
@@ -572,10 +571,12 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                 }
                 else if (broadcast == RADIO_BROADCAST_MAP || broadcast == RADIO_BROADCAST_LOCATION) {
                     if (!broadcast_map_id) {
-                        auto* map = _engine->MapMngr.GetMap(from_map_id);
+                        auto* map = _engine->EntityMngr.GetMap(from_map_id);
+
                         if (map == nullptr) {
                             continue;
                         }
+
                         broadcast_map_id = map->GetId();
                         broadcast_loc_id = map->GetLocation()->GetId();
                     }
@@ -589,7 +590,8 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
             }
 
             if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
-                auto* cr = _engine->CrMngr.GetCritter(radio->GetCritterId());
+                auto* cr = _engine->EntityMngr.GetCritter(radio->GetCritterId());
+
                 if (cr != nullptr && cr->RadioMessageSended != cur_send) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
                         if (broadcast == RADIO_BROADCAST_MAP) {
@@ -598,7 +600,8 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                             }
                         }
                         else if (broadcast == RADIO_BROADCAST_LOCATION) {
-                            auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
+                            auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
+
                             if (map == nullptr || broadcast_loc_id != map->GetLocation()->GetId()) {
                                 continue;
                             }
@@ -632,11 +635,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     continue;
                 }
 
-                auto* map = _engine->MapMngr.GetMap(radio->GetMapId());
+                auto* map = _engine->EntityMngr.GetMap(radio->GetMapId());
+
                 if (map != nullptr) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP) {
                         if (broadcast == RADIO_BROADCAST_LOCATION) {
                             const auto* loc = map->GetLocation();
+
                             if (broadcast_loc_id != loc->GetId()) {
                                 continue;
                             }
@@ -644,6 +649,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
                             const auto* loc = map->GetLocation();
+
                             if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101)) {
                                 continue;
                             }
@@ -673,6 +679,7 @@ void ItemManager::ChangeItemStatistics(hstring pid, int val) const
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
     if (proto != nullptr) {
         proto->InstanceCount += val;
     }
@@ -683,6 +690,7 @@ auto ItemManager::GetItemStatistics(hstring pid) const -> int64
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
     return proto != nullptr ? proto->InstanceCount : 0;
 }
 
@@ -691,8 +699,10 @@ auto ItemManager::GetItemsStatistics() const -> string
     STACK_TRACE_ENTRY();
 
     string result = "Name                                     Count\n";
+
     for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
         result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
     }
+
     return result;
 }

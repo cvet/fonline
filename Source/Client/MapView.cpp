@@ -2932,7 +2932,7 @@ void MapView::PrepareFogToDraw()
             int hx = base_hx;
             int hy = base_hy;
             const int chosen_dir = chosen->GetDir();
-            const auto dist_shoot = chosen->GetAttackDist();
+            const auto dist_shoot = chosen->GetAttackDistanceHint();
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
@@ -3036,18 +3036,19 @@ void MapView::PrepareFogToDraw()
         }
 
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
+        const float zoom = GetSpritesZoom();
+
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-        const float zoom = GetSpritesZoom();
         _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
         _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
         _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }
 }
 
-auto MapView::IsScrollEnabled() const -> bool
+auto MapView::IsScrollEnabled() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || //
         _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || //
@@ -3060,8 +3061,10 @@ auto MapView::Scroll() -> bool
 
     // Scroll delay
     auto time_k = 1.0f;
+
     if (_engine->Settings.ScrollDelay != 0) {
         const auto time = _engine->GameTime.FrameTime();
+
         if (time - _scrollLastTime < std::chrono::milliseconds {_engine->Settings.ScrollDelay / 2}) {
             return false;
         }
@@ -3083,6 +3086,7 @@ auto MapView::Scroll() -> bool
     // Check critter scroll lock
     if (AutoScroll.HardLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.HardLockedCritter);
+
         if (cr != nullptr && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
             ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.02f, true);
         }
@@ -4484,16 +4488,16 @@ void MapView::SetShootBorders(bool enabled)
     }
 }
 
-auto MapView::GetGlobalDayTime() const -> int
+auto MapView::GetGlobalDayTime() const noexcept -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _engine->GetHour() * 60 + _engine->GetMinute();
 }
 
-auto MapView::GetMapDayTime() const -> int
+auto MapView::GetMapDayTime() const noexcept -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_mapperMode) {
         return GetGlobalDayTime();
@@ -4504,9 +4508,9 @@ auto MapView::GetMapDayTime() const -> int
     return map_time >= 0 ? map_time : GetGlobalDayTime();
 }
 
-auto MapView::GetDrawList() -> MapSpriteList&
+auto MapView::GetDrawList() noexcept -> MapSpriteList&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _mapSprites;
 }

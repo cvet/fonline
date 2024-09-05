@@ -50,9 +50,9 @@ public:
     auto operator=(ClientEntity&&) noexcept = delete;
     ~ClientEntity() override = default;
 
-    [[nodiscard]] auto GetId() const -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() -> FOClient* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
-    [[nodiscard]] auto GetName() const -> string_view override { return _name; }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
+    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
 
     void SetId(ident_t id, bool register_entity);
     void DestroySelf();

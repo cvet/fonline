@@ -138,7 +138,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto CheckHit(int ox, int oy, bool check_transparent) const -> bool;
-    [[nodiscard]] auto IsHidden() const -> bool { return _hidden; }
+    [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
 
     void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
@@ -203,7 +203,7 @@ public:
     auto operator=(MapSpriteList&&) noexcept = delete;
     ~MapSpriteList();
 
-    [[nodiscard]] auto RootSprite() -> MapSprite*;
+    [[nodiscard]] auto RootSprite() noexcept -> MapSprite*;
 
     auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;

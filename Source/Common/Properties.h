@@ -65,12 +65,11 @@ public:
     auto operator=(PropertyRawData&& other) noexcept -> PropertyRawData& = default;
     ~PropertyRawData() = default;
 
-    [[nodiscard]] auto GetPtr() -> void*;
-    [[nodiscard]] auto GetSize() const -> uint;
-    [[nodiscard]] auto Alloc(size_t size) -> uint8*;
+    [[nodiscard]] auto GetPtr() noexcept -> void*;
+    [[nodiscard]] auto GetSize() const noexcept -> uint { return static_cast<uint>(_dataSize); }
 
     template<typename T>
-    [[nodiscard]] auto GetPtrAs() -> T*
+    [[nodiscard]] auto GetPtrAs() noexcept -> T*
     {
         return static_cast<T*>(GetPtr());
     }
@@ -82,14 +81,16 @@ public:
         return *static_cast<T*>(GetPtr());
     }
 
+    auto Alloc(size_t size) -> uint8*;
+    void Set(const void* value, size_t size) { std::memcpy(Alloc(size), value, size); }
+
     template<typename T>
     void SetAs(T value)
     {
         std::memcpy(Alloc(sizeof(T)), &value, sizeof(T));
     }
 
-    void Set(const void* value, size_t size) { std::memcpy(Alloc(size), value, size); }
-
+    void Pass(const_span<uint8> value);
     void Pass(const void* value, size_t size);
     void StoreIfPassed();
 
@@ -111,6 +112,8 @@ class Property final
     friend class Properties;
 
 public:
+    static constexpr uint INVALID_DATA_MARKER = static_cast<uint>(-1);
+
     enum class AccessType
     {
         PrivateCommon = 0x0010,
@@ -142,61 +145,61 @@ public:
     auto operator=(Property&&) noexcept = delete;
     ~Property() = default;
 
-    [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
-    [[nodiscard]] auto GetName() const -> const string& { return _propName; }
-    [[nodiscard]] auto GetNameWithoutComponent() const -> const string& { return _propNameWithoutComponent; }
-    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
-    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
-    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
-    [[nodiscard]] auto GetComponent() const -> const hstring& { return _component; }
+    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
+    [[nodiscard]] auto GetName() const noexcept -> const string& { return _propName; }
+    [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> const string& { return _propNameWithoutComponent; }
+    [[nodiscard]] auto GetFullTypeName() const noexcept -> const string& { return _fullTypeName; }
+    [[nodiscard]] auto GetBaseTypeName() const noexcept -> const string& { return _baseTypeName; }
+    [[nodiscard]] auto GetDictKeyTypeName() const noexcept -> const string& { return _dictKeyTypeName; }
+    [[nodiscard]] auto GetComponent() const noexcept -> const hstring& { return _component; }
 
-    [[nodiscard]] auto GetRegIndex() const -> uint16 { return _regIndex; }
-    [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
-    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
-    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
-    [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
-    [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
-    [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
-    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
-    [[nodiscard]] auto IsDict() const -> bool { return _dataType == DataType::Dict; }
-    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
-    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
-    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
-    [[nodiscard]] auto IsDictKeyString() const -> bool { return _isDictKeyString; }
-    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
-    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
+    [[nodiscard]] auto GetRegIndex() const noexcept -> uint16 { return _regIndex; }
+    [[nodiscard]] auto GetAccess() const noexcept -> AccessType { return _accessType; }
+    [[nodiscard]] auto GetBaseSize() const noexcept -> uint { return _baseSize; }
+    [[nodiscard]] auto GetDictKeySize() const noexcept -> uint { return _dictKeySize; }
+    [[nodiscard]] auto IsPlainData() const noexcept -> bool { return _dataType == DataType::PlainData; }
+    [[nodiscard]] auto IsString() const noexcept -> bool { return _dataType == DataType::String; }
+    [[nodiscard]] auto IsArray() const noexcept -> bool { return _dataType == DataType::Array; }
+    [[nodiscard]] auto IsArrayOfString() const noexcept -> bool { return _isArrayOfString; }
+    [[nodiscard]] auto IsDict() const noexcept -> bool { return _dataType == DataType::Dict; }
+    [[nodiscard]] auto IsDictOfString() const noexcept -> bool { return _isDictOfString; }
+    [[nodiscard]] auto IsDictOfArray() const noexcept -> bool { return _isDictOfArray; }
+    [[nodiscard]] auto IsDictOfArrayOfString() const noexcept -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsDictKeyString() const noexcept -> bool { return _isDictKeyString; }
+    [[nodiscard]] auto IsDictKeyHash() const noexcept -> bool { return _isDictKeyHash; }
+    [[nodiscard]] auto IsDictKeyEnum() const noexcept -> bool { return _isDictKeyEnum; }
 
-    [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
-    [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }
-    [[nodiscard]] auto IsInt8() const -> bool { return _isInt8; }
-    [[nodiscard]] auto IsInt16() const -> bool { return _isInt16; }
-    [[nodiscard]] auto IsInt32() const -> bool { return _isInt32; }
-    [[nodiscard]] auto IsInt64() const -> bool { return _isInt64; }
-    [[nodiscard]] auto IsUInt8() const -> bool { return _isUInt8; }
-    [[nodiscard]] auto IsUInt16() const -> bool { return _isUInt16; }
-    [[nodiscard]] auto IsUInt32() const -> bool { return _isUInt32; }
-    [[nodiscard]] auto IsUInt64() const -> bool { return _isUInt64; }
-    [[nodiscard]] auto IsFloat() const -> bool { return _isFloat; }
-    [[nodiscard]] auto IsSingleFloat() const -> bool { return _isSingleFloat; }
-    [[nodiscard]] auto IsDoubleFloat() const -> bool { return _isDoubleFloat; }
-    [[nodiscard]] auto IsBool() const -> bool { return _isBool; }
+    [[nodiscard]] auto IsInt() const noexcept -> bool { return _isInt; }
+    [[nodiscard]] auto IsSignedInt() const noexcept -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsInt8() const noexcept -> bool { return _isInt8; }
+    [[nodiscard]] auto IsInt16() const noexcept -> bool { return _isInt16; }
+    [[nodiscard]] auto IsInt32() const noexcept -> bool { return _isInt32; }
+    [[nodiscard]] auto IsInt64() const noexcept -> bool { return _isInt64; }
+    [[nodiscard]] auto IsUInt8() const noexcept -> bool { return _isUInt8; }
+    [[nodiscard]] auto IsUInt16() const noexcept -> bool { return _isUInt16; }
+    [[nodiscard]] auto IsUInt32() const noexcept -> bool { return _isUInt32; }
+    [[nodiscard]] auto IsUInt64() const noexcept -> bool { return _isUInt64; }
+    [[nodiscard]] auto IsFloat() const noexcept -> bool { return _isFloat; }
+    [[nodiscard]] auto IsSingleFloat() const noexcept -> bool { return _isSingleFloat; }
+    [[nodiscard]] auto IsDoubleFloat() const noexcept -> bool { return _isDoubleFloat; }
+    [[nodiscard]] auto IsBool() const noexcept -> bool { return _isBool; }
 
-    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
-    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
-    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
-    [[nodiscard]] auto IsBaseScriptFuncType() const -> bool { return !_scriptFuncType.empty(); }
-    [[nodiscard]] auto GetBaseScriptFuncType() const -> const string& { return _scriptFuncType; }
+    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _isHashBase; }
+    [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
+    [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _isEnumBase; }
+    [[nodiscard]] auto IsBaseScriptFuncType() const noexcept -> bool { return !_scriptFuncType.empty(); }
+    [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
-    [[nodiscard]] auto IsDisabled() const -> bool { return _isDisabled; }
-    [[nodiscard]] auto IsVirtual() const -> bool { return _isVirtual; }
-    [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
-    [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
-    [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
-    [[nodiscard]] auto IsNullGetterForProto() const -> bool { return _isNullGetterForProto; }
+    [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
+    [[nodiscard]] auto IsVirtual() const noexcept -> bool { return _isVirtual; }
+    [[nodiscard]] auto IsReadOnly() const noexcept -> bool { return _isReadOnly; }
+    [[nodiscard]] auto IsTemporary() const noexcept -> bool { return _isTemporary; }
+    [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
+    [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
 
-    [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
-    [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
-    [[nodiscard]] auto GetPostSetters() const -> auto& { return _postSetters; }
+    [[nodiscard]] auto GetGetter() const noexcept -> auto& { return _getter; }
+    [[nodiscard]] auto GetSetters() const noexcept -> auto& { return _setters; }
+    [[nodiscard]] auto GetPostSetters() const noexcept -> auto& { return _postSetters; }
 
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
@@ -273,8 +276,8 @@ private:
     bool _isHistorical {};
     bool _isNullGetterForProto {};
     uint16 _regIndex {};
-    uint _podDataOffset {};
-    uint _complexDataIndex {};
+    uint _podDataOffset {INVALID_DATA_MARKER};
+    uint _complexDataIndex {INVALID_DATA_MARKER};
 };
 
 class Properties final
@@ -291,11 +294,11 @@ public:
     auto operator=(Properties&&) noexcept = delete;
     ~Properties() = default;
 
-    [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
-    [[nodiscard]] auto GetEntity() -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
-    [[nodiscard]] auto GetRawDataSize(const Property* prop) const -> uint;
-    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uint8*;
-    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uint8*;
+    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
+    [[nodiscard]] auto GetEntity() noexcept -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
+    [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
+    [[nodiscard]] auto GetRawData(const Property* prop) noexcept -> span<uint8>;
+    [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> uint;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
@@ -305,6 +308,7 @@ public:
 
     void AllocData();
     void SetEntity(Entity* entity) { _entity = entity; }
+    void ValidateForRawData(const Property* prop) const noexcept(false);
     auto ApplyFromText(const map<string, string>& key_values) -> bool;
     auto ApplyPropertyFromText(const Property* prop, string_view text) -> bool;
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
@@ -321,16 +325,20 @@ public:
     void SetValueAsIntProps(int property_index, int value);
     void SetValueAsAnyProps(int property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
+    auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
+
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
                 T result = prop_data.GetAs<T>();
@@ -341,27 +349,24 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+        RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
         return result;
-    }
-
-    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        return T {GetValue<typename T::underlying_type>(prop)};
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
         RUNTIME_ASSERT(prop->IsPlainData());
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
+
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
                 const auto hash = prop_data.GetAs<hstring::hash_t>();
@@ -373,7 +378,7 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+        RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
@@ -382,11 +387,14 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
+
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
                 auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
@@ -397,7 +405,7 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
         auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
         return result;
@@ -406,21 +414,24 @@ public:
     template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
+
             if (prop->_getter) {
                 prop_data = prop->_getter(_entity, prop);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
             const auto& complex_data = _complexData[prop->_complexDataIndex];
-            prop_data.Pass(complex_data.data(), complex_data.size());
+            prop_data.Pass(complex_data);
         }
 
         const auto* data = prop_data.GetPtrAs<uint8>();
@@ -428,7 +439,7 @@ public:
 
         T result;
 
-        if (data_size != 0u) {
+        if (data_size != 0) {
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
                 RUNTIME_ASSERT(prop->IsArrayOfString());
 
@@ -441,12 +452,14 @@ public:
                     uint str_size;
                     std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
+
                     if constexpr (std::is_same_v<T, vector<string>>) {
                         result[i] = string(reinterpret_cast<const char*>(data), str_size);
                     }
                     else {
                         result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
                     }
+
                     data += str_size;
                 }
             }
@@ -473,29 +486,148 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        STRONG_ASSERT(!prop->IsDisabled());
+        STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
+        STRONG_ASSERT(prop->IsPlainData());
+        STRONG_ASSERT(!prop->IsVirtual());
+
+        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        STRONG_ASSERT(!prop->IsDisabled());
+        STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+        STRONG_ASSERT(prop->IsPlainData());
+        STRONG_ASSERT(prop->IsBaseTypeHash());
+        STRONG_ASSERT(!prop->IsVirtual());
+
+        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        auto result = ResolveHash(hash, nullptr);
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
+    [[nodiscard]] auto GetValueFast(const Property* prop) const -> T
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        RUNTIME_ASSERT(!prop->IsDisabled());
+        RUNTIME_ASSERT(prop->IsString());
+        RUNTIME_ASSERT(!prop->IsVirtual());
+
+        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
+    [[nodiscard]] auto GetValueFast(const Property* prop) const -> T
+    {
+        NO_STACK_TRACE_ENTRY();
+
+        RUNTIME_ASSERT(!prop->IsDisabled());
+        RUNTIME_ASSERT(prop->IsArray());
+        RUNTIME_ASSERT(!prop->IsVirtual());
+
+        PropertyRawData prop_data;
+
+        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        prop_data.Pass(complex_data);
+
+        const auto* data = prop_data.GetPtrAs<uint8>();
+        const auto data_size = prop_data.GetSize();
+
+        T result;
+
+        if (data_size != 0) {
+            if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
+                RUNTIME_ASSERT(prop->IsArrayOfString());
+
+                uint arr_size;
+                std::memcpy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(arr_size);
+                result.resize(arr_size);
+
+                for (const auto i : xrange(arr_size)) {
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(str_size);
+
+                    if constexpr (std::is_same_v<T, vector<string>>) {
+                        result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    }
+                    else {
+                        result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
+                    }
+
+                    data += str_size;
+                }
+            }
+            else if constexpr (std::is_same_v<T, vector<hstring>>) {
+                RUNTIME_ASSERT(prop->IsBaseTypeHash());
+                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                const auto arr_size = data_size / sizeof(hstring::hash_t);
+                result.resize(arr_size);
+
+                for (const auto i : xrange(arr_size)) {
+                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
+                    result[i] = hvalue;
+                    data += sizeof(hstring::hash_t);
+                }
+            }
+            else {
+                RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+                result.resize(data_size / prop->GetBaseSize());
+                std::memcpy(result.data(), data, data_size);
+            }
+        }
+
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+
             PropertyRawData prop_data;
             prop_data.SetAs<T>(new_value);
+
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+            RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
 
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<T>(new_value);
+
                     for (const auto& setter : prop->_setters) {
                         setter(_entity, prop, prop_data);
                     }
@@ -515,36 +647,36 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
-    void SetValue(const Property* prop, T new_value)
-    {
-        SetValue<typename T::underlying_type>(prop, new_value.underlying_value());
-    }
-
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
         RUNTIME_ASSERT(prop->IsPlainData());
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+
             PropertyRawData prop_data;
             prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
+
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+            RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
             const auto new_value_hash = new_value.as_hash();
+
             if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<hstring::hash_t>(new_value_hash);
+
                     for (const auto& setter : prop->_setters) {
                         setter(_entity, prop, prop_data);
                     }
@@ -567,23 +699,29 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     void SetValue(const Property* prop, const T& new_value)
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+
             PropertyRawData prop_data;
             prop_data.Pass(new_value.c_str(), new_value.length());
+
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+
             if (!prop->_setters.empty() && _entity != nullptr) {
                 PropertyRawData prop_data;
                 prop_data.Pass(new_value.c_str(), new_value.length());
+
                 for (const auto& setter : prop->_setters) {
                     setter(_entity, prop, prop_data);
                 }
@@ -605,14 +743,17 @@ public:
     template<typename T>
     void SetValue(const Property* prop, const vector<T>& new_value)
     {
+        NO_STACK_TRACE_ENTRY();
+
         RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
         if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
             if (!new_value.empty()) {
                 size_t data_size = sizeof(uint);
+
                 for (const auto& str : new_value) {
                     data_size += sizeof(uint) + static_cast<uint>(str.length());
                 }
@@ -628,7 +769,7 @@ public:
                     std::memcpy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
-                    if (str_size != 0u) {
+                    if (str_size != 0) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -637,8 +778,10 @@ public:
         }
         else if constexpr (std::is_same_v<T, hstring>) {
             RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
             if (!new_value.empty()) {
                 auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
+
                 for (const auto& hstr : new_value) {
                     const auto hash = hstr.as_hash();
                     std::memcpy(buf, &hash, sizeof(hstring::hash_t));
@@ -648,6 +791,7 @@ public:
         }
         else {
             RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+
             if (!new_value.empty()) {
                 prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
             }
@@ -656,12 +800,14 @@ public:
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+
             if (!prop->_setters.empty() && _entity != nullptr) {
                 for (const auto& setter : prop->_setters) {
                     setter(_entity, prop, prop_data);
@@ -680,6 +826,8 @@ public:
 
     template<typename T, std::enable_if_t<is_map_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
+    template<typename T, std::enable_if_t<is_map_v<T>, int> = 0>
+    [[nodiscard]] auto GetValueFast(const Property* prop) const -> T = delete;
     template<typename T, typename U>
     void SetValue(const Property* prop, const map<T, U>& new_value) = delete;
 
@@ -708,19 +856,19 @@ public:
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    [[nodiscard]] auto GetTypeName() const -> hstring { return _typeName; }
-    [[nodiscard]] auto GetTypeNamePlural() const -> hstring { return _typeNamePlural; }
-    [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
+    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
+    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
+    [[nodiscard]] auto GetCount() const noexcept -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
-    [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
-    [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }
-    [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
-    [[nodiscard]] auto GetWholeDataSize() const -> uint;
-    [[nodiscard]] auto GetProperties() const -> const vector<const Property*>& { return _constRegisteredProperties; }
-    [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
-    [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
-    [[nodiscard]] auto GetHashResolver() const -> const HashResolver& { return _hashResolver; }
-    [[nodiscard]] auto GetNameResolver() const -> const NameResolver& { return _nameResolver; }
+    [[nodiscard]] auto GetByIndex(int property_index) const noexcept -> const Property*;
+    [[nodiscard]] auto GetByIndexFast(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index]; }
+    [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
+    [[nodiscard]] auto GetWholeDataSize() const noexcept -> uint;
+    [[nodiscard]] auto GetProperties() const noexcept -> const vector<const Property*>& { return _constRegisteredProperties; }
+    [[nodiscard]] auto GetPropertyGroups() const noexcept -> const map<string, vector<const Property*>>&;
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>&;
+    [[nodiscard]] auto GetHashResolver() const noexcept -> const HashResolver& { return _hashResolver; }
+    [[nodiscard]] auto GetNameResolver() const noexcept -> const NameResolver& { return _nameResolver; }
 
     void RegisterComponent(string_view name);
     void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }

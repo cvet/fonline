@@ -108,37 +108,37 @@ auto GameTimer::FrameAdvance() -> bool
     return false;
 }
 
-auto GameTimer::GetTime(bool gameplay_timer) const -> time_point
+auto GameTimer::GetTime(bool gameplay_timer) const noexcept -> time_point
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return gameplay_timer ? GameplayTime() : FrameTime();
 }
 
-auto GameTimer::GetDeltaTime(bool gameplay_timer) const -> time_duration
+auto GameTimer::GetDeltaTime(bool gameplay_timer) const noexcept -> time_duration
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return gameplay_timer ? GameplayDeltaTime() : FrameDeltaTime();
 }
 
-auto GameTimer::FrameTime() const -> time_point
+auto GameTimer::FrameTime() const noexcept -> time_point
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _frameTime;
 }
 
-auto GameTimer::FrameDeltaTime() const -> time_duration
+auto GameTimer::FrameDeltaTime() const noexcept -> time_duration
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _frameDeltaTime;
 }
 
-auto GameTimer::GameplayTime() const -> time_point
+auto GameTimer::GameplayTime() const noexcept -> time_point
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if FO_SINGLEPLAYER
     if (_isGameplayPaused) {
@@ -149,23 +149,23 @@ auto GameTimer::GameplayTime() const -> time_point
     return _gameplayTimeBase + (FrameTime() - _gameplayTimeFrame);
 }
 
-auto GameTimer::GameplayDeltaTime() const -> time_duration
+auto GameTimer::GameplayDeltaTime() const noexcept -> time_duration
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _gameplayDeltaTime;
 }
 
-auto GameTimer::GetFullSecond() const -> tick_t
+auto GameTimer::GetFullSecond() const noexcept -> tick_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _fullSecond;
 }
 
-auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> tick_t
+auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     auto ft = Timer::DateTimeToFullTime(dt);
@@ -174,18 +174,18 @@ auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16
     return tick_t {static_cast<tick_t::underlying_type>(ft / 10000000ULL)};
 }
 
-auto GameTimer::EvaluateGameTime(tick_t full_second) const -> DateTimeStamp
+auto GameTimer::EvaluateGameTime(tick_t full_second) const noexcept -> DateTimeStamp
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto ft = _yearStartFullTime + static_cast<uint64>(full_second.underlying_value()) * 10000000ULL;
 
     return Timer::FullTimeToDateTime(ft);
 }
 
-auto GameTimer::GameTimeMonthDays(uint16 year, uint16 month) const -> uint16
+auto GameTimer::GameTimeMonthDays(uint16 year, uint16 month) const noexcept -> uint16
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     switch (month) {
     case 1:
@@ -220,15 +220,15 @@ void GameTimer::SetGameplayPause(bool pause)
     _isGameplayPaused = pause;
 }
 
-auto GameTimer::IsGameplayPaused() const -> bool
+auto GameTimer::IsGameplayPaused() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isGameplayPaused;
 }
 #endif
 
-auto Timer::CurTime() -> time_point
+auto Timer::CurTime() noexcept -> time_point
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -275,9 +275,9 @@ auto Timer::GetCurrentDateTime() -> DateTimeStamp
     return dt;
 }
 
-auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
+auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) noexcept -> uint64
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     // Minor year
     auto ft = static_cast<uint64>(dt.Year - 1601) * 365ULL * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
@@ -309,9 +309,9 @@ auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
     return ft;
 }
 
-auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
+auto Timer::FullTimeToDateTime(uint64 ft) noexcept -> DateTimeStamp
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     DateTimeStamp dt;
 
@@ -371,20 +371,22 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
     return dt;
 }
 
-auto Timer::GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) -> int
+auto Timer::GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) noexcept -> int
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto ft1 = DateTimeToFullTime(dt1);
     const auto ft2 = DateTimeToFullTime(dt2);
+
     return static_cast<int>((ft1 - ft2) / 10000000ULL);
 }
 
-auto Timer::AdvanceTime(const DateTimeStamp& dt, int seconds) -> DateTimeStamp
+auto Timer::AdvanceTime(const DateTimeStamp& dt, int seconds) noexcept -> DateTimeStamp
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto ft = DateTimeToFullTime(dt);
     ft += static_cast<uint64>(seconds) * 10000000ULL;
+
     return FullTimeToDateTime(ft);
 }

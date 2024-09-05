@@ -122,6 +122,8 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
 VideoClip::~VideoClip()
 {
+    STACK_TRACE_ENTRY();
+
     if (_impl) {
         th_info_clear(&_impl->VideoInfo);
         th_comment_clear(&_impl->Comment);
@@ -131,37 +133,37 @@ VideoClip::~VideoClip()
     }
 }
 
-auto VideoClip::IsPlaying() const -> bool
+auto VideoClip::IsPlaying() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return !_impl->Stopped && !_impl->Paused;
 }
 
-auto VideoClip::IsStopped() const -> bool
+auto VideoClip::IsStopped() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Stopped;
 }
 
-auto VideoClip::IsPaused() const -> bool
+auto VideoClip::IsPaused() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Paused;
 }
 
-auto VideoClip::IsLooped() const -> bool
+auto VideoClip::IsLooped() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Looped;
 }
 
 auto VideoClip::GetTime() const -> time_duration
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_impl->Stopped) {
         return std::chrono::milliseconds {0};
@@ -176,6 +178,8 @@ auto VideoClip::GetTime() const -> time_duration
 
 auto VideoClip::GetSize() const -> tuple<int, int>
 {
+    NO_STACK_TRACE_ENTRY();
+
     return {static_cast<int>(_impl->VideoInfo.pic_width), static_cast<int>(_impl->VideoInfo.pic_height)};
 }
 

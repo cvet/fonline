@@ -3107,9 +3107,13 @@ static void Property_GetValue(asIScriptGeneric* gen)
         prop_data = getter(entity, prop);
     }
     else {
-        uint data_size;
-        const auto* data = entity->GetProperties().GetRawData(prop, data_size);
-        prop_data.Pass(data, data_size);
+        const auto& props = entity->GetProperties();
+
+        props.ValidateForRawData(prop);
+
+        const auto prop_raw_data = props.GetRawData(prop);
+
+        prop_data.Pass(prop_raw_data);
     }
 
     PropsToAS(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());

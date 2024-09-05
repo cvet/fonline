@@ -44,7 +44,7 @@ Sprite::Sprite(SpriteManager& spr_mngr) :
 
 auto Sprite::IsHitTest(int x, int y) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(x, y);
 
@@ -513,7 +513,7 @@ void SpriteManager::CleanupSpriteCache()
     }
 }
 
-void SpriteManager::SetSpritesZoom(float zoom) noexcept
+void SpriteManager::SetSpritesZoom(float zoom)
 {
     STACK_TRACE_ENTRY();
 

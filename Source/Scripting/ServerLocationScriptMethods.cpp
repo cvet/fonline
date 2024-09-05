@@ -89,7 +89,8 @@
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Location_GetMapByIndex(Location* self, uint index)
 {
-    auto maps = self->GetMaps();
+    const auto maps = self->GetMaps();
+
     if (index >= maps.size()) {
         throw ScriptException("Invalid index arg");
     }

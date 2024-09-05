@@ -60,21 +60,21 @@ public:
     auto operator=(const FOEngineBase&) = delete;
     auto operator=(FOEngineBase&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
-    [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
-    [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
-    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
+    [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
+    [[nodiscard]] auto GetPropertiesRelation() const noexcept -> PropertiesRelationType { return _propsRelation; }
+    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
     [[nodiscard]] auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int override;
-    [[nodiscard]] auto IsValidEntityType(hstring type_name) const -> bool;
+    [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
-    [[nodiscard]] auto GetEntityTypesInfo() const -> const unordered_map<hstring, EntityTypeInfo>&;
-    [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
-    [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> override;
+    [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
+    [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
+    [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
 
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);

@@ -75,16 +75,16 @@ NetConnection::NetConnection(ServerNetworkSettings& settings) :
     STACK_TRACE_ENTRY();
 }
 
-void NetConnection::AddRef() const
+void NetConnection::AddRef() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ++_refCount;
 }
 
-void NetConnection::Release() const
+void NetConnection::Release() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (--_refCount == 0) {
         delete this;
@@ -129,30 +129,30 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetIp() const -> uint override
+    [[nodiscard]] auto GetIp() const noexcept -> uint override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _ip;
     }
 
-    [[nodiscard]] auto GetHost() const -> string_view override
+    [[nodiscard]] auto GetHost() const noexcept -> string_view override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _host;
     }
 
-    [[nodiscard]] auto GetPort() const -> uint16 override
+    [[nodiscard]] auto GetPort() const noexcept -> uint16 override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _port;
     }
 
-    [[nodiscard]] auto IsDisconnected() const -> bool override
+    [[nodiscard]] auto IsDisconnected() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _isDisconnected;
     }
@@ -233,7 +233,7 @@ protected:
             const auto real = static_cast<size_t>(_zStream.next_in - OutBuf.GetData());
             out_len = compr;
 
-            OutBuf.Cut(real);
+            OutBuf.DiscardWriteBuf(real);
         }
         // Without compressing
         else {
@@ -248,7 +248,7 @@ protected:
             std::memcpy(_outBuf.data(), OutBuf.GetData(), len);
             out_len = len;
 
-            OutBuf.Cut(len);
+            OutBuf.DiscardWriteBuf(len);
         }
 
         // Normalize buffer size
@@ -400,16 +400,16 @@ public:
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -542,16 +542,16 @@ public:
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return true;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -859,16 +859,16 @@ public:
     auto operator=(InterthreadConnection&&) noexcept = delete;
     ~InterthreadConnection() override = default;
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return true;
     }

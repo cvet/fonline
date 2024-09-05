@@ -54,8 +54,8 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() -> uint8*;
-    [[nodiscard]] auto GetEndPos() const -> size_t;
+    [[nodiscard]] auto GetData() noexcept -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return _bufData.get(); }
+    [[nodiscard]] auto GetEndPos() const noexcept -> size_t { return _bufEndPos; }
 
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
@@ -63,7 +63,7 @@ public:
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int move) -> uint8;
+    auto EncryptKey(int move) noexcept -> uint8;
     void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
 
     unique_ptr<uint8[]> _bufData {};
@@ -89,10 +89,11 @@ public:
     auto operator=(NetOutBuffer&&) noexcept -> NetOutBuffer& = default;
     ~NetOutBuffer() override = default;
 
-    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0; }
+    [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
 
+    void Push(const_span<uint8> buf);
     void Push(const void* buf, size_t len);
-    void Cut(size_t len);
+    void DiscardWriteBuf(size_t len);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     void Write(T value)
@@ -146,8 +147,8 @@ public:
     auto operator=(NetInBuffer&&) noexcept -> NetInBuffer& = default;
     ~NetInBuffer() override = default;
 
-    [[nodiscard]] auto GetReadPos() const -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const -> size_t { return _bufLen - _bufEndPos; }
+    [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
+    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufLen - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void AddData(const void* buf, size_t len);

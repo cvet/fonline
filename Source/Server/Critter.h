@@ -79,33 +79,33 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto GetPlayer() const -> const Player* { return _player; }
-    [[nodiscard]] auto GetPlayer() -> Player* { return _player; }
+    [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player; }
+    [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> time_duration;
-    [[nodiscard]] auto IsAlive() const -> bool;
-    [[nodiscard]] auto IsDead() const -> bool;
-    [[nodiscard]] auto IsKnockout() const -> bool;
-    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hidden) -> Item*;
-    [[nodiscard]] auto GetRawInvItems() -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetInvItems() -> const vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto IsAlive() const noexcept -> bool;
+    [[nodiscard]] auto IsDead() const noexcept -> bool;
+    [[nodiscard]] auto IsKnockout() const noexcept -> bool;
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
+    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hidden) noexcept -> Item*;
+    [[nodiscard]] auto GetRawInvItems() noexcept -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetInvItems() noexcept -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetConstInvItems() const -> vector<const Item*> { return vec_static_cast<const Item*>(_invItems); }
-    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> Item*;
-    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) -> Item*;
-    [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) -> Item*;
+    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
+    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) noexcept -> Item*;
+    [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
-    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const -> uint;
-    [[nodiscard]] auto RealCountInvItems() const -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountInvItems() const -> uint;
-    [[nodiscard]] auto IsHaveGeckItem() const -> bool;
+    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> uint;
+    [[nodiscard]] auto RealCountInvItems() const noexcept -> uint { return static_cast<uint>(_invItems.size()); }
+    [[nodiscard]] auto CountInvItems() const noexcept -> uint;
+    [[nodiscard]] auto IsHaveGeckItem() const noexcept -> bool;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
-    [[nodiscard]] auto IsTalking() const -> bool;
-    [[nodiscard]] auto GetTalkingCritters() const -> uint;
-    [[nodiscard]] auto GetBarterCritters() const -> uint;
-    [[nodiscard]] auto IsFreeToTalk() const -> bool;
-    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
+    [[nodiscard]] auto IsTalking() const noexcept -> bool;
+    [[nodiscard]] auto GetTalkingCritters() const noexcept -> uint;
+    [[nodiscard]] auto GetBarterCritters() const noexcept -> uint;
+    [[nodiscard]] auto IsFreeToTalk() const noexcept -> bool;
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
     auto DelCrFromVisVec(Critter* del_cr) -> bool;
@@ -224,6 +224,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
 
+    // Todo: incapsulate Critter data
     int LockMapTransfers {};
     uint AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
@@ -238,7 +239,7 @@ public:
     time_point LastIdleCall {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
-    TalkData Talk {}; // Todo: incapsulate Critter::Talk
+    TalkData Talk {};
 
     ident_t ViewMapId {};
     hstring ViewMapPid {};

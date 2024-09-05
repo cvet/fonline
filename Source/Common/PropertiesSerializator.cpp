@@ -54,31 +54,30 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             continue;
         }
 
+        props->ValidateForRawData(prop);
+
         // Skip same as in base
         if (base != nullptr) {
-            uint base_data_size;
-            const auto* base_data = base->GetRawData(prop, base_data_size);
+            const auto base_raw_data = base->GetRawData(prop);
+            const auto raw_data = props->GetRawData(prop);
 
-            uint data_size;
-            const auto* data = props->GetRawData(prop, data_size);
-
-            if (data_size == base_data_size && std::memcmp(data, base_data, data_size) == 0) {
+            if (raw_data.size() == base_raw_data.size() && std::memcmp(raw_data.data(), base_raw_data.data(), raw_data.size()) == 0) {
                 continue;
             }
         }
         else {
-            uint data_size;
-            const auto* data = props->GetRawData(prop, data_size);
+            const auto raw_data = props->GetRawData(prop);
 
             if (prop->IsPlainData()) {
                 uint64 pod_zero = 0;
-                RUNTIME_ASSERT(data_size <= sizeof(pod_zero));
-                if (std::memcmp(data, &pod_zero, data_size) == 0) {
+                RUNTIME_ASSERT(raw_data.size() <= sizeof(pod_zero));
+
+                if (std::memcmp(raw_data.data(), &pod_zero, raw_data.size()) == 0) {
                     continue;
                 }
             }
             else {
-                if (data_size == 0) {
+                if (raw_data.empty()) {
                     continue;
                 }
             }
@@ -127,24 +126,25 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     RUNTIME_ASSERT(!prop->IsVirtual());
     RUNTIME_ASSERT(!prop->IsTemporary());
 
-    uint data_size;
-    const auto* data = props->GetRawData(prop, data_size);
+    props->ValidateForRawData(prop);
+
+    const auto raw_data = props->GetRawData(prop);
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
-            const auto hash = *reinterpret_cast<const hstring::hash_t*>(data);
+            const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
             return string {hash_resolver.ResolveHash(hash)};
         }
         else if (prop->IsBaseTypeEnum()) {
             int enum_value = 0;
-            std::memcpy(&enum_value, data, prop->GetBaseSize());
+            std::memcpy(&enum_value, raw_data.data(), prop->GetBaseSize());
             return name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value);
         }
         else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
 #define PARSE_VALUE(is, t, ret_t) \
     do { \
         if (prop->is) { \
-            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data))); \
+            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(raw_data.data()))); \
         } \
     } while (false)
 
@@ -164,15 +164,17 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         }
     }
     else if (prop->IsString()) {
-        if (data_size != 0) {
-            return string {reinterpret_cast<const char*>(data), data_size};
+        if (!raw_data.empty()) {
+            return string {reinterpret_cast<const char*>(raw_data.data()), raw_data.size()};
         }
 
         return string {};
     }
     else if (prop->IsArray()) {
         if (prop->IsArrayOfString()) {
-            if (data_size != 0) {
+            if (!raw_data.empty()) {
+                const auto* data = raw_data.data();
+
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(uint);
@@ -194,25 +196,25 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             return AnyData::Array();
         }
         else {
-            uint arr_size = data_size / prop->GetBaseSize();
+            const size_t arr_size = raw_data.size() / prop->GetBaseSize();
 
             AnyData::Array arr;
             arr.reserve(arr_size);
 
-            for (uint i = 0; i < arr_size; i++) {
+            for (size_t i = 0; i < arr_size; i++) {
                 if (prop->IsBaseTypeHash()) {
-                    const auto hash = *reinterpret_cast<const hstring::hash_t*>(data + static_cast<size_t>(i) * prop->GetBaseSize());
+                    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data() + i * prop->GetBaseSize());
                     arr.emplace_back(string {hash_resolver.ResolveHash(hash)});
                 }
                 else if (prop->IsBaseTypeEnum()) {
                     int enum_value = 0;
-                    std::memcpy(&enum_value, data + static_cast<size_t>(i) * prop->GetBaseSize(), prop->GetBaseSize());
+                    std::memcpy(&enum_value, raw_data.data() + i * prop->GetBaseSize(), prop->GetBaseSize());
                     arr.emplace_back(name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value));
                 }
                 else {
 #define PARSE_VALUE(t, db_t) \
     RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->GetBaseSize()))))
+    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(raw_data.data() + i * prop->GetBaseSize()))))
 
                     if (prop->IsInt8()) {
                         PARSE_VALUE(int8, int64);
@@ -261,7 +263,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     else if (prop->IsDict()) {
         AnyData::Dict dict;
 
-        if (data_size != 0) {
+        if (!raw_data.empty()) {
             const auto get_key_string = [prop, &hash_resolver, &name_resolver](const uint8* p) -> string {
                 if (prop->IsDictKeyString()) {
                     const uint str_len = *reinterpret_cast<const uint*>(p);
@@ -302,7 +304,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             };
 
             if (prop->IsDictOfArray()) {
-                const auto* data_end = data + data_size;
+                const auto* data = raw_data.data();
+                const auto* data_end = raw_data.data() + raw_data.size();
 
                 while (data < data_end) {
                     const auto* key = data;
@@ -391,7 +394,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 }
             }
             else if (prop->IsDictOfString()) {
-                const auto* data_end = data + data_size;
+                const auto* data = raw_data.data();
+                const auto* data_end = raw_data.data() + raw_data.size();
 
                 while (data < data_end) {
                     const auto* key = data;
@@ -409,7 +413,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 }
             }
             else {
-                const auto* data_end = data + data_size;
+                const auto* data = raw_data.data();
+                const auto* data_end = raw_data.data() + raw_data.size();
 
                 while (data < data_end) {
                     const auto* key = data;

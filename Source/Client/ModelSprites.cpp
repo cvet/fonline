@@ -45,7 +45,7 @@ ModelSprite::ModelSprite(SpriteManager& spr_mngr) :
 
 auto ModelSprite::IsHitTest(int x, int y) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
@@ -64,7 +64,7 @@ auto ModelSprite::IsHitTest(int x, int y) const -> bool
 
 auto ModelSprite::GetViewSize() const -> optional<IRect>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 

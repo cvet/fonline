@@ -65,7 +65,7 @@ public:
     auto operator=(DeferredCallManager&&) noexcept = delete;
     virtual ~DeferredCallManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
+    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const noexcept -> bool;
 
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void> func) -> ident_t;
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t;

@@ -136,19 +136,11 @@ public:
     ~MapManager();
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
-    [[nodiscard]] auto GetLocation(ident_t loc_id) -> Location*;
-    [[nodiscard]] auto GetLocation(ident_t loc_id) const -> const Location*;
-    [[nodiscard]] auto GetLocationByMap(ident_t map_id) -> Location*;
-    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> const unordered_map<ident_t, Location*>&;
-    [[nodiscard]] auto GetLocationsCount() const -> size_t;
-    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
+    [[nodiscard]] auto GetLocationByMap(ident_t map_id) noexcept -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
+    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
-    [[nodiscard]] auto GetMap(ident_t map_id) -> Map*;
-    [[nodiscard]] auto GetMap(ident_t map_id) const -> const Map*;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
-    [[nodiscard]] auto GetMapsCount() const -> size_t;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;

@@ -46,7 +46,6 @@
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
 // Todo: improve custom exceptions for every subsustem
 // Todo: temporary entities, disable writing to data base
-// Todo: RUNTIME_ASSERT to assert?
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
 // Todo: split meanings of int8/char and uint8/byte in code
 
@@ -184,8 +183,6 @@ using std::forward_list;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
-using std::map;
-using std::multimap;
 using std::optional;
 using std::pair;
 using std::set;
@@ -201,6 +198,11 @@ using std::unordered_multimap;
 using std::unordered_set;
 using std::variant;
 using std::weak_ptr;
+
+template<typename K, typename V>
+using map = std::map<K, V, std::less<>>;
+template<typename K, typename V>
+using multimap = std::multimap<K, V, std::less<>>;
 
 #if !FO_DEBUG
 template<typename T>
@@ -584,13 +586,8 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void ShowExceptionMessageBox(bool enabled) noexcept;
-
-class ExceptionInfo
-{
-public:
-    virtual ~ExceptionInfo() = default;
-    [[nodiscard]] virtual auto StackTrace() const noexcept -> const string& = 0;
-};
+[[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept;
+extern void ReportVerifyFailed(string_view message, const char* file, int line) noexcept;
 
 struct ExceptionStackTraceData
 {
@@ -626,7 +623,7 @@ struct ExceptionStackTraceData
         } \
     }
 
-class BaseEngineException : public std::exception, public ExceptionInfo
+class BaseEngineException : public std::exception
 {
 public:
     BaseEngineException() = delete;
@@ -667,7 +664,6 @@ public:
 
     BaseEngineException(const BaseEngineException& other) noexcept :
         std::exception(other),
-        ExceptionInfo(other),
         _name {other._name}
     {
         try {
@@ -685,7 +681,6 @@ public:
 
     BaseEngineException(BaseEngineException&& other) noexcept :
         std::exception(other),
-        ExceptionInfo(other),
         _name {other._name}
     {
         _message = std::move(other._message);
@@ -693,7 +688,7 @@ public:
     }
 
     [[nodiscard]] auto what() const noexcept -> const char* override { return !_message.empty() ? _message.c_str() : _name; }
-    [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; }
+    [[nodiscard]] auto StackTrace() const noexcept -> const string& { return _stackTrace; }
 
 private:
     const char* _name;
@@ -703,24 +698,44 @@ private:
 
 #if !FO_NO_EXTRA_ASSERTS
 #define RUNTIME_ASSERT(expr) \
-    if (!(expr)) \
-    throw AssertationException(#expr, __FILE__, __LINE__)
+    if (!(expr)) { \
+        throw AssertationException(#expr, __FILE__, __LINE__); \
+    }
 #define RUNTIME_ASSERT_STR(expr, str) \
-    if (!(expr)) \
-    throw AssertationException(str, __FILE__, __LINE__)
+    if (!(expr)) { \
+        throw AssertationException(str, __FILE__, __LINE__); \
+    }
+#define RUNTIME_VERIFY(expr, ...) \
+    if (!(expr)) { \
+        ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+        return __VA_ARGS__; \
+    }
 #else
 #define RUNTIME_ASSERT(expr)
 #define RUNTIME_ASSERT_STR(expr, str)
+#define RUNTIME_VERIFY(expr, ...)
+#endif
+
+#if FO_DEBUG
+#define STRONG_ASSERT(expr) \
+    if (!(expr)) { \
+        ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+#else
+#define STRONG_ASSERT(expr)
 #endif
 
 // Common exceptions
 DECLARE_EXCEPTION(GenericException);
 DECLARE_EXCEPTION(AssertationException);
+DECLARE_EXCEPTION(StrongAssertationException);
+DECLARE_EXCEPTION(VerifyFailedException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 DECLARE_EXCEPTION(NotSupportedException);
 DECLARE_EXCEPTION(NotImplementedException);
 DECLARE_EXCEPTION(InvalidCallException);
 DECLARE_EXCEPTION(NotEnabled3DException);
+DECLARE_EXCEPTION(InvalidOperationException);
 
 // Event system
 class EventUnsubscriberCallback final
@@ -867,7 +882,7 @@ auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint
     return const_hash(str);
 }
 
-auto constexpr operator""_len(const char* str, size_t size) -> size_t
+auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
 {
     (void)str;
     return size;
@@ -875,17 +890,17 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT_BEGIN() \
-    void AddRef() \
+    void AddRef() const noexcept \
     { \
         ++RefCounter; \
     } \
-    void Release() \
+    void Release() const noexcept \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter \
+    mutable int RefCounter \
     { \
         1 \
     }
@@ -899,12 +914,12 @@ template<typename T>
 class [[nodiscard]] RefCountHolder
 {
 public:
-    explicit RefCountHolder(T* ref) :
+    explicit RefCountHolder(T* ref) noexcept :
         _ref {ref}
     {
         _ref->AddRef();
     }
-    RefCountHolder(const RefCountHolder& other) :
+    RefCountHolder(const RefCountHolder& other) noexcept :
         _ref {other._ref}
     {
         _ref->AddRef();
@@ -918,7 +933,7 @@ public:
     auto operator=(RefCountHolder&& other) = delete;
     ~RefCountHolder() { _ref->Release(); }
 
-    [[nodiscard]] auto get() const -> T* { return _ref; }
+    [[nodiscard]] auto get() const noexcept -> T* { return _ref; }
 
 private:
     T* _ref;
@@ -928,11 +943,12 @@ private:
 template<typename T>
 class [[nodiscard]] ScopeCallback
 {
+    static_assert(std::is_nothrow_invocable_v<T>);
+
 public:
-    explicit ScopeCallback(T callback) :
+    explicit ScopeCallback(T callback) noexcept :
         _callback {std::move(callback)}
     {
-        static_assert(std::is_nothrow_invocable_v<T>);
     }
 
     ScopeCallback(const ScopeCallback& other) = delete;
@@ -1107,37 +1123,33 @@ private:
 template<typename T>
 struct TRect
 {
-    TRect() :
-        Left(0),
-        Top(0),
-        Right(0),
-        Bottom(0)
-    {
-    }
+    static_assert(std::is_arithmetic_v<T>);
+
+    TRect() noexcept = default;
     template<typename T2>
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    TRect(const TRect<T2>& fr) :
-        Left(static_cast<T>(fr.Left)),
-        Top(static_cast<T>(fr.Top)),
-        Right(static_cast<T>(fr.Right)),
-        Bottom(static_cast<T>(fr.Bottom))
+    TRect(const TRect<T2>& other) noexcept :
+        Left(static_cast<T>(other.Left)),
+        Top(static_cast<T>(other.Top)),
+        Right(static_cast<T>(other.Right)),
+        Bottom(static_cast<T>(other.Bottom))
     {
     }
-    TRect(T l, T t, T r, T b) :
+    TRect(T l, T t, T r, T b) noexcept :
         Left(l),
         Top(t),
         Right(r),
         Bottom(b)
     {
     }
-    TRect(T l, T t, T r, T b, T ox, T oy) :
+    TRect(T l, T t, T r, T b, T ox, T oy) noexcept :
         Left(l + ox),
         Top(t + oy),
         Right(r + ox),
         Bottom(b + oy)
     {
     }
-    TRect(const TRect& fr, T ox, T oy) :
+    TRect(const TRect& fr, T ox, T oy) noexcept :
         Left(fr.Left + ox),
         Top(fr.Top + oy),
         Right(fr.Right + ox),
@@ -1146,7 +1158,7 @@ struct TRect
     }
 
     template<typename T2>
-    auto operator=(const TRect<T2>& fr) -> TRect&
+    auto operator=(const TRect<T2>& fr) noexcept -> TRect&
     {
         Left = static_cast<T>(fr.Left);
         Top = static_cast<T>(fr.Top);
@@ -1155,7 +1167,7 @@ struct TRect
         return *this;
     }
 
-    void Clear()
+    void Clear() noexcept
     {
         Left = 0;
         Top = 0;
@@ -1163,11 +1175,11 @@ struct TRect
         Bottom = 0;
     }
 
-    [[nodiscard]] auto IsZero() const -> bool { return !Left && !Top && !Right && !Bottom; }
-    [[nodiscard]] auto Width() const -> T { return Right - Left; }
-    [[nodiscard]] auto Height() const -> T { return Bottom - Top; }
-    [[nodiscard]] auto CenterX() const -> T { return Left + Width() / 2; }
-    [[nodiscard]] auto CenterY() const -> T { return Top + Height() / 2; }
+    [[nodiscard]] auto IsZero() const noexcept -> bool { return !Left && !Top && !Right && !Bottom; }
+    [[nodiscard]] auto Width() const noexcept -> T { return Right - Left; }
+    [[nodiscard]] auto Height() const noexcept -> T { return Bottom - Top; }
+    [[nodiscard]] auto CenterX() const noexcept -> T { return Left + Width() / 2; }
+    [[nodiscard]] auto CenterY() const noexcept -> T { return Top + Height() / 2; }
 
     [[nodiscard]] auto operator[](int index) -> T&
     {
@@ -1183,12 +1195,12 @@ struct TRect
         default:
             break;
         }
-        throw UnreachablePlaceException(LINE_STR);
+        throw InvalidOperationException(LINE_STR);
     }
 
-    [[nodiscard]] auto operator[](int index) const -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
+    [[nodiscard]] auto operator[](int index) const noexcept -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
 
-    void Advance(T ox, T oy)
+    void Advance(T ox, T oy) noexcept
     {
         Left += ox;
         Top += oy;
@@ -1196,7 +1208,7 @@ struct TRect
         Bottom += oy;
     }
 
-    auto Interpolate(const TRect<T>& to, int procent) const -> TRect<T>
+    auto Interpolate(const TRect<T>& to, int procent) const noexcept -> TRect<T>
     {
         TRect<T> result(Left, Top, Right, Bottom);
         result.Left += static_cast<T>(static_cast<int>(to.Left - Left) * procent / 100);
@@ -1217,46 +1229,42 @@ using FRect = TRect<float>;
 template<typename T>
 struct TPoint
 {
-    TPoint() :
-        X(0),
-        Y(0)
-    {
-    }
+    TPoint() noexcept = default;
     template<typename T2>
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    TPoint(const TPoint<T2>& r) :
+    TPoint(const TPoint<T2>& r) noexcept :
         X(static_cast<T>(r.X)),
         Y(static_cast<T>(r.Y))
     {
     }
-    TPoint(T x, T y) :
+    TPoint(T x, T y) noexcept :
         X(x),
         Y(y)
     {
     }
-    TPoint(const TPoint& fp, T ox, T oy) :
+    TPoint(const TPoint& fp, T ox, T oy) noexcept :
         X(fp.X + ox),
         Y(fp.Y + oy)
     {
     }
 
     template<typename T2>
-    auto operator=(const TPoint<T2>& fp) -> TPoint&
+    auto operator=(const TPoint<T2>& fp) noexcept -> TPoint&
     {
         X = static_cast<T>(fp.X);
         Y = static_cast<T>(fp.Y);
         return *this;
     }
 
-    void Clear()
+    void Clear() noexcept
     {
         X = 0;
         Y = 0;
     }
 
-    [[nodiscard]] auto IsZero() const -> bool { return !X && !Y; }
+    [[nodiscard]] auto IsZero() const noexcept -> bool { return !X && !Y; }
 
-    [[nodiscard]] auto operator[](int index) -> T&
+    [[nodiscard]] auto operator[](int index) noexcept -> T&
     {
         switch (index) {
         case 0:
@@ -1269,7 +1277,7 @@ struct TPoint
         return X;
     }
 
-    [[nodiscard]] auto operator()(T x, T y) -> TPoint&
+    [[nodiscard]] auto operator()(T x, T y) noexcept -> TPoint&
     {
         X = x;
         Y = y;
@@ -1370,11 +1378,16 @@ struct hstring
         string Str {};
     };
 
-    hstring() noexcept = default;
+    constexpr hstring() noexcept = default;
     constexpr explicit hstring(const entry* static_storage_entry) noexcept :
         _entry {static_storage_entry}
     {
     }
+    constexpr hstring(const hstring&) noexcept = default;
+    constexpr hstring(hstring&&) noexcept = default;
+    constexpr auto operator=(const hstring&) noexcept -> hstring& = default;
+    constexpr auto operator=(hstring&&) noexcept -> hstring& = default;
+
     // ReSharper disable once CppNonExplicitConversionOperator
     [[nodiscard]] operator string_view() const noexcept { return _entry->Str; }
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->Hash != 0; }
@@ -1653,13 +1666,13 @@ template<typename T>
 class irange_iterator final
 {
 public:
-    constexpr explicit irange_iterator(T v) :
+    constexpr explicit irange_iterator(T v) noexcept :
         _value {v}
     {
     }
-    constexpr auto operator!=(const irange_iterator& other) const -> bool { return _value != other._value; }
-    constexpr auto operator*() const -> const T& { return _value; }
-    constexpr auto operator++() -> irange_iterator&
+    constexpr auto operator!=(const irange_iterator& other) const noexcept -> bool { return _value != other._value; }
+    constexpr auto operator*() const noexcept -> const T& { return _value; }
+    constexpr auto operator++() noexcept -> irange_iterator&
     {
         ++_value;
         return *this;
@@ -1673,18 +1686,18 @@ template<typename T>
 class irange_loop final
 {
 public:
-    constexpr explicit irange_loop(T to) :
+    constexpr explicit irange_loop(T to) noexcept :
         _fromValue {0},
         _toValue {to}
     {
     }
-    constexpr explicit irange_loop(T from, T to) :
+    constexpr explicit irange_loop(T from, T to) noexcept :
         _fromValue {from},
         _toValue {to}
     {
     }
-    [[nodiscard]] constexpr auto begin() const -> irange_iterator<T> { return irange_iterator<T>(_fromValue); }
-    [[nodiscard]] constexpr auto end() const -> irange_iterator<T> { return irange_iterator<T>(_toValue); }
+    [[nodiscard]] constexpr auto begin() const noexcept -> irange_iterator<T> { return irange_iterator<T>(_fromValue); }
+    [[nodiscard]] constexpr auto end() const noexcept -> irange_iterator<T> { return irange_iterator<T>(_toValue); }
 
 private:
     T _fromValue;
@@ -1692,13 +1705,13 @@ private:
 };
 
 template<typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
-constexpr auto xrange(T value)
+constexpr auto xrange(T value) noexcept
 {
     return irange_loop<T> {0, value};
 }
 
 template<typename T, std::enable_if_t<has_size<T>::value, int> = 0>
-constexpr auto xrange(T value)
+constexpr auto xrange(T value) noexcept
 {
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
@@ -1713,7 +1726,7 @@ constexpr auto copy(const T& value) -> T
 
 // Noexcept wrappers
 template<typename T, typename... Args>
-inline void safe_call(const T& callable, Args... args)
+inline void safe_call(const T& callable, Args... args) noexcept
 {
     static_assert(!std::is_nothrow_invocable_v<T, Args...>);
 
@@ -1722,6 +1735,9 @@ inline void safe_call(const T& callable, Args... args)
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__);
     }
 }
 
@@ -1741,31 +1757,12 @@ inline auto safe_format(string_view message, Args... args) noexcept -> string
             return result;
         }
         catch (...) {
-            // Handle bad alloc
+            // Bad alloc
             return {};
         }
     }
-}
-
-template<typename T>
-inline auto safe_copy(const T& value) noexcept -> T
-{
-    try {
-        return T(value);
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
-    }
-}
-
-template<typename T, typename U>
-inline auto safe_find(T& cont, const U& key) noexcept -> decltype(cont.find(key))
-{
-    try {
-        return cont.find(key);
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+    catch (...) {
+        ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__);
     }
 }
 
@@ -1871,7 +1868,7 @@ constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
 }
 
 template<typename T, typename U>
-constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) -> T
+constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(std::is_nothrow_invocable_v<U>) -> T
 {
     for (const auto& value : vec) {
         if (static_cast<bool>(filter(value))) {
@@ -1951,25 +1948,25 @@ inline constexpr auto numeric_cast(U value) -> T
 
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t)
+constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<std::is_integral_v<U> && std::is_signed_v<U>, U> lerp(T v1, T v2, float t)
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_signed_v<U>, U> lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<std::is_integral_v<U> && std::is_unsigned_v<U>, U> lerp(T v1, T v2, float t)
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_unsigned_v<U>, U> lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
 }
 
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
-constexpr auto iround(T value) -> int
+constexpr auto iround(T value) noexcept -> int
 {
     return static_cast<int>(std::lround(value));
 }
@@ -2000,7 +1997,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int = 0;
-    [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> = 0;
+    [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
 };
 
 class FrameBalancer

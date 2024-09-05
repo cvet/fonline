@@ -116,9 +116,9 @@ void ItemView::DestroyInnerItem(ItemView* item)
     item->DestroySelf();
 }
 
-auto ItemView::GetInnerItems() -> const vector<ItemView*>&
+auto ItemView::GetInnerItems() noexcept -> const vector<ItemView*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _innerItems;
 }

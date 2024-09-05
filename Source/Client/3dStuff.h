@@ -102,7 +102,7 @@ struct ModelBone
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
     void FixAfterLoad(ModelBone* root_bone);
-    auto Find(hstring bone_name) -> ModelBone*;
+    auto Find(hstring bone_name) noexcept -> ModelBone*;
 
     hstring Name {};
     mat44 TransformationMatrix {};
@@ -243,23 +243,23 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
-    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
-    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
-    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
-    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
-    [[nodiscard]] auto GetMovingAnim2() const -> CritterActionAnim;
+    [[nodiscard]] auto Convert2dTo3d(int x, int y) const noexcept -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> IPoint;
+    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
+    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
+    [[nodiscard]] auto GetMovingAnim2() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
-    [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
+    [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetViewSize() const -> tuple<int, int>;
-    [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
+    [[nodiscard]] auto GetDrawSize() const noexcept -> tuple<int, int>;
+    [[nodiscard]] auto GetViewSize() const noexcept -> tuple<int, int>;
+    [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> time_duration;
-    [[nodiscard]] auto IsCombatMode() const -> bool;
+    [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
     void SetupFrame();
     void StartMeshGeneration();

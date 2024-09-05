@@ -101,7 +101,7 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
+        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
         if (cr == nullptr) {
             throw ScriptException("Critter accessory, critter not found");
         }
@@ -112,7 +112,7 @@
             return nullptr;
         }
 
-        map = self->GetEngine()->MapMngr.GetMap(cr->GetMapId());
+        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
         if (!map) {
             throw ScriptException("Critter accessory, map not found");
         }
@@ -121,7 +121,7 @@
         hy = cr->GetHexY();
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
         if (map == nullptr) {
             throw ScriptException("Hex accessory, map not found");
         }
@@ -134,7 +134,7 @@
             throw ScriptException("Container accessory, crosslink");
         }
 
-        auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
+        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
         if (cont == nullptr) {
             throw ScriptException("Container accessory, container not found");
         }
@@ -157,12 +157,12 @@
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
+        if (auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
             cr->Send_AnimateItem(self, animName, looped, reversed);
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId()); map != nullptr) {
+        if (auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId()); map != nullptr) {
             map->AnimateItem(self, animName, looped, reversed);
         }
     } break;

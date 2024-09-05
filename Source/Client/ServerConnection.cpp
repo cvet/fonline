@@ -637,48 +637,56 @@ auto ServerConnection::DispatchData() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (!_isConnected) {
-        return false;
-    }
-    if (_netOut.IsEmpty()) {
-        return true;
-    }
-    if (!CheckSocketStatus(true)) {
-        return _isConnected;
-    }
+    while (true) {
+        if (!_isConnected) {
+            break;
+        }
+        if (_netOut.IsEmpty()) {
+            break;
+        }
+        if (!CheckSocketStatus(true)) {
+            break;
+        }
 
-    const auto tosend = _netOut.GetEndPos();
-    size_t sendpos = 0;
+        auto* send_buf = _netOut.GetData();
+        const auto send_buf_size = _netOut.GetEndPos();
 
-    while (sendpos < tosend) {
+        size_t actual_send;
+
         if (_interthreadCommunication) {
-            _interthreadSend({_netOut.GetData(), tosend});
-            sendpos += tosend;
-            _bytesSend += tosend;
+            _interthreadSend({send_buf, send_buf_size});
+
+            actual_send = send_buf_size;
         }
         else {
 #if FO_WINDOWS
             WSABUF buf;
-            buf.buf = reinterpret_cast<CHAR*>(_netOut.GetData() + sendpos);
-            buf.len = numeric_cast<ULONG>(tosend - sendpos);
+            buf.buf = reinterpret_cast<CHAR*>(send_buf);
+            buf.len = numeric_cast<ULONG>(send_buf_size);
             DWORD len;
+
             if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
 #else
-            int len = (int)::send(_impl->NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
+            int len = (int)::send(_impl->NetSock, send_buf, send_buf_size, 0);
+
             if (len <= 0)
 #endif
             {
                 throw ServerConnectionException("Socket error while send to server", _impl->GetLastSocketError());
             }
 
-            sendpos += len;
-            _bytesSend += len;
+            actual_send = numeric_cast<size_t>(len);
         }
+
+        _netOut.DiscardWriteBuf(actual_send);
+        _bytesSend += actual_send;
     }
 
-    _netOut.ResetBuf();
+    if (_netOut.IsEmpty()) {
+        _netOut.ResetBuf();
+    }
 
-    return true;
+    return _isConnected;
 }
 
 auto ServerConnection::ReceiveData(bool unpack) -> bool

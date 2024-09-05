@@ -58,7 +58,7 @@ public:
     auto operator=(TwoDimensionalGrid&&) noexcept -> TwoDimensionalGrid& = default;
     virtual ~TwoDimensionalGrid() = default;
 
-    [[nodiscard]] virtual auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& = 0;
+    [[nodiscard]] virtual auto GetCellForReading(TIndex x, TIndex y) const noexcept -> const TCell& = 0;
     [[nodiscard]] virtual auto GetCellForWriting(TIndex x, TIndex y) -> TCell& = 0;
 
     virtual void Resize(TIndex width, TIndex height) = 0;
@@ -80,17 +80,17 @@ public:
         STACK_TRACE_ENTRY();
     }
 
-    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& override
+    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const noexcept -> const TCell& override
     {
         NO_STACK_TRACE_ENTRY();
 
         if constexpr (std::is_signed_v<TIndex>) {
-            RUNTIME_ASSERT(x >= 0);
-            RUNTIME_ASSERT(y >= 0);
+            RUNTIME_VERIFY(x >= 0, _emptyCell);
+            RUNTIME_VERIFY(y >= 0, _emptyCell);
         }
 
-        RUNTIME_ASSERT(x < base::_width);
-        RUNTIME_ASSERT(y < base::_height);
+        RUNTIME_VERIFY(x < base::_width, _emptyCell);
+        RUNTIME_VERIFY(y < base::_height, _emptyCell);
 
         const auto it = _cells.find(tuple {x, y});
 
@@ -189,17 +189,17 @@ public:
         _preallocatedCells.resize(static_cast<size_t>(base::_width) * base::_height);
     }
 
-    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const -> const TCell& override
+    [[nodiscard]] auto GetCellForReading(TIndex x, TIndex y) const noexcept -> const TCell& override
     {
         NO_STACK_TRACE_ENTRY();
 
         if constexpr (std::is_signed_v<TIndex>) {
-            RUNTIME_ASSERT(x >= 0);
-            RUNTIME_ASSERT(y >= 0);
+            RUNTIME_VERIFY(x >= 0, _emptyCell);
+            RUNTIME_VERIFY(y >= 0, _emptyCell);
         }
 
-        RUNTIME_ASSERT(x < base::_width);
-        RUNTIME_ASSERT(y < base::_height);
+        RUNTIME_VERIFY(x < base::_width, _emptyCell);
+        RUNTIME_VERIFY(y < base::_height, _emptyCell);
 
         auto& cell = _preallocatedCells[static_cast<size_t>(y) * base::_width + x];
 

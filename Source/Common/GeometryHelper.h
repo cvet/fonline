@@ -69,9 +69,9 @@ public:
     [[nodiscard]] static auto CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
 
-    static auto MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) -> bool;
-    static auto MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) -> bool;
-    static void MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir);
+    static auto MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) noexcept -> bool;
+    static auto MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) noexcept -> bool;
+    static void MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) noexcept;
     static void ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work);
 
 private:

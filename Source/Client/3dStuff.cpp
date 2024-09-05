@@ -120,7 +120,7 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
     }
 }
 
-auto ModelBone::Find(hstring bone_name) -> ModelBone*
+auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
 {
     STACK_TRACE_ENTRY();
 
@@ -134,6 +134,7 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
             return bone;
         }
     }
+
     return nullptr;
 }
 
@@ -422,7 +423,7 @@ void ModelInstance::SetupFrame()
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
+auto ModelInstance::Convert3dTo2d(vec3 pos) const noexcept -> IPoint
 {
     STACK_TRACE_ENTRY();
 
@@ -432,7 +433,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
     return {iround(out.x / static_cast<float>(FRAME_SCALE)), iround(out.y / static_cast<float>(FRAME_SCALE))};
 }
 
-auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
+auto ModelInstance::Convert2dTo3d(int x, int y) const noexcept -> vec3
 {
     STACK_TRACE_ENTRY();
 
@@ -869,9 +870,9 @@ void ModelInstance::SetMoving(bool enabled, uint speed)
     RefreshMoveAnimation();
 }
 
-auto ModelInstance::IsCombatMode() const -> bool
+auto ModelInstance::IsCombatMode() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isCombatMode;
 }
@@ -978,9 +979,9 @@ void ModelInstance::RefreshMoveAnimation()
     }
 }
 
-auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool
+auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
     const auto it = _modelInfo->_animIndexes.find(index);
@@ -995,23 +996,23 @@ auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterAction
     return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr, _isCombatMode) != -1;
 }
 
-auto ModelInstance::GetStateAnim() const -> CritterStateAnim
+auto ModelInstance::GetStateAnim() const noexcept -> CritterStateAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return static_cast<CritterStateAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) >> 16);
 }
 
-auto ModelInstance::GetActionAnim() const -> CritterActionAnim
+auto ModelInstance::GetActionAnim() const noexcept -> CritterActionAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return static_cast<CritterActionAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) & 0xFFFF);
 }
 
-auto ModelInstance::GetMovingAnim2() const -> CritterActionAnim
+auto ModelInstance::GetMovingAnim2() const noexcept -> CritterActionAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_curMovingAnimIndex != -1) {
         return _curMovingAnim;
@@ -1033,6 +1034,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     STACK_TRACE_ENTRY();
 
     auto period = 0.0f;
+
     if (_bodyAnimController != nullptr) {
         const auto* anim_set = _bodyAnimController->GetAnimationSet(_modelInfo->_renderAnim);
         if (anim_set != nullptr) {
@@ -1047,16 +1049,16 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const -> tuple<int, int>
+auto ModelInstance::GetDrawSize() const noexcept -> tuple<int, int>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
 
-auto ModelInstance::GetViewSize() const -> tuple<int, int>
+auto ModelInstance::GetViewSize() const noexcept -> tuple<int, int>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
 
@@ -2041,11 +2043,12 @@ void ModelInstance::DrawAllParticles()
     }
 }
 
-auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
+auto ModelInstance::FindBone(hstring bone_name) const noexcept -> const ModelBone*
 {
     STACK_TRACE_ENTRY();
 
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
+
     if (bone == nullptr) {
         for (auto&& child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
@@ -2063,6 +2066,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     STACK_TRACE_ENTRY();
 
     const auto* bone = FindBone(bone_name);
+
     if (bone == nullptr) {
         return std::nullopt;
     }
@@ -2074,6 +2078,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     const auto p = Convert3dTo2d(pos);
     const auto x = p.X - _frameWidth / FRAME_SCALE / 2;
     const auto y = -(p.Y - _frameHeight / FRAME_SCALE / 4);
+
     return tuple {x, y};
 }
 
@@ -2775,7 +2780,8 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     STACK_TRACE_ENTRY();
 
     // Find index
-    auto index = -1;
+    int index = -1;
+
     if (combat_first) {
         index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
     }
@@ -2798,6 +2804,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
         auto model_name = base_model_name;
         const auto state_anim_ = state_anim;
         const auto action_anim_ = action_anim;
+
         if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
             index = GetAnimationIndexEx(state_anim, action_anim, speed);
         }
@@ -2815,11 +2822,13 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
 
     // Check equals
     const auto it1 = _stateAnimEquals.find(state_anim);
+
     if (it1 != _stateAnimEquals.end()) {
         state_anim = it1->second;
     }
 
     const auto it2 = _actionAnimEquals.find(static_cast<CritterActionAnim>(static_cast<uint>(action_anim) & 0x7FFF));
+
     if (it2 != _actionAnimEquals.end()) {
         action_anim = static_cast<CritterActionAnim>(static_cast<uint>(it2->second) | (static_cast<uint>(action_anim) & 0x8000));
     }
@@ -2830,6 +2839,7 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
     // Speed
     if (speed != nullptr) {
         const auto it = _animSpeed.find(index);
+
         if (it != _animSpeed.end()) {
             *speed = it->second;
         }
@@ -2840,6 +2850,7 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
 
     // Find number of animation
     const auto it = _animIndexes.find(index);
+
     if (it != _animIndexes.end()) {
         return it->second;
     }

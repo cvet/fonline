@@ -57,10 +57,6 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
-    [[nodiscard]] auto GetItem(ident_t item_id) const -> const Item*;
-    [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
-    [[nodiscard]] auto GetItemsCount() const -> size_t;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
 

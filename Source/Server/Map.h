@@ -80,48 +80,48 @@ public:
     auto operator=(Map&&) noexcept = delete;
     ~Map() override;
 
-    [[nodiscard]] auto GetStaticMap() const -> const StaticMap* { return _staticMap; }
-    [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
-    [[nodiscard]] auto GetLocation() -> Location*;
-    [[nodiscard]] auto GetLocation() const -> const Location*;
-    [[nodiscard]] auto IsHexMovable(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsHexShootable(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap* { return _staticMap; }
+    [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto); }
+    [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation; }
+    [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation; }
+    [[nodiscard]] auto IsHexMovable(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsHexShootable(uint16 hx, uint16 hy) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool;
     [[nodiscard]] auto IsHexesMovable(uint16 to_hx, uint16 to_hy, uint radius, Critter* skip_cr) -> bool;
-    [[nodiscard]] auto IsBlockItem(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsItemTrigger(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsItemGag(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
+    [[nodiscard]] auto IsBlockItem(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsItemGag(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
-    [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) -> Item*;
-    [[nodiscard]] auto GetItems() -> const vector<Item*>&;
-    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) -> const vector<Item*>&;
+    [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) noexcept -> Item*;
+    [[nodiscard]] auto GetItems() noexcept -> const vector<Item*>&;
+    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) noexcept -> const vector<Item*>&;
     [[nodiscard]] auto GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(uint16 hx, uint16 hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<uint16, uint16>>;
-    [[nodiscard]] auto IsAnyCritter(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsNonDeadCritter(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto IsDeadCritter(uint16 hx, uint16 hy) const -> bool;
+    [[nodiscard]] auto IsAnyCritter(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool;
     [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool;
-    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
-    [[nodiscard]] auto GetNonDeadCritter(uint16 hx, uint16 hy) -> Critter*;
-    [[nodiscard]] auto GetDeadCritter(uint16 hx, uint16 hy) -> Critter*;
+    [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
+    [[nodiscard]] auto GetNonDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*;
+    [[nodiscard]] auto GetDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*;
     [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritters() -> const vector<Critter*>&;
-    [[nodiscard]] auto GetPlayerCritters() -> const vector<Critter*>&;
-    [[nodiscard]] auto GetNonPlayerCritters() -> const vector<Critter*>&;
-    [[nodiscard]] auto GetCrittersCount() const -> uint;
-    [[nodiscard]] auto GetPlayerCrittersCount() const -> uint;
-    [[nodiscard]] auto GetNonPlayerCrittersCount() const -> uint;
-    [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const -> bool;
-    [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
-    [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
-    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>&;
+    [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>&;
+    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>&;
+    [[nodiscard]] auto GetCrittersCount() const noexcept -> uint;
+    [[nodiscard]] auto GetPlayerCrittersCount() const noexcept -> uint;
+    [[nodiscard]] auto GetNonPlayerCrittersCount() const noexcept -> uint;
+    [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
+    [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) noexcept -> StaticItem*;
+    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&;
     [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
-    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc);
     void Process();

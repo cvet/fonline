@@ -50,7 +50,7 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto GetInnerItems() -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetInnerItems() noexcept -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInnerItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 

@@ -51,17 +51,17 @@ public:
     auto operator=(HexView&&) noexcept = delete;
     virtual ~HexView() = default;
 
-    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsSpriteValid() const -> bool { return _mapSprValid; }
-    [[nodiscard]] auto IsSpriteVisible() const -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
+    [[nodiscard]] auto GetMap() noexcept -> MapView* { return _map; }
+    [[nodiscard]] auto GetMap() const noexcept -> const MapView* { return _map; }
+    [[nodiscard]] auto IsSpriteValid() const noexcept -> bool { return _mapSprValid; }
+    [[nodiscard]] auto IsSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto GetSprite() const -> const MapSprite*;
     [[nodiscard]] auto GetSprite() -> MapSprite*;
-    [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
-    [[nodiscard]] auto IsFading() const -> bool { return _fading; }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
-    [[nodiscard]] auto IsFinished() const -> bool;
+    [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _maxAlpha < 0xFF; }
+    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _maxAlpha == 0; }
+    [[nodiscard]] auto IsFading() const noexcept -> bool { return _fading; }
+    [[nodiscard]] auto IsFinishing() const noexcept -> bool { return _finishing; }
+    [[nodiscard]] auto IsFinished() const noexcept -> bool;
 
     auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*;
     auto InsertSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*;

@@ -57,12 +57,12 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> string_view;
-    [[nodiscard]] auto GetPort() const -> uint16;
+    [[nodiscard]] auto GetIp() const noexcept -> uint;
+    [[nodiscard]] auto GetHost() const noexcept -> string_view;
+    [[nodiscard]] auto GetPort() const noexcept -> uint16;
 
-    [[nodiscard]] auto GetControlledCritter() const -> const Critter* { return _controlledCr; }
-    [[nodiscard]] auto GetControlledCritter() -> Critter* { return _controlledCr; }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr; }
+    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr; }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);
@@ -118,6 +118,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnLogout);
 
+    // Todo: incapsulate Player data
     ClientConnection* Connection {};
     uint8 Access {ACCESS_CLIENT};
     string LastSay {};

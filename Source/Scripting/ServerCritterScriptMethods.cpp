@@ -86,7 +86,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Critter_GetMap(Critter* self)
 {
-    return self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+    return self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
 }
 
 ///# ...
@@ -100,7 +100,7 @@
         throw ScriptException("Transfers locked");
     }
 
-    auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+    auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
     if (map == nullptr) {
         throw ScriptException("Critter is on global");
     }
@@ -791,7 +791,7 @@
     Map* map = nullptr;
 
     if (self->GetMapId()) {
-        map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
         RUNTIME_ASSERT(map);
 
         map->RemoveCritterFromField(self);
@@ -928,7 +928,7 @@
         return;
     }
 
-    const auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
+    const auto* loc = self->GetEngine()->EntityMngr.GetLocation(locId);
     if (loc == nullptr) {
         throw ScriptException("Location not found");
     }
@@ -981,7 +981,7 @@
     self->GetEngine()->MapMngr.RemoveKnownLoc(self, locId);
 
     if (!self->GetMapId()) {
-        if (const auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
+        if (const auto* loc = self->GetEngine()->EntityMngr.GetLocation(locId); loc != nullptr) {
             self->Send_GlobalLocation(loc, false);
         }
     }

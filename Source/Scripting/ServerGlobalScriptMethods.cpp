@@ -214,7 +214,7 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = server->ItemMngr.GetItem(itemId);
+    auto* item = server->EntityMngr.GetItem(itemId);
     if (item == nullptr || item->IsDestroyed()) {
         return nullptr;
     }
@@ -585,7 +585,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, ident_t itemId)
 {
-    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
+    if (auto* item = server->EntityMngr.GetItem(itemId); item != nullptr) {
         server->ItemMngr.DestroyItem(item);
     }
 }
@@ -596,7 +596,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DestroyItem(FOServer* server, ident_t itemId, uint count)
 {
-    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0) {
+    if (auto* item = server->EntityMngr.GetItem(itemId); item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
         if (count >= cur_count) {
             server->ItemMngr.DestroyItem(item);
@@ -627,7 +627,7 @@
 {
     for (const auto item_id : itemIds) {
         if (item_id) {
-            auto* item = server->ItemMngr.GetItem(item_id);
+            auto* item = server->EntityMngr.GetItem(item_id);
             if (item != nullptr) {
                 server->ItemMngr.DestroyItem(item);
             }
@@ -651,7 +651,7 @@
 [[maybe_unused]] void Server_Game_DestroyCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && !cr->GetIsControlledByPlayer()) {
+        if (Critter* cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetIsControlledByPlayer()) {
             server->CrMngr.DestroyCritter(cr);
         }
     }
@@ -676,7 +676,7 @@
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && !cr->GetIsControlledByPlayer()) {
+            if (Critter* cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetIsControlledByPlayer()) {
                 server->CrMngr.DestroyCritter(cr);
             }
         }
@@ -886,7 +886,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DestroyLocation(FOServer* server, ident_t locId)
 {
-    auto* loc = server->MapMngr.GetLocation(locId);
+    auto* loc = server->EntityMngr.GetLocation(locId);
     if (loc != nullptr) {
         server->MapMngr.DestroyLocation(loc);
     }
@@ -902,7 +902,7 @@
         return nullptr;
     }
 
-    return server->CrMngr.GetCritter(crId);
+    return server->EntityMngr.GetCritter(crId);
 }
 
 ///# ...
@@ -965,7 +965,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, ident_t mapId)
 {
-    return server->MapMngr.GetMap(mapId);
+    return server->EntityMngr.GetMap(mapId);
 }
 
 ///@ ExportMethod
@@ -990,9 +990,9 @@
 [[maybe_unused]] vector<Map*> Server_Game_GetMaps(FOServer* server)
 {
     vector<Map*> maps;
-    maps.reserve(server->MapMngr.GetLocationsCount());
+    maps.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
         maps.push_back(map);
     }
 
@@ -1008,10 +1008,10 @@
     vector<Map*> maps;
 
     if (!pid) {
-        maps.reserve(server->MapMngr.GetLocationsCount());
+        maps.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
             maps.push_back(map);
         }
@@ -1026,7 +1026,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, ident_t locId)
 {
-    return server->MapMngr.GetLocation(locId);
+    return server->EntityMngr.GetLocation(locId);
 }
 
 ///# ...
@@ -1054,9 +1054,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server)
 {
     vector<Location*> locations;
-    locations.reserve(server->MapMngr.GetLocationsCount());
+    locations.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         locations.push_back(loc);
     }
 
@@ -1072,10 +1072,10 @@
     vector<Location*> locations;
 
     if (!pid) {
-        locations.reserve(server->MapMngr.GetLocationsCount());
+        locations.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         if (!pid || pid == loc->GetProtoId()) {
             locations.push_back(loc);
         }
@@ -1093,9 +1093,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, uint16 wx, uint16 wy, uint radius)
 {
     vector<Location*> locations;
-    locations.reserve(server->MapMngr.GetLocationsCount());
+    locations.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius()) {
             locations.push_back(loc);
         }
@@ -1114,9 +1114,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, uint16 wx, uint16 wy, uint radius, Critter* cr)
 {
     vector<Location*> locations;
-    locations.reserve(server->MapMngr.GetLocationsCount());
+    locations.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && //
             (loc->IsLocVisible() || (cr != nullptr && cr->GetIsControlledByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
@@ -1214,7 +1214,7 @@
     if (!cr->GetIsControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
-    if (!server->DlgMngr.GetDialog(dlgPack)) {
+    if (server->DlgMngr.GetDialog(dlgPack) == nullptr) {
         throw ScriptException("Dialog not found");
     }
 
@@ -1304,10 +1304,10 @@
     vector<Item*> items;
 
     if (!pid) {
-        items.reserve(server->ItemMngr.GetItemsCount());
+        items.reserve(server->EntityMngr.GetItemsCount());
     }
 
-    for (auto&& [id, item] : server->ItemMngr.GetItems()) {
+    for (auto&& [id, item] : server->EntityMngr.GetItems()) {
         RUNTIME_ASSERT(!item->IsDestroyed());
         if (!pid || pid == item->GetProtoId()) {
             items.push_back(item);

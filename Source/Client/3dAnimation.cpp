@@ -115,37 +115,37 @@ void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float
     _bonesHierarchy.emplace_back(std::move(hierarchy));
 }
 
-auto ModelAnimation::GetFileName() const -> string_view
+auto ModelAnimation::GetFileName() const noexcept -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _animFileName;
 }
 
-auto ModelAnimation::GetName() const -> string_view
+auto ModelAnimation::GetName() const noexcept -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _animName;
 }
 
-auto ModelAnimation::GetBoneOutputCount() const -> uint
+auto ModelAnimation::GetBoneOutputCount() const noexcept -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_boneOutputs.size());
 }
 
-auto ModelAnimation::GetDuration() const -> float
+auto ModelAnimation::GetDuration() const noexcept -> float
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _durationTicks / _ticksPerSecond;
 }
 
-auto ModelAnimation::GetBonesHierarchy() const -> const vector<vector<hstring>>&
+auto ModelAnimation::GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _bonesHierarchy;
 }
@@ -207,48 +207,50 @@ void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 
     NON_CONST_METHOD_HINT();
 
-    _sets->push_back(animation);
+    _sets->emplace_back(animation);
 }
 
-auto ModelAnimationController::GetAnimationSet(uint index) const -> const ModelAnimation*
+auto ModelAnimationController::GetAnimationSet(uint index) const noexcept -> const ModelAnimation*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (index >= _sets->size()) {
         return nullptr;
     }
+
     return (*_sets)[index];
 }
 
-auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> const ModelAnimation*
+auto ModelAnimationController::GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     for (const auto* s : *_sets) {
         if (s->_animName == name) {
             return s;
         }
     }
+
     return nullptr;
 }
 
-auto ModelAnimationController::GetTrackEnable(uint track) const -> bool
+auto ModelAnimationController::GetTrackEnable(uint track) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _tracks[track].Enabled;
 }
 
-auto ModelAnimationController::GetTrackPosition(uint track) const -> float
+auto ModelAnimationController::GetTrackPosition(uint track) const noexcept -> float
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _tracks[track].Position;
 }
 
-auto ModelAnimationController::GetNumAnimationSets() const -> uint
+auto ModelAnimationController::GetNumAnimationSets() const noexcept -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_sets->size());
 }
@@ -307,9 +309,9 @@ void ModelAnimationController::Reset()
     }
 }
 
-auto ModelAnimationController::GetTime() const -> float
+auto ModelAnimationController::GetTime() const noexcept -> float
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _curTime;
 }
@@ -318,21 +320,21 @@ void ModelAnimationController::AddEventEnable(uint track, bool enable, float sta
 {
     STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.push_back({Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
+    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
 void ModelAnimationController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
 {
     STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.push_back({Track::EventType::Speed, speed, start_time, smooth_time});
+    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
 void ModelAnimationController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
 {
     STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.push_back({Track::EventType::Weight, weight, start_time, smooth_time});
+    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Weight, weight, start_time, smooth_time});
 }
 
 void ModelAnimationController::SetTrackEnable(uint track, bool enable)

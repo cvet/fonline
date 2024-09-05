@@ -247,17 +247,17 @@
 }
 
 ///# ...
-///# param critterId ...
+///# param crId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t critterId)
+[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId)
 {
-    if (!critterId) {
+    if (!crId) {
         return nullptr;
     }
 
     if (client->CurMap != nullptr) {
-        auto* cr = client->CurMap->GetCritter(critterId);
+        auto* cr = client->CurMap->GetCritter(crId);
         if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
             return nullptr;
         }
@@ -265,7 +265,7 @@
         return cr;
     }
     else {
-        return client->GetWorldmapCritter(critterId);
+        return client->GetWorldmapCritter(crId);
     }
 }
 
@@ -278,7 +278,10 @@
     vector<CritterView*> critters;
 
     if (client->CurMap != nullptr) {
-        for (auto* cr : client->CurMap->GetCritters()) {
+        auto&& map_critters = client->CurMap->GetCritters();
+        critters.reserve(map_critters.size());
+
+        for (auto* cr : map_critters) {
             if (cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }

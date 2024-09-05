@@ -569,7 +569,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
             }
 
-            _stats.CurOnline = _unloginedPlayers.size() + CrMngr.PlayersInGame();
+            _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayers().size();
             _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
 
             return std::chrono::milliseconds {0};
@@ -969,11 +969,11 @@ auto FOServer::GetHealthInfo() const -> string
     buf += _str("Uptime: {}\n", _stats.Uptime);
     buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
     buf += _str("Connections: {}\n", _stats.CurOnline);
-    buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-    buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
-    buf += _str("Locations: {}\n", MapMngr.GetLocationsCount());
-    buf += _str("Maps: {}\n", MapMngr.GetMapsCount());
-    buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
+    buf += _str("Players in game: {}\n", EntityMngr.GetPlayersCount());
+    buf += _str("Critters in game: {}\n", EntityMngr.GetCrittersCount());
+    buf += _str("Locations: {}\n", EntityMngr.GetLocationsCount());
+    buf += _str("Maps: {}\n", EntityMngr.GetMapsCount());
+    buf += _str("Items: {}\n", EntityMngr.GetItemsCount());
     buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
     buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
     buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
@@ -997,7 +997,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     result += "Name                 Id         Ip              X     Y     Location and map\n";
     for (auto&& [id, player] : players) {
         const auto* cr = player->GetControlledCritter();
-        const auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
@@ -1290,7 +1290,7 @@ void FOServer::Process_Text(Player* player)
     } break;
     case SAY_SHOUT: {
         if (cr->GetMapId()) {
-            auto* map = MapMngr.GetMap(cr->GetMapId());
+            auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map == nullptr) {
                 return;
             }
@@ -1350,8 +1350,9 @@ void FOServer::Process_Text(Player* player)
         }
     }
     else {
-        const auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
+
         for (auto& tl : _textListeners) {
             if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
                 listen_callbacks.emplace_back(tl.Func, str);
@@ -1465,7 +1466,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         string str = _str("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
-            _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.CrittersInGame(), GameTime.FrameTime(), GameTime.FrameTime() - _stats.ServerStartTime);
+            _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.FrameTime(), GameTime.FrameTime() - _stats.ServerStartTime);
 
         result += str;
 
@@ -1494,13 +1495,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        auto* cr = CrMngr.GetCritter(cr_id);
+        auto* cr = EntityMngr.GetCritter(cr_id);
         if (cr == nullptr) {
             logcb("Critter not found");
             break;
         }
 
-        auto* map = MapMngr.GetMap(cr->GetMapId());
+        auto* map = EntityMngr.GetMap(cr->GetMapId());
         if (map == nullptr) {
             logcb("Critter is on global");
             break;
@@ -1523,7 +1524,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        auto* cr = CrMngr.GetCritter(cr_id);
+        auto* cr = EntityMngr.GetCritter(cr_id);
         if (cr == nullptr) {
             logcb("Critter not found");
             return;
@@ -1556,7 +1557,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        auto* cr = !cr_id ? player_cr : CrMngr.GetCritter(cr_id);
+        auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
         if (cr != nullptr) {
             const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
             if (prop == nullptr) {
@@ -1619,7 +1620,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(player_cr->GetMapId());
+        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
         if ((map == nullptr) || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
             logcb("Wrong hexes or critter on global map");
             return;
@@ -1655,7 +1656,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(player_cr->GetMapId());
+        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
         auto* npc = CrMngr.CreateCritter(pid, nullptr, map, hex_x, hex_y, dir, true);
         if (npc == nullptr) {
             logcb("Npc not created");
@@ -1735,7 +1736,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         // Find map
-        auto* map = MapMngr.GetMap(player_cr->GetMapId());
+        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
         if (map == nullptr) {
             logcb("Map not found");
             return;
@@ -1974,7 +1975,7 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 
     WriteLog(LogType::Info, "Load critter {}", cr_id);
 
-    if (CrMngr.GetCritter(cr_id) != nullptr) {
+    if (EntityMngr.GetCritter(cr_id) != nullptr) {
         throw GenericException("Critter already in game");
     }
 
@@ -2043,7 +2044,7 @@ void FOServer::UnloadCritter(Critter* cr)
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
-    auto* map = MapMngr.GetMap(cr->GetMapId());
+    auto* map = EntityMngr.GetMap(cr->GetMapId());
     RUNTIME_ASSERT(!cr->GetMapId() || map);
 
     MapMngr.RemoveCritterFromMap(cr, map);
@@ -2169,7 +2170,7 @@ void FOServer::DestroyUnloadedCritter(ident_t cr_id)
 
     WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
 
-    if (CrMngr.GetCritter(cr_id) != nullptr) {
+    if (EntityMngr.GetCritter(cr_id) != nullptr) {
         throw GenericException("Critter must be unloaded before destroying");
     }
 
@@ -2181,7 +2182,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_TimeSync();
 
     if (cr->ViewMapId) {
-        auto* map = MapMngr.GetMap(cr->ViewMapId);
+        auto* map = EntityMngr.GetMap(cr->ViewMapId);
         cr->ViewMapId = ident_t {};
         if (map != nullptr) {
             MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
@@ -2190,7 +2191,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         }
     }
 
-    const auto* map = MapMngr.GetMap(cr->GetMapId());
+    const auto* map = EntityMngr.GetMap(cr->GetMapId());
     const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
 
     if (same_map) {
@@ -2205,7 +2206,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
         for (const auto item_id : prev_cr->VisItem) {
             if (cr->VisItem.count(item_id) == 0) {
-                if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                if (const auto* item = EntityMngr.GetItem(item_id); item != nullptr) {
                     cr->Send_RemoveItemFromMap(item);
                 }
             }
@@ -2247,7 +2248,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
                 continue;
             }
 
-            if (const auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+            if (const auto* item = EntityMngr.GetItem(item_id); item != nullptr) {
                 cr->Send_AddItemOnMap(item);
             }
         }
@@ -2366,7 +2367,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->OutBuf.StartMsg(NETMSG_UPDATE_FILES_LIST);
     connection->OutBuf.Write(outdated);
     connection->OutBuf.Write(static_cast<uint>(_updateFilesDesc.size()));
-    connection->OutBuf.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
+    connection->OutBuf.Push(_updateFilesDesc);
     if (!outdated) {
         connection->OutBuf.WritePropsData(global_vars_data, global_vars_data_sizes);
     }
@@ -2695,7 +2696,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         // Try find in game
         if (cr_id) {
-            auto* cr = CrMngr.GetCritter(cr_id);
+            auto* cr = EntityMngr.GetCritter(cr_id);
 
             if (cr != nullptr) {
                 RUNTIME_ASSERT(cr->GetIsControlledByPlayer());
@@ -2756,7 +2757,7 @@ void FOServer::Process_Move(Player* player)
     const auto end_hex_ox = player->Connection->InBuf.Read<int16>();
     const auto end_hex_oy = player->Connection->InBuf.Read<int16>();
 
-    auto* map = MapMngr.GetMap(map_id);
+    auto* map = EntityMngr.GetMap(map_id);
     if (map == nullptr) {
         BreakIntoDebugger();
         return;
@@ -2871,7 +2872,7 @@ void FOServer::Process_StopMove(Player* player)
     [[maybe_unused]] const auto hex_oy = player->Connection->InBuf.Read<int16>();
     [[maybe_unused]] const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
-    auto* map = MapMngr.GetMap(map_id);
+    auto* map = EntityMngr.GetMap(map_id);
     if (map == nullptr) {
         BreakIntoDebugger();
         return;
@@ -2911,7 +2912,7 @@ void FOServer::Process_Dir(Player* player)
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
-    auto* map = MapMngr.GetMap(map_id);
+    auto* map = EntityMngr.GetMap(map_id);
     if (map == nullptr) {
         return;
     }
@@ -3014,7 +3015,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = CrMngr.GetCritter(cr_id);
+            entity = EntityMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
@@ -3027,14 +3028,14 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = ItemMngr.GetItem(item_id);
+            entity = EntityMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            auto* cr_ = CrMngr.GetCritter(cr_id);
+            auto* cr_ = EntityMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
                 entity = cr_->GetInvItem(item_id, true);
             }
@@ -3050,14 +3051,14 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = MapMngr.GetMap(cr->GetMapId());
+            entity = EntityMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
         prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            auto* map = MapMngr.GetMap(cr->GetMapId());
+            auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
                 entity = map->GetLocation();
             }
@@ -3225,7 +3226,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
         } break;
         case ItemOwnership::CritterInventory: {
             if (is_public || is_protected) {
-                auto* cr = CrMngr.GetCritter(item->GetCritterId());
+                auto* cr = EntityMngr.GetCritter(item->GetCritterId());
                 if (cr != nullptr) {
                     if (is_public || is_protected) {
                         if (item->CanSendItem(false)) {
@@ -3242,7 +3243,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
         } break;
         case ItemOwnership::MapHex: {
             if (is_public) {
-                auto* map = MapMngr.GetMap(item->GetMapId());
+                auto* map = EntityMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     if (item->CanSendItem(true)) {
                         map->SendProperty(NetProperty::MapItem, prop, item);
@@ -3252,7 +3253,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
         } break;
         case ItemOwnership::ItemContainer: {
             // Todo: add container properties changing notifications
-            // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
+            // Item* cont = EntityMngr.GetItem( item->GetContainerId() );
         } break;
         }
     }
@@ -3304,6 +3305,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
     const auto old_count = entity->GetProperties().GetValue<uint>(prop);
+
     if (new_count > 0 && (item->GetStackable() || new_count == 1)) {
         const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
@@ -3325,7 +3327,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
+        auto* map = EntityMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
 
@@ -3335,7 +3337,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
         }
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto* cr = CrMngr.GetCritter(item->GetCritterId());
+        auto* cr = EntityMngr.GetCritter(item->GetCritterId());
         if (cr != nullptr) {
             if (item->GetIsHidden()) {
                 cr->Send_ChosenRemoveItem(item);
@@ -3358,7 +3360,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
     const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
+        auto* map = EntityMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
         }
@@ -3374,7 +3376,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        const auto* map = MapMngr.GetMap(item->GetMapId());
+        const auto* map = EntityMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
@@ -3391,7 +3393,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
     const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
+        auto* map = EntityMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->GetLocation()->GeckCount += item->GetIsGeck() ? 1 : -1;
         }
@@ -3420,7 +3422,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
     // Moving
     if (cr->IsMoving()) {
-        auto* map = MapMngr.GetMap(cr->GetMapId());
+        auto* map = EntityMngr.GetMap(cr->GetMapId());
         if (map != nullptr && cr->IsAlive() && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
 
@@ -3790,7 +3792,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
 
     cr->ClearMove();
 
-    const auto* map = MapMngr.GetMap(cr->GetMapId());
+    const auto* map = EntityMngr.GetMap(cr->GetMapId());
     RUNTIME_ASSERT(map);
 
     const auto start_hx = cr->GetHexX();
@@ -3990,11 +3992,11 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
-                auto* map = MapMngr.GetMap(master->GetMapId());
+                auto* map = EntityMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
             }
             else if (demand.Type == DR_PROP_MAP) {
-                entity = MapMngr.GetMap(master->GetMapId());
+                entity = EntityMngr.GetMap(master->GetMapId());
             }
 
             if (entity == nullptr) {
@@ -4152,11 +4154,11 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (result.Type == DR_PROP_LOCATION) {
-                auto* map = MapMngr.GetMap(master->GetMapId());
+                auto* map = EntityMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
             }
             else if (result.Type == DR_PROP_MAP) {
-                entity = MapMngr.GetMap(master->GetMapId());
+                entity = EntityMngr.GetMap(master->GetMapId());
             }
 
             if (entity == nullptr) {
@@ -4279,7 +4281,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
                 return;
             }
 
-            auto* map = MapMngr.GetMap(cl->GetMapId());
+            auto* map = EntityMngr.GetMap(cl->GetMapId());
             if (map == nullptr) {
                 return;
             }
@@ -4436,7 +4438,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
             npc->SendAndBroadcast_MsgLex(npc->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cl->Talk.CurDialog.TextId, cl->Talk.Lexems);
         }
         else {
-            auto* map = MapMngr.GetMap(cl->GetMapId());
+            auto* map = EntityMngr.GetMap(cl->GetMapId());
             if (map != nullptr) {
                 map->SetTextMsg(hx, hy, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
             }
@@ -4485,7 +4487,7 @@ void FOServer::Process_Dialog(Player* player)
     Critter* talker = nullptr;
 
     if (cr->Talk.Type == TalkType::Critter) {
-        talker = CrMngr.GetCritter(cr_id);
+        talker = EntityMngr.GetCritter(cr_id);
 
         if (talker == nullptr) {
             WriteLog("Critter with id {} not found, client '{}'", cr_id, cr->GetName());
@@ -4648,7 +4650,7 @@ void FOServer::Process_Dialog(Player* player)
             talker->SendAndBroadcast_MsgLex(talker->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cr->Talk.CurDialog.TextId, cr->Talk.Lexems);
         }
         else {
-            auto* map = MapMngr.GetMap(cr->GetMapId());
+            auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
                 map->SetTextMsg(cr->Talk.TalkHexX, cr->Talk.TalkHexY, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
             }

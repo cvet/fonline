@@ -277,9 +277,9 @@ void MapSpriteList::GrowPool()
     }
 }
 
-auto MapSpriteList::RootSprite() -> MapSprite*
+auto MapSpriteList::RootSprite() noexcept -> MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 

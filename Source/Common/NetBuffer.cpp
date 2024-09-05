@@ -193,13 +193,6 @@ NetBuffer::NetBuffer(size_t buf_len)
     _bufData = std::make_unique<uint8[]>(_bufLen);
 }
 
-auto NetBuffer::GetEndPos() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    return _bufEndPos;
-}
-
 auto NetBuffer::GenerateEncryptKey() -> uint
 {
     STACK_TRACE_ENTRY();
@@ -230,7 +223,7 @@ void NetBuffer::SetEncryptKey(uint seed)
     _encryptActive = true;
 }
 
-auto NetBuffer::EncryptKey(int move) -> uint8
+auto NetBuffer::EncryptKey(int move) noexcept -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -285,15 +278,6 @@ void NetBuffer::GrowBuf(size_t len)
     _bufData.reset(new_buf);
 }
 
-auto NetBuffer::GetData() -> uint8*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _bufData.get();
-}
-
 void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len)
 {
     STACK_TRACE_ENTRY();
@@ -324,7 +308,23 @@ void NetOutBuffer::Push(const void* buf, size_t len)
     _bufEndPos += len;
 }
 
-void NetOutBuffer::Cut(size_t len)
+void NetOutBuffer::Push(const_span<uint8> buf)
+{
+    STACK_TRACE_ENTRY();
+
+    if (buf.empty()) {
+        return;
+    }
+
+    if (_bufEndPos + buf.size() >= _bufLen) {
+        GrowBuf(buf.size());
+    }
+
+    CopyBuf(buf.data(), _bufData.get() + _bufEndPos, EncryptKey(static_cast<int>(buf.size())), buf.size());
+    _bufEndPos += buf.size();
+}
+
+void NetOutBuffer::DiscardWriteBuf(size_t len)
 {
     STACK_TRACE_ENTRY();
 
@@ -334,7 +334,7 @@ void NetOutBuffer::Cut(size_t len)
 
     if (len > _bufEndPos) {
         ResetBuf();
-        throw NetBufferException("Invalid cut length", len, _bufEndPos);
+        throw NetBufferException("Invalid discard length", len, _bufEndPos);
     }
 
     auto* buf = _bufData.get();
@@ -357,7 +357,7 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
     for (size_t i = 0; i < props_data->size(); i++) {
         const auto data_size = static_cast<uint>(props_data_sizes->at(i));
         Write<uint>(data_size);
-        Push(props_data->at(i), data_size);
+        Push({props_data->at(i), data_size});
     }
 }
 
@@ -438,6 +438,10 @@ void NetInBuffer::AddData(const void* buf, size_t len)
 void NetInBuffer::SetEndPos(size_t pos)
 {
     STACK_TRACE_ENTRY();
+
+    if (pos > _bufLen) {
+        throw NetBufferException("Invalid set end pos", pos, _bufLen, _bufEndPos);
+    }
 
     _bufEndPos = pos;
 }

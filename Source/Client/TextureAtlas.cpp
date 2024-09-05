@@ -52,7 +52,7 @@ TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, int x, int y, int width, i
 
 auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (Busy) {
         return true;

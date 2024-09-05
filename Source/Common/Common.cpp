@@ -167,10 +167,10 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
     NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
 
-        if (ex_info != nullptr) {
-            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        if (base_engine_ex != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()));
         }
         else {
             WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
@@ -182,8 +182,8 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
 
         CreateDumpMessage("FatalException", ex.what());
 
-        if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), true);
+        if (base_engine_ex != nullptr) {
+            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), true);
         }
         else {
             MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), true);
@@ -201,10 +201,10 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
     NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
 
-        if (ex_info != nullptr) {
-            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        if (base_engine_ex != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()));
         }
         else {
             WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
@@ -215,8 +215,8 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
         }
 
         if (ExceptionMessageBox) {
-            if (ex_info != nullptr) {
-                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), false);
+            if (base_engine_ex != nullptr) {
+                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), false);
             }
             else {
                 MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), false);
@@ -230,9 +230,33 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
 
 void ShowExceptionMessageBox(bool enabled) noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ExceptionMessageBox = enabled;
+}
+
+void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        throw StrongAssertationException(message, file, line);
+    }
+    catch (StrongAssertationException& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}
+
+void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        throw VerifyFailedException(message, file, line);
+    }
+    catch (VerifyFailedException& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 void PushStackTrace(const SourceLocationData& loc) noexcept
