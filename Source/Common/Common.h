@@ -890,11 +890,11 @@ auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT_BEGIN() \
-    void AddRef() const noexcept \
+    void AddRef() const /*noexcept*/ \
     { \
         ++RefCounter; \
     } \
-    void Release() const noexcept \
+    void Release() const /*noexcept*/ \
     { \
         if (--RefCounter == 0) { \
             delete this; \
