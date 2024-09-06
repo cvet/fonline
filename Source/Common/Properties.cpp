@@ -460,6 +460,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     RUNTIME_ASSERT(!base || _registrator == base->_registrator);
 
     map<string, string> key_values;
+
     for (auto* prop : _registrator->_registeredProperties) {
         if (prop->IsDisabled()) {
             continue;
@@ -474,7 +475,10 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
         // Skip same
         if (base != nullptr) {
             if (prop->_podDataOffset != Property::INVALID_DATA_MARKER) {
-                if (std::memcmp(&_podData[prop->_podDataOffset], &base->_podData[prop->_podDataOffset], prop->_baseSize) == 0) {
+                const auto* pod_data = &_podData[prop->_podDataOffset];
+                const auto* base_pod_data = &base->_podData[prop->_podDataOffset];
+
+                if (std::memcmp(pod_data, base_pod_data, prop->_baseSize) == 0) {
                     continue;
                 }
             }
@@ -494,6 +498,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
             if (prop->_podDataOffset != Property::INVALID_DATA_MARKER) {
                 uint64 pod_zero = 0;
                 RUNTIME_ASSERT(prop->_baseSize <= sizeof(pod_zero));
+
                 if (std::memcmp(&_podData[prop->_podDataOffset], &pod_zero, prop->_baseSize) == 0) {
                     continue;
                 }
