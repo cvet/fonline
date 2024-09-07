@@ -265,7 +265,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, string, CustomName);
-    ///@ ExportProperty
+    ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
