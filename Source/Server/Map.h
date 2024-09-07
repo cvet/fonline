@@ -131,7 +131,7 @@ public:
     void SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void RemoveCritter(Critter* cr);
-    auto AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool;
+    void AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper);
     void SetItem(Item* item);
     void RemoveItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);

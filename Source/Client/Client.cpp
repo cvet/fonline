@@ -1090,9 +1090,8 @@ void FOClient::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
-        RUNTIME_ASSERT(proto);
-
         const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
+
         if (it != _worldmapCritters.end()) {
             BreakIntoDebugger();
             (*it)->MarkAsDestroyed();
@@ -1131,10 +1130,8 @@ void FOClient::Net_OnAddCritter()
         const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-        const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
-        RUNTIME_ASSERT(proto_item);
-
-        auto* item = cr->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        auto* item = cr->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
     }
@@ -1687,8 +1684,6 @@ void FOClient::Net_OnCritterAction()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        RUNTIME_ASSERT(proto);
-
         context_item = new ItemView(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
@@ -1735,8 +1730,6 @@ void FOClient::Net_OnCritterMoveItem()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        RUNTIME_ASSERT(proto);
-
         moved_item = new ItemView(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
 
@@ -1783,10 +1776,8 @@ void FOClient::Net_OnCritterMoveItem()
             const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
             _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-            const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
-            RUNTIME_ASSERT(proto_item);
-
-            auto* item = cr->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+            const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+            auto* item = cr->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
         }
@@ -1836,8 +1827,6 @@ void FOClient::Net_OnCritterAnimate()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        RUNTIME_ASSERT(proto);
-
         context_item = new ItemView(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
@@ -2078,10 +2067,8 @@ void FOClient::Net_OnChosenAddItem()
         chosen->DeleteInvItem(prev_item, false);
     }
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
-    RUNTIME_ASSERT(proto_item);
-
-    auto* item = chosen->AddInvItem(item_id, proto_item, item_slot, _tempPropertiesData);
+    const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+    auto* item = chosen->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
 
@@ -2587,10 +2574,12 @@ void FOClient::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
+        const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
+        _curLocation = new LocationView(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
+        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
+        CurMap = new MapView(this, map_id, map_proto);
         CurMap->RestoreData(_tempPropertiesData);
         CurMap->LoadStaticData();
 
@@ -2696,8 +2685,6 @@ void FOClient::Net_OnSomeItems()
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
-        RUNTIME_ASSERT(proto);
-
         auto* item = new ItemView(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 

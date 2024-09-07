@@ -65,7 +65,7 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
     SetSortValue(sort_value);
 }
 
-auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) noexcept -> Item*
+auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -77,37 +77,11 @@ auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) noexcept -> Item*
 
     for (auto* item : *_innerItems) {
         if (item->GetId() == item_id) {
-            if (skip_hidden && item->GetIsHidden()) {
-                return nullptr;
-            }
-
             return item;
         }
     }
 
     return nullptr;
-}
-
-auto Item::GetAllInnerItems(bool skip_hidden) -> vector<Item*>
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (!_innerItems) {
-        return {};
-    }
-
-    vector<Item*> items;
-    items.reserve(_innerItems->size());
-
-    for (auto* item : *_innerItems) {
-        if (!skip_hidden || !item->GetIsHidden()) {
-            items.push_back(item);
-        }
-    }
-
-    return items;
 }
 
 auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*
@@ -146,9 +120,20 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
 
 auto Item::HasInnerItems() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _innerItems && !_innerItems->empty();
+}
+
+auto Item::GetAllInnerItems() -> const vector<Item*>&
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_innerItems);
+
+    return *_innerItems;
 }
 
 auto Item::GetRawInnerItems() -> vector<Item*>&
@@ -192,7 +177,6 @@ auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
 
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
 
             return item_already;
         }

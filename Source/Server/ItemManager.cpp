@@ -112,12 +112,6 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-
-    if (proto == nullptr) {
-        WriteLog("Proto item {} not found", pid);
-        return nullptr;
-    }
-
     auto* item = new Item(_engine, ident_t {}, proto, props);
     auto self_destroy_fuse = RefCountHolder(item);
 
@@ -148,7 +142,13 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     _engine->EntityMngr.CallInit(item, true);
 
-    return !item->IsDestroyed() ? item : nullptr;
+    if (item->IsDestroyed()) {
+        throw GenericException("Item destroyed during init", pid);
+    }
+
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
+
+    return item;
 }
 
 void ItemManager::DestroyItem(Item* item)
@@ -172,7 +172,7 @@ void ItemManager::DestroyItem(Item* item)
         }
 
         while (item->HasInnerItems()) {
-            DestroyItem(item->GetRawInnerItems().front());
+            DestroyItem(item->GetAllInnerItems().front());
         }
 
         if (item->HasInnerEntities()) {
@@ -205,22 +205,15 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     RUNTIME_ASSERT(count > 0);
     RUNTIME_ASSERT(count < item_count);
 
-    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
-
-    if (new_item == nullptr) {
-        WriteLog("Create item {} failed, count {}", item->GetName(), count);
-        return nullptr;
-    }
-
-    RUNTIME_ASSERT(new_item->GetOwnership() == ItemOwnership::Nowhere);
+    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
     item->SetCount(item_count - count);
-    _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
+    RUNTIME_ASSERT(!new_item->IsDestroyed());
 
     return new_item;
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -234,24 +227,17 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
         return;
     }
 
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_cr)) {
-        return;
-    }
-
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         _engine->CrMngr.AddItemToCritter(to_cr, item, true);
     }
     else {
         auto* item_ = SplitItem(item, count);
-
-        if (item_ != nullptr) {
-            _engine->CrMngr.AddItemToCritter(to_cr, item_, true);
-        }
+        _engine->CrMngr.AddItemToCritter(to_cr, item_, true);
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -265,24 +251,17 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
         return;
     }
 
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_map)) {
-        return;
-    }
-
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
     }
     else {
         auto* item_ = SplitItem(item, count);
-
-        if (item_ != nullptr) {
-            to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
-        }
+        to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -296,20 +275,13 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemS
         return;
     }
 
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_cont)) {
-        return;
-    }
-
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         to_cont->AddItemToContainer(item, stack_id);
     }
     else {
         auto* item_ = SplitItem(item, count);
-
-        if (item_ != nullptr) {
-            to_cont->AddItemToContainer(item_, stack_id);
-        }
+        to_cont->AddItemToContainer(item_, stack_id);
     }
 }
 
@@ -319,13 +291,13 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
 
     RUNTIME_ASSERT(cont);
 
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cont->GetInnerItemByPid(pid, stack_id);
     Item* result = nullptr;
 
     if (item != nullptr) {
         if (item->GetStackable()) {
             item->SetCount(item->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
             result = item;
         }
         else {
@@ -334,30 +306,14 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-
-                if (item == nullptr) {
-                    continue;
-                }
-
                 item = cont->AddItemToContainer(item, stack_id);
                 result = item;
             }
         }
     }
     else {
-        const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
-
-        if (proto_item == nullptr) {
-            return result;
-        }
-
-        if (proto_item->GetStackable()) {
+        if (proto->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
-
-            if (item == nullptr) {
-                return result;
-            }
-
             item = cont->AddItemToContainer(item, stack_id);
             result = item;
         }
@@ -367,11 +323,6 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-
-                if (item == nullptr) {
-                    continue;
-                }
-
                 item = cont->AddItemToContainer(item, stack_id);
                 result = item;
             }
@@ -385,32 +336,19 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    if (count == 0) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(count > 0);
 
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cr->GetInvItemByPid(pid);
     Item* result = nullptr;
 
     if (item != nullptr && item->GetStackable()) {
         item->SetCount(item->GetCount() + count);
-        _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
         result = item;
     }
     else {
-        const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
-
-        if (proto_item == nullptr) {
-            return result;
-        }
-
-        if (proto_item->GetStackable()) {
+        if (proto->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
-
-            if (item == nullptr) {
-                return result;
-            }
-
             item = _engine->CrMngr.AddItemToCritter(cr, item, true);
             result = item;
         }
@@ -421,11 +359,6 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-
-                if (item == nullptr) {
-                    break;
-                }
-
                 item = _engine->CrMngr.AddItemToCritter(cr, item, true);
                 result = item;
             }
@@ -455,7 +388,6 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
         }
         else {
             item->SetCount(item->GetCount() - count);
-            _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
     else {
@@ -483,13 +415,6 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
     if (cur_count < count) {
         AddItemCritter(cr, pid, count - cur_count);
     }
-}
-
-auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->OnItemCheckMove.Fire(item, count, from, to);
 }
 
 void ItemManager::RegisterRadio(Item* radio)
@@ -680,9 +605,7 @@ void ItemManager::ChangeItemStatistics(hstring pid, int val) const
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
 
-    if (proto != nullptr) {
-        proto->InstanceCount += val;
-    }
+    proto->InstanceCount += val;
 }
 
 auto ItemManager::GetItemStatistics(hstring pid) const -> int64
@@ -691,7 +614,7 @@ auto ItemManager::GetItemStatistics(hstring pid) const -> int64
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
 
-    return proto != nullptr ? proto->InstanceCount : 0;
+    return proto->InstanceCount;
 }
 
 auto ItemManager::GetItemsStatistics() const -> string

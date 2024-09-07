@@ -222,10 +222,19 @@
     return item;
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toCr ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Critter* toCr)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
+}
+
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Critter* toCr)
 {
@@ -236,49 +245,29 @@
         throw ScriptException("Critter arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
+    if (count == 0) {
+        return;
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCr, false);
+    server->ItemMngr.MoveItem(item, count, toCr);
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toCr ...
-///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Critter* toCr, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Map* toMap, uint16 toHx, uint16 toHy)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
     }
-    if (toCr == nullptr) {
-        throw ScriptException("Critter arg is null");
+    if (toMap == nullptr) {
+        throw ScriptException("Map arg is null");
+    }
+    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
+        throw ScriptException("Invalid hexex args");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
-    }
-
-    server->ItemMngr.MoveItem(item, count_, toCr, skipChecks);
+    server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy);
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toMap ...
-///# param toHx ...
-///# param toHy ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy)
 {
@@ -292,53 +281,26 @@
         throw ScriptException("Invalid hexex args");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
+    if (count == 0) {
+        return;
     }
 
-    server->ItemMngr.MoveItem(item, count_, toMap, toHx, toHy, false);
+    server->ItemMngr.MoveItem(item, count, toMap, toHx, toHy);
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toMap ...
-///# param toHx ...
-///# param toHy ...
-///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
     }
-    if (toMap == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
-        throw ScriptException("Invalid hexex args");
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
-    }
-
-    server->ItemMngr.MoveItem(item, count_, toMap, toHx, toHy, skipChecks);
+    server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toCont ...
-///# param stackId ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
 {
@@ -349,47 +311,13 @@
         throw ScriptException("Container arg is null");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
+    if (count == 0) {
+        return;
     }
 
-    server->ItemMngr.MoveItem(item, count_, toCont, stackId, false);
+    server->ItemMngr.MoveItem(item, count, toCont, stackId);
 }
 
-///# ...
-///# param item ...
-///# param count ...
-///# param toCont ...
-///# param stackId ...
-///# param skipChecks ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId, bool skipChecks)
-{
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = item->GetCount();
-    }
-    if (count_ > item->GetCount()) {
-        throw ScriptException("Count arg is greater than maximum");
-    }
-
-    server->ItemMngr.MoveItem(item, count_, toCont, stackId, skipChecks);
-}
-
-///# ...
-///# param items ...
-///# param toCr ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Critter* toCr)
 {
@@ -402,35 +330,10 @@
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCr, false);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
     }
 }
 
-///# ...
-///# param items ...
-///# param toCr ...
-///# param skipChecks ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Critter* toCr, bool skipChecks)
-{
-    if (toCr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
-            continue;
-        }
-
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCr, skipChecks);
-    }
-}
-
-///# ...
-///# param items ...
-///# param toMap ...
-///# param toHx ...
-///# param toHy ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy)
 {
@@ -446,39 +349,10 @@
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy, false);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy);
     }
 }
 
-///# ...
-///# param items ...
-///# param toMap ...
-///# param toHx ...
-///# param toHy ...
-///# param skipChecks ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
-{
-    if (toMap == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-    if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight()) {
-        throw ScriptException("Invalid hexex args");
-    }
-
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
-            continue;
-        }
-
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy, skipChecks);
-    }
-}
-
-///# ...
-///# param items ...
-///# param toCont ...
-///# param stackId ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId)
 {
@@ -491,28 +365,7 @@
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId, false);
-    }
-}
-
-///# ...
-///# param items ...
-///# param toCont ...
-///# param stackId ...
-///# param skipChecks ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId, bool skipChecks)
-{
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
-            continue;
-        }
-
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId, skipChecks);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
     }
 }
 
@@ -575,7 +428,6 @@
         }
         else {
             item->SetCount(cur_count - count);
-            server->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
 }
@@ -603,7 +455,6 @@
         }
         else {
             item->SetCount(cur_count - count);
-            server->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
 }
@@ -1233,10 +1084,6 @@
 ///@ ExportMethod
 [[maybe_unused]] int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
 {
-    if (server->ProtoMngr.GetProtoItem(pid) == nullptr) {
-        throw ScriptException("Invalid protoId arg");
-    }
-
     return server->ItemMngr.GetItemStatistics(pid);
 }
 

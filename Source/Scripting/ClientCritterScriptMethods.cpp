@@ -225,12 +225,9 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
-    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (proto_item == nullptr) {
-        throw ScriptException("Invalid proto id", protoId);
-    }
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
 
-    if (proto_item->GetStackable()) {
+    if (proto->GetStackable()) {
         for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 return item;
@@ -239,14 +236,17 @@
     }
     else {
         ItemView* another_slot = nullptr;
+
         for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
                 }
+
                 another_slot = item;
             }
         }
+
         return another_slot;
     }
 

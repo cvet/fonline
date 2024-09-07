@@ -264,7 +264,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
     }
 }
 
-auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
+void Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper)
 {
     STACK_TRACE_ENTRY();
 
@@ -272,7 +272,7 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
     RUNTIME_ASSERT(!item->GetIsStatic());
 
     if (hx >= _width || hy >= _height) {
-        return false;
+        throw GenericException("Invalid item pos");
     }
 
     item->SetOwnership(ItemOwnership::MapHex);
@@ -292,7 +292,7 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
             continue;
         }
 
-        if (!item->GetIsHidden() || item->GetIsAlwaysView()) {
+        if (!item->GetIsHidden()) {
             if (!item->GetIsAlwaysView()) {
                 bool allowed;
 
@@ -301,6 +301,7 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
                 }
                 else {
                     int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy));
+
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -318,8 +319,6 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
     }
-
-    return true;
 }
 
 void Map::SetItem(Item* item)
@@ -519,8 +518,7 @@ void Map::ChangeViewItem(Item* item)
                 cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
-            else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
-            {
+            else if (!item->GetIsAlwaysView()) { // Check distance for non-hide items
                 bool allowed;
 
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
@@ -542,9 +540,8 @@ void Map::ChangeViewItem(Item* item)
                 }
             }
         }
-        else if (!item->GetIsHidden() || item->GetIsAlwaysView()) {
-            if (!item->GetIsAlwaysView()) // Check distance for non-hide items
-            {
+        else if (!item->GetIsHidden()) {
+            if (!item->GetIsAlwaysView()) { // Check distance for non-hide items
                 bool allowed;
 
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {

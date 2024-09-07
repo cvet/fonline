@@ -471,51 +471,130 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
     return data;
 }
 
-auto ProtoManager::GetProtoItem(hstring proto_id) noexcept -> const ProtoItem*
+auto ProtoManager::GetProtoItem(hstring proto_id) noexcept(false) -> const ProtoItem*
 {
     STACK_TRACE_ENTRY();
 
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
-    const auto it = _itemProtos.find(proto_id);
+    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
+        return it->second;
+    }
 
-    return it != _itemProtos.end() ? it->second : nullptr;
+    throw ProtoManagerException("Item proto not exists", proto_id);
 }
 
-auto ProtoManager::GetProtoCritter(hstring proto_id) noexcept -> const ProtoCritter*
+auto ProtoManager::GetProtoCritter(hstring proto_id) noexcept(false) -> const ProtoCritter*
 {
     STACK_TRACE_ENTRY();
 
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
-    const auto it = _crProtos.find(proto_id);
+    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
+        return it->second;
+    }
 
-    return it != _crProtos.end() ? it->second : nullptr;
+    throw ProtoManagerException("Critter proto not exists", proto_id);
 }
 
-auto ProtoManager::GetProtoMap(hstring proto_id) noexcept -> const ProtoMap*
+auto ProtoManager::GetProtoMap(hstring proto_id) noexcept(false) -> const ProtoMap*
 {
     STACK_TRACE_ENTRY();
 
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
-    const auto it = _mapProtos.find(proto_id);
+    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
+        return it->second;
+    }
 
-    return it != _mapProtos.end() ? it->second : nullptr;
+    throw ProtoManagerException("Map proto not exists", proto_id);
 }
 
-auto ProtoManager::GetProtoLocation(hstring proto_id) noexcept -> const ProtoLocation*
+auto ProtoManager::GetProtoLocation(hstring proto_id) noexcept(false) -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
-    const auto it = _locProtos.find(proto_id);
+    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
+        return it->second;
+    }
 
-    return it != _locProtos.end() ? it->second : nullptr;
+    throw ProtoManagerException("Location proto not exists", proto_id);
 }
 
-auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*
+auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) noexcept(false) -> const ProtoEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
+
+    const auto it_type = _protos.find(type_name);
+
+    if (it_type == _protos.end()) {
+        throw ProtoManagerException("Entity type protos not exist", type_name);
+    }
+
+    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
+        return it->second;
+    }
+
+    throw ProtoManagerException("Entity proto not exists", type_name, proto_id);
+}
+
+auto ProtoManager::GetProtoItemSafe(hstring proto_id) noexcept -> const ProtoItem*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoCritterSafe(hstring proto_id) noexcept -> const ProtoCritter*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoMapSafe(hstring proto_id) noexcept -> const ProtoMap*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoLocationSafe(hstring proto_id) noexcept -> const ProtoLocation*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*
 {
     STACK_TRACE_ENTRY();
 
@@ -527,9 +606,11 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) noexcept 
         return nullptr;
     }
 
-    const auto it = it_type->second.find(proto_id);
+    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
+        return it->second;
+    }
 
-    return it != it_type->second.end() ? it->second : nullptr;
+    return nullptr;
 }
 
 auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&

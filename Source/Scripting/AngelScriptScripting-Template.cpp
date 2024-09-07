@@ -3493,7 +3493,7 @@ static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const Pr
 
 #if !COMPILER_MODE
     const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
-    const auto* proto = engine->ProtoMngr.GetProtoEntity(entity_type, pid);
+    const auto* proto = engine->ProtoMngr.GetProtoEntitySafe(entity_type, pid);
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
         RUNTIME_ASSERT(casted_proto);

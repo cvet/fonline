@@ -533,7 +533,7 @@ void Critter::RemoveItem(Item* item)
     vec_remove_unique_value(_invItems, item);
 }
 
-auto Critter::GetInvItem(ident_t item_id, bool skip_hidden) noexcept -> Item*
+auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -541,10 +541,6 @@ auto Critter::GetInvItem(ident_t item_id, bool skip_hidden) noexcept -> Item*
 
     for (auto* item : _invItems) {
         if (item->GetId() == item_id) {
-            if (skip_hidden && item->GetIsHidden()) {
-                return nullptr;
-            }
-
             return item;
         }
     }

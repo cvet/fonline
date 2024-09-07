@@ -183,7 +183,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
         return nullptr;
     }
 
-    const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
+    const auto* loc_proto = _engine->ProtoMngr.GetProtoLocationSafe(loc_pid);
 
     if (loc_proto == nullptr) {
         WriteLog("Location {} proto {} not found", loc_id, loc_pid);
@@ -251,7 +251,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
         return nullptr;
     }
 
-    const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+    const auto* map_proto = _engine->ProtoMngr.GetProtoMapSafe(map_pid);
 
     if (map_proto == nullptr) {
         WriteLog("Map {} proto {} not found", map_id, map_pid);
@@ -347,7 +347,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
         return nullptr;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+    const auto* proto = _engine->ProtoMngr.GetProtoCritterSafe(cr_pid);
 
     if (proto == nullptr) {
         WriteLog("Critter {} proto {} not found", cr_id, cr_pid);
@@ -406,7 +406,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         return nullptr;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = _engine->ProtoMngr.GetProtoItemSafe(item_pid);
 
     if (proto == nullptr) {
         WriteLog("Item {} proto {} not found", item_id, item_pid);
@@ -449,8 +449,13 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     }
 
     if (inner_item_ids_changed) {
-        const auto actual_inner_item_ids = vec_transform(item->GetRawInnerItems(), [](const Item* inner_item) -> ident_t { return inner_item->GetId(); });
-        item->SetInnerItemIds(actual_inner_item_ids);
+        if (item->HasInnerItems()) {
+            const auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](const Item* inner_item) -> ident_t { return inner_item->GetId(); });
+            item->SetInnerItemIds(actual_inner_item_ids);
+        }
+        else {
+            item->SetInnerItemIds({});
+        }
     }
 
     // Inner entities
@@ -672,7 +677,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     }
 
     if (!item->IsDestroyed() && item->HasInnerItems()) {
-        for (auto* inner_item : copy_hold_ref(item->GetRawInnerItems())) {
+        for (auto* inner_item : copy_hold_ref(item->GetAllInnerItems())) {
             if (!inner_item->IsDestroyed()) {
                 CallInit(inner_item, first_time);
             }

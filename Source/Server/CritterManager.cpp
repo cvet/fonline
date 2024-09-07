@@ -62,9 +62,9 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
         if (item_already != nullptr) {
             const auto count = item->GetCount();
+
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item_already, static_cast<int>(count));
 
             return item_already;
         }
@@ -93,7 +93,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         }
     }
 
-    _engine->OnCritterMoveItem.Fire(cr, item, CritterItemSlot::Outside);
+    _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
 
     return item;
 }
@@ -131,22 +131,20 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     vec_remove_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
 
-    _engine->OnCritterMoveItem.Fire(cr, item, prev_slot);
+    _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
 }
 
-auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*
+auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(map);
-    RUNTIME_ASSERT(proto_id);
     RUNTIME_ASSERT(hx < map->GetWidth());
     RUNTIME_ASSERT(hy < map->GetHeight());
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
-    RUNTIME_ASSERT(proto);
 
     uint multihex;
 
@@ -157,23 +155,28 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         multihex = props->GetValue<uint>(proto->GetPropertyMultihex());
     }
 
-    if (!map->IsHexesMovable(hx, hy, multihex)) {
-        if (accuracy) {
-            return nullptr;
-        }
+    auto final_hx = hx;
+    auto final_hy = hy;
 
+    // Find better place if target hex busy
+    if (!map->IsHexesMovable(hx, hy, multihex)) {
         int hx_ = hx;
         int hy_ = hy;
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
-        auto pos = -1;
+        int pos = -1;
 
         while (true) {
+            // Todo: find better place for critter in square geometry
+            if (GameSettings::SQUARE_GEOMETRY) {
+                break;
+            }
+
             pos++;
 
             if (pos >= 18) {
-                return nullptr;
+                break;
             }
 
             if (hx_ + sx[pos] < 0 || hx_ + sx[pos] >= map->GetWidth()) {
@@ -186,15 +189,15 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
                 continue;
             }
 
+            hx_ += sx[pos];
+            hy_ += sy[pos];
+            final_hx = static_cast<uint16>(hx_);
+            final_hy = static_cast<uint16>(hy_);
+            RUNTIME_ASSERT(final_hx < map->GetWidth());
+            RUNTIME_ASSERT(final_hy < map->GetHeight());
+
             break;
         }
-
-        hx_ += sx[pos];
-        hy_ += sy[pos];
-        hx = static_cast<uint16>(hx_);
-        hy = static_cast<uint16>(hy_);
-        RUNTIME_ASSERT(hx < map->GetWidth());
-        RUNTIME_ASSERT(hy < map->GetHeight());
     }
 
     auto* cr = new Critter(_engine, ident_t {}, proto, props);
@@ -204,19 +207,21 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
+    auto final_dir = dir;
+
     if (dir >= GameSettings::MAP_DIR_COUNT) {
-        dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+        final_dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
 
     cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
     cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
     cr->SetHomeMapId(map->GetId());
     cr->SetHomeMapPid(map->GetProtoId());
-    cr->SetHomeHexX(hx);
-    cr->SetHomeHexY(hy);
+    cr->SetHomeHexX(final_hx);
+    cr->SetHomeHexY(final_hy);
     cr->SetHomeDir(dir);
 
-    _engine->MapMngr.AddCritterToMap(cr, map, hx, hy, dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr, map, final_hx, final_hy, final_dir, ident_t {});
     _engine->EntityMngr.CallInit(cr, true);
     _engine->MapMngr.ProcessVisibleItems(cr);
 
@@ -360,13 +365,9 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
 
     NON_CONST_METHOD_HINT();
 
-    const auto* proto_item = _engine->ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
-    if (proto_item == nullptr) {
-        return nullptr;
-    }
-
-    if (proto_item->GetStackable()) {
+    if (proto->GetStackable()) {
         for (auto* item : cr->_invItems) {
             if (item->GetProtoId() == item_pid) {
                 return item;

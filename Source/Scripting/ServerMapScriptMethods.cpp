@@ -85,9 +85,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid proto arg", protoId);
-    }
+
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
     }
@@ -96,7 +94,7 @@
         return nullptr;
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr);
 }
 
 ///# ...
@@ -114,9 +112,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid proto arg", protoId);
-    }
+
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
     }
@@ -133,10 +129,10 @@
             props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, false);
+        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr);
 }
 
 ///# ...
@@ -1012,17 +1008,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (proto == nullptr) {
-        throw ScriptException("Proto not found", protoId);
-    }
-
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hx, hy, dir, false);
-    if (npc == nullptr) {
-        throw ScriptException("Create npc failed");
-    }
-
-    return npc;
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, nullptr, self, hx, hy, dir);
 }
 
 ///# ...
@@ -1040,21 +1026,13 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (proto == nullptr) {
-        throw ScriptException("Proto not found", protoId);
-    }
-
     Properties props_(proto->GetProperties());
+
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
-    if (npc == nullptr) {
-        throw ScriptException("Create npc failed");
-    }
-
-    return npc;
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hx, hy, dir);
 }
 
 ///# ...
@@ -1072,21 +1050,13 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (proto == nullptr) {
-        throw ScriptException("Proto not found", protoId);
-    }
-
     Properties props_(proto->GetProperties());
+
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
-    if (npc == nullptr) {
-        throw ScriptException("Create npc failed");
-    }
-
-    return npc;
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hx, hy, dir);
 }
 
 ///# ...
@@ -1232,12 +1202,9 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, uint16 hx, uint16 hy, hstring pid)
 {
-    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
-    if (proto_item == nullptr) {
-        throw ScriptException("Proto item not found");
-    }
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
 
-    return self->IsPlaceForProtoItem(hx, hy, proto_item);
+    return self->IsPlaceForProtoItem(hx, hy, proto);
 }
 
 ///# ...

@@ -608,7 +608,7 @@
         return nullptr;
     }
 
-    return self->GetInvItem(itemId, false);
+    return self->GetInvItem(itemId);
 }
 
 ///# ...
@@ -728,7 +728,8 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetInvItem(itemId, self->GetIsControlledByPlayer());
+    auto* item = self->GetInvItem(itemId);
+
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
@@ -742,10 +743,6 @@
         throw ScriptException("Slot is not allowed");
     }
 
-    if (!self->GetEngine()->OnCritterCheckMoveItem.Fire(self, item, slot)) {
-        throw ScriptException("Can't move item");
-    }
-
     const auto is_multi_item_allowed = slot == CritterItemSlot::Inventory || (static_cast<size_t>(slot) < self->GetEngine()->Settings.CritterSlotMultiItem.size() && self->GetEngine()->Settings.CritterSlotMultiItem[static_cast<size_t>(slot)]);
 
     if (is_multi_item_allowed) {
@@ -755,13 +752,14 @@
 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
-        self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
+        self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
     else {
         auto* item_swap = self->GetInvItemSlot(slot);
         const auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);
+
         if (item_swap != nullptr) {
             item_swap->SetCritterSlot(from_slot);
         }
@@ -769,10 +767,10 @@
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
         if (item_swap != nullptr) {
-            self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
+            self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);
         }
 
-        self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
+        self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
 }
 

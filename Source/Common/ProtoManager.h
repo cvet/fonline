@@ -56,11 +56,17 @@ public:
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
     [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
 
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) noexcept -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) noexcept -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) noexcept -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) noexcept(false) -> NON_NULL const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) noexcept(false) -> NON_NULL const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) noexcept(false) -> NON_NULL const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) noexcept(false) -> NON_NULL const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) noexcept(false) -> NON_NULL const ProtoEntity*;
+
+    [[nodiscard]] auto GetProtoItemSafe(hstring proto_id) noexcept -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritterSafe(hstring proto_id) noexcept -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMapSafe(hstring proto_id) noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocationSafe(hstring proto_id) noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntitySafe(hstring type_name, hstring proto_id) noexcept -> const ProtoEntity*;
 
     [[nodiscard]] auto GetProtoItems() const noexcept -> const unordered_map<hstring, const ProtoItem*>& { return _itemProtos; }
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const unordered_map<hstring, const ProtoCritter*>& { return _crProtos; }

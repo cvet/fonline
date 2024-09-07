@@ -488,7 +488,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] ProtoItem* Common_Game_GetProtoItem(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItem(pid));
+    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItemSafe(pid));
 }
 
 ///# ...
@@ -556,7 +556,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] ProtoCritter* Common_Game_GetProtoCritter(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritter(pid));
+    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritterSafe(pid));
 }
 
 ///# ...
@@ -624,7 +624,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] ProtoMap* Common_Game_GetProtoMap(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMap(pid));
+    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMapSafe(pid));
 }
 
 ///# ...
@@ -692,7 +692,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] ProtoLocation* Common_Game_GetProtoLocation(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocation(pid));
+    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocationSafe(pid));
 }
 
 ///# ...

@@ -135,8 +135,7 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager();
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
-    [[nodiscard]] auto GetLocationByMap(ident_t map_id) noexcept -> Location*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> NON_NULL const StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
@@ -146,8 +145,7 @@ public:
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Location*;
-    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
+    auto CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> NON_NULL Location*;
     void DestroyLocation(Location* loc);
     void LocationGarbager();
     void RegenerateMap(Map* map);
@@ -167,6 +165,7 @@ private:
     [[nodiscard]] FORCE_INLINE auto GridAt(int x, int y) -> int16&;
     [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
+    auto CreateMap(hstring proto_id, Location* loc) -> NON_NULL Map*;
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
     void Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);

@@ -989,6 +989,7 @@ FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 #define UNUSED_VARIABLE(...) ignore_unused(__VA_ARGS__)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
+#define NON_NULL // Pointer annotation
 
 // Bit operation helpers
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>

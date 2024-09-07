@@ -553,8 +553,6 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, con
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    RUNTIME_ASSERT(proto);
-
     auto* item = new ItemHexView(this, id, proto);
 
     item->RestoreData(data);
@@ -573,16 +571,9 @@ auto MapView::AddMapperItem(hstring pid, uint16 hx, uint16 hy, const Properties*
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        return nullptr;
-    }
-
-    if (hx >= _width || hy >= _height) {
-        return nullptr;
-    }
-
     auto* item = new ItemHexView(this, GetTempEntityId(), proto, props);
 
     item->SetHexX(hx);
@@ -596,16 +587,9 @@ auto MapView::AddMapperTile(hstring pid, uint16 hx, uint16 hy, uint8 layer, bool
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        return nullptr;
-    }
-
-    if (hx >= _width || hy >= _height) {
-        return nullptr;
-    }
-
     auto* item = new ItemHexView(this, GetTempEntityId(), proto);
 
     item->SetHexX(hx);
@@ -898,8 +882,6 @@ void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
     RUNTIME_ASSERT(!(from_hx >= _width || from_hy >= _height || to_hx >= _width || to_hy >= _height));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
-    RUNTIME_ASSERT(proto);
-
     auto* effect_item = new ItemHexView(this, ident_t {}, proto);
 
     effect_item->SetHexX(from_hx);
@@ -3528,8 +3510,6 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, 
     RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    RUNTIME_ASSERT(proto);
-
     auto* cr = new CritterHexView(this, id, proto);
 
     cr->RestoreData(data);
@@ -3545,16 +3525,9 @@ auto MapView::AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angl
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    if (proto == nullptr) {
-        return nullptr;
-    }
-
-    if (hx >= _width || hy >= _height) {
-        return nullptr;
-    }
-
     auto* cr = new CritterHexView(this, GetTempEntityId(), proto, props);
 
     cr->SetHexX(hx);

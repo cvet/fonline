@@ -87,7 +87,7 @@ public:
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    auto CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    auto CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance);
 
@@ -166,9 +166,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*toSlot*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
+    ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
@@ -178,11 +176,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnItemStackChanged, Item* /*item*/, int /*countDiff*/);
 
     ServerDeferredCallManager ServerDeferredCalls;
 

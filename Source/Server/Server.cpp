@@ -1621,17 +1621,14 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
-        if ((map == nullptr) || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
+
+        if (map == nullptr || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
             logcb("Wrong hexes or critter on global map");
             return;
         }
 
-        if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, false) == nullptr) {
-            logcb("Item(s) not added");
-        }
-        else {
-            logcb("Item(s) added");
-        }
+        CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr);
+        logcb("Item(s) added");
     } break;
     case CMD_ADDITEM_SELF: {
         const auto pid = buf.Read<hstring>(*this);
@@ -1640,11 +1637,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (ItemMngr.AddItemCritter(player_cr, pid, count) != nullptr) {
+        if (count > 0) {
+            ItemMngr.AddItemCritter(player_cr, pid, count);
             logcb("Item(s) added");
         }
         else {
-            logcb("Item(s) added fail");
+            logcb("No item(s) added");
         }
     } break;
     case CMD_ADDNPC: {
@@ -1657,13 +1655,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
-        auto* npc = CrMngr.CreateCritter(pid, nullptr, map, hex_x, hex_y, dir, true);
-        if (npc == nullptr) {
-            logcb("Npc not created");
-        }
-        else {
-            logcb("Npc created");
-        }
+        CrMngr.CreateCritterOnMap(pid, nullptr, map, hex_x, hex_y, dir);
+
+        logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
         const auto wx = buf.Read<uint16>();
@@ -1941,11 +1935,6 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
     WriteLog(LogType::Info, "Create critter {}", pid);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
-
-    if (proto == nullptr) {
-        throw GenericException("Invalid critter proto", pid);
-    }
-
     auto* cr = new Critter(this, ident_t {}, proto);
 
     EntityMngr.RegisterEntity(cr);
@@ -3028,7 +3017,8 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = EntityMngr.GetItem(item_id);
+            auto* item = EntityMngr.GetItem(item_id);
+            entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
         }
         break;
     case NetProperty::CritterItem:
@@ -3037,14 +3027,16 @@ void FOServer::Process_Property(Player* player, uint data_size)
         if (prop != nullptr) {
             auto* cr_ = EntityMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
-                entity = cr_->GetInvItem(item_id, true);
+                auto* item = cr_->GetInvItem(item_id);
+                entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
             }
         }
         break;
     case NetProperty::ChosenItem:
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = cr->GetInvItem(item_id, true);
+            auto* item = cr->GetInvItem(item_id);
+            entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
         }
         break;
     case NetProperty::Map:
@@ -3227,12 +3219,14 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
         case ItemOwnership::CritterInventory: {
             if (is_public || is_protected) {
                 auto* cr = EntityMngr.GetCritter(item->GetCritterId());
+
                 if (cr != nullptr) {
                     if (is_public || is_protected) {
                         if (item->CanSendItem(false)) {
                             cr->Send_Property(NetProperty::ChosenItem, prop, item);
                         }
                     }
+
                     if (is_public) {
                         if (item->CanSendItem(true)) {
                             cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
@@ -3244,6 +3238,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
         case ItemOwnership::MapHex: {
             if (is_public) {
                 auto* map = EntityMngr.GetMap(item->GetMapId());
+
                 if (map != nullptr) {
                     if (item->CanSendItem(true)) {
                         map->SendProperty(NetProperty::MapItem, prop, item);
@@ -3265,6 +3260,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
+
         map->SendProperty(NetProperty::Map, prop, map);
     }
 }
@@ -3275,6 +3271,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
+
         for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
         }
@@ -3308,6 +3305,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
     if (new_count > 0 && (item->GetStackable() || new_count == 1)) {
         const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
+
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
     }
     else {
@@ -3328,6 +3326,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
+
         if (map != nullptr) {
             map->ChangeViewItem(item);
 
@@ -3338,6 +3337,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = EntityMngr.GetCritter(item->GetCritterId());
+
         if (cr != nullptr) {
             if (item->GetIsHidden()) {
                 cr->Send_ChosenRemoveItem(item);
@@ -3345,6 +3345,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             else {
                 cr->Send_ChosenAddItem(item);
             }
+
             cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
     }
@@ -3361,6 +3362,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
+
         if (map != nullptr) {
             map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
         }
@@ -3375,8 +3377,10 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
+
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         const auto* map = EntityMngr.GetMap(item->GetMapId());
+
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
@@ -3394,6 +3398,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
+
         if (map != nullptr) {
             map->GetLocation()->GeckCount += item->GetIsGeck() ? 1 : -1;
         }
@@ -3423,6 +3428,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     // Moving
     if (cr->IsMoving()) {
         auto* map = EntityMngr.GetMap(cr->GetMapId());
+
         if (map != nullptr && cr->IsAlive() && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
 
@@ -4677,29 +4683,19 @@ void FOServer::Process_RemoteCall(Player* player)
     ScriptSys->HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
-    if (proto_item == nullptr || count == 0) {
-        return nullptr;
+    if (count == 0) {
+        throw GenericException("Item count is zero");
     }
 
+    const auto* proto = ProtoMngr.GetProtoItem(pid);
+
     const auto add_item = [&, this]() -> Item* {
-        if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
-            return nullptr;
-        }
-
-        auto* item = ItemMngr.CreateItem(pid, proto_item->GetStackable() ? count : 1, props);
-        if (item == nullptr) {
-            return nullptr;
-        }
-
-        if (!map->AddItem(item, hx, hy, nullptr)) {
-            ItemMngr.DestroyItem(item);
-            return nullptr;
-        }
+        auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);
+        map->AddItem(item, hx, hy, nullptr);
 
         return item;
     };
@@ -4707,7 +4703,8 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
     auto* item = add_item();
 
     // Non-stacked items
-    if (item != nullptr && !proto_item->GetStackable() && count > 1) {
+    if (item != nullptr && !proto->GetStackable() && count > 1) {
+        // Todo: maybe prohibit bulk creation of non-stacked items
         RUNTIME_ASSERT(count < 1000);
 
         for (uint i = 0; i < count; i++) {

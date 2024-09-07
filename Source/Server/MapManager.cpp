@@ -77,13 +77,12 @@ void MapManager::LoadFromResources()
         auto map_file = map_files.GetCurFile();
         auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
-        const auto pid = _engine->ToHashedString(map_file.GetName());
-        const auto* pmap = _engine->ProtoMngr.GetProtoMap(pid);
-        RUNTIME_ASSERT(pmap);
+        const auto map_pid = _engine->ToHashedString(map_file.GetName());
+        const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
         auto&& static_map = std::make_unique<StaticMap>();
-        const auto map_width = pmap->GetWidth();
-        const auto map_height = pmap->GetHeight();
+        const auto map_width = map_proto->GetWidth();
+        const auto map_height = map_proto->GetHeight();
 
         if (_engine->Settings.ProtoMapStaticGrid) {
             static_map->HexField = std::make_unique<StaticTwoDimensionalGrid<StaticMap::Field, uint16>>(map_width, map_height);
@@ -141,7 +140,7 @@ void MapManager::LoadFromResources()
                     const auto hy = cr->GetHexY();
 
                     if (hx >= map_width || hy >= map_height) {
-                        throw MapManagerException("Invalid critter position on map", pmap->GetName(), cr->GetName(), hx, hy);
+                        throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetName(), hx, hy);
                     }
                 }
             }
@@ -181,7 +180,7 @@ void MapManager::LoadFromResources()
                         const auto hy = item->GetHexY();
 
                         if (hx >= map_width || hy >= map_height) {
-                            throw MapManagerException("Invalid item position on map", pmap->GetName(), item->GetName(), hx, hy);
+                            throw MapManagerException("Invalid item position on map", map_proto->GetName(), item->GetName(), hx, hy);
                         }
                     }
 
@@ -190,7 +189,7 @@ void MapManager::LoadFromResources()
                         item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(item->GetSceneryScript());
 
                         if (!item->SceneryScriptFunc) {
-                            throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
+                            throw MapManagerException("Can't bind static item scenery function", map_proto->GetName(), item->GetSceneryScript());
                         }
                     }
 
@@ -198,7 +197,7 @@ void MapManager::LoadFromResources()
                         item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(item->GetTriggerScript());
 
                         if (!item->TriggerScriptFunc) {
-                            throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
+                            throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), item->GetTriggerScript());
                         }
                     }
 
@@ -290,17 +289,17 @@ void MapManager::LoadFromResources()
         static_map->ChildItemBillets.shrink_to_fit();
         static_map->StaticItems.shrink_to_fit();
 
-        _staticMaps.emplace(pmap, std::move(static_map));
+        _staticMaps.emplace(map_proto, std::move(static_map));
     }
 
     RUNTIME_ASSERT(_engine->ProtoMngr.GetProtoMaps().size() == _staticMaps.size());
 }
 
-auto MapManager::GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*
+auto MapManager::GetStaticMap(const ProtoMap* proto) const -> const StaticMap*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _staticMaps.find(proto_map);
+    const auto it = _staticMaps.find(proto);
     RUNTIME_ASSERT(it != _staticMaps.end());
 
     return it->second.get();
@@ -314,79 +313,59 @@ void MapManager::GenerateMapContent(Map* map)
 
     unordered_map<ident_t, ident_t> id_map;
 
-    // Generate npc
+    // Generate critters
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
-        const auto* npc = _engine->CrMngr.CreateCritter(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
+        const auto* cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir());
 
-        if (npc == nullptr) {
-            WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
-            continue;
-        }
-
-        id_map.emplace(base_cr_id, npc->GetId());
+        id_map.emplace(base_cr_id, cr->GetId());
     }
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
-        // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
-
-        if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
-            continue;
-        }
 
         id_map.emplace(base_item_id, item->GetId());
 
-        // Other values
         if (item->GetIsCanOpen() && item->GetOpened()) {
             item->SetIsLightThru(true);
         }
 
-        if (!map->AddItem(item, base_item->GetHexX(), base_item->GetHexY(), nullptr)) {
-            WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
-            _engine->ItemMngr.DestroyItem(item);
-        }
+        map->AddItem(item, base_item->GetHexX(), base_item->GetHexY(), nullptr);
     }
 
     // Add children items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->ChildItemBillets) {
-        // Map id
-        ident_t parent_id;
+        // Map id to owner
+        ident_t owner_id;
 
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
-            parent_id = base_item->GetCritterId();
+            owner_id = base_item->GetCritterId();
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
-            parent_id = base_item->GetContainerId();
+            owner_id = base_item->GetContainerId();
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
         }
 
-        if (id_map.count(parent_id) == 0) {
+        if (id_map.count(owner_id) == 0) {
             continue;
         }
 
-        parent_id = id_map[parent_id];
+        owner_id = id_map[owner_id];
 
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
 
-        if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
-            continue;
-        }
-
         // Add to parent
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
-            auto* cr_cont = map->GetCritter(parent_id);
+            auto* cr_cont = map->GetCritter(owner_id);
             RUNTIME_ASSERT(cr_cont);
 
             _engine->CrMngr.AddItemToCritter(cr_cont, item, false);
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
-            auto* item_cont = map->GetItem(parent_id);
+            auto* item_cont = map->GetItem(owner_id);
             RUNTIME_ASSERT(item_cont);
 
             item_cont->AddItemToContainer(item, ContainerItemStack::Root);
@@ -449,10 +428,6 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
 
-    if (proto == nullptr) {
-        throw MapManagerException("Location proto is not loaded", proto_id);
-    }
-
     if (wx >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
         throw MapManagerException("Invalid location coordinates", proto_id);
     }
@@ -508,26 +483,19 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
         }
     }
 
-    return !loc->IsDestroyed() ? loc : nullptr;
+    return loc;
 }
 
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
+    NON_CONST_METHOD_HINT();
 
-    if (proto_map == nullptr) {
-        throw MapManagerException("Proto map is not loaded", proto_id);
-    }
+    const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
+    const auto* static_map = GetStaticMap(proto);
 
-    const auto it = _staticMaps.find(proto_map);
-
-    if (it == _staticMaps.end()) {
-        throw MapManagerException("Static map not found", proto_id);
-    }
-
-    auto* map = new Map(_engine, ident_t {}, proto_map, loc, it->second.get());
+    auto* map = new Map(_engine, ident_t {}, proto, loc, static_map);
     map->SetLocId(loc->GetId());
 
     auto& maps = loc->GetMapsRaw();
@@ -598,21 +566,6 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
     }
 
     return nullptr;
-}
-
-auto MapManager::GetLocationByMap(ident_t map_id) noexcept -> Location*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto* map = _engine->EntityMngr.GetMap(map_id);
-
-    if (map == nullptr) {
-        return nullptr;
-    }
-
-    return map->GetLocation();
 }
 
 auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*
@@ -1927,6 +1880,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
 
     // Critters
     constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
+
     for (auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
@@ -1949,7 +1903,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
             const auto real_dir = GeometryHelper::GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
-            auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
+            auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = static_cast<int>(dirs_count) - i;
@@ -1970,6 +1924,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
             trace.BeginHy = hy;
             trace.EndHx = cr->GetHexX();
             trace.EndHy = cr->GetHexY();
+
             TraceBullet(trace);
 
             if (!trace.IsFullTrace) {
@@ -1994,7 +1949,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
             }
 
             sneak_opp /= _engine->Settings.SneakDivider;
-            vis = (look_self > sneak_opp ? look_self - sneak_opp : 0);
+            vis = look_self > sneak_opp ? look_self - sneak_opp : 0;
         }
         else {
             vis = look_self;
@@ -2028,10 +1983,12 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
             }
             else {
                 auto dist = GeometryHelper::DistGame(hx, hy, item->GetHexX(), item->GetHexY());
+
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }
-                allowed = (look >= dist);
+
+                allowed = look >= dist;
             }
 
             if (allowed) {

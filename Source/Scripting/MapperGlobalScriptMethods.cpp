@@ -53,11 +53,6 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid item prototype");
-    }
-
     return mapper->CreateItem(pid, hx, hy, nullptr);
 }
 
@@ -71,11 +66,6 @@
 {
     if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
-    }
-
-    const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid critter prototype");
     }
 
     return mapper->CreateCritter(pid, hx, hy);
@@ -402,18 +392,16 @@
 
     // Add protos to sub tab
     if (!itemPids.empty()) {
-        vector<const ProtoItem*> proto_items;
+        vector<const ProtoItem*> protos;
 
         for (size_t i = 0; i < itemPids.size(); i++) {
-            const auto* proto_item = mapper->ProtoMngr.GetProtoItem(itemPids[i]);
-            if (proto_item != nullptr) {
-                proto_items.push_back(proto_item);
-            }
+            const auto* proto = mapper->ProtoMngr.GetProtoItem(itemPids[i]);
+            protos.push_back(proto);
         }
 
-        if (!proto_items.empty()) {
+        if (!protos.empty()) {
             auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.ItemProtos = proto_items;
+            stab.ItemProtos = protos;
         }
     }
     else {
@@ -465,18 +453,16 @@
 
     // Add protos to sub tab
     if (!critterPids.empty()) {
-        vector<const ProtoCritter*> cr_protos;
+        vector<const ProtoCritter*> protos;
 
         for (size_t i = 0; i < critterPids.size(); i++) {
-            const auto* cr_proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
-            if (cr_proto != nullptr) {
-                cr_protos.push_back(cr_proto);
-            }
+            const auto* proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
+            protos.push_back(proto);
         }
 
-        if (!cr_protos.empty()) {
+        if (!protos.empty()) {
             auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.NpcProtos = cr_protos;
+            stab.NpcProtos = protos;
         }
     }
     else {

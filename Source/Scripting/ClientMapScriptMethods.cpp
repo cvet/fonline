@@ -106,20 +106,16 @@
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
-        const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        if (proto_item == nullptr) {
-            return;
-        }
-
-        color = proto_item->GetIsColorize() ? proto_item->GetLightColor() : ucolor::clear;
-        is_flat = proto_item->GetIsFlat();
-        const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
+        const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        color = proto->GetIsColorize() ? proto->GetLightColor() : ucolor::clear;
+        is_flat = proto->GetIsFlat();
+        const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;
         draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
-        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto_item->GetDrawOrderOffsetHexY()));
-        corner = proto_item->GetCorner();
-        disable_egg = proto_item->GetDisableEgg();
-        contour_color = proto_item->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
+        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto->GetDrawOrderOffsetHexY()));
+        corner = proto->GetCorner();
+        disable_egg = proto->GetDisableEgg();
+        contour_color = proto->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);

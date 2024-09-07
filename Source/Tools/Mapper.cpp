@@ -2363,10 +2363,6 @@ auto FOMapper::CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
 
     RUNTIME_ASSERT(CurMap);
 
-    const auto* proto = ProtoMngr.GetProtoCritter(pid);
-    if (proto == nullptr) {
-        return nullptr;
-    }
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
@@ -2394,9 +2390,7 @@ auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> I
 
     // Checks
     const auto* proto = ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        return nullptr;
-    }
+
     if (owner == nullptr && (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight())) {
         return nullptr;
     }

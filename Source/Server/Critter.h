@@ -86,7 +86,7 @@ public:
     [[nodiscard]] auto IsDead() const noexcept -> bool;
     [[nodiscard]] auto IsKnockout() const noexcept -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
-    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hidden) noexcept -> Item*;
+    [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetRawInvItems() noexcept -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetInvItems() noexcept -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetConstInvItems() const -> vector<const Item*> { return vec_static_cast<const Item*>(_invItems); }
