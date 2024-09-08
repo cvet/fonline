@@ -924,12 +924,8 @@ void FOMapper::IntDraw()
 
         if (GetTabIndex() < static_cast<uint>((*CurItemProtos).size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto&& proto_texts = ProtoMngr.GetParsedTexts().at(proto_item->GetTypeName()).at(proto_item->GetProtoId());
-            auto it = std::find_if(proto_texts.begin(), proto_texts.end(), [this](auto&& pack_pair) { return pack_pair.first == _curLang.GetName(); });
-            if (it != proto_texts.end()) {
-                const auto info = it->second.GetStr(proto_item->GetProtoId().as_uint());
-                SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
-            }
+
+            SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IsCritMode()) {
