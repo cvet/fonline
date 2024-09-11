@@ -278,14 +278,6 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastMapId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, LastMapPid);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastLocationId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexX);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexY);

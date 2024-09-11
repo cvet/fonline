@@ -1502,11 +1502,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
         cr->SetHexY(hy);
         cr->ChangeDir(dir);
 
-        cr->SetLastLocationId(map->GetLocation()->GetId());
-        cr->SetLastLocationPid(map->GetLocation()->GetProtoId());
-        cr->SetLastMapId(map->GetId());
-        cr->SetLastMapPid(map->GetProtoId());
-
         if (!cr->GetIsControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             vec_add_unique_value(cr_ids, cr->GetId());
