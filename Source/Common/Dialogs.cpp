@@ -209,7 +209,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
 
             for (size_t n = 0; n < count; n++) {
-                auto str = _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[").str();
+                string str = _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[");
                 pack->Texts[i].second.AddStr(new_str_num, std::move(str));
             }
         }

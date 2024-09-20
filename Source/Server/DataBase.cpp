@@ -843,7 +843,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
 
         unqlite* ping_db = nullptr;
-        const auto ping_db_path = _str("{}/Ping.unqlite", storage_dir);
+        const string ping_db_path = _str("{}/Ping.unqlite", storage_dir);
         if (unqlite_open(&ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }

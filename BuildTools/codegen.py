@@ -806,6 +806,7 @@ def parseTags():
                             'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
                             'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid export property access ' + access
                     ptype = engineTypeToMetaType(toks[1])
+                    assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
                     name = toks[2]
                     
                     codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
@@ -939,6 +940,8 @@ def parseTags():
                 
                 if comp:
                     assert (entity, comp) in propertyComponents, 'Entity ' + entity + ' does not has component ' + comp
+                
+                assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
                 
                 codeGenTags['Property'].append((entity, access, ptype, name, flags, comment))
                 

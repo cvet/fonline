@@ -1796,8 +1796,9 @@
 [[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
 {
     string cfg_user;
+
     for (const auto& [key, value] : keyValues) {
-        cfg_user += _str("{} = {}\n", key, value).str();
+        cfg_user += _str("{} = {}\n", key, value);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
@@ -1809,8 +1810,9 @@
 [[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const vector<string>& keyValues)
 {
     string cfg_user;
+
     for (size_t i = 0; i + 1 < keyValues.size(); i += 2) {
-        cfg_user += _str("{} = {}\n", keyValues[i], keyValues[i + 1]).str();
+        cfg_user += _str("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);

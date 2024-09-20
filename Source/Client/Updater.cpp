@@ -195,7 +195,7 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_settings.ResourcesDir).combinePath(fname).str();
+    return _str(_settings.ResourcesDir).combinePath(fname);
 }
 
 void Updater::AddText(uint str_num, string_view num_str_str)

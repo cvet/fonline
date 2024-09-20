@@ -112,7 +112,7 @@ auto Platform::GetExePath() -> optional<string>
         }
     }
 
-    return _str().parseWideChar(path.data()).str();
+    return _str().parseWideChar(path.data());
 
 #elif FO_LINUX
     char path[FILENAME_MAX];

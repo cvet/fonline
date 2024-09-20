@@ -741,7 +741,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = _str("{}: {} => {}", entry.x, entry.y0, entry.y1).str();
+            string name = _str("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
             if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", const_cast<float*>(&entry.y0));
@@ -798,7 +798,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = _str("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a).str();
+            string name = _str("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
 
             if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
@@ -1275,9 +1275,9 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
         for (size_t i = 0; i < get_size(); i++) {
             auto&& obj = get(i);
 
-            const string name = _str("{} ({})", obj->getName().empty() ? _str("{}", i + 1).str() : obj->getName(), obj->getClassName());
+            const string name = _str("{} ({})", obj->getName().empty() ? _str("{}", i + 1) : obj->getName(), obj->getClassName());
 
-            if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(obj.get())).c_str(), false, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }

@@ -830,12 +830,12 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
     auto free_ws = ScopeCallback([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
     const string error_str = _str().parseWideChar(ws).trim();
 
-    return _str("{} ({})", error_str, error_code).str();
+    return _str("{} ({})", error_str, error_code);
 
 #else
     const string error_str = _str(::strerror(errno)).trim();
 
-    return _str("{} ({})", error_str, errno).str();
+    return _str("{} ({})", error_str, errno);
 #endif
 }
 

@@ -67,7 +67,7 @@ void ResourceManager::IndexFiles()
         auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
-            _soundNames.emplace(_str(file_header.GetPath()).eraseFileExtension().lower().str(), file_header.GetPath());
+            _soundNames.emplace(_str(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
         }
     }
 

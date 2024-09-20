@@ -42,43 +42,42 @@ class _str final
 
 public:
     _str() = default;
-    _str(const _str&) = default;
-    explicit _str(string s) :
-        _s(std::move(s))
+    explicit _str(const char* s) noexcept :
+        _sv {s}
     {
     }
-    explicit _str(const char* s) :
-        _s(s)
+    explicit _str(string_view s) noexcept :
+        _sv {s}
     {
     }
-    explicit _str(string_view s) :
-        _s(s)
+    explicit _str(string&& s) noexcept :
+        _s {std::move(s)},
+        _sv {_s}
     {
     }
     template<typename... Args>
-    explicit _str(string_view format, Args... args) :
-        _s(fmt::format(format, args...))
+    explicit _str(string_view format, Args&&... args) :
+        _s {fmt::format(format, std::forward<Args>(args)...)},
+        _sv {_s}
     {
     }
-    _str(_str&&) noexcept = default;
-    auto operator=(const _str&) -> _str& = default;
-    auto operator=(_str&&) noexcept -> _str& = default;
+    _str(const _str&) = delete;
+    _str(_str&&) noexcept = delete;
+    auto operator=(const _str&) -> _str& = delete;
+    auto operator=(_str&&) noexcept -> _str& = delete;
     ~_str() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&&() noexcept { return std::move(_s); }
+    operator string&&();
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const noexcept { return _s; }
-    auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
-    auto operator+(string_view r) const -> _str { return _str(_s + string(r)); }
-    friend auto operator+(const _str& l, string_view r) -> _str { return _str(l._s + string(r)); }
-    auto operator==(string_view r) const noexcept -> bool { return _s == r; }
-    auto operator!=(string_view r) const noexcept -> bool { return _s != r; }
-    friend auto operator!=(const _str& l, string_view r) noexcept -> bool { return l._s != r; }
+    operator string_view() const noexcept { return _sv; }
 
-    [[nodiscard]] auto c_str() const noexcept -> const char* { return _s.c_str(); }
-    [[nodiscard]] auto str() const -> string { return _s; }
-    [[nodiscard]] auto strv() const noexcept -> string_view { return _s; }
+    auto operator==(string_view r) const noexcept -> bool { return _sv == r; }
+    auto operator!=(string_view r) const noexcept -> bool { return _sv != r; }
+
+    [[nodiscard]] auto c_str() -> const char*;
+    [[nodiscard]] auto str() -> string&&;
+    [[nodiscard]] auto strv() const -> string_view { return _sv; }
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
@@ -90,6 +89,18 @@ public:
     [[nodiscard]] auto endsWith(string_view r) const noexcept -> bool;
     [[nodiscard]] auto isValidUtf8() const noexcept -> bool;
     [[nodiscard]] auto lengthUtf8() const noexcept -> size_t;
+
+    [[nodiscard]] auto isNumber() const noexcept -> bool;
+    [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
+    [[nodiscard]] auto toInt() const noexcept -> int;
+    [[nodiscard]] auto toUInt() const noexcept -> uint;
+    [[nodiscard]] auto toInt64() const noexcept -> int64;
+    [[nodiscard]] auto toFloat() const noexcept -> float;
+    [[nodiscard]] auto toDouble() const noexcept -> double;
+    [[nodiscard]] auto toBool() const noexcept -> bool;
+
+    [[nodiscard]] auto split(char divider) const -> vector<string>;
+    [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
     auto substringUntil(char separator) -> _str&;
     auto substringUntil(string_view separator) -> _str&;
@@ -106,29 +117,15 @@ public:
     auto upper() -> _str&;
     auto upperUtf8() -> _str&;
 
-    [[nodiscard]] auto split(char divider) const -> vector<string>;
-    [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
-
-    [[nodiscard]] auto isNumber() const noexcept -> bool;
-    [[nodiscard]] auto isInt() const noexcept -> bool;
-    [[nodiscard]] auto isFloat() const noexcept -> bool;
-    [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
-    [[nodiscard]] auto toInt() const noexcept -> int;
-    [[nodiscard]] auto toUInt() const noexcept -> uint;
-    [[nodiscard]] auto toInt64() const noexcept -> int64;
-    [[nodiscard]] auto toUInt64() const noexcept -> uint64;
-    [[nodiscard]] auto toFloat() const noexcept -> float;
-    [[nodiscard]] auto toDouble() const noexcept -> double;
-    [[nodiscard]] auto toBool() const noexcept -> bool;
-
     auto formatPath() -> _str&;
     auto extractDir() -> _str&;
     auto extractFileName() -> _str&;
-    auto getFileExtension() -> _str&; // Extension without dot
+    auto getFileExtension() -> _str&; // Extension without dot and lowered
     auto eraseFileExtension() -> _str&; // Erase extension with dot
     auto changeFileName(string_view new_name) -> _str&;
     auto combinePath(string_view path) -> _str&;
     auto normalizePathSlashes() -> _str&;
+
     auto normalizeLineEndings() -> _str&;
 
 #if FO_WINDOWS
@@ -137,7 +134,10 @@ public:
 #endif
 
 private:
+    void ownStorage();
+
     string _s {};
+    string_view _sv {};
 
     // ReSharper restore CppInconsistentNaming
 };
@@ -145,28 +145,14 @@ private:
 namespace utf8
 {
     auto IsValid(uint ucs) noexcept -> bool;
-    auto Decode(string_view str, uint* length) noexcept -> uint;
-    auto Encode(uint ucs, char (&buf)[4]) noexcept -> uint;
+    auto DecodeStrNtLen(const char* str) noexcept -> size_t;
+    auto Decode(const char* str, size_t& length) noexcept -> uint;
+    auto Encode(uint ucs, char (&buf)[4]) noexcept -> size_t;
     auto Lower(uint ucs) noexcept -> uint;
     auto Upper(uint ucs) noexcept -> uint;
 }
 
 template<>
-struct fmt::formatter<_str>
+struct fmt::formatter<_str> : formatter<std::string_view>
 {
-    // ReSharper disable CppInconsistentNaming
-
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
-    template<typename FormatContext>
-    auto format(const _str& s, FormatContext& ctx)
-    {
-        return format_to(ctx.out(), "{}", s.strv());
-    }
-
-    // ReSharper restore CppInconsistentNaming
 };

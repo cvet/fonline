@@ -80,7 +80,8 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
         if (line.length() >= 2 && line.back() == '\\' && (line[line.length() - 2] == ' ' || line[line.length() - 2] == '\t')) {
             line.pop_back();
-            accum_line = _str(line).trim() + " ";
+            accum_line = _str(line).trim();
+            accum_line.append(" ");
             continue;
         }
 

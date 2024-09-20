@@ -70,7 +70,7 @@
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const auto module_name = _str(st_entry->file).extractFileName().eraseFileExtension().str();
+        const string module_name = _str(st_entry->file).extractFileName().eraseFileExtension();
 
         WriteLog("{}: {}", module_name, text);
     }
@@ -270,7 +270,11 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
-    return utf8::Decode(text, &length);
+    size_t decode_length = text.length();
+    const auto ch = utf8::Decode(text.data(), decode_length);
+
+    length = static_cast<uint>(decode_length);
+    return ch;
 }
 
 ///# ...

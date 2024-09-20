@@ -67,7 +67,7 @@ public:
     bool KeyPressed[0x100] {};
 
 private:
-    [[nodiscard]] auto IsInvalidChar(string_view str, uint flags, uint& length) const -> bool;
+    [[nodiscard]] auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
 
     InputSettings& _settings;
     SpriteManager& _sprMngr;

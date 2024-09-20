@@ -604,7 +604,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
 {
     STACK_TRACE_ENTRY();
 
-    auto query = _str(path).combinePath("*").str();
+    string query = _str(path).combinePath("*");
     if (!ext.empty()) {
         query += "." + string(ext);
     }

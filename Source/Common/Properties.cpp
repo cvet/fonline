@@ -722,9 +722,6 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
         if (prop->_baseSize == 4) {
             return static_cast<int>(GetValue<uint>(prop));
         }
-        if (prop->_baseSize == 8) {
-            return static_cast<int>(GetValue<uint64>(prop));
-        }
     }
 
     throw PropertiesException("Invalid property for get as int", prop->GetName());
@@ -737,42 +734,39 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
-        return any_t {_str("{}", GetValue<bool>(prop)).str()};
+        return any_t {_str("{}", GetValue<bool>(prop))};
     }
     else if (prop->_isFloat) {
         if (prop->_isSingleFloat) {
-            return any_t {_str("{}", GetValue<float>(prop)).str()};
+            return any_t {_str("{}", GetValue<float>(prop))};
         }
         if (prop->_isDoubleFloat) {
-            return any_t {_str("{}", GetValue<double>(prop)).str()};
+            return any_t {_str("{}", GetValue<double>(prop))};
         }
     }
     else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            return any_t {_str("{}", GetValue<char>(prop)).str()};
+            return any_t {_str("{}", GetValue<char>(prop))};
         }
         if (prop->_baseSize == 2) {
-            return any_t {_str("{}", GetValue<int16>(prop)).str()};
+            return any_t {_str("{}", GetValue<int16>(prop))};
         }
         if (prop->_baseSize == 4) {
             return any_t {_str("{}", GetValue<int>(prop))};
         }
         if (prop->_baseSize == 8) {
-            return any_t {_str("{}", GetValue<int64>(prop)).str()};
+            return any_t {_str("{}", GetValue<int64>(prop))};
         }
     }
     else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            return any_t {_str("{}", GetValue<uint8>(prop)).str()};
+            return any_t {_str("{}", GetValue<uint8>(prop))};
         }
         if (prop->_baseSize == 2) {
-            return any_t {_str("{}", GetValue<uint16>(prop)).str()};
+            return any_t {_str("{}", GetValue<uint16>(prop))};
         }
         if (prop->_baseSize == 4) {
-            return any_t {_str("{}", GetValue<uint>(prop)).str()};
-        }
-        if (prop->_baseSize == 8) {
-            return any_t {_str("{}", GetValue<uint64>(prop)).str()};
+            return any_t {_str("{}", GetValue<uint>(prop))};
         }
     }
 
@@ -820,9 +814,6 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
         else if (prop->_baseSize == 4) {
             SetValue<uint>(prop, static_cast<uint>(value));
         }
-        else if (prop->_baseSize == 8) {
-            SetValue<uint64>(prop, static_cast<uint64>(value));
-        }
     }
     else {
         throw PropertiesException("Invalid property for set as int", prop->GetName());
@@ -869,9 +860,6 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
         }
         else if (prop->_baseSize == 4) {
             SetValue<uint>(prop, static_cast<uint>(_str(value).toInt()));
-        }
-        else if (prop->_baseSize == 8) {
-            SetValue<uint64>(prop, static_cast<uint64>(_str(value).toUInt64()));
         }
     }
     else {
@@ -1023,9 +1011,6 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         else if (prop->_baseSize == 4) {
             SetValue<uint>(prop, static_cast<uint>(value));
         }
-        else if (prop->_baseSize == 8) {
-            SetValue<uint64>(prop, static_cast<uint64>(value));
-        }
     }
     else {
         throw PropertiesException("Invalid property for set as int props", prop->GetName());
@@ -1099,9 +1084,6 @@ void Properties::SetValueAsAnyProps(int property_index, const any_t& value)
         }
         else if (prop->_baseSize == 4) {
             SetValue<uint>(prop, _str(value).toUInt());
-        }
-        else if (prop->_baseSize == 8) {
-            SetValue<uint64>(prop, _str(value).toUInt64());
         }
     }
     else {
@@ -1273,7 +1255,10 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     prop->_isUInt8 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1;
     prop->_isUInt16 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2;
     prop->_isUInt32 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4;
-    prop->_isUInt64 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8;
+
+    if (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8) {
+        throw PropertyRegistrationException("Type 'uint64' is not supprted", prop->_propName);
+    }
 
     prop->_isSingleFloat = prop->_isFloat && prop->_baseSize == 4;
     prop->_isDoubleFloat = prop->_isFloat && prop->_baseSize == 8;

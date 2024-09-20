@@ -1367,7 +1367,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
 
     const auto get_format = [this](uint str_num) -> string {
         const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
-        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str();
+        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}");
     };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
@@ -1405,15 +1405,15 @@ void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
-    auto sstr = _str(str).str();
-    uint show_time = 0;
-
-    OnMapMessage.Fire(sstr, hx, hy, color, show_time);
-
     if (CurMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
+
+    auto sstr = string(str);
+    uint show_time = 0;
+
+    OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
     CurMap->AddMapText(sstr, hx, hy, color, std::chrono::milliseconds {show_time}, false, 0, 0);
 
@@ -2504,11 +2504,11 @@ void FOClient::Net_OnChosenTalk()
     const auto talk_time = _conn.InBuf.Read<uint>();
 
     map<string, any_t> params;
-    params["TalkerIsNpc"] = any_t {_str("{}", is_npc ? 1 : 0).str()};
-    params["TalkerId"] = any_t {_str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint()).str()};
-    params["Text"] = any_t {_str("{}", text_to_script).str()};
-    params["Answers"] = any_t {_str("{}", answers_to_script).str()};
-    params["TalkTime"] = any_t {_str("{}", talk_time).str()};
+    params["TalkerIsNpc"] = any_t {_str("{}", is_npc ? 1 : 0)};
+    params["TalkerId"] = any_t {_str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint())};
+    params["Text"] = any_t {_str("{}", text_to_script)};
+    params["Answers"] = any_t {_str("{}", answers_to_script)};
+    params["TalkTime"] = any_t {_str("{}", talk_time)};
     ShowScreen(SCREEN_DIALOG, params);
 }
 
@@ -2768,8 +2768,8 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
 
     map<string, any_t> params;
-    params["LocationId"] = any_t {_str("{}", loc_id).str()};
-    params["LocationEntrance"] = any_t {_str("{}", loc_ent).str()};
+    params["LocationId"] = any_t {_str("{}", loc_id)};
+    params["LocationEntrance"] = any_t {_str("{}", loc_ent)};
     ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
@@ -3738,7 +3738,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     // Parse command
     vector<string> args;
     const auto command_str = string(command);
-    std::stringstream ss(command_str);
+    std::istringstream ss(command_str);
+
     if (separator.length() > 0) {
         string arg;
         const auto sep = *separator.data();
@@ -3832,10 +3833,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         TryExit();
     }
     else if (cmd == "BytesSend") {
-        return _str("{}", _conn.GetBytesSend()).str();
+        return _str("{}", _conn.GetBytesSend());
     }
     else if (cmd == "BytesReceive") {
-        return _str("{}", _conn.GetBytesReceived()).str();
+        return _str("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
         auto w = _str(args[1]).toInt();

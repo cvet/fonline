@@ -130,7 +130,7 @@ auto Baker::MakeOutputPath(string_view path) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_settings.BakeOutput).combinePath(path).str();
+    return _str(_settings.BakeOutput).combinePath(path);
 }
 
 void Baker::BakeAll()
@@ -202,7 +202,7 @@ void Baker::BakeAll()
                 };
                 const auto make_output_path = [](string_view path) -> string {
                     if (_str(path).startsWith("art/critters/")) {
-                        return _str("art/critters/{}", _str(path.substr("art/critters/"_len)).lower()).str();
+                        return _str("art/critters/{}", _str(path.substr("art/critters/"_len)).lower());
                     }
                     return string(path);
                 };
@@ -253,8 +253,9 @@ void Baker::BakeAll()
 
                     // Skip not necessary files
                     if (!is_raw_only) {
-                        const auto ext = _str(output_path).getFileExtension().str();
+                        const string ext = _str(output_path).getFileExtension();
                         const auto& base_exts = _settings.BakeExtraFileExtensions;
+
                         if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
                             continue;
                         }
@@ -263,7 +264,7 @@ void Baker::BakeAll()
                     resource_names.emplace(output_path);
                     pack_resource_names.emplace(exclude_all_ext(output_path));
 
-                    const auto path_in_pack = _str(pack_name).combinePath(output_path).str();
+                    const string path_in_pack = _str(pack_name).combinePath(output_path);
 
                     if (!_settings.ForceBakering && DiskFileSystem::GetWriteTime(MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
                         continue;
@@ -282,7 +283,7 @@ void Baker::BakeAll()
                     UNUSED_VARIABLE(size);
                     UNUSED_VARIABLE(write_time);
                     if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
-                        const auto path_in_pack = _str(pack_name).combinePath(path).str();
+                        const string path_in_pack = _str(pack_name).combinePath(path);
                         DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
                         WriteLog("Delete outdated file {}", path_in_pack);
                     }
@@ -1190,7 +1191,8 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
         return it->second ? it->second.get() : nullptr;
     }
 
-    const auto ext = _str(path).getFileExtension();
+    const string ext = _str(path).getFileExtension();
+
     if (ext == "fopts") {
         if (auto file = _inputResources.ReadFile(path)) {
             _bakedFiles[path] = std::make_unique<File>(std::move(file));

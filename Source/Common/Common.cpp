@@ -292,7 +292,7 @@ auto GetStackTrace() -> string
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    std::stringstream ss;
+    std::ostringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
@@ -301,7 +301,7 @@ auto GetStackTrace() -> string
     for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st.CallTree[i];
 
-        ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().str() << " line " << entry->line << ")\n";
+        ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
@@ -356,25 +356,27 @@ auto GetRealStackTrace() -> string
     st.load_here(42);
     st.skip_n_firsts(2);
 
-    std::stringstream ss;
+    std::ostringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
     for (size_t i = 0; i < st.size(); ++i) {
         backward::ResolvedTrace trace = resolver.resolve(st[i]);
 
-        auto obj_func = trace.object_function;
+        string obj_func = trace.object_function;
+
         if (obj_func.length() > 100) {
             obj_func.resize(97);
             obj_func.append("...");
         }
 
-        auto file_name = _str(trace.source.filename).extractFileName().str();
+        string file_name = _str(trace.source.filename).extractFileName();
+
         if (!file_name.empty()) {
             file_name.append(" ");
         }
 
-        file_name += _str("{}", trace.source.line).str();
+        file_name += _str("{}", trace.source.line);
 
         ss << "- " << obj_func << " (" << file_name << ")\n";
     }

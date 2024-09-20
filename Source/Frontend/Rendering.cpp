@@ -242,7 +242,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     const auto depth_write_default = fofx.GetStr("Effect", "DepthWrite", "True");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
-        const auto pass_str = _str("_Pass{}", pass + 1).str();
+        const string pass_str = _str("_Pass{}", pass + 1);
 
         auto blend_func = _str(fofx.GetStr("Effect", _str("BlendFunc{}", pass_str), blend_func_default)).split(' ');
         RUNTIME_ASSERT(blend_func.size() == 2);

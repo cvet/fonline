@@ -196,7 +196,8 @@ void FOEditor::OpenAsset(string_view path)
         }
     }
 
-    const auto ext = _str(path).getFileExtension();
+    const string ext = _str(path).getFileExtension();
+
     if (ext == "fopts") {
         _newViews.emplace_back(std::make_unique<ParticleEditor>(path, *this));
     }

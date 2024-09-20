@@ -77,7 +77,7 @@ auto FileHeader::GetFullPath() const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_dataSource->GetPackName()).combinePath(_filePath).str();
+    return _str(_dataSource->GetPackName()).combinePath(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t

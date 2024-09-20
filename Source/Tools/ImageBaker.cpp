@@ -423,7 +423,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(_str("{}.pal", _str(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;
@@ -669,7 +669,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(_str("{}.pal", _str(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;

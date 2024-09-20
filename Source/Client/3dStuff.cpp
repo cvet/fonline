@@ -261,8 +261,9 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     // Create new
-    const auto tex_path = _str(model_path).extractDir().combinePath(texture_name);
+    const string tex_path = _str(model_path).extractDir().combinePath(texture_name);
     auto&& [tex, tex_data] = _textureLoader(tex_path);
+
     if (tex == nullptr) {
         return nullptr;
     }
@@ -2115,7 +2116,8 @@ auto ModelInformation::Load(string_view name) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    string ext = _str(name).getFileExtension();
+    const string ext = _str(name).getFileExtension();
+
     if (ext.empty()) {
         return false;
     }

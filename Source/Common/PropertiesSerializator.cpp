@@ -155,7 +155,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             PARSE_VALUE(IsUInt8(), uint8, int64);
             PARSE_VALUE(IsUInt16(), uint16, int64);
             PARSE_VALUE(IsUInt32(), uint, int64);
-            PARSE_VALUE(IsUInt64(), uint64, int64);
             PARSE_VALUE(IsSingleFloat(), float, double);
             PARSE_VALUE(IsDoubleFloat(), double, double);
             PARSE_VALUE(IsBool(), bool, bool);
@@ -237,9 +236,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     else if (prop->IsUInt32()) {
                         PARSE_VALUE(uint, int64);
                     }
-                    else if (prop->IsUInt64()) {
-                        PARSE_VALUE(uint64, int64);
-                    }
                     else if (prop->IsSingleFloat()) {
                         PARSE_VALUE(float, double);
                     }
@@ -279,16 +275,16 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     return name_resolver.ResolveEnumValueName(prop->GetDictKeyTypeName(), enum_value);
                 }
                 else if (prop->GetDictKeySize() == 1) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int8*>(p))).str();
+                    return _str("{}", static_cast<int>(*reinterpret_cast<const int8*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 2) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int16*>(p))).str();
+                    return _str("{}", static_cast<int>(*reinterpret_cast<const int16*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 4) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int*>(p))).str();
+                    return _str("{}", static_cast<int>(*reinterpret_cast<const int*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 8) {
-                    return _str("{}", static_cast<int64>(*reinterpret_cast<const int64*>(p))).str();
+                    return _str("{}", static_cast<int64>(*reinterpret_cast<const int64*>(p)));
                 }
                 throw UnreachablePlaceException(LINE_STR);
             };
@@ -364,9 +360,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                                     }
                                     else if (prop->IsUInt32()) {
                                         PARSE_VALUE(uint, int64);
-                                    }
-                                    else if (prop->IsUInt64()) {
-                                        PARSE_VALUE(uint64, int64);
                                     }
                                     else if (prop->IsSingleFloat()) {
                                         PARSE_VALUE(float, double);
@@ -460,9 +453,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                         else if (prop->IsUInt32()) {
                             PARSE_VALUE(uint, int64);
                         }
-                        else if (prop->IsUInt64()) {
-                            PARSE_VALUE(uint64, int64);
-                        }
                         else if (prop->IsSingleFloat()) {
                             PARSE_VALUE(float, double);
                         }
@@ -547,9 +537,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         else if (prop->IsUInt32()) {
             *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(_str(std::get<string>(some_value)).toUInt());
         }
-        else if (prop->IsUInt64()) {
-            *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(_str(std::get<string>(some_value)).toUInt64());
-        }
         else if (prop->IsSingleFloat()) {
             *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(_str(std::get<string>(some_value)).toFloat());
         }
@@ -629,9 +616,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         } \
         else if (prop->IsUInt32()) { \
             *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(std::get<t>(value)); \
-        } \
-        else if (prop->IsUInt64()) { \
-            *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(std::get<t>(value)); \
         } \
         else if (prop->IsSingleFloat()) { \
             *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(std::get<t>(value)); \
@@ -805,9 +789,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->IsUInt32()) {
                 PARSE_VALUE(uint);
-            }
-            else if (prop->IsUInt64()) {
-                PARSE_VALUE(uint64);
             }
             else if (prop->IsSingleFloat()) {
                 PARSE_VALUE(float);
@@ -1129,9 +1110,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                         else if (prop->IsUInt32()) {
                             PARSE_VALUE(uint);
                         }
-                        else if (prop->IsUInt64()) {
-                            PARSE_VALUE(uint64);
-                        }
                         else if (prop->IsSingleFloat()) {
                             PARSE_VALUE(float);
                         }
@@ -1223,9 +1201,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                     }
                     else if (prop->IsUInt32()) {
                         PARSE_VALUE(uint);
-                    }
-                    else if (prop->IsUInt64()) {
-                        PARSE_VALUE(uint64);
                     }
                     else if (prop->IsSingleFloat()) {
                         PARSE_VALUE(float);

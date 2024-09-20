@@ -178,7 +178,6 @@ public:
     [[nodiscard]] auto IsUInt8() const noexcept -> bool { return _isUInt8; }
     [[nodiscard]] auto IsUInt16() const noexcept -> bool { return _isUInt16; }
     [[nodiscard]] auto IsUInt32() const noexcept -> bool { return _isUInt32; }
-    [[nodiscard]] auto IsUInt64() const noexcept -> bool { return _isUInt64; }
     [[nodiscard]] auto IsFloat() const noexcept -> bool { return _isFloat; }
     [[nodiscard]] auto IsSingleFloat() const noexcept -> bool { return _isSingleFloat; }
     [[nodiscard]] auto IsDoubleFloat() const noexcept -> bool { return _isDoubleFloat; }
@@ -247,7 +246,6 @@ private:
     bool _isUInt8 {};
     bool _isUInt16 {};
     bool _isUInt32 {};
-    bool _isUInt64 {};
     bool _isSingleFloat {};
     bool _isDoubleFloat {};
 

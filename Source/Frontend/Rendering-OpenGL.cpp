@@ -96,7 +96,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
         ERR_CODE_CASE(GL_STACK_UNDERFLOW);
 #endif
     default:
-        return _str("{:#X}", err_code).str();
+        return _str("{:#X}", err_code);
     }
 
 #undef ERR_CODE_CASE

@@ -77,7 +77,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
-            const auto health_file_name = _str("{}_Health.txt", exe_path ? _str(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
+            const string health_file_name = _str("{}_Health.txt", exe_path ? _str(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
             auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 
             if (health_file) {
