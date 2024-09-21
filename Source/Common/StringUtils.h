@@ -38,6 +38,8 @@
 class StringHelper final
 {
 public:
+    static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
+
     StringHelper() = default;
     explicit StringHelper(const char* s) noexcept :
         _sv {s}

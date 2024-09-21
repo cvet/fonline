@@ -495,8 +495,6 @@ auto StringHelper::splitToInt(char delimiter) const -> vector<int>
 #define USE_FROM_CHARS 0
 #endif
 
-static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
-
 template<typename T>
 static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
@@ -507,7 +505,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
     if (len == 0) {
         return false;
     }
-    if (len > MAX_NUMBER_STRING_LENGTH) {
+    if (len > StringHelper::MAX_NUMBER_STRING_LENGTH) {
         return false;
     }
 
@@ -556,7 +554,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
             // Assume all our strings are null terminated
             if (*end_ptr != 0) {
                 const auto count = static_cast<size_t>(end_ptr - ptr);
-                array<char, MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
                 std::memcpy(str_nt.data(), ptr, count);
                 str_nt[count] = 0;
 
@@ -647,7 +645,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 // Assume all our strings are null terminated
                 if (*end_ptr != 0) {
                     const auto count = static_cast<size_t>(end_ptr - ptr);
-                    array<char, MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                    array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
                     std::memcpy(str_nt.data(), ptr, count);
                     str_nt[count] = 0;
 
@@ -689,10 +687,10 @@ auto StringHelper::isExplicitBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (compareIgnoreCase("true")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
         return true;
     }
 
@@ -753,10 +751,10 @@ auto StringHelper::toBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (compareIgnoreCase("true")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
         return false;
     }
 

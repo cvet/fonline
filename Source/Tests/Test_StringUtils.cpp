@@ -37,6 +37,15 @@
 
 TEST_CASE("StringUtils")
 {
+    SECTION("Storage")
+    {
+        CHECK(format("hllo").erase('h').trim().str() == "llo");
+        CHECK(format("h\rllo").erase('h').trim().str() == "llo");
+        CHECK(format("hllo\t\n").erase('h').trim().str() == "llo");
+        CHECK(format("h    llo    ").erase('h').trim().str() == "llo");
+        CHECK(format("h d     g      llo                            gg  ").erase('h').trim().erase('d').trim().str() == "g      llo                            gg");
+    }
+
     SECTION("Length")
     {
         CHECK(format().length() == 0);
@@ -54,7 +63,7 @@ TEST_CASE("StringUtils")
     SECTION("Trim")
     {
         CHECK(format() == "");
-        CHECK(format().str() == "");
+        CHECK(format().str().empty());
         CHECK(*format().c_str() == 0);
         CHECK(format("Hello").str() == "Hello");
         CHECK(format("Hello   ").trim().str() == "Hello");
@@ -82,6 +91,8 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
+        CHECK(format("").isValidUtf8());
+        CHECK_FALSE(format(string(1, static_cast<char>(200))).isValidUtf8());
         CHECK(format(" приВЕт   ").isValidUtf8());
         CHECK(format(" приВЕт   ").isValidUtf8());
         CHECK(format(" Привет   ").compareIgnoreCaseUtf8(" приВЕт   "));
@@ -112,6 +123,7 @@ TEST_CASE("StringUtils")
         CHECK_FALSE(format("-0x").isNumber());
         CHECK(format("-0x5").isNumber());
         CHECK(format("-0xa").isNumber());
+        CHECK_FALSE(format("--1").isNumber());
         CHECK_FALSE(format("-0xy").isNumber());
         CHECK_FALSE(format("0XZ").isNumber());
         CHECK(format("0x1").isNumber());
@@ -130,9 +142,13 @@ TEST_CASE("StringUtils")
         CHECK(format("12").isNumber());
         CHECK(format("12.0f").isNumber());
         CHECK(format("1.0f").isNumber());
+        CHECK(format(string(StringHelper::MAX_NUMBER_STRING_LENGTH, '5')).isNumber());
+        CHECK_FALSE(format(string(StringHelper::MAX_NUMBER_STRING_LENGTH + 1, '5')).isNumber());
 
-        CHECK(format("TRUE").isExplicitBool());
-        CHECK(format("False").isExplicitBool());
+        CHECK(format("true").isExplicitBool());
+        CHECK(format("TRUE ").isExplicitBool());
+        CHECK(format("False  ").isExplicitBool());
+        CHECK(format(" \t  False\t").isExplicitBool());
         CHECK_FALSE(format("1").isExplicitBool());
         CHECK_FALSE(format("").isExplicitBool());
 
@@ -177,16 +193,26 @@ TEST_CASE("StringUtils")
         CHECK(format("18446744073709551614").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max() - 1));
         CHECK(format("18446744073709551616").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
         CHECK(format("184467440737095516546734734716").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(format(string(StringHelper::MAX_NUMBER_STRING_LENGTH, '5')).toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(format(string(StringHelper::MAX_NUMBER_STRING_LENGTH + 1, '5')).toInt64() == 0);
 
         CHECK(is_float_equal(format("455.6573").toFloat(), 455.6573f));
         CHECK(is_float_equal(format("0xFFFF").toFloat(), static_cast<float>(0xFFFF)));
         CHECK(is_float_equal(format("-0xFFFF").toFloat(), static_cast<float>(-0xFFFF)));
         CHECK(is_float_equal(format("0xFFFF.44").toFloat(), static_cast<float>(0)));
+        CHECK(is_float_equal(format("f").toFloat(), static_cast<float>(0)));
         CHECK(is_float_equal(format("{}", std::numeric_limits<float>::min()).toFloat(), std::numeric_limits<float>::min()));
         CHECK(is_float_equal(format("{}", std::numeric_limits<float>::max()).toFloat(), std::numeric_limits<float>::max()));
         CHECK(is_float_equal(format("34567774455.65745678555").toDouble(), 34567774455.65745678555));
         CHECK(is_float_equal(format("{}", std::numeric_limits<double>::min()).toDouble(), std::numeric_limits<double>::min()));
         CHECK(is_float_equal(format("{}", std::numeric_limits<double>::max()).toDouble(), std::numeric_limits<double>::max()));
+
+        CHECK(format(" true ").toBool() == true);
+        CHECK(format(" 1 ").toBool() == true);
+        CHECK(format(" 211 ").toBool() == true);
+        CHECK(format(" false ").toBool() == false);
+        CHECK(format(" 0").toBool() == false);
+        CHECK(format(" abc").toBool() == false);
     }
 
     SECTION("Split")
@@ -194,25 +220,32 @@ TEST_CASE("StringUtils")
         CHECK(format(" One Two    \tThree   ").split(' ') == vector<string>({"One", "Two", "Three"}));
         CHECK(format(" One Two    \tThree   ").split('\t') == vector<string>({"One Two", "Three"}));
         CHECK(format(" One Two    \tThree   ").split('X') == vector<string>({"One Two    \tThree"}));
+        CHECK(format(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
         CHECK(format(" 111 222  33Three g66 7").splitToInt(' ') == vector<int>({111, 222, 0, 0, 7}));
         CHECK(format("").splitToInt(' ') == vector<int>({}));
         CHECK(format("             ").splitToInt(' ') == vector<int>({}));
         CHECK(format("1").splitToInt(' ') == vector<int>({1}));
         CHECK(format("1 -2").splitToInt(' ') == vector<int>({1, -2}));
+        CHECK(format("\t1   X -2 X 3").splitToInt('X') == vector<int>({1, -2, 3}));
     }
 
     SECTION("Substring")
     {
         CHECK(format("abcdpZ ppplZ ls").substringUntil('Z').str() == "abcdp");
+        CHECK(format("abcdpZ ppplZ ls").substringUntil('X').str() == "abcdpZ ppplZ ls");
         CHECK(format("abcdpZ ppplZ ls").substringUntil("lZ").str() == "abcdpZ ppp");
+        CHECK(format("abcdpZ ppplZ ls").substringUntil("XXX").str() == "abcdpZ ppplZ ls");
         CHECK(format("abcdpZ ppplZ ls").substringAfter('Z').str() == " ppplZ ls");
+        CHECK(format("abcdpZ ppplZ ls").substringAfter('X').str().empty());
         CHECK(format("abcdpZ ppplZ ls").substringAfter("lZ").str() == " ls");
+        CHECK(format("abcdpZ ppplZ ls").substringAfter("XXX").str().empty());
     }
 
     SECTION("Modify")
     {
         CHECK(format("aaaBBBcccDBEFGh Hello !").erase('B').str() == "aaacccDEFGh Hello !");
         CHECK(format("aaaBBBcccDBEFaGh HelBlo Ba!").erase('a', 'B').str() == "BBcccDBEFlo Ba!");
+        CHECK(format("aaaBBBcccDBEFaGh HelBlo Ba!").erase('X', 'Y').str() == "aaaBBBcccDBEFaGh HelBlo Ba!");
         CHECK(format("aaaBBBcccDBEFaGh HelBlo Ba!").replace('a', 'X').str() == "XXXBBBcccDBEFXGh HelBlo BX!");
         CHECK(format("aaBDdDBaBBBDBcccDBEFaGh HelDBBlo Ba!").replace('D', 'B', 'X').str() == "aaBDdXaBBBXcccXEFaGh HelXBlo Ba!");
         CHECK(format("aaBDdDBaHelDBBlocccDBEFaGh HelDBBlo Ba!").replace("HelDBBlo", "X").str() == "aaBDdDBaXcccDBEFaGh X Ba!");
@@ -231,9 +264,12 @@ TEST_CASE("StringUtils")
         CHECK(format("./cur/next/../../last/FILE1.ZIP").formatPath().extractFileName().str() == "FILE1.ZIP");
         CHECK(format("./cur/next/../../last/a/FILE1.ZIP").formatPath().extractDir().str() == "last/a");
         CHECK(format("./cur/next/../../last/FILE1.ZIP").formatPath().changeFileName("NEWfile").str() == "last/NEWfile.zip");
+        CHECK(format("./cur/next/../../last").formatPath().changeFileName("NEWfile").str() == "last/NEWfile");
         CHECK(format("./cur/next/../../last/FILE1.ZIP").formatPath().getFileExtension().str() == "zip");
         CHECK(format("./cur/next/../../last/FILE1.ZIP").formatPath().eraseFileExtension().str() == "last/FILE1");
-        CHECK(format("./cur/next/../../last/a/").combinePath("x/y/z").str() == "last/a/x/y/z");
+        CHECK(format("cur/next/../../last/a/").combinePath("x/y/z").str() == "last/a/x/y/z");
+        CHECK(format("../cur/next/../../last/a/").combinePath("x/y/z").str() == "../last/a/x/y/z");
+        CHECK(format("../../cur/next/../../last/a/").combinePath("x/y/z").str() == "../../last/a/x/y/z");
         CHECK(format("D:\\MyDir\\X\\..\\Y\\.\\.\\Z\\").normalizePathSlashes().str() == "D:/MyDir/X/../Y/././Z/");
     }
 
