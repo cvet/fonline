@@ -1053,11 +1053,11 @@ void FOMapper::IntDraw()
         auto day_time = CurMap->GetGlobalDayTime();
         SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             format("Map '{}'\n"
-                 "Hex {} {}\n"
-                 "Time {} : {}\n"
-                 "Fps {}\n"
-                 "Tile layer {}\n"
-                 "{}",
+                   "Hex {} {}\n"
+                   "Time {} : {}\n"
+                   "Fps {}\n"
+                   "Tile layer {}\n"
+                   "{}",
                 CurMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
     }
