@@ -19,14 +19,18 @@
 #include <wayland-cursor.h>
 #include <wayland-egl.h>
 
-#include "wayland/xdg-activation.h"
-#include "wayland/xdg-decoration.h"
-#include "wayland/xdg-shell.h"
+#include "wayland-xdg-activation-client-protocol.h"
+#include "wayland-xdg-decoration-client-protocol.h"
+#include "wayland-xdg-shell-client-protocol.h"
+#include "wayland-fractional-scale-client-protocol.h"
+#include "wayland-viewporter-client-protocol.h"
+#include "wayland-cursor-shape-client-protocol.h"
 
-#include "../../server/TracyImGui.hpp"
+#include "profiler/TracyImGui.hpp"
 
 #include "Backend.hpp"
 #include "RunQueue.hpp"
+#include "profiler/TracyConfig.hpp"
 
 constexpr ImGuiKey s_keyTable[] = {
     /*   0 */ ImGuiKey_None,
@@ -160,10 +164,13 @@ constexpr ImGuiKey s_keyTable[] = {
 };
 
 static std::function<void()> s_redraw;
+static std::function<void(float)> s_scaleChanged;
+static std::function<int(void)> s_isBusy;
 static RunQueue* s_mainThreadTasks;
 
 static struct wl_display* s_dpy;
 static struct wl_compositor* s_comp;
+static uint32_t s_comp_version;
 static struct wl_surface* s_surf;
 static struct wl_egl_window* s_eglWin;
 static struct wl_shm* s_shm;
@@ -182,6 +189,12 @@ static struct xdg_activation_v1* s_activation;
 static struct xdg_activation_token_v1* s_actToken;
 static struct zxdg_decoration_manager_v1* s_decoration;
 static struct zxdg_toplevel_decoration_v1* s_tldec;
+static struct wp_fractional_scale_manager_v1* s_fractionalScale;
+static struct wp_fractional_scale_v1* s_fracSurf;
+static struct wp_viewporter* s_viewporter;
+static struct wp_viewport* s_viewport;
+static struct wp_cursor_shape_manager_v1* s_cursorShape;
+static struct wp_cursor_shape_device_v1* s_cursorShapeDev;
 static struct wl_keyboard* s_keyboard;
 static struct xkb_context* s_xkbCtx;
 static struct xkb_keymap* s_xkbKeymap;
@@ -189,29 +202,62 @@ static struct xkb_state* s_xkbState;
 static struct xkb_compose_table* s_xkbComposeTable;
 static struct xkb_compose_state* s_xkbComposeState;
 static xkb_mod_index_t s_xkbCtrl, s_xkbAlt, s_xkbShift, s_xkbSuper;
+static wp_cursor_shape_device_v1_shape s_mouseCursor;
+static uint32_t s_mouseCursorSerial;
+static bool s_hasFocus = false;
 
 struct Output
 {
     int32_t scale;
     wl_output* obj;
+    bool entered;
 };
 static std::unordered_map<uint32_t, std::unique_ptr<Output>> s_output;
-static int s_maxScale = 1;
-static int s_prevScale = 1;
+static int s_maxScale = 120;
+static int s_prevScale = 120;
 
 static bool s_running = true;
-static int s_w, s_h;
+static int s_width, s_height;
+static int s_prevWidth, s_prevHeight;
 static bool s_maximized;
 static uint64_t s_time;
 
 static wl_fixed_t s_wheelAxisX, s_wheelAxisY;
 static bool s_wheel;
 
+extern tracy::Config s_config;
+
+
+static void RecomputeScale()
+{
+    if( s_fracSurf ) return;
+
+    // On wl_compositor >= 6 the scale is sent explicitly via wl_surface.preferred_buffer_scale.
+    if ( s_comp_version >= 6 ) return;
+
+    int max = 1;
+    for( auto& out : s_output )
+    {
+        if( out.second->entered && out.second->scale > max ) max = out.second->scale;
+    }
+    s_maxScale = max * 120;
+    tracy::s_wasActive = true;
+}
+
 static void PointerEnter( void*, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surf, wl_fixed_t sx, wl_fixed_t sy )
 {
-    wl_pointer_set_cursor( pointer, serial, s_cursorSurf, s_cursorX, s_cursorY );
+    if( s_cursorShapeDev )
+    {
+        wp_cursor_shape_device_v1_set_shape( s_cursorShapeDev, serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT );
+        s_mouseCursor = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+        s_mouseCursorSerial = serial;
+    }
+    else
+    {
+        wl_pointer_set_cursor( pointer, serial, s_cursorSurf, s_cursorX, s_cursorY );
+    }
     ImGuiIO& io = ImGui::GetIO();
-    io.AddMousePosEvent( wl_fixed_to_double( sx * s_maxScale ), wl_fixed_to_double( sy * s_maxScale ) );
+    io.AddMousePosEvent( wl_fixed_to_double( sx * s_maxScale / 120 ), wl_fixed_to_double( sy * s_maxScale / 120 ) );
 }
 
 static void PointerLeave( void*, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surf )
@@ -223,7 +269,7 @@ static void PointerLeave( void*, struct wl_pointer* pointer, uint32_t serial, st
 static void PointerMotion( void*, struct wl_pointer* pointer, uint32_t time, wl_fixed_t sx, wl_fixed_t sy )
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.AddMousePosEvent( wl_fixed_to_double( sx * s_maxScale ), wl_fixed_to_double( sy * s_maxScale ) );
+    io.AddMousePosEvent( wl_fixed_to_double( sx * s_maxScale / 120 ), wl_fixed_to_double( sy * s_maxScale / 120 ) );
 }
 
 static void PointerButton( void*, struct wl_pointer* pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t state )
@@ -340,11 +386,13 @@ static void KeyboardKeymap( void*, struct wl_keyboard* kbd, uint32_t format, int
 static void KeyboardEnter( void*, struct wl_keyboard* kbd, uint32_t serial, struct wl_surface* surf, struct wl_array* keys )
 {
     ImGui::GetIO().AddFocusEvent( true );
+    s_hasFocus = true;
 }
 
 static void KeyboardLeave( void*, struct wl_keyboard* kbd, uint32_t serial, struct wl_surface* surf )
 {
     ImGui::GetIO().AddFocusEvent( false );
+    s_hasFocus = false;
 }
 
 static xkb_keysym_t Compose( const xkb_keysym_t sym )
@@ -422,9 +470,15 @@ static void SeatCapabilities( void*, struct wl_seat* seat, uint32_t caps )
     {
         s_pointer = wl_seat_get_pointer( s_seat );
         wl_pointer_add_listener( s_pointer, &pointerListener, nullptr );
+        if( s_cursorShape ) s_cursorShapeDev = wp_cursor_shape_manager_v1_get_pointer( s_cursorShape, s_pointer );
     }
     else if( !hasPointer && s_pointer )
     {
+        if( s_cursorShapeDev )
+        {
+            wp_cursor_shape_device_v1_destroy( s_cursorShapeDev );
+            s_cursorShapeDev = nullptr;
+        }
         wl_pointer_release( s_pointer );
         s_pointer = nullptr;
     }
@@ -471,12 +525,7 @@ static void OutputMode( void*, struct wl_output* output, uint32_t flags, int32_t
 
 static void OutputDone( void*, struct wl_output* output )
 {
-    int max = 1;
-    for( auto& out : s_output )
-    {
-        if( out.second->scale > max ) max = out.second->scale;
-    }
-    s_maxScale = max;
+    RecomputeScale();
 }
 
 static void OutputScale( void* data, struct wl_output* output, int32_t scale )
@@ -506,7 +555,8 @@ static void RegistryGlobal( void*, struct wl_registry* reg, uint32_t name, const
 {
     if( strcmp( interface, wl_compositor_interface.name ) == 0 )
     {
-        s_comp = (wl_compositor*)wl_registry_bind( reg, name, &wl_compositor_interface, 4 );
+        s_comp_version = version;
+        s_comp = (wl_compositor*)wl_registry_bind( reg, name, &wl_compositor_interface, version >= 6 ? 6 : 4 );
     }
     else if( strcmp( interface, wl_shm_interface.name ) == 0 )
     {
@@ -529,13 +579,26 @@ static void RegistryGlobal( void*, struct wl_registry* reg, uint32_t name, const
     else if( strcmp( interface, wl_output_interface.name ) == 0 )
     {
         auto output = (wl_output*)wl_registry_bind( reg, name, &wl_output_interface, 2 );
-        auto ptr = std::make_unique<Output>( Output { 1, output } );
+        auto ptr = std::make_unique<Output>( Output { 1, output, false } );
         wl_output_add_listener( output, &outputListener, ptr.get() );
         s_output.emplace( name, std::move( ptr ) );
     }
     else if( strcmp( interface, zxdg_decoration_manager_v1_interface.name ) == 0 )
     {
         s_decoration = (zxdg_decoration_manager_v1*)wl_registry_bind( reg, name, &zxdg_decoration_manager_v1_interface, 1 );
+    }
+    else if( strcmp( interface, wp_fractional_scale_manager_v1_interface.name ) == 0 )
+    {
+        s_fractionalScale = (wp_fractional_scale_manager_v1*)wl_registry_bind( reg, name, &wp_fractional_scale_manager_v1_interface, 1 );
+    }
+    else if( strcmp( interface, wp_viewporter_interface.name ) == 0 )
+    {
+        s_viewporter = (wp_viewporter*)wl_registry_bind( reg, name, &wp_viewporter_interface, 1 );
+    }
+    else if( strcmp( interface, wp_cursor_shape_manager_v1_interface.name ) == 0 )
+    {
+        s_cursorShape = (wp_cursor_shape_manager_v1*)wl_registry_bind( reg, name, &wp_cursor_shape_manager_v1_interface, 1 );
+        if( s_pointer ) s_cursorShapeDev = wp_cursor_shape_manager_v1_get_pointer( s_cursorShape, s_pointer );
     }
 }
 
@@ -545,6 +608,7 @@ static void RegistryGlobalRemove( void*, struct wl_registry* reg, uint32_t name 
     if( it == s_output.end() ) return;
     wl_output_destroy( it->second->obj );
     s_output.erase( it );
+    RecomputeScale();
 }
 
 constexpr struct wl_registry_listener registryListener = {
@@ -580,17 +644,8 @@ static void XdgToplevelConfigure( void*, struct xdg_toplevel* toplevel, int32_t 
     }
     s_maximized = max;
 
-    width *= s_maxScale;
-    height *= s_maxScale;
-
-    if( s_w != width || s_h != height )
-    {
-        s_w = width;
-        s_h = height;
-
-        wl_egl_window_resize( s_eglWin, width, height, 0, 0 );
-        wl_surface_commit( s_surf );
-    }
+    s_width = width;
+    s_height = height;
 }
 
 static void XdgToplevelClose( void*, struct xdg_toplevel* toplevel )
@@ -603,13 +658,70 @@ constexpr struct xdg_toplevel_listener toplevelListener = {
     .close = XdgToplevelClose
 };
 
+static void SurfaceEnter( void*, struct wl_surface* surface, struct wl_output* output )
+{
+    for ( auto& out : s_output )
+    {
+        if ( out.second->obj == output )
+        {
+            out.second->entered = true;
+            RecomputeScale();
+            break;
+        }
+    }
+}
+
+static void SurfaceLeave( void*, struct wl_surface* surface, struct wl_output* output )
+{
+    for ( auto& out : s_output )
+    {
+        if ( out.second->obj == output )
+        {
+            out.second->entered = false;
+            RecomputeScale();
+            break;
+        }
+    }
+}
+
+static void SurfacePreferredBufferScale( void*, struct wl_surface* surface, int32_t scale )
+{
+    if( s_fracSurf ) return;
+    s_maxScale = scale * 120;
+    tracy::s_wasActive = true;
+}
+
+static void SurfacePreferredBufferTransform( void*, struct wl_surface* surface, uint32_t transform )
+{
+}
+
+constexpr struct wl_surface_listener surfaceListener = {
+    .enter = SurfaceEnter,
+    .leave = SurfaceLeave,
+    .preferred_buffer_scale = SurfacePreferredBufferScale,
+    .preferred_buffer_transform = SurfacePreferredBufferTransform
+};
+
+static void FractionalPreferredScale( void*, struct wp_fractional_scale_v1* frac, uint32_t scale )
+{
+    s_maxScale = scale;
+    tracy::s_wasActive = true;
+}
+
+constexpr struct wp_fractional_scale_v1_listener fractionalListener = {
+    .preferred_scale = FractionalPreferredScale
+};
+
+
 static void SetupCursor()
 {
+    if( s_cursorShape ) return;
+
     auto env_xcursor_theme = getenv( "XCURSOR_THEME" );
     auto env_xcursor_size = getenv( "XCURSOR_SIZE" );
 
     int size = env_xcursor_size ? atoi( env_xcursor_size ) : 24;
-    size *= s_maxScale;
+    size = size * s_maxScale / 120;
 
     if( s_cursorSurf ) wl_surface_destroy( s_cursorSurf );
     if( s_cursorTheme ) wl_cursor_theme_destroy( s_cursorTheme );
@@ -617,19 +729,22 @@ static void SetupCursor()
     s_cursorTheme = wl_cursor_theme_load( env_xcursor_theme, size, s_shm );
     auto cursor = wl_cursor_theme_get_cursor( s_cursorTheme, "left_ptr" );
     s_cursorSurf = wl_compositor_create_surface( s_comp );
-    if( s_maxScale != 1 ) wl_surface_set_buffer_scale( s_cursorSurf, s_maxScale );
+    if( s_maxScale != 120 ) wl_surface_set_buffer_scale( s_cursorSurf, s_maxScale / 120 );
     wl_surface_attach( s_cursorSurf, wl_cursor_image_get_buffer( cursor->images[0] ), 0, 0 );
     wl_surface_commit( s_cursorSurf );
-    s_cursorX = cursor->images[0]->hotspot_x / s_maxScale;
-    s_cursorY = cursor->images[0]->hotspot_y / s_maxScale;
+    s_cursorX = cursor->images[0]->hotspot_x * 120 / s_maxScale;
+    s_cursorY = cursor->images[0]->hotspot_y * 120 / s_maxScale;
 }
 
-Backend::Backend( const char* title, const std::function<void()>& redraw, RunQueue* mainThreadTasks )
+Backend::Backend( const char* title, const std::function<void()>& redraw, const std::function<void(float)>& scaleChanged, const std::function<int(void)>& isBusy, RunQueue* mainThreadTasks )
 {
     s_redraw = redraw;
+    s_scaleChanged = scaleChanged;
+    s_isBusy = isBusy;
     s_mainThreadTasks = mainThreadTasks;
-    s_w = m_winPos.w;
-    s_h = m_winPos.h;
+
+    s_prevWidth = s_width = m_winPos.w;
+    s_prevHeight = s_height = m_winPos.h;
     s_maximized = m_winPos.maximize;
 
     s_dpy = wl_display_connect( nullptr );
@@ -645,9 +760,17 @@ Backend::Backend( const char* title, const std::function<void()>& redraw, RunQue
     if( !s_seat ) { fprintf( stderr, "No wayland seat!\n" ); exit( 1 ); }
 
     s_surf = wl_compositor_create_surface( s_comp );
+    wl_surface_add_listener( s_surf, &surfaceListener, nullptr );
     s_eglWin = wl_egl_window_create( s_surf, m_winPos.w, m_winPos.h );
     s_xdgSurf = xdg_wm_base_get_xdg_surface( s_wm, s_surf );
     xdg_surface_add_listener( s_xdgSurf, &xdgSurfaceListener, nullptr );
+
+    if( s_fractionalScale && s_viewporter )
+    {
+        s_fracSurf = wp_fractional_scale_manager_v1_get_fractional_scale( s_fractionalScale, s_surf );
+        wp_fractional_scale_v1_add_listener( s_fracSurf, &fractionalListener, nullptr );
+        s_viewport = wp_viewporter_get_viewport( s_viewporter, s_surf );
+    }
 
     SetupCursor();
 
@@ -710,6 +833,14 @@ Backend::Backend( const char* title, const std::function<void()>& redraw, RunQue
 
 Backend::~Backend()
 {
+    ImGui_ImplOpenGL3_Shutdown();
+
+    if( s_cursorShapeDev ) wp_cursor_shape_device_v1_destroy( s_cursorShapeDev );
+    if( s_cursorShape ) wp_cursor_shape_manager_v1_destroy( s_cursorShape );
+    if( s_viewport ) wp_viewport_destroy( s_viewport );
+    if( s_fracSurf ) wp_fractional_scale_v1_destroy( s_fracSurf );
+    if( s_viewporter ) wp_viewporter_destroy( s_viewporter );
+    if( s_fractionalScale ) wp_fractional_scale_manager_v1_destroy( s_fractionalScale );
     if( s_tldec ) zxdg_toplevel_decoration_v1_destroy( s_tldec );
     if( s_decoration ) zxdg_decoration_manager_v1_destroy( s_decoration );
     if( s_actToken ) xdg_activation_token_v1_destroy( s_actToken );
@@ -721,8 +852,8 @@ Backend::~Backend()
     eglDestroyContext( s_eglDpy, s_eglCtx );
     eglTerminate( s_eglDpy );
     xdg_toplevel_destroy( s_toplevel );
-    wl_surface_destroy( s_cursorSurf );
-    wl_cursor_theme_destroy( s_cursorTheme );
+    if( s_cursorSurf ) wl_surface_destroy( s_cursorSurf );
+    if( s_cursorTheme ) wl_cursor_theme_destroy( s_cursorTheme );
     xdg_surface_destroy( s_xdgSurf );
     wl_egl_window_destroy( s_eglWin );
     wl_surface_destroy( s_surf );
@@ -749,6 +880,7 @@ void Backend::Run()
 {
     while( s_running && wl_display_dispatch( s_dpy ) != -1 )
     {
+        if( s_config.focusLostLimit && !s_hasFocus ) std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
         s_redraw();
         s_mainThreadTasks->Run();
     }
@@ -779,22 +911,35 @@ void Backend::Attention()
 
 void Backend::NewFrame( int& w, int& h )
 {
+    if( s_prevWidth != s_width || s_prevHeight != s_height || s_prevScale != s_maxScale )
+    {
+        s_prevWidth = s_width;
+        s_prevHeight = s_height;
+        wl_egl_window_resize( s_eglWin, s_width * s_maxScale / 120, s_height * s_maxScale / 120, 0, 0 );
+        if( s_fracSurf )
+        {
+            wp_viewport_set_source( s_viewport, 0, 0, wl_fixed_from_double( s_width * s_maxScale / 120. ), wl_fixed_from_double( s_height * s_maxScale / 120. ) );
+            wp_viewport_set_destination( s_viewport, s_width, s_height );
+        }
+    }
+
     if( s_prevScale != s_maxScale )
     {
+        s_scaleChanged( s_maxScale / 120.f );
         SetupCursor();
-        wl_surface_set_buffer_scale( s_surf, s_maxScale );
+        if( !s_fracSurf ) wl_surface_set_buffer_scale( s_surf, s_maxScale / 120 );
         s_prevScale = s_maxScale;
     }
 
     m_winPos.maximize = s_maximized;
     if( !s_maximized )
     {
-        m_winPos.w = s_w;
-        m_winPos.h = s_h;
+        m_winPos.w = s_width;
+        m_winPos.h = s_height;
     }
 
-    w = s_w;
-    h = s_h;
+    w = s_width * s_maxScale / 120;
+    h = s_height * s_maxScale / 120;
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2( w, h );
@@ -805,14 +950,75 @@ void Backend::NewFrame( int& w, int& h )
     uint64_t time = std::chrono::duration_cast<std::chrono::microseconds>( std::chrono::high_resolution_clock::now().time_since_epoch() ).count();
     io.DeltaTime = std::min( 0.1f, ( time - s_time ) / 1000000.f );
     s_time = time;
+
+    if( s_cursorShapeDev )
+    {
+        ImGuiMouseCursor cursor = ImGui::GetMouseCursor();
+        wp_cursor_shape_device_v1_shape shape;
+
+        switch( cursor )
+        {
+        case ImGuiMouseCursor_None:
+            shape = (wp_cursor_shape_device_v1_shape)0;
+            break;
+        case ImGuiMouseCursor_Arrow:
+            switch( s_isBusy() )
+            {
+            default:
+            case 0:
+                shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+                break;
+            case 1:
+                shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_PROGRESS;
+                break;
+            case 2:
+                shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT;
+                break;
+            }
+            break;
+        case ImGuiMouseCursor_TextInput:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT;
+            break;
+        case ImGuiMouseCursor_ResizeNS:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE;
+            break;
+        case ImGuiMouseCursor_ResizeEW:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
+            break;
+        case ImGuiMouseCursor_ResizeNESW:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE;
+            break;
+        case ImGuiMouseCursor_ResizeNWSE:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE;
+            break;
+        case ImGuiMouseCursor_NotAllowed:
+            shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED;
+            break;
+        default:
+            break;
+        };
+
+        if( shape != s_mouseCursor )
+        {
+            s_mouseCursor = shape;
+            if( shape == 0 )
+            {
+                wl_pointer_set_cursor( s_pointer, s_mouseCursorSerial, nullptr, 0, 0 );
+            }
+            else
+            {
+                wp_cursor_shape_device_v1_set_shape( s_cursorShapeDev, s_mouseCursorSerial, shape );
+            }
+        }
+    }
 }
 
 void Backend::EndFrame()
 {
-    const ImVec4 clear_color = ImColor( 114, 144, 154 );
+    const ImVec4 clear_color = ImColor( 20, 20, 17 );
 
     ImGui::Render();
-    glViewport( 0, 0, s_w, s_h );
+    glViewport( 0, 0, s_width * s_maxScale / 120, s_height * s_maxScale / 120 );
     glClearColor( clear_color.x, clear_color.y, clear_color.z, clear_color.w );
     glClear( GL_COLOR_BUFFER_BIT );
     ImGui_ImplOpenGL3_RenderDrawData( ImGui::GetDrawData() );
@@ -831,5 +1037,5 @@ void Backend::SetTitle( const char* title )
 
 float Backend::GetDpiScale()
 {
-    return s_maxScale;
+    return s_maxScale / 120.f;
 }

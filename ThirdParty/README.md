@@ -15,7 +15,7 @@
 * small_vector - [small_vector](https://github.com/gharveymn/small_vector)
 * span - [span](https://github.com/tcbrindle/span)
 * SPIRV-Cross - [SPIRV-Cross-1.3.261.1](https://github.com/KhronosGroup/SPIRV-Cross)
-* tracy - [tracy-0.10.0](https://github.com/wolfpld/tracy)
+* tracy - [tracy-0.11.1](https://github.com/wolfpld/tracy)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
