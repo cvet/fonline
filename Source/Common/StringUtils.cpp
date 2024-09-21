@@ -194,7 +194,7 @@ auto StringHelper::lengthUtf8() const noexcept -> size_t
     return length;
 }
 
-auto StringHelper::substringUntil(char separator) -> StringHelper&
+auto StringHelper::substringUntil(char separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -207,7 +207,7 @@ auto StringHelper::substringUntil(char separator) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::substringUntil(string_view separator) -> StringHelper&
+auto StringHelper::substringUntil(string_view separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -220,7 +220,7 @@ auto StringHelper::substringUntil(string_view separator) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::substringAfter(char separator) -> StringHelper&
+auto StringHelper::substringAfter(char separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -236,7 +236,7 @@ auto StringHelper::substringAfter(char separator) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::substringAfter(string_view separator) -> StringHelper&
+auto StringHelper::substringAfter(string_view separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -252,7 +252,7 @@ auto StringHelper::substringAfter(string_view separator) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::trim() -> StringHelper&
+auto StringHelper::trim() noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -431,40 +431,58 @@ auto StringHelper::upperUtf8() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::split(char divider) const -> vector<string>
+auto StringHelper::split(char delimiter) const -> vector<string>
 {
     NO_STACK_TRACE_ENTRY();
 
     vector<string> result;
-    const auto s = string(_sv);
-    std::istringstream ss(s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = StringHelper(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.emplace_back(entry);
+            entry = StringHelper(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(entry);
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
     return result;
 }
 
-auto StringHelper::splitToInt(char divider) const -> vector<int>
+auto StringHelper::splitToInt(char delimiter) const -> vector<int>
 {
     NO_STACK_TRACE_ENTRY();
 
     vector<int> result;
-    const auto s = string(_sv);
-    std::istringstream ss(s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = StringHelper(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.push_back(StringHelper(entry).toInt());
+            entry = StringHelper(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(StringHelper(entry).toInt());
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
@@ -785,7 +803,7 @@ auto StringHelper::getFileExtension() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::eraseFileExtension() -> StringHelper&
+auto StringHelper::eraseFileExtension() noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 

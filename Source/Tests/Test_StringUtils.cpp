@@ -195,6 +195,10 @@ TEST_CASE("StringUtils")
         CHECK(format(" One Two    \tThree   ").split('\t') == vector<string>({"One Two", "Three"}));
         CHECK(format(" One Two    \tThree   ").split('X') == vector<string>({"One Two    \tThree"}));
         CHECK(format(" 111 222  33Three g66 7").splitToInt(' ') == vector<int>({111, 222, 0, 0, 7}));
+        CHECK(format("").splitToInt(' ') == vector<int>({}));
+        CHECK(format("             ").splitToInt(' ') == vector<int>({}));
+        CHECK(format("1").splitToInt(' ') == vector<int>({1}));
+        CHECK(format("1 -2").splitToInt(' ') == vector<int>({1, -2}));
     }
 
     SECTION("Substring")

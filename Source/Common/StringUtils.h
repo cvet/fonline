@@ -77,7 +77,7 @@ public:
 
     [[nodiscard]] auto c_str() -> const char*;
     [[nodiscard]] auto str() -> string&&;
-    [[nodiscard]] auto strv() const -> string_view { return _sv; }
+    [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
@@ -99,14 +99,15 @@ public:
     [[nodiscard]] auto toDouble() const noexcept -> double;
     [[nodiscard]] auto toBool() const noexcept -> bool;
 
-    [[nodiscard]] auto split(char divider) const -> vector<string>;
-    [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
+    [[nodiscard]] auto split(char delimiter) const -> vector<string>;
+    [[nodiscard]] auto splitToInt(char delimiter) const -> vector<int>;
 
-    auto substringUntil(char separator) -> StringHelper&;
-    auto substringUntil(string_view separator) -> StringHelper&;
-    auto substringAfter(char separator) -> StringHelper&;
-    auto substringAfter(string_view separator) -> StringHelper&;
-    auto trim() -> StringHelper&;
+    auto substringUntil(char separator) noexcept -> StringHelper&;
+    auto substringUntil(string_view separator) noexcept -> StringHelper&;
+    auto substringAfter(char separator) noexcept -> StringHelper&;
+    auto substringAfter(string_view separator) noexcept -> StringHelper&;
+    auto trim() noexcept -> StringHelper&;
+
     auto erase(char what) -> StringHelper&;
     auto erase(char begin, char end) -> StringHelper&;
     auto replace(char from, char to) -> StringHelper&;
@@ -121,7 +122,7 @@ public:
     auto extractDir() -> StringHelper&;
     auto extractFileName() -> StringHelper&;
     auto getFileExtension() -> StringHelper&; // Extension without dot and lowered
-    auto eraseFileExtension() -> StringHelper&; // Erase extension with dot
+    auto eraseFileExtension() noexcept -> StringHelper&; // Erase extension with dot
     auto changeFileName(string_view new_name) -> StringHelper&;
     auto combinePath(string_view path) -> StringHelper&;
     auto normalizePathSlashes() -> StringHelper&;
