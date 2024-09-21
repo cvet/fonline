@@ -227,6 +227,7 @@ TEST_CASE("StringUtils")
         CHECK(format("1").splitToInt(' ') == vector<int>({1}));
         CHECK(format("1 -2").splitToInt(' ') == vector<int>({1, -2}));
         CHECK(format("\t1   X -2 X 3").splitToInt('X') == vector<int>({1, -2, 3}));
+        CHECK(format("\t1 X\t\t  X X-2   X X 3\n").splitToInt('X') == vector<int>({1, -2, 3}));
     }
 
     SECTION("Substring")

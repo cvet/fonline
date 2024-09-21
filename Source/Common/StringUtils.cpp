@@ -73,7 +73,7 @@ void StringHelper::OwnStorage()
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_s.data() < _sv.data() || _s.data() + _s.size() >= _sv.data()) {
+    if (_sv.data() < _s.data() || _sv.data() >= _s.data() + _s.size()) {
         _s = _sv;
     }
     else {
