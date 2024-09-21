@@ -639,7 +639,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
             }
 
             if constexpr (USE_FROM_CHARS) {
-                const auto result = std::from_chars(ptr, end_ptr, value, std::chars_format::general);
+                const auto result = std::from_chars(ptr, end_ptr, value);
 
                 return result.ec == std::errc() && result.ptr == end_ptr;
             }
