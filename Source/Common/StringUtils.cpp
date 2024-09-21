@@ -489,6 +489,14 @@ auto StringHelper::splitToInt(char delimiter) const -> vector<int>
     return result;
 }
 
+#if defined(_MSC_VER) && _MSC_VER >= 1924
+#define USE_FROM_CHARS 1
+#else
+#define USE_FROM_CHARS 0
+#endif
+
+static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
+
 template<typename T>
 static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
@@ -497,6 +505,9 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
     const size_t len = sv.length();
 
     if (len == 0) {
+        return false;
+    }
+    if (len > MAX_NUMBER_STRING_LENGTH) {
         return false;
     }
 
@@ -533,9 +544,37 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         }
 
         std::make_unsigned_t<T> uvalue;
-        const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
+        bool success;
+        bool out_of_range;
 
-        if (result.ec == std::errc() && result.ptr == end_ptr) {
+        if constexpr (USE_FROM_CHARS) {
+            const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
+            success = result.ec == std::errc() && result.ptr == end_ptr;
+            out_of_range = result.ec == std::errc::result_out_of_range;
+        }
+        else {
+            // Assume all our strings are null terminated
+            if (*end_ptr != 0) {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                array<char, MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                std::memcpy(str_nt.data(), ptr, count);
+                str_nt[count] = 0;
+
+                char* result_end_ptr;
+                uvalue = std::strtoull(str_nt.data(), &result_end_ptr, base);
+                success = result_end_ptr == str_nt.data() + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+            else {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                char* result_end_ptr;
+                uvalue = std::strtoull(ptr, &result_end_ptr, base);
+                success = result_end_ptr == ptr + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+        }
+
+        if (success) {
             if (negative) {
                 if (uvalue > static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min())) {
                     value = std::numeric_limits<T>::min();
@@ -552,7 +591,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         }
         else {
             // Out of range
-            if (result.ec == std::errc::result_out_of_range) {
+            if (out_of_range) {
                 if (negative) {
                     value = std::numeric_limits<T>::min();
                 }
@@ -599,12 +638,37 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            const auto result = std::from_chars(ptr, end_ptr, value, std::chars_format::general);
+            if constexpr (USE_FROM_CHARS) {
+                const auto result = std::from_chars(ptr, end_ptr, value, std::chars_format::general);
 
-            return result.ec == std::errc() && result.ptr == end_ptr;
+                return result.ec == std::errc() && result.ptr == end_ptr;
+            }
+            else {
+                // Assume all our strings are null terminated
+                if (*end_ptr != 0) {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    array<char, MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                    std::memcpy(str_nt.data(), ptr, count);
+                    str_nt[count] = 0;
+
+                    char* result_end_ptr;
+                    value = std::strtod(str_nt.data(), &result_end_ptr);
+
+                    return result_end_ptr == str_nt.data() + count;
+                }
+                else {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    char* result_end_ptr;
+                    value = std::strtod(ptr, &result_end_ptr);
+
+                    return result_end_ptr == ptr + count;
+                }
+            }
         }
     }
 }
+
+#undef USE_FROM_CHARS
 
 auto StringHelper::isNumber() const noexcept -> bool
 {
