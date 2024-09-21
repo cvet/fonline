@@ -552,7 +552,7 @@ void ServerConnection::ConnectToHost()
                 static std::mutex inet_ntoa_locker;
                 auto locker = std::scoped_lock {inet_ntoa_locker};
 
-                buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_impl->SockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
+                buf = format("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_impl->SockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
             }
 
             _netOut.Push(buf.c_str(), buf.length());
@@ -828,14 +828,14 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
         nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
     auto free_ws = ScopeCallback([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
-    const string error_str = _str().parseWideChar(ws).trim();
+    const string error_str = format().parseWideChar(ws).trim();
 
-    return _str("{} ({})", error_str, error_code);
+    return format("{} ({})", error_str, error_code);
 
 #else
-    const string error_str = _str(::strerror(errno)).trim();
+    const string error_str = format(::strerror(errno)).trim();
 
-    return _str("{} ({})", error_str, errno);
+    return format("{} ({})", error_str, errno);
 #endif
 }
 

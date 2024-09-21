@@ -624,7 +624,7 @@ auto ItemManager::GetItemsStatistics() const -> string
     string result = "Name                                     Count\n";
 
     for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
+        result += format("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
     }
 
     return result;

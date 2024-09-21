@@ -77,7 +77,7 @@ auto FileHeader::GetFullPath() const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_dataSource->GetPackName()).combinePath(_filePath);
+    return format(_dataSource->GetPackName()).combinePath(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -553,7 +553,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
             uint64 write_time = 0;
             const auto ok = ds->IsFilePresent(fname, size, write_time);
             RUNTIME_ASSERT(ok);
-            const string name = _str(fname).extractFileName().eraseFileExtension();
+            const string name = format(fname).extractFileName().eraseFileExtension();
             auto file_header = FileHeader(name, fname, size, write_time, ds.get());
             files.emplace_back(std::move(file_header));
         }
@@ -573,7 +573,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
         size_t size = 0;
         uint64 write_time = 0;
         if (auto&& buf = ds->OpenFile(path, size, write_time)) {
-            return {_str(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf)};
+            return {format(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf)};
         }
     }
 
@@ -599,7 +599,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
         size_t size = 0;
         uint64 write_time = 0;
         if (ds->IsFilePresent(path, size, write_time)) {
-            return {_str(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get()};
+            return {format(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get()};
         }
     }
 

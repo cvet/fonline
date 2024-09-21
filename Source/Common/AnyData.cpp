@@ -46,9 +46,9 @@ auto AnyData::ValueToString(const Value& value) -> string
 
     switch (value.index()) {
     case INT64_VALUE:
-        return _str("{}", std::get<INT64_VALUE>(value));
+        return format("{}", std::get<INT64_VALUE>(value));
     case DOUBLE_VALUE:
-        return _str("{}", std::get<DOUBLE_VALUE>(value));
+        return format("{}", std::get<DOUBLE_VALUE>(value));
     case BOOL_VALUE:
         return std::get<BOOL_VALUE>(value) ? "True" : "False";
     case STRING_VALUE:
@@ -66,10 +66,10 @@ auto AnyData::ValueToString(const Value& value) -> string
             const auto& arr_value = arr[i];
             switch (arr_value.index()) {
             case INT64_VALUE:
-                arr_str.append(_str("{}", std::get<INT64_VALUE>(arr_value)));
+                arr_str.append(format("{}", std::get<INT64_VALUE>(arr_value)));
                 break;
             case DOUBLE_VALUE:
-                arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(arr_value)));
+                arr_str.append(format("{}", std::get<DOUBLE_VALUE>(arr_value)));
                 break;
             case BOOL_VALUE:
                 arr_str.append(std::get<BOOL_VALUE>(arr_value) ? "True" : "False");
@@ -103,10 +103,10 @@ auto AnyData::ValueToString(const Value& value) -> string
 
             switch (dict_value.index()) {
             case INT64_VALUE:
-                dict_str.append(_str("{}", std::get<INT64_VALUE>(dict_value)));
+                dict_str.append(format("{}", std::get<INT64_VALUE>(dict_value)));
                 break;
             case DOUBLE_VALUE:
-                dict_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_value)));
+                dict_str.append(format("{}", std::get<DOUBLE_VALUE>(dict_value)));
                 break;
             case BOOL_VALUE:
                 dict_str.append(std::get<BOOL_VALUE>(dict_value) ? "True" : "False");
@@ -127,10 +127,10 @@ auto AnyData::ValueToString(const Value& value) -> string
                     const auto& dict_arr_value = dict_arr[i];
                     switch (dict_arr_value.index()) {
                     case INT64_VALUE:
-                        dict_arr_str.append(_str("{}", std::get<INT64_VALUE>(dict_arr_value)));
+                        dict_arr_str.append(format("{}", std::get<INT64_VALUE>(dict_arr_value)));
                         break;
                     case DOUBLE_VALUE:
-                        dict_arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_arr_value)));
+                        dict_arr_str.append(format("{}", std::get<DOUBLE_VALUE>(dict_arr_value)));
                         break;
                     case BOOL_VALUE:
                         dict_arr_str.append(std::get<BOOL_VALUE>(dict_arr_value) ? "True" : "False");
@@ -183,13 +183,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
                     case INT64_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toInt64());
+                        dict_arr.emplace_back(format("{}", arr_entry).toInt64());
                         break;
                     case DOUBLE_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toDouble());
+                        dict_arr.emplace_back(format("{}", arr_entry).toDouble());
                         break;
                     case BOOL_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toBool());
+                        dict_arr.emplace_back(format("{}", arr_entry).toBool());
                         break;
                     case STRING_VALUE:
                         dict_arr.emplace_back(DecodeString(arr_entry));
@@ -204,13 +204,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
             else {
                 switch (value_type) {
                 case INT64_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt64());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toInt64());
                     break;
                 case DOUBLE_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toDouble());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toDouble());
                     break;
                 case BOOL_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toBool());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toBool());
                     break;
                 case STRING_VALUE:
                     dict.emplace(dict_key_entry, DecodeString(dict_value_entry));
@@ -232,13 +232,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
             case INT64_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toInt64());
+                arr.emplace_back(format("{}", arr_entry).toInt64());
                 break;
             case DOUBLE_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toDouble());
+                arr.emplace_back(format("{}", arr_entry).toDouble());
                 break;
             case BOOL_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toBool());
+                arr.emplace_back(format("{}", arr_entry).toBool());
                 break;
             case STRING_VALUE:
                 arr.emplace_back(DecodeString(arr_entry));
@@ -253,11 +253,11 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
     else {
         switch (value_type) {
         case INT64_VALUE:
-            return _str("{}", str).toInt64();
+            return format("{}", str).toInt64();
         case DOUBLE_VALUE:
-            return _str("{}", str).toDouble();
+            return format("{}", str).toDouble();
         case BOOL_VALUE:
-            return _str("{}", str).toBool();
+            return format("{}", str).toBool();
         case STRING_VALUE:
             return DecodeString(str);
         default:

@@ -186,7 +186,7 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
             MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), true);
         }
         else {
-            MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), true);
+            MessageBox::ShowErrorMessage(ex.what(), format("Catched at: {}", GetStackTrace()), true);
         }
     }
     catch (...) {
@@ -219,7 +219,7 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
                 MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), false);
             }
             else {
-                MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), false);
+                MessageBox::ShowErrorMessage(ex.what(), format("Catched at: {}", GetStackTrace()), false);
             }
         }
     }
@@ -301,7 +301,7 @@ auto GetStackTrace() -> string
     for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st.CallTree[i];
 
-        ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
+        ss << "- " << entry->function << " (" << format(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
@@ -370,13 +370,13 @@ auto GetRealStackTrace() -> string
             obj_func.append("...");
         }
 
-        string file_name = _str(trace.source.filename).extractFileName();
+        string file_name = format(trace.source.filename).extractFileName();
 
         if (!file_name.empty()) {
             file_name.append(" ");
         }
 
-        file_name += _str("{}", trace.source.line);
+        file_name += format("{}", trace.source.line);
 
         ss << "- " << obj_func << " (" << file_name << ")\n";
     }
@@ -472,20 +472,20 @@ void CreateDumpMessage(string_view appendix, string_view message)
 
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
-    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const string fname = format("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
-        file.Write(_str("{}\n", appendix));
-        file.Write(_str("{}\n", message));
-        file.Write(_str("\n"));
-        file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", FO_DEV_NAME));
-        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
-        file.Write(_str("\tOS          Windows\n"));
-        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
-        file.Write(_str("\n"));
+        file.Write(format("{}\n", appendix));
+        file.Write(format("{}\n", message));
+        file.Write(format("\n"));
+        file.Write(format("Application\n"));
+        file.Write(format("\tName        {}\n", FO_DEV_NAME));
+        file.Write(format("\tVersion     {}\n", FO_GAME_VERSION));
+        file.Write(format("\tOS          Windows\n"));
+        file.Write(format("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
+        file.Write(format("\n"));
         file.Write(traceback);
-        file.Write(_str("\n"));
+        file.Write(format("\n"));
     }
 }
 

@@ -52,7 +52,7 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
 
     RUNTIME_ASSERT(_staticMap);
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = format("{}_{}", proto->GetName(), id);
 
     _width = GetWidth();
     _height = GetHeight();

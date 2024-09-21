@@ -1703,7 +1703,7 @@
 
     throw NotImplementedException(LINE_STR);
 
-    // client->SprMngr.SaveTexture(nullptr, _str(filePath).formatPath(), true);
+    // client->SprMngr.SaveTexture(nullptr, format(filePath).formatPath(), true);
 }
 
 ///# ...
@@ -1715,7 +1715,7 @@
 {
     UNUSED_VARIABLE(client);
 
-    auto file = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
+    auto file = DiskFileSystem::OpenFile(format(filePath).formatPath(), true);
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }
@@ -1798,7 +1798,7 @@
     string cfg_user;
 
     for (const auto& [key, value] : keyValues) {
-        cfg_user += _str("{} = {}\n", key, value);
+        cfg_user += format("{} = {}\n", key, value);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
@@ -1812,7 +1812,7 @@
     string cfg_user;
 
     for (size_t i = 0; i + 1 < keyValues.size(); i += 2) {
-        cfg_user += _str("{} = {}\n", keyValues[i], keyValues[i + 1]);
+        cfg_user += format("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);

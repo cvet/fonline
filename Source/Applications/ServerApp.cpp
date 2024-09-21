@@ -68,7 +68,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         list<vector<string>> log_buffer;
         std::mutex log_buffer_locker;
         SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
-            if (auto&& lines = _str(str).split('\n'); !lines.empty()) {
+            if (auto&& lines = format(str).split('\n'); !lines.empty()) {
                 auto locker = std::unique_lock {log_buffer_locker};
                 log_buffer.emplace_back(std::move(lines));
             }
@@ -156,7 +156,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         }
 
                         const auto dt = Timer::GetCurrentDateTime();
-                        const string log_name = _str("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                        const string log_name = format("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
                         DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
                     }
 

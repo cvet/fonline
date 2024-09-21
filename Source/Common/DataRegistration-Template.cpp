@@ -119,16 +119,16 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
             {"uint", &typeid(uint)},
         };
 
-        const auto tokens = _str(info).split(' ');
+        const auto tokens = format(info).split(' ');
         const auto& enum_name = tokens[0];
         const auto* enum_type = enum_type_map[tokens[1]];
 
         unordered_map<string, int> key_values;
         for (size_t i = 2; i < tokens.size(); i++) {
-            const auto kv = _str(tokens[i]).split('=');
+            const auto kv = format(tokens[i]).split('=');
             RUNTIME_ASSERT(kv.size() == 2);
             const auto key = kv[0];
-            const auto value = _str(kv[1]).toInt();
+            const auto value = format(kv[1]).toInt();
             key_values.emplace(key, value);
         }
 
@@ -137,14 +137,14 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
 
     // Restore property components
     for (const auto& info : restoreInfo["PropertyComponents"]) {
-        const auto tokens = _str(info).split(' ');
+        const auto tokens = format(info).split(' ');
         auto* prop_registrator = engine->GetPropertyRegistratorForEdit(tokens[0]);
         prop_registrator->RegisterComponent(tokens[1]);
     }
 
     // Restore properties
     for (const auto& info : restoreInfo["Properties"]) {
-        auto tokens = _str(info).split(' ');
+        auto tokens = format(info).split(' ');
         auto* prop_registrator = engine->GetPropertyRegistratorForEdit(tokens[0]);
 
         vector<string_view> flags;

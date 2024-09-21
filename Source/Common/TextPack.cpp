@@ -254,10 +254,10 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
             offset = last + 1;
 
             if (i == 0 && num == 0) {
-                num = _str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
+                num = format(substr).isNumber() ? format(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
             }
             else if (i == 1 && num != 0) {
-                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
+                num += !substr.empty() ? (format(substr).isNumber() ? format(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
             }
             else if (i == 2 && num != 0) {
                 AddStr(num, std::move(substr));
@@ -276,7 +276,7 @@ void TextPack::LoadFromMap(const map<string, string>& kv)
     STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
-        const TextPackKey num = _str(key).toUInt();
+        const TextPackKey num = format(key).toUInt();
 
         if (num != 0) {
             AddStr(num, value);
@@ -393,7 +393,7 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
         if (text_pack) {
             const string& pack_name_str = _nameResolver->ResolveEnumValueName("TextPackName", static_cast<int>(i));
 
-            auto file = DiskFileSystem::OpenFile(_str("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
+            auto file = DiskFileSystem::OpenFile(format("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
             RUNTIME_ASSERT(file);
 
             const auto write_file_ok = file.Write(text_pack->GetBinaryData());

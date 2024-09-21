@@ -42,7 +42,7 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = format("{}_{}", proto->GetName(), id);
 
 #if FO_ENABLE_3D
     if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {

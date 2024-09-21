@@ -87,14 +87,14 @@ static auto WinMultiByteToWideChar(string_view mb) -> std::wstring
 {
     STACK_TRACE_ENTRY();
 
-    return _str(mb).toWideChar();
+    return format(mb).toWideChar();
 }
 
 static auto WinWideCharToMultiByte(const wchar_t* wc) -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str().parseWideChar(wc).normalizePathSlashes();
+    return format().parseWideChar(wc).normalizePathSlashes();
 }
 
 struct DiskFile::Impl
@@ -114,7 +114,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
         h = try_create();
 
         if (h == INVALID_HANDLE_VALUE) {
-            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
+            DiskFileSystem::MakeDirTree(format(fname).extractDir());
             h = try_create();
         }
     }
@@ -279,7 +279,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
     if (!ops) {
         if (write) {
-            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
+            DiskFileSystem::MakeDirTree(format(fname).extractDir());
         }
 
         ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
@@ -438,7 +438,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
     if (!f) {
         if (write) {
-            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
+            DiskFileSystem::MakeDirTree(format(fname).extractDir());
         }
 
         f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
@@ -604,7 +604,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
 {
     STACK_TRACE_ENTRY();
 
-    string query = _str(path).combinePath("*");
+    string query = format(path).combinePath("*");
     if (!ext.empty()) {
         query += "." + string(ext);
     }
@@ -1072,7 +1072,7 @@ void DiskFileSystem::MakeDirTree(string_view path)
 {
     STACK_TRACE_ENTRY();
 
-    const string work = _str(path).normalizePathSlashes();
+    const string work = format(path).normalizePathSlashes();
 
     for (size_t i = 0; i < work.length(); i++) {
         if (work[i] == '/') {
@@ -1111,19 +1111,19 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 {
     STACK_TRACE_ENTRY();
 
-    for (auto find = DiskFileSystem::FindFiles(_str(base_dir).combinePath(cur_dir), ""); find; find++) {
+    for (auto find = DiskFileSystem::FindFiles(format(base_dir).combinePath(cur_dir), ""); find; find++) {
         auto path = find.GetPath();
         RUNTIME_ASSERT(!path.empty());
 
         if (path[0] != '.' && path[0] != '~') {
             if (find.IsDir()) {
                 if (path[0] != '_' && include_subdirs) {
-                    RecursiveDirLook(base_dir, _str(cur_dir).combinePath(path), include_subdirs, ext, visitor);
+                    RecursiveDirLook(base_dir, format(cur_dir).combinePath(path), include_subdirs, ext, visitor);
                 }
             }
             else {
-                if (ext.empty() || _str(path).getFileExtension() == ext) {
-                    visitor(_str(cur_dir).combinePath(path), find.GetFileSize(), find.GetWriteTime());
+                if (ext.empty() || format(path).getFileExtension() == ext) {
+                    visitor(format(cur_dir).combinePath(path), find.GetFileSize(), find.GetWriteTime());
                 }
             }
         }

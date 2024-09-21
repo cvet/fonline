@@ -219,7 +219,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
         auto arr_key_index = 0;
         for (const auto& arr_value : arr) {
-            string arr_key = _str("{}", arr_key_index);
+            string arr_key = format("{}", arr_key_index);
             arr_key_index++;
 
             const auto arr_value_index = arr_value.index();
@@ -290,7 +290,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
                 const auto& arr = std::get<AnyData::ARRAY_VALUE>(dict_value);
                 auto arr_key_index = 0;
                 for (const auto& arr_value : arr) {
-                    string arr_key = _str("{}", arr_key_index);
+                    string arr_key = format("{}", arr_key_index);
                     arr_key_index++;
 
                     const auto arr_value_index = arr_value.index();
@@ -661,12 +661,12 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(format(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
 
-            const string id_str = _str(path).extractFileName().eraseFileExtension();
-            const auto id = _str(id_str).toUInt();
+            const string id_str = format(path).extractFileName().eraseFileExtension();
+            const auto id = format(id_str).toUInt();
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
             }
@@ -682,7 +682,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = format("{}/{}/{}.json", _storageDir, collection_name, id);
 
         size_t length;
         char* json;
@@ -718,7 +718,7 @@ protected:
 
         RUNTIME_ASSERT(!doc.empty());
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = format("{}/{}/{}.json", _storageDir, collection_name, id);
 
         if (const auto f_check = DiskFileSystem::OpenFile(path, false)) {
             throw DataBaseException("DbJson File exists for inserting", path);
@@ -756,7 +756,7 @@ protected:
 
         RUNTIME_ASSERT(!doc.empty());
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = format("{}/{}/{}.json", _storageDir, collection_name, id);
 
         size_t length;
         char* json;
@@ -807,7 +807,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = format("{}/{}/{}.json", _storageDir, collection_name, id);
         if (!DiskFileSystem::DeleteFile(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
@@ -843,7 +843,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
 
         unqlite* ping_db = nullptr;
-        const string ping_db_path = _str("{}/Ping.unqlite", storage_dir);
+        const string ping_db_path = format("{}/Ping.unqlite", storage_dir);
         if (unqlite_open(&ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
@@ -1061,7 +1061,7 @@ private:
 
         const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
-            const string db_path = _str("{}/{}.unqlite", _storageDir, collection_name);
+            const string db_path = format("{}/{}.unqlite", _storageDir, collection_name);
             const auto r = unqlite_open(&db, db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING);
             if (r != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
@@ -1468,7 +1468,7 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto options = _str(connection_info).split(' '); !options.empty()) {
+    if (const auto options = format(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
 #if FO_HAVE_JSON

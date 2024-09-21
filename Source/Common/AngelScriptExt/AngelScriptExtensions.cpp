@@ -316,7 +316,7 @@ void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
 static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr, uint offset = 0)
 {
     if (index < 0) {
-        index = static_cast<int>(_str(str).lengthUtf8()) + index;
+        index = static_cast<int>(format(str).lengthUtf8()) + index;
 
         if (index < 0) {
             index = 0;
@@ -389,7 +389,7 @@ static void ScriptString_Clear(string& str)
 
 static string ScriptString_Replace(const string& str, const string& str_from, const string& str_to)
 {
-    return _str(str).replace(str_from, str_to);
+    return format(str).replace(str_from, str_to);
 }
 
 static string ScriptString_SubString(const string& str, int start, int count)
@@ -490,7 +490,7 @@ static void ScriptString_SetAt(string& str, int i, string& value)
 
 static uint ScriptString_Length(const string& str)
 {
-    return _str(str).lengthUtf8();
+    return format(str).lengthUtf8();
 }
 
 static uint ScriptString_RawLength(const string& str)
@@ -583,12 +583,12 @@ static bool ScriptString_EndsWith(const string& str, const string& other)
 
 static string ScriptString_Lower(const string& str)
 {
-    return _str(str).lowerUtf8();
+    return format(str).lowerUtf8();
 }
 
 static string ScriptString_Upper(const string& str)
 {
-    return _str(str).upperUtf8();
+    return format(str).upperUtf8();
 }
 
 static string ScriptString_Trim(const string& str, const string& chars)

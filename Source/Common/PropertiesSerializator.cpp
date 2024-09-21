@@ -275,16 +275,16 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     return name_resolver.ResolveEnumValueName(prop->GetDictKeyTypeName(), enum_value);
                 }
                 else if (prop->GetDictKeySize() == 1) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int8*>(p)));
+                    return format("{}", static_cast<int>(*reinterpret_cast<const int8*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 2) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int16*>(p)));
+                    return format("{}", static_cast<int>(*reinterpret_cast<const int16*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 4) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const int*>(p)));
+                    return format("{}", static_cast<int>(*reinterpret_cast<const int*>(p)));
                 }
                 else if (prop->GetDictKeySize() == 8) {
-                    return _str("{}", static_cast<int64>(*reinterpret_cast<const int64*>(p)));
+                    return format("{}", static_cast<int64>(*reinterpret_cast<const int64*>(p)));
                 }
                 throw UnreachablePlaceException(LINE_STR);
             };
@@ -499,11 +499,11 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         case AnyData::STRING_VALUE:
             return std::get<string>(some_value);
         case AnyData::INT64_VALUE:
-            return tmp_str = _str("{}", std::get<int64>(some_value));
+            return tmp_str = format("{}", std::get<int64>(some_value));
         case AnyData::DOUBLE_VALUE:
-            return tmp_str = _str("{}", std::get<double>(some_value));
+            return tmp_str = format("{}", std::get<double>(some_value));
         case AnyData::BOOL_VALUE:
-            return tmp_str = _str("{}", std::get<bool>(some_value));
+            return tmp_str = format("{}", std::get<bool>(some_value));
         default:
             throw UnreachablePlaceException(LINE_STR);
         }
@@ -512,39 +512,39 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     // Implicit conversion to number
     const auto can_convert_str_to_number = [](const auto& some_value) -> bool {
         // Todo: check if converted value fits to target bounds
-        return _str(std::get<string>(some_value)).isNumber();
+        return format(std::get<string>(some_value)).isNumber();
     };
 
     const auto convert_str_to_number = [prop](const auto& some_value, uint8* pod_data) {
         if (prop->IsInt8()) {
-            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(_str(std::get<string>(some_value)).toInt());
+            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(format(std::get<string>(some_value)).toInt());
         }
         else if (prop->IsInt16()) {
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toInt());
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(format(std::get<string>(some_value)).toInt());
         }
         else if (prop->IsInt32()) {
-            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(_str(std::get<string>(some_value)).toInt());
+            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(format(std::get<string>(some_value)).toInt());
         }
         else if (prop->IsInt64()) {
-            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(_str(std::get<string>(some_value)).toInt64());
+            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(format(std::get<string>(some_value)).toInt64());
         }
         else if (prop->IsUInt8()) {
-            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(_str(std::get<string>(some_value)).toUInt());
+            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(format(std::get<string>(some_value)).toUInt());
         }
         else if (prop->IsUInt16()) {
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toUInt());
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(format(std::get<string>(some_value)).toUInt());
         }
         else if (prop->IsUInt32()) {
-            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(_str(std::get<string>(some_value)).toUInt());
+            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(format(std::get<string>(some_value)).toUInt());
         }
         else if (prop->IsSingleFloat()) {
-            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(_str(std::get<string>(some_value)).toFloat());
+            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(format(std::get<string>(some_value)).toFloat());
         }
         else if (prop->IsDoubleFloat()) {
-            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(_str(std::get<string>(some_value)).toDouble());
+            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(format(std::get<string>(some_value)).toDouble());
         }
         else if (prop->IsBool()) {
-            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = static_cast<bool>(_str(std::get<string>(some_value)).toBool());
+            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = static_cast<bool>(format(std::get<string>(some_value)).toBool());
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
@@ -1005,19 +1005,19 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
             }
             else if (prop->GetDictKeySize() == 1) {
-                *reinterpret_cast<int8*>(data.get() + data_pos) = static_cast<int8>(_str(dict_key).toInt64());
+                *reinterpret_cast<int8*>(data.get() + data_pos) = static_cast<int8>(format(dict_key).toInt64());
                 data_pos += prop->GetDictKeySize();
             }
             else if (prop->GetDictKeySize() == 2) {
-                *reinterpret_cast<int16*>(data.get() + data_pos) = static_cast<int16>(_str(dict_key).toInt64());
+                *reinterpret_cast<int16*>(data.get() + data_pos) = static_cast<int16>(format(dict_key).toInt64());
                 data_pos += prop->GetDictKeySize();
             }
             else if (prop->GetDictKeySize() == 4) {
-                *reinterpret_cast<int*>(data.get() + data_pos) = static_cast<int>(_str(dict_key).toInt64());
+                *reinterpret_cast<int*>(data.get() + data_pos) = static_cast<int>(format(dict_key).toInt64());
                 data_pos += prop->GetDictKeySize();
             }
             else if (prop->GetDictKeySize() == 8) {
-                *reinterpret_cast<int64*>(data.get() + data_pos) = _str(dict_key).toInt64();
+                *reinterpret_cast<int64*>(data.get() + data_pos) = format(dict_key).toInt64();
                 data_pos += prop->GetDictKeySize();
             }
             else {

@@ -35,45 +35,45 @@
 
 #include "Common.h"
 
-// ReSharper disable once CppInconsistentNaming
-class _str final
+class StringHelper final
 {
-    // ReSharper disable CppInconsistentNaming
-
 public:
-    _str() = default;
-    explicit _str(const char* s) noexcept :
+    StringHelper() = default;
+    explicit StringHelper(const char* s) noexcept :
         _sv {s}
     {
     }
-    explicit _str(string_view s) noexcept :
+    explicit StringHelper(string_view s) noexcept :
         _sv {s}
     {
     }
-    explicit _str(string&& s) noexcept :
+    explicit StringHelper(string&& s) noexcept :
         _s {std::move(s)},
         _sv {_s}
     {
     }
     template<typename... Args>
-    explicit _str(string_view format, Args&&... args) :
+    explicit StringHelper(string_view format, Args&&... args) :
         _s {fmt::format(format, std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
-    _str(const _str&) = delete;
-    _str(_str&&) noexcept = delete;
-    auto operator=(const _str&) -> _str& = delete;
-    auto operator=(_str&&) noexcept -> _str& = delete;
-    ~_str() = default;
+
+    StringHelper(const StringHelper&) = delete;
+    StringHelper(StringHelper&&) noexcept = delete;
+    auto operator=(const StringHelper&) -> StringHelper& = delete;
+    auto operator=(StringHelper&&) noexcept -> StringHelper& = delete;
+    ~StringHelper() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&();
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const noexcept { return _sv; }
 
-    auto operator==(string_view r) const noexcept -> bool { return _sv == r; }
-    auto operator!=(string_view r) const noexcept -> bool { return _sv != r; }
+    auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
+    auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
+
+    // ReSharper disable CppInconsistentNaming
 
     [[nodiscard]] auto c_str() -> const char*;
     [[nodiscard]] auto str() -> string&&;
@@ -81,8 +81,8 @@ public:
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
-    [[nodiscard]] auto compareIgnoreCase(string_view r) const noexcept -> bool;
-    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const -> bool;
+    [[nodiscard]] auto compareIgnoreCase(string_view other) const noexcept -> bool;
+    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view other) const -> bool;
     [[nodiscard]] auto startsWith(char r) const noexcept -> bool;
     [[nodiscard]] auto startsWith(string_view r) const noexcept -> bool;
     [[nodiscard]] auto endsWith(char r) const noexcept -> bool;
@@ -102,45 +102,46 @@ public:
     [[nodiscard]] auto split(char divider) const -> vector<string>;
     [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
-    auto substringUntil(char separator) -> _str&;
-    auto substringUntil(string_view separator) -> _str&;
-    auto substringAfter(char separator) -> _str&;
-    auto substringAfter(string_view separator) -> _str&;
-    auto trim() -> _str&;
-    auto erase(char what) -> _str&;
-    auto erase(char begin, char end) -> _str&;
-    auto replace(char from, char to) -> _str&;
-    auto replace(char from1, char from2, char to) -> _str&;
-    auto replace(string_view from, string_view to) -> _str&;
-    auto lower() -> _str&;
-    auto lowerUtf8() -> _str&;
-    auto upper() -> _str&;
-    auto upperUtf8() -> _str&;
+    auto substringUntil(char separator) -> StringHelper&;
+    auto substringUntil(string_view separator) -> StringHelper&;
+    auto substringAfter(char separator) -> StringHelper&;
+    auto substringAfter(string_view separator) -> StringHelper&;
+    auto trim() -> StringHelper&;
+    auto erase(char what) -> StringHelper&;
+    auto erase(char begin, char end) -> StringHelper&;
+    auto replace(char from, char to) -> StringHelper&;
+    auto replace(char from1, char from2, char to) -> StringHelper&;
+    auto replace(string_view from, string_view to) -> StringHelper&;
+    auto lower() -> StringHelper&;
+    auto lowerUtf8() -> StringHelper&;
+    auto upper() -> StringHelper&;
+    auto upperUtf8() -> StringHelper&;
 
-    auto formatPath() -> _str&;
-    auto extractDir() -> _str&;
-    auto extractFileName() -> _str&;
-    auto getFileExtension() -> _str&; // Extension without dot and lowered
-    auto eraseFileExtension() -> _str&; // Erase extension with dot
-    auto changeFileName(string_view new_name) -> _str&;
-    auto combinePath(string_view path) -> _str&;
-    auto normalizePathSlashes() -> _str&;
+    auto formatPath() -> StringHelper&;
+    auto extractDir() -> StringHelper&;
+    auto extractFileName() -> StringHelper&;
+    auto getFileExtension() -> StringHelper&; // Extension without dot and lowered
+    auto eraseFileExtension() -> StringHelper&; // Erase extension with dot
+    auto changeFileName(string_view new_name) -> StringHelper&;
+    auto combinePath(string_view path) -> StringHelper&;
+    auto normalizePathSlashes() -> StringHelper&;
 
-    auto normalizeLineEndings() -> _str&;
+    auto normalizeLineEndings() -> StringHelper&;
 
 #if FO_WINDOWS
-    auto parseWideChar(const wchar_t* str) -> _str&;
+    auto parseWideChar(const wchar_t* str) -> StringHelper&;
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
 
+    // ReSharper restore CppInconsistentNaming
+
 private:
-    void ownStorage();
+    void OwnStorage();
 
     string _s {};
     string_view _sv {};
-
-    // ReSharper restore CppInconsistentNaming
 };
+static_assert(!std::is_polymorphic_v<StringHelper>);
 
 namespace utf8
 {
@@ -153,6 +154,12 @@ namespace utf8
 }
 
 template<>
-struct fmt::formatter<_str> : formatter<std::string_view>
+struct fmt::formatter<StringHelper> : formatter<std::string_view>
 {
 };
+
+template<typename... Args>
+inline auto format(Args&&... args) noexcept(noexcept(StringHelper(std::forward<Args>(args)...))) -> StringHelper
+{
+    return StringHelper(std::forward<Args>(args)...);
+}

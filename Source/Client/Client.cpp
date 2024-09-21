@@ -54,7 +54,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
-    Cache(_str(Settings.ResourcesDir).combinePath("Cache.fobin")),
+    Cache(format(Settings.ResourcesDir).combinePath("Cache.fobin")),
     ClientDeferredCalls(this),
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
@@ -64,17 +64,17 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     Resources.AddDataSource(Settings.EmbeddedResources);
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("StaticMaps"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientProtos"));
+    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("EngineData"));
+    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("Core"));
+    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("Texts"));
+    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("StaticMaps"));
+    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("ClientProtos"));
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientAngelScript"));
+        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("ClientAngelScript"));
     }
 
     for (const auto& entry : Settings.ClientResourceEntries) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath(entry));
     }
 
 #if FO_IOS
@@ -398,7 +398,7 @@ void FOClient::TryAutoLogin()
         return;
     }
 
-    const auto auto_login_args = _str(auto_login).split(' ');
+    const auto auto_login_args = format(auto_login).split(' ');
     if (auto_login_args.size() != 2) {
         return;
     }
@@ -1329,11 +1329,11 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
     case SAY_SHOUT:
         fstr_mb = STR_MBSHOUT;
         fstr_cr = STR_CRSHOUT;
-        fstr = _str(fstr).upperUtf8();
+        fstr = format(fstr).upperUtf8();
         break;
     case SAY_SHOUT_ON_HEAD:
         fstr_cr = STR_CRSHOUT;
-        fstr = _str(fstr).upperUtf8();
+        fstr = format(fstr).upperUtf8();
         break;
     case SAY_EMOTE:
         fstr_mb = STR_MBEMOTE;
@@ -1345,11 +1345,11 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
     case SAY_WHISP:
         fstr_mb = STR_MBWHISP;
         fstr_cr = STR_CRWHISP;
-        fstr = _str(fstr).lowerUtf8();
+        fstr = format(fstr).lowerUtf8();
         break;
     case SAY_WHISP_ON_HEAD:
         fstr_cr = STR_CRWHISP;
-        fstr = _str(fstr).lowerUtf8();
+        fstr = format(fstr).lowerUtf8();
         break;
     case SAY_SOCIAL:
         fstr_cr = STR_CRSOCIAL;
@@ -1367,20 +1367,20 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
 
     const auto get_format = [this](uint str_num) -> string {
         const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
-        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}");
+        return format(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}");
     };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
 
     // Critter text on head
     if (fstr_cr != 0 && cr != nullptr) {
-        cr->SetText(_str(get_format(fstr_cr), fstr), COLOR_TEXT, std::chrono::milliseconds {text_delay});
+        cr->SetText(format(get_format(fstr_cr), fstr), COLOR_TEXT, std::chrono::milliseconds {text_delay});
     }
 
     // Message box text
     if (fstr_mb != 0) {
         if (how_say == SAY_NETMSG) {
-            AddMessage(FOMB_GAME, _str(get_format(fstr_mb), fstr));
+            AddMessage(FOMB_GAME, format(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
             uint16 channel = 0;
@@ -1390,11 +1390,11 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
                     channel = radio->GetRadioChannel();
                 }
             }
-            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), channel, fstr));
+            AddMessage(FOMB_TALK, format(get_format(fstr_mb), channel, fstr));
         }
         else {
             const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), cr_name, fstr));
+            AddMessage(FOMB_TALK, format(get_format(fstr_mb), cr_name, fstr));
         }
     }
 
@@ -2504,11 +2504,11 @@ void FOClient::Net_OnChosenTalk()
     const auto talk_time = _conn.InBuf.Read<uint>();
 
     map<string, any_t> params;
-    params["TalkerIsNpc"] = any_t {_str("{}", is_npc ? 1 : 0)};
-    params["TalkerId"] = any_t {_str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint())};
-    params["Text"] = any_t {_str("{}", text_to_script)};
-    params["Answers"] = any_t {_str("{}", answers_to_script)};
-    params["TalkTime"] = any_t {_str("{}", talk_time)};
+    params["TalkerIsNpc"] = any_t {format("{}", is_npc ? 1 : 0)};
+    params["TalkerId"] = any_t {format("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint())};
+    params["Text"] = any_t {format("{}", text_to_script)};
+    params["Answers"] = any_t {format("{}", answers_to_script)};
+    params["TalkTime"] = any_t {format("{}", talk_time)};
     ShowScreen(SCREEN_DIALOG, params);
 }
 
@@ -2768,8 +2768,8 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
 
     map<string, any_t> params;
-    params["LocationId"] = any_t {_str("{}", loc_id)};
-    params["LocationEntrance"] = any_t {_str("{}", loc_ent)};
+    params["LocationId"] = any_t {format("{}", loc_id)};
+    params["LocationEntrance"] = any_t {format("{}", loc_ent)};
     ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
@@ -3392,7 +3392,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
         } break;
         case '|': {
             if (sex_tags) {
-                tag = _str(text.substr(i + 1)).substringUntil('|');
+                tag = format(text.substr(i + 1)).substringUntil('|');
                 text.erase(i, tag.length() + 2);
 
                 if (sex != 0) {
@@ -3412,31 +3412,31 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 continue;
             }
 
-            tag = _str(text.substr(i + 1)).substringUntil('@');
+            tag = format(text.substr(i + 1)).substringUntil('@');
             text.erase(i, tag.length() + 2);
             if (tag.empty()) {
                 break;
             }
 
             // Player name
-            if (_str(tag).compareIgnoreCase("pname")) {
+            if (format(tag).compareIgnoreCase("pname")) {
                 tag = (cr != nullptr ? cr->GetName() : "");
             }
             // Npc name
-            else if (_str(tag).compareIgnoreCase("nname")) {
+            else if (format(tag).compareIgnoreCase("nname")) {
                 tag = (npc != nullptr ? npc->GetName() : "");
             }
             // Sex
-            else if (_str(tag).compareIgnoreCase("sex")) {
+            else if (format(tag).compareIgnoreCase("sex")) {
                 sex = (cr != nullptr && cr->GetIsSexTagFemale() ? 2 : 1);
                 sex_tags = true;
                 continue;
             }
             // Random
-            else if (_str(tag).compareIgnoreCase("rnd")) {
+            else if (format(tag).compareIgnoreCase("rnd")) {
                 auto first = text.find_first_of('|', i);
                 auto last = text.find_last_of('|', i);
-                auto rnd = _str(text.substr(first, last - first + 1)).split('|');
+                auto rnd = format(text.substr(first, last - first + 1)).split('|');
                 text.erase(first, last - first + 1);
                 if (!rnd.empty()) {
                     text.insert(first, rnd[GenericUtils::Random(0, static_cast<int>(rnd.size()) - 1)]);
@@ -3448,7 +3448,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 auto pos = lexems.find(lex);
                 if (pos != string::npos) {
                     pos += lex.length();
-                    tag = _str(lexems.substr(pos)).substringUntil('$').trim();
+                    tag = format(lexems.substr(pos)).substringUntil('$').trim();
                 }
                 else {
                     tag = "<lexem not found>";
@@ -3457,7 +3457,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             // Text pack
             else if (tag.length() > 5 && tag[0] == 't' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == 't' && tag[4] == ' ') {
                 tag = tag.substr(5);
-                tag = _str(tag).erase('(').erase(')');
+                tag = format(tag).erase('(').erase(')');
 
                 istringstream itag(tag);
                 string pack_name_str;
@@ -3472,7 +3472,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                         tag = "<text tag, invalid pack name>";
                     }
                     else if (text_pack.GetStrCount(str_num) == 0) {
-                        tag = _str("<text tag, string {} not found>", str_num);
+                        tag = format("<text tag, string {} not found>", str_num);
                     }
                     else {
                         tag = text_pack.GetStr(str_num);
@@ -3484,7 +3484,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             }
             // Script
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
-                string func_name = _str(tag.substr(7)).substringUntil('$');
+                string func_name = format(tag.substr(7)).substringUntil('$');
                 if (!ScriptSys->CallFunc<string, string>(ToHashedString(func_name), string(lexems), tag)) {
                     tag = "<script function not found>";
                 }
@@ -3833,14 +3833,14 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         TryExit();
     }
     else if (cmd == "BytesSend") {
-        return _str("{}", _conn.GetBytesSend());
+        return format("{}", _conn.GetBytesSend());
     }
     else if (cmd == "BytesReceive") {
-        return _str("{}", _conn.GetBytesReceived());
+        return format("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
-        auto w = _str(args[1]).toInt();
-        auto h = _str(args[2]).toInt();
+        auto w = format(args[1]).toInt();
+        auto h = format(args[2]).toInt();
 
         SprMngr.SetScreenSize(w, h);
         SprMngr.SetWindowSize(w, h);
@@ -3853,7 +3853,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         for (size_t i = 1; i < args.size(); i++) {
             str += args[i] + " ";
         }
-        str = _str(str).trim();
+        str = format(str).trim();
 
         string buf;
         if (!PackNetCommand(
@@ -3892,10 +3892,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //              }
     }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
-        const auto is_cr = _str(args[1]).toBool();
-        const auto cr_id = is_cr ? ident_t {_str(args[2]).toUInt()} : ident_t {};
-        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(_str(args[2]).toUInt());
-        const auto answer_index = static_cast<uint8>(_str(args[3]).toUInt());
+        const auto is_cr = format(args[1]).toBool();
+        const auto cr_id = is_cr ? ident_t {format(args[2]).toUInt()} : ident_t {};
+        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(format(args[2]).toUInt());
+        const auto answer_index = static_cast<uint8>(format(args[3]).toUInt());
 
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
@@ -3905,11 +3905,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         static int y;
         static int x2;
         static int y2;
-        zoom = _str(args[1]).toInt();
-        x = _str(args[2]).toInt();
-        y = _str(args[3]).toInt();
-        x2 = x + _str(args[4]).toInt();
-        y2 = y + _str(args[5]).toInt();
+        zoom = format(args[1]).toInt();
+        x = format(args[2]).toInt();
+        y = format(args[3]).toInt();
+        x2 = x + format(args[4]).toInt();
+        y2 = y + format(args[5]).toInt();
 
         if (zoom != _lmapZoom || x != _lmapWMap[0] || y != _lmapWMap[1] || x2 != _lmapWMap[2] || y2 != _lmapWMap[3]) {
             _lmapZoom = zoom;
@@ -3930,13 +3930,13 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {
-            auto hx = _str(args[1]).toUInt();
-            auto hy = _str(args[2]).toUInt();
+            auto hx = format(args[1]).toUInt();
+            auto hy = format(args[2]).toUInt();
             CurMap->SetSkipRoof(static_cast<uint16>(hx), static_cast<uint16>(hy));
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
-        auto alpha = _str(args[1]).toInt();
+        auto alpha = format(args[1]).toInt();
 
         if (auto* chosen = GetMapChosen(); chosen != nullptr) {
             chosen->Alpha = static_cast<uint8>(alpha);
@@ -3946,7 +3946,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         /*if (SDL_HasScreenKeyboardSupport())
         {
             bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
-            bool next = _str(args[1]).toBool();
+            bool next = format(args[1]).toBool();
             if (cur != next)
             {
                 if (next)
@@ -4132,7 +4132,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         return;
     }
 
-    const auto names = _str(video_name).split('|');
+    const auto names = format(video_name).split('|');
 
     const auto file = Resources.ReadFile(names[0]);
     if (!file) {

@@ -58,7 +58,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
 
     if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddDataSource(_str(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+        _resources.AddDataSource(format(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -152,9 +152,9 @@ auto Updater::Process() -> bool
 
             const auto cur = static_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
             const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = _str(update_file.Name).formatPath();
+            const string name = format(update_file.Name).formatPath();
 
-            update_text += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
+            update_text += format("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
 
         update_text += "\n";
@@ -195,7 +195,7 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_settings.ResourcesDir).combinePath(fname);
+    return format(_settings.ResourcesDir).combinePath(fname);
 }
 
 void Updater::AddText(uint str_num, string_view num_str_str)
@@ -266,12 +266,12 @@ void Updater::Net_OnUpdateFilesResponse()
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
                 // Todo: add update file files checking by hashes
-                /*const auto file_hash = resources.ReadFileText(_str("{}.hash", fname));
+                /*const auto file_hash = resources.ReadFileText(format("{}.hash", fname));
                 if (file_hash.empty()) {
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }
 
-                if (_str(file_hash).toUInt() == hash) {
+                if (format(file_hash).toUInt() == hash) {
                     continue;
                 }*/
 
@@ -341,7 +341,7 @@ void Updater::GetNextFile()
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
-        if (!DiskFileSystem::RenameFile(MakeWritePath(_str("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
+        if (!DiskFileSystem::RenameFile(MakeWritePath(format("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
@@ -356,8 +356,8 @@ void Updater::GetNextFile()
         _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 
-        DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));
-        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(_str("~{}", next_update_file.Name)), true));
+        DiskFileSystem::DeleteFile(MakeWritePath(format("~{}", next_update_file.Name)));
+        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(format("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");

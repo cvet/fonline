@@ -231,7 +231,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     const auto take_first = anim_name == "Base";
     const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
     for (auto&& anim_set : _loadedAnimSets) {
-        if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
+        if (format(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || format(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
         }
     }
@@ -261,7 +261,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     // Create new
-    const string tex_path = _str(model_path).extractDir().combinePath(texture_name);
+    const string tex_path = format(model_path).extractDir().combinePath(texture_name);
     auto&& [tex, tex_data] = _textureLoader(tex_path);
 
     if (tex == nullptr) {
@@ -1149,7 +1149,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             MeshTexture* texture = nullptr;
 
             // Evaluate texture
-            if (_str(tex_name).startsWith("Parent")) { // Parent_MeshName
+            if (format(tex_name).startsWith("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
                     const auto* parent_mesh_name = tex_name.c_str() + 6;
                     if (parent_mesh_name[0] == '_') {
@@ -1190,7 +1190,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             RenderEffect* effect = nullptr;
 
             // Get effect
-            if (_str(std::get<0>(eff_info)).startsWith("Parent")) { // Parent_MeshName
+            if (format(std::get<0>(eff_info)).startsWith("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
                     const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
                     if (mesh_name[0] == '_') {
@@ -2116,7 +2116,7 @@ auto ModelInformation::Load(string_view name) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = _str(name).getFileExtension();
+    const string ext = format(name).getFileExtension();
 
     if (ext.empty()) {
         return false;
@@ -2193,24 +2193,24 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Model") {
                 (*istr) >> buf;
-                model = _str(name).extractDir().combinePath(buf);
+                model = format(name).extractDir().combinePath(buf);
             }
             else if (token == "Include") {
                 // Get swapped words
                 vector<string> templates;
                 string line;
                 std::getline(*istr, line, '\n');
-                templates = _str(line).trim().split(' ');
+                templates = format(line).trim().split(' ');
                 if (templates.empty()) {
                     continue;
                 }
 
                 for (size_t i = 1; i < templates.size() - 1; i += 2) {
-                    templates[i] = _str("%{}%", templates[i]);
+                    templates[i] = format("%{}%", templates[i]);
                 }
 
                 // Include file path
-                string fname = _str(name).extractDir().combinePath(templates[0]);
+                string fname = format(name).extractDir().combinePath(templates[0]);
                 auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found", fname);
@@ -2221,12 +2221,12 @@ auto ModelInformation::Load(string_view name) -> bool
                 string new_content = fo3d_ex.GetStr();
                 if (templates.size() > 2) {
                     for (size_t i = 1; i < templates.size() - 1; i += 2) {
-                        new_content = _str(new_content).replace(templates[i], templates[i + 1]);
+                        new_content = format(new_content).replace(templates[i], templates[i + 1]);
                     }
                 }
 
                 // Insert new buffer
-                file_buf = _str("{}\n{}", new_content, !istr->eof() ? file_buf.substr(static_cast<size_t>(istr->tellg())) : "");
+                file_buf = format("{}\n{}", new_content, !istr->eof() ? file_buf.substr(static_cast<size_t>(istr->tellg())) : "");
 
                 // Reinitialize stream
                 delete istr;
@@ -2285,7 +2285,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
-                string fname = _str(name).extractDir().combinePath(buf);
+                string fname = format(name).extractDir().combinePath(buf);
                 link->ChildName = fname;
                 link->IsParticles = false;
 
@@ -2315,7 +2315,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Cut") {
                 (*istr) >> buf;
-                string fname = _str(name).extractDir().combinePath(buf);
+                string fname = format(name).extractDir().combinePath(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
                     // Add cut
@@ -2324,7 +2324,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     // Layers
                     (*istr) >> buf;
-                    auto cur_layer_names = _str(buf).split('-');
+                    auto cur_layer_names = format(buf).split('-');
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
@@ -2342,7 +2342,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     // Shapes
                     (*istr) >> buf;
-                    auto shapes = _str(buf).split('-');
+                    auto shapes = format(buf).split('-');
 
                     // Unskin bones
                     (*istr) >> buf;
@@ -2515,7 +2515,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DisableLayer") {
                 (*istr) >> buf;
-                const auto disabled_layers = _str(buf).split('-');
+                const auto disabled_layers = format(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
                     const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
@@ -2530,7 +2530,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DisableMesh") {
                 (*istr) >> buf;
-                const auto disabled_mesh_names = _str(buf).split('-');
+                const auto disabled_mesh_names = format(buf).split('-');
 
                 for (const auto& disabled_mesh_name : disabled_mesh_names) {
                     hstring disabled_mesh;
@@ -2714,7 +2714,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     anim_path = model;
                 }
                 else {
-                    anim_path = _str(name).extractDir().combinePath(anim.FileName);
+                    anim_path = format(name).extractDir().combinePath(anim.FileName);
                 }
 
                 auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);

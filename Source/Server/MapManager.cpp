@@ -401,18 +401,18 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     const auto& locations = _engine->EntityMngr.GetLocations();
     const auto& maps = _engine->EntityMngr.GetMaps();
 
-    string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
-    result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
+    string result = format("Locations count: {}\n", static_cast<uint>(locations.size()));
+    result += format("Maps count: {}\n", static_cast<uint>(maps.size()));
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
 
     for (auto&& [id, loc] : locations) {
-        result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
+        result += format("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
 
         uint map_index = 0;
 
         for (const auto* map : loc->GetMaps()) {
-            result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
+            result += format("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
             result += map->GetInitScript();
             result += "\n";
             map_index++;
