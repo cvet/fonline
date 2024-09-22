@@ -467,6 +467,7 @@ set(FO_CATCH2_SOURCE
     "${FO_CATCH2_DIR}/catch_amalgamated.cpp"
     "${FO_CATCH2_DIR}/catch_amalgamated.hpp")
 add_library(Catch2 ${FO_CATCH2_SOURCE})
+target_compile_definitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
 list(APPEND FO_TESTING_LIBS "Catch2")
 DisableLibWarnings(Catch2)
 
