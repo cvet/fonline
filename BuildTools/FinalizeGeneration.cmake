@@ -462,7 +462,13 @@ DisableLibWarnings(ImGui)
 # Catch2
 StatusMessage("+ Catch2")
 set(FO_CATCH2_DIR "${FO_ENGINE_ROOT}/ThirdParty/Catch2")
-include_directories("${FO_CATCH2_DIR}/single_include/catch2")
+include_directories("${FO_CATCH2_DIR}")
+set(FO_CATCH2_SOURCE
+    "${FO_CATCH2_DIR}/catch_amalgamated.cpp"
+    "${FO_CATCH2_DIR}/catch_amalgamated.hpp")
+add_library(Catch2 ${FO_CATCH2_SOURCE})
+list(APPEND FO_TESTING_LIBS "Catch2")
+DisableLibWarnings(Catch2)
 
 # Backward-cpp
 if(WIN32 OR LINUX OR(APPLE AND NOT PLATFORM))

@@ -40,7 +40,7 @@
 #endif
 
 #define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 #include "Common.h"
 
