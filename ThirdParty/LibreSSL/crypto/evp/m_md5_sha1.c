@@ -1,4 +1,4 @@
-/* $OpenBSD: m_md5_sha1.c,v 1.2 2018/08/10 17:30:29 jsing Exp $ */
+/* $OpenBSD: m_md5_sha1.c,v 1.8 2023/09/02 04:55:18 tb Exp $ */
 /*
  * Copyright (c) 2017 Joel Sing <jsing@openbsd.org>
  *
@@ -24,6 +24,8 @@
 #include <openssl/rsa.h>
 #endif
 
+#include "evp_local.h"
+
 struct md5_sha1_ctx {
 	MD5_CTX md5;
 	SHA_CTX sha1;
@@ -42,7 +44,7 @@ md5_sha1_init(EVP_MD_CTX *ctx)
 	return 1;
 }
 
-static int 
+static int
 md5_sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count)
 {
 	struct md5_sha1_ctx *mdctx = ctx->md_data;
@@ -78,13 +80,6 @@ static const EVP_MD md5_sha1_md = {
         .final = md5_sha1_final,
         .block_size = MD5_CBLOCK, /* MD5_CBLOCK == SHA_CBLOCK */
         .ctx_size = sizeof(EVP_MD *) + sizeof(struct md5_sha1_ctx),
-#ifndef OPENSSL_NO_RSA
-	.sign = (evp_sign_method *)RSA_sign,
-	.verify = (evp_verify_method *)RSA_verify,
-	.required_pkey_type = {
-		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
-	},
-#endif
 };
 
 const EVP_MD *

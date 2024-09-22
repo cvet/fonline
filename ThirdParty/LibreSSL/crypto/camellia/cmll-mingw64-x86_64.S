@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -6,6 +12,7 @@
 .def	Camellia_EncryptBlock;	.scl 2;	.type 32;	.endef
 .p2align	4
 Camellia_EncryptBlock:
+_CET_ENDBR
 	movl	$128,%eax
 	subl	%edi,%eax
 	movl	$3,%edi
@@ -27,6 +34,7 @@ Camellia_EncryptBlock_Rounds:
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -77,6 +85,7 @@ Camellia_EncryptBlock_Rounds:
 .def	_x86_64_Camellia_encrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_Camellia_encrypt:
+_CET_ENDBR
 	xorl	0(%r14),%r9d
 	xorl	4(%r14),%r8d
 	xorl	8(%r14),%r11d
@@ -286,6 +295,7 @@ _x86_64_Camellia_encrypt:
 .def	Camellia_DecryptBlock;	.scl 2;	.type 32;	.endef
 .p2align	4
 Camellia_DecryptBlock:
+_CET_ENDBR
 	movl	$128,%eax
 	subl	%edi,%eax
 	movl	$3,%edi
@@ -307,6 +317,7 @@ Camellia_DecryptBlock_Rounds:
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -357,6 +368,7 @@ Camellia_DecryptBlock_Rounds:
 .def	_x86_64_Camellia_decrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_Camellia_decrypt:
+_CET_ENDBR
 	xorl	0(%r14),%r9d
 	xorl	4(%r14),%r8d
 	xorl	8(%r14),%r11d
@@ -573,6 +585,7 @@ Camellia_Ekeygen:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -1115,6 +1128,7 @@ Camellia_Ekeygen:
 	movq	16(%rsp),%rsi
 	retq
 .LSEH_end_Camellia_Ekeygen:
+.section	.rodata
 .p2align	6
 .LCamellia_SIGMA:
 .long	0x3bcc908b, 0xa09e667f, 0x4caa73b2, 0xb67ae858
@@ -1634,6 +1648,7 @@ Camellia_Ekeygen:
 .long	0x008f8f8f,0xe300e3e3
 .long	0x00010101,0x40004040
 .long	0x003d3d3d,0x4f004f4f
+.text	
 .globl	Camellia_cbc_encrypt
 .def	Camellia_cbc_encrypt;	.scl 2;	.type 32;	.endef
 .p2align	4
@@ -1649,6 +1664,7 @@ Camellia_cbc_encrypt:
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
 
+_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lcbc_abort
 	pushq	%rbx
@@ -1880,5 +1896,3 @@ Camellia_cbc_encrypt:
 	movq	16(%rsp),%rsi
 	retq
 .LSEH_end_Camellia_cbc_encrypt:
-
-.byte	67,97,109,101,108,108,105,97,32,102,111,114,32,120,56,54,95,54,52,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0

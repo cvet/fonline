@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_ncons.c,v 1.4 2020/09/16 18:12:06 beck Exp $ */
+/* $OpenBSD: x509_ncons.c,v 1.9 2023/02/16 08:38:17 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -63,6 +63,8 @@
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
+
+#include "x509_local.h"
 
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
@@ -163,24 +165,28 @@ GENERAL_SUBTREE_new(void)
 {
 	return (GENERAL_SUBTREE*)ASN1_item_new(&GENERAL_SUBTREE_it);
 }
+LCRYPTO_ALIAS(GENERAL_SUBTREE_new);
 
 void
 GENERAL_SUBTREE_free(GENERAL_SUBTREE *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &GENERAL_SUBTREE_it);
 }
+LCRYPTO_ALIAS(GENERAL_SUBTREE_free);
 
 NAME_CONSTRAINTS *
 NAME_CONSTRAINTS_new(void)
 {
 	return (NAME_CONSTRAINTS*)ASN1_item_new(&NAME_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_new);
 
 void
 NAME_CONSTRAINTS_free(NAME_CONSTRAINTS *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &NAME_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_free);
 
 static void *
 v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -347,6 +353,7 @@ NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc)
 	}
 	return X509_V_OK;
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_check);
 static int
 nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc)
 {
@@ -475,7 +482,7 @@ nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
 
 	if (!emlat)
 		return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-	/* Special case: inital '.' is RHS match */
+	/* Special case: initial '.' is RHS match */
 	if (!baseat && (*baseptr == '.')) {
 		if (eml->length > base->length) {
 			emlptr += eml->length - base->length;
@@ -536,7 +543,7 @@ nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base)
 	if (hostlen == 0)
 		return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
 
-	/* Special case: inital '.' is RHS match */
+	/* Special case: initial '.' is RHS match */
 	if (*baseptr == '.') {
 		if (hostlen > base->length) {
 			p = hostptr + hostlen - base->length;

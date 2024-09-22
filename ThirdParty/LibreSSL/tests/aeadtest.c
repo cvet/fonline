@@ -1,64 +1,33 @@
-/*	$OpenBSD: aeadtest.c,v 1.12 2019/01/22 00:59:21 dlg Exp $	*/
-/* ====================================================================
- * Copyright (c) 2011-2013 The OpenSSL Project.  All rights reserved.
+/*	$OpenBSD: aeadtest.c,v 1.26 2023/09/28 14:55:48 tb Exp $	*/
+/*
+ * Copyright (c) 2022 Joel Sing <jsing@openbsd.org>
+ * Copyright (c) 2014, Google Inc.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <ctype.h>
 
-#include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 
-/* This program tests an AEAD against a series of test vectors from a file. The
+/*
+ * This program tests an AEAD against a series of test vectors from a file. The
  * test vector file consists of key-value lines where the key and value are
  * separated by a colon and optional whitespace. The keys are listed in
  * NAMES, below. The values are hex-encoded data.
@@ -79,6 +48,7 @@
 
 #define BUF_MAX 1024
 
+/* MS defines in global headers, remove it */
 #ifdef _MSC_VER
 #ifdef IN
 #undef IN
@@ -122,106 +92,313 @@ hex_digit(char h)
 }
 
 static int
-aead_from_name(const EVP_AEAD **aead, const char *name)
+aead_from_name(const EVP_AEAD **aead, const EVP_CIPHER **cipher,
+    const char *name)
 {
 	*aead = NULL;
+	*cipher = NULL;
 
 	if (strcmp(name, "aes-128-gcm") == 0) {
-#ifndef OPENSSL_NO_AES
 		*aead = EVP_aead_aes_128_gcm();
-#else
-		fprintf(stderr, "No AES support.\n");
-#endif
+		*cipher = EVP_aes_128_gcm();
+	} else if (strcmp(name, "aes-192-gcm") == 0) {
+		*cipher = EVP_aes_192_gcm();
 	} else if (strcmp(name, "aes-256-gcm") == 0) {
-#ifndef OPENSSL_NO_AES
 		*aead = EVP_aead_aes_256_gcm();
-#else
-		fprintf(stderr, "No AES support.\n");
-#endif
+		*cipher = EVP_aes_256_gcm();
 	} else if (strcmp(name, "chacha20-poly1305") == 0) {
-#if !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
 		*aead = EVP_aead_chacha20_poly1305();
-#else
-		fprintf(stderr, "No chacha20-poly1305 support.\n");
-#endif
+		*cipher = EVP_chacha20_poly1305();
 	} else if (strcmp(name, "xchacha20-poly1305") == 0) {
-#if !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
 		*aead = EVP_aead_xchacha20_poly1305();
-#else
-		fprintf(stderr, "No xchacha20-poly1305 support.\n");
-#endif
 	} else {
 		fprintf(stderr, "Unknown AEAD: %s\n", name);
-		return -1;
-	}
-
-	if (*aead == NULL)
 		return 0;
+	}
 
 	return 1;
 }
 
 static int
-run_test_case(const EVP_AEAD* aead, unsigned char bufs[NUM_TYPES][BUF_MAX],
+run_aead_test(const EVP_AEAD *aead, unsigned char bufs[NUM_TYPES][BUF_MAX],
     const unsigned int lengths[NUM_TYPES], unsigned int line_no)
 {
-	EVP_AEAD_CTX ctx;
+	EVP_AEAD_CTX *ctx;
 	unsigned char out[BUF_MAX + EVP_AEAD_MAX_TAG_LENGTH], out2[BUF_MAX];
 	size_t out_len, out_len2;
+	int ret = 0;
 
-	if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY],
-	    lengths[TAG], NULL)) {
-		fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
-		return 0;
+	if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+		fprintf(stderr, "Failed to allocate AEAD context on line %u\n",
+		    line_no);
+		goto err;
 	}
 
-	if (!EVP_AEAD_CTX_seal(&ctx, out, &out_len, sizeof(out), bufs[NONCE],
+	if (!EVP_AEAD_CTX_init(ctx, aead, bufs[KEY], lengths[KEY],
+	    lengths[TAG], NULL)) {
+		fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+		goto err;
+	}
+
+	if (!EVP_AEAD_CTX_seal(ctx, out, &out_len, sizeof(out), bufs[NONCE],
 	    lengths[NONCE], bufs[IN], lengths[IN], bufs[AD], lengths[AD])) {
 		fprintf(stderr, "Failed to run AEAD on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
 	if (out_len != lengths[CT] + lengths[TAG]) {
 		fprintf(stderr, "Bad output length on line %u: %zu vs %u\n",
 		    line_no, out_len, (unsigned)(lengths[CT] + lengths[TAG]));
-		return 0;
+		goto err;
 	}
 
 	if (memcmp(out, bufs[CT], lengths[CT]) != 0) {
 		fprintf(stderr, "Bad output on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
 	if (memcmp(out + lengths[CT], bufs[TAG], lengths[TAG]) != 0) {
 		fprintf(stderr, "Bad tag on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
-	if (!EVP_AEAD_CTX_open(&ctx, out2, &out_len2, lengths[IN], bufs[NONCE],
+	if (!EVP_AEAD_CTX_open(ctx, out2, &out_len2, lengths[IN], bufs[NONCE],
 	    lengths[NONCE], out, out_len, bufs[AD], lengths[AD])) {
 		fprintf(stderr, "Failed to decrypt on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
 	if (out_len2 != lengths[IN]) {
 		fprintf(stderr, "Bad decrypt on line %u: %zu\n",
 		    line_no, out_len2);
-		return 0;
+		goto err;
 	}
 
 	if (memcmp(out2, bufs[IN], out_len2) != 0) {
 		fprintf(stderr, "Plaintext mismatch on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
 	out[0] ^= 0x80;
-	if (EVP_AEAD_CTX_open(&ctx, out2, &out_len2, lengths[IN], bufs[NONCE],
+	if (EVP_AEAD_CTX_open(ctx, out2, &out_len2, lengths[IN], bufs[NONCE],
 	    lengths[NONCE], out, out_len, bufs[AD], lengths[AD])) {
 		fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
-		return 0;
+		goto err;
 	}
 
-	EVP_AEAD_CTX_cleanup(&ctx);
+	ret = 1;
+
+ err:
+	EVP_AEAD_CTX_free(ctx);
+
+	return ret;
+}
+
+static int
+run_cipher_aead_encrypt_test(const EVP_CIPHER *cipher,
+    unsigned char bufs[NUM_TYPES][BUF_MAX],
+    const unsigned int lengths[NUM_TYPES], unsigned int line_no)
+{
+	unsigned char out[BUF_MAX + EVP_AEAD_MAX_TAG_LENGTH];
+	EVP_CIPHER_CTX *ctx;
+	size_t out_len;
+	int len;
+	int ivlen;
+	int ret = 0;
+
+	if ((ctx = EVP_CIPHER_CTX_new()) == NULL) {
+		fprintf(stderr, "FAIL: EVP_CIPHER_CTX_new\n");
+		goto err;
+	}
+
+	if (!EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL)) {
+		fprintf(stderr, "FAIL: EVP_EncryptInit_ex with cipher\n");
+		goto err;
+	}
+
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, lengths[NONCE], NULL)) {
+		fprintf(stderr, "FAIL: EVP_CTRL_AEAD_SET_IVLEN\n");
+		goto err;
+	}
+
+	ivlen = EVP_CIPHER_CTX_iv_length(ctx);
+	if (ivlen != (int)lengths[NONCE]) {
+		fprintf(stderr, "FAIL: ivlen %d != nonce length %d\n", ivlen,
+		    (int)lengths[NONCE]);
+		goto err;
+	}
+
+	if (!EVP_EncryptInit_ex(ctx, NULL, NULL, bufs[KEY], NULL)) {
+		fprintf(stderr, "FAIL: EVP_EncryptInit_ex with key\n");
+		goto err;
+	}
+	if (!EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, bufs[NONCE])) {
+		fprintf(stderr, "FAIL: EVP_EncryptInit_ex with nonce\n");
+		goto err;
+	}
+
+	if (!EVP_EncryptUpdate(ctx, NULL, &len, bufs[AD], lengths[AD])) {
+		fprintf(stderr, "FAIL: EVP_EncryptUpdate with AD\n");
+		goto err;
+	}
+	if ((unsigned int)len != lengths[AD]) {
+		fprintf(stderr, "FAIL: EVP_EncryptUpdate with AD length = %u, "
+		    "want %u\n", len, lengths[AD]);
+		goto err;
+	}
+	if (!EVP_EncryptUpdate(ctx, out, &len, bufs[IN], lengths[IN])) {
+		fprintf(stderr, "FAIL: EVP_EncryptUpdate with plaintext\n");
+		goto err;
+	}
+	out_len = len;
+	if (!EVP_EncryptFinal_ex(ctx, out + out_len, &len)) {
+		fprintf(stderr, "FAIL: EVP_EncryptFinal_ex\n");
+		goto err;
+	}
+	out_len += len;
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, lengths[TAG],
+	    out + out_len)) {
+		fprintf(stderr, "FAIL: EVP_EncryptInit_ex with cipher\n");
+		goto err;
+	}
+	out_len += lengths[TAG];
+
+	if (out_len != lengths[CT] + lengths[TAG]) {
+		fprintf(stderr, "Bad output length on line %u: %zu vs %u\n",
+		    line_no, out_len, (unsigned)(lengths[CT] + lengths[TAG]));
+		goto err;
+	}
+
+	if (memcmp(out, bufs[CT], lengths[CT]) != 0) {
+		fprintf(stderr, "Bad output on line %u\n", line_no);
+		goto err;
+	}
+
+	if (memcmp(out + lengths[CT], bufs[TAG], lengths[TAG]) != 0) {
+		fprintf(stderr, "Bad tag on line %u\n", line_no);
+		goto err;
+	}
+
+	ret = 1;
+
+ err:
+	EVP_CIPHER_CTX_free(ctx);
+
+	return ret;
+}
+
+static int
+run_cipher_aead_decrypt_test(const EVP_CIPHER *cipher, int invalid,
+    unsigned char bufs[NUM_TYPES][BUF_MAX],
+    const unsigned int lengths[NUM_TYPES], unsigned int line_no)
+{
+	unsigned char in[BUF_MAX], out[BUF_MAX + EVP_AEAD_MAX_TAG_LENGTH];
+	EVP_CIPHER_CTX *ctx;
+	size_t out_len;
+	int len;
+	int ret = 0;
+
+	if ((ctx = EVP_CIPHER_CTX_new()) == NULL) {
+		fprintf(stderr, "FAIL: EVP_CIPHER_CTX_new\n");
+		goto err;
+	}
+
+	if (!EVP_DecryptInit_ex(ctx, cipher, NULL, NULL, NULL)) {
+		fprintf(stderr, "FAIL: EVP_DecryptInit_ex with cipher\n");
+		goto err;
+	}
+
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, lengths[NONCE],
+	    NULL)) {
+		fprintf(stderr, "FAIL: EVP_CTRL_AEAD_SET_IVLEN\n");
+		goto err;
+	}
+
+	memcpy(in, bufs[TAG], lengths[TAG]);
+	if (invalid && lengths[CT] == 0)
+		in[0] ^= 0x80;
+
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, lengths[TAG], in)) {
+		fprintf(stderr, "FAIL: EVP_CTRL_AEAD_SET_TAG\n");
+		goto err;
+	}
+
+	if (!EVP_DecryptInit_ex(ctx, NULL, NULL, bufs[KEY], NULL)) {
+		fprintf(stderr, "FAIL: EVP_DecryptInit_ex with key\n");
+		goto err;
+	}
+	if (!EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, bufs[NONCE])) {
+		fprintf(stderr, "FAIL: EVP_DecryptInit_ex with nonce\n");
+		goto err;
+	}
+
+	if (!EVP_DecryptUpdate(ctx, NULL, &len, bufs[AD], lengths[AD])) {
+		fprintf(stderr, "FAIL: EVP_DecryptUpdate with AD\n");
+		goto err;
+	}
+	if ((unsigned int)len != lengths[AD]) {
+		fprintf(stderr, "FAIL: EVP_EncryptUpdate with AD length = %u, "
+		    "want %u\n", len, lengths[AD]);
+		goto err;
+	}
+
+	memcpy(in, bufs[CT], lengths[CT]);
+	if (invalid && lengths[CT] > 0)
+		in[0] ^= 0x80;
+
+	if (!EVP_DecryptUpdate(ctx, out, &len, in, lengths[CT])) {
+		fprintf(stderr, "FAIL: EVP_DecryptUpdate with ciphertext\n");
+		goto err;
+	}
+	out_len = len;
+
+	if (invalid) {
+		if (EVP_DecryptFinal_ex(ctx, out + out_len, &len)) {
+			fprintf(stderr, "FAIL: EVP_DecryptFinal_ex succeeded "
+			    "with invalid ciphertext on line %u\n", line_no);
+			goto err;
+		}
+		goto done;
+	}
+
+	if (!EVP_DecryptFinal_ex(ctx, out + out_len, &len)) {
+		fprintf(stderr, "FAIL: EVP_DecryptFinal_ex\n");
+		goto err;
+	}
+	out_len += len;
+
+	if (out_len != lengths[IN]) {
+		fprintf(stderr, "Bad decrypt on line %u: %zu\n",
+		    line_no, out_len);
+		goto err;
+	}
+
+	if (memcmp(out, bufs[IN], out_len) != 0) {
+		fprintf(stderr, "Plaintext mismatch on line %u\n", line_no);
+		goto err;
+	}
+
+ done:
+	ret = 1;
+
+ err:
+	EVP_CIPHER_CTX_free(ctx);
+
+	return ret;
+}
+
+static int
+run_cipher_aead_test(const EVP_CIPHER *cipher,
+    unsigned char bufs[NUM_TYPES][BUF_MAX],
+    const unsigned int lengths[NUM_TYPES], unsigned int line_no)
+{
+	if (!run_cipher_aead_encrypt_test(cipher, bufs, lengths, line_no))
+		return 0;
+	if (!run_cipher_aead_decrypt_test(cipher, 0, bufs, lengths, line_no))
+		return 0;
+	if (!run_cipher_aead_decrypt_test(cipher, 1, bufs, lengths, line_no))
+		return 0;
+
 	return 1;
 }
 
@@ -230,18 +407,18 @@ main(int argc, char **argv)
 {
 	FILE *f;
 	const EVP_AEAD *aead = NULL;
+	const EVP_CIPHER *cipher = NULL;
 	unsigned int line_no = 0, num_tests = 0, j;
-
 	unsigned char bufs[NUM_TYPES][BUF_MAX];
 	unsigned int lengths[NUM_TYPES];
+	const char *aeadname;
 
-	if (argc != 2) {
-		fprintf(stderr, "%s <test file.txt>\n", argv[0]);
+	if (argc != 3) {
+		fprintf(stderr, "%s <aead> <test file.txt>\n", argv[0]);
 		return 1;
 	}
 
-	f = fopen(argv[1], "r");
-	if (f == NULL) {
+	if ((f = fopen(argv[2], "r")) == NULL) {
 		perror("failed to open input");
 		return 1;
 	}
@@ -276,17 +453,25 @@ main(int argc, char **argv)
 			if (!any_values_set)
 				continue;
 
-			switch (aead_from_name(&aead, bufs[AEAD])) {
-			case 0:
-				fprintf(stderr, "Skipping test...\n");
-				continue;
-			case -1:
+			aeadname = argv[1];
+			if (lengths[AEAD] != 0)
+				aeadname = bufs[AEAD];
+
+			if (!aead_from_name(&aead, &cipher, aeadname)) {
 				fprintf(stderr, "Aborting...\n");
 				return 4;
 			}
 
-			if (!run_test_case(aead, bufs, lengths, line_no))
-				return 4;
+			if (aead != NULL) {
+				if (!run_aead_test(aead, bufs, lengths,
+				    line_no))
+					return 4;
+			}
+			if (cipher != NULL) {
+				if (!run_cipher_aead_test(cipher, bufs, lengths,
+				    line_no))
+					return 4;
+			}
 
 			for (j = 0; j < NUM_TYPES; j++)
 				lengths[j] = 0;
@@ -295,10 +480,12 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		/* Each line looks like:
+		/*
+		 * Each line looks like:
 		 *   TYPE: 0123abc
 		 * Where "TYPE" is the type of the data on the line,
-		 * e.g. "KEY". */
+		 * e.g. "KEY".
+		 */
 		for (i = 0; line[i] != 0 && line[i] != '\n'; i++) {
 			if (line[i] == ':') {
 				type_len = i;
@@ -347,31 +534,52 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		for (j = 0; line[i] != 0 && line[i] != '\n'; i++) {
-			unsigned char v, v2;
-			v = hex_digit(line[i++]);
-			if (line[i] == 0 || line[i] == '\n') {
-				fprintf(stderr, "Odd-length hex data on "
-				    "line %u\n", line_no);
-				return 3;
+		if (line[i] == '"') {
+			i++;
+			for (j = 0; line[i] != 0 && line[i] != '\n'; i++) {
+				if (line[i] == '"')
+					break;
+				if (j == BUF_MAX) {
+					fprintf(stderr, "Too much data on "
+					    "line %u (max is %u bytes)\n",
+					    line_no, (unsigned) BUF_MAX);
+					return 3;
+				}
+				buf[j++] = line[i];
+				*buf_len = *buf_len + 1;
 			}
-			v2 = hex_digit(line[i]);
-			if (v > 15 || v2 > 15) {
-				fprintf(stderr, "Invalid hex char on line %u\n",
+			if (line[i + 1] != 0 && line[i + 1] != '\n') {
+				fprintf(stderr, "Trailing data on line %u\n",
 				    line_no);
 				return 3;
 			}
-			v <<= 4;
-			v |= v2;
+		} else {
+			for (j = 0; line[i] != 0 && line[i] != '\n'; i++) {
+				unsigned char v, v2;
+				v = hex_digit(line[i++]);
+				if (line[i] == 0 || line[i] == '\n') {
+					fprintf(stderr, "Odd-length hex data "
+					    "on line %u\n", line_no);
+					return 3;
+				}
+				v2 = hex_digit(line[i]);
+				if (v > 15 || v2 > 15) {
+					fprintf(stderr, "Invalid hex char on "
+					    "line %u\n", line_no);
+					return 3;
+				}
+				v <<= 4;
+				v |= v2;
 
-			if (j == BUF_MAX) {
-				fprintf(stderr, "Too much hex data on line %u "
-				    "(max is %u bytes)\n",
-				    line_no, (unsigned) BUF_MAX);
-				return 3;
+				if (j == BUF_MAX) {
+					fprintf(stderr, "Too much hex data on "
+					    "line %u (max is %u bytes)\n",
+					    line_no, (unsigned) BUF_MAX);
+					return 3;
+				}
+				buf[j++] = v;
+				*buf_len = *buf_len + 1;
 			}
-			buf[j++] = v;
-			*buf_len = *buf_len + 1;
 		}
 	}
 

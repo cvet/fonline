@@ -1,4 +1,4 @@
-/* $OpenBSD: passwd.c,v 1.10 2019/07/14 03:30:46 guenther Exp $ */
+/* $OpenBSD: passwd.c,v 1.14 2023/03/06 14:32:06 tb Exp $ */
 
 #if defined OPENSSL_NO_MD5
 #define NO_MD5CRYPT_1
@@ -51,7 +51,7 @@ static struct {
 	int use1;
 	int useapr1;
 	int usecrypt;
-} passwd_config;
+} cfg;
 
 static const struct option passwd_options[] = {
 #ifndef NO_MD5CRYPT_1
@@ -59,13 +59,13 @@ static const struct option passwd_options[] = {
 		.name = "1",
 		.desc = "Use MD5 based BSD password algorithm 1",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.use1,
+		.opt.flag = &cfg.use1,
 	},
 	{
 		.name = "apr1",
 		.desc = "Use apr1 algorithm (Apache variant of BSD algorithm)",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.useapr1,
+		.opt.flag = &cfg.useapr1,
 	},
 #endif
 #ifndef OPENSSL_NO_DES
@@ -73,7 +73,7 @@ static const struct option passwd_options[] = {
 		.name = "crypt",
 		.desc = "Use crypt algorithm (default)",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.usecrypt,
+		.opt.flag = &cfg.usecrypt,
 	},
 #endif
 	{
@@ -81,44 +81,44 @@ static const struct option passwd_options[] = {
 		.argname = "file",
 		.desc = "Read passwords from specified file",
 		.type = OPTION_ARG,
-		.opt.arg = &passwd_config.infile,
+		.opt.arg = &cfg.infile,
 	},
 	{
 		.name = "noverify",
 		.desc = "Do not verify password",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.noverify,
+		.opt.flag = &cfg.noverify,
 	},
 	{
 		.name = "quiet",
 		.desc = "Do not output warnings",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.quiet,
+		.opt.flag = &cfg.quiet,
 	},
 	{
 		.name = "reverse",
 		.desc = "Reverse table columns (requires -table)",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.reverse,
+		.opt.flag = &cfg.reverse,
 	},
 	{
 		.name = "salt",
 		.argname = "string",
 		.desc = "Use specified salt",
 		.type = OPTION_ARG,
-		.opt.arg = &passwd_config.salt,
+		.opt.arg = &cfg.salt,
 	},
 	{
 		.name = "stdin",
 		.desc = "Read passwords from stdin",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.in_stdin,
+		.opt.flag = &cfg.in_stdin,
 	},
 	{
 		.name = "table",
 		.desc = "Output cleartext and hashed passwords (tab separated)",
 		.type = OPTION_FLAG,
-		.opt.flag = &passwd_config.table,
+		.opt.flag = &cfg.table,
 	},
 	{ NULL },
 };
@@ -145,14 +145,12 @@ passwd_main(int argc, char **argv)
 	int argsused;
 	int ret = 1;
 
-	if (single_execution) {
-		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
-			perror("pledge");
-			exit(1);
-		}
+	if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
+		perror("pledge");
+		exit(1);
 	}
 
-	memset(&passwd_config, 0, sizeof(passwd_config));
+	memset(&cfg, 0, sizeof(cfg));
 
 	if (options_parse(argc, argv, passwd_options, NULL, &argsused) != 0) {
 		passwd_usage();
@@ -161,23 +159,23 @@ passwd_main(int argc, char **argv)
 
 	if (argsused < argc)
 		passwds = &argv[argsused];
-	if (passwd_config.salt != NULL)
+	if (cfg.salt != NULL)
 		passed_salt = 1;
 
-	if (!passwd_config.usecrypt && !passwd_config.use1 &&
-	    !passwd_config.useapr1)
-		passwd_config.usecrypt = 1;	/* use default */
-	if (passwd_config.usecrypt + passwd_config.use1 +
-	    passwd_config.useapr1 > 1)
+	if (!cfg.usecrypt && !cfg.use1 &&
+	    !cfg.useapr1)
+		cfg.usecrypt = 1;	/* use default */
+	if (cfg.usecrypt + cfg.use1 +
+	    cfg.useapr1 > 1)
 		badopt = 1;	/* conflicting options */
 
 	/* Reject unsupported algorithms */
 #ifdef OPENSSL_NO_DES
-	if (passwd_config.usecrypt)
+	if (cfg.usecrypt)
 		badopt = 1;
 #endif
 #ifdef NO_MD5CRYPT_1
-	if (passwd_config.use1 || passwd_config.useapr1)
+	if (cfg.use1 || cfg.useapr1)
 		badopt = 1;
 #endif
 
@@ -190,21 +188,21 @@ passwd_main(int argc, char **argv)
 		goto err;
 	BIO_set_fp(out, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
 
-	if (passwd_config.infile != NULL || passwd_config.in_stdin) {
+	if (cfg.infile != NULL || cfg.in_stdin) {
 		if ((in = BIO_new(BIO_s_file())) == NULL)
 			goto err;
-		if (passwd_config.infile != NULL) {
-			assert(passwd_config.in_stdin == 0);
-			if (BIO_read_filename(in, passwd_config.infile) <= 0)
+		if (cfg.infile != NULL) {
+			assert(cfg.in_stdin == 0);
+			if (BIO_read_filename(in, cfg.infile) <= 0)
 				goto err;
 		} else {
-			assert(passwd_config.in_stdin);
+			assert(cfg.in_stdin);
 			BIO_set_fp(in, stdin, BIO_NOCLOSE);
 		}
 	}
-	if (passwd_config.usecrypt)
+	if (cfg.usecrypt)
 		pw_maxlen = 8;
-	else if (passwd_config.use1 || passwd_config.useapr1)
+	else if (cfg.use1 || cfg.useapr1)
 		pw_maxlen = 256;/* arbitrary limit, should be enough for most
 				 * passwords */
 
@@ -225,7 +223,7 @@ passwd_main(int argc, char **argv)
 		if (in == NULL)
 			if (EVP_read_pw_string(passwd_malloc,
 			    passwd_malloc_size, "Password: ",
-			    !(passed_salt || passwd_config.noverify)) != 0)
+			    !(passed_salt || cfg.noverify)) != 0)
 				goto err;
 		passwds[0] = passwd_malloc;
 	}
@@ -235,11 +233,11 @@ passwd_main(int argc, char **argv)
 
 		do {	/* loop over list of passwords */
 			passwd = *passwds++;
-			if (!do_passwd(passed_salt, &passwd_config.salt,
-			    &salt_malloc, passwd, out, passwd_config.quiet,
-			    passwd_config.table, passwd_config.reverse,
-			    pw_maxlen, passwd_config.usecrypt,
-			    passwd_config.use1, passwd_config.useapr1))
+			if (!do_passwd(passed_salt, &cfg.salt,
+			    &salt_malloc, passwd, out, cfg.quiet,
+			    cfg.table, cfg.reverse,
+			    pw_maxlen, cfg.usecrypt,
+			    cfg.use1, cfg.useapr1))
 				goto err;
 		} while (*passwds != NULL);
 	} else {
@@ -260,12 +258,12 @@ passwd_main(int argc, char **argv)
 					while ((r > 0) && (!strchr(trash, '\n')));
 				}
 
-				if (!do_passwd(passed_salt, &passwd_config.salt,
+				if (!do_passwd(passed_salt, &cfg.salt,
 				    &salt_malloc, passwd, out,
-				    passwd_config.quiet, passwd_config.table,
-				    passwd_config.reverse, pw_maxlen,
-				    passwd_config.usecrypt, passwd_config.use1,
-				    passwd_config.useapr1))
+				    cfg.quiet, cfg.table,
+				    cfg.reverse, pw_maxlen,
+				    cfg.usecrypt, cfg.use1,
+				    cfg.useapr1))
 					goto err;
 			}
 			done = (r <= 0);
@@ -306,7 +304,7 @@ md5crypt(const char *passwd, const char *magic, const char *salt)
 	char *salt_out;
 	int n;
 	unsigned int i;
-	EVP_MD_CTX md, md2;
+	EVP_MD_CTX *md = NULL, *md2 = NULL;
 	size_t passwd_len, salt_len;
 
 	passwd_len = strlen(passwd);
@@ -321,45 +319,74 @@ md5crypt(const char *passwd, const char *magic, const char *salt)
 	salt_len = strlen(salt_out);
 	assert(salt_len <= 8);
 
-	EVP_MD_CTX_init(&md);
-	EVP_DigestInit_ex(&md, EVP_md5(), NULL);
-	EVP_DigestUpdate(&md, passwd, passwd_len);
-	EVP_DigestUpdate(&md, "$", 1);
-	EVP_DigestUpdate(&md, magic, strlen(magic));
-	EVP_DigestUpdate(&md, "$", 1);
-	EVP_DigestUpdate(&md, salt_out, salt_len);
+	if ((md = EVP_MD_CTX_new()) == NULL)
+		goto err;
+	if (!EVP_DigestInit_ex(md, EVP_md5(), NULL))
+		goto err;
+	if (!EVP_DigestUpdate(md, passwd, passwd_len))
+		goto err;
+	if (!EVP_DigestUpdate(md, "$", 1))
+		goto err;
+	if (!EVP_DigestUpdate(md, magic, strlen(magic)))
+		goto err;
+	if (!EVP_DigestUpdate(md, "$", 1))
+		goto err;
+	if (!EVP_DigestUpdate(md, salt_out, salt_len))
+		goto err;
 
-	EVP_MD_CTX_init(&md2);
-	EVP_DigestInit_ex(&md2, EVP_md5(), NULL);
-	EVP_DigestUpdate(&md2, passwd, passwd_len);
-	EVP_DigestUpdate(&md2, salt_out, salt_len);
-	EVP_DigestUpdate(&md2, passwd, passwd_len);
-	EVP_DigestFinal_ex(&md2, buf, NULL);
+	if ((md2 = EVP_MD_CTX_new()) == NULL)
+		goto err;
+	if (!EVP_DigestInit_ex(md2, EVP_md5(), NULL))
+		goto err;
+	if (!EVP_DigestUpdate(md2, passwd, passwd_len))
+		goto err;
+	if (!EVP_DigestUpdate(md2, salt_out, salt_len))
+		goto err;
+	if (!EVP_DigestUpdate(md2, passwd, passwd_len))
+		goto err;
+	if (!EVP_DigestFinal_ex(md2, buf, NULL))
+		goto err;
 
-	for (i = passwd_len; i > sizeof buf; i -= sizeof buf)
-		EVP_DigestUpdate(&md, buf, sizeof buf);
-	EVP_DigestUpdate(&md, buf, i);
+	for (i = passwd_len; i > sizeof buf; i -= sizeof buf) {
+		if (!EVP_DigestUpdate(md, buf, sizeof buf))
+			goto err;
+	}
+	if (!EVP_DigestUpdate(md, buf, i))
+		goto err;
 
 	n = passwd_len;
 	while (n) {
-		EVP_DigestUpdate(&md, (n & 1) ? "\0" : passwd, 1);
+		if (!EVP_DigestUpdate(md, (n & 1) ? "\0" : passwd, 1))
+			goto err;
 		n >>= 1;
 	}
-	EVP_DigestFinal_ex(&md, buf, NULL);
+	if (!EVP_DigestFinal_ex(md, buf, NULL))
+		goto err;
 
 	for (i = 0; i < 1000; i++) {
-		EVP_DigestInit_ex(&md2, EVP_md5(), NULL);
-		EVP_DigestUpdate(&md2, (i & 1) ? (unsigned const char *) passwd : buf,
-		    (i & 1) ? passwd_len : sizeof buf);
-		if (i % 3)
-			EVP_DigestUpdate(&md2, salt_out, salt_len);
-		if (i % 7)
-			EVP_DigestUpdate(&md2, passwd, passwd_len);
-		EVP_DigestUpdate(&md2, (i & 1) ? buf : (unsigned const char *) passwd,
-		    (i & 1) ? sizeof buf : passwd_len);
-		EVP_DigestFinal_ex(&md2, buf, NULL);
+		if (!EVP_DigestInit_ex(md2, EVP_md5(), NULL))
+			goto err;
+		if (!EVP_DigestUpdate(md2,
+		    (i & 1) ? (unsigned const char *) passwd : buf,
+		    (i & 1) ? passwd_len : sizeof buf))
+			goto err;
+		if (i % 3) {
+			if (!EVP_DigestUpdate(md2, salt_out, salt_len))
+				goto err;
+		}
+		if (i % 7) {
+			if (!EVP_DigestUpdate(md2, passwd, passwd_len))
+				goto err;
+		}
+		if (!EVP_DigestUpdate(md2,
+		    (i & 1) ? buf : (unsigned const char *) passwd,
+		    (i & 1) ? sizeof buf : passwd_len))
+			goto err;
+		if (!EVP_DigestFinal_ex(md2, buf, NULL))
+			goto err;
 	}
-	EVP_MD_CTX_cleanup(&md2);
+	EVP_MD_CTX_free(md2);
+	md2 = NULL;
 
 	{
 		/* transform buf into output string */
@@ -394,9 +421,14 @@ md5crypt(const char *passwd, const char *magic, const char *salt)
 		*output = 0;
 		assert(strlen(out_buf) < sizeof(out_buf));
 	}
-	EVP_MD_CTX_cleanup(&md);
+	EVP_MD_CTX_free(md);
 
 	return out_buf;
+ err:
+	EVP_MD_CTX_free(md);
+	EVP_MD_CTX_free(md2);
+
+	return NULL;
 }
 #endif
 
@@ -449,11 +481,9 @@ do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 	/* truncate password if necessary */
 	if ((strlen(passwd) > pw_maxlen)) {
 		if (!quiet)
-			/*
-			 * XXX: really we should know how to print a size_t,
-			 * not cast it
-			 */
-			BIO_printf(bio_err, "Warning: truncating password to %u characters\n", (unsigned) pw_maxlen);
+			BIO_printf(bio_err,
+			    "Warning: truncating password to %zu characters\n",
+			    pw_maxlen);
 		passwd[pw_maxlen] = 0;
 	}
 	assert(strlen(passwd) <= pw_maxlen);
@@ -465,7 +495,8 @@ do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 #endif
 #ifndef NO_MD5CRYPT_1
 	if (use1 || useapr1)
-		hash = md5crypt(passwd, (use1 ? "1" : "apr1"), *salt_p);
+		if ((hash = md5crypt(passwd, (use1 ? "1" : "apr1"), *salt_p)) == NULL)
+			goto err;
 #endif
 	assert(hash != NULL);
 
@@ -478,6 +509,8 @@ do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 	return 1;
 
  err:
+	free(*salt_malloc_p);
+	*salt_malloc_p = NULL;
 	return 0;
 }
 #else

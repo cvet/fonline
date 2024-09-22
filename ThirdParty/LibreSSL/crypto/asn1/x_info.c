@@ -1,4 +1,4 @@
-/* $OpenBSD: x_info.c,v 1.18 2020/09/03 17:29:05 tb Exp $ */
+/* $OpenBSD: x_info.c,v 1.20 2023/07/07 19:37:52 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

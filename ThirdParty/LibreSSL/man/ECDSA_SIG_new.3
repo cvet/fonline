@@ -1,4 +1,4 @@
-.\" $OpenBSD: ECDSA_SIG_new.3,v 1.15 2019/08/25 14:11:41 schwarze Exp $
+.\" $OpenBSD: ECDSA_SIG_new.3,v 1.20 2023/08/29 10:07:42 tb Exp $
 .\" full merge up to: OpenSSL e9b77246 Jan 20 19:58:49 2017 +0100
 .\" selective merge up to: OpenSSL da4ea0cf Aug 5 16:13:24 2019 +0100
 .\"
@@ -50,31 +50,26 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: August 25 2019 $
+.Dd $Mdocdate: August 29 2023 $
 .Dt ECDSA_SIG_NEW 3
 .Os
 .Sh NAME
 .Nm ECDSA_SIG_new ,
 .Nm ECDSA_SIG_free ,
 .Nm ECDSA_SIG_get0 ,
+.Nm ECDSA_SIG_get0_r ,
+.Nm ECDSA_SIG_get0_s ,
 .Nm ECDSA_SIG_set0 ,
 .Nm i2d_ECDSA_SIG ,
 .Nm d2i_ECDSA_SIG ,
 .Nm ECDSA_size ,
-.Nm ECDSA_sign_setup ,
 .Nm ECDSA_sign ,
-.Nm ECDSA_sign_ex ,
 .Nm ECDSA_verify ,
 .Nm ECDSA_do_sign ,
-.Nm ECDSA_do_sign_ex ,
-.Nm ECDSA_do_verify ,
-.Nm ECDSA_OpenSSL ,
-.Nm ECDSA_get_default_method ,
-.Nm ECDSA_set_default_method ,
-.Nm ECDSA_set_method
+.Nm ECDSA_do_verify
 .Nd Elliptic Curve Digital Signature Algorithm
 .Sh SYNOPSIS
-.In openssl/ecdsa.h
+.In openssl/ec.h
 .Ft ECDSA_SIG*
 .Fo ECDSA_SIG_new
 .Fa void
@@ -88,6 +83,14 @@
 .Fa "const ECDSA_SIG *sig"
 .Fa "const BIGNUM **r"
 .Fa "const BIGNUM **s"
+.Fc
+.Ft "const BIGNUM *"
+.Fo ECDSA_SIG_get0_r
+.Fa "const ECDSA_SIG *sig"
+.Fc
+.Ft "const BIGNUM *"
+.Fo ECDSA_SIG_get0_s
+.Fa "const ECDSA_SIG *sig"
 .Fc
 .Ft int
 .Fo ECDSA_SIG_set0
@@ -111,30 +114,12 @@
 .Fa "const EC_KEY *eckey"
 .Fc
 .Ft int
-.Fo ECDSA_sign_setup
-.Fa "EC_KEY *eckey"
-.Fa "BN_CTX *ctx"
-.Fa "BIGNUM **kinv"
-.Fa "BIGNUM **rp"
-.Fc
-.Ft int
 .Fo ECDSA_sign
 .Fa "int type"
 .Fa "const unsigned char *dgst"
 .Fa "int dgstlen"
 .Fa "unsigned char *sig"
 .Fa "unsigned int *siglen"
-.Fa "EC_KEY *eckey"
-.Fc
-.Ft int
-.Fo ECDSA_sign_ex
-.Fa "int type"
-.Fa "const unsigned char *dgst"
-.Fa "int dgstlen"
-.Fa "unsigned char *sig"
-.Fa "unsigned int *siglen"
-.Fa "const BIGNUM *kinv"
-.Fa "const BIGNUM *rp"
 .Fa "EC_KEY *eckey"
 .Fc
 .Ft int
@@ -152,37 +137,12 @@
 .Fa "int dgst_len"
 .Fa "EC_KEY *eckey"
 .Fc
-.Ft ECDSA_SIG*
-.Fo ECDSA_do_sign_ex
-.Fa "const unsigned char *dgst"
-.Fa "int dgstlen"
-.Fa "const BIGNUM *kinv"
-.Fa "const BIGNUM *rp"
-.Fa "EC_KEY *eckey"
-.Fc
 .Ft int
 .Fo ECDSA_do_verify
 .Fa "const unsigned char *dgst"
 .Fa "int dgst_len"
 .Fa "const ECDSA_SIG *sig"
 .Fa "EC_KEY* eckey"
-.Fc
-.Ft const ECDSA_METHOD*
-.Fo ECDSA_OpenSSL
-.Fa void
-.Fc
-.Ft const ECDSA_METHOD*
-.Fo ECDSA_get_default_method
-.Fa void
-.Fc
-.Ft void
-.Fo ECDSA_set_default_method
-.Fa "const ECDSA_METHOD *meth"
-.Fc
-.Ft int
-.Fo ECDSA_set_method
-.Fa "EC_KEY *eckey"
-.Fa "const ECDSA_METHOD *meth"
 .Fc
 .Sh DESCRIPTION
 These functions provide a low level interface to ECDSA.
@@ -232,6 +192,15 @@ and
 .Fa s
 values contained in
 .Fa sig .
+The values
+.Fa r
+and
+.Fa s
+can also be retrieved separately by the corresponding function
+.Fn ECDSA_SIG_get0_r
+and
+.Fn ECDSA_SIG_get0_s ,
+respectively.
 .Pp
 .Fn ECDSA_SIG_set0
 sets the
@@ -265,45 +234,13 @@ returns the maximum length of a DER-encoded ECDSA signature created with
 the private EC key
 .Fa eckey .
 .Pp
-.Fn ECDSA_sign_setup
-may be used to precompute parts of the signing operation.
-.Fa eckey
-is the private EC key and
-.Fa ctx
-is a pointer to a
-.Vt BN_CTX
-structure (or
-.Dv NULL ) .
-The precomputed values are returned in
-.Fa kinv
-and
-.Fa rp
-and can be used in a later call to
-.Fa ECDSA_sign_ex
-or
-.Fa ECDSA_do_sign_ex .
-.Pp
 .Fn ECDSA_sign
-is a wrapper function for
-.Fa ECDSA_sign_ex
-with
-.Fa kinv
-and
-.Fa rp
-set to
-.Dv NULL .
-.Pp
-.Fn ECDSA_sign_ex
 computes a digital signature of the
 .Fa dgstlen
 bytes hash value
 .Fa dgst
 using the private EC key
-.Fa eckey
-and the optional pre-computed values
-.Fa kinv
-and
-.Fa rp .
+.Fa eckey .
 The DER-encoded signature is stored in
 .Fa sig
 and its length is returned in
@@ -333,26 +270,12 @@ The parameter
 is ignored.
 .Pp
 .Fn ECDSA_do_sign
-is a wrapper function for
-.Fn ECDSA_do_sign_ex
-with
-.Fa kinv
-and
-.Fa rp
-set to
-.Dv NULL .
-.Pp
-.Fn ECDSA_do_sign_ex
 computes a digital signature of the
 .Fa dgst_len
 bytes hash value
 .Fa dgst
 using the private key
-.Fa eckey
-and the optional pre-computed values
-.Fa kinv
-and
-.Fa rp .
+.Fa eckey .
 The signature is returned in a newly allocated
 .Vt ECDSA_SIG
 structure (or
@@ -390,17 +313,22 @@ if an error occurs.
 .Fn ECDSA_size
 returns the maximum length signature or 0 on error.
 .Pp
-.Fn ECDSA_SIG_set0 ,
-.Fn ECDSA_sign ,
-.Fn ECDSA_sign_ex ,
+.Fn ECDSA_SIG_get0_r
 and
-.Fn ECDSA_sign_setup
+.Fn ECDSA_SIG_get0_s
+return a pointer owned by the
+.Vt ECDSA_SIG
+object if it has been set or
+.Dv NULL
+otherwise.
+.Pp
+.Fn ECDSA_SIG_set0
+and
+.Fn ECDSA_sign
 return 1 if successful or 0 on error.
 .Pp
 .Fn ECDSA_do_sign
-and
-.Fn ECDSA_do_sign_ex
-return a pointer to an allocated
+returns a pointer to an allocated
 .Vt ECDSA_SIG
 structure or
 .Dv NULL
@@ -488,12 +416,12 @@ if (ret == -1) {
 .Xr EC_GROUP_new 3 ,
 .Xr EC_KEY_METHOD_new 3 ,
 .Xr EC_KEY_new 3 ,
-.Xr ECDSA_set_ex_data 3 ,
+.Xr EC_KEY_set_ex_data 3 ,
 .Xr EVP_DigestSignInit 3 ,
 .Xr EVP_DigestVerifyInit 3 ,
 .Xr RSA_new 3
 .Sh STANDARDS
-ANSI X9.62, US Federal Information Processing Standard FIPS 186-2
+ANSI X9.62, US Federal Information Processing Standard FIPS 186-5
 (Digital Signature Standard, DSS)
 .Sh HISTORY
 .Fn ECDSA_SIG_new ,
@@ -501,18 +429,11 @@ ANSI X9.62, US Federal Information Processing Standard FIPS 186-2
 .Fn i2d_ECDSA_SIG ,
 .Fn d2i_ECDSA_SIG ,
 .Fn ECDSA_size ,
-.Fn ECDSA_sign_setup ,
 .Fn ECDSA_sign ,
-.Fn ECDSA_sign_ex ,
 .Fn ECDSA_verify ,
 .Fn ECDSA_do_sign ,
-.Fn ECDSA_do_sign_ex ,
-.Fn ECDSA_do_verify ,
-.Fn ECDSA_OpenSSL ,
-.Fn ECDSA_get_default_method ,
-.Fn ECDSA_set_default_method ,
 and
-.Fn ECDSA_set_method
+.Fn ECDSA_do_verify
 first appeared in OpenSSL 0.9.8 and have been available since
 .Ox 4.5 .
 .Pp
@@ -521,6 +442,11 @@ and
 .Fn ECDSA_SIG_set0
 first appeared in OpenSSL 1.1.0 and have been available since
 .Ox 6.3 .
+.Fn ECDSA_SIG_get0_r
+and
+.Fn ECDSA_SIG_get0_s
+first appeared in OpenSSL 1.1.1 and have been available since
+.Ox 7.1 .
 .Sh AUTHORS
 .An Nils Larsch
 for the OpenSSL project.

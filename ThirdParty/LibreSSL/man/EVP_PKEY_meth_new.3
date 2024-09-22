@@ -1,7 +1,24 @@
-.\" $OpenBSD: EVP_PKEY_meth_new.3,v 1.4 2019/06/06 01:06:58 schwarze Exp $
-.\" selective merge up to: OpenSSL 43f985fd Aug 21 11:47:17 2017 -0400
+.\" $OpenBSD: EVP_PKEY_meth_new.3,v 1.6 2023/09/09 14:35:23 schwarze Exp $
+.\" selective merge up to: OpenSSL 35fd9953 May 28 14:49:38 2019 +0200
 .\"
-.\" This file was written by Paul Yang <yang.yang@baishancloud.com>
+.\" This file is a derived work.
+.\" The changes are covered by the following Copyright and license:
+.\"
+.\" Copyright (c) 2023 Ingo Schwarze <schwarze@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\" The original file was written by Paul Yang <yang.yang@baishancloud.com>.
 .\" Copyright (c) 2017 The OpenSSL Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -48,7 +65,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: June 6 2019 $
+.Dd $Mdocdate: September 9 2023 $
 .Dt EVP_PKEY_METH_NEW 3
 .Os
 .Sh NAME
@@ -70,7 +87,12 @@
 .Nm EVP_PKEY_meth_set_encrypt ,
 .Nm EVP_PKEY_meth_set_decrypt ,
 .Nm EVP_PKEY_meth_set_derive ,
-.Nm EVP_PKEY_meth_set_ctrl
+.Nm EVP_PKEY_meth_set_ctrl ,
+.Nm EVP_PKEY_meth_set_check ,
+.Nm EVP_PKEY_meth_set_public_check ,
+.Nm EVP_PKEY_meth_set_param_check ,
+.Nm EVP_PKEY_CTX_get_data ,
+.Nm EVP_PKEY_CTX_set_data
 .Nd manipulate an EVP_PKEY_METHOD structure
 .Sh SYNOPSIS
 .In openssl/evp.h
@@ -183,6 +205,30 @@
 .Fa "EVP_PKEY_METHOD *pmeth"
 .Fa "int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)"
 .Fa "int (*ctrl_str)(EVP_PKEY_CTX *ctx, const char *type, const char *value)"
+.Fc
+.Ft void
+.Fo EVP_PKEY_meth_set_check
+.Fa "EVP_PKEY_METHOD *pmeth"
+.Fa "int (*check)(EVP_PKEY *pkey)"
+.Fc
+.Ft void
+.Fo EVP_PKEY_meth_set_public_check
+.Fa "EVP_PKEY_METHOD *pmeth"
+.Fa "int (*public_check)(EVP_PKEY *pkey)"
+.Fc
+.Ft void
+.Fo EVP_PKEY_meth_set_param_check
+.Fa "EVP_PKEY_METHOD *pmeth"
+.Fa "int (*param_check)(EVP_PKEY *pkey)"
+.Fc
+.Ft void *
+.Fo EVP_PKEY_CTX_get_data
+.Fa "EVP_PKEY_CTX *ctx"
+.Fc
+.Ft void
+.Fo EVP_PKEY_CTX_set_data
+.Fa "EVP_PKEY_CTX *ctx"
+.Fa "void *data"
 .Fc
 .Sh DESCRIPTION
 The
@@ -451,6 +497,21 @@ methods are used to adjust algorithm-specific settings.
 See
 .Xr EVP_PKEY_CTX_ctrl 3
 for details.
+.Bd -unfilled
+.Ft int Fn (*check) "EVP_PKEY *pkey"
+.Ft int Fn (*public_check) "EVP_PKEY *pkey"
+.Ft int Fn (*param_check) "EVP_PKEY *pkey"
+.Ed
+These methods are used to validate a key pair, the public component,
+and the parameters for the given
+.Fa pkey ,
+respectively.
+They are called by
+.Xr EVP_PKEY_check 3 ,
+.Xr EVP_PKEY_public_check 3 ,
+and
+.Xr EVP_PKEY_param_check 3 ,
+respectively.
 .Ss Functions
 .Fn EVP_PKEY_meth_new
 creates a new
@@ -506,6 +567,24 @@ The
 functions set the corresponding fields of
 .Fa pmeth
 to the arguments passed.
+.Pp
+.Fn EVP_PKEY_CTX_get_data
+retrieves algorithm- and implementation-specific private key data from
+.Fa ctx .
+Public key algorithm implementations typically allocate and initialize
+this data automatically in their
+.Fn init
+function.
+.Pp
+.Fn EVP_PKEY_CTX_set_data
+transfers ownership of the given
+.Fa data
+to
+.Fa ctx ,
+replacing the existing algorithm- and implementation-specific
+private key data.
+It is the responsibility of the caller to free the existing data
+before calling this function.
 .Sh RETURN VALUES
 .Fn EVP_PKEY_meth_new
 returns a pointer to a new
@@ -523,6 +602,10 @@ if no matching object is found.
 .Pp
 .Fn EVP_PKEY_meth_add0
 returns 1 if the method is added successfully or 0 if an error occurred.
+.Pp
+.Fn EVP_PKEY_CTX_get_data
+returns an internal pointer owned by
+.Fa ctx .
 .Sh SEE ALSO
 .Xr EVP_DigestInit 3 ,
 .Xr EVP_PKEY_meth_get0_info 3 ,
@@ -545,11 +628,20 @@ returns 1 if the method is added successfully or 0 if an error occurred.
 .Fn EVP_PKEY_meth_set_encrypt ,
 .Fn EVP_PKEY_meth_set_decrypt ,
 .Fn EVP_PKEY_meth_set_derive ,
+.Fn EVP_PKEY_meth_set_ctrl ,
+.Fn EVP_PKEY_CTX_get_data ,
 and
-.Fn EVP_PKEY_meth_set_ctrl
+.Fn EVP_PKEY_CTX_set_data
 first appeared in OpenSSL 1.0.0 and have been available since
 .Ox 4.9 .
 .Pp
 .Fn EVP_PKEY_meth_copy
 first appeared in OpenSSL 1.0.1 and has been available since
 .Ox 5.3 .
+.Pp
+.Fn EVP_PKEY_meth_set_check ,
+.Fn EVP_PKEY_meth_set_public_check ,
+and
+.Fn EVP_PKEY_meth_set_param_check
+first appeared in OpenSSL 1.1.1 and have been available since
+.Ox 7.1 .

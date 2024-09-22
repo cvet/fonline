@@ -1,4 +1,4 @@
-/* $OpenBSD: dh_pmeth.c,v 1.10 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: dh_pmeth.c,v 1.16 2024/01/01 16:01:48 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -10,7 +10,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -67,7 +67,9 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-#include "evp_locl.h"
+#include "bn_local.h"
+#include "dh_local.h"
+#include "evp_local.h"
 
 /* DH pkey context structure */
 
@@ -96,7 +98,7 @@ pkey_dh_init(EVP_PKEY_CTX *ctx)
 	ctx->data = dctx;
 	ctx->keygen_info = dctx->gentmp;
 	ctx->keygen_info_count = 2;
-	
+
 	return 1;
 }
 
@@ -107,7 +109,7 @@ pkey_dh_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
 	if (!pkey_dh_init(dst))
 		return 0;
-       	sctx = src->data;
+	sctx = src->data;
 	dctx = dst->data;
 	dctx->prime_len = sctx->prime_len;
 	dctx->generator = sctx->generator;
@@ -147,11 +149,11 @@ pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 		return -2;
 	}
 }
-			
+
 static int
 pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 {
- 	long lval;
+	long lval;
 	char *ep;
 	int len;
 
@@ -187,25 +189,28 @@ out_of_range:
 static int
 pkey_dh_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
-	DH *dh = NULL;
+	DH *dh;
 	DH_PKEY_CTX *dctx = ctx->data;
-	BN_GENCB *pcb, cb;
-	int ret;
+	BN_GENCB *pcb = NULL;
+	BN_GENCB cb = {0};
+	int ret = 0;
 
-	if (ctx->pkey_gencb) {
+	if ((dh = DH_new()) == NULL)
+		goto err;
+	if (ctx->pkey_gencb != NULL) {
 		pcb = &cb;
 		evp_pkey_set_cb_translate(pcb, ctx);
-	} else
-		pcb = NULL;
-	dh = DH_new();
-	if (!dh)
-		return 0;
-	ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator,
-	    pcb);
-	if (ret)
-		EVP_PKEY_assign_DH(pkey, dh);
-	else
-		DH_free(dh);
+	}
+	if (!DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, pcb))
+		goto err;
+	if (!EVP_PKEY_assign_DH(pkey, dh))
+		goto err;
+	dh = NULL;
+
+	ret = 1;
+ err:
+	DH_free(dh);
+
 	return ret;
 }
 
@@ -213,19 +218,29 @@ static int
 pkey_dh_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
 	DH *dh = NULL;
+	int ret = 0;
 
 	if (ctx->pkey == NULL) {
 		DHerror(DH_R_NO_PARAMETERS_SET);
-		return 0;
+		goto err;
 	}
-	dh = DH_new();
-	if (!dh)
-		return 0;
-	EVP_PKEY_assign_DH(pkey, dh);
-	/* Note: if error return, pkey is freed by parent routine */
+
+	if ((dh = DH_new()) == NULL)
+		goto err;
+	if (!EVP_PKEY_set1_DH(pkey, dh))
+		goto err;
+
 	if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey))
-		return 0;
-	return DH_generate_key(pkey->pkey.dh);
+		goto err;
+	if (!DH_generate_key(dh))
+		goto err;
+
+	ret = 1;
+
+ err:
+	DH_free(dh);
+
+	return ret;
 }
 
 static int

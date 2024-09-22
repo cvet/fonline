@@ -1,5 +1,5 @@
-.\"	$OpenBSD: BIO_s_bio.3,v 1.13 2018/05/01 17:05:05 schwarze Exp $
-.\"	OpenSSL c03726ca Aug 27 12:28:08 2015 -0400
+.\" $OpenBSD: BIO_s_bio.3,v 1.19 2023/04/29 12:01:53 schwarze Exp $
+.\" full merge up to: OpenSSL 99d63d46 Oct 26 13:56:48 2016 -0400
 .\"
 .\" This file was written by
 .\" Lutz Jaenicke <Lutz.Jaenicke@aet.TU-Cottbus.DE>,
@@ -53,7 +53,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: May 1 2018 $
+.Dd $Mdocdate: April 29 2023 $
 .Dt BIO_S_BIO 3
 .Os
 .Sh NAME
@@ -69,6 +69,16 @@
 .Nm BIO_get_read_request ,
 .Nm BIO_ctrl_get_read_request ,
 .Nm BIO_ctrl_reset_read_request
+.\" The following non-copying I/O functions are intentionally undocumented
+.\" because they seem fragile and unused by anything:
+.\" .Nm BIO_nread0
+.\" .Nm BIO_nread
+.\" .Nm BIO_nwrite0
+.\" .Nm BIO_nwrite
+.\" .Nm BIO_C_NREAD0
+.\" .Nm BIO_C_NREAD
+.\" .Nm BIO_C_NWRITE0
+.\" .Nm BIO_C_NWRITE
 .Nd BIO pair BIO
 .Sh SYNOPSIS
 .In openssl/bio.h
@@ -106,7 +116,7 @@
 .Fa "BIO **bio2"
 .Fa "size_t writebuf2"
 .Fc
-.Ft size_t
+.Ft int
 .Fo BIO_get_write_guarantee
 .Fa "BIO *b"
 .Fc
@@ -182,8 +192,12 @@ sets the write buffer size of BIO
 .Fa b
 to
 .Fa size .
-If the size is not initialized a default value is used.
+If the size is not initialized, a default value is used.
 This is currently 17K, sufficient for a maximum size TLS record.
+When a chain containing a BIO pair is copied with
+.Xr BIO_dup_chain 3 ,
+the write buffer size is automatically copied
+from the original BIO object to the new one.
 .Pp
 .Fn BIO_get_write_buf_size
 returns the size of the write buffer.
@@ -255,7 +269,7 @@ or
 .Xr SSL_free 3
 call, the other half still needs to be freed.
 .Pp
-When used in bidirectional applications (such as TLS/SSL)
+When used in bidirectional applications (such as TLS/SSL),
 care should be taken to flush any data in the write buffer.
 This can be done by calling
 .Xr BIO_pending 3
@@ -286,15 +300,26 @@ it will never succeed because the request was never sent.
 .Xr BIO_eof 3
 is true if no data is in the peer BIO and the peer BIO has been shutdown.
 .Pp
-.Fn BIO_make_bio_pair ,
-.Fn BIO_destroy_bio_pair ,
-.Fn BIO_shutdown_wr ,
-.Fn BIO_set_write_buf_size ,
-.Fn BIO_get_write_buf_size ,
-.Fn BIO_get_write_guarantee ,
-and
-.Fn BIO_get_read_request
-are implemented as macros.
+.Xr BIO_ctrl 3
+.Fa cmd
+arguments correspond to macros as follows:
+.Bl -column BIO_C_GET_WRITE_GUARANTEE BIO_ctrl_reset_read_request() -offset 3n
+.It Fa cmd No constant           Ta corresponding macro
+.It Dv BIO_C_DESTROY_BIO_PAIR    Ta Fn BIO_destroy_bio_pair
+.It Dv BIO_C_GET_READ_REQUEST    Ta Fn BIO_get_read_request
+.It Dv BIO_C_GET_WRITE_BUF_SIZE  Ta Fn BIO_get_write_buf_size
+.It Dv BIO_C_GET_WRITE_GUARANTEE Ta Fn BIO_get_write_guarantee
+.It Dv BIO_C_MAKE_BIO_PAIR       Ta Fn BIO_make_bio_pair
+.It Dv BIO_C_RESET_READ_REQUEST  Ta Fn BIO_ctrl_reset_read_request
+.It Dv BIO_C_SET_WRITE_BUF_SIZE  Ta Fn BIO_set_write_buf_size
+.It Dv BIO_C_SHUTDOWN_WR         Ta Fn BIO_shutdown_wr
+.It Dv BIO_CTRL_EOF              Ta Xr BIO_eof 3
+.It Dv BIO_CTRL_GET_CLOSE        Ta Xr BIO_get_close 3
+.It Dv BIO_CTRL_PENDING          Ta Xr BIO_pending 3
+.It Dv BIO_CTRL_RESET            Ta Xr BIO_reset 3
+.It Dv BIO_CTRL_SET_CLOSE        Ta Xr BIO_set_close 3
+.It Dv BIO_CTRL_WPENDING         Ta Xr BIO_wpending 3
+.El
 .Sh RETURN VALUES
 .Fn BIO_new_bio_pair
 returns 1 on success, with the new BIOs available in
@@ -306,6 +331,15 @@ or 0 on failure, with NULL pointers stored into the locations for
 and
 .Fa bio2 .
 Check the error stack for more information.
+.Pp
+When called on a BIO pair BIO object,
+.Xr BIO_method_type 3
+returns the constant
+.Dv BIO_TYPE_BIO
+and
+.Xr BIO_method_name 3
+returns a pointer to the static string
+.Qq BIO pair .
 .\" XXX More return values need to be added here.
 .Sh EXAMPLES
 The BIO pair can be used to have full control

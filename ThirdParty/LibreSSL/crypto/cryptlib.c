@@ -1,4 +1,4 @@
-/* $OpenBSD: cryptlib.c,v 1.45 2019/01/26 11:30:32 deraadt Exp $ */
+/* $OpenBSD: cryptlib.c,v 1.48 2024/03/02 11:37:13 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
  *
@@ -123,6 +123,8 @@
 
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
+
+#include "crypto_local.h"
 
 static void (*locking_callback)(int mode, int type,
     const char *file, int line) = NULL;
@@ -281,24 +283,28 @@ CRYPTO_THREADID_current(CRYPTO_THREADID *id)
 	memset(id, 0, sizeof(*id));
 	id->val = (unsigned long)pthread_self();
 }
+LCRYPTO_ALIAS(CRYPTO_THREADID_current);
 
 int
 CRYPTO_THREADID_cmp(const CRYPTO_THREADID *a, const CRYPTO_THREADID *b)
 {
 	return memcmp(a, b, sizeof(*a));
 }
+LCRYPTO_ALIAS(CRYPTO_THREADID_cmp);
 
 void
 CRYPTO_THREADID_cpy(CRYPTO_THREADID *dest, const CRYPTO_THREADID *src)
 {
 	memcpy(dest, src, sizeof(*src));
 }
+LCRYPTO_ALIAS(CRYPTO_THREADID_cpy);
 
 unsigned long
 CRYPTO_THREADID_hash(const CRYPTO_THREADID *id)
 {
 	return id->val;
 }
+LCRYPTO_ALIAS(CRYPTO_THREADID_hash);
 
 #if	defined(__i386)   || defined(__i386__)   || defined(_M_IX86) || \
 	defined(__INTEL__) || \
@@ -311,6 +317,7 @@ OPENSSL_cpu_caps(void)
 {
 	return OPENSSL_ia32cap_P;
 }
+LCRYPTO_ALIAS(OPENSSL_cpu_caps);
 
 #if defined(OPENSSL_CPUID_OBJ) && !defined(OPENSSL_NO_ASM)
 #define OPENSSL_CPUID_SETUP
@@ -333,6 +340,7 @@ OPENSSL_cpu_caps(void)
 {
 	return 0;
 }
+LCRYPTO_ALIAS(OPENSSL_cpu_caps);
 #endif
 
 #if !defined(OPENSSL_CPUID_SETUP) && !defined(OPENSSL_CPUID_OBJ)
@@ -349,7 +357,7 @@ OPENSSL_showfatal(const char *fmta, ...)
 	va_list ap;
 
 	va_start(ap, fmta);
-	vsyslog_r(LOG_INFO|LOG_LOCAL2, &sdata, fmta, ap);
+	vsyslog_r(LOG_CONS|LOG_LOCAL2, &sdata, fmta, ap);
 	va_end(ap);
 }
 
@@ -361,6 +369,7 @@ OpenSSLDie(const char *file, int line, const char *assertion)
 	    getuid(), getprogname(), file, line, assertion);
 	_exit(1);
 }
+LCRYPTO_ALIAS(OpenSSLDie);
 
 int
 CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len)

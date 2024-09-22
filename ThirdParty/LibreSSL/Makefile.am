@@ -1,4 +1,4 @@
-SUBDIRS = crypto ssl tls include apps man
+SUBDIRS = include crypto ssl tls apps man
 if ENABLE_TESTS
 SUBDIRS += tests
 endif
@@ -11,7 +11,7 @@ pkgconfig_DATA += libcrypto.pc libssl.pc openssl.pc
 endif
 
 EXTRA_DIST = README.md README.windows VERSION config scripts
-EXTRA_DIST += CMakeLists.txt cmake_export_symbol.cmake cmake_uninstall.cmake.in FindLibreSSL.cmake
+EXTRA_DIST += CMakeLists.txt cmake_export_symbol.cmake cmake_uninstall.cmake.in FindLibreSSL.cmake LibreSSLConfig.cmake.in
 EXTRA_DIST += cert.pem openssl.cnf x509v3.cnf
 
 .PHONY: install_sw

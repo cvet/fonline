@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 .align	16
@@ -5,6 +11,7 @@
 .globl	rc4_md5_enc
 .type	rc4_md5_enc,@function
 rc4_md5_enc:
+_CET_ENDBR
 	cmpq	$0,%r9
 	je	.Labort
 	pushq	%rbx

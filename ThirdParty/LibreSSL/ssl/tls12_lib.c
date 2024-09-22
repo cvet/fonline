@@ -1,4 +1,4 @@
-/*	$OpenBSD: tls12_lib.c,v 1.3 2021/05/02 15:57:29 jsing Exp $ */
+/*	$OpenBSD: tls12_lib.c,v 1.6 2022/11/26 16:08:56 tb Exp $ */
 /*
  * Copyright (c) 2021 Joel Sing <jsing@openbsd.org>
  *
@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "ssl_locl.h"
+#include "ssl_local.h"
 
 static int
 tls12_finished_verify_data(SSL *s, const char *finished_label,
@@ -27,7 +27,7 @@ tls12_finished_verify_data(SSL *s, const char *finished_label,
 
 	*out_len = 0;
 
-	if (s->session->master_key_length <= 0)
+	if (s->session->master_key_length == 0)
 		return 0;
 
 	if (verify_data_len < TLS1_FINISH_MAC_LENGTH)
@@ -71,12 +71,12 @@ tls12_derive_finished(SSL *s)
 {
 	if (!s->server) {
 		return tls12_client_finished_verify_data(s,
-		    S3I(s)->hs.finished, sizeof(S3I(s)->hs.finished),
-		    &S3I(s)->hs.finished_len);
+		    s->s3->hs.finished, sizeof(s->s3->hs.finished),
+		    &s->s3->hs.finished_len);
 	} else {
 		return tls12_server_finished_verify_data(s,
-		    S3I(s)->hs.finished, sizeof(S3I(s)->hs.finished),
-		    &S3I(s)->hs.finished_len);
+		    s->s3->hs.finished, sizeof(s->s3->hs.finished),
+		    &s->s3->hs.finished_len);
 	}
 }
 
@@ -85,12 +85,12 @@ tls12_derive_peer_finished(SSL *s)
 {
 	if (s->server) {
 		return tls12_client_finished_verify_data(s,
-		    S3I(s)->hs.peer_finished, sizeof(S3I(s)->hs.peer_finished),
-		    &S3I(s)->hs.peer_finished_len);
+		    s->s3->hs.peer_finished, sizeof(s->s3->hs.peer_finished),
+		    &s->s3->hs.peer_finished_len);
 	} else {
 		return tls12_server_finished_verify_data(s,
-		    S3I(s)->hs.peer_finished, sizeof(S3I(s)->hs.peer_finished),
-		    &S3I(s)->hs.peer_finished_len);
+		    s->s3->hs.peer_finished, sizeof(s->s3->hs.peer_finished),
+		    &s->s3->hs.peer_finished_len);
 	}
 }
 

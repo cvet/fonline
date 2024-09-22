@@ -1,4 +1,4 @@
-/* $OpenBSD: keypairtest.c,v 1.4 2018/04/07 16:42:17 jsing Exp $ */
+/* $OpenBSD: keypairtest.c,v 1.6 2022/02/08 18:05:57 tb Exp $ */
 /*
  * Copyright (c) 2018 Joel Sing <jsing@openbsd.org>
  *
@@ -29,7 +29,7 @@
 #include <tls_internal.h>
 
 #define PUBKEY_HASH \
-    "SHA256:858d0f94beb0a08eb4f13871ba57bf0a2e081287d0efbaeb3bbac59dd8f1a8e5"
+    "SHA256:f03c535d374614e7356c0a4e6fd37fe94297b60ed86212adcba40e8e0b07bc9f"
 
 char *cert_file, *key_file, *ocsp_staple_file;
 
@@ -89,7 +89,6 @@ do_keypair_tests(void)
 	X509 *x509_cert = NULL;
 	struct tls_keypair *kp;
 	struct tls_error err;
-	char *hash = NULL;
 	int failed = 1;
 
 	load_file(cert_file, &cert, &cert_len);
@@ -126,7 +125,7 @@ do_keypair_tests(void)
 		goto done;
 	if (strcmp(kp->pubkey_hash, PUBKEY_HASH) != 0) {
 		fprintf(stderr, "FAIL: got pubkey hash '%s', want '%s'",
-		    hash, PUBKEY_HASH);
+		    kp->pubkey_hash, PUBKEY_HASH);
 		goto done;
 	}
 
@@ -161,7 +160,7 @@ do_keypair_tests(void)
 		goto done;
 	if (strcmp(kp->pubkey_hash, PUBKEY_HASH) != 0) {
 		fprintf(stderr, "FAIL: got pubkey hash '%s', want '%s'",
-		    hash, PUBKEY_HASH);
+		    kp->pubkey_hash, PUBKEY_HASH);
 		goto done;
 	}
 
@@ -179,13 +178,14 @@ do_keypair_tests(void)
 		goto done;
 	}
 
-	tls_keypair_free(kp);
-
 	failed = 0;
 
  done:
+	tls_keypair_free(kp);
 	X509_free(x509_cert);
-	free(hash);
+	free((uint8_t *)cert);
+	free((uint8_t *)key);
+	free((uint8_t *)ocsp_staple);
 
 	return (failed);
 }

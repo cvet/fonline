@@ -1,4 +1,4 @@
-/* $OpenBSD: lhash.c,v 1.19 2019/05/12 00:09:59 beck Exp $ */
+/* $OpenBSD: lhash.c,v 1.22.2.1 2024/05/11 02:18:20 mlarkin Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -103,6 +103,8 @@
 #include <openssl/crypto.h>
 #include <openssl/lhash.h>
 
+#include "lhash_local.h"
+
 #undef MIN_NODES
 #define MIN_NODES	16
 #define UP_LOAD		(2*LH_LOAD_MULT) /* load times 256  (default 2) */
@@ -133,6 +135,7 @@ lh_new(LHASH_HASH_FN_TYPE h, LHASH_COMP_FN_TYPE c)
 
 	return (ret);
 }
+LCRYPTO_ALIAS(lh_new);
 
 void
 lh_free(_LHASH *lh)
@@ -154,6 +157,14 @@ lh_free(_LHASH *lh)
 	free(lh->b);
 	free(lh);
 }
+LCRYPTO_ALIAS(lh_free);
+
+int
+lh_error(_LHASH *lh)
+{
+	return lh->error;
+}
+LCRYPTO_ALIAS(lh_error);
 
 void *
 lh_insert(_LHASH *lh, void *data)
@@ -191,6 +202,7 @@ lh_insert(_LHASH *lh, void *data)
 	}
 	return (ret);
 }
+LCRYPTO_ALIAS(lh_insert);
 
 void *
 lh_delete(_LHASH *lh, const void *data)
@@ -220,6 +232,7 @@ lh_delete(_LHASH *lh, const void *data)
 
 	return (ret);
 }
+LCRYPTO_ALIAS(lh_delete);
 
 void *
 lh_retrieve(_LHASH *lh, const void *data)
@@ -240,16 +253,26 @@ lh_retrieve(_LHASH *lh, const void *data)
 	}
 	return (ret);
 }
+LCRYPTO_ALIAS(lh_retrieve);
 
 static void
 doall_util_fn(_LHASH *lh, int use_arg, LHASH_DOALL_FN_TYPE func,
     LHASH_DOALL_ARG_FN_TYPE func_arg, void *arg)
 {
-	int i;
 	LHASH_NODE *a, *n;
+	int down_load;
+	int i;
 
 	if (lh == NULL)
 		return;
+
+	/*
+	 * Disable contraction of the hash while walking, as some consumers use
+	 * it to delete hash entries. A better option would be to snapshot the
+	 * hash, making it insert safe as well.
+	 */
+	down_load = lh->down_load;
+	lh->down_load = 0;
 
 	/* reverse the order so we search from 'top to bottom'
 	 * We were having memory leaks otherwise */
@@ -268,6 +291,12 @@ doall_util_fn(_LHASH *lh, int use_arg, LHASH_DOALL_FN_TYPE func,
 			a = n;
 		}
 	}
+
+	/* Restore down load factor and trigger contraction. */
+	lh->down_load = down_load;
+	if ((lh->num_nodes > MIN_NODES) &&
+	    (lh->down_load >= (lh->num_items * LH_LOAD_MULT / lh->num_nodes)))
+		contract(lh);
 }
 
 void
@@ -275,12 +304,14 @@ lh_doall(_LHASH *lh, LHASH_DOALL_FN_TYPE func)
 {
 	doall_util_fn(lh, 0, func, (LHASH_DOALL_ARG_FN_TYPE)0, NULL);
 }
+LCRYPTO_ALIAS(lh_doall);
 
 void
 lh_doall_arg(_LHASH *lh, LHASH_DOALL_ARG_FN_TYPE func, void *arg)
 {
 	doall_util_fn(lh, 1, (LHASH_DOALL_FN_TYPE)0, func, arg);
 }
+LCRYPTO_ALIAS(lh_doall_arg);
 
 static void
 expand(_LHASH *lh)
@@ -426,9 +457,11 @@ lh_strhash(const char *c)
 	}
 	return (ret >> 16) ^ ret;
 }
+LCRYPTO_ALIAS(lh_strhash);
 
 unsigned long
 lh_num_items(const _LHASH *lh)
 {
 	return lh ? lh->num_items : 0;
 }
+LCRYPTO_ALIAS(lh_num_items);

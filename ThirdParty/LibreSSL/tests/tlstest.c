@@ -1,4 +1,4 @@
-/* $OpenBSD: tlstest.c,v 1.13 2021/04/04 16:19:47 tb Exp $ */
+/* $OpenBSD: tlstest.c,v 1.15 2022/07/16 07:46:08 tb Exp $ */
 /*
  * Copyright (c) 2017 Joel Sing <jsing@openbsd.org>
  *

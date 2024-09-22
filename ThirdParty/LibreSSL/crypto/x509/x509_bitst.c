@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_bitst.c,v 1.1 2020/06/04 15:19:31 jsing Exp $ */
+/* $OpenBSD: x509_bitst.c,v 1.4 2023/04/21 06:11:56 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -88,6 +88,20 @@ static BIT_STRING_BITNAME key_usage_type_table[] = {
 	{-1, NULL, NULL}
 };
 
+static BIT_STRING_BITNAME crl_reasons[] = {
+	{CRL_REASON_UNSPECIFIED,	 "Unspecified", "unspecified"},
+	{CRL_REASON_KEY_COMPROMISE,	 "Key Compromise", "keyCompromise"},
+	{CRL_REASON_CA_COMPROMISE,	 "CA Compromise", "CACompromise"},
+	{CRL_REASON_AFFILIATION_CHANGED, "Affiliation Changed", "affiliationChanged"},
+	{CRL_REASON_SUPERSEDED,		 "Superseded", "superseded"},
+	{CRL_REASON_CESSATION_OF_OPERATION, "Cessation Of Operation", "cessationOfOperation"},
+	{CRL_REASON_CERTIFICATE_HOLD,	 "Certificate Hold", "certificateHold"},
+	{CRL_REASON_REMOVE_FROM_CRL,	 "Remove From CRL", "removeFromCRL"},
+	{CRL_REASON_PRIVILEGE_WITHDRAWN, "Privilege Withdrawn", "privilegeWithdrawn"},
+	{CRL_REASON_AA_COMPROMISE,	 "AA Compromise", "AACompromise"},
+	{-1, NULL, NULL}
+};
+
 const X509V3_EXT_METHOD v3_nscert = {
 	.ext_nid = NID_netscape_cert_type,
 	.ext_flags = 0,
@@ -122,6 +136,23 @@ const X509V3_EXT_METHOD v3_key_usage = {
 	.usr_data = key_usage_type_table,
 };
 
+const X509V3_EXT_METHOD v3_crl_reason = {
+	.ext_nid = NID_crl_reason,
+	.ext_flags = 0,
+	.it = &ASN1_ENUMERATED_it,
+	.ext_new = NULL,
+	.ext_free = NULL,
+	.d2i = NULL,
+	.i2d = NULL,
+	.i2s = (X509V3_EXT_I2S)i2s_ASN1_ENUMERATED_TABLE,
+	.s2i = NULL,
+	.i2v = NULL,
+	.v2i = NULL,
+	.i2r = NULL,
+	.r2i = NULL,
+	.usr_data = crl_reasons,
+};
+
 STACK_OF(CONF_VALUE) *
 i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method, ASN1_BIT_STRING *bits,
     STACK_OF(CONF_VALUE) *ret)
@@ -148,6 +179,7 @@ i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method, ASN1_BIT_STRING *bits,
 
 	return NULL;
 }
+LCRYPTO_ALIAS(i2v_ASN1_BIT_STRING);
 
 ASN1_BIT_STRING *
 v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -185,3 +217,4 @@ v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 	}
 	return bs;
 }
+LCRYPTO_ALIAS(v2i_ASN1_BIT_STRING);

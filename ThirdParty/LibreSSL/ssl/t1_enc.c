@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_enc.c,v 1.151 2021/07/01 17:53:39 jsing Exp $ */
+/* $OpenBSD: t1_enc.c,v 1.157 2022/11/26 16:08:56 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -143,14 +143,14 @@
 #include <openssl/md5.h>
 #include <openssl/opensslconf.h>
 
-#include "dtls_locl.h"
-#include "ssl_locl.h"
+#include "dtls_local.h"
+#include "ssl_local.h"
 
 void
 tls1_cleanup_key_block(SSL *s)
 {
-	tls12_key_block_free(S3I(s)->hs.tls12.key_block);
-	S3I(s)->hs.tls12.key_block = NULL;
+	tls12_key_block_free(s->s3->hs.tls12.key_block);
+	s->s3->hs.tls12.key_block = NULL;
 }
 
 /*
@@ -164,8 +164,8 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *secret, size_t secret_len,
 {
 	unsigned char A1[EVP_MAX_MD_SIZE], hmac[EVP_MAX_MD_SIZE];
 	size_t A1_len, hmac_len;
-	EVP_MD_CTX ctx;
-	EVP_PKEY *mac_key;
+	EVP_MD_CTX *ctx = NULL;
+	EVP_PKEY *mac_key = NULL;
 	int ret = 0;
 	int chunk;
 	size_t i;
@@ -173,42 +173,43 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *secret, size_t secret_len,
 	chunk = EVP_MD_size(md);
 	OPENSSL_assert(chunk >= 0);
 
-	EVP_MD_CTX_init(&ctx);
+	if ((ctx = EVP_MD_CTX_new()) == NULL)
+		goto err;
 
 	mac_key = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, secret, secret_len);
-	if (!mac_key)
+	if (mac_key == NULL)
 		goto err;
-	if (!EVP_DigestSignInit(&ctx, NULL, md, NULL, mac_key))
+	if (!EVP_DigestSignInit(ctx, NULL, md, NULL, mac_key))
 		goto err;
-	if (seed1 && !EVP_DigestSignUpdate(&ctx, seed1, seed1_len))
+	if (seed1 && !EVP_DigestSignUpdate(ctx, seed1, seed1_len))
 		goto err;
-	if (seed2 && !EVP_DigestSignUpdate(&ctx, seed2, seed2_len))
+	if (seed2 && !EVP_DigestSignUpdate(ctx, seed2, seed2_len))
 		goto err;
-	if (seed3 && !EVP_DigestSignUpdate(&ctx, seed3, seed3_len))
+	if (seed3 && !EVP_DigestSignUpdate(ctx, seed3, seed3_len))
 		goto err;
-	if (seed4 && !EVP_DigestSignUpdate(&ctx, seed4, seed4_len))
+	if (seed4 && !EVP_DigestSignUpdate(ctx, seed4, seed4_len))
 		goto err;
-	if (seed5 && !EVP_DigestSignUpdate(&ctx, seed5, seed5_len))
+	if (seed5 && !EVP_DigestSignUpdate(ctx, seed5, seed5_len))
 		goto err;
-	if (!EVP_DigestSignFinal(&ctx, A1, &A1_len))
+	if (!EVP_DigestSignFinal(ctx, A1, &A1_len))
 		goto err;
 
 	for (;;) {
-		if (!EVP_DigestSignInit(&ctx, NULL, md, NULL, mac_key))
+		if (!EVP_DigestSignInit(ctx, NULL, md, NULL, mac_key))
 			goto err;
-		if (!EVP_DigestSignUpdate(&ctx, A1, A1_len))
+		if (!EVP_DigestSignUpdate(ctx, A1, A1_len))
 			goto err;
-		if (seed1 && !EVP_DigestSignUpdate(&ctx, seed1, seed1_len))
+		if (seed1 && !EVP_DigestSignUpdate(ctx, seed1, seed1_len))
 			goto err;
-		if (seed2 && !EVP_DigestSignUpdate(&ctx, seed2, seed2_len))
+		if (seed2 && !EVP_DigestSignUpdate(ctx, seed2, seed2_len))
 			goto err;
-		if (seed3 && !EVP_DigestSignUpdate(&ctx, seed3, seed3_len))
+		if (seed3 && !EVP_DigestSignUpdate(ctx, seed3, seed3_len))
 			goto err;
-		if (seed4 && !EVP_DigestSignUpdate(&ctx, seed4, seed4_len))
+		if (seed4 && !EVP_DigestSignUpdate(ctx, seed4, seed4_len))
 			goto err;
-		if (seed5 && !EVP_DigestSignUpdate(&ctx, seed5, seed5_len))
+		if (seed5 && !EVP_DigestSignUpdate(ctx, seed5, seed5_len))
 			goto err;
-		if (!EVP_DigestSignFinal(&ctx, hmac, &hmac_len))
+		if (!EVP_DigestSignFinal(ctx, hmac, &hmac_len))
 			goto err;
 
 		if (hmac_len > out_len)
@@ -223,18 +224,18 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *secret, size_t secret_len,
 		if (out_len == 0)
 			break;
 
-		if (!EVP_DigestSignInit(&ctx, NULL, md, NULL, mac_key))
+		if (!EVP_DigestSignInit(ctx, NULL, md, NULL, mac_key))
 			goto err;
-		if (!EVP_DigestSignUpdate(&ctx, A1, A1_len))
+		if (!EVP_DigestSignUpdate(ctx, A1, A1_len))
 			goto err;
-		if (!EVP_DigestSignFinal(&ctx, A1, &A1_len))
+		if (!EVP_DigestSignFinal(ctx, A1, &A1_len))
 			goto err;
 	}
 	ret = 1;
 
  err:
 	EVP_PKEY_free(mac_key);
-	EVP_MD_CTX_cleanup(&ctx);
+	EVP_MD_CTX_free(ctx);
 
 	explicit_bzero(A1, sizeof(A1));
 	explicit_bzero(hmac, sizeof(hmac));
@@ -256,7 +257,7 @@ tls1_PRF(SSL *s, const unsigned char *secret, size_t secret_len,
 	if (!ssl_get_handshake_evp_md(s, &md))
 		return (0);
 
-	if (md->type == NID_md5_sha1) {
+	if (EVP_MD_type(md) == NID_md5_sha1) {
 		/*
 		 * Partition secret between MD5 and SHA1, then XOR result.
 		 * If the secret length is odd, a one byte overlap is used.
@@ -302,23 +303,21 @@ tls1_change_cipher_state(SSL *s, int is_write)
 
 	/* Use client write keys on client write and server read. */
 	if ((!s->server && is_write) || (s->server && !is_write)) {
-		tls12_key_block_client_write(S3I(s)->hs.tls12.key_block,
+		tls12_key_block_client_write(s->s3->hs.tls12.key_block,
 		    &mac_key, &key, &iv);
 	} else {
-		tls12_key_block_server_write(S3I(s)->hs.tls12.key_block,
+		tls12_key_block_server_write(s->s3->hs.tls12.key_block,
 		    &mac_key, &key, &iv);
 	}
 
 	if (!is_write) {
-		if (!tls12_record_layer_change_read_cipher_state(s->internal->rl,
+		if (!tls12_record_layer_change_read_cipher_state(s->rl,
 		    &mac_key, &key, &iv))
 			goto err;
 		if (SSL_is_dtls(s))
 			dtls1_reset_read_seq_numbers(s);
-		tls12_record_layer_read_cipher_hash(s->internal->rl,
-		    &s->enc_read_ctx, &s->read_hash);
 	} else {
-		if (!tls12_record_layer_change_write_cipher_state(s->internal->rl,
+		if (!tls12_record_layer_change_write_cipher_state(s->rl,
 		    &mac_key, &key, &iv))
 			goto err;
 	}
@@ -355,7 +354,7 @@ tls1_setup_key_block(SSL *s)
 	 * XXX - callers should be changed so that they only call this
 	 * function once.
 	 */
-	if (S3I(s)->hs.tls12.key_block != NULL)
+	if (s->s3->hs.tls12.key_block != NULL)
 		return (1);
 
 	if (s->session->cipher &&
@@ -376,8 +375,8 @@ tls1_setup_key_block(SSL *s)
 	if (!ssl_get_handshake_evp_md(s, &handshake_hash))
 		return (0);
 
-	tls12_record_layer_set_aead(s->internal->rl, aead);
-	tls12_record_layer_set_cipher_hash(s->internal->rl, cipher,
+	tls12_record_layer_set_aead(s->rl, aead);
+	tls12_record_layer_set_cipher_hash(s->rl, cipher,
 	    handshake_hash, mac_hash);
 
 	if ((key_block = tls12_key_block_new()) == NULL)
@@ -385,24 +384,24 @@ tls1_setup_key_block(SSL *s)
 	if (!tls12_key_block_generate(key_block, s, aead, cipher, mac_hash))
 		goto err;
 
-	S3I(s)->hs.tls12.key_block = key_block;
+	s->s3->hs.tls12.key_block = key_block;
 	key_block = NULL;
 
-	if (!(s->internal->options & SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) &&
+	if (!(s->options & SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) &&
 	    s->method->version <= TLS1_VERSION) {
 		/*
 		 * Enable vulnerability countermeasure for CBC ciphers with
 		 * known-IV problem (http://www.openssl.org/~bodo/tls-cbc.txt)
 		 */
-		S3I(s)->need_empty_fragments = 1;
+		s->s3->need_empty_fragments = 1;
 
 		if (s->session->cipher != NULL) {
 			if (s->session->cipher->algorithm_enc == SSL_eNULL)
-				S3I(s)->need_empty_fragments = 0;
+				s->s3->need_empty_fragments = 0;
 
 #ifndef OPENSSL_NO_RC4
 			if (s->session->cipher->algorithm_enc == SSL_RC4)
-				S3I(s)->need_empty_fragments = 0;
+				s->s3->need_empty_fragments = 0;
 #endif
 		}
 	}
@@ -413,84 +412,4 @@ tls1_setup_key_block(SSL *s)
 	tls12_key_block_free(key_block);
 
 	return (ret);
-}
-
-int
-tls1_export_keying_material(SSL *s, unsigned char *out, size_t olen,
-    const char *label, size_t llen, const unsigned char *context,
-    size_t contextlen, int use_context)
-{
-	unsigned char *val = NULL;
-	size_t vallen, currentvalpos;
-	int rv;
-
-	if (!SSL_is_init_finished(s)) {
-		SSLerror(s, SSL_R_BAD_STATE);
-		return 0;
-	}
-
-	/* construct PRF arguments
-	 * we construct the PRF argument ourself rather than passing separate
-	 * values into the TLS PRF to ensure that the concatenation of values
-	 * does not create a prohibited label.
-	 */
-	vallen = llen + SSL3_RANDOM_SIZE * 2;
-	if (use_context) {
-		vallen += 2 + contextlen;
-	}
-
-	val = malloc(vallen);
-	if (val == NULL)
-		goto err2;
-	currentvalpos = 0;
-	memcpy(val + currentvalpos, (unsigned char *) label, llen);
-	currentvalpos += llen;
-	memcpy(val + currentvalpos, s->s3->client_random, SSL3_RANDOM_SIZE);
-	currentvalpos += SSL3_RANDOM_SIZE;
-	memcpy(val + currentvalpos, s->s3->server_random, SSL3_RANDOM_SIZE);
-	currentvalpos += SSL3_RANDOM_SIZE;
-
-	if (use_context) {
-		val[currentvalpos] = (contextlen >> 8) & 0xff;
-		currentvalpos++;
-		val[currentvalpos] = contextlen & 0xff;
-		currentvalpos++;
-		if ((contextlen > 0) || (context != NULL)) {
-			memcpy(val + currentvalpos, context, contextlen);
-		}
-	}
-
-	/* disallow prohibited labels
-	 * note that SSL3_RANDOM_SIZE > max(prohibited label len) =
-	 * 15, so size of val > max(prohibited label len) = 15 and the
-	 * comparisons won't have buffer overflow
-	 */
-	if (memcmp(val, TLS_MD_CLIENT_FINISH_CONST,
-	    TLS_MD_CLIENT_FINISH_CONST_SIZE) == 0)
-		goto err1;
-	if (memcmp(val, TLS_MD_SERVER_FINISH_CONST,
-	    TLS_MD_SERVER_FINISH_CONST_SIZE) == 0)
-		goto err1;
-	if (memcmp(val, TLS_MD_MASTER_SECRET_CONST,
-	    TLS_MD_MASTER_SECRET_CONST_SIZE) == 0)
-		goto err1;
-	if (memcmp(val, TLS_MD_KEY_EXPANSION_CONST,
-	    TLS_MD_KEY_EXPANSION_CONST_SIZE) == 0)
-		goto err1;
-
-	rv = tls1_PRF(s, s->session->master_key, s->session->master_key_length,
-	    val, vallen, NULL, 0, NULL, 0, NULL, 0, NULL, 0, out, olen);
-
-	goto ret;
- err1:
-	SSLerror(s, SSL_R_TLS_ILLEGAL_EXPORTER_LABEL);
-	rv = 0;
-	goto ret;
- err2:
-	SSLerror(s, ERR_R_MALLOC_FAILURE);
-	rv = 0;
- ret:
-	free(val);
-
-	return (rv);
 }

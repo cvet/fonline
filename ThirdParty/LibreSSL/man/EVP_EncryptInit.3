@@ -1,14 +1,12 @@
-.\" $OpenBSD: EVP_EncryptInit.3,v 1.41 2021/01/05 06:51:31 jmc Exp $
+.\" $OpenBSD: EVP_EncryptInit.3,v 1.51 2023/12/26 22:13:00 schwarze Exp $
 .\" full merge up to: OpenSSL 5211e094 Nov 11 14:39:11 2014 -0800
 .\"   EVP_bf_cbc.pod EVP_cast5_cbc.pod EVP_idea_cbc.pod EVP_rc2_cbc.pod
 .\"   7c6d372a Nov 20 13:20:01 2018 +0000
-.\" selective merge up to: OpenSSL 16cfc2c9 Mar 8 22:30:28 2018 +0100
-.\"   EVP_chacha20.pod 8fa4d95e Oct 21 11:59:09 2017 +0900
 .\"
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
 .\"
-.\" Copyright (c) 2019 Ingo Schwarze <schwarze@openbsd.org>
+.\" Copyright (c) 2019, 2023 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -71,15 +69,14 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: January 5 2021 $
+.Dd $Mdocdate: December 26 2023 $
 .Dt EVP_ENCRYPTINIT 3
 .Os
 .Sh NAME
 .Nm EVP_CIPHER_CTX_new ,
 .Nm EVP_CIPHER_CTX_reset ,
-.Nm EVP_CIPHER_CTX_cleanup ,
-.Nm EVP_CIPHER_CTX_init ,
 .Nm EVP_CIPHER_CTX_free ,
+.Nm EVP_CIPHER_CTX_copy ,
 .Nm EVP_EncryptInit_ex ,
 .Nm EVP_EncryptUpdate ,
 .Nm EVP_EncryptFinal_ex ,
@@ -95,38 +92,11 @@
 .Nm EVP_DecryptFinal ,
 .Nm EVP_CipherInit ,
 .Nm EVP_CipherFinal ,
-.Nm EVP_Cipher ,
-.Nm EVP_CIPHER_CTX_set_flags ,
-.Nm EVP_CIPHER_CTX_clear_flags ,
-.Nm EVP_CIPHER_CTX_test_flags ,
-.Nm EVP_CIPHER_CTX_set_padding ,
-.Nm EVP_CIPHER_CTX_set_key_length ,
-.Nm EVP_CIPHER_CTX_ctrl ,
-.Nm EVP_CIPHER_CTX_rand_key ,
+.Nm EVP_CIPHER_CTX_encrypting ,
 .Nm EVP_get_cipherbyname ,
 .Nm EVP_get_cipherbynid ,
 .Nm EVP_get_cipherbyobj ,
-.Nm EVP_CIPHER_nid ,
-.Nm EVP_CIPHER_block_size ,
-.Nm EVP_CIPHER_key_length ,
-.Nm EVP_CIPHER_iv_length ,
-.Nm EVP_CIPHER_flags ,
-.Nm EVP_CIPHER_mode ,
-.Nm EVP_CIPHER_type ,
 .Nm EVP_CIPHER_CTX_cipher ,
-.Nm EVP_CIPHER_CTX_nid ,
-.Nm EVP_CIPHER_CTX_block_size ,
-.Nm EVP_CIPHER_CTX_key_length ,
-.Nm EVP_CIPHER_CTX_iv_length ,
-.Nm EVP_CIPHER_CTX_get_iv ,
-.Nm EVP_CIPHER_CTX_set_iv ,
-.Nm EVP_CIPHER_CTX_get_app_data ,
-.Nm EVP_CIPHER_CTX_set_app_data ,
-.Nm EVP_CIPHER_CTX_type ,
-.Nm EVP_CIPHER_CTX_flags ,
-.Nm EVP_CIPHER_CTX_mode ,
-.Nm EVP_CIPHER_param_to_asn1 ,
-.Nm EVP_CIPHER_asn1_to_param ,
 .Nm EVP_enc_null ,
 .Nm EVP_idea_cbc ,
 .Nm EVP_idea_ecb ,
@@ -149,8 +119,7 @@
 .Nm EVP_cast5_ecb ,
 .Nm EVP_cast5_cfb64 ,
 .Nm EVP_cast5_cfb ,
-.Nm EVP_cast5_ofb ,
-.Nm EVP_chacha20
+.Nm EVP_cast5_ofb
 .Nd EVP cipher routines
 .Sh SYNOPSIS
 .In openssl/evp.h
@@ -160,17 +129,14 @@
 .Fo EVP_CIPHER_CTX_reset
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_cleanup
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft void
-.Fo EVP_CIPHER_CTX_init
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fc
 .Ft void
 .Fo EVP_CIPHER_CTX_free
 .Fa "EVP_CIPHER_CTX *ctx"
+.Fc
+.Ft int
+.Fo EVP_CIPHER_CTX_copy
+.Fa "EVP_CIPHER_CTX *out"
+.Fa "const EVP_CIPHER_CTX *in"
 .Fc
 .Ft int
 .Fo EVP_EncryptInit_ex
@@ -184,15 +150,15 @@
 .Fo EVP_EncryptUpdate
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "int *outl"
+.Fa "int *out_len"
 .Fa "const unsigned char *in"
-.Fa "int inl"
+.Fa "int in_len"
 .Fc
 .Ft int
 .Fo EVP_EncryptFinal_ex
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "int *outl"
+.Fa "int *out_len"
 .Fc
 .Ft int
 .Fo EVP_DecryptInit_ex
@@ -206,15 +172,15 @@
 .Fo EVP_DecryptUpdate
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "int *outl"
+.Fa "int *out_len"
 .Fa "const unsigned char *in"
-.Fa "int inl"
+.Fa "int in_len"
 .Fc
 .Ft int
 .Fo EVP_DecryptFinal_ex
 .Fa "EVP_CIPHER_CTX *ctx"
-.Fa "unsigned char *outm"
-.Fa "int *outl"
+.Fa "unsigned char *out"
+.Fa "int *out_len"
 .Fc
 .Ft int
 .Fo EVP_CipherInit_ex
@@ -229,15 +195,15 @@
 .Fo EVP_CipherUpdate
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "int *outl"
+.Fa "int *out_len"
 .Fa "const unsigned char *in"
-.Fa "int inl"
+.Fa "int in_len"
 .Fc
 .Ft int
 .Fo EVP_CipherFinal_ex
 .Fa "EVP_CIPHER_CTX *ctx"
-.Fa "unsigned char *outm"
-.Fa "int *outl"
+.Fa "unsigned char *out"
+.Fa "int *out_len"
 .Fc
 .Ft int
 .Fo EVP_EncryptInit
@@ -250,7 +216,7 @@
 .Fo EVP_EncryptFinal
 .Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "int *outl"
+.Fa "int *out_len"
 .Fc
 .Ft int
 .Fo EVP_DecryptInit
@@ -262,8 +228,8 @@
 .Ft int
 .Fo EVP_DecryptFinal
 .Fa "EVP_CIPHER_CTX *ctx"
-.Fa "unsigned char *outm"
-.Fa "int *outl"
+.Fa "unsigned char *out"
+.Fa "int *out_len"
 .Fc
 .Ft int
 .Fo EVP_CipherInit
@@ -276,52 +242,12 @@
 .Ft int
 .Fo EVP_CipherFinal
 .Fa "EVP_CIPHER_CTX *ctx"
-.Fa "unsigned char *outm"
-.Fa "int *outl"
-.Fc
-.Ft int
-.Fo EVP_Cipher
-.Fa "EVP_CIPHER_CTX *ctx"
 .Fa "unsigned char *out"
-.Fa "const unsigned char *in"
-.Fa "unsigned int inl"
-.Fc
-.Ft void
-.Fo EVP_CIPHER_CTX_set_flags
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "int flags"
-.Fc
-.Ft void
-.Fo EVP_CIPHER_CTX_clear_flags
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "int flags"
+.Fa "int *out_len"
 .Fc
 .Ft int
-.Fo EVP_CIPHER_CTX_test_flags
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "int flags"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_set_padding
-.Fa "EVP_CIPHER_CTX *x"
-.Fa "int padding"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_set_key_length
-.Fa "EVP_CIPHER_CTX *x"
-.Fa "int keylen"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_ctrl
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "int type"
-.Fa "int arg"
-.Fa "void *ptr"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_rand_key
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "unsigned char *key"
+.Fo EVP_CIPHER_CTX_encrypting
+.Fa "const EVP_CIPHER_CTX *ctx"
 .Fc
 .Ft const EVP_CIPHER *
 .Fo EVP_get_cipherbyname
@@ -335,96 +261,9 @@
 .Fo EVP_get_cipherbyobj
 .Fa "const ASN1_OBJECT *a"
 .Fc
-.Ft int
-.Fo EVP_CIPHER_nid
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_block_size
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_key_length
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_iv_length
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft unsigned long
-.Fo EVP_CIPHER_flags
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft unsigned long
-.Fo EVP_CIPHER_mode
-.Fa "const EVP_CIPHER *e"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_type
-.Fa "const EVP_CIPHER *ctx"
-.Fc
 .Ft const EVP_CIPHER *
 .Fo EVP_CIPHER_CTX_cipher
 .Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_nid
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_block_size
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_key_length
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_iv_length
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_get_iv
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fa "u_char *iv"
-.Fa "size_t len"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_set_iv
-.Fa "EVP_CIPHER_CTX *ctx"
-.Fa "const u_char *iv"
-.Fa "size_t len"
-.Fc
-.Ft void *
-.Fo EVP_CIPHER_CTX_get_app_data
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft void
-.Fo EVP_CIPHER_CTX_set_app_data
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fa "void *data"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_CTX_type
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft unsigned long
-.Fo EVP_CIPHER_CTX_flags
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft unsigned long
-.Fo EVP_CIPHER_CTX_mode
-.Fa "const EVP_CIPHER_CTX *ctx"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_param_to_asn1
-.Fa "EVP_CIPHER_CTX *c"
-.Fa "ASN1_TYPE *type"
-.Fc
-.Ft int
-.Fo EVP_CIPHER_asn1_to_param
-.Fa "EVP_CIPHER_CTX *c"
-.Fa "ASN1_TYPE *type"
 .Fc
 .Sh DESCRIPTION
 The EVP cipher routines are a high level interface to certain symmetric
@@ -443,18 +282,6 @@ object itself, such that it can be reused for another series of calls to
 .Fn EVP_CipherUpdate ,
 and
 .Fn EVP_CipherFinal .
-It is also suitable for cipher contexts on the stack that were used
-and are no longer needed.
-.Fn EVP_CIPHER_CTX_cleanup
-is a deprecated alias for
-.Fn EVP_CIPHER_CTX_reset .
-.Pp
-.Fn EVP_CIPHER_CTX_init
-is a deprecated function to clear a cipher context on the stack
-before use.
-Do not use it on a cipher context returned from
-.Fn EVP_CIPHER_CTX_new
-or one that was already used.
 .Pp
 .Fn EVP_CIPHER_CTX_free
 clears all information from
@@ -470,33 +297,74 @@ is a
 .Dv NULL
 pointer, no action occurs.
 .Pp
+.Fn EVP_CIPHER_CTX_copy
+calls
+.Fn EVP_CIPHER_CTX_reset
+on
+.Fa out
+and copies all the data from
+.Fa in
+to
+.Fa out ,
+except that the
+.Vt EVP_CIPHER
+object used by
+.Fa in
+and any application specific data set with
+.Xr EVP_CIPHER_CTX_set_app_data 3
+are not copied and
+.Fa out
+will point to the same two objects.
+The algorithm- and implementation-specific cipher data described in
+.Xr EVP_CIPHER_CTX_get_cipher_data 3
+is copied with
+.Xr malloc 3
+and
+.Xr memcpy 3 ,
+i.e. assuming that it does not contain pointers to any sub-objects.
+If the bit
+.Dv EVP_CIPH_CUSTOM_COPY
+has been set with
+.Xr EVP_CIPHER_meth_set_flags 3 ,
+.Xr EVP_CIPHER_CTX_ctrl 3
+is called at the end with arguments
+.Fa in ,
+.Dv EVP_CTRL_COPY ,
+.No 0 ,
+and
+.Fa out
+such that the cipher implementation can perform further algorithm-
+and implementation-specific initializations after the algorithm-
+and implementation-specific cipher data has been copied.
+Among the cipher algorithms built into the library,
+.Dv EVP_CIPH_CUSTOM_COPY
+and
+.Dv EVP_CTRL_COPY
+are used by some of the ciphers documented in the
+.Xr EVP_aes_256_gcm 3
+manual page.
+.Pp
+.Fn EVP_EncryptInit
+and
 .Fn EVP_EncryptInit_ex
-sets up the cipher context
+set up the cipher context
 .Fa ctx
 for encryption with cipher
-.Fa type
-from
-.Vt ENGINE
-.Fa impl .
-If
-.Fa ctx
-points to an unused object on the stack, it must be initialized with
-.Fn EVP_MD_CTX_init
-before calling this function.
+.Fa type .
 .Fa type
 is normally supplied by a function such as
 .Xr EVP_aes_256_cbc 3 .
-If
-.Fa impl
-is
-.Dv NULL ,
-then the default implementation is used.
 .Fa key
 is the symmetric key to use and
 .Fa iv
 is the IV to use (if necessary).
 The actual number of bytes used for the
 key and IV depends on the cipher.
+The
+.Fa ENGINE *impl
+argument is always ignored and passing
+.Dv NULL
+is recommended.
 It is possible to set all parameters to
 .Dv NULL
 except
@@ -510,7 +378,7 @@ This is done when the default cipher parameters are not appropriate.
 .Pp
 .Fn EVP_EncryptUpdate
 encrypts
-.Fa inl
+.Fa in_len
 bytes from the buffer
 .Fa in
 and writes the encrypted version to
@@ -519,53 +387,67 @@ This function can be called multiple times to encrypt successive blocks
 of data.
 The amount of data written depends on the block alignment of the
 encrypted data: as a result the amount of data written may be anything
-from zero bytes to (inl + cipher_block_size - 1) so
+from zero bytes to
+.Pq Fa in_len No + cipher_block_size - 1
+so
 .Fa out
 should contain sufficient room.
 The actual number of bytes written is placed in
-.Fa outl .
+.Pf * Fa out_len .
 .Pp
 If padding is enabled (the default) then
-.Fn EVP_EncryptFinal_ex
-encrypts the "final" data, that is any data that remains in a partial
+.Fn EVP_EncryptFinal
+and
+.Fn EVP_EncryptFinal_ex ,
+which behave identically,
+encrypt the "final" data, that is any data that remains in a partial
 block.
 It uses NOTES (aka PKCS padding).
 The encrypted final data is written to
 .Fa out
 which should have sufficient space for one cipher block.
 The number of bytes written is placed in
-.Fa outl .
-After this function is called the encryption operation is finished and
+.Pf * Fa out_len .
+After this function is called, the encryption operation is finished and
 no further calls to
 .Fn EVP_EncryptUpdate
 should be made.
 .Pp
 If padding is disabled then
+.Fn EVP_EncryptFinal
+and
 .Fn EVP_EncryptFinal_ex
-will not encrypt any more data and it will return an error if any data
+do not encrypt any more data and return an error if any data
 remains in a partial block: that is if the total data length is not a
 multiple of the block size.
 .Pp
+.Fn EVP_DecryptInit ,
 .Fn EVP_DecryptInit_ex ,
 .Fn EVP_DecryptUpdate ,
+.Fn EVP_DecryptFinal ,
 and
 .Fn EVP_DecryptFinal_ex
 are the corresponding decryption operations.
 .Fn EVP_DecryptFinal
-will return an error code if padding is enabled and the final block is
+and
+.Fn EVP_DecryptFinal_ex
+return an error code if padding is enabled and the final block is
 not correctly formatted.
 The parameters and restrictions are identical to the encryption
 operations except that if padding is enabled the decrypted data buffer
 .Fa out
 passed to
 .Fn EVP_DecryptUpdate
-should have sufficient room for (inl + cipher_block_size) bytes
-unless the cipher block size is 1 in which case
-.Fa inl
+should have sufficient room for
+.Pq Fa in_len No + cipher_block_size
+bytes unless the cipher block size is 1 in which case
+.Fa in_len
 bytes is sufficient.
 .Pp
+.Fn EVP_CipherInit ,
 .Fn EVP_CipherInit_ex ,
 .Fn EVP_CipherUpdate ,
+.Fn EVP_CipherFinal ,
 and
 .Fn EVP_CipherFinal_ex
 are functions that can be used for decryption or encryption.
@@ -577,59 +459,6 @@ the value unchanged (the actual value of
 .Fa enc
 being supplied in a previous call).
 .Pp
-.Fn EVP_EncryptInit ,
-.Fn EVP_DecryptInit ,
-and
-.Fn EVP_CipherInit
-are deprecated functions behaving like
-.Fn EVP_EncryptInit_ex ,
-.Fn EVP_DecryptInit_ex ,
-and
-.Fn EVP_CipherInit_ex
-except that they always use the default cipher implementation
-and that they require
-.Fn EVP_CIPHER_CTX_reset
-before they can be used on a context that was already used.
-.Pp
-.Fn EVP_EncryptFinal ,
-.Fn EVP_DecryptFinal ,
-and
-.Fn EVP_CipherFinal
-are identical to
-.Fn EVP_EncryptFinal_ex ,
-.Fn EVP_DecryptFinal_ex ,
-and
-.Fn EVP_CipherFinal_ex .
-In previous releases of OpenSSL, they also used to clean up the
-.Fa ctx ,
-but this is no longer done and
-.Fn EVP_CIPHER_CTX_reset
-or
-.Fn EVP_CIPHER_CTX_free
-must be called to free any context resources.
-.Pp
-.Fn EVP_Cipher
-encrypts or decrypts aligned blocks of data
-whose lengths match the cipher block size.
-It requires that the previous encryption or decryption operation
-using the same
-.Fa ctx ,
-if there was any, ended exactly on a block boundary and that
-.Fa inl
-is an integer multiple of the cipher block size.
-If either of these conditions is violated,
-.Fn EVP_Cipher
-silently produces incorrect results.
-For that reason, using the function
-.Fn EVP_CipherUpdate
-instead is strongly recommended.
-The latter can safely handle partial blocks, and even if
-.Fa inl
-actually is a multiple of the cipher block size for all calls,
-the overhead incurred by using
-.Fn EVP_CipherUpdate
-is minimal.
-.Pp
 .Fn EVP_get_cipherbyname ,
 .Fn EVP_get_cipherbynid ,
 and
@@ -640,195 +469,12 @@ structure when passed a cipher name, a NID or an
 .Vt ASN1_OBJECT
 structure.
 .Pp
-.Fn EVP_CIPHER_nid
-and
-.Fn EVP_CIPHER_CTX_nid
-return the NID of a cipher when passed an
-.Vt EVP_CIPHER
-or
-.Vt EVP_CIPHER_CTX
-structure.
-The actual NID value is an internal value which may not have a
-corresponding OBJECT IDENTIFIER.
-.Pp
-.Fn EVP_CIPHER_CTX_set_flags
-enables the given
-.Fa flags
-in
-.Fa ctx .
-.Fn EVP_CIPHER_CTX_clear_flags
-disables the given
-.Fa flags
-in
-.Fa ctx .
-.Fn EVP_CIPHER_CTX_test_flags
-checks whether any of the given
-.Fa flags
-are currently set in
-.Fa ctx ,
-returning the subset of the
-.Fa flags
-that are set, or 0 if none of them are set.
-Currently, the only supported cipher context flag is
-.Dv EVP_CIPHER_CTX_FLAG_WRAP_ALLOW ;
-see
-.Xr EVP_aes_128_wrap 3
-for details.
-.Pp
-.Fn EVP_CIPHER_CTX_set_padding
-enables or disables padding.
-This function should be called after the context is set up for
-encryption or decryption with
-.Fn EVP_EncryptInit_ex ,
-.Fn EVP_DecryptInit_ex ,
-or
-.Fn EVP_CipherInit_ex .
-By default encryption operations are padded using standard block padding
-and the padding is checked and removed when decrypting.
-If the
-.Fa padding
-parameter is zero, then no padding is performed, the total amount of data
-encrypted or decrypted must then be a multiple of the block size or an
-error will occur.
-.Pp
-.Fn EVP_CIPHER_key_length
-and
-.Fn EVP_CIPHER_CTX_key_length
-return the key length of a cipher when passed an
-.Vt EVP_CIPHER
-or
-.Vt EVP_CIPHER_CTX
-structure.
-The constant
-.Dv EVP_MAX_KEY_LENGTH
-is the maximum key length for all ciphers.
-Note: although
-.Fn EVP_CIPHER_key_length
-is fixed for a given cipher, the value of
-.Fn EVP_CIPHER_CTX_key_length
-may be different for variable key length ciphers.
-.Pp
-.Fn EVP_CIPHER_CTX_set_key_length
-sets the key length of the cipher ctx.
-If the cipher is a fixed length cipher, then attempting to set the key
-length to any value other than the fixed value is an error.
-.Pp
-.Fn EVP_CIPHER_iv_length
-and
-.Fn EVP_CIPHER_CTX_iv_length
-return the IV length of a cipher when passed an
-.Vt EVP_CIPHER
-or
-.Vt EVP_CIPHER_CTX .
-It will return zero if the cipher does not use an IV.
-The constant
-.Dv EVP_MAX_IV_LENGTH
-is the maximum IV length for all ciphers.
-.Pp
-.Fn EVP_CIPHER_CTX_get_iv
-and
-.Fn EVP_CIPHER_CTX_set_iv
-will respectively retrieve and set the IV for an
-.Vt EVP_CIPHER_CTX .
-In both cases, the specified IV length must exactly equal the expected
-IV length for the context as returned by
-.Fn EVP_CIPHER_CTX_iv_length .
-.Pp
-.Fn EVP_CIPHER_block_size
-and
-.Fn EVP_CIPHER_CTX_block_size
-return the block size of a cipher when passed an
-.Vt EVP_CIPHER
-or
-.Vt EVP_CIPHER_CTX
-structure.
-The constant
-.Dv EVP_MAX_BLOCK_LENGTH
-is also the maximum block length for all ciphers.
-.Pp
-.Fn EVP_CIPHER_type
-and
-.Fn EVP_CIPHER_CTX_type
-return the type of the passed cipher or context.
-This "type" is the actual NID of the cipher OBJECT IDENTIFIER as such it
-ignores the cipher parameters and 40-bit RC2 and 128-bit RC2 have the
-same NID.
-If the cipher does not have an object identifier or does not
-have ASN.1 support this function will return
-.Dv NID_undef .
-.Pp
 .Fn EVP_CIPHER_CTX_cipher
 returns the
 .Vt EVP_CIPHER
 structure when passed an
 .Vt EVP_CIPHER_CTX
 structure.
-.Pp
-.Fn EVP_CIPHER_mode
-and
-.Fn EVP_CIPHER_CTX_mode
-return the block cipher mode:
-.Dv EVP_CIPH_ECB_MODE ,
-.Dv EVP_CIPH_CBC_MODE ,
-.Dv EVP_CIPH_CFB_MODE ,
-.Dv EVP_CIPH_OFB_MODE ,
-.Dv EVP_CIPH_CTR_MODE ,
-or
-.Dv EVP_CIPH_XTS_MODE .
-If the cipher is a stream cipher then
-.Dv EVP_CIPH_STREAM_CIPHER
-is returned.
-.Pp
-.Fn EVP_CIPHER_param_to_asn1
-sets the ASN.1
-.Vt AlgorithmIdentifier
-parameter based on the passed cipher.
-This will typically include any parameters and an IV.
-The cipher IV (if any) must be set when this call is made.
-This call should be made before the cipher is actually "used" (before any
-.Fn EVP_EncryptUpdate
-or
-.Fn EVP_DecryptUpdate
-calls, for example).
-This function may fail if the cipher does not have any ASN.1 support.
-.Pp
-.Fn EVP_CIPHER_asn1_to_param
-sets the cipher parameters based on an ASN.1
-.Vt AlgorithmIdentifier
-parameter.
-The precise effect depends on the cipher.
-In the case of RC2, for example, it will set the IV and effective
-key length.
-This function should be called after the base cipher type is set but
-before the key is set.
-For example
-.Fn EVP_CipherInit
-will be called with the IV and key set to
-.Dv NULL ,
-.Fn EVP_CIPHER_asn1_to_param
-will be called and finally
-.Fn EVP_CipherInit
-again with all parameters except the key set to
-.Dv NULL .
-It is possible for this function to fail if the cipher does not
-have any ASN.1 support or the parameters cannot be set (for example
-the RC2 effective key length is not supported).
-.Pp
-.Fn EVP_CIPHER_CTX_ctrl
-allows various cipher specific parameters to be determined and set.
-Currently only the RC2 effective key length can be set.
-.Pp
-.Fn EVP_CIPHER_CTX_rand_key
-generates a random key of the appropriate length based on the cipher
-context.
-The
-.Vt EVP_CIPHER
-can provide its own random key generation routine to support keys
-of a specific form.
-The
-.Fa key
-argument must point to a buffer at least as big as the value returned by
-.Fn EVP_CIPHER_CTX_key_length .
 .Pp
 Where possible the EVP interface to symmetric ciphers should be
 used in preference to the low level interfaces.
@@ -842,7 +488,7 @@ block size n will equal the block size.
 For example if the block size is 8 and 11 bytes are to be encrypted then
 5 padding bytes of value 5 will be added.
 .Pp
-When decrypting the final block is checked to see if it has the correct
+When decrypting, the final block is checked to see if it has the correct
 form.
 .Pp
 Although the decryption operation can produce an error if padding is
@@ -853,25 +499,6 @@ final decrypt error.
 .Pp
 If padding is disabled then the decryption operation will always succeed
 if the total amount of data decrypted is a multiple of the block size.
-.Pp
-The functions
-.Fn EVP_EncryptInit ,
-.Fn EVP_EncryptFinal ,
-.Fn EVP_DecryptInit ,
-.Fn EVP_CipherInit ,
-and
-.Fn EVP_CipherFinal
-are obsolete but are retained for compatibility with existing code.
-New code should use
-.Fn EVP_EncryptInit_ex ,
-.Fn EVP_EncryptFinal_ex ,
-.Fn EVP_DecryptInit_ex ,
-.Fn EVP_DecryptFinal_ex ,
-.Fn EVP_CipherInit_ex ,
-and
-.Fn EVP_CipherFinal_ex
-because they can reuse an existing context without allocating and
-freeing it up on each call.
 .Pp
 .Fn EVP_get_cipherbynid
 and
@@ -886,9 +513,7 @@ for success or
 for failure.
 .Pp
 .Fn EVP_CIPHER_CTX_reset ,
-.Fn EVP_CIPHER_CTX_cleanup ,
-.Fn EVP_CIPHER_CTX_get_iv ,
-.Fn EVP_CIPHER_CTX_set_iv ,
+.Fn EVP_CIPHER_CTX_copy ,
 .Fn EVP_EncryptInit_ex ,
 .Fn EVP_EncryptUpdate ,
 .Fn EVP_EncryptFinal_ex ,
@@ -903,15 +528,15 @@ for failure.
 .Fn EVP_DecryptInit ,
 .Fn EVP_DecryptFinal ,
 .Fn EVP_CipherInit ,
-.Fn EVP_CipherFinal ,
-.Fn EVP_Cipher ,
-.Fn EVP_CIPHER_CTX_set_key_length ,
 and
-.Fn EVP_CIPHER_CTX_rand_key
+.Fn EVP_CipherFinal
 return 1 for success or 0 for failure.
 .Pp
-.Fn EVP_CIPHER_CTX_set_padding
-always returns 1.
+.Fn EVP_CIPHER_CTX_encrypting
+returns 1 if
+.Fa ctx
+is initialized for encryption or 0 otherwise, in which case
+it may be uninitialized or initialized for decryption.
 .Pp
 .Fn EVP_get_cipherbyname ,
 .Fn EVP_get_cipherbynid ,
@@ -923,43 +548,10 @@ structure or
 .Dv NULL
 on error.
 .Pp
-.Fn EVP_CIPHER_nid
-and
-.Fn EVP_CIPHER_CTX_nid
-return a NID.
-.Pp
-.Fn EVP_CIPHER_block_size
-and
-.Fn EVP_CIPHER_CTX_block_size
-return the block size.
-.Pp
-.Fn EVP_CIPHER_key_length
-and
-.Fn EVP_CIPHER_CTX_key_length
-return the key length.
-.Pp
-.Fn EVP_CIPHER_iv_length
-and
-.Fn EVP_CIPHER_CTX_iv_length
-return the IV length or zero if the cipher does not use an IV.
-.Pp
-.Fn EVP_CIPHER_type
-and
-.Fn EVP_CIPHER_CTX_type
-return the NID of the cipher's OBJECT IDENTIFIER or
-.Dv NID_undef
-if it has no defined OBJECT IDENTIFIER.
-.Pp
 .Fn EVP_CIPHER_CTX_cipher
 returns an
 .Vt EVP_CIPHER
 structure.
-.Pp
-.Fn EVP_CIPHER_param_to_asn1
-and
-.Fn EVP_CIPHER_asn1_to_param
-return greater than zero for success and zero or a negative number
-for failure.
 .Sh CIPHER LISTING
 All algorithms have a fixed key length unless otherwise stated.
 .Bl -tag -width Ds
@@ -998,9 +590,9 @@ RC2 algorithm in CBC mode with a default key length and effective key
 length of 40 and 64 bits.
 These are obsolete and new code should use
 .Fn EVP_rc2_cbc ,
-.Fn EVP_CIPHER_CTX_set_key_length ,
+.Xr EVP_CIPHER_CTX_set_key_length 3 ,
 and
-.Fn EVP_CIPHER_CTX_ctrl
+.Xr EVP_CIPHER_CTX_ctrl 3
 to set the key length and effective key length.
 .It Xo
 .Fn EVP_bf_cbc ,
@@ -1027,11 +619,6 @@ This is a variable key length cipher.
 is an alias for
 .Fn EVP_cast5_cfb64 ,
 implemented as a macro.
-.It Fn EVP_chacha20
-The ChaCha20 stream cipher.
-The key length is 256 bits.
-The first 32 bits of the 128-bit IV are used as a counter,
-and the remaining 96 bits as a nonce.
 .El
 .Pp
 See also
@@ -1051,13 +638,17 @@ To specify any additional authenticated data (AAD), a call to
 .Fn EVP_EncryptUpdate ,
 or
 .Fn EVP_DecryptUpdate
-should be made with the output parameter out set to
+should be made with the output parameter
+.Fa out
+set to
 .Dv NULL .
 .Pp
 When decrypting, the return value of
-.Fn EVP_DecryptFinal
+.Fn EVP_DecryptFinal ,
+.Fn EVP_DecryptFinal_ex ,
+.Fn EVP_CipherFinal ,
 or
-.Fn EVP_CipherFinal
+.Fn EVP_CipherFinal_ex
 indicates if the operation was successful.
 If it does not indicate success, the authentication operation has
 failed and any output data MUST NOT be used as it is corrupted.
@@ -1076,6 +667,8 @@ bytes of the tag value to the buffer indicated by
 This call can only be made when encrypting data and after all data has
 been processed, e.g. after an
 .Fn EVP_EncryptFinal
+or
+.Fn EVP_EncryptFinal_ex
 call.
 .It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_GCM_SET_TAG taglen tag
 Sets the expected tag to
@@ -1097,7 +690,9 @@ by calling
 .Fn EVP_EncryptUpdate ,
 or
 .Fn EVP_DecryptUpdate
-with the output parameter out set to
+with the output parameter
+.Fa out
+set to
 .Dv NULL .
 Additionally, the total
 plaintext or ciphertext length MUST be passed to
@@ -1111,7 +706,7 @@ parameters
 set to
 .Dv NULL
 and the length passed in the
-.Fa inl
+.Fa in_len
 parameter.
 .Pp
 The following ctrls are supported in CCM mode:
@@ -1137,25 +732,25 @@ The nonce length is given by 15 - L so it is 7 by default for AES.
 Encrypt a string using blowfish:
 .Bd -literal -offset 3n
 int
-do_crypt(char *outfile)
+do_crypt(char *out_filename)
 {
-	unsigned char outbuf[1024];
-	int outlen, tmplen;
+	unsigned char out_buf[1024];
+	int out_len, tmp_len;
 	/*
 	 * Bogus key and IV: we'd normally set these from
 	 * another source.
 	 */
 	unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 	unsigned char iv[] = {1,2,3,4,5,6,7,8};
-	const char intext[] = "Some Crypto Text";
+	const char in_text[] = "Some Crypto Text";
 	EVP_CIPHER_CTX *ctx;
-	FILE *out;
+	FILE *out_fileptr;
 
 	ctx = EVP_CIPHER_CTX_new();
 	EVP_EncryptInit_ex(ctx, EVP_bf_cbc(), NULL, key, iv);
 
-	if (!EVP_EncryptUpdate(ctx, outbuf, &outlen, intext,
-	    strlen(intext))) {
+	if (!EVP_EncryptUpdate(ctx, out_buf, &out_len, in_text,
+	    strlen(in_text))) {
 		/* Error */
 		EVP_CIPHER_CTX_free(ctx);
 		return 0;
@@ -1164,12 +759,12 @@ do_crypt(char *outfile)
 	 * Buffer passed to EVP_EncryptFinal() must be after data just
 	 * encrypted to avoid overwriting it.
 	 */
-	if (!EVP_EncryptFinal_ex(ctx, outbuf + outlen, &tmplen)) {
+	if (!EVP_EncryptFinal_ex(ctx, out_buf + out_len, &tmp_len)) {
 		/* Error */
 		EVP_CIPHER_CTX_free(ctx);
 		return 0;
 	}
-	outlen += tmplen;
+	out_len += tmp_len;
 	EVP_CIPHER_CTX_free(ctx);
 	/*
 	 * Need binary mode for fopen because encrypted data is
@@ -1177,13 +772,13 @@ do_crypt(char *outfile)
 	 * it won't be NUL terminated and may contain embedded
 	 * NULs.
 	 */
-	out = fopen(outfile, "wb");
-	if (out == NULL) {
+	out_fileptr = fopen(out_filename, "wb");
+	if (out_fileptr == NULL) {
 		/* Error */
 		return 0;
 	}
-	fwrite(outbuf, 1, outlen, out);
-	fclose(out);
+	fwrite(out_buf, 1, out_len, out_fileptr);
+	fclose(out_fileptr);
 	return 1;
 }
 .Ed
@@ -1200,11 +795,11 @@ General encryption, decryption function example using FILE I/O and AES128
 with a 128-bit key:
 .Bd -literal
 int
-do_crypt(FILE *in, FILE *out, int do_encrypt)
+do_crypt(FILE *in_fileptr, FILE *out_fileptr, int do_encrypt)
 {
 	/* Allow enough space in output buffer for additional block */
-	unsigned char inbuf[1024], outbuf[1024 + EVP_MAX_BLOCK_LENGTH];
-	int inlen, outlen;
+	unsigned char in_buf[1024], out_buf[1024 + EVP_MAX_BLOCK_LENGTH];
+	int in_len, out_len;
 	EVP_CIPHER_CTX *ctx;
 
 	/*
@@ -1220,23 +815,23 @@ do_crypt(FILE *in, FILE *out, int do_encrypt)
 	EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, do_encrypt);
 
 	for (;;) {
-		inlen = fread(inbuf, 1, 1024, in);
-		if (inlen <= 0)
+		in_len = fread(in_buf, 1, 1024, in_fileptr);
+		if (in_len <= 0)
 			break;
-		if (!EVP_CipherUpdate(ctx, outbuf, &outlen, inbuf,
-		    inlen)) {
+		if (!EVP_CipherUpdate(ctx, out_buf, &out_len, in_buf,
+		    in_len)) {
 			/* Error */
 			EVP_CIPHER_CTX_free(ctx);
 			return 0;
 		}
-		fwrite(outbuf, 1, outlen, out);
+		fwrite(out_buf, 1, out_len, out_fileptr);
 	}
-	if (!EVP_CipherFinal_ex(ctx, outbuf, &outlen)) {
+	if (!EVP_CipherFinal_ex(ctx, out_buf, &out_len)) {
 		/* Error */
 		EVP_CIPHER_CTX_free(ctx);
 		return 0;
 	}
-	fwrite(outbuf, 1, outlen, out);
+	fwrite(out_buf, 1, out_len, out_fileptr);
 
 	EVP_CIPHER_CTX_free(ctx);
 	return 1;
@@ -1248,6 +843,12 @@ do_crypt(FILE *in, FILE *out, int do_encrypt)
 .Xr EVP_AEAD_CTX_init 3 ,
 .Xr EVP_aes_128_cbc 3 ,
 .Xr EVP_camellia_128_cbc 3 ,
+.Xr EVP_chacha20 3 ,
+.Xr EVP_CIPHER_CTX_ctrl 3 ,
+.Xr EVP_CIPHER_CTX_get_cipher_data 3 ,
+.Xr EVP_CIPHER_CTX_init 3 ,
+.Xr EVP_CIPHER_CTX_set_flags 3 ,
+.Xr EVP_CIPHER_nid 3 ,
 .Xr EVP_des_cbc 3 ,
 .Xr EVP_OpenInit 3 ,
 .Xr EVP_rc4 3 ,
@@ -1276,70 +877,35 @@ first appeared in SSLeay 0.5.1.
 and
 .Fn EVP_rc2_ofb
 first appeared in SSLeay 0.5.2.
-.Fn EVP_Cipher ,
-.Fn EVP_CIPHER_block_size ,
-.Fn EVP_CIPHER_key_length ,
-.Fn EVP_CIPHER_iv_length ,
-.Fn EVP_CIPHER_type ,
-.Fn EVP_CIPHER_CTX_block_size ,
-.Fn EVP_CIPHER_CTX_key_length ,
-.Fn EVP_CIPHER_CTX_iv_length ,
-and
-.Fn EVP_CIPHER_CTX_type
-first appeared in SSLeay 0.6.5.
 .Fn EVP_bf_cbc ,
 .Fn EVP_bf_ecb ,
 .Fn EVP_bf_cfb ,
 and
 .Fn EVP_bf_ofb
 first appeared in SSLeay 0.6.6.
-.Fn EVP_CIPHER_CTX_cleanup ,
 .Fn EVP_get_cipherbyobj ,
-.Fn EVP_CIPHER_nid ,
 .Fn EVP_CIPHER_CTX_cipher ,
-.Fn EVP_CIPHER_CTX_nid ,
-.Fn EVP_CIPHER_CTX_get_app_data ,
-.Fn EVP_CIPHER_CTX_set_app_data ,
 and
 .Fn EVP_enc_null
 first appeared in SSLeay 0.8.0.
 .Fn EVP_get_cipherbynid
 first appeared in SSLeay 0.8.1.
-.Fn EVP_CIPHER_CTX_init ,
-.Fn EVP_CIPHER_param_to_asn1 ,
-and
-.Fn EVP_CIPHER_asn1_to_param
-first appeared in SSLeay 0.9.0.
 All these functions have been available since
 .Ox 2.4 .
 .Pp
 .Fn EVP_rc2_40_cbc
 and
 .Fn EVP_rc2_64_cbc
-first appeared in SSL_eay 0.9.1.
-.Fn EVP_CIPHER_CTX_type
-first appeared in OpenSSL 0.9.3.
-These functions have been available since
+first appeared in SSLeay 0.9.1 and have been available since
 .Ox 2.6 .
-.Pp
-.Fn EVP_CIPHER_CTX_set_key_length ,
-.Fn EVP_CIPHER_CTX_ctrl ,
-.Fn EVP_CIPHER_flags ,
-.Fn EVP_CIPHER_mode ,
-.Fn EVP_CIPHER_CTX_flags ,
-and
-.Fn EVP_CIPHER_CTX_mode
-first appeared in OpenSSL 0.9.6 and have been available since
-.Ox 2.9 .
 .Pp
 .Fn EVP_EncryptInit_ex ,
 .Fn EVP_EncryptFinal_ex ,
 .Fn EVP_DecryptInit_ex ,
 .Fn EVP_DecryptFinal_ex ,
 .Fn EVP_CipherInit_ex ,
-.Fn EVP_CipherFinal_ex ,
 and
-.Fn EVP_CIPHER_CTX_set_padding
+.Fn EVP_CipherFinal_ex
 first appeared in OpenSSL 0.9.7 and have been available since
 .Ox 3.2 .
 .Pp
@@ -1351,35 +917,26 @@ and
 first appeared in OpenSSL 0.9.7e and have been available since
 .Ox 3.8 .
 .Pp
-.Fn EVP_CIPHER_CTX_rand_key
-first appeared in OpenSSL 0.9.8.
 .Fn EVP_CIPHER_CTX_new
 and
 .Fn EVP_CIPHER_CTX_free
-first appeared in OpenSSL 0.9.8b.
-These functions have been available since
+first appeared in OpenSSL 0.9.8b and have been available since
 .Ox 4.5 .
+.Pp
+.Fn EVP_CIPHER_CTX_copy
+first appeared in OpenSSL 1.0.0
+and has been available since
+.Ox 4.9 .
 .Pp
 .Fn EVP_CIPHER_CTX_reset
 first appeared in OpenSSL 1.1.0 and has been available since
 .Ox 6.3 .
 .Pp
-.Fn EVP_CIPHER_CTX_get_iv
-and
-.Fn EVP_CIPHER_CTX_set_iv
-first appeared in LibreSSL 2.8.1 and has been available since
+.Fn EVP_CIPHER_CTX_encrypting
+first appeared in OpenSSL 1.1.0 and has been available since
 .Ox 6.4 .
 .Sh BUGS
-.Dv EVP_MAX_KEY_LENGTH
-and
-.Dv EVP_MAX_IV_LENGTH
-only refer to the internal ciphers with default key lengths.
-If custom ciphers exceed these values the results are unpredictable.
-This is because it has become standard practice to define a generic key
-as a fixed unsigned char array containing
-.Dv EVP_MAX_KEY_LENGTH
-bytes.
-.Pp
-The ASN.1 code is incomplete (and sometimes inaccurate).
-It has only been tested for certain common S/MIME ciphers
-(RC2, DES, triple DES) in CBC mode.
+.Fn EVP_CIPHER_CTX_copy
+may already have cleared the data in
+.Fa out
+and copied some new data into it even if it fails and returns 0.

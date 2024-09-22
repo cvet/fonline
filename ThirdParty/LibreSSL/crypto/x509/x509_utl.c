@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_utl.c,v 1.2 2020/09/13 15:06:17 beck Exp $ */
+/* $OpenBSD: x509_utl.c,v 1.17 2023/05/12 19:02:10 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -55,18 +55,21 @@
  * Hudson (tjh@cryptsoft.com).
  *
  */
-/* X509 v3 extension utilities */
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/asn1.h>
 #include <openssl/bn.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
-char *bn_to_string(const BIGNUM *bn);
+#include "bytestring.h"
+
+static char *bn_to_string(const BIGNUM *bn);
 static char *strip_spaces(char *name);
 static int sk_strcmp(const char * const *a, const char * const *b);
 static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
@@ -117,6 +120,7 @@ X509V3_add_value(const char *name, const char *value,
 	}
 	return 0;
 }
+LCRYPTO_ALIAS(X509V3_add_value);
 
 int
 X509V3_add_value_uchar(const char *name, const unsigned char *value,
@@ -124,6 +128,7 @@ X509V3_add_value_uchar(const char *name, const unsigned char *value,
 {
 	return X509V3_add_value(name, (const char *)value, extlist);
 }
+LCRYPTO_ALIAS(X509V3_add_value_uchar);
 
 /* Free function for STACK_OF(CONF_VALUE) */
 
@@ -137,6 +142,7 @@ X509V3_conf_free(CONF_VALUE *conf)
 	free(conf->section);
 	free(conf);
 }
+LCRYPTO_ALIAS(X509V3_conf_free);
 
 int
 X509V3_add_value_bool(const char *name, int asn1_bool,
@@ -146,6 +152,7 @@ X509V3_add_value_bool(const char *name, int asn1_bool,
 		return X509V3_add_value(name, "TRUE", extlist);
 	return X509V3_add_value(name, "FALSE", extlist);
 }
+LCRYPTO_ALIAS(X509V3_add_value_bool);
 
 int
 X509V3_add_value_bool_nf(const char *name, int asn1_bool,
@@ -155,8 +162,9 @@ X509V3_add_value_bool_nf(const char *name, int asn1_bool,
 		return X509V3_add_value(name, "TRUE", extlist);
 	return 1;
 }
+LCRYPTO_ALIAS(X509V3_add_value_bool_nf);
 
-char *
+static char *
 bn_to_string(const BIGNUM *bn)
 {
 	const char *sign = "";
@@ -197,6 +205,22 @@ i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *method, const ASN1_ENUMERATED *a)
 	BN_free(bntmp);
 	return strtmp;
 }
+LCRYPTO_ALIAS(i2s_ASN1_ENUMERATED);
+
+char *
+i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *method, const ASN1_ENUMERATED *e)
+{
+	BIT_STRING_BITNAME *enam;
+	long strval;
+
+	strval = ASN1_ENUMERATED_get(e);
+	for (enam = method->usr_data; enam->lname; enam++) {
+		if (strval == enam->bitnum)
+			return strdup(enam->lname);
+	}
+	return i2s_ASN1_ENUMERATED(method, e);
+}
+LCRYPTO_ALIAS(i2s_ASN1_ENUMERATED_TABLE);
 
 char *
 i2s_ASN1_INTEGER(X509V3_EXT_METHOD *method, const ASN1_INTEGER *a)
@@ -212,31 +236,33 @@ i2s_ASN1_INTEGER(X509V3_EXT_METHOD *method, const ASN1_INTEGER *a)
 	BN_free(bntmp);
 	return strtmp;
 }
+LCRYPTO_ALIAS(i2s_ASN1_INTEGER);
 
 ASN1_INTEGER *
 s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, const char *value)
 {
 	BIGNUM *bn = NULL;
 	ASN1_INTEGER *aint;
-	int isneg, ishex;
+	int isneg = 0, ishex = 0;
 	int ret;
 
 	if (!value) {
 		X509V3error(X509V3_R_INVALID_NULL_VALUE);
-		return 0;
+		return NULL;
 	}
-	bn = BN_new();
+	if ((bn = BN_new()) == NULL) {
+		X509V3error(ERR_R_MALLOC_FAILURE);
+		return NULL;
+	}
 	if (value[0] == '-') {
 		value++;
 		isneg = 1;
-	} else
-		isneg = 0;
+	}
 
-	if (value[0] == '0' && ((value[1] == 'x') || (value[1] == 'X'))) {
+	if (value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
 		value += 2;
 		ishex = 1;
-	} else
-		ishex = 0;
+	}
 
 	if (ishex)
 		ret = BN_hex2bn(&bn, value);
@@ -246,22 +272,23 @@ s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, const char *value)
 	if (!ret || value[ret]) {
 		BN_free(bn);
 		X509V3error(X509V3_R_BN_DEC2BN_ERROR);
-		return 0;
+		return NULL;
 	}
 
-	if (isneg && BN_is_zero(bn))
+	if (BN_is_zero(bn))
 		isneg = 0;
 
 	aint = BN_to_ASN1_INTEGER(bn, NULL);
 	BN_free(bn);
 	if (!aint) {
 		X509V3error(X509V3_R_BN_TO_ASN1_INTEGER_ERROR);
-		return 0;
+		return NULL;
 	}
 	if (isneg)
 		aint->type |= V_ASN1_NEG;
 	return aint;
 }
+LCRYPTO_ALIAS(s2i_ASN1_INTEGER);
 
 int
 X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
@@ -278,6 +305,7 @@ X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
 	free(strtmp);
 	return ret;
 }
+LCRYPTO_ALIAS(X509V3_add_value_int);
 
 int
 X509V3_get_value_bool(const CONF_VALUE *value, int *asn1_bool)
@@ -303,6 +331,7 @@ X509V3_get_value_bool(const CONF_VALUE *value, int *asn1_bool)
 	X509V3_conf_err(value);
 	return 0;
 }
+LCRYPTO_ALIAS(X509V3_get_value_bool);
 
 int
 X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint)
@@ -316,6 +345,7 @@ X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint)
 	*aint = itmp;
 	return 1;
 }
+LCRYPTO_ALIAS(X509V3_get_value_int);
 
 #define HDR_NAME	1
 #define HDR_VALUE	2
@@ -407,6 +437,7 @@ X509V3_parse_list(const char *line)
 	return NULL;
 
 }
+LCRYPTO_ALIAS(X509V3_parse_list);
 
 /* Delete leading and trailing spaces from a string */
 static char *
@@ -430,95 +461,150 @@ strip_spaces(char *name)
 	return p;
 }
 
-/* hex string utilities */
+static const char hex_digits[] = "0123456789ABCDEF";
 
-/* Given a buffer of length 'len' return a malloc'ed string with its
- * hex representation
- */
 char *
 hex_to_string(const unsigned char *buffer, long len)
 {
-	char *tmp, *q;
-	const unsigned char *p;
-	int i;
-	static const char hexdig[] = "0123456789ABCDEF";
+	CBB cbb;
+	CBS cbs;
+	uint8_t *out = NULL;
+	uint8_t c;
+	size_t out_len;
 
-	if (!buffer || !len)
-		return NULL;
-	if (!(tmp = malloc(len * 3 + 1))) {
-		X509V3error(ERR_R_MALLOC_FAILURE);
-		return NULL;
+	if (!CBB_init(&cbb, 0))
+		goto err;
+
+	if (len < 0)
+		goto err;
+
+	CBS_init(&cbs, buffer, len);
+	while (CBS_len(&cbs) > 0) {
+		if (!CBS_get_u8(&cbs, &c))
+			goto err;
+		if (!CBB_add_u8(&cbb, hex_digits[c >> 4]))
+			goto err;
+		if (!CBB_add_u8(&cbb, hex_digits[c & 0xf]))
+			goto err;
+		if (CBS_len(&cbs) > 0) {
+			if (!CBB_add_u8(&cbb, ':'))
+				goto err;
+		}
 	}
-	q = tmp;
-	for (i = 0, p = buffer; i < len; i++, p++) {
-		*q++ = hexdig[(*p >> 4) & 0xf];
-		*q++ = hexdig[*p & 0xf];
-		*q++ = ':';
+
+	if (!CBB_add_u8(&cbb, '\0'))
+		goto err;
+
+	if (!CBB_finish(&cbb, &out, &out_len))
+		goto err;
+
+ err:
+	CBB_cleanup(&cbb);
+
+	return out;
+}
+LCRYPTO_ALIAS(hex_to_string);
+
+static int
+x509_skip_colons_cbs(CBS *cbs)
+{
+	uint8_t c;
+
+	while (CBS_len(cbs) > 0) {
+		if (!CBS_peek_u8(cbs, &c))
+			return 0;
+		if (c != ':')
+			return 1;
+		if (!CBS_get_u8(cbs, &c))
+			return 0;
 	}
-	q[-1] = 0;
-	return tmp;
+
+	return 1;
 }
 
-/* Give a string of hex digits convert to
- * a buffer
- */
+static int
+x509_get_xdigit_nibble_cbs(CBS *cbs, uint8_t *out_nibble)
+{
+	uint8_t c;
+
+	if (!CBS_get_u8(cbs, &c))
+		return 0;
+
+	if (c >= '0' && c <= '9') {
+		*out_nibble = c - '0';
+		return 1;
+	}
+	if (c >= 'a' && c <= 'f') {
+		*out_nibble = c - 'a' + 10;
+		return 1;
+	}
+	if (c >= 'A' && c <= 'F') {
+		*out_nibble = c - 'A' + 10;
+		return 1;
+	}
+
+	X509V3error(X509V3_R_ILLEGAL_HEX_DIGIT);
+	return 0;
+}
 
 unsigned char *
 string_to_hex(const char *str, long *len)
 {
-	unsigned char *hexbuf, *q;
-	unsigned char ch, cl, *p;
-	if (!str) {
-		X509V3error(X509V3_R_INVALID_NULL_ARGUMENT);
-		return NULL;
-	}
-	if (!(hexbuf = malloc(strlen(str) >> 1)))
+	CBB cbb;
+	CBS cbs;
+	uint8_t *out = NULL;
+	size_t out_len;
+	uint8_t hi, lo;
+
+	*len = 0;
+
+	if (!CBB_init(&cbb, 0))
 		goto err;
-	for (p = (unsigned char *)str, q = hexbuf; *p; ) {
-		ch = *p++;
-		if (ch == ':')
-			continue;
-		cl = *p++;
-		if (!cl) {
-			X509V3error(X509V3_R_ODD_NUMBER_OF_DIGITS);
-			free(hexbuf);
-			return NULL;
-		}
-		ch = tolower(ch);
-		cl = tolower(cl);
 
-		if ((ch >= '0') && (ch <= '9'))
-			ch -= '0';
-		else if ((ch >= 'a') && (ch <= 'f'))
-			ch -= 'a' - 10;
-		else
-			goto badhex;
-
-		if ((cl >= '0') && (cl <= '9'))
-			cl -= '0';
-		else if ((cl >= 'a') && (cl <= 'f'))
-			cl -= 'a' - 10;
-		else
-			goto badhex;
-
-		*q++ = (ch << 4) | cl;
+	if (str == NULL) {
+		X509V3error(X509V3_R_INVALID_NULL_ARGUMENT);
+		goto err;
 	}
 
-	if (len)
-		*len = q - hexbuf;
+	CBS_init(&cbs, str, strlen(str));
+	while (CBS_len(&cbs) > 0) {
+		/*
+		 * Skipping only a single colon between two pairs of digits
+		 * would make more sense - history...
+		 */
+		if (!x509_skip_colons_cbs(&cbs))
+			goto err;
+		/* Another historic idiocy. */
+		if (CBS_len(&cbs) == 0)
+			break;
+		if (!x509_get_xdigit_nibble_cbs(&cbs, &hi))
+			goto err;
+		if (CBS_len(&cbs) == 0) {
+			X509V3error(X509V3_R_ODD_NUMBER_OF_DIGITS);
+			goto err;
+		}
+		if (!x509_get_xdigit_nibble_cbs(&cbs, &lo))
+			goto err;
+		if (!CBB_add_u8(&cbb, hi << 4 | lo))
+			goto err;
+	}
 
-	return hexbuf;
+	if (!CBB_finish(&cbb, &out, &out_len))
+		goto err;
+	if (out_len > LONG_MAX) {
+		freezero(out, out_len);
+		out = NULL;
+		goto err;
+	}
+
+	*len = out_len;
 
  err:
-	free(hexbuf);
-	X509V3error(ERR_R_MALLOC_FAILURE);
-	return NULL;
+	CBB_cleanup(&cbb);
 
- badhex:
-	free(hexbuf);
-	X509V3error(X509V3_R_ILLEGAL_HEX_DIGIT);
-	return NULL;
+	return out;
 }
+LCRYPTO_ALIAS(string_to_hex);
 
 /* V2I name comparison function: returns zero if 'name' matches
  * cmp or cmp.*
@@ -556,6 +642,7 @@ X509_get1_email(X509 *x)
 	sk_GENERAL_NAME_pop_free(gens, GENERAL_NAME_free);
 	return ret;
 }
+LCRYPTO_ALIAS(X509_get1_email);
 
 STACK_OF(OPENSSL_STRING) *
 X509_get1_ocsp(X509 *x)
@@ -580,6 +667,7 @@ X509_get1_ocsp(X509 *x)
 	AUTHORITY_INFO_ACCESS_free(info);
 	return ret;
 }
+LCRYPTO_ALIAS(X509_get1_ocsp);
 
 STACK_OF(OPENSSL_STRING) *
 X509_REQ_get1_email(X509_REQ *x)
@@ -595,6 +683,7 @@ X509_REQ_get1_email(X509_REQ *x)
 	sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
 	return ret;
 }
+LCRYPTO_ALIAS(X509_REQ_get1_email);
 
 
 static STACK_OF(OPENSSL_STRING) *
@@ -664,6 +753,7 @@ X509_email_free(STACK_OF(OPENSSL_STRING) *sk)
 {
 	sk_OPENSSL_STRING_pop_free(sk, str_free);
 }
+LCRYPTO_ALIAS(X509_email_free);
 
 typedef int (*equal_fn)(const unsigned char *pattern, size_t pattern_len,
     const unsigned char *subject, size_t subject_len, unsigned int flags);
@@ -705,7 +795,7 @@ skip_prefix(const unsigned char **p, size_t *plen, const unsigned char *subject,
  * "equal_nocase" function is a hand-rolled strncasecmp that does not
  * allow \0 in the pattern. Since an embedded \0 is likely a sign of
  * problems, we simply don't allow it in either case, and then we use
- * standard libc funcitons.
+ * standard libc functions.
  */
 
 /* Compare using strncasecmp */
@@ -954,7 +1044,7 @@ do_check_string(ASN1_STRING *a, int cmp_type, equal_fn equal,
 			rv = -1;
 	} else {
 		int astrlen;
-		unsigned char *astr;
+		unsigned char *astr = NULL;
 		astrlen = ASN1_STRING_to_UTF8(&astr, a);
 		if (astrlen < 0)
 			return -1;
@@ -1065,6 +1155,7 @@ X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
 		return -2;
 	return do_x509_check(x, chk, chklen, flags, GEN_DNS, peername);
 }
+LCRYPTO_ALIAS(X509_check_host);
 
 int
 X509_check_email(X509 *x, const char *chk, size_t chklen, unsigned int flags)
@@ -1077,6 +1168,7 @@ X509_check_email(X509 *x, const char *chk, size_t chklen, unsigned int flags)
 		return -2;
 	return do_x509_check(x, chk, chklen, flags, GEN_EMAIL, NULL);
 }
+LCRYPTO_ALIAS(X509_check_email);
 
 int
 X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
@@ -1086,6 +1178,7 @@ X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 		return -2;
 	return do_x509_check(x, (char *)chk, chklen, flags, GEN_IPADD, NULL);
 }
+LCRYPTO_ALIAS(X509_check_ip);
 
 int
 X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags)
@@ -1100,6 +1193,7 @@ X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags)
 		return -2;
 	return do_x509_check(x, (char *)ipout, iplen, flags, GEN_IPADD, NULL);
 }
+LCRYPTO_ALIAS(X509_check_ip_asc);
 
 /* Convert IP addresses both IPv4 and IPv6 into an
  * OCTET STRING compatible with RFC3280.
@@ -1128,6 +1222,7 @@ a2i_IPADDRESS(const char *ipasc)
 	}
 	return ret;
 }
+LCRYPTO_ALIAS(a2i_IPADDRESS);
 
 ASN1_OCTET_STRING *
 a2i_IPADDRESS_NC(const char *ipasc)
@@ -1173,6 +1268,7 @@ a2i_IPADDRESS_NC(const char *ipasc)
 		ASN1_OCTET_STRING_free(ret);
 	return NULL;
 }
+LCRYPTO_ALIAS(a2i_IPADDRESS_NC);
 
 
 int
@@ -1190,6 +1286,7 @@ a2i_ipadd(unsigned char *ipout, const char *ipasc)
 		return 4;
 	}
 }
+LCRYPTO_ALIAS(a2i_ipadd);
 
 static int
 ipv4_from_asc(unsigned char *v4, const char *in)
@@ -1386,3 +1483,4 @@ X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE)*dn_sk,
 	}
 	return 1;
 }
+LCRYPTO_ALIAS(X509V3_NAME_from_section);

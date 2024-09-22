@@ -1,4 +1,4 @@
-/* $OpenBSD: s_cb.c,v 1.15 2021/04/02 10:19:19 inoguchi Exp $ */
+/* $OpenBSD: s_cb.c,v 1.21 2023/04/14 15:27:13 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -189,11 +189,8 @@ verify_callback(int ok, X509_STORE_CTX * ctx)
 		BIO_printf(bio_err, "\n");
 		break;
 	case X509_V_ERR_NO_EXPLICIT_POLICY:
-		policies_print(bio_err, ctx);
 		break;
 	}
-	if (err == X509_V_OK && ok == 2)
-		policies_print(bio_err, ctx);
 
 	BIO_printf(bio_err, "verify return:%d\n", ok);
 	return (ok);
@@ -202,60 +199,33 @@ verify_callback(int ok, X509_STORE_CTX * ctx)
 int
 set_cert_stuff(SSL_CTX * ctx, char *cert_file, char *key_file)
 {
-	if (cert_file != NULL) {
-		/*
-		SSL *ssl;
-		X509 *x509;
-		*/
+	if (cert_file == NULL)
+		return 1;
 
-		if (SSL_CTX_use_certificate_file(ctx, cert_file,
-		    SSL_FILETYPE_PEM) <= 0) {
-			BIO_printf(bio_err,
-			    "unable to get certificate from '%s'\n", cert_file);
-			ERR_print_errors(bio_err);
-			return (0);
-		}
-		if (key_file == NULL)
-			key_file = cert_file;
-		if (SSL_CTX_use_PrivateKey_file(ctx, key_file,
-		    SSL_FILETYPE_PEM) <= 0) {
-			BIO_printf(bio_err,
-			    "unable to get private key from '%s'\n", key_file);
-			ERR_print_errors(bio_err);
-			return (0);
-		}
-		/*
-		In theory this is no longer needed
-		ssl=SSL_new(ctx);
-		x509=SSL_get_certificate(ssl);
+	if (key_file == NULL)
+		key_file = cert_file;
 
-		if (x509 != NULL) {
-			EVP_PKEY *pktmp;
-			pktmp = X509_get_pubkey(x509);
-			EVP_PKEY_copy_parameters(pktmp,
-						SSL_get_privatekey(ssl));
-			EVP_PKEY_free(pktmp);
-		}
-		SSL_free(ssl);
-		*/
-
-		/*
-		 * If we are using DSA, we can copy the parameters from the
-		 * private key
-		 */
-
-
-		/*
-		 * Now we know that a key and cert have been set against the
-		 * SSL context
-		 */
-		if (!SSL_CTX_check_private_key(ctx)) {
-			BIO_printf(bio_err,
-			    "Private key does not match the certificate public key\n");
-			return (0);
-		}
+	if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
+		BIO_printf(bio_err,
+		    "unable to get certificate from '%s'\n", cert_file);
+		ERR_print_errors(bio_err);
+		return 0;
 	}
-	return (1);
+	if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
+		BIO_printf(bio_err, "unable to get private key from '%s'\n",
+		    key_file);
+		ERR_print_errors(bio_err);
+		return 0;
+	}
+
+	/* Now we know that a key and cert have been set against the context. */
+	if (!SSL_CTX_check_private_key(ctx)) {
+		BIO_printf(bio_err,
+		    "Private key does not match the certificate public key\n");
+		return 0;
+	}
+
+	return 1;
 }
 
 int
@@ -291,6 +261,7 @@ ssl_print_tmp_key(BIO *out, SSL *s)
 	const char *cname;
 	EVP_PKEY *pkey;
 	EC_KEY *ec;
+	const EC_GROUP *group;
 	int nid;
 
 	if (!SSL_get_server_tmp_key(s, &pkey))
@@ -303,9 +274,12 @@ ssl_print_tmp_key(BIO *out, SSL *s)
 		break;
 
 	case EVP_PKEY_EC:
-		ec = EVP_PKEY_get1_EC_KEY(pkey);
-		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
-		EC_KEY_free(ec);
+		if ((ec = EVP_PKEY_get0_EC_KEY(pkey)) == NULL)
+			goto err;
+		if ((group = EC_KEY_get0_group(ec)) == NULL)
+			goto err;
+
+		nid = EC_GROUP_get_curve_name(group);
 
 		if ((cname = EC_curve_nid2nist(nid)) == NULL)
 			cname = OBJ_nid2sn(nid);
@@ -318,6 +292,7 @@ ssl_print_tmp_key(BIO *out, SSL *s)
 		    EVP_PKEY_bits(pkey));
 	}
 
+ err:
 	EVP_PKEY_free(pkey);
 	return 1;
 }
@@ -941,8 +916,12 @@ verify_cookie_callback(SSL * ssl, const unsigned char *cookie,
 	}
 
 	/* Calculate HMAC of buffer using the secret */
-	HMAC(EVP_sha1(), cookie_secret, COOKIE_SECRET_LENGTH,
-	    buffer, length, result, &resultlength);
+	if (HMAC(EVP_sha1(), cookie_secret, COOKIE_SECRET_LENGTH,
+	    buffer, length, result, &resultlength) == NULL) {
+		free(buffer);
+		return 0;
+	}
+
 	free(buffer);
 
 	if (cookie_len == resultlength &&

@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_npas.c,v 1.13 2018/05/13 14:22:34 tb Exp $ */
+/* $OpenBSD: p12_npas.c,v 1.27 2024/01/25 15:33:35 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -63,131 +63,73 @@
 #include <openssl/err.h>
 #include <openssl/pkcs12.h>
 
+#include "pkcs12_local.h"
+#include "x509_local.h"
+
 /* PKCS#12 password change routine */
 
-static int newpass_p12(PKCS12 *p12, const char *oldpass, const char *newpass);
-static int newpass_bags(STACK_OF(PKCS12_SAFEBAG) *bags, const char *oldpass,
-    const char *newpass);
-static int newpass_bag(PKCS12_SAFEBAG *bag, const char *oldpass,
-    const char *newpass);
-static int alg_get(X509_ALGOR *alg, int *pnid, int *piter, int *psaltlen);
-
-/*
- * Change the password on a PKCS#12 structure.
- */
-
-int
-PKCS12_newpass(PKCS12 *p12, const char *oldpass, const char *newpass)
-{
-	/* Check for NULL PKCS12 structure */
-
-	if (!p12) {
-		PKCS12error(PKCS12_R_INVALID_NULL_PKCS12_POINTER);
-		return 0;
-	}
-
-	/* Check the mac */
-
-	if (!PKCS12_verify_mac(p12, oldpass, -1)) {
-		PKCS12error(PKCS12_R_MAC_VERIFY_FAILURE);
-		return 0;
-	}
-
-	if (!newpass_p12(p12, oldpass, newpass)) {
-		PKCS12error(PKCS12_R_PARSE_ERROR);
-		return 0;
-	}
-
-	return 1;
-}
-
-/* Parse the outer PKCS#12 structure */
-
 static int
-newpass_p12(PKCS12 *p12, const char *oldpass, const char *newpass)
+alg_get(X509_ALGOR *alg, int *nid, int *iter, int *salt_len)
 {
-	STACK_OF(PKCS7) *asafes, *newsafes;
-	STACK_OF(PKCS12_SAFEBAG) *bags;
-	int i, bagnid, pbe_nid = 0, pbe_iter = 0, pbe_saltlen = 0;
-	PKCS7 *p7, *p7new;
-	ASN1_OCTET_STRING *p12_data_tmp = NULL, *macnew = NULL;
-	unsigned char mac[EVP_MAX_MD_SIZE];
-	unsigned int maclen;
+	const ASN1_OBJECT *aobj;
+	int param_type;
+	const void *param;
+	PBEPARAM *pbe = NULL;
+	int ret = 0;
 
-	if (!(asafes = PKCS12_unpack_authsafes(p12)))
-		return 0;
-	if (!(newsafes = sk_PKCS7_new_null()))
-		return 0;
-	for (i = 0; i < sk_PKCS7_num(asafes); i++) {
-		p7 = sk_PKCS7_value(asafes, i);
-		bagnid = OBJ_obj2nid(p7->type);
-		if (bagnid == NID_pkcs7_data) {
-			bags = PKCS12_unpack_p7data(p7);
-		} else if (bagnid == NID_pkcs7_encrypted) {
-			bags = PKCS12_unpack_p7encdata(p7, oldpass, -1);
-			if (!alg_get(p7->d.encrypted->enc_data->algorithm,
-			    &pbe_nid, &pbe_iter, &pbe_saltlen)) {
-				sk_PKCS12_SAFEBAG_pop_free(bags,
-				    PKCS12_SAFEBAG_free);
-				bags = NULL;
-			}
-		} else
-			continue;
-		if (bags == NULL)
-			goto err;
-		if (!newpass_bags(bags, oldpass, newpass)) {
-			sk_PKCS12_SAFEBAG_pop_free(bags, PKCS12_SAFEBAG_free);
-			goto err;
-		}
-		/* Repack bag in same form with new password */
-		if (bagnid == NID_pkcs7_data)
-			p7new = PKCS12_pack_p7data(bags);
-		else
-			p7new = PKCS12_pack_p7encdata(pbe_nid, newpass, -1,
-			    NULL, pbe_saltlen, pbe_iter, bags);
-		sk_PKCS12_SAFEBAG_pop_free(bags, PKCS12_SAFEBAG_free);
-		if (p7new == NULL)
-			goto err;
-		if (sk_PKCS7_push(newsafes, p7new) == 0)
-			goto err;
-	}
-	sk_PKCS7_pop_free(asafes, PKCS7_free);
+	*nid = *iter = *salt_len = 0;
 
-	/* Repack safe: save old safe in case of error */
-
-	p12_data_tmp = p12->authsafes->d.data;
-	if (!(p12->authsafes->d.data = ASN1_OCTET_STRING_new())) {
-		p12->authsafes->d.data = p12_data_tmp;
+	X509_ALGOR_get0(&aobj, &param_type, &param, alg);
+	if (param_type != V_ASN1_SEQUENCE)
 		goto err;
-	}
-	if (!PKCS12_pack_authsafes(p12, newsafes))
-		goto saferr;
+	if ((pbe = ASN1_item_unpack(param, &PBEPARAM_it)) == NULL)
+		goto err;
 
-	if (!PKCS12_gen_mac(p12, newpass, -1, mac, &maclen))
-		goto saferr;
-	if (!(macnew = ASN1_OCTET_STRING_new()))
-		goto saferr;
-	if (!ASN1_OCTET_STRING_set(macnew, mac, maclen))
-		goto saferr;
-	ASN1_OCTET_STRING_free(p12->mac->dinfo->digest);
-	p12->mac->dinfo->digest = macnew;
-	ASN1_OCTET_STRING_free(p12_data_tmp);
+	/* XXX - can we validate these somehow? */
+	*nid = OBJ_obj2nid(alg->algorithm);
+	*iter = ASN1_INTEGER_get(pbe->iter);
+	*salt_len = pbe->salt->length;
 
-	return 1;
+	ret = 1;
 
-saferr:
-	/* Restore old safe */
-	ASN1_OCTET_STRING_free(p12->authsafes->d.data);
-	ASN1_OCTET_STRING_free(macnew);
-	p12->authsafes->d.data = p12_data_tmp;
-	return 0;
+ err:
+	PBEPARAM_free(pbe);
 
-err:
-	sk_PKCS7_pop_free(asafes, PKCS7_free);
-	sk_PKCS7_pop_free(newsafes, PKCS7_free);
-	return 0;
+	return ret;
 }
 
+/* Change password of safebag: only needs handle shrouded keybags */
+static int
+newpass_bag(PKCS12_SAFEBAG *bag, const char *oldpass, const char *newpass)
+{
+	PKCS8_PRIV_KEY_INFO *p8 = NULL;
+	X509_SIG *keybag;
+	int nid, salt_len, iter;
+	int ret = 0;
+
+	if (OBJ_obj2nid(bag->type) != NID_pkcs8ShroudedKeyBag)
+		goto done;
+
+	if ((p8 = PKCS8_decrypt(bag->value.shkeybag, oldpass, -1)) == NULL)
+		goto err;
+	if (!alg_get(bag->value.shkeybag->algor, &nid, &iter, &salt_len))
+		goto err;
+
+	if ((keybag = PKCS8_encrypt(nid, NULL, newpass, -1, NULL, salt_len,
+	    iter, p8)) == NULL)
+		goto err;
+
+	X509_SIG_free(bag->value.shkeybag);
+	bag->value.shkeybag = keybag;
+
+ done:
+	ret = 1;
+
+ err:
+	PKCS8_PRIV_KEY_INFO_free(p8);
+
+	return ret;
+}
 
 static int
 newpass_bags(STACK_OF(PKCS12_SAFEBAG) *bags, const char *oldpass,
@@ -196,50 +138,163 @@ newpass_bags(STACK_OF(PKCS12_SAFEBAG) *bags, const char *oldpass,
 	int i;
 
 	for (i = 0; i < sk_PKCS12_SAFEBAG_num(bags); i++) {
-		if (!newpass_bag(sk_PKCS12_SAFEBAG_value(bags, i),
-		    oldpass, newpass))
+		PKCS12_SAFEBAG *bag = sk_PKCS12_SAFEBAG_value(bags, i);
+
+		if (!newpass_bag(bag, oldpass, newpass))
 			return 0;
 	}
-	return 1;
-}
 
-/* Change password of safebag: only needs handle shrouded keybags */
-
-static int
-newpass_bag(PKCS12_SAFEBAG *bag, const char *oldpass, const char *newpass)
-{
-	PKCS8_PRIV_KEY_INFO *p8;
-	X509_SIG *p8new;
-	int p8_nid, p8_saltlen, p8_iter;
-
-	if (OBJ_obj2nid(bag->type) != NID_pkcs8ShroudedKeyBag)
-		return 1;
-
-	if (!(p8 = PKCS8_decrypt(bag->value.shkeybag, oldpass, -1)))
-		return 0;
-	if (!alg_get(bag->value.shkeybag->algor, &p8_nid, &p8_iter,
-	    &p8_saltlen))
-		return 0;
-	if (!(p8new = PKCS8_encrypt(p8_nid, NULL, newpass, -1, NULL, p8_saltlen,
-	    p8_iter, p8))) return 0;
-	X509_SIG_free(bag->value.shkeybag);
-	bag->value.shkeybag = p8new;
 	return 1;
 }
 
 static int
-alg_get(X509_ALGOR *alg, int *pnid, int *piter, int *psaltlen)
+pkcs7_repack_data(PKCS7 *pkcs7, STACK_OF(PKCS7) *safes, const char *oldpass,
+    const char *newpass)
 {
-	PBEPARAM *pbe;
-	const unsigned char *p;
+	STACK_OF(PKCS12_SAFEBAG) *bags;
+	PKCS7 *data = NULL;
+	int ret = 0;
 
-	p = alg->parameter->value.sequence->data;
-	pbe = d2i_PBEPARAM(NULL, &p, alg->parameter->value.sequence->length);
-	if (!pbe)
-		return 0;
-	*pnid = OBJ_obj2nid(alg->algorithm);
-	*piter = ASN1_INTEGER_get(pbe->iter);
-	*psaltlen = pbe->salt->length;
-	PBEPARAM_free(pbe);
-	return 1;
+	if ((bags = PKCS12_unpack_p7data(pkcs7)) == NULL)
+		goto err;
+	if (!newpass_bags(bags, oldpass, newpass))
+		goto err;
+	if ((data = PKCS12_pack_p7data(bags)) == NULL)
+		goto err;
+	if (sk_PKCS7_push(safes, data) == 0)
+		goto err;
+	data = NULL;
+
+	ret = 1;
+
+ err:
+	sk_PKCS12_SAFEBAG_pop_free(bags, PKCS12_SAFEBAG_free);
+	PKCS7_free(data);
+
+	return ret;
 }
+
+static int
+pkcs7_repack_encdata(PKCS7 *pkcs7, STACK_OF(PKCS7) *safes, const char *oldpass,
+    const char *newpass)
+{
+	STACK_OF(PKCS12_SAFEBAG) *bags;
+	int nid, iter, salt_len;
+	PKCS7 *data = NULL;
+	int ret = 0;
+
+	if ((bags = PKCS12_unpack_p7encdata(pkcs7, oldpass, -1)) == NULL)
+		goto err;
+	if (!alg_get(pkcs7->d.encrypted->enc_data->algorithm, &nid,
+	    &iter, &salt_len))
+		goto err;
+	if (!newpass_bags(bags, oldpass, newpass))
+		goto err;
+	if ((data = PKCS12_pack_p7encdata(nid, newpass, -1, NULL, salt_len,
+	    iter, bags)) == NULL)
+		goto err;
+	if (!sk_PKCS7_push(safes, data))
+		goto err;
+	data = NULL;
+
+	ret = 1;
+
+ err:
+	sk_PKCS12_SAFEBAG_pop_free(bags, PKCS12_SAFEBAG_free);
+	PKCS7_free(data);
+
+	return ret;
+}
+
+static int
+pkcs12_repack_authsafes(PKCS12 *pkcs12, STACK_OF(PKCS7) *safes,
+    const char *newpass)
+{
+	ASN1_OCTET_STRING *old_data;
+	ASN1_OCTET_STRING *new_mac = NULL;
+	unsigned char mac[EVP_MAX_MD_SIZE];
+	unsigned int mac_len;
+	int ret = 0;
+
+	if ((old_data = pkcs12->authsafes->d.data) == NULL)
+		goto err;
+	if ((pkcs12->authsafes->d.data = ASN1_OCTET_STRING_new()) == NULL)
+		goto err;
+	if (!PKCS12_pack_authsafes(pkcs12, safes))
+		goto err;
+	if (!PKCS12_gen_mac(pkcs12, newpass, -1, mac, &mac_len))
+		goto err;
+	if ((new_mac = ASN1_OCTET_STRING_new()) == NULL)
+		goto err;
+	if (!ASN1_OCTET_STRING_set(new_mac, mac, mac_len))
+		goto err;
+
+	ASN1_OCTET_STRING_free(pkcs12->mac->dinfo->digest);
+	pkcs12->mac->dinfo->digest = new_mac;
+	new_mac = NULL;
+
+	ASN1_OCTET_STRING_free(old_data);
+	old_data = NULL;
+
+	ret = 1;
+
+ err:
+	if (old_data != NULL) {
+		ASN1_OCTET_STRING_free(pkcs12->authsafes->d.data);
+		pkcs12->authsafes->d.data = old_data;
+	}
+	explicit_bzero(mac, sizeof(mac));
+	ASN1_OCTET_STRING_free(new_mac);
+
+	return ret;
+}
+
+int
+PKCS12_newpass(PKCS12 *pkcs12, const char *oldpass, const char *newpass)
+{
+	STACK_OF(PKCS7) *authsafes = NULL, *safes = NULL;
+	int i;
+	int ret = 0;
+
+	if (pkcs12 == NULL) {
+		PKCS12error(PKCS12_R_INVALID_NULL_PKCS12_POINTER);
+		goto err;
+	}
+
+	if (!PKCS12_verify_mac(pkcs12, oldpass, -1)) {
+		PKCS12error(PKCS12_R_MAC_VERIFY_FAILURE);
+		goto err;
+	}
+
+	if ((authsafes = PKCS12_unpack_authsafes(pkcs12)) == NULL)
+		goto err;
+	if ((safes = sk_PKCS7_new_null()) == NULL)
+		goto err;
+
+	for (i = 0; i < sk_PKCS7_num(authsafes); i++) {
+		PKCS7 *pkcs7 = sk_PKCS7_value(authsafes, i);
+
+		switch (OBJ_obj2nid(pkcs7->type)) {
+		case NID_pkcs7_data:
+			if (pkcs7_repack_data(pkcs7, safes, oldpass, newpass))
+				goto err;
+			break;
+		case NID_pkcs7_encrypted:
+			if (pkcs7_repack_encdata(pkcs7, safes, oldpass, newpass))
+				goto err;
+			break;
+		}
+	}
+
+	if (!pkcs12_repack_authsafes(pkcs12, safes, newpass))
+		goto err;
+
+	ret = 1;
+
+ err:
+	sk_PKCS7_pop_free(authsafes, PKCS7_free);
+	sk_PKCS7_pop_free(safes, PKCS7_free);
+
+	return ret;
+}
+LCRYPTO_ALIAS(PKCS12_newpass);

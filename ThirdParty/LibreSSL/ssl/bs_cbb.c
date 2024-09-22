@@ -1,4 +1,4 @@
-/*	$OpenBSD: bs_cbb.c,v 1.26 2021/05/16 10:58:27 jsing Exp $	*/
+/*	$OpenBSD: bs_cbb.c,v 1.28 2022/07/07 17:12:15 tb Exp $	*/
 /*
  * Copyright (c) 2014, Google Inc.
  *
@@ -161,6 +161,9 @@ CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len)
 		 * |out_data| and |out_len| can only be NULL if the CBB is
 		 * fixed.
 		 */
+		return 0;
+
+	if (out_data != NULL && *out_data != NULL)
 		return 0;
 
 	if (out_data != NULL)
@@ -411,6 +414,19 @@ CBB_add_u32(CBB *cbb, size_t value)
 		return 0;
 
 	return cbb_add_u(cbb, (uint32_t)value, 4);
+}
+
+int
+CBB_add_u64(CBB *cbb, uint64_t value)
+{
+	uint32_t a, b;
+
+	a = value >> 32;
+	b = value & 0xffffffff;
+
+	if (!CBB_add_u32(cbb, a))
+		return 0;
+	return CBB_add_u32(cbb, b);
 }
 
 int

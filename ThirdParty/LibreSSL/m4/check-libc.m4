@@ -1,18 +1,20 @@
 AC_DEFUN([CHECK_LIBC_COMPAT], [
 # Check for libc headers
-AC_CHECK_HEADERS([err.h readpassphrase.h])
+AC_CHECK_HEADERS([endian.h machine/endian.h err.h readpassphrase.h])
+AC_CHECK_HEADERS([netinet/ip.h], [], [],
+[#include <sys/types.h>
+#include <arpa/inet.h>
+])
+AC_HEADER_RESOLV
 # Check for general libc functions
 AC_CHECK_FUNCS([asprintf freezero memmem])
 AC_CHECK_FUNCS([readpassphrase reallocarray recallocarray])
-AC_CHECK_FUNCS([strlcat strlcpy strndup strnlen strsep strtonum])
+AC_CHECK_FUNCS([strcasecmp strlcat strlcpy strndup strnlen strsep strtonum])
 AC_CHECK_FUNCS([timegm _mkgmtime timespecsub])
-AC_CHECK_FUNCS([getprogname syslog syslog_r])
+AC_CHECK_FUNCS([getopt getprogname syslog syslog_r])
 AC_CACHE_CHECK([for getpagesize], ac_cv_func_getpagesize, [
 	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-// Since Android NDK v16 getpagesize is defined as inline inside unistd.h
-#ifdef __ANDROID__
-#	include <unistd.h>
-#endif
+#include <unistd.h>
 		]], [[
 	getpagesize();
 ]])],
@@ -23,10 +25,12 @@ AC_CACHE_CHECK([for getpagesize], ac_cv_func_getpagesize, [
 AM_CONDITIONAL([HAVE_ASPRINTF], [test "x$ac_cv_func_asprintf" = xyes])
 AM_CONDITIONAL([HAVE_FREEZERO], [test "x$ac_cv_func_freezero" = xyes])
 AM_CONDITIONAL([HAVE_GETPAGESIZE], [test "x$ac_cv_func_getpagesize" = xyes])
+AM_CONDITIONAL([HAVE_GETOPT], [test "x$ac_cv_func_getopt" = xyes])
 AM_CONDITIONAL([HAVE_MEMMEM], [test "x$ac_cv_func_memmem" = xyes])
 AM_CONDITIONAL([HAVE_READPASSPHRASE], [test "x$ac_cv_func_readpassphrase" = xyes])
 AM_CONDITIONAL([HAVE_REALLOCARRAY], [test "x$ac_cv_func_reallocarray" = xyes])
 AM_CONDITIONAL([HAVE_RECALLOCARRAY], [test "x$ac_cv_func_recallocarray" = xyes])
+AM_CONDITIONAL([HAVE_STRCASECMP], [test "x$ac_cv_func_strcasecmp" = xyes])
 AM_CONDITIONAL([HAVE_STRLCAT], [test "x$ac_cv_func_strlcat" = xyes])
 AM_CONDITIONAL([HAVE_STRLCPY], [test "x$ac_cv_func_strlcpy" = xyes])
 AM_CONDITIONAL([HAVE_STRNDUP], [test "x$ac_cv_func_strndup" = xyes])

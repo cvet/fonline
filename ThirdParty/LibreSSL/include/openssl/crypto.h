@@ -1,4 +1,4 @@
-/* $OpenBSD: crypto.h,v 1.50 2019/01/19 01:07:00 tb Exp $ */
+/* $OpenBSD: crypto.h,v 1.72 2024/03/02 15:40:05 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
  *
@@ -117,6 +117,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #ifndef HEADER_CRYPTO_H
 #define HEADER_CRYPTO_H
@@ -142,15 +143,6 @@ extern "C" {
 #define SSLEAY_BUILT_ON		3
 #define SSLEAY_PLATFORM		4
 #define SSLEAY_DIR		5
-
-/* A generic structure to pass assorted data in a expandable way */
-typedef struct openssl_item_st {
-	int code;
-	void *value;		/* Not used for flag attributes */
-	size_t value_size;	/* Max size of value for output, length for input */
-	size_t *value_length;	/* Returned length of value for output */
-} OPENSSL_ITEM;
-
 
 /* When changing the CRYPTO_LOCK_* list, be sure to maintain the text lock
  * names in cryptlib.c
@@ -205,15 +197,15 @@ typedef struct openssl_item_st {
 
 #ifndef CRYPTO_w_lock
 #define CRYPTO_w_lock(type)	\
-	CRYPTO_lock(CRYPTO_LOCK|CRYPTO_WRITE,type,__FILE__,__LINE__)
+	CRYPTO_lock(CRYPTO_LOCK|CRYPTO_WRITE,type,NULL,0)
 #define CRYPTO_w_unlock(type)	\
-	CRYPTO_lock(CRYPTO_UNLOCK|CRYPTO_WRITE,type,__FILE__,__LINE__)
+	CRYPTO_lock(CRYPTO_UNLOCK|CRYPTO_WRITE,type,NULL,0)
 #define CRYPTO_r_lock(type)	\
-	CRYPTO_lock(CRYPTO_LOCK|CRYPTO_READ,type,__FILE__,__LINE__)
+	CRYPTO_lock(CRYPTO_LOCK|CRYPTO_READ,type,NULL,0)
 #define CRYPTO_r_unlock(type)	\
-	CRYPTO_lock(CRYPTO_UNLOCK|CRYPTO_READ,type,__FILE__,__LINE__)
+	CRYPTO_lock(CRYPTO_UNLOCK|CRYPTO_READ,type,NULL,0)
 #define CRYPTO_add(addr,amount,type)	\
-	CRYPTO_add_lock(addr,amount,type,__FILE__,__LINE__)
+	CRYPTO_add_lock(addr,amount,type,NULL,0)
 #endif
 
 /* Some applications as well as some parts of OpenSSL need to allocate
@@ -249,48 +241,26 @@ typedef struct {
 typedef struct bio_st BIO_dummy;
 
 struct crypto_ex_data_st {
-	STACK_OF(void) *sk;
+	void *sk;
 };
 DECLARE_STACK_OF(void)
 
-/* This stuff is basically class callback functions
- * The current classes are SSL_CTX, SSL, SSL_SESSION, and a few more */
-
-typedef struct crypto_ex_data_func_st {
-	long argl;	/* Arbitary long */
-	void *argp;	/* Arbitary void * */
-	CRYPTO_EX_new *new_func;
-	CRYPTO_EX_free *free_func;
-	CRYPTO_EX_dup *dup_func;
-} CRYPTO_EX_DATA_FUNCS;
-
-DECLARE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
-
-/* Per class, we have a STACK of CRYPTO_EX_DATA_FUNCS for each CRYPTO_EX_DATA
- * entry.
- */
-
-#define CRYPTO_EX_INDEX_BIO		0
-#define CRYPTO_EX_INDEX_SSL		1
-#define CRYPTO_EX_INDEX_SSL_CTX		2
-#define CRYPTO_EX_INDEX_SSL_SESSION	3
-#define CRYPTO_EX_INDEX_X509_STORE	4
-#define CRYPTO_EX_INDEX_X509_STORE_CTX	5
-#define CRYPTO_EX_INDEX_RSA		6
-#define CRYPTO_EX_INDEX_DSA		7
-#define CRYPTO_EX_INDEX_DH		8
-#define CRYPTO_EX_INDEX_ENGINE		9
-#define CRYPTO_EX_INDEX_X509		10
-#define CRYPTO_EX_INDEX_UI		11
-#define CRYPTO_EX_INDEX_ECDSA		12
-#define CRYPTO_EX_INDEX_ECDH		13
-#define CRYPTO_EX_INDEX_COMP		14
-#define CRYPTO_EX_INDEX_STORE		15
-#define CRYPTO_EX_INDEX_EC_KEY		16
-
-/* Dynamically assigned indexes start from this value (don't use directly, use
- * via CRYPTO_ex_data_new_class). */
-#define CRYPTO_EX_INDEX_USER		100
+#define CRYPTO_EX_INDEX_SSL              0
+#define CRYPTO_EX_INDEX_SSL_CTX          1
+#define CRYPTO_EX_INDEX_SSL_SESSION      2
+#define CRYPTO_EX_INDEX_APP              3
+#define CRYPTO_EX_INDEX_BIO              4
+#define CRYPTO_EX_INDEX_DH               5
+#define CRYPTO_EX_INDEX_DSA              6
+#define CRYPTO_EX_INDEX_EC_KEY           7
+#define CRYPTO_EX_INDEX_ENGINE           8
+#define CRYPTO_EX_INDEX_RSA              9
+#define CRYPTO_EX_INDEX_UI               10
+#define CRYPTO_EX_INDEX_UI_METHOD        11
+#define CRYPTO_EX_INDEX_X509             12
+#define CRYPTO_EX_INDEX_X509_STORE       13
+#define CRYPTO_EX_INDEX_X509_STORE_CTX   14
+#define CRYPTO_EX_INDEX__COUNT           15
 
 #ifndef LIBRESSL_INTERNAL
 #define CRYPTO_malloc_init()		(0)
@@ -303,26 +273,10 @@ DECLARE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
 #endif
 
 int CRYPTO_mem_ctrl(int mode);
-int CRYPTO_is_mem_check_on(void);
 
-/* for applications */
-#define MemCheck_start() CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON)
-#define MemCheck_stop()	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_OFF)
-
-#define OPENSSL_malloc(num)	CRYPTO_malloc((int)num,__FILE__,__LINE__)
-#define OPENSSL_strdup(str)	CRYPTO_strdup((str),__FILE__,__LINE__)
-#define OPENSSL_realloc(addr,num) \
-	CRYPTO_realloc((char *)addr,(int)num,__FILE__,__LINE__)
-#define OPENSSL_realloc_clean(addr,old_num,num) \
-	CRYPTO_realloc_clean(addr,old_num,num,__FILE__,__LINE__)
-#define OPENSSL_remalloc(addr,num) \
-	CRYPTO_remalloc((char **)addr,(int)num,__FILE__,__LINE__)
-#define OPENSSL_freeFunc	CRYPTO_free
-#define OPENSSL_free(addr)	CRYPTO_free(addr)
-
-#define OPENSSL_malloc_locked(num) \
-	CRYPTO_malloc_locked((int)num,__FILE__,__LINE__)
-#define OPENSSL_free_locked(addr) CRYPTO_free_locked(addr)
+#define OPENSSL_malloc(num)	CRYPTO_malloc((num),NULL,0)
+#define OPENSSL_strdup(str)	CRYPTO_strdup((str),NULL,0)
+#define OPENSSL_free(addr)	CRYPTO_free((addr),NULL,0)
 #endif
 
 const char *OpenSSL_version(int type);
@@ -337,14 +291,6 @@ unsigned long OpenSSL_version_num(void);
 const char *SSLeay_version(int type);
 unsigned long SSLeay(void);
 
-/* An opaque type representing an implementation of "ex_data" support */
-typedef struct st_CRYPTO_EX_DATA_IMPL	CRYPTO_EX_DATA_IMPL;
-/* Return an opaque pointer to the current "ex_data" implementation */
-const CRYPTO_EX_DATA_IMPL *CRYPTO_get_ex_data_implementation(void);
-/* Sets the "ex_data" implementation to be used (if it's not too late) */
-int CRYPTO_set_ex_data_implementation(const CRYPTO_EX_DATA_IMPL *i);
-/* Get a new "ex_data" class, and return the corresponding "class_index" */
-int CRYPTO_ex_data_new_class(void);
 /* Within a given class, get/register a new index */
 int CRYPTO_get_ex_new_index(int class_index, long argl, void *argp,
     CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
@@ -368,14 +314,7 @@ int CRYPTO_add_lock(int *pointer, int amount, int type, const char *file,
     int line);
 
 /* Don't use this structure directly. */
-typedef struct crypto_threadid_st {
-	void *ptr;
-	unsigned long val;
-} CRYPTO_THREADID;
-void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
-int CRYPTO_THREADID_cmp(const CRYPTO_THREADID *a, const CRYPTO_THREADID *b);
-void CRYPTO_THREADID_cpy(CRYPTO_THREADID *dest, const CRYPTO_THREADID *src);
-unsigned long CRYPTO_THREADID_hash(const CRYPTO_THREADID *id);
+typedef struct crypto_threadid_st CRYPTO_THREADID;
 
 #ifndef LIBRESSL_INTERNAL
 /* These functions are deprecated no-op stubs */
@@ -415,96 +354,37 @@ void (*CRYPTO_get_dynlock_destroy_callback(void))(struct CRYPTO_dynlock_value *l
 /* CRYPTO_set_mem_functions includes CRYPTO_set_locked_mem_functions --
  * call the latter last if you need different functions */
 int CRYPTO_set_mem_functions(void *(*m)(size_t), void *(*r)(void *, size_t), void (*f)(void *));
-int CRYPTO_set_locked_mem_functions(void *(*m)(size_t), void (*free_func)(void *));
 int CRYPTO_set_mem_ex_functions(void *(*m)(size_t, const char *, int),
     void *(*r)(void *, size_t, const char *, int), void (*f)(void *));
-int CRYPTO_set_locked_mem_ex_functions(void *(*m)(size_t, const char *, int),
-    void (*free_func)(void *));
-int CRYPTO_set_mem_debug_functions(
-    void (*m)(void *, int, const char *, int, int),
-    void (*r)(void *, void *, int, const char *, int, int),
-    void (*f)(void *, int), void (*so)(long), long (*go)(void));
-void CRYPTO_get_mem_functions(void *(**m)(size_t), void *(**r)(void *, size_t),
-    void (**f)(void *));
-void CRYPTO_get_locked_mem_functions(void *(**m)(size_t), void (**f)(void *));
-void CRYPTO_get_mem_ex_functions(void *(**m)(size_t, const char *, int),
-    void *(**r)(void *, size_t, const char *, int), void (**f)(void *));
-void CRYPTO_get_locked_mem_ex_functions(void *(**m)(size_t, const char *, int),
-    void (**f)(void *));
-void CRYPTO_get_mem_debug_functions(
-    void (**m)(void *, int, const char *, int, int),
-    void (**r)(void *, void *, int, const char *, int, int),
-    void (**f)(void *, int), void (**so)(long), long (**go)(void));
 
 #ifndef LIBRESSL_INTERNAL
-void *CRYPTO_malloc_locked(int num, const char *file, int line);
-void CRYPTO_free_locked(void *ptr);
-void *CRYPTO_malloc(int num, const char *file, int line);
+void *CRYPTO_malloc(size_t num, const char *file, int line);
 char *CRYPTO_strdup(const char *str, const char *file, int line);
-void CRYPTO_free(void *ptr);
-void *CRYPTO_realloc(void *addr, int num, const char *file, int line);
+void CRYPTO_free(void *ptr, const char *file, int line);
 #endif
-
-void *CRYPTO_realloc_clean(void *addr, int old_num, int num,
-    const char *file, int line);
-void *CRYPTO_remalloc(void *addr, int num, const char *file, int line);
 
 #ifndef LIBRESSL_INTERNAL
 void OPENSSL_cleanse(void *ptr, size_t len);
 #endif
 
-void CRYPTO_set_mem_debug_options(long bits);
-long CRYPTO_get_mem_debug_options(void);
-
-#define CRYPTO_push_info(info) \
-        CRYPTO_push_info_(info, __FILE__, __LINE__);
-int CRYPTO_push_info_(const char *info, const char *file, int line);
-int CRYPTO_pop_info(void);
-int CRYPTO_remove_all_info(void);
-
-
-/* Default debugging functions (enabled by CRYPTO_malloc_debug_init() macro;
- * used as default in CRYPTO_MDEBUG compilations): */
-/* The last argument has the following significance:
- *
- * 0:	called before the actual memory allocation has taken place
- * 1:	called after the actual memory allocation has taken place
+/*
+ * Because this is a public header, use a portable method of indicating the
+ * function does not return, rather than __dead.
  */
-void CRYPTO_dbg_malloc(void *addr, int num, const char *file, int line, int before_p)
-	__attribute__ ((deprecated));
-void CRYPTO_dbg_realloc(void *addr1, void *addr2, int num, const char *file, int line, int before_p)
-	__attribute__ ((deprecated));
-void CRYPTO_dbg_free(void *addr, int before_p)
-	__attribute__ ((deprecated));
-/* Tell the debugging code about options.  By default, the following values
- * apply:
- *
- * 0:                           Clear all options.
- * V_CRYPTO_MDEBUG_TIME (1):    Set the "Show Time" option.
- * V_CRYPTO_MDEBUG_THREAD (2):  Set the "Show Thread Number" option.
- * V_CRYPTO_MDEBUG_ALL (3):     1 + 2
- */
-void CRYPTO_dbg_set_options(long bits)
-	__attribute__ ((deprecated));
-long CRYPTO_dbg_get_options(void)
-	__attribute__ ((deprecated));
-
-
-int CRYPTO_mem_leaks_fp(FILE *);
-int CRYPTO_mem_leaks(struct bio_st *bio);
-/* unsigned long order, char *file, int line, int num_bytes, char *addr */
-typedef int *CRYPTO_MEM_LEAK_CB(unsigned long, const char *, int, int, void *);
-int CRYPTO_mem_leaks_cb(CRYPTO_MEM_LEAK_CB *cb);
-
-/* die if we have to */
+#ifdef _MSC_VER
+__declspec(noreturn)
+#else
+__attribute__((__noreturn__))
+#endif
 void OpenSSLDie(const char *file, int line, const char *assertion);
 #define OPENSSL_assert(e)       (void)((e) ? 0 : (OpenSSLDie(__FILE__, __LINE__, #e),1))
 
 uint64_t OPENSSL_cpu_caps(void);
 
-int OPENSSL_isservice(void);
-
 #ifndef LIBRESSL_INTERNAL
+int FIPS_mode(void);
+int FIPS_mode_set(int r);
+
 void OPENSSL_init(void);
 
 /* CRYPTO_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
@@ -514,30 +394,6 @@ void OPENSSL_init(void);
  * non-zero. */
 int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 #endif
-
-/* BEGIN ERROR CODES */
-/* The following lines are auto generated by the script mkerr.pl. Any changes
- * made after this point may be overwritten when the script is next run.
- */
-void ERR_load_CRYPTO_strings(void);
-
-/* Error codes for the CRYPTO functions. */
-
-/* Function codes. */
-#define CRYPTO_F_CRYPTO_GET_EX_NEW_INDEX		 100
-#define CRYPTO_F_CRYPTO_GET_NEW_DYNLOCKID		 103
-#define CRYPTO_F_CRYPTO_GET_NEW_LOCKID			 101
-#define CRYPTO_F_CRYPTO_SET_EX_DATA			 102
-#define CRYPTO_F_DEF_ADD_INDEX				 104
-#define CRYPTO_F_DEF_GET_CLASS				 105
-#define CRYPTO_F_FIPS_MODE_SET				 109
-#define CRYPTO_F_INT_DUP_EX_DATA			 106
-#define CRYPTO_F_INT_FREE_EX_DATA			 107
-#define CRYPTO_F_INT_NEW_EX_DATA			 108
-
-/* Reason codes. */
-#define CRYPTO_R_FIPS_MODE_NOT_SUPPORTED		 101
-#define CRYPTO_R_NO_DYNLOCK_CREATE_CALLBACK		 100
 
 /*
  * OpenSSL compatible OPENSSL_INIT options.
@@ -550,7 +406,7 @@ void ERR_load_CRYPTO_strings(void);
 #define _OPENSSL_INIT_FLAG_NOOP			0x80000000L
 
 /*
- * These are provided for compatibiliy, but have no effect
+ * These are provided for compatibility, but have no effect
  * on how LibreSSL is initialized.
  */
 #define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS	_OPENSSL_INIT_FLAG_NOOP
@@ -572,6 +428,33 @@ void ERR_load_CRYPTO_strings(void);
 #define OPENSSL_INIT_ENGINE_ALL_BUILTIN		_OPENSSL_INIT_FLAG_NOOP
 
 int OPENSSL_init_crypto(uint64_t opts, const void *settings);
+void OPENSSL_cleanup(void);
+
+/*
+ * OpenSSL helpfully put OPENSSL_gmtime() here because all other time related
+ * functions are in asn1.h.
+ */
+struct tm *OPENSSL_gmtime(const time_t *time, struct tm *out_tm);
+
+void ERR_load_CRYPTO_strings(void);
+
+/* Error codes for the CRYPTO functions. */
+
+/* Function codes. */
+#define CRYPTO_F_CRYPTO_GET_EX_NEW_INDEX		 100
+#define CRYPTO_F_CRYPTO_GET_NEW_DYNLOCKID		 103
+#define CRYPTO_F_CRYPTO_GET_NEW_LOCKID			 101
+#define CRYPTO_F_CRYPTO_SET_EX_DATA			 102
+#define CRYPTO_F_DEF_ADD_INDEX				 104
+#define CRYPTO_F_DEF_GET_CLASS				 105
+#define CRYPTO_F_FIPS_MODE_SET				 109
+#define CRYPTO_F_INT_DUP_EX_DATA			 106
+#define CRYPTO_F_INT_FREE_EX_DATA			 107
+#define CRYPTO_F_INT_NEW_EX_DATA			 108
+
+/* Reason codes. */
+#define CRYPTO_R_FIPS_MODE_NOT_SUPPORTED		 101
+#define CRYPTO_R_NO_DYNLOCK_CREATE_CALLBACK		 100
 
 #ifdef  __cplusplus
 }

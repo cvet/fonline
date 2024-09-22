@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -5,6 +11,7 @@
 .type	whirlpool_block,@function
 .align	16
 whirlpool_block:
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -588,6 +595,7 @@ whirlpool_block:
 	retq
 .size	whirlpool_block,.-whirlpool_block
 
+.section	.rodata
 .align	64
 .type	.Ltable,@object
 .Ltable:

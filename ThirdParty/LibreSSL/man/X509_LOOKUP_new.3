@@ -1,4 +1,4 @@
-.\" $OpenBSD: X509_LOOKUP_new.3,v 1.4 2021/08/06 19:09:56 schwarze Exp $
+.\" $OpenBSD: X509_LOOKUP_new.3,v 1.9 2021/11/12 14:05:28 schwarze Exp $
 .\"
 .\" Copyright (c) 2021 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 6 2021 $
+.Dd $Mdocdate: November 12 2021 $
 .Dt X509_LOOKUP_NEW 3
 .Os
 .Sh NAME
@@ -73,7 +73,7 @@
 .Ft int
 .Fo X509_LOOKUP_by_subject
 .Fa "X509_LOOKUP *lookup"
-.Fa "int type"
+.Fa "X509_LOOKUP_TYPE type"
 .Fa "X509_NAME *name"
 .Fa "X509_OBJECT *object"
 .Fc
@@ -84,7 +84,7 @@
 .Ft int
 .Fo X509_LOOKUP_by_issuer_serial
 .Fa "X509_LOOKUP *lookup"
-.Fa "int type"
+.Fa "X509_LOOKUP_TYPE type"
 .Fa "X509_NAME *name"
 .Fa "ASN1_INTEGER *serial"
 .Fa "X509_OBJECT *object"
@@ -92,7 +92,7 @@
 .Ft int
 .Fo X509_LOOKUP_by_fingerprint
 .Fa "X509_LOOKUP *lookup"
-.Fa "int type"
+.Fa "X509_LOOKUP_TYPE type"
 .Fa "const unsigned char *bytes"
 .Fa "int length"
 .Fa "X509_OBJECT *object"
@@ -100,7 +100,7 @@
 .Ft int
 .Fo X509_LOOKUP_by_alias
 .Fa "X509_LOOKUP *lookup"
-.Fa "int type"
+.Fa "X509_LOOKUP_TYPE type"
 .Fa "const char *string"
 .Fa "int length"
 .Fa "X509_OBJECT *object"
@@ -120,7 +120,7 @@ allocates a new, empty
 .Vt X509_LOOKUP
 object and associates it with the
 .Fa method
-which is a static objects returned from either
+which is a static object returned from either
 .Xr X509_LOOKUP_hash_dir 3
 or
 .Xr X509_LOOKUP_file 3
@@ -286,16 +286,13 @@ set to
 .Dv NULL .
 .El
 .Pp
+With LibreSSL,
 .Fn X509_LOOKUP_ctrl
 always ignores the
 .Fa ret
-argument when the built-in
-.Vt X509_LOOKUP_METHOD
-objects are used.
+argument.
 .Pp
-When using built-in
-.Vt X509_LOOKUP_METHOD
-objects,
+With LibreSSL,
 .Fn X509_LOOKUP_by_subject
 is only useful if
 .Fa lookup
@@ -336,9 +333,7 @@ In case of success, the first match is returned in the
 .Pf * Fa object
 provided by the caller, overwriting any previous content.
 .Pp
-Unless an application program manually constructs its own
-.Vt X509_LOOKUP_METHOD
-object containing its own callback functions,
+With LibreSSL,
 .Fn X509_LOOKUP_init ,
 .Fn X509_LOOKUP_shutdown ,
 .Fn X509_LOOKUP_by_issuer_serial ,
@@ -346,15 +341,6 @@ object containing its own callback functions,
 and
 .Fn X509_LOOKUP_by_alias
 have no effect.
-.Fn X509_LOOKUP_init
-is supposed to be called after
-.Fn X509_LOOKUP_new
-and before using the
-.Fa lookup
-object,
-.Fn X509_LOOKUP_shutdown
-after using it and before
-.Fn X509_LOOKUP_free .
 .Sh RETURN VALUES
 .Fn X509_LOOKUP_new
 returns the new object or
@@ -363,18 +349,11 @@ if memory allocation fails.
 .Pp
 .Fn X509_LOOKUP_ctrl
 returns 1 for success or 0 for failure.
-If
-.Fa lookup
-uses a user-defined
-.Vt X509_LOOKUP_METHOD
-object, it might also return \-1 for internal errors.
+With library implementations other than LibreSSL,
+it might also return \-1 for internal errors.
 .Pp
 .Fn X509_LOOKUP_by_subject
-returns
-.Dv X509_LU_X509
-for success or
-.Dv X509_LU_FAIL
-for failure.
+returns 1 for success or 0 for failure.
 In particular, it fails if
 .Fa lookup
 uses
@@ -392,29 +371,21 @@ is neither
 nor
 .Dv X509_LU_CRL ,
 if no match is found, or if memory allocation fails.
-If
-.Fa lookup
-uses a user-defined
-.Vt X509_LOOKUP_METHOD
-object, it might also return negative values for internal errors.
+With library implementations other than LibreSSL,
+it might also return negative values for internal errors.
 .Pp
 .Fn X509_LOOKUP_init
 and
 .Fn X509_LOOKUP_shutdown
 are supposed to return 1 for success and 0 for failure.
-When using the built-in
-.Vt X509_LOOKUP_METHOD
-objects, they always return 1.
+With LibreSSL, they always return 1.
 .Pp
+With LibreSSL,
 .Fn X509_LOOKUP_by_issuer_serial ,
 .Fn X509_LOOKUP_by_fingerprint ,
 and
 .Fn X509_LOOKUP_by_alias
-always return
-.Dv X509_LU_FAIL
-when using the built-in
-.Vt X509_LOOKUP_METHOD
-objects.
+always return 0.
 .Pp
 .Fn X509_get_default_cert_dir
 returns a pointer to the constant string
@@ -539,6 +510,7 @@ causes failure but provides no diagnostics.
 .Xr d2i_X509_bio 3 ,
 .Xr PEM_read_bio_X509_AUX 3 ,
 .Xr PEM_X509_INFO_read_bio 3 ,
+.Xr X509_load_cert_file 3 ,
 .Xr X509_LOOKUP_hash_dir 3 ,
 .Xr X509_NAME_hash 3 ,
 .Xr X509_NAME_new 3 ,

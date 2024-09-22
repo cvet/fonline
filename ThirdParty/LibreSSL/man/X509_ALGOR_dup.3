@@ -1,9 +1,10 @@
-.\"	$OpenBSD: X509_ALGOR_dup.3,v 1.16 2021/07/06 16:05:44 schwarze Exp $
+.\"	$OpenBSD: X509_ALGOR_dup.3,v 1.22 2023/10/13 05:49:34 tb Exp $
 .\"	OpenSSL 4692340e Jun 7 15:49:08 2016 -0400
 .\"
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
 .\"
+.\" Copyright (c) 2023 Theo Buehler <tb@openbsd.org>
 .\" Copyright (c) 2016 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
@@ -65,7 +66,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: July 6 2021 $
+.Dd $Mdocdate: October 13 2023 $
 .Dt X509_ALGOR_DUP 3
 .Os
 .Sh NAME
@@ -112,25 +113,59 @@
 .Fa "const X509_ALGOR *b"
 .Fc
 .Sh DESCRIPTION
-.Fn X509_ALGOR_new
-allocates and initializes an empty
+An
 .Vt X509_ALGOR
-object, representing an ASN.1
+object represents an ASN.1
 .Vt AlgorithmIdentifier
 structure defined in RFC 5280 section 4.1.1.2.
-Such objects can specify a cryptographic algorithm together
-with algorithm-specific parameters.
-They are used by many other objects, for example certificates,
+It specifies a cryptographic
+.Fa algorithm
+by an ASN.1 object identifier (OID) that can be obtained from
+.Xr OBJ_nid2obj 3 ,
+together with optional algorithm-specific
+.Fa parameters
+of the type
+.Vt ASN1_TYPE ,
+see
+.Xr ASN1_TYPE_set 3 .
+.Vt X509_ALGOR
+objects are used by many other objects, for example certificates,
 certificate revocation lists, and certificate requests.
+.Pp
+.Fn X509_ALGOR_new
+allocates a new
+.Vt X509_ALGOR
+object containing the object that
+.Xr OBJ_nid2obj 3
+returns for
+.Dv NID_undef
+as the
+.Fa algorithm
+and a
+.Dv NULL
+pointer as the
+.Fa parameters .
 .Pp
 .Fn X509_ALGOR_free
 frees
-.Fa alg .
+.Fa alg
+and any data contained in it.
+If
+.Fa alg
+is
+.Dv NULL ,
+no action occurs.
 .Pp
 .Fn X509_ALGOR_dup
-copies
-.Fa alg
-by calling
+creates a deep copy of
+.Fa alg .
+It is implemented by calling
+.Xr ASN1_item_dup 3
+with arguments of
+.Dv X509_ALGOR_it
+and
+.Fa alg ,
+which is equivalent to calling
 .Xr i2d_X509_ALGOR 3
 and
 .Xr d2i_X509_ALGOR 3 .
@@ -147,8 +182,20 @@ with value
 If
 .Fa ptype
 is
+.Dv V_ASN1_UNDEF ,
+the parameter is omitted and
+.Fa pval
+is ignored.
+If
+.Fa ptype
+is zero,
+.Fa pval
+is ignored and the existing parameter is left unchanged, or if
+.Fa alg
+does not contain a parameter, a new, empty parameter of type
 .Dv V_ASN1_UNDEF
-the parameter is omitted, otherwise
+is added.
+Otherwise
 .Fa ptype
 and
 .Fa pval
@@ -158,27 +205,56 @@ and
 .Fa value
 parameters to
 .Xr ASN1_TYPE_set 3 .
-All the supplied parameters are used internally so must
-.Sy NOT
-be freed after this call.
+Ownership of
+.Fa aobj
+and, unless it is ignored, of
+.Fa pval
+is transferred to
+.Fa alg
+on success.
 .Pp
 .Fn X509_ALGOR_get0
-is the inverse of
-.Fn X509_ALGOR_set0 :
-it returns the algorithm OID in
-.Pf * Fa paobj
-and the associated parameter in
-.Pf * Fa pptype
+returns
+.Fa alg Ns 's
+algorithm OID in
+.Pf * Fa paobj ,
+its parameter type in
+.Pf * Fa pptype ,
+and its parameter value in
+.Pf * Fa ppval .
+Any of
+.Fa paobj ,
+.Fa pptype ,
 and
-.Pf * Fa ppval
-from
-.Fa alg .
+.Fa ppval
+can be
+.Dv NULL .
+If
+.Fa pptype is
+.Dv NULL
+or if
+.Pf * Fa pptype
+is
+.Dv V_ASN1_UNDEF
+then
+.Pf * Fa ppval Ns 's
+value is undefined.
 .Pp
 .Fn X509_ALGOR_set_md
 sets
 .Fa alg
 to appropriate values for the message digest
 .Fa md .
+If the
+.Dv EVP_MD_FLAG_DIGALGID_ABSENT
+flag is not set on
+.Fa md ,
+.Fn X509_ALGOR_set_md
+can leave
+.Fa alg
+in a corrupted state due to memory allocation failure.
+This problem can be avoided by preallocating with an error-checked call to
+.Fn X509_ALGOR_set0 alg NULL 0 NULL .
 .Pp
 .Fn X509_ALGOR_cmp
 compares
@@ -196,7 +272,11 @@ object or
 if an error occurs.
 .Pp
 .Fn X509_ALGOR_set0
-returns 1 for success or 0 for failure.
+returns 1 for success or 0 if
+.Fa alg
+is
+.Dv NULL
+or memory allocation fails.
 .Pp
 .Fn X509_ALGOR_cmp
 returns 0 if
@@ -208,6 +288,7 @@ have identical encodings or non-zero otherwise.
 .Xr ASN1_TYPE_set 3 ,
 .Xr d2i_X509_ALGOR 3 ,
 .Xr EVP_DigestInit 3 ,
+.Xr OBJ_nid2obj 3 ,
 .Xr X509_get0_signature 3 ,
 .Xr X509_new 3 ,
 .Xr X509_PUBKEY_get0_param 3 ,
@@ -240,3 +321,6 @@ and has been available since
 .Fn X509_ALGOR_set_md
 first appeared in OpenSSL 1.0.1 and has been available since
 .Ox 5.3 .
+.Sh BUGS
+.Fn X509_ALGOR_set_md
+can fail but cannot communicate failure to the caller.

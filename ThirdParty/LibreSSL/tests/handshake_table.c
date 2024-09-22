@@ -1,4 +1,4 @@
-/*	$OpenBSD: handshake_table.c,v 1.15 2020/05/14 18:04:19 tb Exp $	*/
+/*	$OpenBSD: handshake_table.c,v 1.18 2022/12/01 13:49:12 tb Exp $	*/
 /*
  * Copyright (c) 2019 Theo Buehler <tb@openbsd.org>
  *
@@ -84,52 +84,91 @@ struct child {
 	uint8_t			illegal;
 };
 
-#define DEFAULT			0x00
-
 static struct child stateinfo[][TLS13_NUM_MESSAGE_TYPES] = {
 	[CLIENT_HELLO] = {
-		{SERVER_HELLO_RETRY_REQUEST, DEFAULT, 0, 0},
-		{SERVER_HELLO, WITHOUT_HRR, 0, 0},
+		{
+			.mt = SERVER_HELLO_RETRY_REQUEST,
+		},
+		{
+			.mt = SERVER_HELLO,
+			.flag = WITHOUT_HRR,
+		},
 	},
 	[SERVER_HELLO_RETRY_REQUEST] = {
-		{CLIENT_HELLO_RETRY, DEFAULT, 0, 0},
+		{
+			.mt = CLIENT_HELLO_RETRY,
+		},
 	},
 	[CLIENT_HELLO_RETRY] = {
-		{SERVER_HELLO, DEFAULT, 0, 0},
+		{
+			.mt = SERVER_HELLO,
+		},
 	},
 	[SERVER_HELLO] = {
-		{SERVER_ENCRYPTED_EXTENSIONS, DEFAULT, 0, 0},
+		{
+			.mt = SERVER_ENCRYPTED_EXTENSIONS,
+		},
 	},
 	[SERVER_ENCRYPTED_EXTENSIONS] = {
-		{SERVER_CERTIFICATE_REQUEST, DEFAULT, 0, 0},
-		{SERVER_CERTIFICATE, WITHOUT_CR, 0, 0},
-		{SERVER_FINISHED, WITH_PSK, 0, 0},
+		{
+			.mt = SERVER_CERTIFICATE_REQUEST,
+		},
+		{	.mt = SERVER_CERTIFICATE,
+			.flag = WITHOUT_CR,
+		},
+		{
+			.mt = SERVER_FINISHED,
+			.flag = WITH_PSK,
+		},
 	},
 	[SERVER_CERTIFICATE_REQUEST] = {
-		{SERVER_CERTIFICATE, DEFAULT, 0, 0},
+		{
+			.mt = SERVER_CERTIFICATE,
+		},
 	},
 	[SERVER_CERTIFICATE] = {
-		{SERVER_CERTIFICATE_VERIFY, DEFAULT, 0, 0},
+		{
+			.mt = SERVER_CERTIFICATE_VERIFY,
+		},
 	},
 	[SERVER_CERTIFICATE_VERIFY] = {
-		{SERVER_FINISHED, DEFAULT, 0, 0},
+		{
+			.mt = SERVER_FINISHED,
+		},
 	},
 	[SERVER_FINISHED] = {
-		{CLIENT_FINISHED, DEFAULT, WITHOUT_CR | WITH_PSK, 0},
-		{CLIENT_CERTIFICATE, DEFAULT, 0, WITHOUT_CR | WITH_PSK},
+		{
+			.mt = CLIENT_FINISHED,
+			.forced = WITHOUT_CR | WITH_PSK,
+		},
+		{
+			.mt = CLIENT_CERTIFICATE,
+			.illegal = WITHOUT_CR | WITH_PSK,
+		},
 	},
 	[CLIENT_CERTIFICATE] = {
-		{CLIENT_FINISHED, DEFAULT, 0, 0},
-		{CLIENT_CERTIFICATE_VERIFY, WITH_CCV, 0, 0},
+		{
+			.mt = CLIENT_FINISHED,
+		},
+		{
+			.mt = CLIENT_CERTIFICATE_VERIFY,
+			.flag = WITH_CCV,
+		},
 	},
 	[CLIENT_CERTIFICATE_VERIFY] = {
-		{CLIENT_FINISHED, DEFAULT, 0, 0},
+		{
+			.mt = CLIENT_FINISHED,
+		},
 	},
 	[CLIENT_FINISHED] = {
-		{APPLICATION_DATA, DEFAULT, 0, 0},
+		{
+			.mt = APPLICATION_DATA,
+		},
 	},
 	[APPLICATION_DATA] = {
-		{0, DEFAULT, 0, 0},
+		{
+			.mt = 0,
+		},
 	},
 };
 
@@ -152,7 +191,7 @@ void		 fprint_entry(FILE *stream,
 		     uint8_t flags);
 void		 fprint_flags(FILE *stream, uint8_t flags);
 const char	*mt2str(enum tls13_message_type mt);
-__dead void	 usage(void);
+void		 usage(void);
 int		 verify_table(enum tls13_message_type
 		     table[MAX_FLAGS][TLS13_NUM_MESSAGE_TYPES], int print);
 
@@ -449,7 +488,7 @@ verify_table(enum tls13_message_type table[MAX_FLAGS][TLS13_NUM_MESSAGE_TYPES],
 	return success;
 }
 
-__dead void
+void
 usage(void)
 {
 	fprintf(stderr, "usage: handshake_table [-C | -g]\n");
@@ -469,17 +508,16 @@ main(int argc, char *argv[])
 		},
 	};
 	struct child	start = {
-		CLIENT_HELLO, DEFAULT, 0, 0,
+		.mt = CLIENT_HELLO,
 	};
 	struct child	end = {
-		APPLICATION_DATA, DEFAULT, 0, 0,
+		.mt = APPLICATION_DATA,
 	};
 	struct child	path[TLS13_NUM_MESSAGE_TYPES] = {{0}};
 	uint8_t		flags = NEGOTIATED;
 	unsigned int	depth = 0;
 	int		ch, graphviz = 0, print = 0;
 
-#ifndef _MSC_VER
 	while ((ch = getopt(argc, argv, "Cg")) != -1) {
 		switch (ch) {
 		case 'C':
@@ -497,7 +535,6 @@ main(int argc, char *argv[])
 
 	if (argc != 0)
 		usage();
-#endif
 
 	if (graphviz && print)
 		usage();
@@ -508,9 +545,6 @@ main(int argc, char *argv[])
 	build_table(hs_table, start, end, path, flags, depth);
 	if (!verify_table(hs_table, print))
 		return 1;
-
-	if (!print)
-		printf("SUCCESS\n");
 
 	return 0;
 }

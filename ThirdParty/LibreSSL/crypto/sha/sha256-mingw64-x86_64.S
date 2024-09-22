@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -14,6 +20,7 @@ sha256_block_data_order:
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1769,6 +1776,7 @@ sha256_block_data_order:
 	movq	16(%rsp),%rsi
 	retq
 .LSEH_end_sha256_block_data_order:
+.section	.rodata
 .p2align	6
 
 K256:
@@ -1788,3 +1796,4 @@ K256:
 .long	0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3
 .long	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208
 .long	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+.text	

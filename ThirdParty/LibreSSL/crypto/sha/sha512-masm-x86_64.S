@@ -1,26 +1,33 @@
 ; 1 "crypto/sha/sha512-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 340 "<built-in>" 3
+; 371 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/sha/sha512-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
+
+
+
+
+
+
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
+   
 
 
 
 
 
-
-
+   
 
 
 ; 40 "./crypto/x86_arch.h"
+   
 
 
 
@@ -65,8 +72,7 @@ OPTION	DOTNAME
 
 
 
-
-; 3 "crypto/sha/sha512-masm-x86_64.S.tmp" 2
+; 9 "crypto/sha/sha512-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 PUBLIC	sha512_block_data_order
@@ -81,6 +87,7 @@ $L$SEH_begin_sha512_block_data_order::
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
+
 
 
 	push	rbx
@@ -1839,6 +1846,8 @@ $L$epilogue::
 	DB	0F3h,0C3h		;repret
 $L$SEH_end_sha512_block_data_order::
 sha512_block_data_order	ENDP
+.text$	ENDS
+.rdata	SEGMENT READONLY ALIGN(64)
 ALIGN	64
 
 K512::
@@ -1882,6 +1891,8 @@ K512::
 	DQ	03c9ebe0a15c9bebch,0431d67c49c100d4ch
 	DQ	04cc5d4becb3e42b6h,0597f299cfc657e2ah
 	DQ	05fcb6fab3ad6faech,06c44198c4a475817h
+.rdata	ENDS
+.text$	SEGMENT ALIGN(64) 'CODE'
 
 .text$	ENDS
 END

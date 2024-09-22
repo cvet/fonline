@@ -1,4 +1,4 @@
-/* $OpenBSD: malloc-wrapper.c,v 1.7 2018/05/13 13:49:04 jsing Exp $ */
+/* $OpenBSD: malloc-wrapper.c,v 1.10 2024/03/02 11:35:09 tb Exp $ */
 /*
  * Copyright (c) 2014 Bob Beck
  *
@@ -18,12 +18,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/crypto.h>
+
 int
 CRYPTO_set_mem_functions(void *(*m)(size_t), void *(*r)(void *, size_t),
     void (*f)(void *))
 {
 	return 0;
 }
+LCRYPTO_ALIAS(CRYPTO_set_mem_functions);
 
 int
 CRYPTO_set_mem_ex_functions(void *(*m)(size_t, const char *, int),
@@ -31,109 +34,11 @@ CRYPTO_set_mem_ex_functions(void *(*m)(size_t, const char *, int),
 {
 	return 0;
 }
-
-int
-CRYPTO_set_locked_mem_functions(void *(*m)(size_t), void (*f)(void *))
-{
-	return 0;
-}
-
-int
-CRYPTO_set_locked_mem_ex_functions(void *(*m)(size_t, const char *, int),
-    void (*f)(void *))
-{
-	return 0;
-}
-
-int
-CRYPTO_set_mem_debug_functions(void (*m)(void *, int, const char *, int, int),
-    void (*r)(void *, void *, int, const char *, int, int),
-    void (*f)(void *, int), void (*so)(long), long (*go)(void))
-{
-	return 0;
-}
-
-
-void
-CRYPTO_get_mem_functions(void *(**m)(size_t), void *(**r)(void *, size_t),
-    void (**f)(void *))
-{
-	if (m != NULL)
-		*m = malloc;
-	if (r != NULL)
-		*r = realloc;
-	if (f != NULL)
-		*f = free;
-}
-
-void
-CRYPTO_get_mem_ex_functions(void *(**m)(size_t, const char *, int),
-    void *(**r)(void *, size_t, const char *, int), void (**f)(void *))
-{
-	if (m != NULL)
-		*m = NULL;
-	if (r != NULL)
-		*r = NULL;
-	if (f != NULL)
-		*f = free;
-}
-
-void
-CRYPTO_get_locked_mem_functions(void *(**m)(size_t), void (**f)(void *))
-{
-	if (m != NULL)
-		*m = malloc;
-	if (f != NULL)
-		*f = free;
-}
-
-void
-CRYPTO_get_locked_mem_ex_functions(void *(**m)(size_t, const char *, int),
-    void (**f)(void *))
-{
-	if (m != NULL)
-		*m = NULL;
-	if (f != NULL)
-		*f = free;
-}
-
-void
-CRYPTO_get_mem_debug_functions(void (**m)(void *, int, const char *, int, int),
-    void (**r)(void *, void *, int, const char *, int, int),
-    void (**f)(void *, int), void (**so)(long), long (**go)(void))
-{
-	if (m != NULL)
-		*m = NULL;
-	if (r != NULL)
-		*r = NULL;
-	if (f != NULL)
-		*f = NULL;
-	if (so != NULL)
-		*so = NULL;
-	if (go != NULL)
-		*go = NULL;
-}
-
+LCRYPTO_ALIAS(CRYPTO_set_mem_ex_functions);
 
 void *
-CRYPTO_malloc_locked(int num, const char *file, int line)
+CRYPTO_malloc(size_t num, const char *file, int line)
 {
-	if (num <= 0)
-		return NULL;
-	return malloc(num);
-}
-
-void
-CRYPTO_free_locked(void *ptr)
-{
-	free(ptr);
-}
-
-void *
-CRYPTO_malloc(int num, const char *file, int line)
-{
-	if (num <= 0)
-		return NULL;
 	return malloc(num);
 }
 
@@ -143,47 +48,8 @@ CRYPTO_strdup(const char *str, const char *file, int line)
 	return strdup(str);
 }
 
-void *
-CRYPTO_realloc(void *ptr, int num, const char *file, int line)
-{
-	if (num <= 0)
-		return NULL;
-	return realloc(ptr, num);
-}
-
-void *
-CRYPTO_realloc_clean(void *ptr, int old_len, int num, const char *file,
-    int line)
-{
-	if (num <= 0)
-		return NULL;
-	/* Original does not support shrinking. */
-	if (num < old_len)
-		return NULL;
-	return recallocarray(ptr, old_len, num, 1);
-}
-
 void
-CRYPTO_free(void *ptr)
+CRYPTO_free(void *ptr, const char *file, int line)
 {
 	free(ptr);
-}
-
-void *
-CRYPTO_remalloc(void *a, int num, const char *file, int line)
-{
-	free(a);
-	return malloc(num);
-}
-
-void
-CRYPTO_set_mem_debug_options(long bits)
-{
-	return;
-}
-
-long
-CRYPTO_get_mem_debug_options(void)
-{
-	return 0;
 }

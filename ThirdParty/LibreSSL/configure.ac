@@ -12,7 +12,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-AC_INIT([libressl], m4_esyscmd([tr -d '\n' < VERSION]))
+AC_INIT([libressl], m4_esyscmd(tr -d '\n' < VERSION))
 AC_SUBST([LIBCRYPTO_VERSION], m4_esyscmd([tr -d '\n' < crypto/VERSION]))
 AC_SUBST([LIBSSL_VERSION], m4_esyscmd([tr -d '\n' < ssl/VERSION]))
 AC_SUBST([LIBTLS_VERSION], m4_esyscmd([tr -d '\n' < tls/VERSION]))
@@ -27,7 +27,6 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 USER_CFLAGS="$CFLAGS"
 
 AC_PROG_CC([cc gcc])
-AC_PROG_CC_STDC
 AM_PROG_CC_C_O
 LT_INIT([pic-only])
 
@@ -75,12 +74,28 @@ AC_ARG_ENABLE([tests],
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = xyes])
 
 AS_CASE([$host_cpu],
+	[arm64], [host_cpu=aarch64],
 	[*arm*], [host_cpu=arm],
 	[*amd64*], [host_cpu=x86_64 HOSTARCH=intel],
-	[i?86], [HOSTARCH=intel],
+	[i?86], [host_cpu=i386 HOSTARCH=intel enable_asm=no],
+	[mips64*], [host_cpu=mips64 enable_asm=no],
+	[mips*], [host_cpu=mips enable_asm=no],
+	[powerpc*], [host_cpu=powerpc],
+	[ppc64*], [host_cpu=powerpc64],
 	[x86_64], [HOSTARCH=intel]
 )
 AM_CONDITIONAL([HOST_CPU_IS_INTEL], [test "x$HOSTARCH" = "xintel"])
+
+AM_CONDITIONAL([HOST_AARCH64],   [test "$host_cpu" = "aarch64"])
+AM_CONDITIONAL([HOST_ARM],       [test "$host_cpu" = "arm"])
+AM_CONDITIONAL([HOST_I386],      [test "$host_cpu" = "i386"])
+AM_CONDITIONAL([HOST_MIPS],      [test "$host_cpu" = "mips"])
+AM_CONDITIONAL([HOST_MIPS64],    [test "$host_cpu" = "mips64"])
+AM_CONDITIONAL([HOST_POWERPC],   [test "$host_cpu" = "powerpc"])
+AM_CONDITIONAL([HOST_POWERPC64], [test "$host_cpu" = "ppc64"])
+AM_CONDITIONAL([HOST_RISCV64],   [test "$host_cpu" = "riscv64"])
+AM_CONDITIONAL([HOST_SPARC64],   [test "$host_cpu" = "sparc64"])
+AM_CONDITIONAL([HOST_X86_64],    [test "$host_cpu" = "x86_64"])
 
 AC_MSG_CHECKING([if .gnu.warning accepts long strings])
 AC_LINK_IFELSE([AC_LANG_SOURCE([[
@@ -94,13 +109,16 @@ int main() {return 0;}
    AC_MSG_RESULT(no)
 ])
 
-AC_ARG_ENABLE([asm],
-	AS_HELP_STRING([--disable-asm], [Disable assembly]))
+AC_ARG_ENABLE([asm], AS_HELP_STRING([--disable-asm], [Disable assembly]))
 AM_CONDITIONAL([OPENSSL_NO_ASM], [test "x$enable_asm" = "xno"])
 
 # Conditionally enable assembly by default
 AM_CONDITIONAL([HOST_ASM_ELF_ARM],
     [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "arm" -a "x$enable_asm" != "xno"])
+AM_CONDITIONAL([HOST_ASM_ELF_MIPS],
+    [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "mips" -a "x$enable_asm" != "xno"])
+AM_CONDITIONAL([HOST_ASM_ELF_MIPS64],
+    [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "mips64" -a "x$enable_asm" != "xno"])
 AM_CONDITIONAL([HOST_ASM_ELF_X86_64],
     [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "x86_64" -a "x$enable_asm" != "xno"])
 AM_CONDITIONAL([HOST_ASM_MACOSX_X86_64],

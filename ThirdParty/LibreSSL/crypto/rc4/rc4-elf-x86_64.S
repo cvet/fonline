@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -6,7 +12,9 @@
 .globl	RC4
 .type	RC4,@function
 .align	16
-RC4:	orq	%rsi,%rsi
+RC4:
+_CET_ENDBR
+	orq	%rsi,%rsi
 	jne	.Lentry
 	retq
 .Lentry:
@@ -523,6 +531,7 @@ RC4:	orq	%rsi,%rsi
 .type	RC4_set_key,@function
 .align	16
 RC4_set_key:
+_CET_ENDBR
 	leaq	8(%rdi),%rdi
 	leaq	(%rdx,%rsi,1),%rdx
 	negq	%rsi
@@ -590,31 +599,6 @@ RC4_set_key:
 	movl	%eax,-4(%rdi)
 	retq
 .size	RC4_set_key,.-RC4_set_key
-
-.globl	RC4_options
-.type	RC4_options,@function
-.align	16
-RC4_options:
-	leaq	.Lopts(%rip),%rax
-	movl	OPENSSL_ia32cap_P(%rip),%edx
-	btl	$IA32CAP_BIT0_INTELP4,%edx
-	jc	.L8xchar
-	btl	$IA32CAP_BIT0_INTEL,%edx
-	jnc	.Ldone
-	addq	$25,%rax
-	retq
-.L8xchar:
-	addq	$12,%rax
-.Ldone:
-	retq
-.align	64
-.Lopts:
-.byte	114,99,52,40,56,120,44,105,110,116,41,0
-.byte	114,99,52,40,56,120,44,99,104,97,114,41,0
-.byte	114,99,52,40,49,54,120,44,105,110,116,41,0
-.byte	82,67,52,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
-.align	64
-.size	RC4_options,.-RC4_options
 #if defined(HAVE_GNU_STACK)
 .section .note.GNU-stack,"",%progbits
 #endif

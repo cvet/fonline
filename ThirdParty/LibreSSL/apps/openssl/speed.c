@@ -1,4 +1,4 @@
-/* $OpenBSD: speed.c,v 1.23 2018/07/13 18:36:56 cheloha Exp $ */
+/* $OpenBSD: speed.c,v 1.34 2023/07/27 07:01:50 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -78,6 +78,8 @@
 #define DSA_SECONDS	10
 #define ECDSA_SECONDS   10
 #define ECDH_SECONDS    10
+
+#define MAX_UNALIGN	16
 
 #include <math.h>
 #include <signal.h>
@@ -175,7 +177,7 @@ void speed_alarm_free(int run);
 #define RSA_NUM		4
 #define DSA_NUM		3
 
-#define EC_NUM       16
+#define EC_NUM       6
 #define MAX_ECDH_SIZE 256
 
 static const char *names[ALGOR_NUM] = {
@@ -236,7 +238,9 @@ KDF1_SHA1(const void *in, size_t inlen, void *out, size_t * outlen)
 int
 speed_main(int argc, char **argv)
 {
+	unsigned char *real_buf = NULL, *real_buf2 = NULL;
 	unsigned char *buf = NULL, *buf2 = NULL;
+	size_t unaligned = 0;
 	int mret = 1;
 	long count = 0, save_count = 0;
 	int i, j, k;
@@ -374,16 +378,6 @@ speed_main(int argc, char **argv)
 #define R_EC_P256    3
 #define R_EC_P384    4
 #define R_EC_P521    5
-#define R_EC_K163    6
-#define R_EC_K233    7
-#define R_EC_K283    8
-#define R_EC_K409    9
-#define R_EC_K571    10
-#define R_EC_B163    11
-#define R_EC_B233    12
-#define R_EC_B283    13
-#define R_EC_B409    14
-#define R_EC_B571    15
 
 	RSA *rsa_key[RSA_NUM];
 	long rsa_c[RSA_NUM][2];
@@ -403,53 +397,24 @@ speed_main(int argc, char **argv)
 	 * name to the following arrays and increase the EC_NUM value
 	 * accordingly.
 	 */
-	static unsigned int test_curves[EC_NUM] =
-	{
-		/* Prime Curves */
+	static unsigned int test_curves[EC_NUM] = {
 		NID_secp160r1,
 		NID_X9_62_prime192v1,
 		NID_secp224r1,
 		NID_X9_62_prime256v1,
 		NID_secp384r1,
 		NID_secp521r1,
-		/* Binary Curves */
-		NID_sect163k1,
-		NID_sect233k1,
-		NID_sect283k1,
-		NID_sect409k1,
-		NID_sect571k1,
-		NID_sect163r2,
-		NID_sect233r1,
-		NID_sect283r1,
-		NID_sect409r1,
-		NID_sect571r1
 	};
-	static const char *test_curves_names[EC_NUM] =
-	{
-		/* Prime Curves */
+	static const char *test_curves_names[EC_NUM] = {
 		"secp160r1",
 		"nistp192",
 		"nistp224",
 		"nistp256",
 		"nistp384",
 		"nistp521",
-		/* Binary Curves */
-		"nistk163",
-		"nistk233",
-		"nistk283",
-		"nistk409",
-		"nistk571",
-		"nistb163",
-		"nistb233",
-		"nistb283",
-		"nistb409",
-		"nistb571"
 	};
-	static int test_curves_bits[EC_NUM] =
-	{
+	static int test_curves_bits[EC_NUM] = {
 		160, 192, 224, 256, 384, 521,
-		163, 233, 283, 409, 571,
-		163, 233, 283, 409, 571
 	};
 
 #endif
@@ -477,14 +442,12 @@ speed_main(int argc, char **argv)
 	int decrypt = 0;
 #ifndef _WIN32
 	int multi = 0;
-	const char *errstr = NULL;
 #endif
+	const char *errstr = NULL;
 
-	if (single_execution) {
-		if (pledge("stdio proc", NULL) == -1) {
-			perror("pledge");
-			exit(1);
-		}
+	if (pledge("stdio proc", NULL) == -1) {
+		perror("pledge");
+		exit(1);
 	}
 
 	usertime = -1;
@@ -502,11 +465,11 @@ speed_main(int argc, char **argv)
 	for (i = 0; i < RSA_NUM; i++)
 		rsa_key[i] = NULL;
 
-	if ((buf = malloc(BUFSIZE)) == NULL) {
+	if ((buf = real_buf = malloc(BUFSIZE + MAX_UNALIGN)) == NULL) {
 		BIO_printf(bio_err, "out of memory\n");
 		goto end;
 	}
-	if ((buf2 = malloc(BUFSIZE)) == NULL) {
+	if ((buf2 = real_buf2 = malloc(BUFSIZE + MAX_UNALIGN)) == NULL) {
 		BIO_printf(bio_err, "out of memory\n");
 		goto end;
 	}
@@ -530,11 +493,11 @@ speed_main(int argc, char **argv)
 	argc--;
 	argv++;
 	while (argc) {
-		if ((argc > 0) && (strcmp(*argv, "-elapsed") == 0)) {
+		if (argc > 0 && strcmp(*argv, "-elapsed") == 0) {
 			usertime = 0;
 			j--;	/* Otherwise, -elapsed gets confused with an
 				 * algorithm. */
-		} else if ((argc > 0) && (strcmp(*argv, "-evp") == 0)) {
+		} else if (argc > 0 && strcmp(*argv, "-evp") == 0) {
 			argc--;
 			argv++;
 			if (argc == 0) {
@@ -550,13 +513,12 @@ speed_main(int argc, char **argv)
 				goto end;
 			}
 			doit[D_EVP] = 1;
-		} else if (argc > 0 && !strcmp(*argv, "-decrypt")) {
+		} else if (argc > 0 && strcmp(*argv, "-decrypt") == 0) {
 			decrypt = 1;
 			j--;	/* Otherwise, -decrypt gets confused with an
 				 * algorithm. */
-		}
 #ifndef _WIN32
-		else if ((argc > 0) && (strcmp(*argv, "-multi") == 0)) {
+		} else if (argc > 0 && strcmp(*argv, "-multi") == 0) {
 			argc--;
 			argv++;
 			if (argc == 0) {
@@ -570,9 +532,25 @@ speed_main(int argc, char **argv)
 			}
 			j--;	/* Otherwise, -multi gets confused with an
 				 * algorithm. */
-		}
 #endif
-		else if (argc > 0 && !strcmp(*argv, "-mr")) {
+		} else if (argc > 0 && strcmp(*argv, "-unaligned") == 0) {
+			argc--;
+			argv++;
+			if (argc == 0) {
+				BIO_printf(bio_err, "no alignment offset given\n");
+				goto end;
+			}
+			unaligned = strtonum(argv[0], 0, MAX_UNALIGN, &errstr);
+			if (errstr) {
+				BIO_printf(bio_err, "bad alignment offset: %s",
+				    errstr);
+				goto end;
+			}
+			buf = real_buf + unaligned;
+			buf2 = real_buf2 + unaligned;
+			j--;	/* Otherwise, -unaligned gets confused with an
+				 * algorithm. */
+		} else if (argc > 0 && strcmp(*argv, "-mr") == 0) {
 			mr = 1;
 			j--;	/* Otherwise, -mr gets confused with an
 				 * algorithm. */
@@ -768,26 +746,6 @@ speed_main(int argc, char **argv)
 			ecdsa_doit[R_EC_P384] = 2;
 		else if (strcmp(*argv, "ecdsap521") == 0)
 			ecdsa_doit[R_EC_P521] = 2;
-		else if (strcmp(*argv, "ecdsak163") == 0)
-			ecdsa_doit[R_EC_K163] = 2;
-		else if (strcmp(*argv, "ecdsak233") == 0)
-			ecdsa_doit[R_EC_K233] = 2;
-		else if (strcmp(*argv, "ecdsak283") == 0)
-			ecdsa_doit[R_EC_K283] = 2;
-		else if (strcmp(*argv, "ecdsak409") == 0)
-			ecdsa_doit[R_EC_K409] = 2;
-		else if (strcmp(*argv, "ecdsak571") == 0)
-			ecdsa_doit[R_EC_K571] = 2;
-		else if (strcmp(*argv, "ecdsab163") == 0)
-			ecdsa_doit[R_EC_B163] = 2;
-		else if (strcmp(*argv, "ecdsab233") == 0)
-			ecdsa_doit[R_EC_B233] = 2;
-		else if (strcmp(*argv, "ecdsab283") == 0)
-			ecdsa_doit[R_EC_B283] = 2;
-		else if (strcmp(*argv, "ecdsab409") == 0)
-			ecdsa_doit[R_EC_B409] = 2;
-		else if (strcmp(*argv, "ecdsab571") == 0)
-			ecdsa_doit[R_EC_B571] = 2;
 		else if (strcmp(*argv, "ecdsa") == 0) {
 			for (i = 0; i < EC_NUM; i++)
 				ecdsa_doit[i] = 1;
@@ -804,26 +762,6 @@ speed_main(int argc, char **argv)
 			ecdh_doit[R_EC_P384] = 2;
 		else if (strcmp(*argv, "ecdhp521") == 0)
 			ecdh_doit[R_EC_P521] = 2;
-		else if (strcmp(*argv, "ecdhk163") == 0)
-			ecdh_doit[R_EC_K163] = 2;
-		else if (strcmp(*argv, "ecdhk233") == 0)
-			ecdh_doit[R_EC_K233] = 2;
-		else if (strcmp(*argv, "ecdhk283") == 0)
-			ecdh_doit[R_EC_K283] = 2;
-		else if (strcmp(*argv, "ecdhk409") == 0)
-			ecdh_doit[R_EC_K409] = 2;
-		else if (strcmp(*argv, "ecdhk571") == 0)
-			ecdh_doit[R_EC_K571] = 2;
-		else if (strcmp(*argv, "ecdhb163") == 0)
-			ecdh_doit[R_EC_B163] = 2;
-		else if (strcmp(*argv, "ecdhb233") == 0)
-			ecdh_doit[R_EC_B233] = 2;
-		else if (strcmp(*argv, "ecdhb283") == 0)
-			ecdh_doit[R_EC_B283] = 2;
-		else if (strcmp(*argv, "ecdhb409") == 0)
-			ecdh_doit[R_EC_B409] = 2;
-		else if (strcmp(*argv, "ecdhb571") == 0)
-			ecdh_doit[R_EC_B571] = 2;
 		else if (strcmp(*argv, "ecdh") == 0) {
 			for (i = 0; i < EC_NUM; i++)
 				ecdh_doit[i] = 1;
@@ -896,11 +834,7 @@ speed_main(int argc, char **argv)
 
 			BIO_printf(bio_err, "dsa512   dsa1024  dsa2048\n");
 			BIO_printf(bio_err, "ecdsap160 ecdsap192 ecdsap224 ecdsap256 ecdsap384 ecdsap521\n");
-			BIO_printf(bio_err, "ecdsak163 ecdsak233 ecdsak283 ecdsak409 ecdsak571\n");
-			BIO_printf(bio_err, "ecdsab163 ecdsab233 ecdsab283 ecdsab409 ecdsab571 ecdsa\n");
 			BIO_printf(bio_err, "ecdhp160  ecdhp192  ecdhp224  ecdhp256  ecdhp384  ecdhp521\n");
-			BIO_printf(bio_err, "ecdhk163  ecdhk233  ecdhk283  ecdhk409  ecdhk571\n");
-			BIO_printf(bio_err, "ecdhb163  ecdhb233  ecdhb283  ecdhb409  ecdhb571  ecdh\n");
 
 #ifndef OPENSSL_NO_IDEA
 			BIO_printf(bio_err, "idea     ");
@@ -937,6 +871,7 @@ speed_main(int argc, char **argv)
 #ifndef _WIN32
 			BIO_printf(bio_err, "-multi n        run n benchmarks in parallel.\n");
 #endif
+			BIO_printf(bio_err, "-unaligned n    use buffers with offset n from proper alignment.\n");
 			goto end;
 		}
 		argc--;
@@ -1048,24 +983,37 @@ speed_main(int argc, char **argv)
 
 #if !defined(OPENSSL_NO_MD5) && !defined(OPENSSL_NO_HMAC)
 	if (doit[D_HMAC]) {
-		HMAC_CTX hctx;
+		HMAC_CTX *hctx;
 
-		HMAC_CTX_init(&hctx);
-		HMAC_Init_ex(&hctx, (unsigned char *) "This is a key...",
+		if ((hctx = HMAC_CTX_new()) == NULL) {
+			BIO_printf(bio_err, "Failed to allocate HMAC context.\n");
+			goto end;
+		}
+
+		HMAC_Init_ex(hctx, (unsigned char *) "This is a key...",
 		    16, EVP_md5(), NULL);
 
 		for (j = 0; j < SIZE_NUM; j++) {
 			print_message(names[D_HMAC], c[D_HMAC][j], lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_HMAC][j]); count++) {
-				HMAC_Init_ex(&hctx, NULL, 0, NULL, NULL);
-				HMAC_Update(&hctx, buf, lengths[j]);
-				HMAC_Final(&hctx, &(hmac[0]), NULL);
+				if (!HMAC_Init_ex(hctx, NULL, 0, NULL, NULL)) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
+				if (!HMAC_Update(hctx, buf, lengths[j])) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
+				if (!HMAC_Final(hctx, &(hmac[0]), NULL)) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
 			}
 			d = Time_F(STOP);
 			print_result(D_HMAC, j, count, d);
 		}
-		HMAC_CTX_cleanup(&hctx);
+		HMAC_CTX_free(hctx);
 	}
 #endif
 #ifndef OPENSSL_NO_SHA
@@ -1260,9 +1208,15 @@ speed_main(int argc, char **argv)
 		const EVP_AEAD *aead = EVP_aead_aes_128_gcm();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		    EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1270,21 +1224,27 @@ speed_main(int argc, char **argv)
 			print_message(names[D_AES_128_GCM],c[D_AES_128_GCM][j],lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_AES_128_GCM][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_AES_128_GCM,j,count,d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 
 	if (doit[D_AES_256_GCM]) {
 		const EVP_AEAD *aead = EVP_aead_aes_256_gcm();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1292,12 +1252,12 @@ speed_main(int argc, char **argv)
 			print_message(names[D_AES_256_GCM],c[D_AES_256_GCM][j],lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_AES_256_GCM][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_AES_256_GCM, j, count, d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 #endif
 #if !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
@@ -1305,9 +1265,15 @@ speed_main(int argc, char **argv)
 		const EVP_AEAD *aead = EVP_aead_chacha20_poly1305();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		    EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1316,12 +1282,12 @@ speed_main(int argc, char **argv)
 			    c[D_CHACHA20_POLY1305][j], lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_CHACHA20_POLY1305][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_CHACHA20_POLY1305, j, count, d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 #endif
 #ifndef OPENSSL_NO_CAMELLIA
@@ -1422,10 +1388,11 @@ speed_main(int argc, char **argv)
 	if (doit[D_EVP]) {
 		for (j = 0; j < SIZE_NUM; j++) {
 			if (evp_cipher) {
-				EVP_CIPHER_CTX ctx;
+				EVP_CIPHER_CTX *ctx;
 				int outl;
 
-				names[D_EVP] = OBJ_nid2ln(evp_cipher->nid);
+				names[D_EVP] =
+				    OBJ_nid2ln(EVP_CIPHER_nid(evp_cipher));
 				/*
 				 * -O3 -fschedule-insns messes up an
 				 * optimization here!  names[D_EVP] somehow
@@ -1434,29 +1401,33 @@ speed_main(int argc, char **argv)
 				print_message(names[D_EVP], save_count,
 				    lengths[j]);
 
-				EVP_CIPHER_CTX_init(&ctx);
+				if ((ctx = EVP_CIPHER_CTX_new()) == NULL) {
+					BIO_printf(bio_err, "Failed to "
+					    "allocate cipher context.\n");
+					goto end;
+				}
 				if (decrypt)
-					EVP_DecryptInit_ex(&ctx, evp_cipher, NULL, key16, iv);
+					EVP_DecryptInit_ex(ctx, evp_cipher, NULL, key16, iv);
 				else
-					EVP_EncryptInit_ex(&ctx, evp_cipher, NULL, key16, iv);
-				EVP_CIPHER_CTX_set_padding(&ctx, 0);
+					EVP_EncryptInit_ex(ctx, evp_cipher, NULL, key16, iv);
+				EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 				Time_F(START);
 				if (decrypt)
 					for (count = 0, run = 1; COND(save_count * 4 * lengths[0] / lengths[j]); count++)
-						EVP_DecryptUpdate(&ctx, buf, &outl, buf, lengths[j]);
+						EVP_DecryptUpdate(ctx, buf, &outl, buf, lengths[j]);
 				else
 					for (count = 0, run = 1; COND(save_count * 4 * lengths[0] / lengths[j]); count++)
-						EVP_EncryptUpdate(&ctx, buf, &outl, buf, lengths[j]);
+						EVP_EncryptUpdate(ctx, buf, &outl, buf, lengths[j]);
 				if (decrypt)
-					EVP_DecryptFinal_ex(&ctx, buf, &outl);
+					EVP_DecryptFinal_ex(ctx, buf, &outl);
 				else
-					EVP_EncryptFinal_ex(&ctx, buf, &outl);
+					EVP_EncryptFinal_ex(ctx, buf, &outl);
 				d = Time_F(STOP);
-				EVP_CIPHER_CTX_cleanup(&ctx);
+				EVP_CIPHER_CTX_free(ctx);
 			}
 			if (evp_md) {
-				names[D_EVP] = OBJ_nid2ln(evp_md->type);
+				names[D_EVP] = OBJ_nid2ln(EVP_MD_type(evp_md));
 				print_message(names[D_EVP], save_count,
 				    lengths[j]);
 
@@ -1498,7 +1469,7 @@ speed_main(int argc, char **argv)
 			}
 			d = Time_F(STOP);
 			BIO_printf(bio_err, mr ? "+R1:%ld:%d:%.2f\n"
-			    : "%ld %d bit private RSA's in %.2fs\n",
+			    : "%ld %d bit private RSA in %.2fs\n",
 			    count, rsa_bits[j], d);
 			rsa_results[j][0] = d / (double) count;
 			rsa_count = count;
@@ -1527,7 +1498,7 @@ speed_main(int argc, char **argv)
 			}
 			d = Time_F(STOP);
 			BIO_printf(bio_err, mr ? "+R2:%ld:%d:%.2f\n"
-			    : "%ld %d bit public RSA's in %.2fs\n",
+			    : "%ld %d bit public RSA in %.2fs\n",
 			    count, rsa_bits[j], d);
 			rsa_results[j][1] = d / (double) count;
 		}
@@ -1794,24 +1765,7 @@ show_res:
 	if (!mr) {
 		fprintf(stdout, "%s\n", SSLeay_version(SSLEAY_VERSION));
 		fprintf(stdout, "%s\n", SSLeay_version(SSLEAY_BUILT_ON));
-		printf("options:");
-		printf("%s ", BN_options());
-#ifndef OPENSSL_NO_RC4
-		printf("%s ", RC4_options());
-#endif
-#ifndef OPENSSL_NO_DES
-		printf("%s ", DES_options());
-#endif
-#ifndef OPENSSL_NO_AES
-		printf("%s ", AES_options());
-#endif
-#ifndef OPENSSL_NO_IDEA
-		printf("%s ", idea_options());
-#endif
-#ifndef OPENSSL_NO_BF
-		printf("%s ", BF_options());
-#endif
-		fprintf(stdout, "\n%s\n", SSLeay_version(SSLEAY_CFLAGS));
+		fprintf(stdout, "%s\n", SSLeay_version(SSLEAY_CFLAGS));
 	}
 	if (pr_header) {
 		if (mr)
@@ -1918,8 +1872,8 @@ show_res:
 
  end:
 	ERR_print_errors(bio_err);
-	free(buf);
-	free(buf2);
+	free(real_buf);
+	free(real_buf2);
 	for (i = 0; i < RSA_NUM; i++)
 		if (rsa_key[i] != NULL)
 			RSA_free(rsa_key[i]);
@@ -1955,7 +1909,7 @@ pkey_print_message(const char *str, const char *str2, long num,
     int bits, int tm)
 {
 	BIO_printf(bio_err, mr ? "+DTP:%d:%s:%s:%d\n"
-	    : "Doing %d bit %s %s's for %ds: ", bits, str, str2, tm);
+	    : "Doing %d bit %s %s for %ds: ", bits, str, str2, tm);
 	(void) BIO_flush(bio_err);
 	alarm(tm);
 }
@@ -1967,7 +1921,7 @@ print_result(int alg, int run_no, int count, double time_used)
 	speed_alarm_free(run);
 #endif
 	BIO_printf(bio_err, mr ? "+R:%d:%s:%f\n"
-	    : "%d %s's in %.2fs\n", count, names[alg], time_used);
+	    : "%d %s in %.2fs\n", count, names[alg], time_used);
 	results[alg][run_no] = ((double) count) / time_used * lengths[run_no];
 }
 

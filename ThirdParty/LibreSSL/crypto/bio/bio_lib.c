@@ -1,4 +1,4 @@
-/* $OpenBSD: bio_lib.c,v 1.29 2019/04/14 17:39:03 jsing Exp $ */
+/* $OpenBSD: bio_lib.c,v 1.52 2024/03/02 09:22:41 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,12 +57,64 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/stack.h>
+
+#include "bio_local.h"
+
+/*
+ * Helper function to work out whether to call the new style callback or the old
+ * one, and translate between the two.
+ *
+ * This has a long return type for consistency with the old callback. Similarly
+ * for the "long" used for "inret"
+ */
+static long
+bio_call_callback(BIO *b, int oper, const char *argp, size_t len, int argi,
+    long argl, long inret, size_t *processed)
+{
+	long ret;
+	int bareoper;
+
+	if (b->callback_ex != NULL)
+		return b->callback_ex(b, oper, argp, len, argi, argl, inret,
+		    processed);
+
+	/*
+	 * We have an old style callback, so we will have to do nasty casts and
+	 * check for overflows.
+	 */
+
+	bareoper = oper & ~BIO_CB_RETURN;
+
+	if (bareoper == BIO_CB_READ || bareoper == BIO_CB_WRITE ||
+	    bareoper == BIO_CB_GETS) {
+		/* In this case len is set and should be used instead of argi. */
+		if (len > INT_MAX)
+			return -1;
+		argi = (int)len;
+	}
+
+	if (inret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+		if (*processed > INT_MAX)
+			return -1;
+		inret = *processed;
+	}
+
+	ret = b->callback(b, oper, argp, argi, argl, inret);
+
+	if (ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+		*processed = (size_t)ret;
+		ret = 1;
+	}
+
+	return ret;
+}
 
 int
 BIO_get_new_index(void)
@@ -77,79 +129,71 @@ BIO_get_new_index(void)
 
 	return index;
 }
+LCRYPTO_ALIAS(BIO_get_new_index);
 
 BIO *
 BIO_new(const BIO_METHOD *method)
 {
-	BIO *ret = NULL;
+	BIO *bio = NULL;
 
-	ret = malloc(sizeof(BIO));
-	if (ret == NULL) {
+	if ((bio = calloc(1, sizeof(BIO))) == NULL) {
 		BIOerror(ERR_R_MALLOC_FAILURE);
-		return (NULL);
+		return NULL;
 	}
-	if (!BIO_set(ret, method)) {
-		free(ret);
-		ret = NULL;
-	}
-	return (ret);
-}
 
-int
-BIO_set(BIO *bio, const BIO_METHOD *method)
-{
 	bio->method = method;
-	bio->callback = NULL;
-	bio->cb_arg = NULL;
-	bio->init = 0;
 	bio->shutdown = 1;
-	bio->flags = 0;
-	bio->retry_reason = 0;
-	bio->num = 0;
-	bio->ptr = NULL;
-	bio->prev_bio = NULL;
-	bio->next_bio = NULL;
 	bio->references = 1;
-	bio->num_read = 0L;
-	bio->num_write = 0L;
+
 	CRYPTO_new_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
-	if (method->create != NULL)
+
+	if (method->create != NULL) {
 		if (!method->create(bio)) {
 			CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio,
 			    &bio->ex_data);
-			return (0);
+			free(bio);
+			return NULL;
 		}
-	return (1);
+	}
+
+	return bio;
 }
+LCRYPTO_ALIAS(BIO_new);
 
 int
-BIO_free(BIO *a)
+BIO_free(BIO *bio)
 {
-	int i;
+	int ret;
 
-	if (a == NULL)
-		return (0);
+	if (bio == NULL)
+		return 0;
 
-	i = CRYPTO_add(&a->references, -1, CRYPTO_LOCK_BIO);
-	if (i > 0)
-		return (1);
-	if ((a->callback != NULL) &&
-	    ((i = (int)a->callback(a, BIO_CB_FREE, NULL, 0, 0L, 1L)) <= 0))
-		return (i);
+	if (CRYPTO_add(&bio->references, -1, CRYPTO_LOCK_BIO) > 0)
+		return 1;
 
-	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, a, &a->ex_data);
+	if (bio->callback != NULL || bio->callback_ex != NULL) {
+		if ((ret = (int)bio_call_callback(bio, BIO_CB_FREE, NULL, 0, 0,
+		    0L, 1L, NULL)) <= 0)
+			return ret;
+	}
 
-	if (a->method != NULL && a->method->destroy != NULL)
-		a->method->destroy(a);
-	free(a);
-	return (1);
+	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
+
+	if (bio->method != NULL && bio->method->destroy != NULL)
+		bio->method->destroy(bio);
+
+	free(bio);
+
+	return 1;
 }
+LCRYPTO_ALIAS(BIO_free);
 
 void
-BIO_vfree(BIO *a)
+BIO_vfree(BIO *bio)
 {
-	BIO_free(a);
+	BIO_free(bio);
 }
+LCRYPTO_ALIAS(BIO_vfree);
 
 int
 BIO_up_ref(BIO *bio)
@@ -157,318 +201,425 @@ BIO_up_ref(BIO *bio)
 	int refs = CRYPTO_add(&bio->references, 1, CRYPTO_LOCK_BIO);
 	return (refs > 1) ? 1 : 0;
 }
+LCRYPTO_ALIAS(BIO_up_ref);
 
 void *
-BIO_get_data(BIO *a)
+BIO_get_data(BIO *bio)
 {
-	return (a->ptr);
+	return bio->ptr;
 }
+LCRYPTO_ALIAS(BIO_get_data);
 
 void
-BIO_set_data(BIO *a, void *ptr)
+BIO_set_data(BIO *bio, void *ptr)
 {
-	a->ptr = ptr;
+	bio->ptr = ptr;
 }
-
-void
-BIO_set_init(BIO *a, int init)
-{
-	a->init = init;
-}
+LCRYPTO_ALIAS(BIO_set_data);
 
 int
-BIO_get_shutdown(BIO *a)
+BIO_get_init(BIO *bio)
 {
-	return (a->shutdown);
+	return bio->init;
 }
+LCRYPTO_ALIAS(BIO_get_init);
 
 void
-BIO_set_shutdown(BIO *a, int shut)
+BIO_set_init(BIO *bio, int init)
 {
-	a->shutdown = shut;
+	bio->init = init;
 }
-
-void
-BIO_clear_flags(BIO *b, int flags)
-{
-	b->flags &= ~flags;
-}
+LCRYPTO_ALIAS(BIO_set_init);
 
 int
-BIO_test_flags(const BIO *b, int flags)
+BIO_get_shutdown(BIO *bio)
 {
-	return (b->flags & flags);
+	return bio->shutdown;
 }
+LCRYPTO_ALIAS(BIO_get_shutdown);
 
 void
-BIO_set_flags(BIO *b, int flags)
+BIO_set_shutdown(BIO *bio, int shut)
 {
-	b->flags |= flags;
+	bio->shutdown = shut;
 }
-
-long
-(*BIO_get_callback(const BIO *b))(struct bio_st *, int, const char *, int,
-    long, long)
-{
-	return b->callback;
-}
+LCRYPTO_ALIAS(BIO_set_shutdown);
 
 void
-BIO_set_callback(BIO *b, long (*cb)(struct bio_st *, int, const char *, int,
-    long, long))
+BIO_clear_flags(BIO *bio, int flags)
 {
-	b->callback = cb;
+	bio->flags &= ~flags;
 }
+LCRYPTO_ALIAS(BIO_clear_flags);
+
+int
+BIO_test_flags(const BIO *bio, int flags)
+{
+	return (bio->flags & flags);
+}
+LCRYPTO_ALIAS(BIO_test_flags);
 
 void
-BIO_set_callback_arg(BIO *b, char *arg)
+BIO_set_flags(BIO *bio, int flags)
 {
-	b->cb_arg = arg;
+	bio->flags |= flags;
 }
+LCRYPTO_ALIAS(BIO_set_flags);
+
+BIO_callback_fn
+BIO_get_callback(const BIO *bio)
+{
+	return bio->callback;
+}
+LCRYPTO_ALIAS(BIO_get_callback);
+
+void
+BIO_set_callback(BIO *bio, BIO_callback_fn cb)
+{
+	bio->callback = cb;
+}
+LCRYPTO_ALIAS(BIO_set_callback);
+
+BIO_callback_fn_ex
+BIO_get_callback_ex(const BIO *bio)
+{
+	return bio->callback_ex;
+}
+LCRYPTO_ALIAS(BIO_get_callback_ex);
+
+void
+BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex cb)
+{
+	bio->callback_ex = cb;
+}
+LCRYPTO_ALIAS(BIO_set_callback_ex);
+
+void
+BIO_set_callback_arg(BIO *bio, char *arg)
+{
+	bio->cb_arg = arg;
+}
+LCRYPTO_ALIAS(BIO_set_callback_arg);
 
 char *
-BIO_get_callback_arg(const BIO *b)
+BIO_get_callback_arg(const BIO *bio)
 {
-	return b->cb_arg;
+	return bio->cb_arg;
 }
+LCRYPTO_ALIAS(BIO_get_callback_arg);
 
 const char *
-BIO_method_name(const BIO *b)
+BIO_method_name(const BIO *bio)
 {
-	return b->method->name;
+	return bio->method->name;
 }
+LCRYPTO_ALIAS(BIO_method_name);
 
 int
-BIO_method_type(const BIO *b)
+BIO_method_type(const BIO *bio)
 {
-	return b->method->type;
+	return bio->method->type;
 }
+LCRYPTO_ALIAS(BIO_method_type);
 
 int
 BIO_read(BIO *b, void *out, int outl)
 {
-	int i;
-	long (*cb)(BIO *, int, const char *, int, long, long);
+	size_t readbytes = 0;
+	int ret;
 
-	if (b == NULL)
+	if (b == NULL) {
+		BIOerror(ERR_R_PASSED_NULL_PARAMETER);
+		return (-1);
+	}
+
+	if (outl <= 0)
 		return (0);
 
-	if (out == NULL || outl <= 0)
-		return (0);
+	if (out == NULL) {
+		BIOerror(ERR_R_PASSED_NULL_PARAMETER);
+		return (-1);
+	}
 
 	if (b->method == NULL || b->method->bread == NULL) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-	if ((cb != NULL) &&
-	    ((i = (int)cb(b, BIO_CB_READ, out, outl, 0L, 1L)) <= 0))
-		return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = (int)bio_call_callback(b, BIO_CB_READ, out, outl, 0,
+		    0L, 1L, NULL)) <= 0)
+			return (ret);
+	}
 
 	if (!b->init) {
 		BIOerror(BIO_R_UNINITIALIZED);
 		return (-2);
 	}
 
-	i = b->method->bread(b, out, outl);
+	if ((ret = b->method->bread(b, out, outl)) > 0)
+		readbytes = (size_t)ret;
 
-	if (i > 0)
-		b->num_read += (unsigned long)i;
+	b->num_read += readbytes;
 
-	if (cb != NULL)
-		i = (int)cb(b, BIO_CB_READ|BIO_CB_RETURN, out, outl,
-		    0L, (long)i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = (int)bio_call_callback(b, BIO_CB_READ | BIO_CB_RETURN,
+		    out, outl, 0, 0L, (ret > 0) ? 1 : ret, &readbytes);
+	}
 
-	return (i);
+	if (ret > 0) {
+		if (readbytes > INT_MAX) {
+			BIOerror(BIO_R_LENGTH_TOO_LONG);
+			ret = -1;
+		} else {
+			ret = (int)readbytes;
+		}
+	}
+
+	return (ret);
 }
+LCRYPTO_ALIAS(BIO_read);
 
 int
 BIO_write(BIO *b, const void *in, int inl)
 {
-	int i;
-	long (*cb)(BIO *, int, const char *, int, long, long);
+	size_t writebytes = 0;
+	int ret;
 
+	/* Not an error. Things like SMIME_text() assume that this succeeds. */
 	if (b == NULL)
 		return (0);
 
-	if (in == NULL || inl <= 0)
+	if (inl <= 0)
 		return (0);
+
+	if (in == NULL) {
+		BIOerror(ERR_R_PASSED_NULL_PARAMETER);
+		return (-1);
+	}
 
 	if (b->method == NULL || b->method->bwrite == NULL) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-	if ((cb != NULL) &&
-	    ((i = (int)cb(b, BIO_CB_WRITE, in, inl, 0L, 1L)) <= 0))
-		return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = (int)bio_call_callback(b, BIO_CB_WRITE, in, inl, 0,
+		    0L, 1L, NULL)) <= 0)
+			return (ret);
+	}
 
 	if (!b->init) {
 		BIOerror(BIO_R_UNINITIALIZED);
 		return (-2);
 	}
 
-	i = b->method->bwrite(b, in, inl);
+	if ((ret = b->method->bwrite(b, in, inl)) > 0)
+		writebytes = ret;
 
-	if (i > 0)
-		b->num_write += (unsigned long)i;
+	b->num_write += writebytes;
 
-	if (cb != NULL)
-		i = (int)cb(b, BIO_CB_WRITE|BIO_CB_RETURN, in, inl,
-		    0L, (long)i);
-	return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = (int)bio_call_callback(b, BIO_CB_WRITE | BIO_CB_RETURN,
+		    in, inl, 0, 0L, (ret > 0) ? 1 : ret, &writebytes);
+	}
+
+	if (ret > 0) {
+		if (writebytes > INT_MAX) {
+			BIOerror(BIO_R_LENGTH_TOO_LONG);
+			ret = -1;
+		} else {
+			ret = (int)writebytes;
+		}
+	}
+
+	return (ret);
 }
+LCRYPTO_ALIAS(BIO_write);
 
 int
 BIO_puts(BIO *b, const char *in)
 {
-	int i;
-	long (*cb)(BIO *, int, const char *, int, long, long);
+	size_t writebytes = 0;
+	int ret;
 
-	if ((b == NULL) || (b->method == NULL) || (b->method->bputs == NULL)) {
+	if (b == NULL || b->method == NULL || b->method->bputs == NULL) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-
-	if ((cb != NULL) &&
-	    ((i = (int)cb(b, BIO_CB_PUTS, in, 0, 0L, 1L)) <= 0))
-		return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = (int)bio_call_callback(b, BIO_CB_PUTS, in, 0, 0, 0L,
+		    1L, NULL)) <= 0)
+			return (ret);
+	}
 
 	if (!b->init) {
 		BIOerror(BIO_R_UNINITIALIZED);
 		return (-2);
 	}
 
-	i = b->method->bputs(b, in);
+	if ((ret = b->method->bputs(b, in)) > 0)
+		writebytes = ret;
 
-	if (i > 0)
-		b->num_write += (unsigned long)i;
+	b->num_write += writebytes;
 
-	if (cb != NULL)
-		i = (int)cb(b, BIO_CB_PUTS|BIO_CB_RETURN, in, 0, 0L, (long)i);
-	return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = (int)bio_call_callback(b, BIO_CB_PUTS | BIO_CB_RETURN,
+		    in, 0, 0, 0L, (ret > 0) ? 1 : ret, &writebytes);
+	}
+
+	if (ret > 0) {
+		if (writebytes > INT_MAX) {
+			BIOerror(BIO_R_LENGTH_TOO_LONG);
+			ret = -1;
+		} else {
+			ret = (int)writebytes;
+		}
+	}
+
+	return (ret);
 }
+LCRYPTO_ALIAS(BIO_puts);
 
 int
 BIO_gets(BIO *b, char *in, int inl)
 {
-	int i;
-	long (*cb)(BIO *, int, const char *, int, long, long);
+	size_t readbytes = 0;
+	int ret;
 
-	if ((b == NULL) || (b->method == NULL) || (b->method->bgets == NULL)) {
+	if (b == NULL || b->method == NULL || b->method->bgets == NULL) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-
-	if ((cb != NULL) &&
-	    ((i = (int)cb(b, BIO_CB_GETS, in, inl, 0L, 1L)) <= 0))
-		return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = (int)bio_call_callback(b, BIO_CB_GETS, in, inl, 0, 0L,
+		    1, NULL)) <= 0)
+			return (ret);
+	}
 
 	if (!b->init) {
 		BIOerror(BIO_R_UNINITIALIZED);
 		return (-2);
 	}
 
-	i = b->method->bgets(b, in, inl);
+	if ((ret = b->method->bgets(b, in, inl)) > 0)
+		readbytes = ret;
 
-	if (cb != NULL)
-		i = (int)cb(b, BIO_CB_GETS|BIO_CB_RETURN, in, inl, 0L, (long)i);
-	return (i);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = (int)bio_call_callback(b, BIO_CB_GETS | BIO_CB_RETURN, in,
+		    inl, 0, 0L, (ret > 0) ? 1 : ret, &readbytes);
+	}
+
+	if (ret > 0) {
+		if (readbytes > INT_MAX) {
+			BIOerror(BIO_R_LENGTH_TOO_LONG);
+			ret = -1;
+		} else {
+			ret = (int)readbytes;
+		}
+	}
+
+	return (ret);
 }
+LCRYPTO_ALIAS(BIO_gets);
 
 int
-BIO_indent(BIO *b, int indent, int max)
+BIO_indent(BIO *bio, int indent, int max)
 {
-	if (indent < 0)
-		indent = 0;
 	if (indent > max)
 		indent = max;
-	while (indent--)
-		if (BIO_puts(b, " ") != 1)
-			return 0;
+	if (indent <= 0)
+		return 1;
+	if (BIO_printf(bio, "%*s", indent, "") <= 0)
+		return 0;
 	return 1;
 }
+LCRYPTO_ALIAS(BIO_indent);
 
 long
-BIO_int_ctrl(BIO *b, int cmd, long larg, int iarg)
+BIO_int_ctrl(BIO *bio, int cmd, long larg, int iarg)
 {
 	int i;
 
 	i = iarg;
-	return (BIO_ctrl(b, cmd, larg, (char *)&i));
+	return BIO_ctrl(bio, cmd, larg, (char *)&i);
 }
+LCRYPTO_ALIAS(BIO_int_ctrl);
 
 char *
-BIO_ptr_ctrl(BIO *b, int cmd, long larg)
+BIO_ptr_ctrl(BIO *bio, int cmd, long larg)
 {
 	char *p = NULL;
 
-	if (BIO_ctrl(b, cmd, larg, (char *)&p) <= 0)
-		return (NULL);
+	if (BIO_ctrl(bio, cmd, larg, (char *)&p) <= 0)
+		return NULL;
 	else
-		return (p);
+		return p;
 }
+LCRYPTO_ALIAS(BIO_ptr_ctrl);
 
 long
 BIO_ctrl(BIO *b, int cmd, long larg, void *parg)
 {
 	long ret;
-	long (*cb)(BIO *, int, const char *, int, long, long);
 
 	if (b == NULL)
 		return (0);
 
-	if ((b->method == NULL) || (b->method->ctrl == NULL)) {
+	if (b->method == NULL || b->method->ctrl == NULL) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-
-	if ((cb != NULL) &&
-	    ((ret = cb(b, BIO_CB_CTRL, parg, cmd, larg, 1L)) <= 0))
-		return (ret);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = bio_call_callback(b, BIO_CB_CTRL, parg, 0, cmd, larg,
+		    1L, NULL)) <= 0)
+			return (ret);
+	}
 
 	ret = b->method->ctrl(b, cmd, larg, parg);
 
-	if (cb != NULL)
-		ret = cb(b, BIO_CB_CTRL|BIO_CB_RETURN, parg, cmd, larg, ret);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = bio_call_callback(b, BIO_CB_CTRL | BIO_CB_RETURN, parg, 0,
+		    cmd, larg, ret, NULL);
+	}
+
 	return (ret);
 }
+LCRYPTO_ALIAS(BIO_ctrl);
 
 long
-BIO_callback_ctrl(BIO *b, int cmd,
-    void (*fp)(struct bio_st *, int, const char *, int, long, long))
+BIO_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
 {
 	long ret;
-	long (*cb)(BIO *, int, const char *, int, long, long);
 
 	if (b == NULL)
 		return (0);
 
-	if ((b->method == NULL) || (b->method->callback_ctrl == NULL)) {
+	if (b->method == NULL || b->method->callback_ctrl == NULL ||
+	    cmd != BIO_CTRL_SET_CALLBACK) {
 		BIOerror(BIO_R_UNSUPPORTED_METHOD);
 		return (-2);
 	}
 
-	cb = b->callback;
-
-	if ((cb != NULL) &&
-	    ((ret = cb(b, BIO_CB_CTRL, (void *)&fp, cmd, 0, 1L)) <= 0))
-		return (ret);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		if ((ret = bio_call_callback(b, BIO_CB_CTRL, (void *)&fp, 0,
+		    cmd, 0, 1L, NULL)) <= 0)
+			return (ret);
+	}
 
 	ret = b->method->callback_ctrl(b, cmd, fp);
 
-	if (cb != NULL)
-		ret = cb(b, BIO_CB_CTRL|BIO_CB_RETURN, (void *)&fp, cmd, 0, ret);
+	if (b->callback != NULL || b->callback_ex != NULL) {
+		ret = bio_call_callback(b, BIO_CB_CTRL | BIO_CB_RETURN,
+		    (void *)&fp, 0, cmd, 0, ret, NULL);
+	}
+
 	return (ret);
 }
+LCRYPTO_ALIAS(BIO_callback_ctrl);
 
 /* It is unfortunate to duplicate in functions what the BIO_(w)pending macros
  * do; but those macros have inappropriate return type, and for interfacing
@@ -478,15 +629,21 @@ BIO_ctrl_pending(BIO *bio)
 {
 	return BIO_ctrl(bio, BIO_CTRL_PENDING, 0, NULL);
 }
+LCRYPTO_ALIAS(BIO_ctrl_pending);
 
 size_t
 BIO_ctrl_wpending(BIO *bio)
 {
 	return BIO_ctrl(bio, BIO_CTRL_WPENDING, 0, NULL);
 }
+LCRYPTO_ALIAS(BIO_ctrl_wpending);
 
 
-/* put the 'bio' on the end of b's list of operators */
+/*
+ * Append "bio" to the end of the chain containing "b":
+ * Two chains "b -> lb" and "oldhead -> bio"
+ * become two chains "b -> lb -> bio" and "oldhead".
+ */
 BIO *
 BIO_push(BIO *b, BIO *bio)
 {
@@ -498,12 +655,16 @@ BIO_push(BIO *b, BIO *bio)
 	while (lb->next_bio != NULL)
 		lb = lb->next_bio;
 	lb->next_bio = bio;
-	if (bio != NULL)
+	if (bio != NULL) {
+		if (bio->prev_bio != NULL)
+			bio->prev_bio->next_bio = NULL;
 		bio->prev_bio = lb;
+	}
 	/* called to do internal processing */
 	BIO_ctrl(b, BIO_CTRL_PUSH, 0, lb);
 	return (b);
 }
+LCRYPTO_ALIAS(BIO_push);
 
 /* Remove the first and return the rest */
 BIO *
@@ -526,6 +687,7 @@ BIO_pop(BIO *b)
 	b->prev_bio = NULL;
 	return (ret);
 }
+LCRYPTO_ALIAS(BIO_pop);
 
 BIO *
 BIO_get_retry_BIO(BIO *bio, int *reason)
@@ -545,12 +707,21 @@ BIO_get_retry_BIO(BIO *bio, int *reason)
 		*reason = last->retry_reason;
 	return (last);
 }
+LCRYPTO_ALIAS(BIO_get_retry_BIO);
 
 int
 BIO_get_retry_reason(BIO *bio)
 {
-	return (bio->retry_reason);
+	return bio->retry_reason;
 }
+LCRYPTO_ALIAS(BIO_get_retry_reason);
+
+void
+BIO_set_retry_reason(BIO *bio, int reason)
+{
+	bio->retry_reason = reason;
+}
+LCRYPTO_ALIAS(BIO_set_retry_reason);
 
 BIO *
 BIO_find_type(BIO *bio, int type)
@@ -573,6 +744,7 @@ BIO_find_type(BIO *bio, int type)
 	} while (bio != NULL);
 	return (NULL);
 }
+LCRYPTO_ALIAS(BIO_find_type);
 
 BIO *
 BIO_next(BIO *b)
@@ -581,6 +753,29 @@ BIO_next(BIO *b)
 		return NULL;
 	return b->next_bio;
 }
+LCRYPTO_ALIAS(BIO_next);
+
+/*
+ * Two chains "bio -> oldtail" and "oldhead -> next" become
+ * three chains "oldtail", "bio -> next", and "oldhead".
+ */
+void
+BIO_set_next(BIO *bio, BIO *next)
+{
+	/* Cut off the tail of the chain containing bio after bio. */
+	if (bio->next_bio != NULL)
+		bio->next_bio->prev_bio = NULL;
+
+	/* Cut off the head of the chain containing next before next. */
+	if (next != NULL && next->prev_bio != NULL)
+		next->prev_bio->next_bio = NULL;
+
+	/* Append the chain starting at next to the chain ending at bio. */
+	bio->next_bio = next;
+	if (next != NULL)
+		next->prev_bio = bio;
+}
+LCRYPTO_ALIAS(BIO_set_next);
 
 void
 BIO_free_all(BIO *bio)
@@ -598,48 +793,49 @@ BIO_free_all(BIO *bio)
 			break;
 	}
 }
+LCRYPTO_ALIAS(BIO_free_all);
 
 BIO *
 BIO_dup_chain(BIO *in)
 {
-	BIO *ret = NULL, *eoc = NULL, *bio, *new_bio;
+	BIO *new_chain = NULL, *new_bio = NULL, *tail = NULL;
+	BIO *bio;
 
 	for (bio = in; bio != NULL; bio = bio->next_bio) {
 		if ((new_bio = BIO_new(bio->method)) == NULL)
 			goto err;
 		new_bio->callback = bio->callback;
+		new_bio->callback_ex = bio->callback_ex;
 		new_bio->cb_arg = bio->cb_arg;
 		new_bio->init = bio->init;
 		new_bio->shutdown = bio->shutdown;
 		new_bio->flags = bio->flags;
-
-		/* This will let SSL_s_sock() work with stdin/stdout */
 		new_bio->num = bio->num;
 
-		if (!BIO_dup_state(bio, (char *)new_bio)) {
-			BIO_free(new_bio);
+		if (!BIO_dup_state(bio, new_bio))
 			goto err;
-		}
 
-		/* copy app data */
 		if (!CRYPTO_dup_ex_data(CRYPTO_EX_INDEX_BIO,
 		    &new_bio->ex_data, &bio->ex_data))
 			goto err;
 
-		if (ret == NULL) {
-			eoc = new_bio;
-			ret = eoc;
-		} else {
-			BIO_push(eoc, new_bio);
-			eoc = new_bio;
-		}
-	}
-	return (ret);
-err:
-	BIO_free(ret);
-	return (NULL);
+		if (BIO_push(tail, new_bio) == NULL)
+			goto err;
 
+		tail = new_bio;
+		if (new_chain == NULL)
+			new_chain = new_bio;
+	}
+
+	return new_chain;
+
+ err:
+	BIO_free(new_bio);
+	BIO_free_all(new_chain);
+
+	return NULL;
 }
+LCRYPTO_ALIAS(BIO_dup_chain);
 
 void
 BIO_copy_next_retry(BIO *b)
@@ -647,6 +843,7 @@ BIO_copy_next_retry(BIO *b)
 	BIO_set_flags(b, BIO_get_retry_flags(b->next_bio));
 	b->retry_reason = b->next_bio->retry_reason;
 }
+LCRYPTO_ALIAS(BIO_copy_next_retry);
 
 int
 BIO_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
@@ -661,12 +858,14 @@ BIO_set_ex_data(BIO *bio, int idx, void *data)
 {
 	return (CRYPTO_set_ex_data(&(bio->ex_data), idx, data));
 }
+LCRYPTO_ALIAS(BIO_set_ex_data);
 
 void *
 BIO_get_ex_data(BIO *bio, int idx)
 {
 	return (CRYPTO_get_ex_data(&(bio->ex_data), idx));
 }
+LCRYPTO_ALIAS(BIO_get_ex_data);
 
 unsigned long
 BIO_number_read(BIO *bio)
@@ -675,6 +874,7 @@ BIO_number_read(BIO *bio)
 		return bio->num_read;
 	return 0;
 }
+LCRYPTO_ALIAS(BIO_number_read);
 
 unsigned long
 BIO_number_written(BIO *bio)
@@ -683,3 +883,4 @@ BIO_number_written(BIO *bio)
 		return bio->num_write;
 	return 0;
 }
+LCRYPTO_ALIAS(BIO_number_written);

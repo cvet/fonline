@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_skey.c,v 1.1 2020/06/04 15:19:32 jsing Exp $ */
+/* $OpenBSD: x509_skey.c,v 1.5 2023/02/16 08:38:17 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -62,6 +62,8 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "x509_local.h"
+
 static ASN1_OCTET_STRING *s2i_skey_id(X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, char *str);
 
@@ -87,6 +89,7 @@ i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, const ASN1_OCTET_STRING *oct)
 {
 	return hex_to_string(oct->data, oct->length);
 }
+LCRYPTO_ALIAS(i2s_ASN1_OCTET_STRING);
 
 ASN1_OCTET_STRING *
 s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -109,6 +112,7 @@ s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 
 	return oct;
 }
+LCRYPTO_ALIAS(s2i_ASN1_OCTET_STRING);
 
 static ASN1_OCTET_STRING *
 s2i_skey_id(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *str)
