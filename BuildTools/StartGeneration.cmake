@@ -110,6 +110,7 @@ macro(AddConfiguration name parent)
 	set(CMAKE_C_FLAGS_${nameUpper} ${CMAKE_C_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
 	set(CMAKE_EXE_LINKER_FLAGS_${nameUpper} ${CMAKE_EXE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
 	set(CMAKE_MODULE_LINKER_FLAGS_${nameUpper} ${CMAKE_MODULE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
+	set(CMAKE_SHARED_LINKER_FLAGS_${nameUpper} ${CMAKE_SHARED_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
 endmacro()
 
 if(FO_MULTICONFIG)
