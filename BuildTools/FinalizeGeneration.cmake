@@ -999,7 +999,8 @@ list(APPEND FO_SOURCE_META_FILES
 
 list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp")
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp")
 
 # Code generation
 include(FindPython3)

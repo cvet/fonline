@@ -65,7 +65,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
     while (std::getline(istr, line, '\n')) {
         if (!line.empty()) {
-            line = _str(line).trim();
+            line = format(line).trim();
         }
 
         // Accumulate line
@@ -80,7 +80,8 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
         if (line.length() >= 2 && line.back() == '\\' && (line[line.length() - 2] == ' ' || line[line.length() - 2] == '\t')) {
             line.pop_back();
-            accum_line = _str(line).trim() + " ";
+            accum_line = format(line).trim();
+            accum_line.append(" ");
             continue;
         }
 
@@ -97,7 +98,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                 continue;
             }
 
-            string section_name = _str(line.substr(1, end - 1)).trim();
+            string section_name = format(line.substr(1, end - 1)).trim();
 
             if (section_name.empty()) {
                 continue;
@@ -120,7 +121,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
                 if (!section_kv.empty()) {
                     for (auto&& [key, value] : section_kv) {
-                        section_content += _str("{} = {}\n", key, value);
+                        section_content += format("{} = {}\n", key, value);
                     }
                 }
             }
@@ -153,13 +154,13 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                     offset = last + 1;
 
                     if (i == 0 && num == 0u) {
-                        num = _str(str2).isNumber() ? _str(str2).toInt() : _hashResolver->ToHashedString(str2).as_int();
+                        num = format(str2).isNumber() ? format(str2).toInt() : _hashResolver->ToHashedString(str2).as_int();
                     }
                     else if (i == 1 && num != 0u) {
-                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _hashResolver->ToHashedString(str2).as_int()) : 0;
+                        num += !str2.empty() ? (format(str2).isNumber() ? format(str2).toInt() : _hashResolver->ToHashedString(str2).as_int()) : 0;
                     }
                     else if (i == 2 && num != 0u) {
-                        (*cur_section)[_str("{}", num)] = str2;
+                        (*cur_section)[format("{}", num)] = str2;
                     }
                 }
             }
@@ -182,8 +183,8 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                     extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
 
                     if (line[separator - 1] == '+') {
-                        string key = _str(line.substr(0, separator - 1)).trim();
-                        string value = _str(line.substr(separator + 1)).trim();
+                        string key = format(line.substr(0, separator - 1)).trim();
+                        string value = format(line.substr(separator + 1)).trim();
 
                         ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
 
@@ -200,8 +201,8 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                         }
                     }
                     else {
-                        string key = _str(line.substr(0, separator)).trim();
-                        string value = _str(line.substr(separator + 1)).trim();
+                        string key = format(line.substr(0, separator)).trim();
+                        string value = format(line.substr(separator + 1)).trim();
 
                         ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
 
@@ -267,14 +268,14 @@ auto ConfigFile::GetInt(string_view section_name, string_view key_name) const no
 
     const auto* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && format(*str).compareIgnoreCase("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && _str(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && format(*str).compareIgnoreCase("false")) {
         return 0;
     }
 
-    return str != nullptr ? _str(*str).toInt() : 0;
+    return str != nullptr ? format(*str).toInt() : 0;
 }
 
 auto ConfigFile::GetInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int
@@ -283,14 +284,14 @@ auto ConfigFile::GetInt(string_view section_name, string_view key_name, int def_
 
     const auto* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && format(*str).compareIgnoreCase("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && _str(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && format(*str).compareIgnoreCase("false")) {
         return 0;
     }
 
-    return str != nullptr ? _str(*str).toInt() : def_val;
+    return str != nullptr ? format(*str).toInt() : def_val;
 }
 
 void ConfigFile::SetStr(string_view section_name, string_view key_name, string_view val)
@@ -321,7 +322,7 @@ void ConfigFile::SetInt(string_view section_name, string_view key_name, int val)
 {
     STACK_TRACE_ENTRY();
 
-    SetStr(section_name, key_name, _str("{}", val));
+    SetStr(section_name, key_name, format("{}", val));
 }
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&

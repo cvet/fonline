@@ -70,7 +70,7 @@
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const auto module_name = _str(st_entry->file).extractFileName().eraseFileExtension().str();
+        const string module_name = format(st_entry->file).extractFileName().eraseFileExtension();
 
         WriteLog("{}: {}", module_name, text);
     }
@@ -165,7 +165,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi = {};
-    auto* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
+    auto* cmd_line = _wcsdup(format(command).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 
@@ -270,7 +270,11 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
-    return utf8::Decode(text, &length);
+    size_t decode_length = text.length();
+    const auto ch = utf8::Decode(text.data(), decode_length);
+
+    length = static_cast<uint>(decode_length);
+    return ch;
 }
 
 ///# ...

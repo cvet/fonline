@@ -100,7 +100,7 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
     while (_files.MoveNext()) {
         auto file_header = _files.GetCurFileHeader();
 
-        string ext = _str(file_header.GetPath()).getFileExtension();
+        string ext = format(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
             continue;
         }
@@ -168,7 +168,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<uint8>(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _writeData(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), data);
+        _writeData(format("{}.{}", format(fname).eraseFileExtension(), collection.NewExtension), data);
     }
     else {
         _writeData(fname, data);
@@ -179,11 +179,11 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = _str(fname_with_opt).getFileExtension();
-    const string dir = _str(fname_with_opt).extractDir();
-    const string name = _str(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
-    const string fname = _str("{}/{}.{}", dir, name, ext);
-    const string opt = _str(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
+    const string ext = format(fname_with_opt).getFileExtension();
+    const string dir = format(fname_with_opt).extractDir();
+    const string name = format(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
+    const string fname = format("{}/{}.{}", dir, name, ext);
+    const string opt = format(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
 
     File temp_storage;
     auto find_file = [this, &fname, &ext, &temp_storage]() -> File& {
@@ -282,7 +282,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         vector<tuple<FrameCollection, int, int>> sub_collections;
         sub_collections.reserve(10);
 
-        string dir_str = _str("dir_{}", dir);
+        string dir_str = format("dir_{}", dir);
         if (!fofrm.HasSection(dir_str)) {
             dir_str = "";
         }
@@ -301,23 +301,23 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
             oy = fofrm.GetInt(dir_str, "offs_y", oy);
         }
 
-        string frm_dir = _str(fname).extractDir();
+        string frm_dir = format(fname).extractDir();
 
         uint frames = 0;
         auto no_info = false;
         auto load_fail = false;
         for (auto frm = 0; frm < frm_num; frm++) {
             string frm_name;
-            if ((frm_name = fofrm.GetStr(dir_str, _str("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
+            if ((frm_name = fofrm.GetStr(dir_str, format("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
                 no_info = true;
                 break;
             }
 
-            auto sub_collection = LoadAny(_str("{}/{}", frm_dir, frm_name));
+            auto sub_collection = LoadAny(format("{}/{}", frm_dir, frm_name));
             frames += sub_collection.SequenceSize;
 
-            auto next_x = fofrm.GetInt(dir_str, _str("next_x_{}", frm), 0);
-            auto next_y = fofrm.GetInt(dir_str, _str("next_y_{}", frm), 0);
+            auto next_x = fofrm.GetInt(dir_str, format("next_x_{}", frm), 0);
+            auto next_y = fofrm.GetInt(dir_str, format("next_y_{}", frm), 0);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
@@ -423,7 +423,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(format("{}.pal", format(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;
@@ -644,7 +644,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         }
 
         if (dir_frm != 0) {
-            string next_fname = _str("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
+            string next_fname = format("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
             file = _files.FindFileByPath(next_fname);
             if (!file) {
                 if (dir > 1) {
@@ -669,7 +669,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(format("{}.pal", format(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;
@@ -1278,7 +1278,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
             file.GoForward(name_len);
             auto index = file.GetLEUShort();
 
-            if (seq_name.empty() || _str(seq_name).compareIgnoreCase(name)) {
+            if (seq_name.empty() || format(seq_name).compareIgnoreCase(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1811,7 +1811,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!_str(head).startsWith("MOS")) {
+    if (!format(head).startsWith("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1831,7 +1831,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!_str(head).startsWith("MOS")) {
+        if (!format(head).startsWith("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -1930,7 +1930,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!_str(head).startsWith("BAM")) {
+    if (!format(head).startsWith("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -1950,7 +1950,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!_str(head).startsWith("BAM")) {
+        if (!format(head).startsWith("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }
@@ -2302,10 +2302,10 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height, 
 
     for (int i = 0; i < num_text; i++) {
         if (strcmp(text_ptr[i].key, "fo_offset_x") == 0) {
-            offs_x = static_cast<int16>(_str(text_ptr[i].text).toInt());
+            offs_x = static_cast<int16>(format(text_ptr[i].text).toInt());
         }
         else if (strcmp(text_ptr[i].key, "fo_offset_y") == 0) {
-            offs_y = static_cast<int16>(_str(text_ptr[i].text).toInt());
+            offs_y = static_cast<int16>(format(text_ptr[i].text).toInt());
         }
     }
 

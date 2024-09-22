@@ -150,7 +150,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
     }
 
     for (const auto& res : settings.BakeResourceEntries) {
-        auto res_splitted = _str(res).split(',');
+        auto res_splitted = format(res).split(',');
         RUNTIME_ASSERT(res_splitted.size() == 2);
         InputResources.AddDataSource(res_splitted[1]);
     }
@@ -196,7 +196,8 @@ void FOEditor::OpenAsset(string_view path)
         }
     }
 
-    const auto ext = _str(path).getFileExtension();
+    const string ext = format(path).getFileExtension();
+
     if (ext == "fopts") {
         _newViews.emplace_back(std::make_unique<ParticleEditor>(path, *this));
     }

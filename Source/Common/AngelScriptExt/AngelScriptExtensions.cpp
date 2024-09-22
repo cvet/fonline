@@ -313,59 +313,72 @@ void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
     RUNTIME_ASSERT(r >= 0);
 }
 
-static bool IndexUTF8ToRaw(const string& str, int& index, uint* length = nullptr, uint offset = 0)
+static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr, uint offset = 0)
 {
     if (index < 0) {
-        index = static_cast<int>(_str(str).lengthUtf8()) + index;
+        index = static_cast<int>(format(str).lengthUtf8()) + index;
+
         if (index < 0) {
             index = 0;
-            if (length) {
+
+            if (length != nullptr) {
                 if (!str.empty()) {
-                    utf8::Decode(str.c_str(), length);
+                    size_t decode_length = str.length();
+                    utf8::Decode(str.c_str(), decode_length);
+                    *length = static_cast<uint>(decode_length);
                 }
                 else {
                     *length = 0;
                 }
             }
+
             return false;
         }
     }
 
     const char* begin = str.c_str() + offset;
     const char* s = begin;
-    while (*s) {
-        uint ch_length;
-        utf8::Decode(s, &ch_length);
+
+    while (*s != 0) {
+        size_t decode_length = str.length() - offset - static_cast<size_t>(s - begin);
+        utf8::Decode(s, decode_length);
+
         if (index > 0) {
-            s += ch_length;
+            s += decode_length;
             index--;
         }
         else {
-            index = static_cast<uint>(s - begin);
-            if (length) {
-                *length = ch_length;
+            index = static_cast<int>(s - begin);
+
+            if (length != nullptr) {
+                *length = static_cast<uint>(decode_length);
             }
+
             return true;
         }
     }
-    index = static_cast<uint>(s - begin);
-    if (length) {
+
+    index = static_cast<int>(s - begin);
+
+    if (length != nullptr) {
         *length = 0;
     }
+
     return false;
 }
 
-static int IndexRawToUTF8(const string& str, int index)
+static int IndexRawToUtf8(const string& str, int index)
 {
     int result = 0;
-    const char* s = str.c_str();
-    while (index > 0 && *s) {
-        uint ch_length;
-        utf8::Decode(s, &ch_length);
-        s += ch_length;
-        index -= ch_length;
+
+    for (size_t i = 0; i < str.length() && index > 0;) {
+        size_t decode_length = str.length() - i;
+        utf8::Decode(&str[i], decode_length);
+        i += decode_length;
+        index -= static_cast<int>(decode_length);
         result++;
     }
+
     return result;
 }
 
@@ -376,78 +389,78 @@ static void ScriptString_Clear(string& str)
 
 static string ScriptString_Replace(const string& str, const string& str_from, const string& str_to)
 {
-    return _str(str).replace(str_from, str_to);
+    return format(str).replace(str_from, str_to);
 }
 
 static string ScriptString_SubString(const string& str, int start, int count)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return "";
     }
     if (count >= 0) {
-        IndexUTF8ToRaw(str, count, nullptr, start);
+        IndexUtf8ToRaw(str, count, nullptr, start);
     }
     return str.substr(start, count >= 0 ? count : std::string::npos);
 }
 
 static int ScriptString_FindFirst(const string& str, const string& sub, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.find(sub, start));
-    return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static int ScriptString_FindLast(const string& str, const string& sub, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.rfind(sub));
-    return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static int ScriptString_FindFirstOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.find_first_of(chars, start));
-    return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static int ScriptString_FindFirstNotOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.find_first_not_of(chars, start));
-    return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static int ScriptString_FindLastOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.find_last_of(chars));
-    return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static int ScriptString_FindLastNotOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start)) {
+    if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
     const int pos = static_cast<int>(str.find_last_not_of(chars, start));
-    return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
+    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
 static string ScriptString_GetAt(const string& str, int i)
 {
     uint length;
-    if (!IndexUTF8ToRaw(str, i, &length)) {
+    if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
         ctx->SetException("Out of range");
@@ -460,7 +473,7 @@ static string ScriptString_GetAt(const string& str, int i)
 static void ScriptString_SetAt(string& str, int i, string& value)
 {
     uint length;
-    if (!IndexUTF8ToRaw(str, i, &length)) {
+    if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
         ctx->SetException("Out of range");
@@ -477,7 +490,7 @@ static void ScriptString_SetAt(string& str, int i, string& value)
 
 static uint ScriptString_Length(const string& str)
 {
-    return _str(str).lengthUtf8();
+    return format(str).lengthUtf8();
 }
 
 static uint ScriptString_RawLength(const string& str)
@@ -570,12 +583,12 @@ static bool ScriptString_EndsWith(const string& str, const string& other)
 
 static string ScriptString_Lower(const string& str)
 {
-    return _str(str).lowerUtf8();
+    return format(str).lowerUtf8();
 }
 
 static string ScriptString_Upper(const string& str)
 {
-    return _str(str).upperUtf8();
+    return format(str).upperUtf8();
 }
 
 static string ScriptString_Trim(const string& str, const string& chars)

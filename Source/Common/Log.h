@@ -50,13 +50,13 @@ extern void WriteLogMessage(LogType type, string_view message) noexcept;
 extern void WriteLogFatalMessage(string_view message) noexcept;
 
 template<typename... Args>
-void WriteLog(string_view message, Args... args) noexcept
+void WriteLog(string_view message, Args&&... args) noexcept
 {
     WriteLogMessage(LogType::Info, safe_format(message, std::forward<Args>(args)...));
 }
 
 template<typename... Args>
-void WriteLog(LogType type, string_view message, Args... args) noexcept
+void WriteLog(LogType type, string_view message, Args&&... args) noexcept
 {
     WriteLogMessage(type, safe_format(message, std::forward<Args>(args)...));
 }

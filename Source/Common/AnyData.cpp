@@ -46,9 +46,9 @@ auto AnyData::ValueToString(const Value& value) -> string
 
     switch (value.index()) {
     case INT64_VALUE:
-        return _str("{}", std::get<INT64_VALUE>(value)).str();
+        return format("{}", std::get<INT64_VALUE>(value));
     case DOUBLE_VALUE:
-        return _str("{}", std::get<DOUBLE_VALUE>(value)).str();
+        return format("{}", std::get<DOUBLE_VALUE>(value));
     case BOOL_VALUE:
         return std::get<BOOL_VALUE>(value) ? "True" : "False";
     case STRING_VALUE:
@@ -66,10 +66,10 @@ auto AnyData::ValueToString(const Value& value) -> string
             const auto& arr_value = arr[i];
             switch (arr_value.index()) {
             case INT64_VALUE:
-                arr_str.append(_str("{}", std::get<INT64_VALUE>(arr_value)).str());
+                arr_str.append(format("{}", std::get<INT64_VALUE>(arr_value)));
                 break;
             case DOUBLE_VALUE:
-                arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(arr_value)).str());
+                arr_str.append(format("{}", std::get<DOUBLE_VALUE>(arr_value)));
                 break;
             case BOOL_VALUE:
                 arr_str.append(std::get<BOOL_VALUE>(arr_value) ? "True" : "False");
@@ -103,10 +103,10 @@ auto AnyData::ValueToString(const Value& value) -> string
 
             switch (dict_value.index()) {
             case INT64_VALUE:
-                dict_str.append(_str("{}", std::get<INT64_VALUE>(dict_value)).str());
+                dict_str.append(format("{}", std::get<INT64_VALUE>(dict_value)));
                 break;
             case DOUBLE_VALUE:
-                dict_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_value)).str());
+                dict_str.append(format("{}", std::get<DOUBLE_VALUE>(dict_value)));
                 break;
             case BOOL_VALUE:
                 dict_str.append(std::get<BOOL_VALUE>(dict_value) ? "True" : "False");
@@ -127,10 +127,10 @@ auto AnyData::ValueToString(const Value& value) -> string
                     const auto& dict_arr_value = dict_arr[i];
                     switch (dict_arr_value.index()) {
                     case INT64_VALUE:
-                        dict_arr_str.append(_str("{}", std::get<INT64_VALUE>(dict_arr_value)).str());
+                        dict_arr_str.append(format("{}", std::get<INT64_VALUE>(dict_arr_value)));
                         break;
                     case DOUBLE_VALUE:
-                        dict_arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_arr_value)).str());
+                        dict_arr_str.append(format("{}", std::get<DOUBLE_VALUE>(dict_arr_value)));
                         break;
                     case BOOL_VALUE:
                         dict_arr_str.append(std::get<BOOL_VALUE>(dict_arr_value) ? "True" : "False");
@@ -171,6 +171,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
         const char* s = str.c_str();
         string dict_key_entry;
         string dict_value_entry;
+
         while ((s = ReadToken(s, dict_key_entry)) != nullptr && (s = ReadToken(s, dict_value_entry)) != nullptr) {
             if (as_array) {
                 Array dict_arr;
@@ -178,16 +179,17 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
                 const auto decoded_dict_value_entry = DecodeString(dict_value_entry);
                 const char* s2 = decoded_dict_value_entry.c_str();
                 string arr_entry;
+
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
                     case INT64_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toInt64());
+                        dict_arr.emplace_back(format("{}", arr_entry).toInt64());
                         break;
                     case DOUBLE_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toDouble());
+                        dict_arr.emplace_back(format("{}", arr_entry).toDouble());
                         break;
                     case BOOL_VALUE:
-                        dict_arr.emplace_back(_str("{}", arr_entry).toBool());
+                        dict_arr.emplace_back(format("{}", arr_entry).toBool());
                         break;
                     case STRING_VALUE:
                         dict_arr.emplace_back(DecodeString(arr_entry));
@@ -202,13 +204,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
             else {
                 switch (value_type) {
                 case INT64_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt64());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toInt64());
                     break;
                 case DOUBLE_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toDouble());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toDouble());
                     break;
                 case BOOL_VALUE:
-                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toBool());
+                    dict.emplace(dict_key_entry, format("{}", dict_value_entry).toBool());
                     break;
                 case STRING_VALUE:
                     dict.emplace(dict_key_entry, DecodeString(dict_value_entry));
@@ -226,16 +228,17 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
 
         const char* s = str.c_str();
         string arr_entry;
+
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
             case INT64_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toInt64());
+                arr.emplace_back(format("{}", arr_entry).toInt64());
                 break;
             case DOUBLE_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toDouble());
+                arr.emplace_back(format("{}", arr_entry).toDouble());
                 break;
             case BOOL_VALUE:
-                arr.emplace_back(_str("{}", arr_entry).toBool());
+                arr.emplace_back(format("{}", arr_entry).toBool());
                 break;
             case STRING_VALUE:
                 arr.emplace_back(DecodeString(arr_entry));
@@ -250,11 +253,11 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
     else {
         switch (value_type) {
         case INT64_VALUE:
-            return _str("{}", str).toInt64();
+            return format("{}", str).toInt64();
         case DOUBLE_VALUE:
-            return _str("{}", str).toDouble();
+            return format("{}", str).toDouble();
         case BOOL_VALUE:
-            return _str("{}", str).toBool();
+            return format("{}", str).toBool();
         case STRING_VALUE:
             return DecodeString(str);
         default:
@@ -290,10 +293,11 @@ static auto CodeString(string_view str, bool strong_protect, bool just_escape) -
         result.append("\"");
     }
 
-    const auto* s = str.data();
-    uint length = 0;
-    while (*s != 0) {
-        utf8::Decode(s, &length);
+    for (size_t i = 0; i < str.length();) {
+        const auto* s = str.data() + i;
+        size_t length = str.length() - i;
+        utf8::Decode(s, length);
+
         if (length == 1) {
             switch (*s) {
             case '\r':
@@ -316,7 +320,7 @@ static auto CodeString(string_view str, bool strong_protect, bool just_escape) -
             result.append(s, length);
         }
 
-        s += length;
+        i += length;
     }
 
     if (protect) {
@@ -338,18 +342,22 @@ static auto DecodeString(string_view str) -> string
     result.reserve(str.length());
 
     const auto* s = str.data();
-    uint length = 0;
+    size_t length = str.length();
+    utf8::Decode(s, length);
 
-    utf8::Decode(s, &length);
     const auto is_protected = length == 1 && *s == '\"';
-    if (is_protected) {
-        s++;
-    }
 
-    while (*s != 0) {
-        utf8::Decode(s, &length);
+    for (size_t i = is_protected ? 1 : 0; i < str.length();) {
+        s = str.data() + i;
+        length = str.length() - i;
+        utf8::Decode(s, length);
+
         if (length == 1 && *s == '\\') {
-            utf8::Decode(++s, &length);
+            i++;
+
+            s = str.data() + i;
+            length = str.length() - i;
+            utf8::Decode(s, length);
 
             switch (*s) {
             case 'n':
@@ -371,7 +379,7 @@ static auto DecodeString(string_view str) -> string
             result.append(s, length);
         }
 
-        s += length;
+        i += length;
     }
 
     if (is_protected && length == 1 && result.back() == '\"') {
@@ -389,59 +397,73 @@ static auto ReadToken(const char* str, string& result) -> const char*
         return nullptr;
     }
 
-    const auto* s = str;
+    size_t pos = 0;
+    size_t length = utf8::DecodeStrNtLen(&str[pos]);
+    utf8::Decode(&str[pos], length);
 
-    uint length = 0;
-    utf8::Decode(s, &length);
-    while (length == 1 && (*s == ' ' || *s == '\t')) {
-        utf8::Decode(++s, &length);
+    while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+        pos++;
+
+        length = utf8::DecodeStrNtLen(&str[pos]);
+        utf8::Decode(&str[pos], length);
     }
 
-    if (*s == 0) {
+    if (str[pos] == 0) {
         return nullptr;
     }
 
-    const char* begin;
+    size_t begin;
 
-    if (length == 1 && *s == '\"') {
-        s++;
-        begin = s;
+    if (length == 1 && str[pos] == '\"') {
+        pos++;
+        begin = pos;
 
-        while (*s != 0) {
-            if (length == 1 && *s == '\\') {
-                ++s;
-                if (*s != 0) {
-                    utf8::Decode(s, &length);
-                    s += length;
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                if (str[pos] != 0) {
+                    length = utf8::DecodeStrNtLen(&str[pos]);
+                    utf8::Decode(&str[pos], length);
+
+                    pos += length;
                 }
             }
-            else if (length == 1 && *s == '\"') {
+            else if (length == 1 && str[pos] == '\"') {
                 break;
             }
             else {
-                s += length;
+                pos += length;
             }
-            utf8::Decode(s, &length);
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
         }
     }
     else {
-        begin = s;
+        begin = pos;
 
-        while (*s != 0) {
-            if (length == 1 && *s == '\\') {
-                utf8::Decode(++s, &length);
-                s += length;
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                length = utf8::DecodeStrNtLen(&str[pos]);
+                utf8::Decode(&str[pos], length);
+
+                pos += length;
             }
-            else if (length == 1 && (*s == ' ' || *s == '\t')) {
+            else if (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
                 break;
             }
             else {
-                s += length;
+                pos += length;
             }
-            utf8::Decode(s, &length);
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
         }
     }
 
-    result.assign(begin, static_cast<uint>(s - begin));
-    return *s != 0 ? s + 1 : s;
+    result.assign(&str[begin], pos - begin);
+    return str[pos] != 0 ? &str[pos + 1] : &str[pos];
 }

@@ -131,7 +131,7 @@ static void DrawEntry(string_view name, const T& entry)
 {
     STACK_TRACE_ENTRY();
 
-    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
+    ImGui::TextUnformatted(format("{}: {}", name, entry).c_str());
 }
 
 template<typename T>
@@ -147,7 +147,7 @@ static void DrawEntry(string_view name, const vector<T>& entry)
         if (!value.empty()) {
             value.pop_back();
         }
-        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
+        ImGui::TextUnformatted(format("{}: {}", name, value).c_str());
     }
     else if constexpr (std::is_same_v<T, bool>) {
         string value;
@@ -157,7 +157,7 @@ static void DrawEntry(string_view name, const vector<T>& entry)
         if (!value.empty()) {
             value.pop_back();
         }
-        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
+        ImGui::TextUnformatted(format("{}: {}", name, value).c_str());
     }
     else {
         string value;
@@ -167,7 +167,7 @@ static void DrawEntry(string_view name, const vector<T>& entry)
         if (!value.empty()) {
             value.pop_back();
         }
-        ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
+        ImGui::TextUnformatted(format("{}: {}", name, value).c_str());
     }
 }
 
@@ -210,6 +210,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
             ;
 
         const auto config = ConfigFile("DebugConfig.focfg", volatile_char_to_string(DEBUG_CONFIG, sizeof(DEBUG_CONFIG)));
+
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
@@ -270,6 +271,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
                                                                 "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
 
         const auto config = ConfigFile("InternalConfig.focfg", volatile_char_to_string(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)));
+
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
@@ -285,6 +287,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
             settings_file.Read(settings_content.data(), settings_content.size());
 
             const auto config = ConfigFile("ExternalConfig.focfg", settings_content);
+
             for (auto&& [key, value] : config.GetSection("")) {
                 SetValue(key, value);
             }
@@ -301,20 +304,20 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
     }
 
     // Command line settings before local config and other command line settings
-    for (auto i = 0; i < argc; i++) {
+    for (int i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
 
         if (argv[i][0] == '-') {
-            auto key = _str("{}", argv[i]).trim().str().substr(1);
+            string key = format("{}", argv[i]).trim().str().substr(1);
 
             if (!key.empty() && key.front() == '-') {
                 key = key.substr(1);
             }
 
             if (key == "ExternalConfig" || key == "ResourcesDir") {
-                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
+                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? format("{}", argv[i + 1]).trim().str() : "1";
 
                 WriteLog("Command line set {} = {}", key, value);
 
@@ -329,12 +332,13 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Local config
     if (ClientMode) {
-        auto&& cache = CacheStorage(_str(ResourcesDir).combinePath("Cache.fobin"));
+        auto&& cache = CacheStorage(format(ResourcesDir).combinePath("Cache.fobin"));
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             WriteLog("Load local config {}", LOCAL_CONFIG_NAME);
 
             const auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+
             for (auto&& [key, value] : config.GetSection("")) {
                 SetValue(key, value);
             }
@@ -349,19 +353,20 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
         const_cast<vector<string>&>(CommandLineArgs).emplace_back(argv[i]);
         const_cast<string&>(CommandLine) += argv[i];
+
         if (i < argc - 1) {
             const_cast<string&>(CommandLine) += " ";
         }
 
         if (argv[i][0] == '-') {
-            auto key = _str("{}", argv[i]).trim().str().substr(1);
+            auto key = format("{}", argv[i]).trim().str().substr(1);
 
             if (!key.empty() && key.front() == '-') {
                 key = key.substr(1);
             }
 
             if (key != "ExternalConfig" && key != "ResourcesDir") {
-                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
+                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? format("{}", argv[i + 1]).trim().str() : "1";
 
                 WriteLog("Command line set {} = {}", key, value);
 
@@ -447,6 +452,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
                     if (is_env) {
                         const char* env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+
                         if (env != nullptr) {
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$ENV{"_len) + string(env);
                             end_pos++;
@@ -458,11 +464,12 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     }
                     else {
                         auto file = DiskFileSystem::OpenFile(name, false);
+
                         if (file) {
                             string file_content;
                             file_content.resize(file.GetSize());
                             file.Read(file_content.data(), file_content.size());
-                            file_content = _str(file_content).trim();
+                            file_content = format(file_content).trim();
 
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$FILE{"_len) + string(file_content);
                             end_pos++;

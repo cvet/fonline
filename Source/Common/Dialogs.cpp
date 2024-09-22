@@ -165,7 +165,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
     auto&& pack = std::make_unique<DialogPack>();
 
-    auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
+    auto fodlg = ConfigFile(format("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
     pack->PackId = _engine->ToHashedString(pack_name);
     pack->PackName = pack_name;
@@ -180,7 +180,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         throw DialogParseException("Invalid hash for dialog name", pack_name);
     }
 
-    const auto lang_apps = _str(lang_key).split(' ');
+    const auto lang_apps = format(lang_key).split(' ');
     if (lang_apps.empty()) {
         throw DialogParseException("Lang app is empty", pack_name);
     }
@@ -209,7 +209,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
 
             for (size_t n = 0; n < count; n++) {
-                auto str = _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[").str();
+                string str = format(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[");
                 pack->Texts[i].second.AddStr(new_str_num, std::move(str));
             }
         }

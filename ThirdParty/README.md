@@ -19,7 +19,7 @@
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
-* fmt - [fmt-10.1.1](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
+* fmt - [fmt-11.0.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.91.2](https://github.com/ocornut/imgui)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.24.4](https://github.com/mongodb/mongo-c-driver)

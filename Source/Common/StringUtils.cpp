@@ -38,30 +38,81 @@
 
 // ReSharper disable CppInconsistentNaming
 
-auto _str::length() const noexcept -> size_t
+StringHelper::operator string&&()
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.length();
+    OwnStorage();
+
+    _sv = {};
+
+    return std::move(_s);
 }
 
-auto _str::empty() const noexcept -> bool
+auto StringHelper::str() -> string&&
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.empty();
+    OwnStorage();
+
+    _sv = {};
+
+    return std::move(_s);
 }
 
-auto _str::compareIgnoreCase(string_view r) const noexcept -> bool
+auto StringHelper::c_str() -> const char*
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_s.length() != r.length()) {
+    OwnStorage();
+
+    return _s.c_str();
+}
+
+void StringHelper::OwnStorage()
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.data() < _s.data() || _sv.data() >= _s.data() + _s.size()) {
+        _s = _sv;
+    }
+    else {
+        if (_s.data() != _sv.data()) {
+            _s.erase(0, static_cast<size_t>(_sv.data() - _s.data()));
+        }
+
+        if (_s.length() != _sv.length()) {
+            _s.resize(_sv.length());
+        }
+    }
+
+    _sv = _s;
+}
+
+auto StringHelper::length() const noexcept -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length();
+}
+
+auto StringHelper::empty() const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.empty();
+}
+
+auto StringHelper::compareIgnoreCase(string_view other) const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.length() != other.length()) {
         return false;
     }
 
-    for (size_t i = 0; i < _s.length(); i++) {
-        if (std::tolower(_s[i]) != std::tolower(r[i])) {
+    for (size_t i = 0; i < _sv.length(); i++) {
+        if (std::tolower(_sv[i]) != std::tolower(other[i])) {
             return false;
         }
     }
@@ -69,52 +120,56 @@ auto _str::compareIgnoreCase(string_view r) const noexcept -> bool
     return true;
 }
 
-auto _str::compareIgnoreCaseUtf8(string_view r) const -> bool
+auto StringHelper::compareIgnoreCaseUtf8(string_view other) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_s.length() != r.length()) {
+    if (_sv.length() != other.length()) {
         return false;
     }
 
-    return _str(_s).lowerUtf8() == _str(r).lowerUtf8();
+    return StringHelper(_sv).lowerUtf8() == StringHelper(other).lowerUtf8();
 }
 
-auto _str::startsWith(char r) const noexcept -> bool
+auto StringHelper::startsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.length() >= 1 && _s.front() == r;
+    return _sv.length() >= 1 && _sv.front() == r;
 }
 
-auto _str::startsWith(string_view r) const noexcept -> bool
+auto StringHelper::startsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.length() >= r.length() && std::memcmp(_s.data(), r.data(), r.length()) == 0;
+    return _sv.length() >= r.length() && std::memcmp(_sv.data(), r.data(), r.length()) == 0;
 }
 
-auto _str::endsWith(char r) const noexcept -> bool
+auto StringHelper::endsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.length() >= 1 && _s.back() == r;
+    return _sv.length() >= 1 && _sv.back() == r;
 }
 
-auto _str::endsWith(string_view r) const noexcept -> bool
+auto StringHelper::endsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _s.length() >= r.length() && std::memcmp(_s.data() + _s.length() - r.length(), r.data(), r.length()) == 0;
+    return _sv.length() >= r.length() && _sv.compare(_sv.length() - r.length(), r.length(), r) == 0;
 }
 
-auto _str::isValidUtf8() const noexcept -> bool
+auto StringHelper::isValidUtf8() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        const auto ucs = utf8::Decode(_s.c_str() + i, &length);
+    if (_sv.empty()) {
+        return true;
+    }
+
+    for (size_t i = 0; i < _sv.length();) {
+        size_t length = _sv.length() - i;
+        const auto ucs = utf8::Decode(_sv.data() + i, length);
 
         if (!utf8::IsValid(ucs)) {
             return false;
@@ -126,116 +181,121 @@ auto _str::isValidUtf8() const noexcept -> bool
     return true;
 }
 
-auto _str::lengthUtf8() const noexcept -> size_t
+auto StringHelper::lengthUtf8() const noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
     size_t length = 0;
-    const auto* str = _s.c_str();
 
-    while (*str != 0) {
-        length += static_cast<uint>((*str++ & 0xC0) != 0x80);
+    for (size_t i = 0; i < _sv.length(); i++) {
+        length += static_cast<uint>((_sv[i] & 0xC0) != 0x80);
     }
 
     return length;
 }
 
-auto _str::substringUntil(char separator) -> _str&
+auto StringHelper::substringUntil(char separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto pos = _s.find(separator);
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::substringUntil(string_view separator) -> _str&
+auto StringHelper::substringUntil(string_view separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto pos = _s.find(separator);
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::substringAfter(char separator) -> _str&
+auto StringHelper::substringAfter(char separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto pos = _s.find(separator);
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _sv = _sv.substr(pos + 1);
     }
     else {
-        _s.erase();
+        _sv = {};
     }
 
     return *this;
 }
 
-auto _str::substringAfter(string_view separator) -> _str&
+auto StringHelper::substringAfter(string_view separator) noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto pos = _s.find(separator);
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + separator.length());
+        _sv = _sv.substr(pos + separator.length());
     }
     else {
-        _s.erase();
+        _sv = {};
     }
 
     return *this;
 }
 
-auto _str::trim() -> _str&
+auto StringHelper::trim() noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
     // Left trim
-    const auto l = _s.find_first_not_of(" \n\r\t");
+    const auto l = _sv.find_first_not_of(" \n\r\t");
 
     if (l == string::npos) {
-        _s.erase();
+        _sv = {};
     }
     else {
         if (l > 0) {
-            _s.erase(0, l);
+            _sv = _sv.substr(l);
         }
 
         // Right trim
-        const auto r = _s.find_last_not_of(" \n\r\t");
+        const auto r = _sv.find_last_not_of(" \n\r\t");
 
-        if (r < _s.length() - 1) {
-            _s.erase(r + 1);
+        if (r < _sv.length() - 1) {
+            _sv = _sv.substr(0, r + 1);
         }
     }
 
     return *this;
 }
 
-auto _str::erase(char what) -> _str&
+auto StringHelper::erase(char what) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
+    OwnStorage();
+
     _s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
+
+    _sv = _s;
 
     return *this;
 }
 
-auto _str::erase(char begin, char end) -> _str&
+auto StringHelper::erase(char begin, char end) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     while (true) {
         const auto begin_pos = _s.find(begin);
@@ -253,27 +313,39 @@ auto _str::erase(char begin, char end) -> _str&
         _s.erase(begin_pos, end_pos - begin_pos + 1);
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::replace(char from, char to) -> _str&
+auto StringHelper::replace(char from, char to) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     std::replace(_s.begin(), _s.end(), from, to);
 
     return *this;
 }
 
-auto _str::replace(char from1, char from2, char to) -> _str&
+auto StringHelper::replace(char from1, char from2, char to) -> StringHelper&
 {
-    replace(string({from1, from2}), string({to}));
+    NO_STACK_TRACE_ENTRY();
+
+    const char from_buf[3] = {from1, from2, 0};
+    const char to_buf[2] = {to, 0};
+
+    replace(from_buf, to_buf);
+
     return *this;
 }
 
-auto _str::replace(string_view from, string_view to) -> _str&
+auto StringHelper::replace(string_view from, string_view to) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     size_t pos = 0;
 
@@ -282,34 +354,42 @@ auto _str::replace(string_view from, string_view to) -> _str&
         pos += to.length();
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::lower() -> _str&
+auto StringHelper::lower() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     std::transform(_s.begin(), _s.end(), _s.begin(), tolower);
 
     return *this;
 }
 
-auto _str::upper() -> _str&
+auto StringHelper::upper() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     std::transform(_s.begin(), _s.end(), _s.begin(), toupper);
 
     return *this;
 }
 
-auto _str::lowerUtf8() -> _str&
+auto StringHelper::lowerUtf8() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
+    OwnStorage();
+
     for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        auto ucs = utf8::Decode(_s.c_str() + i, &length);
+        size_t length = _s.length() - i;
+        auto ucs = utf8::Decode(_s.c_str() + i, length);
 
         ucs = utf8::Lower(ucs);
 
@@ -321,16 +401,20 @@ auto _str::lowerUtf8() -> _str&
         i += new_length;
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::upperUtf8() -> _str&
+auto StringHelper::upperUtf8() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
+    OwnStorage();
+
     for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        auto ucs = utf8::Decode(_s.c_str() + i, &length);
+        size_t length = _s.length() - i;
+        auto ucs = utf8::Decode(_s.c_str() + i, length);
 
         ucs = utf8::Upper(ucs);
 
@@ -342,160 +426,349 @@ auto _str::upperUtf8() -> _str&
         i += new_length;
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::split(char divider) const -> vector<string>
+auto StringHelper::split(char delimiter) const -> vector<string>
 {
     NO_STACK_TRACE_ENTRY();
 
     vector<string> result;
-    std::stringstream ss(_s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = _str(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.push_back(entry);
+            entry = StringHelper(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(entry);
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
     return result;
 }
 
-auto _str::splitToInt(char divider) const -> vector<int>
+auto StringHelper::splitToInt(char delimiter) const -> vector<int>
 {
     NO_STACK_TRACE_ENTRY();
 
     vector<int> result;
-    std::stringstream ss(_s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = _str(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.push_back(_str(entry).toInt());
+            entry = StringHelper(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(StringHelper(entry).toInt());
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
     return result;
 }
 
-auto _str::isNumber() const noexcept -> bool
+#if defined(_MSC_VER) && _MSC_VER >= 1924
+#define USE_FROM_CHARS 1
+#else
+#define USE_FROM_CHARS 0
+#endif
+
+template<typename T>
+static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return isInt() || isFloat();
-}
+    const size_t len = sv.length();
 
-auto _str::isInt() const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    if (_s.empty()) {
+    if (len == 0) {
+        return false;
+    }
+    if (len > StringHelper::MAX_NUMBER_STRING_LENGTH) {
         return false;
     }
 
-    char* str_end = nullptr;
-    const auto v = std::strtoul(_s.c_str(), &str_end, 10);
-    UNUSED_VARIABLE(v);
+    if constexpr (std::is_integral_v<T>) {
+        static_assert(std::is_signed_v<T>);
 
-    return str_end != _s.c_str();
+        const char* ptr = sv.data();
+        const char* end_ptr = ptr + len;
+        int base = 10;
+        bool negative = false;
+
+        if (sv[0] == '-') {
+            if (len >= 2 && sv[1] == '-') {
+                return false;
+            }
+
+            ptr += 1;
+            negative = true;
+
+            if (len >= 3 && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')) {
+                ptr += 2;
+                base = 16;
+            }
+        }
+        else {
+            if (len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) {
+                ptr += 2;
+                base = 16;
+            }
+        }
+
+        if (ptr == end_ptr) {
+            return false;
+        }
+
+        std::make_unsigned_t<T> uvalue;
+        bool success;
+        bool out_of_range;
+
+        if constexpr (USE_FROM_CHARS) {
+            const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
+            success = result.ec == std::errc() && result.ptr == end_ptr;
+            out_of_range = result.ec == std::errc::result_out_of_range;
+        }
+        else {
+            // Assume all our strings are null terminated
+            if (*end_ptr != 0) {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                std::memcpy(str_nt.data(), ptr, count);
+                str_nt[count] = 0;
+
+                char* result_end_ptr;
+                uvalue = std::strtoull(str_nt.data(), &result_end_ptr, base);
+                success = result_end_ptr == str_nt.data() + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+            else {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                char* result_end_ptr;
+                uvalue = std::strtoull(ptr, &result_end_ptr, base);
+                success = result_end_ptr == ptr + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+        }
+
+        if (success) {
+            if (negative) {
+                if (uvalue > static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min())) {
+                    value = std::numeric_limits<T>::min();
+                }
+                else {
+                    value = -static_cast<T>(uvalue);
+                }
+            }
+            else {
+                value = static_cast<T>(uvalue);
+            }
+
+            return true;
+        }
+        else {
+            // Out of range
+            if (out_of_range) {
+                if (negative) {
+                    value = std::numeric_limits<T>::min();
+                }
+                else {
+                    value = static_cast<T>(std::numeric_limits<std::make_unsigned_t<T>>::max());
+                }
+
+                return true;
+            }
+
+            // Try read as float
+            if (base == 10) {
+                if (double fvalue; ConvertToNumber(sv, fvalue)) {
+                    value = static_cast<T>(std::clamp(fvalue, static_cast<double>(std::numeric_limits<T>::min()), static_cast<double>(std::numeric_limits<T>::max())));
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+    else {
+        if (((len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) || (len >= 3 && sv[0] == '-' && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')))) {
+            // Try read as hex integer
+            if (int64 ivalue; ConvertToNumber(sv, ivalue)) {
+                value = static_cast<T>(ivalue);
+
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            const char* ptr = sv.data();
+            const char* end_ptr = ptr + len;
+
+            if (sv.back() == 'f') {
+                end_ptr -= 1;
+            }
+
+            if (ptr == end_ptr) {
+                return false;
+            }
+
+            if constexpr (USE_FROM_CHARS) {
+                const auto result = std::from_chars(ptr, end_ptr, value);
+
+                return result.ec == std::errc() && result.ptr == end_ptr;
+            }
+            else {
+                // Assume all our strings are null terminated
+                if (*end_ptr != 0) {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                    std::memcpy(str_nt.data(), ptr, count);
+                    str_nt[count] = 0;
+
+                    char* result_end_ptr;
+                    value = std::strtod(str_nt.data(), &result_end_ptr);
+
+                    return result_end_ptr == str_nt.data() + count;
+                }
+                else {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    char* result_end_ptr;
+                    value = std::strtod(ptr, &result_end_ptr);
+
+                    return result_end_ptr == ptr + count;
+                }
+            }
+        }
+    }
 }
 
-auto _str::isFloat() const noexcept -> bool
+#undef USE_FROM_CHARS
+
+auto StringHelper::isNumber() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_s.empty()) {
+    if (_sv.empty()) {
         return false;
     }
 
-    char* str_end = nullptr;
-    const auto v = std::strtod(_s.c_str(), &str_end);
-    UNUSED_VARIABLE(v);
+    double value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    UNUSED_VARIABLE(value);
 
-    return str_end != _s.c_str();
+    return success;
 }
 
-auto _str::isExplicitBool() const noexcept -> bool
+auto StringHelper::isExplicitBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (compareIgnoreCase("true")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
         return true;
     }
 
     return false;
 }
 
-auto _str::toInt() const noexcept -> int
+auto StringHelper::toInt() const noexcept -> int
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<int>(std::strtoll(_s.c_str(), nullptr, 0));
+    int64 value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+
+    return success ? clamp_to<int>(value) : 0;
 }
 
-auto _str::toUInt() const noexcept -> uint
+auto StringHelper::toUInt() const noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(std::strtoull(_s.c_str(), nullptr, 0));
+    int64 value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+
+    return success ? clamp_to<uint>(value) : 0;
 }
 
-auto _str::toInt64() const noexcept -> int64
+auto StringHelper::toInt64() const noexcept -> int64
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<int64>(std::strtoll(_s.c_str(), nullptr, 0));
+    int64 value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+
+    return success ? value : 0;
 }
 
-auto _str::toUInt64() const noexcept -> uint64
+auto StringHelper::toFloat() const noexcept -> float
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint64>(std::strtoull(_s.c_str(), nullptr, 0));
+    double value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+
+    return success ? static_cast<float>(value) : 0.0f;
 }
 
-auto _str::toFloat() const noexcept -> float
+auto StringHelper::toDouble() const noexcept -> double
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<float>(std::strtod(_s.c_str(), nullptr));
+    double value;
+    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+
+    return success ? value : 0.0;
 }
 
-auto _str::toDouble() const noexcept -> double
+auto StringHelper::toBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return std::strtod(_s.c_str(), nullptr);
-}
-
-auto _str::toBool() const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    if (compareIgnoreCase("true")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
         return false;
     }
 
     return toInt() != 0;
 }
 
-auto _str::formatPath() -> _str&
+auto StringHelper::formatPath() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
     trim();
     normalizePathSlashes();
+
+    OwnStorage();
 
     // Erase first './'
     while (_s[0] == '.' && _s[1] == '/') {
@@ -532,10 +805,11 @@ auto _str::formatPath() -> _str&
         const auto pos2 = _s.rfind('/', pos - 1);
 
         if (pos2 == string::npos) {
-            break;
+            _s.erase(0, pos + 4);
         }
-
-        _s.erase(pos2 + 1, pos - pos2 - 1 + 3);
+        else {
+            _s.erase(pos2 + 1, pos - pos2 + 3);
+        }
     }
 
     // Apply skipped '../'
@@ -543,108 +817,121 @@ auto _str::formatPath() -> _str&
         _s.insert(0, "../");
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::extractDir() -> _str&
+auto StringHelper::extractDir() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
     formatPath();
 
-    const auto pos = _s.find_last_of('/');
+    const auto pos = _sv.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::extractFileName() -> _str&
+auto StringHelper::extractFileName() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
     formatPath();
 
-    const auto pos = _s.find_last_of('/');
+    const auto pos = _sv.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _sv = _sv.substr(pos + 1);
     }
 
     return *this;
 }
 
-auto _str::getFileExtension() -> _str&
+auto StringHelper::getFileExtension() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto dot = _s.find_last_of('.');
+    const auto dot = _sv.find_last_of('.');
 
-    _s = dot != string::npos ? _s.substr(dot + 1) : "";
+    _sv = dot != string::npos ? _sv.substr(dot + 1) : "";
 
     lower();
 
     return *this;
 }
 
-auto _str::eraseFileExtension() -> _str&
+auto StringHelper::eraseFileExtension() noexcept -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto dot = _s.find_last_of('.');
+    const auto dot = _sv.find_last_of('.');
 
     if (dot != string::npos) {
-        _s = _s.substr(0, dot);
+        _sv = _sv.substr(0, dot);
     }
 
     return *this;
 }
 
-auto _str::changeFileName(string_view new_name) -> _str&
+auto StringHelper::changeFileName(string_view new_name) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto ext = _str(_s).getFileExtension();
+    OwnStorage();
+
+    const auto ext = StringHelper(_s).getFileExtension().str();
 
     if (!ext.empty()) {
-        const auto new_name_with_ext = _str("{}.{}", new_name, ext);
-        _s = _str(_s).extractDir().combinePath(new_name_with_ext);
+        const auto new_name_with_ext = StringHelper("{}.{}", new_name, ext);
+        _s = StringHelper(_s).extractDir().combinePath(new_name_with_ext);
     }
     else {
-        _s = _str(_s).extractDir().combinePath(new_name);
+        _s = StringHelper(_s).extractDir().combinePath(new_name);
     }
+
+    _sv = _s;
 
     return *this;
 }
 
-auto _str::combinePath(string_view path) -> _str&
+auto StringHelper::combinePath(string_view path) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
     if (!path.empty()) {
+        OwnStorage();
+
         if (!_s.empty() && _s.back() != '/' && path.front() != '/') {
             _s += "/";
         }
 
         _s += path;
+
+        _sv = _s;
+
         formatPath();
     }
 
     return *this;
 }
 
-auto _str::normalizePathSlashes() -> _str&
+auto StringHelper::normalizePathSlashes() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     std::replace(_s.begin(), _s.end(), '\\', '/');
 
     return *this;
 }
 
-auto _str::normalizeLineEndings() -> _str&
+auto StringHelper::normalizeLineEndings() -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -655,9 +942,11 @@ auto _str::normalizeLineEndings() -> _str&
 }
 
 #if FO_WINDOWS
-auto _str::parseWideChar(const wchar_t* str) -> _str&
+auto StringHelper::parseWideChar(const wchar_t* str) -> StringHelper&
 {
     NO_STACK_TRACE_ENTRY();
+
+    OwnStorage();
 
     const auto len = static_cast<int>(::wcslen(str));
 
@@ -670,21 +959,24 @@ auto _str::parseWideChar(const wchar_t* str) -> _str&
         _freea(buf);
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::toWideChar() const -> std::wstring
+auto StringHelper::toWideChar() const -> std::wstring
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_s.empty()) {
+    if (_sv.empty()) {
         return L"";
     }
 
-    auto* buf = static_cast<wchar_t*>(_malloca(_s.length() * sizeof(wchar_t) * 2));
-    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _s.c_str(), static_cast<int>(_s.length()), buf, static_cast<int>(_s.length()));
+    auto* buf = static_cast<wchar_t*>(_malloca(_sv.length() * sizeof(wchar_t) * 2));
 
+    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), static_cast<int>(_sv.length()), buf, static_cast<int>(_sv.length()));
     auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
+
     _freea(buf);
 
     return result;
@@ -693,130 +985,146 @@ auto _str::toWideChar() const -> std::wstring
 
 // ReSharper restore CppInconsistentNaming
 
+// 0xFFFD - Unicode REPLACEMENT CHARACTER
+static constexpr uint UNICODE_BAD_CHAR = 0xFFFD;
+
 auto utf8::IsValid(uint ucs) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    // 0xFFFD - Unicode REPLACEMENT CHARACTER
-    return ucs != 0xFFFD && ucs <= 0x10FFFF;
+    return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
 }
 
-auto utf8::Decode(string_view str, uint* length) noexcept -> uint
+auto utf8::DecodeStrNtLen(const char* str) noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
-#define DECODE_FAIL() \
-    do { \
-        if (length) { \
-            *length = 1; \
-        } \
-        return 0xFFFD; \
-    } while (0)
+    size_t length = 0;
 
-    const auto c = *reinterpret_cast<const uint8*>(str.data());
+    if (str[0] != 0) {
+        length++;
+
+        if (str[1] != 0) {
+            length++;
+
+            if (str[2] != 0) {
+                length++;
+
+                if (str[3] != 0) {
+                    length++;
+                }
+            }
+        }
+    }
+
+    return length;
+}
+
+auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (length == 0) {
+        return UNICODE_BAD_CHAR;
+    }
+
+    const auto make_result = [&length](uint ch, size_t ch_lenght) -> uint {
+        STRONG_ASSERT(ch_lenght <= length);
+        length = ch_lenght;
+        return ch;
+    };
+
+    const auto make_error = [&length]() -> uint {
+        length = 1;
+        return UNICODE_BAD_CHAR;
+    };
+
+    const auto c = *reinterpret_cast<const uint8*>(str);
 
     if (c < 0x80) {
-        if (length != nullptr) {
-            *length = 1;
-        }
-
-        return c;
+        return make_result(c, 1);
     }
 
     if (c < 0xc2) {
-        DECODE_FAIL();
+        return make_error();
+    }
+
+    if (length < 2) {
+        return make_error();
     }
 
     if ((str[1] & 0xc0) != 0x80) {
-        DECODE_FAIL();
+        return make_error();
     }
 
     if (c < 0xe0) {
-        if (length != nullptr) {
-            *length = 2;
-        }
+        return make_result(((str[0] & 0x1f) << 6) + (str[1] & 0x3f), 2);
+    }
 
-        return ((str[0] & 0x1f) << 6) + (str[1] & 0x3f);
+    if (length < 3) {
+        return make_error();
     }
 
     if (c == 0xe0) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] < 0xa0) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] < 0xa0) {
+            return make_error();
         }
 
         if ((str[2] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
 
-        if (length != nullptr) {
-            *length = 3;
-        }
-
-        return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
+        return make_result(((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f), 3);
     }
 
     if (c < 0xf0) {
         if ((str[2] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
 
-        if (length != nullptr) {
-            *length = 3;
-        }
+        return make_result(((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f), 3);
+    }
 
-        return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
+    if (length < 4) {
+        return make_error();
     }
 
     if (c == 0xf0) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] < 0x90) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] < 0x90) {
+            return make_error();
         }
 
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
 
-        if (length != nullptr) {
-            *length = 4;
-        }
-
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
     if (c < 0xf4) {
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
 
-        if (length != nullptr) {
-            *length = 4;
-        }
-
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
     if (c == 0xf4) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] > 0x8f) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] > 0x8f) {
+            return make_error();
         }
 
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
 
-        if (length != nullptr) {
-            *length = 4;
-        }
-
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
-    DECODE_FAIL();
-
-#undef DECODE_FAIL
+    return make_error();
 }
 
-auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> uint
+auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
