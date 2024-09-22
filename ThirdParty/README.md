@@ -28,4 +28,4 @@
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
-* zlib - [zlib128](https://www.zlib.net/)
+* zlib - [zlib-1.3.1](https://www.zlib.net/)

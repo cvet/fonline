@@ -78,6 +78,9 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 # Third-party libs
 StatusMessage("Third-party libs:")
 
+set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
+
 # Rpmalloc
 if(WIN32 OR LINUX OR APPLE OR ANDROID)
     StatusMessage("+ Rpmalloc")
@@ -140,16 +143,22 @@ DisableLibWarnings(TracyClient)
 # Zlib
 StatusMessage("+ Zlib")
 set(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_ZLIB_DIR}")
 include_directories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
-list(APPEND FO_COMMON_LIBS "zlibstatic")
-DisableLibWarnings(zlibstatic)
+set(FO_ZLIB_CONTRIB_SOURCE
+    "${FO_ZLIB_DIR}/contrib/minizip/unzip.c"
+    "${FO_ZLIB_DIR}/contrib/minizip/unzip.h"
+    "${FO_ZLIB_DIR}/contrib/minizip/ioapi.c"
+    "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
+add_library(zlibcontrib ${FO_ZLIB_CONTRIB_SOURCE})
+list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
+DisableLibWarnings(zlibstatic zlibcontrib)
 
 # PNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ PNG")
     set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/PNG")
-    set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
     set(ZLIB_INCLUDE_DIR "../${FO_ZLIB_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
     set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -331,7 +340,6 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(LIBRESSL_APPS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(LIBRESSL_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_ASM ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_EXTRATESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_NC OFF CACHE BOOL "Forced by FOnline" FORCE)
