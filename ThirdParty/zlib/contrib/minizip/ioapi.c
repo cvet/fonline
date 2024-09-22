@@ -25,6 +25,13 @@
 #define FSEEKO_FUNC(stream, offset, origin) fseeko64(stream, offset, origin)
 #endif
 
+// (FOnline Patch)
+#undef FOPEN_FUNC
+#undef FTELLO_FUNC
+#undef FSEEKO_FUNC
+#define FOPEN_FUNC(filename, mode) 0
+#define FTELLO_FUNC(stream) 0
+#define FSEEKO_FUNC(stream, offset, origin) 0
 
 #include "ioapi.h"
 
