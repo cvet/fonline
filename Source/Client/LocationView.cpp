@@ -42,7 +42,7 @@ LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* pr
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = format("{}_{}", proto->GetName(), id);
 }
 
 void LocationView::OnDestroySelf()

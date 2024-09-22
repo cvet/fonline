@@ -461,7 +461,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    const string ext = _str(path).getFileExtension();
+    const string ext = format(path).getFileExtension();
     if (ext.empty()) {
         BreakIntoDebugger();
         WriteLog("Extension not found, file '{}'", path);
@@ -1041,7 +1041,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 y1 -= iround(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), format("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
         }
 
         // Process contour effect
@@ -1589,7 +1589,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     }
 
     // Load font data
-    string fname = _str("Fonts/{}.fofnt", font_name);
+    string fname = format("Fonts/{}.fofnt", font_name);
     auto file = _resources.ReadFile(fname);
     if (!file) {
         WriteLog("File '{}' not found", fname);
@@ -1651,14 +1651,17 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
         else if (key == "Letter") {
             std::getline(str, letter_buf, '\n');
             auto utf8_letter_begin = letter_buf.find('\'');
+
             if (utf8_letter_begin == string::npos) {
                 WriteLog("Font '{}' invalid letter specification", fname);
                 return false;
             }
+
             utf8_letter_begin++;
 
-            uint letter_len = 0;
-            auto letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, &letter_len);
+            size_t letter_len = letter_buf.length() - utf8_letter_begin;
+            auto letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, letter_len);
+
             if (!utf8::IsValid(letter)) {
                 WriteLog("Font '{}' invalid UTF8 letter at  '{}'", fname, letter_buf);
                 return false;
@@ -1753,7 +1756,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     auto&& font = std::make_unique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
-    auto file = _resources.ReadFile(_str("Fonts/{}.fnt", font_name));
+    auto file = _resources.ReadFile(format("Fonts/{}.fnt", font_name));
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
         return false;
@@ -1963,8 +1966,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     auto flags = fi.Flags;
     auto* font = fi.CurFont;
     auto& r = fi.Region;
-    auto infinity_w = (r.Left == r.Right);
-    auto infinity_h = (r.Top == r.Bottom);
+    auto infinity_w = r.Left == r.Right;
+    auto infinity_h = r.Top == r.Bottom;
     auto curx = 0;
     auto cury = 0;
     auto& offs_col = fi.OffsColDots;
@@ -1982,8 +1985,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     // Colorize
     ucolor* dots = nullptr;
     uint d_offs = 0;
-    auto* str_ = str;
     string buf;
+
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
         dots = fi.ColorDots;
     }
@@ -1992,7 +1995,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     ucolor dots_history[dots_history_len] = {fi.DefColor};
     uint dots_history_cur = 0;
 
-    while (*str_ != 0) {
+    for (auto* str_ = str; *str_ != 0;) {
         auto* s0 = str_;
         StrGoTo(str_, '|');
         auto* s1 = str_;
@@ -2046,9 +2049,11 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     // Format
     curx = r.Left;
     cury = r.Top;
+
     for (auto i = 0, i_advance = 1; str[i] != 0; i += i_advance) {
-        uint letter_len = 0;
-        auto letter = utf8::Decode(&str[i], &letter_len);
+        auto letter_len = utf8::DecodeStrNtLen(&str[i]);
+        auto letter = utf8::Decode(&str[i], letter_len);
+        letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = static_cast<int>(letter_len);
 
         auto x_advance = 0;
@@ -2178,8 +2183,6 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 skip_line--;
                 StrEraseInterval(str, i + i_advance);
                 offs_col += i + i_advance;
-                //	if(fmt_type==FORMAT_TYPE_DRAW)
-                //		for(int k=0,l=MAX_FOTEXT-(i+1);k<l;k++) fi.ColorDots[k]=fi.ColorDots[k+i+1];
                 i = 0;
                 i_advance = 0;
             }
@@ -2286,12 +2289,14 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         fi.LineWidth[i] = static_cast<int16>(curx);
     }
 
-    auto can_count = false;
-    auto spaces = 0;
-    auto curstr = 0;
+    bool can_count = false;
+    int spaces = 0;
+    int curstr = 0;
+
     for (auto i = 0, i_advance = 1;; i += i_advance) {
-        uint letter_len = 0;
-        auto letter = utf8::Decode(&str[i], &letter_len);
+        auto letter_len = utf8::DecodeStrNtLen(&str[i]);
+        auto letter = utf8::Decode(&str[i], letter_len);
+        letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = static_cast<int>(letter_len);
 
         switch (letter) {
@@ -2309,17 +2314,6 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             fi.LineWidth[curstr] = static_cast<int16>(curx);
             cury += font->LineHeight + font->YAdvance;
             curx = r.Left;
-
-            // Erase last spaces
-            /*for(int j=i-1;spaces>0 && j>=0;j--)
-               {
-               if(str[j]==' ')
-               {
-               spaces--;
-               str[j]='\r';
-               }
-               else if(str[j]!='\r') break;
-               }*/
 
             // Align
             if (fi.LineSpaceWidth[curstr] == 1 && spaces > 0 && !infinity_w) {
@@ -2340,7 +2334,6 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             if (it != font->Letters.end()) {
                 curx += it->second.XAdvance;
             }
-            // if(curx>fi.LineWidth[curstr]) fi.LineWidth[curstr]=curx;
             can_count = true;
             break;
         }
@@ -2430,9 +2423,11 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor 
 
     auto variable_space = false;
     int i_advance;
+
     for (auto i = 0; str_[i] != 0; i += i_advance) {
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             const auto new_color = fi.ColorDots[i + offs_col];
+
             if (new_color != ucolor::clear) {
                 if (new_color.comp.a != 0) {
                     color = new_color; // With alpha
@@ -2440,12 +2435,14 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor 
                 else {
                     color = ucolor {new_color, color.comp.a};
                 }
+
                 color = ApplyColorBrightness(color);
             }
         }
 
-        uint letter_len = 0;
-        auto letter = utf8::Decode(&str_[i], &letter_len);
+        auto letter_len = utf8::DecodeStrNtLen(&str_[i]);
+        auto letter = utf8::Decode(&str_[i], letter_len);
+        letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = static_cast<int>(letter_len);
 
         switch (letter) {

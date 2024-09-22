@@ -658,7 +658,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
 
 /*static MonoAssembly* LoadNetAssembly(string_view name)
 {
-    string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
+    string assemblies_path = "Assemblies/" + name + (format(name).endsWith(".dll") ? "" : ".dll");
 #if FONLINE_SERVER
     assemblies_path = "Resources/Mono/" + assemblies_path;
 #endif
@@ -692,7 +692,7 @@ static MonoAssembly* LoadGameAssembly(string_view name, map<string, MonoImage*>&
 static bool CompileGameAssemblies(string_view target, map<string, MonoImage*>& assembly_images)
 {
     string mono_path = MainConfig->GetStr("", "MonoPath");
-    string xbuild_path = _str(mono_path + "/bin/xbuild.bat").resolvePath();
+    string xbuild_path = format(mono_path + "/bin/xbuild.bat").resolvePath();
 
     FileCollection proj_files("csproj");
     while (proj_files.IsNextFile())
@@ -703,12 +703,12 @@ static bool CompileGameAssemblies(string_view target, map<string, MonoImage*>& a
 
         // Compile
         string command =
-            _str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path);
+            format("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path);
         string output;
         int call_result = SystemCall(command, output);
         if (call_result)
         {
-            StrVec errors = _str(output).split('\n');
+            StrVec errors = format(output).split('\n');
             WriteLog("Compilation failed! Error{}:", errors.size() > 1 ? "s" : "");
             for (string& error : errors)
                 WriteLog("{}\n", error);
@@ -723,11 +723,11 @@ static bool CompileGameAssemblies(string_view target, map<string, MonoImage*>& a
         RUNTIME_ASSERT(pos != string::npos);
         size_t epos = file_content.find("</OutputPath>", pos);
         RUNTIME_ASSERT(epos != string::npos);
-        pos += _str("<OutputPath>").length();
+        pos += format("<OutputPath>").length();
 
         string assembly_name = name + ".dll";
         string assembly_path =
-            _str("{}/{}/{}", _str(path).extractDir(), file_content.substr(pos, epos - pos), assembly_name)
+            format("{}/{}/{}", format(path).extractDir(), file_content.substr(pos, epos - pos), assembly_name)
                 .resolvePath();
 
         File assembly_file;

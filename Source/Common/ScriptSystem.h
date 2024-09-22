@@ -41,6 +41,7 @@ DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
 
+// ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8
 {
 };
@@ -53,6 +54,7 @@ enum class ScriptEnum_int : int
 enum class ScriptEnum_uint : uint
 {
 };
+// ReSharper restore CppInconsistentNaming
 
 using GameComponent = ScriptEnum_int;
 using PlayerComponent = ScriptEnum_int;
@@ -112,7 +114,7 @@ public:
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
     [[nodiscard]] auto GetResult() -> TRet { return _ret; }
 
-    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, &_ret) : false; }
+    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, &_ret) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -132,7 +134,7 @@ public:
     [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
 
-    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, nullptr) : false; }
+    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, nullptr) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -166,7 +168,7 @@ public:
     }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, Args... args, TRet& ret) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
         if (func && func(args...)) {
@@ -177,7 +179,7 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, Args... args) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);

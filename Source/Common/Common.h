@@ -71,6 +71,8 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cfloat>
+#include <charconv>
 #include <chrono>
 #include <climits>
 #include <clocale>
@@ -314,7 +316,7 @@ struct fmt::formatter<strong_type<T>>
     }
 
     template<typename FormatContext>
-    auto format(const strong_type<T>& s, FormatContext& ctx)
+    auto format(const strong_type<T>& s, FormatContext& ctx) const
     {
         return format_to(ctx.out(), "{}", s.underlying_value());
     }
@@ -400,7 +402,7 @@ struct fmt::formatter<time_duration>
     }
 
     template<typename FormatContext>
-    auto format(const time_duration& t, FormatContext& ctx)
+    auto format(const time_duration& t, FormatContext& ctx) const
     {
         if (t < std::chrono::milliseconds {1}) {
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
@@ -443,7 +445,7 @@ struct fmt::formatter<time_point>
     }
 
     template<typename FormatContext>
-    auto format(const time_point& t, FormatContext& ctx)
+    auto format(const time_point& t, FormatContext& ctx) const
     {
         const auto td = time_point_desc(t);
         return format_to(ctx.out(), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
@@ -604,12 +606,12 @@ struct ExceptionStackTraceData
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-        explicit exception_name(string_view message, Args... args) noexcept : \
+        explicit exception_name(string_view message, Args&&... args) noexcept : \
             BaseEngineException(#exception_name, nullptr, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
-        exception_name(ExceptionStackTraceData data, string_view message, Args... args) noexcept : \
+        exception_name(ExceptionStackTraceData data, string_view message, Args&&... args) noexcept : \
             BaseEngineException(#exception_name, &data, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -632,7 +634,7 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(const char* name, ExceptionStackTraceData* st_data, string_view message, Args... args) noexcept :
+    explicit BaseEngineException(const char* name, ExceptionStackTraceData* st_data, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
@@ -855,7 +857,7 @@ public:
     auto operator=(EventDispatcher&&) noexcept -> EventDispatcher& = default;
     ~EventDispatcher() = default;
 
-    auto operator()(Args... args) -> EventDispatcher&
+    auto operator()(Args&&... args) -> EventDispatcher&
     {
         // Todo: recursion guard for EventDispatcher
         if (!_observer._subscriberCallbacks.empty()) {
@@ -963,7 +965,7 @@ private:
 
 // Float safe comparator
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
-[[nodiscard]] constexpr auto float_abs(T f) noexcept -> float
+[[nodiscard]] constexpr auto float_abs(T f) noexcept -> T
 {
     return f < 0 ? -f : f;
 }
@@ -1362,7 +1364,7 @@ struct fmt::formatter<ucolor>
     }
 
     template<typename FormatContext>
-    auto format(const ucolor& c, FormatContext& ctx)
+    auto format(const ucolor& c, FormatContext& ctx) const
     {
         return format_to(ctx.out(), "0x{:x}", c.rgba);
     }
@@ -1424,7 +1426,7 @@ struct fmt::formatter<hstring>
     }
 
     template<typename FormatContext>
-    auto format(const hstring& s, FormatContext& ctx)
+    auto format(const hstring& s, FormatContext& ctx) const
     {
         return format_to(ctx.out(), "{}", s.as_str());
     }
@@ -1727,7 +1729,7 @@ constexpr auto copy(const T& value) -> T
 
 // Noexcept wrappers
 template<typename T, typename... Args>
-inline void safe_call(const T& callable, Args... args) noexcept
+inline void safe_call(const T& callable, Args&&... args) noexcept
 {
     static_assert(!std::is_nothrow_invocable_v<T, Args...>);
 
@@ -1743,7 +1745,7 @@ inline void safe_call(const T& callable, Args... args) noexcept
 }
 
 template<typename... Args>
-inline auto safe_format(string_view message, Args... args) noexcept -> string
+inline auto safe_format(string_view message, Args&&... args) noexcept -> string
 {
     try {
         return fmt::format(message, std::forward<Args>(args)...);
@@ -1970,6 +1972,12 @@ template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 constexpr auto iround(T value) noexcept -> int
 {
     return static_cast<int>(std::lround(value));
+}
+
+template<typename T, typename U>
+constexpr auto clamp_to(U value) noexcept -> T
+{
+    return static_cast<T>(std::clamp(value, static_cast<U>(std::numeric_limits<T>::min()), static_cast<U>(std::numeric_limits<T>::max())));
 }
 
 // Hashing

@@ -61,7 +61,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
 
     const auto ctrl_shift = CtrlDwn || ShiftDwn;
-    const auto dik_text_len_utf8 = _str(dik_text).lengthUtf8();
+    const auto dik_text_len_utf8 = format(dik_text).lengthUtf8();
     const auto str_len = static_cast<uint>(str.length());
 
     uint position_dummy = str_len;
@@ -74,6 +74,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     if (dik == KeyCode::Right && !ctrl_shift) {
         if (pos < str_len) {
             pos++;
+
             while (pos < str_len && (str[pos] & 0xC0) == 0x80) {
                 pos++;
             }
@@ -82,6 +83,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     else if (dik == KeyCode::Left && !ctrl_shift) {
         if (pos > 0) {
             pos--;
+
             while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
                 pos--;
             }
@@ -91,6 +93,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
         if (pos > 0) {
             uint letter_len = 1;
             pos--;
+
             while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
                 pos--;
                 letter_len++;
@@ -103,6 +106,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
         if (pos < str_len) {
             uint letter_len = 1;
             auto pos_ = pos + 1;
+
             while (pos_ < str_len && (str[pos_] & 0xC0) == 0x80) {
                 pos_++;
                 letter_len++;
@@ -119,6 +123,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
     else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::C || dik == KeyCode::X)) {
         App->Input.SetClipboardText(str);
+
         if (dik == KeyCode::X) {
             str.clear();
             pos = 0;
@@ -132,6 +137,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     else if (dik == KeyCode::Text) {
         auto text = string(dik_text);
         RemoveInvalidChars(text, flags);
+
         if (!text.empty()) {
             str.insert(pos, text);
             pos += static_cast<uint>(text.length());
@@ -147,9 +153,11 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
 
         for (size_t i = 0; i < dik_text.length();) {
             uint length = 0;
+
             if (IsInvalidChar(dik_text.data() + i, flags, length)) {
                 return;
             }
+
             i += length;
         }
 
@@ -164,6 +172,7 @@ void Keyboard::RemoveInvalidChars(string& str, uint flags) const
 
     for (size_t i = 0; i < str.length();) {
         uint length = 0;
+
         if (IsInvalidChar(str.c_str() + i, flags, length)) {
             str.erase(i, length);
         }
@@ -173,25 +182,29 @@ void Keyboard::RemoveInvalidChars(string& str, uint flags) const
     }
 }
 
-auto Keyboard::IsInvalidChar(string_view str, uint flags, uint& length) const -> bool
+auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto ucs = utf8::Decode(str, &length);
+    size_t decode_length = utf8::DecodeStrNtLen(str);
+    const auto ucs = utf8::Decode(str, decode_length);
+
     if (!utf8::IsValid(ucs)) {
         return true;
     }
 
+    length = static_cast<uint>(decode_length);
+
     if (length == 1) {
-        if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str.data() == '\n' || *str.data() == '\r' || *str.data() == '\t')) {
+        if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str == '\n' || *str == '\r' || *str == '\t')) {
             return true;
         }
-        if ((flags & KIF_ONLY_NUMBERS) != 0u && (*str.data() < '0' || *str.data() > '9')) {
+        if ((flags & KIF_ONLY_NUMBERS) != 0u && (*str < '0' || *str > '9')) {
             return true;
         }
 
         if ((flags & KIF_FILE_NAME) != 0u) {
-            switch (*str.data()) {
+            switch (*str) {
             case '\\':
             case '/':
             case ':':

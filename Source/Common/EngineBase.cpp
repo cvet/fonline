@@ -87,10 +87,11 @@ void FOEngineBase::RegisterEnumGroup(string_view name, const type_info& underlyi
     RUNTIME_ASSERT(_enums.count(string(name)) == 0);
 
     unordered_map<int, string> key_values_rev;
+
     for (auto&& [key, value] : key_values) {
         RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev[value] = key;
-        const auto full_key = _str("{}::{}", name, key).str();
+        const string full_key = format("{}::{}", name, key);
         RUNTIME_ASSERT(_enumsFull.count(full_key) == 0);
         _enumsFull[full_key] = value;
     }
@@ -268,13 +269,13 @@ auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
     else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
         return ToHashedString(string_view(str).substr(str.rfind(':') + 1)).as_int();
     }
-    else if (_str(str).isNumber()) {
-        return _str(str).toInt();
+    else if (format(str).isNumber()) {
+        return format(str).toInt();
     }
-    else if (_str(str).compareIgnoreCase("true")) {
+    else if (format(str).compareIgnoreCase("true")) {
         return 1;
     }
-    else if (_str(str).compareIgnoreCase("false")) {
+    else if (format(str).compareIgnoreCase("false")) {
         return 0;
     }
 

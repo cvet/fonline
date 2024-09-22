@@ -191,7 +191,7 @@ void EffectBaker::AutoBake()
     while (_files.MoveNext()) {
         auto file_header = _files.GetCurFileHeader();
 
-        string ext = _str(file_header.GetPath()).getFileExtension();
+        string ext = format(file_header.GetPath()).getFileExtension();
         if (ext != "fofx") {
             continue;
         }
@@ -256,17 +256,17 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
     const auto shader_common_content = fofx.GetSectionContent("ShaderCommon");
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
-    const auto shader_version_str = _str("#version {} es\n", shader_version).str();
+    const auto shader_version_str = format("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
-    const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
+    const auto shader_defines = format("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
-    const auto shader_defines = _str("precision mediump float;\n").str();
+    const auto shader_defines = format("precision mediump float;\n").str();
 #endif
     const auto* shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
-    const auto shader_defines_ex2 = _str("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
+    const auto shader_defines_ex2 = format("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
     for (auto pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = fofx.GetSectionContent(_str("VertexShader Pass{}", pass));
+        string vertex_pass_content = fofx.GetSectionContent(format("VertexShader Pass{}", pass));
         if (vertex_pass_content.empty()) {
             vertex_pass_content = fofx.GetSectionContent("VertexShader");
         }
@@ -274,7 +274,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = fofx.GetSectionContent(_str("FragmentShader Pass{}", pass));
+        string fragment_pass_content = fofx.GetSectionContent(format("FragmentShader Pass{}", pass));
         if (fragment_pass_content.empty()) {
             fragment_pass_content = fofx.GetSectionContent("FragmentShader");
         }
@@ -327,7 +327,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         for (int i = 0; i < program.getNumUniformVariables(); i++) {
             const auto& uniform = program.getUniform(i);
             if (uniform.getType()->getBasicType() == glslang::EbtSampler) {
-                program_info += _str("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform.name.c_str())));
+                program_info += format("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform.name.c_str())));
 
 #define CHECK_TEX(tex_name) \
     if (uniform.name == tex_name) { \
@@ -337,7 +337,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
                 CHECK_TEX("EggTex");
 #if FO_ENABLE_3D
                 for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
-                    CHECK_TEX(_str("ModelTex{}", j).str());
+                    CHECK_TEX(format("ModelTex{}", j).str());
                 }
 #endif
 #undef CHECK_TEX
@@ -346,7 +346,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
         for (int i = 0; i < program.getNumUniformBlocks(); i++) {
             const auto& uniform_block = program.getUniformBlock(i);
-            program_info += _str("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block.name.c_str())));
+            program_info += format("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block.name.c_str())));
 
 #define CHECK_BUF(buf) \
     if (uniform_block.name == #buf) { \
@@ -371,15 +371,15 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
             throw EffectBakerException("Invalid uniform buffer", fname, uniform_block.name, uniform_block.size);
         }
 
-        const string fname_wo_ext = _str(fname).eraseFileExtension();
-        BakeShaderStage(_str("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
-        BakeShaderStage(_str("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
+        const string fname_wo_ext = format(fname).eraseFileExtension();
+        BakeShaderStage(format("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
+        BakeShaderStage(format("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 
         {
 #if FO_ASYNC_BAKE
             std::scoped_lock locker(_bakedFilesLocker);
 #endif
-            _writeData(_str("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
+            _writeData(format("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
         }
     }
 
@@ -415,7 +415,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.spv", fname_wo_ext), data);
+        _writeData(format("{}.spv", fname_wo_ext), data);
     };
 
     // SPIR-V to GLSL
@@ -430,7 +430,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(format("{}.glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -445,7 +445,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.glsl-es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(format("{}.glsl-es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
@@ -458,7 +458,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(format("{}.hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -471,7 +471,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.msl-mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(format("{}.msl-mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -484,7 +484,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::scoped_lock locker(_bakedFilesLocker);
 #endif
-        _writeData(_str("{}.msl-ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(format("{}.msl-ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
 #if FO_ASYNC_BAKE

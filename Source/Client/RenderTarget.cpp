@@ -211,13 +211,13 @@ void RenderTargetManager::DumpTextures() const
     }
 
     const auto date = Timer::GetCurrentDateTime();
-    const string dir = _str("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = format("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
     const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
         if (rt != nullptr) {
-            const string fname = _str("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Width, rt->MainTex->Height);
+            const string fname = format("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Width, rt->MainTex->Height);
             auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
             GenericUtils::WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
         }
@@ -225,7 +225,7 @@ void RenderTargetManager::DumpTextures() const
 
     int cnt = 1;
     for (auto&& rt : _rtAll) {
-        write_rt(_str("All_{}", cnt), rt.get());
+        write_rt(format("All_{}", cnt), rt.get());
         cnt++;
     }
 }

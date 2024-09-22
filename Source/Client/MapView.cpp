@@ -75,7 +75,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = format("{}_{}", proto->GetName(), id);
 
     SetSpritesZoom(1.0f);
 
@@ -249,7 +249,7 @@ void MapView::LoadStaticData()
 {
     STACK_TRACE_ENTRY();
 
-    const auto file = _engine->Resources.ReadFile(_str("{}.fomapb2", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(format("{}.fomapb2", GetProtoId()));
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
@@ -2822,7 +2822,7 @@ void MapView::DrawMap()
             DrawCursor(_cursorXPic.get());
         }
         else if (_drawCursorX > 0) {
-            DrawCursor(_str("{}", _drawCursorX));
+            DrawCursor(format("{}", _drawCursorX));
         }
     }
 
@@ -4750,7 +4750,7 @@ auto MapView::ValidateForSave() const -> vector<string>
     for (const auto* cr : _critters) {
         for (const auto* cr2 : _critters) {
             if (cr != cr2 && cr->GetHexX() == cr2->GetHexX() && cr->GetHexY() == cr2->GetHexY() && cr_reported.count(cr) == 0 && cr_reported.count(cr2) == 0) {
-                errors.emplace_back(_str("Critters have same hex coords at {} {}", cr->GetHexX(), cr->GetHexY()));
+                errors.emplace_back(format("Critters have same hex coords at {} {}", cr->GetHexX(), cr->GetHexY()));
                 cr_reported.emplace(cr);
                 cr_reported.emplace(cr2);
             }
@@ -4781,7 +4781,7 @@ auto MapView::SaveToText() const -> string
     // Critters
     for (const auto* cr : _critters) {
         auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
-        kv["$Id"] = _str("{}", cr->GetId());
+        kv["$Id"] = format("{}", cr->GetId());
         kv["$Proto"] = cr->GetProto()->GetName();
         fill_section("Critter", kv);
     }
@@ -4789,7 +4789,7 @@ auto MapView::SaveToText() const -> string
     // Items
     for (const auto* item : _allItems) {
         auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
-        kv["$Id"] = _str("{}", item->GetId());
+        kv["$Id"] = format("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();
         fill_section("Item", kv);
     }

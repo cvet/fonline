@@ -44,7 +44,7 @@ Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Propertie
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = format("{}_{}", proto->GetName(), id);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)

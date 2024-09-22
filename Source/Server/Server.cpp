@@ -77,7 +77,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
-            const auto health_file_name = _str("{}_Health.txt", exe_path ? _str(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
+            const string health_file_name = format("{}_Health.txt", exe_path ? format(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
             auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 
             if (health_file) {
@@ -95,7 +95,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                                 string buf;
                                 buf.reserve(health_info.size() + 128);
 
-                                buf += _str("{}\n\n", FO_GAME_NAME);
+                                buf += format("{}\n\n", FO_GAME_NAME);
                                 buf += health_info;
 
                                 _healthFile->Write(buf);
@@ -125,15 +125,15 @@ FOServer::FOServer(GlobalSettings& settings) :
         Resources.AddDataSource(Settings.EmbeddedResources);
         Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerProtos"));
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("Maps"));
+        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("ServerProtos"));
+        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("Dialogs"));
         if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-            Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerAngelScript"));
+            Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("ServerAngelScript"));
         }
 
         for (const auto& entry : Settings.ServerResourceEntries) {
-            Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+            Resources.AddDataSource(format(Settings.ResourcesDir).combinePath(entry));
         }
 
         return std::nullopt;
@@ -348,7 +348,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
+            client_resources.AddDataSource(format("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -377,7 +377,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
-                add_sync_file(_str("{}.zip", resource_entry));
+                add_sync_file(format("{}.zip", resource_entry));
             }
 
             // Complete files list
@@ -908,7 +908,7 @@ void FOServer::DrawGui(string_view server_name)
             if (Settings.LockMaxWaitTime != 0) {
                 const auto max_wait_time = time_duration {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
                 if (!Lock(max_wait_time)) {
-                    ImGui::TextUnformatted(_str("Server hanged (no response more than {})", max_wait_time).c_str());
+                    ImGui::TextUnformatted(format("Server hanged (no response more than {})", max_wait_time).c_str());
                     WriteLog("Server hanged (no response more than {})", max_wait_time);
                     return;
                 }
@@ -965,23 +965,23 @@ auto FOServer::GetHealthInfo() const -> string
     buf.reserve(2048);
 
     const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
-    buf += _str("Cur time: {}\n", Timer::CurTime());
-    buf += _str("Uptime: {}\n", _stats.Uptime);
-    buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
-    buf += _str("Connections: {}\n", _stats.CurOnline);
-    buf += _str("Players in game: {}\n", EntityMngr.GetPlayersCount());
-    buf += _str("Critters in game: {}\n", EntityMngr.GetCrittersCount());
-    buf += _str("Locations: {}\n", EntityMngr.GetLocationsCount());
-    buf += _str("Maps: {}\n", EntityMngr.GetMapsCount());
-    buf += _str("Items: {}\n", EntityMngr.GetItemsCount());
-    buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
-    buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
-    buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
-    buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
-    buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
-    buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-    buf += _str("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-    buf += _str("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
+    buf += format("Cur time: {}\n", Timer::CurTime());
+    buf += format("Uptime: {}\n", _stats.Uptime);
+    buf += format("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
+    buf += format("Connections: {}\n", _stats.CurOnline);
+    buf += format("Players in game: {}\n", EntityMngr.GetPlayersCount());
+    buf += format("Critters in game: {}\n", EntityMngr.GetCrittersCount());
+    buf += format("Locations: {}\n", EntityMngr.GetLocationsCount());
+    buf += format("Maps: {}\n", EntityMngr.GetMapsCount());
+    buf += format("Items: {}\n", EntityMngr.GetItemsCount());
+    buf += format("Loops per second: {}\n", _stats.LoopsPerSecond);
+    buf += format("Average loop time: {}\n", _stats.LoopAvgTime);
+    buf += format("Min loop time: {}\n", _stats.LoopMinTime);
+    buf += format("Max loop time: {}\n", _stats.LoopMaxTime);
+    buf += format("KBytes Send: {}\n", _stats.BytesSend / 1024);
+    buf += format("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
+    buf += format("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+    buf += format("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
 
     return buf;
 }
@@ -993,15 +993,15 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     const auto& players = EntityMngr.GetPlayers();
     const auto conn_count = _unloginedPlayers.size() + players.size();
 
-    string result = _str("Players in game: {}\nConnections: {}\n", players.size(), conn_count);
+    string result = format("Players in game: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
     for (auto&& [id, player] : players) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
-        const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
+        const string str_loc = format("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
+        result += format("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -1159,7 +1159,7 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Text(player);
             break;
         case NETMSG_SEND_COMMAND:
-            Process_Command(player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
+            Process_Command(player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, format(s).trim(), SAY_NETMSG); }, player, "");
             break;
         case NETMSG_DIR:
             Process_Dir(player);
@@ -1344,7 +1344,7 @@ void FOServer::Process_Text(Player* player)
 
     if (how_say == SAY_RADIO) {
         for (auto& tl : _textListeners) {
-            if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+            if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && format(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
                 listen_callbacks.emplace_back(tl.Func, str);
             }
         }
@@ -1354,7 +1354,7 @@ void FOServer::Process_Text(Player* player)
         const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
 
         for (auto& tl : _textListeners) {
-            if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+            if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && format(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
                 listen_callbacks.emplace_back(tl.Func, str);
             }
         }
@@ -1419,7 +1419,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        string istr = _str("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", player_cr->GetName(), player_cr->GetId());
+        string istr = format("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", player_cr->GetName(), player_cr->GetId());
         switch (player->Access) {
         case ACCESS_CLIENT:
             istr += "|0xFFFF0000 Client|0xFF00FF00";
@@ -1465,12 +1465,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        string str = _str("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
+        string str = format("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
             _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.FrameTime(), GameTime.FrameTime() - _stats.ServerStartTime);
 
         result += str;
 
-        for (const auto& line : _str(result).split('\n')) {
+        for (const auto& line : format(result).split('\n')) {
             logcb(line);
         }
     } break;
@@ -1482,7 +1482,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto player_id = MakePlayerId(name);
 
         if (DbStorage.Valid(PlayersCollectionName, player_id)) {
-            logcb(_str("Player id is {}", player_id));
+            logcb(format("Player id is {}", player_id));
         }
         else {
             logcb("Client not found");
@@ -2453,14 +2453,14 @@ void FOServer::Process_Register(Player* unlogined_player)
     const auto password = unlogined_player->Connection->InBuf.Read<string>();
 
     // Check data
-    if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
+    if (!format(name).isValidUtf8() || name.find('*') != string::npos) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check name length
-    const auto name_len_utf8 = _str(name).lengthUtf8();
+    const auto name_len_utf8 = format(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
@@ -2484,7 +2484,7 @@ void FOServer::Process_Register(Player* unlogined_player)
             const auto tick = GameTime.FrameTime();
             if (tick - last_reg < reg_tick) {
                 unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REGISTRATION_IP_WAIT);
-                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, _str("$time{}", time_duration_to_ms<uint>(reg_tick - (tick - last_reg)) / 60000 + 1));
+                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, format("$time{}", time_duration_to_ms<uint>(reg_tick - (tick - last_reg)) / 60000 + 1));
                 unlogined_player->Connection->GracefulDisconnect();
                 return;
             }
@@ -2555,14 +2555,14 @@ void FOServer::Process_Login(Player* unlogined_player)
     }
 
     // Check valid symbols in name
-    if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
+    if (!format(name).isValidUtf8() || name.find('*') != string::npos) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check for name length
-    const auto name_len_utf8 = _str(name).lengthUtf8();
+    const auto name_len_utf8 = format(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
         unlogined_player->Connection->GracefulDisconnect();
