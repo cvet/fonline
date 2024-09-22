@@ -525,6 +525,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
+        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
         io.BackendPlatformName = "fonline";
         io.WantSaveIniSettings = false;
@@ -546,9 +547,9 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        io.GetClipboardTextFn = [](void*) -> const char* { return App->Input.GetClipboardText().c_str(); };
-        io.SetClipboardTextFn = [](void*, const char* text) { App->Input.SetClipboardText(text); };
-        io.ClipboardUserData = nullptr;
+        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* { return App->Input.GetClipboardText().c_str(); };
+        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) { App->Input.SetClipboardText(text); };
+        platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
         if (ActiveRendererType != RenderType::Null) {
