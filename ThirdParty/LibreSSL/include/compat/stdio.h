@@ -20,9 +20,7 @@
 
 #ifndef HAVE_ASPRINTF
 #include <stdarg.h>
-#define vasprintf libressl_vasprintf
 int vasprintf(char **str, const char *fmt, va_list ap);
-#define asprintf libressl_asprintf
 int asprintf(char **str, const char *fmt, ...);
 #endif
 
@@ -44,7 +42,7 @@ int posix_rename(const char *oldpath, const char *newpath);
 #define rename(oldpath, newpath) posix_rename(oldpath, newpath)
 #endif
 
-#if defined(_MSC_VER) && _MSC_VER < 1900
+#ifdef _MSC_VER
 #define snprintf _snprintf
 #endif
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: certhash.c,v 1.21 2023/03/06 14:32:05 tb Exp $ */
+/*	$OpenBSD: certhash.c,v 1.18 2021/08/28 08:16:39 tb Exp $ */
 /*
  * Copyright (c) 2014, 2015 Joel Sing <jsing@openbsd.org>
  *
@@ -36,20 +36,20 @@
 static struct {
 	int dryrun;
 	int verbose;
-} cfg;
+} certhash_config;
 
 static const struct option certhash_options[] = {
 	{
 		.name = "n",
 		.desc = "Perform a dry-run - do not make any changes",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.dryrun,
+		.opt.flag = &certhash_config.dryrun,
 	},
 	{
 		.name = "v",
 		.desc = "Verbose",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.verbose,
+		.opt.flag = &certhash_config.verbose,
 	},
 	{ NULL },
 };
@@ -490,10 +490,6 @@ certhash_link(struct dirent *dep, struct hashinfo **links)
 		fprintf(stderr, "failed to readlink %s\n", dep->d_name);
 		return (-1);
 	}
-	if (n >= sizeof(target) - 1) {
-		fprintf(stderr, "symbolic link is too long %s\n", dep->d_name);
-		return (-1);
-	}
 	target[n] = '\0';
 
 	hi = hashinfo_from_linkname(dep->d_name, target);
@@ -569,7 +565,7 @@ certhash_directory(const char *path)
 		goto err;
 	}
 
-	if (cfg.verbose)
+	if (certhash_config.verbose)
 		fprintf(stdout, "scanning directory %s\n", path);
 
 	/* Create lists of existing hash links, certs and CRLs. */
@@ -594,11 +590,11 @@ certhash_directory(const char *path)
 		if (link->exists == 0 ||
 		    (link->reference != NULL && link->changed == 0))
 			continue;
-		if (cfg.verbose)
+		if (certhash_config.verbose)
 			fprintf(stdout, "%s link %s -> %s\n",
-			    (cfg.dryrun ? "would remove" :
+			    (certhash_config.dryrun ? "would remove" :
 				"removing"), link->filename, link->target);
-		if (cfg.dryrun)
+		if (certhash_config.dryrun)
 			continue;
 		if (unlink(link->filename) == -1) {
 			fprintf(stderr, "failed to remove link %s\n",
@@ -611,12 +607,12 @@ certhash_directory(const char *path)
 	for (link = links; link != NULL; link = link->next) {
 		if (link->exists == 1 && link->changed == 0)
 			continue;
-		if (cfg.verbose)
+		if (certhash_config.verbose)
 			fprintf(stdout, "%s link %s -> %s\n",
-			    (cfg.dryrun ? "would create" :
+			    (certhash_config.dryrun ? "would create" :
 				"creating"), link->filename,
 			    link->reference->filename);
-		if (cfg.dryrun)
+		if (certhash_config.dryrun)
 			continue;
 		if (symlink(link->reference->filename, link->filename) == -1) {
 			fprintf(stderr, "failed to create link %s -> %s\n",
@@ -653,12 +649,14 @@ certhash_main(int argc, char **argv)
 	int argsused;
 	int i, cwdfd, ret = 0;
 
-	if (pledge("stdio cpath wpath rpath", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&certhash_config, 0, sizeof(certhash_config));
 
 	if (options_parse(argc, argv, certhash_options, NULL, &argsused) != 0) {
                 certhash_usage();

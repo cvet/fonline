@@ -1,9 +1,3 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 
@@ -11,7 +5,6 @@
 
 .p2align	4
 _whirlpool_block:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -595,7 +588,6 @@ L$epilogue:
 	retq
 
 
-.section	__DATA,__const
 .p2align	6
 
 L$table:

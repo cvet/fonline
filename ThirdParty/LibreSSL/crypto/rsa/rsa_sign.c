@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_sign.c,v 1.36 2023/07/08 12:26:45 beck Exp $ */
+/* $OpenBSD: rsa_sign.c,v 1.32 2021/05/14 18:03:42 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -65,9 +65,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "asn1_local.h"
-#include "rsa_local.h"
-#include "x509_local.h"
+#include "rsa_locl.h"
 
 /* Size of an SSL signature: MD5+SHA1 */
 #define SSL_SIG_LENGTH	36
@@ -166,7 +164,6 @@ RSA_sign(int type, const unsigned char *m, unsigned int m_len,
 	freezero(tmps, (size_t)encoded_len);
 	return (ret);
 }
-LCRYPTO_ALIAS(RSA_sign);
 
 /*
  * int_rsa_verify verifies an RSA signature in `sigbuf' using `rsa'. It may be
@@ -277,4 +274,3 @@ RSA_verify(int dtype, const unsigned char *m, unsigned int m_len,
 
 	return int_rsa_verify(dtype, m, m_len, NULL, NULL, sigbuf, siglen, rsa);
 }
-LCRYPTO_ALIAS(RSA_verify);

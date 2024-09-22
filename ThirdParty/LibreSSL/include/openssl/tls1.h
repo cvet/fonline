@@ -1,4 +1,4 @@
-/* $OpenBSD: tls1.h,v 1.59 2024/03/02 11:46:55 tb Exp $ */
+/* $OpenBSD: tls1.h,v 1.49 2021/09/10 14:57:31 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -159,8 +159,6 @@
 extern "C" {
 #endif
 
-#define OPENSSL_TLS_SECURITY_LEVEL 1
-
 #define TLS1_ALLOW_EXPERIMENTAL_CIPHERSUITES	0
 
 #if defined(LIBRESSL_HAS_TLS1_3) || defined(LIBRESSL_INTERNAL)
@@ -272,11 +270,6 @@ extern "C" {
 #define TLSEXT_TYPE_key_share			51
 #endif
 
-/* ExtensionType value from RFC 9001 section 8.2 */
-#if defined(LIBRESSL_HAS_QUIC) || defined(LIBRESSL_INTERNAL)
-#define TLSEXT_TYPE_quic_transport_parameters	57
-#endif
-
 /*
  * TLS 1.3 extension names from OpenSSL, where they decided to use a different
  * name from that given in RFC 8446.
@@ -315,9 +308,6 @@ int SSL_get_servername_type(const SSL *s);
 int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
     const char *label, size_t llen, const unsigned char *p, size_t plen,
     int use_context);
-
-int SSL_get_signature_type_nid(const SSL *ssl, int *nid);
-int SSL_get_peer_signature_type_nid(const SSL *ssl, int *nid);
 
 #define SSL_set_tlsext_host_name(s,name) \
 SSL_ctrl(s,SSL_CTRL_SET_TLSEXT_HOSTNAME,TLSEXT_NAMETYPE_host_name,(char *)name)
@@ -732,13 +722,24 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS1_3_TXT_CHACHA20_POLY1305_SHA256		"AEAD-CHACHA20-POLY1305-SHA256"
 #define TLS1_3_TXT_AES_128_CCM_SHA256			"AEAD-AES128-CCM-SHA256"
 #define TLS1_3_TXT_AES_128_CCM_8_SHA256			"AEAD-AES128-CCM-8-SHA256"
-
-#define TLS1_3_RFC_AES_128_GCM_SHA256			"TLS_AES_128_GCM_SHA256"
-#define TLS1_3_RFC_AES_256_GCM_SHA384			"TLS_AES_256_GCM_SHA384"
-#define TLS1_3_RFC_CHACHA20_POLY1305_SHA256		"TLS_CHACHA20_POLY1305_SHA256"
-#define TLS1_3_RFC_AES_128_CCM_SHA256			"TLS_AES_128_CCM_SHA256"
-#define TLS1_3_RFC_AES_128_CCM_8_SHA256			"TLS_AES_128_CCM_8_SHA256"
 #endif
+
+#define TLS_CT_RSA_SIGN			1
+#define TLS_CT_DSS_SIGN			2
+#define TLS_CT_RSA_FIXED_DH		3
+#define TLS_CT_DSS_FIXED_DH		4
+#define TLS_CT_GOST94_SIGN		21
+#define TLS_CT_GOST01_SIGN		22
+#define TLS_CT_ECDSA_SIGN		64
+#define TLS_CT_RSA_FIXED_ECDH		65
+#define TLS_CT_ECDSA_FIXED_ECDH 	66
+#define TLS_CT_GOST12_256_SIGN		67
+#define TLS_CT_GOST12_512_SIGN		68
+#define TLS_CT_GOST12_256_SIGN_COMPAT	238 /* pre-IANA, for compat */
+#define TLS_CT_GOST12_512_SIGN_COMPAT	239 /* pre-IANA, for compat */
+/* when correcting this number, correct also SSL3_CT_NUMBER in ssl3.h (see
+ * comment there) */
+#define TLS_CT_NUMBER			13
 
 #define TLS1_FINISH_MAC_LENGTH		12
 
@@ -759,6 +760,14 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS_MD_IV_BLOCK_CONST_SIZE		8
 #define TLS_MD_MASTER_SECRET_CONST		"master secret"
 #define TLS_MD_MASTER_SECRET_CONST_SIZE		13
+
+#if defined(LIBRESSL_INTERNAL)
+/* TLS Session Ticket extension struct. */
+struct tls_session_ticket_ext_st {
+	unsigned short length;
+	void *data;
+};
+#endif
 
 #ifdef  __cplusplus
 }

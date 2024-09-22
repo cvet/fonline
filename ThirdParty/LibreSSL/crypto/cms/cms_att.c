@@ -1,4 +1,4 @@
-/* $OpenBSD: cms_att.c,v 1.11 2023/07/08 08:26:26 beck Exp $ */
+/* $OpenBSD: cms_att.c,v 1.9 2019/08/10 18:15:52 jsing Exp $ */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
@@ -57,7 +57,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
 #include <openssl/cms.h>
-#include "cms_local.h"
+#include "cms_lcl.h"
 
 /* CMS SignedData Attribute utilities */
 
@@ -66,14 +66,12 @@ CMS_signed_get_attr_count(const CMS_SignerInfo *si)
 {
 	return X509at_get_attr_count(si->signedAttrs);
 }
-LCRYPTO_ALIAS(CMS_signed_get_attr_count);
 
 int
 CMS_signed_get_attr_by_NID(const CMS_SignerInfo *si, int nid, int lastpos)
 {
 	return X509at_get_attr_by_NID(si->signedAttrs, nid, lastpos);
 }
-LCRYPTO_ALIAS(CMS_signed_get_attr_by_NID);
 
 int
 CMS_signed_get_attr_by_OBJ(const CMS_SignerInfo *si, const ASN1_OBJECT *obj,
@@ -81,21 +79,18 @@ CMS_signed_get_attr_by_OBJ(const CMS_SignerInfo *si, const ASN1_OBJECT *obj,
 {
 	return X509at_get_attr_by_OBJ(si->signedAttrs, obj, lastpos);
 }
-LCRYPTO_ALIAS(CMS_signed_get_attr_by_OBJ);
 
 X509_ATTRIBUTE *
 CMS_signed_get_attr(const CMS_SignerInfo *si, int loc)
 {
 	return X509at_get_attr(si->signedAttrs, loc);
 }
-LCRYPTO_ALIAS(CMS_signed_get_attr);
 
 X509_ATTRIBUTE *
 CMS_signed_delete_attr(CMS_SignerInfo *si, int loc)
 {
 	return X509at_delete_attr(si->signedAttrs, loc);
 }
-LCRYPTO_ALIAS(CMS_signed_delete_attr);
 
 int
 CMS_signed_add1_attr(CMS_SignerInfo *si, X509_ATTRIBUTE *attr)
@@ -104,7 +99,6 @@ CMS_signed_add1_attr(CMS_SignerInfo *si, X509_ATTRIBUTE *attr)
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_signed_add1_attr);
 
 int
 CMS_signed_add1_attr_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *obj, int type,
@@ -114,7 +108,6 @@ CMS_signed_add1_attr_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *obj, int type
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_signed_add1_attr_by_OBJ);
 
 int
 CMS_signed_add1_attr_by_NID(CMS_SignerInfo *si, int nid, int type,
@@ -124,7 +117,6 @@ CMS_signed_add1_attr_by_NID(CMS_SignerInfo *si, int nid, int type,
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_signed_add1_attr_by_NID);
 
 int
 CMS_signed_add1_attr_by_txt(CMS_SignerInfo *si, const char *attrname, int type,
@@ -134,7 +126,6 @@ CMS_signed_add1_attr_by_txt(CMS_SignerInfo *si, const char *attrname, int type,
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_signed_add1_attr_by_txt);
 
 void *
 CMS_signed_get0_data_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *oid,
@@ -142,21 +133,18 @@ CMS_signed_get0_data_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *oid,
 {
 	return X509at_get0_data_by_OBJ(si->signedAttrs, oid, lastpos, type);
 }
-LCRYPTO_ALIAS(CMS_signed_get0_data_by_OBJ);
 
 int
 CMS_unsigned_get_attr_count(const CMS_SignerInfo *si)
 {
 	return X509at_get_attr_count(si->unsignedAttrs);
 }
-LCRYPTO_ALIAS(CMS_unsigned_get_attr_count);
 
 int
 CMS_unsigned_get_attr_by_NID(const CMS_SignerInfo *si, int nid, int lastpos)
 {
 	return X509at_get_attr_by_NID(si->unsignedAttrs, nid, lastpos);
 }
-LCRYPTO_ALIAS(CMS_unsigned_get_attr_by_NID);
 
 int
 CMS_unsigned_get_attr_by_OBJ(const CMS_SignerInfo *si, const ASN1_OBJECT *obj,
@@ -164,21 +152,18 @@ CMS_unsigned_get_attr_by_OBJ(const CMS_SignerInfo *si, const ASN1_OBJECT *obj,
 {
 	return X509at_get_attr_by_OBJ(si->unsignedAttrs, obj, lastpos);
 }
-LCRYPTO_ALIAS(CMS_unsigned_get_attr_by_OBJ);
 
 X509_ATTRIBUTE *
 CMS_unsigned_get_attr(const CMS_SignerInfo *si, int loc)
 {
 	return X509at_get_attr(si->unsignedAttrs, loc);
 }
-LCRYPTO_ALIAS(CMS_unsigned_get_attr);
 
 X509_ATTRIBUTE *
 CMS_unsigned_delete_attr(CMS_SignerInfo *si, int loc)
 {
 	return X509at_delete_attr(si->unsignedAttrs, loc);
 }
-LCRYPTO_ALIAS(CMS_unsigned_delete_attr);
 
 int
 CMS_unsigned_add1_attr(CMS_SignerInfo *si, X509_ATTRIBUTE *attr)
@@ -187,7 +172,6 @@ CMS_unsigned_add1_attr(CMS_SignerInfo *si, X509_ATTRIBUTE *attr)
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_unsigned_add1_attr);
 
 int
 CMS_unsigned_add1_attr_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *obj,
@@ -197,7 +181,6 @@ CMS_unsigned_add1_attr_by_OBJ(CMS_SignerInfo *si, const ASN1_OBJECT *obj,
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_unsigned_add1_attr_by_OBJ);
 
 int
 CMS_unsigned_add1_attr_by_NID(CMS_SignerInfo *si, int nid, int type,
@@ -207,7 +190,6 @@ CMS_unsigned_add1_attr_by_NID(CMS_SignerInfo *si, int nid, int type,
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_unsigned_add1_attr_by_NID);
 
 int
 CMS_unsigned_add1_attr_by_txt(CMS_SignerInfo *si, const char *attrname,
@@ -218,7 +200,6 @@ CMS_unsigned_add1_attr_by_txt(CMS_SignerInfo *si, const char *attrname,
 		return 1;
 	return 0;
 }
-LCRYPTO_ALIAS(CMS_unsigned_add1_attr_by_txt);
 
 void *
 CMS_unsigned_get0_data_by_OBJ(CMS_SignerInfo *si, ASN1_OBJECT *oid, int lastpos,
@@ -226,6 +207,5 @@ CMS_unsigned_get0_data_by_OBJ(CMS_SignerInfo *si, ASN1_OBJECT *oid, int lastpos,
 {
 	return X509at_get0_data_by_OBJ(si->unsignedAttrs, oid, lastpos, type);
 }
-LCRYPTO_ALIAS(CMS_unsigned_get0_data_by_OBJ);
 
 /* Specific attribute cases */

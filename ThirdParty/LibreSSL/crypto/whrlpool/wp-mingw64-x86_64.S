@@ -1,9 +1,3 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 
@@ -19,7 +13,6 @@ whirlpool_block:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -605,7 +598,6 @@ _CET_ENDBR
 	retq
 .LSEH_end_whirlpool_block:
 
-.section	.rodata
 .p2align	6
 
 .Ltable:

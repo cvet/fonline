@@ -1,15 +1,15 @@
-/*	$OpenBSD: freenull.c.head,v 1.9 2024/02/29 20:00:53 tb Exp $	*/
+/*	$OpenBSD: freenull.c.head,v 1.3 2019/11/02 15:38:46 jsing Exp $	*/
 
 #include <openssl/asn1.h>
 #include <openssl/cmac.h>
 #include <openssl/cms.h>
 #include <openssl/comp.h>
 #include <openssl/conf_api.h>
-#include <openssl/ct.h>
+#include <openssl/dso.h>
+#ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
-#ifndef OPENSSL_NO_GOST
-#include <openssl/gost.h>
 #endif
+#include <openssl/gost.h>
 #include <openssl/hmac.h>
 #include <openssl/ocsp.h>
 #include <openssl/pkcs12.h>
@@ -17,7 +17,6 @@
 #include <openssl/ui.h>
 #include <openssl/txt_db.h>
 #include <openssl/x509.h>
-#include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
 
 #include <err.h>
@@ -28,9 +27,6 @@ int
 main(int argc, char **argv)
 {
 	ACCESS_DESCRIPTION_free(NULL);
-	ASIdOrRange_free(NULL);
-	ASIdentifierChoice_free(NULL);
-	ASIdentifiers_free(NULL);
 	ASN1_BIT_STRING_free(NULL);
 	ASN1_BMPSTRING_free(NULL);
 	ASN1_ENUMERATED_free(NULL);
@@ -41,6 +37,7 @@ main(int argc, char **argv)
 	ASN1_NULL_free(NULL);
 	ASN1_OBJECT_free(NULL);
 	ASN1_OCTET_STRING_free(NULL);
+	ASN1_PCTX_free(NULL);
 	ASN1_PRINTABLESTRING_free(NULL);
 	ASN1_PRINTABLE_free(NULL);
 	ASN1_STRING_free(NULL);
@@ -51,15 +48,16 @@ main(int argc, char **argv)
 	ASN1_UTCTIME_free(NULL);
 	ASN1_UTF8STRING_free(NULL);
 	ASN1_VISIBLESTRING_free(NULL);
-	ASRange_free(NULL);
 	AUTHORITY_INFO_ACCESS_free(NULL);
 	AUTHORITY_KEYID_free(NULL);
 	BASIC_CONSTRAINTS_free(NULL);
 	BIO_free(NULL);
 	BIO_meth_free(NULL);
+	BN_BLINDING_free(NULL);
 	BN_CTX_free(NULL);
 	BN_GENCB_free(NULL);
 	BN_MONT_CTX_free(NULL);
+	BN_RECP_CTX_free(NULL);
 	BN_clear_free(NULL);
 	BN_free(NULL);
 	BUF_MEM_free(NULL);
@@ -67,11 +65,9 @@ main(int argc, char **argv)
 	CMAC_CTX_free(NULL);
 	CMS_ContentInfo_free(NULL);
 	CMS_ReceiptRequest_free(NULL);
+	COMP_CTX_free(NULL);
 	CONF_free(NULL);
 	CRL_DIST_POINTS_free(NULL);
-	CTLOG_STORE_free(NULL);
-	CTLOG_free(NULL);
-	CT_POLICY_EVAL_CTX_free(NULL);
 	DH_free(NULL);
 	DIRECTORYSTRING_free(NULL);
 	DISPLAYTEXT_free(NULL);
@@ -80,6 +76,7 @@ main(int argc, char **argv)
 	DSA_SIG_free(NULL);
 	DSA_free(NULL);
 	DSA_meth_free(NULL);
+	DSO_free(NULL);
 	ECDSA_SIG_free(NULL);
 	EC_GROUP_clear_free(NULL);
 	EC_GROUP_free(NULL);
@@ -88,31 +85,33 @@ main(int argc, char **argv)
 	EC_POINT_clear_free(NULL);
 	EC_POINT_free(NULL);
 	EDIPARTYNAME_free(NULL);
+#ifndef OPENSSL_NO_ENGINE
 	ENGINE_free(NULL);
+#endif
 	ESS_CERT_ID_free(NULL);
 	ESS_ISSUER_SERIAL_free(NULL);
 	ESS_SIGNING_CERT_free(NULL);
-	EVP_AEAD_CTX_free(NULL);
 	EVP_CIPHER_CTX_free(NULL);
-	EVP_CIPHER_meth_free(NULL);
 	EVP_ENCODE_CTX_free(NULL);
 	EVP_MD_CTX_free(NULL);
 	EVP_PKEY_CTX_free(NULL);
+	EVP_PKEY_asn1_free(NULL);
 	EVP_PKEY_free(NULL);
+	EVP_PKEY_meth_free(NULL);
 	EXTENDED_KEY_USAGE_free(NULL);
 	GENERAL_NAMES_free(NULL);
 	GENERAL_NAME_free(NULL);
 	GENERAL_SUBTREE_free(NULL);
+	GOST_CIPHER_PARAMS_free(NULL);
+	GOST_KEY_free(NULL);
 	HMAC_CTX_free(NULL);
-	IPAddressChoice_free(NULL);
-	IPAddressFamily_free(NULL);
-	IPAddressOrRange_free(NULL);
-	IPAddressRange_free(NULL);
 	ISSUING_DIST_POINT_free(NULL);
 	NAME_CONSTRAINTS_free(NULL);
 	NCONF_free(NULL);
+	NETSCAPE_CERT_SEQUENCE_free(NULL);
 	NETSCAPE_SPKAC_free(NULL);
 	NETSCAPE_SPKI_free(NULL);
+	NETSCAPE_X509_free(NULL);
 	NOTICEREF_free(NULL);
 	OCSP_BASICRESP_free(NULL);
 	OCSP_CERTID_free(NULL);
@@ -131,6 +130,11 @@ main(int argc, char **argv)
 	OCSP_SIGNATURE_free(NULL);
 	OCSP_SINGLERESP_free(NULL);
 	OTHERNAME_free(NULL);
+	PBE2PARAM_free(NULL);
+	PBEPARAM_free(NULL);
+	PBKDF2PARAM_free(NULL);
+	PKCS12_BAGS_free(NULL);
+	PKCS12_MAC_DATA_free(NULL);
 	PKCS12_SAFEBAG_free(NULL);
 	PKCS12_free(NULL);
 	PKCS7_DIGEST_free(NULL);
@@ -149,12 +153,14 @@ main(int argc, char **argv)
 	POLICYQUALINFO_free(NULL);
 	POLICY_CONSTRAINTS_free(NULL);
 	POLICY_MAPPING_free(NULL);
+	PROXY_CERT_INFO_EXTENSION_free(NULL);
+	PROXY_POLICY_free(NULL);
 	RSA_OAEP_PARAMS_free(NULL);
 	RSA_PSS_PARAMS_free(NULL);
 	RSA_free(NULL);
 	RSA_meth_free(NULL);
-	SCT_LIST_free(NULL);
-	SCT_free(NULL);
+	SXNETID_free(NULL);
+	SXNET_free(NULL);
 	TS_ACCURACY_free(NULL);
 	TS_MSG_IMPRINT_free(NULL);
 	TS_REQ_ext_free(NULL);
@@ -171,15 +177,17 @@ main(int argc, char **argv)
 	X509V3_conf_free(NULL);
 	X509_ALGOR_free(NULL);
 	X509_ATTRIBUTE_free(NULL);
+	X509_CERT_AUX_free(NULL);
+	X509_CERT_PAIR_free(NULL);
 	X509_CINF_free(NULL);
 	X509_CRL_INFO_free(NULL);
+	X509_CRL_METHOD_free(NULL);
 	X509_CRL_free(NULL);
 	X509_EXTENSION_free(NULL);
 	X509_INFO_free(NULL);
 	X509_LOOKUP_free(NULL);
 	X509_NAME_ENTRY_free(NULL);
 	X509_NAME_free(NULL);
-	X509_OBJECT_free(NULL);
 	X509_PKEY_free(NULL);
 	X509_PUBKEY_free(NULL);
 	X509_REQ_INFO_free(NULL);
@@ -192,6 +200,7 @@ main(int argc, char **argv)
 	X509_VERIFY_PARAM_free(NULL);
 	X509_email_free(NULL);
 	X509_free(NULL);
+	X509_policy_tree_free(NULL);
 	lh_free(NULL);
 	sk_free(NULL);
 /*	$OpenBSD: freenull.c.tail,v 1.2 2018/07/10 20:55:57 tb Exp $	*/

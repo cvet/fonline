@@ -1,10 +1,20 @@
-/* $OpenBSD: b_print.c,v 1.28 2024/03/02 09:18:28 tb Exp $ */
+/* $OpenBSD: b_print.c,v 1.26 2019/06/28 05:47:57 deraadt Exp $ */
 
 /* Theo de Raadt places this file in the public domain. */
 
 #include <openssl/bio.h>
 
-#include "bio_local.h"
+int
+BIO_printf(BIO *bio, const char *format, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, format);
+	ret = BIO_vprintf(bio, format, args);
+	va_end(args);
+	return (ret);
+}
 
 #ifdef HAVE_FUNOPEN
 static int
@@ -48,15 +58,49 @@ BIO_vprintf(BIO *bio, const char *format, va_list args)
 
 #endif /* HAVE_FUNOPEN */
 
+/*
+ * BIO_snprintf and BIO_vsnprintf return -1 for overflow,
+ * due to the history of this API.  Justification:
+ *
+ * Traditional snprintf surfaced in 4.4BSD, and returned
+ * "number of bytes wanted". Solaris and Windows opted to
+ * return -1.  A draft standard was written which returned -1.
+ * Due to the large volume of code already using the first
+ * semantics, the draft was repaired before standardization to
+ * specify "number of bytes wanted" plus "-1 for character conversion
+ * style errors".  Solaris adapted to this rule, but Windows stuck
+ * with -1.
+ *
+ * Original OpenSSL comment which is full of lies:
+ *
+ * "In case of truncation, return -1 like traditional snprintf.
+ * (Current drafts for ISO/IEC 9899 say snprintf should return
+ * the number of characters that would have been written,
+ * had the buffer been large enough.)"
+ */
 int
-BIO_printf(BIO *bio, const char *format, ...)
+BIO_snprintf(char *buf, size_t n, const char *format, ...)
 {
 	va_list args;
 	int ret;
 
 	va_start(args, format);
-	ret = BIO_vprintf(bio, format, args);
+	ret = vsnprintf(buf, n, format, args);
 	va_end(args);
+
+	if (ret >= n || ret == -1)
+		return (-1);
 	return (ret);
 }
-LCRYPTO_ALIAS(BIO_printf);
+
+int
+BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args)
+{
+	int ret;
+
+	ret = vsnprintf(buf, n, format, args);
+
+	if (ret >= n || ret == -1)
+		return (-1);
+	return (ret);
+}

@@ -1,4 +1,4 @@
-/* $OpenBSD: prime.c,v 1.18 2023/07/23 11:39:29 tb Exp $ */
+/* $OpenBSD: prime.c,v 1.13 2019/07/14 03:30:46 guenther Exp $ */
 /* ====================================================================
  * Copyright (c) 2004 The OpenSSL Project.  All rights reserved.
  *
@@ -56,13 +56,13 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
-static struct {
+struct {
 	int bits;
 	int checks;
 	int generate;
 	int hex;
 	int safe;
-} cfg;
+} prime_config;
 
 static const struct option prime_options[] = {
 	{
@@ -70,38 +70,38 @@ static const struct option prime_options[] = {
 		.argname = "n",
 		.desc = "Number of bits in the generated prime number",
 		.type = OPTION_ARG_INT,
-		.opt.value = &cfg.bits,
+		.opt.value = &prime_config.bits,
 	},
 	{
 		.name = "checks",
 		.argname = "n",
-		.desc = "Miller-Rabin probabilistic primality test iterations",
+		.desc = "Miller-Rabin probablistic primality test iterations",
 		.type = OPTION_ARG_INT,
-		.opt.value = &cfg.checks,
+		.opt.value = &prime_config.checks,
 	},
 	{
 		.name = "generate",
 		.desc = "Generate a pseudo-random prime number",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.generate,
+		.opt.flag = &prime_config.generate,
 	},
 	{
 		.name = "hex",
 		.desc = "Hexadecimal prime numbers",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.hex,
+		.opt.flag = &prime_config.hex,
 	},
 	{
 		.name = "safe",
 		.desc = "Generate only \"safe\" prime numbers",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.safe,
+		.opt.flag = &prime_config.safe,
 	},
 	{NULL},
 };
 
 static void
-prime_usage(void)
+prime_usage()
 {
 	fprintf(stderr,
 	    "usage: prime [-bits n] [-checks n] [-generate] [-hex] [-safe] "
@@ -118,22 +118,24 @@ prime_main(int argc, char **argv)
 	char *s;
 	int is_prime, ret = 1;
 
-	if (pledge("stdio rpath", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio rpath", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&prime_config, 0, sizeof(prime_config));
 
 	/* Default iterations for Miller-Rabin probabilistic primality test. */
-	cfg.checks = 20;
+	prime_config.checks = 20;
 
 	if (options_parse(argc, argv, prime_options, &prime, NULL) != 0) {
 		prime_usage();
 		return (1);
 	}
 
-	if (prime == NULL && cfg.generate == 0) {
+	if (prime == NULL && prime_config.generate == 0) {
 		BIO_printf(bio_err, "No prime specified.\n");
 		prime_usage();
 		return (1);
@@ -145,8 +147,8 @@ prime_main(int argc, char **argv)
 	}
 	BIO_set_fp(bio_out, stdout, BIO_NOCLOSE);
 
-	if (cfg.generate != 0) {
-		if (cfg.bits == 0) {
+	if (prime_config.generate != 0) {
+		if (prime_config.bits == 0) {
 			BIO_printf(bio_err, "Specify the number of bits.\n");
 			goto end;
 		}
@@ -155,12 +157,12 @@ prime_main(int argc, char **argv)
 			BIO_printf(bio_err, "Out of memory.\n");
 			goto end;
 		}
-		if (!BN_generate_prime_ex(bn, cfg.bits,
-		    cfg.safe, NULL, NULL, NULL)) {
+		if (!BN_generate_prime_ex(bn, prime_config.bits,
+		    prime_config.safe, NULL, NULL, NULL)) {
 			BIO_printf(bio_err, "Prime generation error.\n");
 			goto end;
 		}
-		s = cfg.hex ? BN_bn2hex(bn) : BN_bn2dec(bn);
+		s = prime_config.hex ? BN_bn2hex(bn) : BN_bn2dec(bn);
 		if (s == NULL) {
 			BIO_printf(bio_err, "Out of memory.\n");
 			goto end;
@@ -168,7 +170,7 @@ prime_main(int argc, char **argv)
 		BIO_printf(bio_out, "%s\n", s);
 		free(s);
 	} else {
-		if (cfg.hex) {
+		if (prime_config.hex) {
 			if (!BN_hex2bn(&bn, prime)) {
 				BIO_printf(bio_err, "%s is an invalid hex "
 				    "value.\n", prime);
@@ -182,7 +184,7 @@ prime_main(int argc, char **argv)
 			}
 		}
 
-		is_prime = BN_is_prime_ex(bn, cfg.checks, NULL, NULL);
+		is_prime = BN_is_prime_ex(bn, prime_config.checks, NULL, NULL);
 		if (is_prime < 0) {
 			BIO_printf(bio_err, "BN_is_prime_ex failed.\n");
 			goto end;

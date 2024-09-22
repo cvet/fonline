@@ -1,10 +1,10 @@
-.\" $OpenBSD: ASN1_TYPE_get.3,v 1.19 2023/10/09 16:06:01 tb Exp $
-.\" selective merge up to: OpenSSL 6328d367 Jul 4 21:58:30 2020 +0200
+.\"	$OpenBSD: ASN1_TYPE_get.3,v 1.12 2021/07/11 19:03:45 schwarze Exp $
+.\"	OpenSSL 99d63d46 Mon Jun 6 00:43:05 2016 -0400
 .\"
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
 .\"
-.\" Copyright (c) 2017, 2021 Ingo Schwarze <schwarze@openbsd.org>
+.\" Copyright (c) 2017 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -65,7 +65,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: October 9 2023 $
+.Dd $Mdocdate: July 11 2021 $
 .Dt ASN1_TYPE_GET 3
 .Os
 .Sh NAME
@@ -74,10 +74,6 @@
 .Nm ASN1_TYPE_get ,
 .Nm ASN1_TYPE_set ,
 .Nm ASN1_TYPE_set1 ,
-.Nm ASN1_TYPE_set_octetstring ,
-.Nm ASN1_TYPE_get_octetstring ,
-.Nm ASN1_TYPE_set_int_octetstring ,
-.Nm ASN1_TYPE_get_int_octetstring ,
 .Nm ASN1_TYPE_cmp
 .Nd ASN.1 objects of arbitrary type
 .Sh SYNOPSIS
@@ -103,42 +99,13 @@
 .Fa "const void *value"
 .Fc
 .Ft int
-.Fo ASN1_TYPE_set_octetstring
-.Fa "ASN1_TYPE *a"
-.Fa "const unsigned char *data"
-.Fa "int len"
-.Fc
-.Ft int
-.Fo ASN1_TYPE_get_octetstring
-.Fa "const ASN1_TYPE *a"
-.Fa "unsigned char *buffer"
-.Fa "int buflen"
-.Fc
-.Ft int
-.Fo ASN1_TYPE_set_int_octetstring
-.Fa "ASN1_TYPE *a"
-.Fa "long num"
-.Fa "const unsigned char *data"
-.Fa "int len"
-.Fc
-.Ft int
-.Fo ASN1_TYPE_get_int_octetstring
-.Fa "const ASN1_TYPE *a",
-.Fa "long *num"
-.Fa "unsigned char *buffer",
-.Fa "int buflen"
-.Fc
-.Ft int
 .Fo ASN1_TYPE_cmp
 .Fa "const ASN1_TYPE *a"
 .Fa "const ASN1_TYPE *b"
 .Fc
 .Sh DESCRIPTION
-The
 .Vt ASN1_TYPE
-data type and the
-.Dv V_ASN1_ANY
-type identifier constant represent the ASN.1 ANY type.
+represents the ASN.1 ANY type.
 An
 .Vt ASN1_TYPE
 object can store an ASN.1 value of arbitrary type,
@@ -148,8 +115,7 @@ It also remembers internally which type it currently holds.
 .Fn ASN1_TYPE_new
 allocates and initializes an empty
 .Vt ASN1_TYPE
-object of type
-.Dv V_ASN1_UNDEF .
+object of undefined type.
 .Pp
 .Fn ASN1_TYPE_free
 frees
@@ -162,7 +128,7 @@ is a
 pointer, no action occurs.
 .Pp
 .Fn ASN1_TYPE_get
-returns the type currently held by
+returns the type of
 .Fa a ,
 represented by one of the
 .Dv V_ASN1_*
@@ -172,12 +138,12 @@ constants defined in
 .Fn ASN1_TYPE_set
 frees the value contained in
 .Fa a ,
-if any, and sets the
-.Fa value
-and
+if any, and sets
+.Fa a
+to
 .Fa type
-now held in
-.Fa a .
+and
+.Fa value .
 This function uses the pointer
 .Fa value
 internally so it must
@@ -185,7 +151,7 @@ internally so it must
 be freed up after the call.
 .Pp
 .Fn ASN1_TYPE_set1
-sets the type held by
+sets the type of
 .Fa a
 to
 .Fa type
@@ -250,73 +216,12 @@ then the
 contains the entire ASN.1 encoding verbatim, including tag and
 length octets.
 .Pp
-.Fn ASN1_TYPE_set_octetstring
-allocates a new
-.Vt ASN1_OCTET_STRING
-object, copies
-.Fa len
-bytes of
-.Fa data
-into it using
-.Xr ASN1_STRING_set 3 ,
-and replaces the value of
-.Fa a
-with it by calling
-.Fn ASN1_TYPE_set
-with a type of
-.Dv V_ASN1_OCTET_STRING .
-.Pp
-.Fn ASN1_TYPE_get_octetstring
-copies the contents of the
-.Vt ASN1_OCTET_STRING
-object contained in
-.Fa a ,
-but not more than
-.Fa buflen
-bytes, into the
-.Fa buffer
-provided by the caller.
-.Pp
-.Fn ASN1_TYPE_set_int_octetstring
-frees the value contained in
-.Fa a ,
-if any, sets its type to
-.Dv V_ASN1_SEQUENCE ,
-and sets its value to a two-element ASN.1 sequence consisting of
-an ASN.1 INTEGER object with the value
-.Fa num
-and an ASN.1 OCTET STRING object
-containing a copy of the
-.Fa len
-bytes pointed to by
-.Fa data .
-.Pp
-.Fn ASN1_TYPE_get_int_octetstring
-copies the integer value from the first element of the ASN.1 sequence
-.Fa a
-to
-.Pf * Fa num
-unless
-.Fa num
-is a
-.Dv NULL
-pointer and copies the octet string value from the second element,
-but not more than
-.Fa buflen
-bytes, into the
-.Fa buffer
-provided by the caller unless
-.Fa buffer
-is a
-.Dv NULL
-pointer.
-.Pp
 .Fn ASN1_TYPE_cmp
 checks that
 .Fa a
 and
 .Fa b
-hold the same type, the same value, and are encoded in the same way.
+have the same type, the same value, and are encoded in the same way.
 .Pp
 If the types agree and the values have the same meaning but are
 encoded differently, they are considered different.
@@ -337,7 +242,7 @@ the two types could be absent OPTIONAL fields and so should match,
 however passing
 .Dv NULL
 values could also indicate a programming error (for example an
-unparsable type which returns
+unparseable type which returns
 .Dv NULL )
 for types which do
 .Sy not
@@ -352,7 +257,7 @@ object or
 if an error occurs.
 .Pp
 .Fn ASN1_TYPE_get
-returns the type currently held by
+returns the type of
 .Fa a
 or 0 if an error occurs.
 The latter can happen if
@@ -363,41 +268,8 @@ For example, it will always happen for empty objects
 newly constructed with
 .Fn ASN1_TYPE_new .
 .Pp
-.Fn ASN1_TYPE_set1 ,
-.Fn ASN1_TYPE_set_octetstring ,
-and
-.Fn ASN1_TYPE_set_int_octetstring
-return 1 on success or 0 on failure.
-.Pp
-.Fn ASN1_TYPE_get_octetstring
-returns the number of data bytes contained in the
-.Vt ASN1_OCTET_STRING
-object contained in
-.Fa a
-or \-1 if
-.Fa a
-is not of the type
-.Dv V_ASN1_OCTET_STRING
-or does not contain any object.
-If the return value is greater than the
-.Fa buflen
-argument, the content was truncated when copied to the
-.Fa buffer .
-.Pp
-.Fn ASN1_TYPE_get_int_octetstring
-returns the number of data bytes contained in the
-.Vt ASN1_OCTET_STRING
-object that is the second element of the ASN.1 sequence
-.Fa a
-or \-1 if
-.Fa a
-is not of the type
-.Dv V_ASN1_SEQUENCE
-or if decoding fails.
-If the return value is greater than the
-.Fa buflen
-argument, the content was truncated when copied to the
-.Fa buffer .
+.Fn ASN1_TYPE_set1
+returns 1 if the copying succeeds or 0 if it fails.
 .Pp
 .Fn ASN1_TYPE_cmp
 returns 0 for a match or non-zero for a mismatch.
@@ -419,17 +291,11 @@ returns 0 for a match or non-zero for a mismatch.
 .Fn ASN1_TYPE_new
 and
 .Fn ASN1_TYPE_free
-first appeared in SSLeay 0.5.1,
+first appeared in SSLeay 0.5.1.
 .Fn ASN1_TYPE_get
 and
 .Fn ASN1_TYPE_set
-in SSLeay 0.8.0, and
-.Fn ASN1_TYPE_set_octetstring ,
-.Fn ASN1_TYPE_get_octetstring ,
-.Fn ASN1_TYPE_set_int_octetstring ,
-and
-.Fn ASN1_TYPE_get_int_octetstring
-in SSLeay 0.9.0.
+first appeared in SSLeay 0.8.0.
 These functions have been available since
 .Ox 2.4 .
 .Pp

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_versions.c,v 1.27 2023/07/02 17:21:32 beck Exp $ */
+/* $OpenBSD: ssl_versions.c,v 1.20 2021/07/01 17:53:39 jsing Exp $ */
 /*
  * Copyright (c) 2016, 2017 Joel Sing <jsing@openbsd.org>
  *
@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "ssl_local.h"
+#include "ssl_locl.h"
 
 static uint16_t
 ssl_dtls_to_tls_version(uint16_t dtls_ver)
@@ -140,17 +140,21 @@ ssl_enabled_tls_version_range(SSL *s, uint16_t *min_ver, uint16_t *max_ver)
 
 	min_version = 0;
 	max_version = TLS1_3_VERSION;
-	options = s->options;
+	options = s->internal->options;
 
 	if (SSL_is_dtls(s)) {
 		options = 0;
-		if (s->options & SSL_OP_NO_DTLSv1)
+		if (s->internal->options & SSL_OP_NO_DTLSv1)
 			options |= SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1;
-		if (s->options & SSL_OP_NO_DTLSv1_2)
+		if (s->internal->options & SSL_OP_NO_DTLSv1_2)
 			options |= SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_2;
 	}
 
-	if ((options & SSL_OP_NO_TLSv1_2) == 0)
+	if ((options & SSL_OP_NO_TLSv1) == 0)
+		min_version = TLS1_VERSION;
+	else if ((options & SSL_OP_NO_TLSv1_1) == 0)
+		min_version = TLS1_1_VERSION;
+	else if ((options & SSL_OP_NO_TLSv1_2) == 0)
 		min_version = TLS1_2_VERSION;
 	else if ((options & SSL_OP_NO_TLSv1_3) == 0)
 		min_version = TLS1_3_VERSION;
@@ -158,6 +162,10 @@ ssl_enabled_tls_version_range(SSL *s, uint16_t *min_ver, uint16_t *max_ver)
 	if ((options & SSL_OP_NO_TLSv1_3) && min_version < TLS1_3_VERSION)
 		max_version = TLS1_2_VERSION;
 	if ((options & SSL_OP_NO_TLSv1_2) && min_version < TLS1_2_VERSION)
+		max_version = TLS1_1_VERSION;
+	if ((options & SSL_OP_NO_TLSv1_1) && min_version < TLS1_1_VERSION)
+		max_version = TLS1_VERSION;
+	if ((options & SSL_OP_NO_TLSv1) && min_version < TLS1_VERSION)
 		max_version = 0;
 
 	/* Everything has been disabled... */
@@ -166,16 +174,8 @@ ssl_enabled_tls_version_range(SSL *s, uint16_t *min_ver, uint16_t *max_ver)
 
 	/* Limit to configured version range. */
 	if (!ssl_clamp_tls_version_range(&min_version, &max_version,
-	    s->min_tls_version, s->max_tls_version))
+	    s->internal->min_tls_version, s->internal->max_tls_version))
 		return 0;
-
-	/* QUIC requires a minimum of TLSv1.3. */
-	if (SSL_is_quic(s)) {
-		if (max_version < TLS1_3_VERSION)
-			return 0;
-		if (min_version < TLS1_3_VERSION)
-			min_version = TLS1_3_VERSION;
-	}
 
 	if (min_ver != NULL)
 		*min_ver = min_version;
@@ -224,10 +224,10 @@ ssl_tls_version(uint16_t version)
 uint16_t
 ssl_effective_tls_version(SSL *s)
 {
-	if (s->s3->hs.negotiated_tls_version > 0)
-		return s->s3->hs.negotiated_tls_version;
+	if (S3I(s)->hs.negotiated_tls_version > 0)
+		return S3I(s)->hs.negotiated_tls_version;
 
-	return s->s3->hs.our_max_tls_version;
+	return S3I(s)->hs.our_max_tls_version;
 }
 
 int
@@ -239,24 +239,6 @@ ssl_max_supported_version(SSL *s, uint16_t *max_ver)
 
 	if (!ssl_supported_tls_version_range(s, NULL, &max_version))
 		return 0;
-
-	if (SSL_is_dtls(s)) {
-		if ((max_version = ssl_tls_to_dtls_version(max_version)) == 0)
-			return 0;
-	}
-
-	*max_ver = max_version;
-
-	return 1;
-}
-
-int
-ssl_max_legacy_version(SSL *s, uint16_t *max_ver)
-{
-	uint16_t max_version;
-
-	if ((max_version = s->s3->hs.our_max_tls_version) > TLS1_2_VERSION)
-		max_version = TLS1_2_VERSION;
 
 	if (SSL_is_dtls(s)) {
 		if ((max_version = ssl_tls_to_dtls_version(max_version)) == 0)
@@ -329,9 +311,6 @@ ssl_max_shared_version(SSL *s, uint16_t peer_ver, uint16_t *max_ver)
 			return 0;
 	}
 
-	if (!ssl_security_version(s, shared_version))
-		return 0;
-
 	*max_ver = shared_version;
 
 	return 1;
@@ -355,11 +334,8 @@ ssl_check_version_from_server(SSL *s, uint16_t server_version)
 	    &max_tls_version))
 		return 0;
 
-	if (server_tls_version < min_tls_version ||
-	    server_tls_version > max_tls_version)
-		return 0;
-
-	return ssl_security_version(s, server_tls_version);
+	return (server_tls_version >= min_tls_version &&
+	    server_tls_version <= max_tls_version);
 }
 
 int

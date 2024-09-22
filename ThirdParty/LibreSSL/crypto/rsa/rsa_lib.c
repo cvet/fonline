@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_lib.c,v 1.49 2023/11/19 15:46:10 tb Exp $ */
+/* $OpenBSD: rsa_lib.c,v 1.40 2020/01/17 10:40:03 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -67,9 +67,11 @@
 #include <openssl/lhash.h>
 #include <openssl/rsa.h>
 
-#include "bn_local.h"
-#include "evp_local.h"
-#include "rsa_local.h"
+#include "evp_locl.h"
+
+#ifndef OPENSSL_NO_ENGINE
+#include <openssl/engine.h>
+#endif
 
 static const RSA_METHOD *default_RSA_meth = NULL;
 
@@ -80,14 +82,12 @@ RSA_new(void)
 
 	return r;
 }
-LCRYPTO_ALIAS(RSA_new);
 
 void
 RSA_set_default_method(const RSA_METHOD *meth)
 {
 	default_RSA_meth = meth;
 }
-LCRYPTO_ALIAS(RSA_set_default_method);
 
 const RSA_METHOD *
 RSA_get_default_method(void)
@@ -97,14 +97,12 @@ RSA_get_default_method(void)
 
 	return default_RSA_meth;
 }
-LCRYPTO_ALIAS(RSA_get_default_method);
 
 const RSA_METHOD *
 RSA_get_method(const RSA *rsa)
 {
 	return rsa->meth;
 }
-LCRYPTO_ALIAS(RSA_get_method);
 
 int
 RSA_set_method(RSA *rsa, const RSA_METHOD *meth)
@@ -118,12 +116,15 @@ RSA_set_method(RSA *rsa, const RSA_METHOD *meth)
 	mtmp = rsa->meth;
 	if (mtmp->finish)
 		mtmp->finish(rsa);
+#ifndef OPENSSL_NO_ENGINE
+	ENGINE_finish(rsa->engine);
+	rsa->engine = NULL;
+#endif
 	rsa->meth = meth;
 	if (meth->init)
 		meth->init(rsa);
 	return 1;
 }
-LCRYPTO_ALIAS(RSA_set_method);
 
 RSA *
 RSA_new_method(ENGINE *engine)
@@ -136,6 +137,25 @@ RSA_new_method(ENGINE *engine)
 	}
 
 	ret->meth = RSA_get_default_method();
+
+#ifndef OPENSSL_NO_ENGINE
+	if (engine != NULL) {
+		if (!ENGINE_init(engine)) {
+			RSAerror(ERR_R_ENGINE_LIB);
+			goto err;
+		}
+		ret->engine = engine;
+	} else {
+		ret->engine = ENGINE_get_default_RSA();
+	}
+
+	if (ret->engine != NULL) {
+		if ((ret->meth = ENGINE_get_RSA(ret->engine)) == NULL) {
+			RSAerror(ERR_R_ENGINE_LIB);
+			goto err;
+		}
+	}
+#endif
 
 	ret->references = 1;
 	ret->flags = ret->meth->flags & ~RSA_FLAG_NON_FIPS_ALLOW;
@@ -151,11 +171,13 @@ RSA_new_method(ENGINE *engine)
 	return ret;
 
  err:
+#ifndef OPENSSL_NO_ENGINE
+	ENGINE_finish(ret->engine);
+#endif
 	free(ret);
 
 	return NULL;
 }
-LCRYPTO_ALIAS(RSA_new_method);
 
 void
 RSA_free(RSA *r)
@@ -171,23 +193,25 @@ RSA_free(RSA *r)
 
 	if (r->meth->finish)
 		r->meth->finish(r);
+#ifndef OPENSSL_NO_ENGINE
+	ENGINE_finish(r->engine);
+#endif
 
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_RSA, r, &r->ex_data);
 
-	BN_free(r->n);
-	BN_free(r->e);
-	BN_free(r->d);
-	BN_free(r->p);
-	BN_free(r->q);
-	BN_free(r->dmp1);
-	BN_free(r->dmq1);
-	BN_free(r->iqmp);
+	BN_clear_free(r->n);
+	BN_clear_free(r->e);
+	BN_clear_free(r->d);
+	BN_clear_free(r->p);
+	BN_clear_free(r->q);
+	BN_clear_free(r->dmp1);
+	BN_clear_free(r->dmq1);
+	BN_clear_free(r->iqmp);
 	BN_BLINDING_free(r->blinding);
 	BN_BLINDING_free(r->mt_blinding);
 	RSA_PSS_PARAMS_free(r->pss);
 	free(r);
 }
-LCRYPTO_ALIAS(RSA_free);
 
 int
 RSA_up_ref(RSA *r)
@@ -195,7 +219,6 @@ RSA_up_ref(RSA *r)
 	int i = CRYPTO_add(&r->references, 1, CRYPTO_LOCK_RSA);
 	return i > 1 ? 1 : 0;
 }
-LCRYPTO_ALIAS(RSA_up_ref);
 
 int
 RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
@@ -204,28 +227,18 @@ RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
 	return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_RSA, argl, argp,
 	    new_func, dup_func, free_func);
 }
-LCRYPTO_ALIAS(RSA_get_ex_new_index);
 
 int
 RSA_set_ex_data(RSA *r, int idx, void *arg)
 {
 	return CRYPTO_set_ex_data(&r->ex_data, idx, arg);
 }
-LCRYPTO_ALIAS(RSA_set_ex_data);
 
 void *
 RSA_get_ex_data(const RSA *r, int idx)
 {
 	return CRYPTO_get_ex_data(&r->ex_data, idx);
 }
-LCRYPTO_ALIAS(RSA_get_ex_data);
-
-int
-RSA_security_bits(const RSA *rsa)
-{
-	return BN_security_bits(RSA_bits(rsa), -1);
-}
-LCRYPTO_ALIAS(RSA_security_bits);
 
 void
 RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
@@ -237,7 +250,6 @@ RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 	if (d != NULL)
 		*d = r->d;
 }
-LCRYPTO_ALIAS(RSA_get0_key);
 
 int
 RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d)
@@ -260,7 +272,6 @@ RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d)
 
 	return 1;
 }
-LCRYPTO_ALIAS(RSA_set0_key);
 
 void
 RSA_get0_crt_params(const RSA *r, const BIGNUM **dmp1, const BIGNUM **dmq1,
@@ -273,7 +284,6 @@ RSA_get0_crt_params(const RSA *r, const BIGNUM **dmp1, const BIGNUM **dmq1,
 	if (iqmp != NULL)
 		*iqmp = r->iqmp;
 }
-LCRYPTO_ALIAS(RSA_get0_crt_params);
 
 int
 RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
@@ -281,7 +291,7 @@ RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
 	if ((r->dmp1 == NULL && dmp1 == NULL) ||
 	    (r->dmq1 == NULL && dmq1 == NULL) ||
 	    (r->iqmp == NULL && iqmp == NULL))
-		return 0;
+	       	return 0;
 
 	if (dmp1 != NULL) {
 		BN_free(r->dmp1);
@@ -298,7 +308,6 @@ RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
 
 	return 1;
 }
-LCRYPTO_ALIAS(RSA_set0_crt_params);
 
 void
 RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q)
@@ -308,7 +317,6 @@ RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q)
 	if (q != NULL)
 		*q = r->q;
 }
-LCRYPTO_ALIAS(RSA_get0_factors);
 
 int
 RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q)
@@ -327,91 +335,24 @@ RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q)
 
 	return 1;
 }
-LCRYPTO_ALIAS(RSA_set0_factors);
-
-const BIGNUM *
-RSA_get0_n(const RSA *r)
-{
-	return r->n;
-}
-LCRYPTO_ALIAS(RSA_get0_n);
-
-const BIGNUM *
-RSA_get0_e(const RSA *r)
-{
-	return r->e;
-}
-LCRYPTO_ALIAS(RSA_get0_e);
-
-const BIGNUM *
-RSA_get0_d(const RSA *r)
-{
-	return r->d;
-}
-LCRYPTO_ALIAS(RSA_get0_d);
-
-const BIGNUM *
-RSA_get0_p(const RSA *r)
-{
-	return r->p;
-}
-LCRYPTO_ALIAS(RSA_get0_p);
-
-const BIGNUM *
-RSA_get0_q(const RSA *r)
-{
-	return r->q;
-}
-LCRYPTO_ALIAS(RSA_get0_q);
-
-const BIGNUM *
-RSA_get0_dmp1(const RSA *r)
-{
-	return r->dmp1;
-}
-LCRYPTO_ALIAS(RSA_get0_dmp1);
-
-const BIGNUM *
-RSA_get0_dmq1(const RSA *r)
-{
-	return r->dmq1;
-}
-LCRYPTO_ALIAS(RSA_get0_dmq1);
-
-const BIGNUM *
-RSA_get0_iqmp(const RSA *r)
-{
-	return r->iqmp;
-}
-LCRYPTO_ALIAS(RSA_get0_iqmp);
-
-const RSA_PSS_PARAMS *
-RSA_get0_pss_params(const RSA *r)
-{
-	return r->pss;
-}
-LCRYPTO_ALIAS(RSA_get0_pss_params);
 
 void
 RSA_clear_flags(RSA *r, int flags)
 {
 	r->flags &= ~flags;
 }
-LCRYPTO_ALIAS(RSA_clear_flags);
 
 int
 RSA_test_flags(const RSA *r, int flags)
 {
 	return r->flags & flags;
 }
-LCRYPTO_ALIAS(RSA_test_flags);
 
 void
 RSA_set_flags(RSA *r, int flags)
 {
 	r->flags |= flags;
 }
-LCRYPTO_ALIAS(RSA_set_flags);
 
 int
 RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2)
@@ -424,4 +365,3 @@ RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2)
 
 	return EVP_PKEY_CTX_ctrl(ctx, -1, optype, cmd, p1, p2);
 }
-LCRYPTO_ALIAS(RSA_pkey_ctx_ctrl);

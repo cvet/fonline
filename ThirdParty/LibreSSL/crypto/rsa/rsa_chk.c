@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_chk.c,v 1.18 2023/07/08 12:26:45 beck Exp $ */
+/* $OpenBSD: rsa_chk.c,v 1.13 2017/01/29 17:49:23 beck Exp $ */
 /* ====================================================================
  * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
  *
@@ -52,8 +52,7 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "bn_local.h"
-#include "rsa_local.h"
+#include "bn_lcl.h"
 
 int
 RSA_check_key(const RSA *key)
@@ -79,15 +78,6 @@ RSA_check_key(const RSA *key)
 		ret = -1;
 		RSAerror(ERR_R_MALLOC_FAILURE);
 		goto err;
-	}
-
-	if (BN_is_one(key->e)) {
-		ret = 0;
-		RSAerror(RSA_R_BAD_E_VALUE);
-	}
-	if (!BN_is_odd(key->e)) {
-		ret = 0;
-		RSAerror(RSA_R_BAD_E_VALUE);
 	}
 
 	/* p prime? */
@@ -199,7 +189,7 @@ RSA_check_key(const RSA *key)
 		}
 
 		/* iqmp = q^-1 mod p? */
-		if (BN_mod_inverse_ct(i, key->q, key->p, ctx) == NULL) {
+		if (!BN_mod_inverse_ct(i, key->q, key->p, ctx)) {
 			ret = -1;
 			goto err;
 		}
@@ -220,4 +210,3 @@ err:
 
 	return (ret);
 }
-LCRYPTO_ALIAS(RSA_check_key);

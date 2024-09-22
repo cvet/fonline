@@ -1,4 +1,4 @@
-/* $OpenBSD: hm_ameth.c,v 1.20 2024/01/04 17:01:26 tb Exp $ */
+/* $OpenBSD: hm_ameth.c,v 1.10 2015/09/10 15:56:25 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2007.
  */
@@ -56,24 +56,19 @@
  *
  */
 
-#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
 
-#include "asn1_local.h"
-#include "bytestring.h"
-#include "evp_local.h"
-#include "hmac_local.h"
+#include "asn1_locl.h"
 
-static int
-hmac_pkey_public_cmp(const EVP_PKEY *a, const EVP_PKEY *b)
-{
-	/* The ameth pub_cmp must return 1 on match, 0 on mismatch. */
-	return ASN1_OCTET_STRING_cmp(a->pkey.ptr, b->pkey.ptr) == 0;
-}
+#define HMAC_TEST_PRIVATE_KEY_FORMAT
+
+/* HMAC "ASN1" method. This is just here to indicate the
+ * maximum HMAC output length and to free up an HMAC
+ * key.
+ */
 
 static int
 hmac_size(const EVP_PKEY *pkey)
@@ -84,15 +79,13 @@ hmac_size(const EVP_PKEY *pkey)
 static void
 hmac_key_free(EVP_PKEY *pkey)
 {
-	ASN1_OCTET_STRING *os;
+	ASN1_OCTET_STRING *os = (ASN1_OCTET_STRING *)pkey->pkey.ptr;
 
-	if ((os = pkey->pkey.ptr) == NULL)
-		return;
-
-	if (os->data != NULL)
-		explicit_bzero(os->data, os->length);
-
-	ASN1_OCTET_STRING_free(os);
+	if (os) {
+		if (os->data)
+			explicit_bzero(os->data, os->length);
+		ASN1_OCTET_STRING_free(os);
+	}
 }
 
 static int
@@ -107,65 +100,70 @@ hmac_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2)
 	}
 }
 
+#ifdef HMAC_TEST_PRIVATE_KEY_FORMAT
+/* A bogus private key format for test purposes. This is simply the
+ * HMAC key with "HMAC PRIVATE KEY" in the headers. When enabled the
+ * genpkey utility can be used to "generate" HMAC keys.
+ */
+
 static int
-hmac_set_priv_key(EVP_PKEY *pkey, const unsigned char *priv, size_t len)
+old_hmac_decode(EVP_PKEY *pkey, const unsigned char **pder, int derlen)
 {
-	ASN1_OCTET_STRING *os = NULL;
+	ASN1_OCTET_STRING *os;
 
-	if (pkey->pkey.ptr != NULL)
+	os = ASN1_OCTET_STRING_new();
+	if (os == NULL)
 		goto err;
-
-	if (len > INT_MAX)
+	if (ASN1_OCTET_STRING_set(os, *pder, derlen) == 0)
 		goto err;
-
-	if ((os = ASN1_OCTET_STRING_new()) == NULL)
+	if (EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, os) == 0)
 		goto err;
-
-	if (!ASN1_OCTET_STRING_set(os, priv, len))
-		goto err;
-
-	pkey->pkey.ptr = os;
-
 	return 1;
 
- err:
+err:
 	ASN1_OCTET_STRING_free(os);
-
 	return 0;
 }
 
 static int
-hmac_get_priv_key(const EVP_PKEY *pkey, unsigned char *priv, size_t *len)
+old_hmac_encode(const EVP_PKEY *pkey, unsigned char **pder)
 {
-	ASN1_OCTET_STRING *os;
-	CBS cbs;
+	int inc;
+	ASN1_OCTET_STRING *os = (ASN1_OCTET_STRING *)pkey->pkey.ptr;
 
-	if ((os = pkey->pkey.ptr) == NULL)
-		return 0;
+	if (pder) {
+		if (!*pder) {
+			*pder = malloc(os->length);
+			if (*pder == NULL)
+				return -1;
+			inc = 0;
+		} else
+			inc = 1;
 
-	if (priv == NULL) {
-		*len = os->length;
-		return 1;
+		memcpy(*pder, os->data, os->length);
+
+		if (inc)
+			*pder += os->length;
 	}
 
-	CBS_init(&cbs, os->data, os->length);
-	return CBS_write_bytes(&cbs, priv, *len, len);
+	return os->length;
 }
 
+#endif
+
 const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
-	.base_method = &hmac_asn1_meth,
 	.pkey_id = EVP_PKEY_HMAC,
+	.pkey_base_id = EVP_PKEY_HMAC,
 
 	.pem_str = "HMAC",
 	.info = "OpenSSL HMAC method",
-
-	.pub_cmp = hmac_pkey_public_cmp,
 
 	.pkey_size = hmac_size,
 
 	.pkey_free = hmac_key_free,
 	.pkey_ctrl = hmac_pkey_ctrl,
-
-	.set_priv_key = hmac_set_priv_key,
-	.get_priv_key = hmac_get_priv_key,
+#ifdef HMAC_TEST_PRIVATE_KEY_FORMAT
+	.old_priv_decode = old_hmac_decode,
+	.old_priv_encode = old_hmac_encode
+#endif
 };

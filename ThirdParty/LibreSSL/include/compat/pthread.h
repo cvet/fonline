@@ -30,25 +30,20 @@ struct pthread_once {
 };
 typedef struct pthread_once pthread_once_t;
 
-struct _pthread_win32_cb_arg {
-	void (*cb)(void);
-};
-
 static inline BOOL CALLBACK
 _pthread_once_win32_cb(PINIT_ONCE once, PVOID param, PVOID *context)
 {
-	struct _pthread_win32_cb_arg *arg = param;
-	arg->cb();
+	void (*cb) (void) = param;
+	cb();
 	return TRUE;
 }
 
 static inline int
 pthread_once(pthread_once_t *once, void (*cb) (void))
 {
-	struct _pthread_win32_cb_arg arg = { .cb = cb };
-	BOOL rc = InitOnceExecuteOnce(&once->once, _pthread_once_win32_cb, &arg, NULL);
+	BOOL rc = InitOnceExecuteOnce(&once->once, _pthread_once_win32_cb, cb, NULL);
 	if (rc == 0)
-		return EINVAL;
+		return -1;
 	else
 		return 0;
 }

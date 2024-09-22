@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_bio_cb.c,v 1.21 2023/05/14 07:26:25 op Exp $ */
+/* $OpenBSD: tls_bio_cb.c,v 1.19 2017/01/12 16:18:39 jsing Exp $ */
 /*
  * Copyright (c) 2016 Tobias Pape <tobias@netshed.de>
  *
@@ -17,7 +17,6 @@
 
 #include <fcntl.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <openssl/bio.h>
@@ -30,41 +29,19 @@ static int bio_cb_read(BIO *bio, char *buf, int size);
 static int bio_cb_puts(BIO *bio, const char *str);
 static long bio_cb_ctrl(BIO *bio, int cmd, long num, void *ptr);
 
-static BIO_METHOD *bio_cb_method;
-
-static pthread_mutex_t bio_cb_method_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static void
-bio_cb_method_init(void)
-{
-	BIO_METHOD *bio_method;
-
-	if (bio_cb_method != NULL)
-		return;
-
-	bio_method = BIO_meth_new(BIO_TYPE_MEM, "libtls_callbacks");
-	if (bio_method == NULL)
-		return;
-
-	BIO_meth_set_write(bio_method, bio_cb_write);
-	BIO_meth_set_read(bio_method, bio_cb_read);
-	BIO_meth_set_puts(bio_method, bio_cb_puts);
-	BIO_meth_set_ctrl(bio_method, bio_cb_ctrl);
-
-	bio_cb_method = bio_method;
-}
+static BIO_METHOD bio_cb_method = {
+	.type = BIO_TYPE_MEM,
+	.name = "libtls_callbacks",
+	.bwrite = bio_cb_write,
+	.bread = bio_cb_read,
+	.bputs = bio_cb_puts,
+	.ctrl = bio_cb_ctrl,
+};
 
 static BIO_METHOD *
 bio_s_cb(void)
 {
-	if (bio_cb_method != NULL)
-		return (bio_cb_method);
-
-	pthread_mutex_lock(&bio_cb_method_lock);
-	bio_cb_method_init();
-	pthread_mutex_unlock(&bio_cb_method_lock);
-
-	return (bio_cb_method);
+	return (&bio_cb_method);
 }
 
 static int
@@ -80,10 +57,10 @@ bio_cb_ctrl(BIO *bio, int cmd, long num, void *ptr)
 
 	switch (cmd) {
 	case BIO_CTRL_GET_CLOSE:
-		ret = (long)BIO_get_shutdown(bio);
+		ret = (long)bio->shutdown;
 		break;
 	case BIO_CTRL_SET_CLOSE:
-		BIO_set_shutdown(bio, (int)num);
+		bio->shutdown = (int)num;
 		break;
 	case BIO_CTRL_DUP:
 	case BIO_CTRL_FLUSH:
@@ -92,7 +69,7 @@ bio_cb_ctrl(BIO *bio, int cmd, long num, void *ptr)
 	case BIO_CTRL_GET:
 	case BIO_CTRL_SET:
 	default:
-		ret = BIO_ctrl(BIO_next(bio), cmd, num, ptr);
+		ret = BIO_ctrl(bio->next_bio, cmd, num, ptr);
 	}
 
 	return (ret);
@@ -101,7 +78,7 @@ bio_cb_ctrl(BIO *bio, int cmd, long num, void *ptr)
 static int
 bio_cb_write(BIO *bio, const char *buf, int num)
 {
-	struct tls *ctx = BIO_get_data(bio);
+	struct tls *ctx = bio->ptr;
 	int rv;
 
 	BIO_clear_retry_flags(bio);
@@ -119,7 +96,7 @@ bio_cb_write(BIO *bio, const char *buf, int num)
 static int
 bio_cb_read(BIO *bio, char *buf, int size)
 {
-	struct tls *ctx = BIO_get_data(bio);
+	struct tls *ctx = bio->ptr;
 	int rv;
 
 	BIO_clear_retry_flags(bio);
@@ -138,9 +115,8 @@ int
 tls_set_cbs(struct tls *ctx, tls_read_cb read_cb, tls_write_cb write_cb,
     void *cb_arg)
 {
-	const BIO_METHOD *bio_cb;
-	BIO *bio;
 	int rv = -1;
+	BIO *bio;
 
 	if (read_cb == NULL || write_cb == NULL) {
 		tls_set_errorx(ctx, "no callbacks provided");
@@ -151,16 +127,12 @@ tls_set_cbs(struct tls *ctx, tls_read_cb read_cb, tls_write_cb write_cb,
 	ctx->write_cb = write_cb;
 	ctx->cb_arg = cb_arg;
 
-	if ((bio_cb = bio_s_cb()) == NULL) {
-		tls_set_errorx(ctx, "failed to create callback method");
-		goto err;
-	}
-	if ((bio = BIO_new(bio_cb)) == NULL) {
+	if ((bio = BIO_new(bio_s_cb())) == NULL) {
 		tls_set_errorx(ctx, "failed to create callback i/o");
 		goto err;
 	}
-	BIO_set_data(bio, ctx);
-	BIO_set_init(bio, 1);
+	bio->ptr = ctx;
+	bio->init = 1;
 
 	SSL_set_bio(ctx->ssl_conn, bio, bio);
 

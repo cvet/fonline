@@ -1,4 +1,4 @@
-/* $OpenBSD: md32_common.h,v 1.26 2023/08/10 07:15:23 jsing Exp $ */
+/* $OpenBSD: md32_common.h,v 1.22 2016/11/04 13:56:04 miod Exp $ */
 /* ====================================================================
  * Copyright (c) 1999-2007 The OpenSSL Project.  All rights reserved.
  *
@@ -111,8 +111,6 @@
 
 #include <openssl/opensslconf.h>
 
-#include "crypto_internal.h"
-
 #if !defined(DATA_ORDER_IS_BIG_ENDIAN) && !defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 #error "DATA_ORDER must be defined!"
 #endif
@@ -127,10 +125,10 @@
 #error "HASH_CTX must be defined!"
 #endif
 
-#if !defined(HASH_UPDATE) && !defined(HASH_NO_UPDATE)
+#ifndef HASH_UPDATE
 #error "HASH_UPDATE must be defined!"
 #endif
-#if !defined(HASH_TRANSFORM) && !defined(HASH_NO_TRANSFORM)
+#ifndef HASH_TRANSFORM
 #error "HASH_TRANSFORM must be defined!"
 #endif
 #if !defined(HASH_FINAL) && !defined(HASH_NO_FINAL)
@@ -141,7 +139,15 @@
 #error "HASH_BLOCK_DATA_ORDER must be defined!"
 #endif
 
-#define ROTATE(a, n)	crypto_rol_u32(a, n)
+/*
+ * This common idiom is recognized by the compiler and turned into a
+ * CPU-specific intrinsic as appropriate. 
+ * e.g. GCC optimizes to roll on amd64 at -O0
+ */
+static inline uint32_t ROTATE(uint32_t a, uint32_t n)
+{
+	return (a<<n)|(a>>(32-n));
+}
 
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
@@ -206,7 +212,6 @@
  * Time for some action:-)
  */
 
-#ifndef HASH_NO_UPDATE
 int
 HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len)
 {
@@ -260,14 +265,13 @@ HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len)
 	}
 	return 1;
 }
-#endif
 
-#ifndef HASH_NO_TRANSFORM
+
 void HASH_TRANSFORM (HASH_CTX *c, const unsigned char *data)
 {
 	HASH_BLOCK_DATA_ORDER (c, data, 1);
 }
-#endif
+
 
 #ifndef HASH_NO_FINAL
 int HASH_FINAL (unsigned char *md, HASH_CTX *c)
@@ -306,4 +310,36 @@ int HASH_FINAL (unsigned char *md, HASH_CTX *c)
 
 	return 1;
 }
+#endif
+
+#ifndef MD32_REG_T
+#if defined(__alpha) || defined(__sparcv9) || defined(__mips)
+#define MD32_REG_T long
+/*
+ * This comment was originaly written for MD5, which is why it
+ * discusses A-D. But it basically applies to all 32-bit digests,
+ * which is why it was moved to common header file.
+ *
+ * In case you wonder why A-D are declared as long and not
+ * as MD5_LONG. Doing so results in slight performance
+ * boost on LP64 architectures. The catch is we don't
+ * really care if 32 MSBs of a 64-bit register get polluted
+ * with eventual overflows as we *save* only 32 LSBs in
+ * *either* case. Now declaring 'em long excuses the compiler
+ * from keeping 32 MSBs zeroed resulting in 13% performance
+ * improvement under SPARC Solaris7/64 and 5% under AlphaLinux.
+ * Well, to be honest it should say that this *prevents*
+ * performance degradation.
+ *				<appro@fy.chalmers.se>
+ */
+#else
+/*
+ * Above is not absolute and there are LP64 compilers that
+ * generate better code if MD32_REG_T is defined int. The above
+ * pre-processor condition reflects the circumstances under which
+ * the conclusion was made and is subject to further extension.
+ *				<appro@fy.chalmers.se>
+ */
+#define MD32_REG_T int
+#endif
 #endif

@@ -1,4 +1,4 @@
-/* $OpenBSD: asn1_gen.c,v 1.21 2023/07/05 21:23:36 beck Exp $ */
+/* $OpenBSD: asn1_gen.c,v 1.17 2018/04/25 11:48:21 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2002.
  */
@@ -61,8 +61,6 @@
 #include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
-
-#include "asn1_local.h"
 
 #define ASN1_GEN_FLAG		0x10000
 #define ASN1_GEN_FLAG_IMP	(ASN1_GEN_FLAG|1)
@@ -133,7 +131,6 @@ ASN1_generate_nconf(const char *str, CONF *nconf)
 	X509V3_set_nconf(&cnf, nconf);
 	return ASN1_generate_v3(str, &cnf);
 }
-LCRYPTO_ALIAS(ASN1_generate_nconf);
 
 ASN1_TYPE *
 ASN1_generate_v3(const char *str, X509V3_CTX *cnf)
@@ -261,13 +258,12 @@ ASN1_generate_v3(const char *str, X509V3_CTX *cnf)
 	/* Obtain new ASN1_TYPE structure */
 	ret = d2i_ASN1_TYPE(NULL, &cp, len);
 
- err:
+err:
 	free(orig_der);
 	free(new_der);
 
 	return ret;
 }
-LCRYPTO_ALIAS(ASN1_generate_v3);
 
 static int
 asn1_cb(const char *elem, int len, void *bitstr)
@@ -482,7 +478,7 @@ asn1_multi(int utype, const char *section, X509V3_CTX *cnf)
 
 	der = NULL;
 
- bad:
+bad:
 	free(der);
 	if (sk)
 		sk_ASN1_TYPE_pop_free(sk, ASN1_TYPE_free);
@@ -758,9 +754,10 @@ asn1_str2type(const char *str, int format, int utype)
 		}
 
 		if ((utype == V_ASN1_BIT_STRING) && no_unused) {
-			if (!asn1_abs_set_unused_bits(atmp->value.asn1_string,
-			    0))
-				goto bad_str;
+			atmp->value.asn1_string->flags &=
+			    ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+			atmp->value.asn1_string->flags |=
+			    ASN1_STRING_FLAG_BITS_LEFT;
 		}
 
 		break;
@@ -774,9 +771,9 @@ asn1_str2type(const char *str, int format, int utype)
 	atmp->type = utype;
 	return atmp;
 
- bad_str:
+bad_str:
 	ERR_asprintf_error_data("string=%s", str);
- bad_form:
+bad_form:
 	ASN1_TYPE_free(atmp);
 	return NULL;
 }

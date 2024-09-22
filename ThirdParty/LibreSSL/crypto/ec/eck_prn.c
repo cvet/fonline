@@ -1,4 +1,4 @@
-/* $OpenBSD: eck_prn.c,v 1.30 2023/11/21 22:05:33 tb Exp $ */
+/* $OpenBSD: eck_prn.c,v 1.17 2021/04/20 17:12:43 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -69,10 +69,8 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#include "ec_local.h"
-
-int
-ECPKParameters_print_fp(FILE *fp, const EC_GROUP *x, int off)
+int 
+ECPKParameters_print_fp(FILE * fp, const EC_GROUP * x, int off)
 {
 	BIO *b;
 	int ret;
@@ -86,10 +84,9 @@ ECPKParameters_print_fp(FILE *fp, const EC_GROUP *x, int off)
 	BIO_free(b);
 	return (ret);
 }
-LCRYPTO_ALIAS(ECPKParameters_print_fp);
 
-int
-EC_KEY_print_fp(FILE *fp, const EC_KEY *x, int off)
+int 
+EC_KEY_print_fp(FILE * fp, const EC_KEY * x, int off)
 {
 	BIO *b;
 	int ret;
@@ -103,10 +100,9 @@ EC_KEY_print_fp(FILE *fp, const EC_KEY *x, int off)
 	BIO_free(b);
 	return (ret);
 }
-LCRYPTO_ALIAS(EC_KEY_print_fp);
 
-int
-ECParameters_print_fp(FILE *fp, const EC_KEY *x)
+int 
+ECParameters_print_fp(FILE * fp, const EC_KEY * x)
 {
 	BIO *b;
 	int ret;
@@ -120,220 +116,244 @@ ECParameters_print_fp(FILE *fp, const EC_KEY *x)
 	BIO_free(b);
 	return (ret);
 }
-LCRYPTO_ALIAS(ECParameters_print_fp);
 
-int
-EC_KEY_print(BIO *bp, const EC_KEY *x, int off)
+int 
+EC_KEY_print(BIO * bp, const EC_KEY * x, int off)
 {
 	EVP_PKEY *pk;
-	int ret = 0;
-
-	if ((pk = EVP_PKEY_new()) == NULL)
-		goto err;
-
-	if (!EVP_PKEY_set1_EC_KEY(pk, (EC_KEY *) x))
-		goto err;
-
+	int ret;
+	pk = EVP_PKEY_new();
+	if (!pk || !EVP_PKEY_set1_EC_KEY(pk, (EC_KEY *) x))
+		return 0;
 	ret = EVP_PKEY_print_private(bp, pk, off, NULL);
- err:
 	EVP_PKEY_free(pk);
 	return ret;
 }
-LCRYPTO_ALIAS(EC_KEY_print);
 
-int
-ECParameters_print(BIO *bp, const EC_KEY *x)
+int 
+ECParameters_print(BIO * bp, const EC_KEY * x)
 {
 	EVP_PKEY *pk;
-	int ret = 0;
-
-	if ((pk = EVP_PKEY_new()) == NULL)
-		goto err;
-
-	if (!EVP_PKEY_set1_EC_KEY(pk, (EC_KEY *) x))
-		goto err;
-
+	int ret;
+	pk = EVP_PKEY_new();
+	if (!pk || !EVP_PKEY_set1_EC_KEY(pk, (EC_KEY *) x))
+		return 0;
 	ret = EVP_PKEY_print_params(bp, pk, 4, NULL);
- err:
 	EVP_PKEY_free(pk);
 	return ret;
 }
-LCRYPTO_ALIAS(ECParameters_print);
 
-static int
-ecpk_print_asn1_parameters(BIO *bp, const EC_GROUP *group, int off)
+static int 
+print_bin(BIO * fp, const char *str, const unsigned char *num,
+    size_t len, int off);
+
+int 
+ECPKParameters_print(BIO * bp, const EC_GROUP * x, int off)
 {
-	const char *nist_name;
-	int nid;
-	int ret = 0;
-
-	if (!BIO_indent(bp, off, 128)) {
-		ECerror(ERR_R_BIO_LIB);
-		goto err;
-	}
-
-	if ((nid = EC_GROUP_get_curve_name(group)) == NID_undef) {
-		ECerror(ERR_R_INTERNAL_ERROR);
-		goto err;
-	}
-
-	if (BIO_printf(bp, "ASN1 OID: %s\n", OBJ_nid2sn(nid)) <= 0) {
-		ECerror(ERR_R_BIO_LIB);
-		goto err;
-	}
-
-	if ((nist_name = EC_curve_nid2nist(nid)) != NULL) {
-		if (!BIO_indent(bp, off, 128)) {
-			ECerror(ERR_R_BIO_LIB);
-			goto err;
-		}
-		if (BIO_printf(bp, "NIST CURVE: %s\n", nist_name) <= 0) {
-			ECerror(ERR_R_BIO_LIB);
-			goto err;
-		}
-	}
-
-	ret = 1;
- err:
-
-	return ret;
-}
-
-static int
-ecpk_print_explicit_parameters(BIO *bp, const EC_GROUP *group, int off)
-{
+	unsigned char *buffer = NULL;
+	size_t buf_len = 0, i;
+	int ret = 0, reason = ERR_R_BIO_LIB;
 	BN_CTX *ctx = NULL;
-	const BIGNUM *order;
-	BIGNUM *p, *a, *b, *cofactor;
-	BIGNUM *gen = NULL;
-	const EC_POINT *generator;
-	const char *conversion_form;
+	const EC_POINT *point = NULL;
+	BIGNUM *p = NULL, *a = NULL, *b = NULL, *gen = NULL, *order = NULL,
+	*cofactor = NULL;
 	const unsigned char *seed;
-	size_t seed_len;
-	point_conversion_form_t form;
-	int nid;
-	int ret = 0;
+	size_t seed_len = 0;
+	const char *nname;
 
-	if ((ctx = BN_CTX_new()) == NULL) {
-		ECerror(ERR_R_MALLOC_FAILURE);
+	static const char *gen_compressed = "Generator (compressed):";
+	static const char *gen_uncompressed = "Generator (uncompressed):";
+	static const char *gen_hybrid = "Generator (hybrid):";
+
+	if (!x) {
+		reason = ERR_R_PASSED_NULL_PARAMETER;
 		goto err;
 	}
-
-	BN_CTX_start(ctx);
-
-	if ((p = BN_CTX_get(ctx)) == NULL)
-		goto err;
-	if ((a = BN_CTX_get(ctx)) == NULL)
-		goto err;
-	if ((b = BN_CTX_get(ctx)) == NULL)
-		goto err;
-	if ((cofactor = BN_CTX_get(ctx)) == NULL)
-		goto err;
-	if ((gen = BN_CTX_get(ctx)) == NULL)
-		goto err;
-
-	if (!EC_GROUP_get_curve(group, p, a, b, ctx)) {
-		ECerror(ERR_R_EC_LIB);
+	ctx = BN_CTX_new();
+	if (ctx == NULL) {
+		reason = ERR_R_MALLOC_FAILURE;
 		goto err;
 	}
-	if ((order = EC_GROUP_get0_order(group)) == NULL) {
-		ECerror(ERR_R_EC_LIB);
-		goto err;
-	}
-	if (!EC_GROUP_get_cofactor(group, cofactor, NULL)) {
-		ECerror(ERR_R_EC_LIB);
-		goto err;
-	}
+	if (EC_GROUP_get_asn1_flag(x)) {
+		/* the curve parameter are given by an asn1 OID */
+		int nid;
 
-	if ((generator = EC_GROUP_get0_generator(group)) == NULL) {
-		ECerror(ERR_R_EC_LIB);
-		goto err;
-	}
-	form = EC_GROUP_get_point_conversion_form(group);
-	if (EC_POINT_point2bn(group, generator, form, gen, ctx) == NULL) {
-		ECerror(ERR_R_EC_LIB);
-		goto err;
-	}
-
-	if (!BIO_indent(bp, off, 128))
-		goto err;
-
-	nid = EC_METHOD_get_field_type(EC_GROUP_method_of(group));
-	if (BIO_printf(bp, "Field Type: %s\n", OBJ_nid2sn(nid)) <= 0)
-		goto err;
-
-	if (!bn_printf(bp, p, off, "Prime:"))
-		goto err;
-	if (!bn_printf(bp, a, off, "A:   "))
-		goto err;
-	if (!bn_printf(bp, b, off, "B:   "))
-		goto err;
-
-	if (form == POINT_CONVERSION_COMPRESSED)
-		conversion_form = "compressed";
-	else if (form == POINT_CONVERSION_UNCOMPRESSED)
-		conversion_form = "uncompressed";
-	else if (form == POINT_CONVERSION_HYBRID)
-		conversion_form = "hybrid";
-	else
-		conversion_form = "unknown";
-	if (!bn_printf(bp, gen, off, "Generator (%s):", conversion_form))
-		goto err;
-
-	if (!bn_printf(bp, order, off, "Order: "))
-		goto err;
-	if (!bn_printf(bp, cofactor, off, "Cofactor: "))
-		goto err;
-	if ((seed = EC_GROUP_get0_seed(group)) != NULL) {
-		size_t i;
-
-		seed_len = EC_GROUP_get_seed_len(group);
-
-		/* XXX - ecx_buf_print() has a CBS version of this - dedup. */
 		if (!BIO_indent(bp, off, 128))
 			goto err;
-		if (BIO_printf(bp, "Seed:") <= 0)
+
+		nid = EC_GROUP_get_curve_name(x);
+		if (nid == 0)
 			goto err;
 
-		for (i = 0; i < seed_len; i++) {
-			const char *sep = ":";
-
-			if (i % 15 == 0) {
-				if (BIO_printf(bp, "\n") <= 0)
-					goto err;
-				if (!BIO_indent(bp, off + 4, 128))
-					goto err;
-			}
-
-			if (i + 1 == seed_len)
-				sep = "";
-			if (BIO_printf(bp, "%02x%s", seed[i], sep) <= 0)
-				goto err;
-		}
-
+		if (BIO_printf(bp, "ASN1 OID: %s", OBJ_nid2sn(nid)) <= 0)
+			goto err;
 		if (BIO_printf(bp, "\n") <= 0)
 			goto err;
-	}
 
+		nname = EC_curve_nid2nist(nid);
+		if (nname) {
+			if (!BIO_indent(bp, off, 128))
+				goto err;
+			if (BIO_printf(bp, "NIST CURVE: %s\n", nname) <= 0)
+				goto err;
+		}
+	} else {
+		/* explicit parameters */
+		int is_char_two = 0;
+		point_conversion_form_t form;
+		int tmp_nid = EC_METHOD_get_field_type(EC_GROUP_method_of(x));
+
+		if (tmp_nid == NID_X9_62_characteristic_two_field)
+			is_char_two = 1;
+
+		if ((p = BN_new()) == NULL || (a = BN_new()) == NULL ||
+		    (b = BN_new()) == NULL || (order = BN_new()) == NULL ||
+		    (cofactor = BN_new()) == NULL) {
+			reason = ERR_R_MALLOC_FAILURE;
+			goto err;
+		}
+		if (!EC_GROUP_get_curve(x, p, a, b, ctx)) {
+			reason = ERR_R_EC_LIB;
+			goto err;
+		}
+
+		if ((point = EC_GROUP_get0_generator(x)) == NULL) {
+			reason = ERR_R_EC_LIB;
+			goto err;
+		}
+		if (!EC_GROUP_get_order(x, order, NULL) ||
+		    !EC_GROUP_get_cofactor(x, cofactor, NULL)) {
+			reason = ERR_R_EC_LIB;
+			goto err;
+		}
+		form = EC_GROUP_get_point_conversion_form(x);
+
+		if ((gen = EC_POINT_point2bn(x, point,
+			    form, NULL, ctx)) == NULL) {
+			reason = ERR_R_EC_LIB;
+			goto err;
+		}
+		buf_len = (size_t) BN_num_bytes(p);
+		if (buf_len < (i = (size_t) BN_num_bytes(a)))
+			buf_len = i;
+		if (buf_len < (i = (size_t) BN_num_bytes(b)))
+			buf_len = i;
+		if (buf_len < (i = (size_t) BN_num_bytes(gen)))
+			buf_len = i;
+		if (buf_len < (i = (size_t) BN_num_bytes(order)))
+			buf_len = i;
+		if (buf_len < (i = (size_t) BN_num_bytes(cofactor)))
+			buf_len = i;
+
+		if ((seed = EC_GROUP_get0_seed(x)) != NULL)
+			seed_len = EC_GROUP_get_seed_len(x);
+
+		buf_len += 10;
+		if ((buffer = malloc(buf_len)) == NULL) {
+			reason = ERR_R_MALLOC_FAILURE;
+			goto err;
+		}
+		if (!BIO_indent(bp, off, 128))
+			goto err;
+
+		/* print the 'short name' of the field type */
+		if (BIO_printf(bp, "Field Type: %s\n", OBJ_nid2sn(tmp_nid))
+		    <= 0)
+			goto err;
+
+		if (is_char_two) {
+			/* print the 'short name' of the base type OID */
+			int basis_type = EC_GROUP_get_basis_type(x);
+			if (basis_type == 0)
+				goto err;
+
+			if (!BIO_indent(bp, off, 128))
+				goto err;
+
+			if (BIO_printf(bp, "Basis Type: %s\n",
+				OBJ_nid2sn(basis_type)) <= 0)
+				goto err;
+
+			/* print the polynomial */
+			if ((p != NULL) && !ASN1_bn_print(bp, "Polynomial:", p, buffer,
+				off))
+				goto err;
+		} else {
+			if ((p != NULL) && !ASN1_bn_print(bp, "Prime:", p, buffer, off))
+				goto err;
+		}
+		if ((a != NULL) && !ASN1_bn_print(bp, "A:   ", a, buffer, off))
+			goto err;
+		if ((b != NULL) && !ASN1_bn_print(bp, "B:   ", b, buffer, off))
+			goto err;
+		if (form == POINT_CONVERSION_COMPRESSED) {
+			if ((gen != NULL) && !ASN1_bn_print(bp, gen_compressed, gen,
+				buffer, off))
+				goto err;
+		} else if (form == POINT_CONVERSION_UNCOMPRESSED) {
+			if ((gen != NULL) && !ASN1_bn_print(bp, gen_uncompressed, gen,
+				buffer, off))
+				goto err;
+		} else {	/* form == POINT_CONVERSION_HYBRID */
+			if ((gen != NULL) && !ASN1_bn_print(bp, gen_hybrid, gen,
+				buffer, off))
+				goto err;
+		}
+		if ((order != NULL) && !ASN1_bn_print(bp, "Order: ", order,
+			buffer, off))
+			goto err;
+		if ((cofactor != NULL) && !ASN1_bn_print(bp, "Cofactor: ", cofactor,
+			buffer, off))
+			goto err;
+		if (seed && !print_bin(bp, "Seed:", seed, seed_len, off))
+			goto err;
+	}
 	ret = 1;
  err:
-	BN_CTX_end(ctx);
+	if (!ret)
+		ECerror(reason);
+	BN_free(p);
+	BN_free(a);
+	BN_free(b);
+	BN_free(gen);
+	BN_free(order);
+	BN_free(cofactor);
 	BN_CTX_free(ctx);
-
-	return ret;
+	free(buffer);
+	return (ret);
 }
 
-int
-ECPKParameters_print(BIO *bp, const EC_GROUP *group, int off)
+static int 
+print_bin(BIO * fp, const char *name, const unsigned char *buf,
+    size_t len, int off)
 {
-	if (group == NULL) {
-		ECerror(ERR_R_PASSED_NULL_PARAMETER);
-		return 0;
+	size_t i;
+	char str[128];
+
+	if (buf == NULL)
+		return 1;
+	if (off) {
+		if (off > 128)
+			off = 128;
+		memset(str, ' ', off);
+		if (BIO_write(fp, str, off) <= 0)
+			return 0;
 	}
+	if (BIO_printf(fp, "%s", name) <= 0)
+		return 0;
 
-	if (EC_GROUP_get_asn1_flag(group))
-		return ecpk_print_asn1_parameters(bp, group, off);
+	for (i = 0; i < len; i++) {
+		if ((i % 15) == 0) {
+			str[0] = '\n';
+			memset(&(str[1]), ' ', off + 4);
+			if (BIO_write(fp, str, off + 1 + 4) <= 0)
+				return 0;
+		}
+		if (BIO_printf(fp, "%02x%s", buf[i], ((i + 1) == len) ? "" : ":") <= 0)
+			return 0;
+	}
+	if (BIO_write(fp, "\n", 1) <= 0)
+		return 0;
 
-	return ecpk_print_explicit_parameters(bp, group, off);
+	return 1;
 }
-LCRYPTO_ALIAS(ECPKParameters_print);

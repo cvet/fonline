@@ -1,4 +1,4 @@
-/* $OpenBSD: conf_api.c,v 1.18 2024/03/02 11:11:11 tb Exp $ */
+/* $OpenBSD: conf_api.c,v 1.15 2015/04/11 16:03:21 deraadt Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -69,8 +69,6 @@
 #include <openssl/conf.h>
 #include <openssl/conf_api.h>
 
-#include "lhash_local.h"
-
 static void value_free_hash_doall_arg(CONF_VALUE *a,
     LHASH_OF(CONF_VALUE) *conf);
 static void value_free_stack_doall(CONF_VALUE *a);
@@ -91,7 +89,6 @@ _CONF_get_section(const CONF *conf, const char *section)
 	v = lh_CONF_VALUE_retrieve(conf->data, &vv);
 	return (v);
 }
-LCRYPTO_ALIAS(_CONF_get_section);
 
 /* Up until OpenSSL 0.9.5a, this was CONF_get_section */
 STACK_OF(CONF_VALUE) *
@@ -105,7 +102,6 @@ _CONF_get_section_values(const CONF *conf, const char *section)
 	else
 		return (NULL);
 }
-LCRYPTO_ALIAS(_CONF_get_section_values);
 
 int
 _CONF_add_string(CONF *conf, CONF_VALUE *section, CONF_VALUE *value)
@@ -129,7 +125,6 @@ _CONF_add_string(CONF *conf, CONF_VALUE *section, CONF_VALUE *value)
 	}
 	return 1;
 }
-LCRYPTO_ALIAS(_CONF_add_string);
 
 char *
 _CONF_get_string(const CONF *conf, const char *section, const char *name)
@@ -156,7 +151,6 @@ _CONF_get_string(const CONF *conf, const char *section, const char *name)
 	} else
 		return (NULL);
 }
-LCRYPTO_ALIAS(_CONF_get_string);
 
 static unsigned long
 conf_value_hash(const CONF_VALUE *v)
@@ -199,7 +193,6 @@ _CONF_new_data(CONF *conf)
 		}
 	return 1;
 }
-LCRYPTO_ALIAS(_CONF_new_data);
 
 void
 _CONF_free_data(CONF *conf)
@@ -207,6 +200,9 @@ _CONF_free_data(CONF *conf)
 	if (conf == NULL || conf->data == NULL)
 		return;
 
+	lh_CONF_VALUE_down_load(conf->data) = 0; /* evil thing to make
+						  * sure the 'free()' works as
+						  * expected */
 	lh_CONF_VALUE_doall_arg(conf->data,
 	    LHASH_DOALL_ARG_FN(value_free_hash),
 	    LHASH_OF(CONF_VALUE), conf->data);
@@ -217,7 +213,6 @@ _CONF_free_data(CONF *conf)
 	lh_CONF_VALUE_doall(conf->data, LHASH_DOALL_FN(value_free_stack));
 	lh_CONF_VALUE_free(conf->data);
 }
-LCRYPTO_ALIAS(_CONF_free_data);
 
 static void
 value_free_hash_doall_arg(CONF_VALUE *a, LHASH_OF(CONF_VALUE) *conf)
@@ -282,4 +277,3 @@ err:
 	}
 	return (v);
 }
-LCRYPTO_ALIAS(_CONF_new_section);

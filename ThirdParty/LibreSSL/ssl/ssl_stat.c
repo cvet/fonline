@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_stat.c,v 1.21 2023/07/08 16:40:13 beck Exp $ */
+/* $OpenBSD: ssl_stat.c,v 1.17 2021/06/13 15:51:10 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -84,14 +84,14 @@
 
 #include <stdio.h>
 
-#include "ssl_local.h"
+#include "ssl_locl.h"
 
 const char *
 SSL_state_string_long(const SSL *s)
 {
 	const char *str;
 
-	switch (s->s3->hs.state) {
+	switch (S3I(s)->hs.state) {
 	case SSL_ST_BEFORE:
 		str = "before SSL initialization";
 		break;
@@ -319,14 +319,13 @@ SSL_state_string_long(const SSL *s)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_state_string_long);
 
 const char *
 SSL_rstate_string_long(const SSL *s)
 {
 	const char *str;
 
-	switch (s->rstate) {
+	switch (s->internal->rstate) {
 	case SSL_ST_READ_HEADER:
 		str = "read header";
 		break;
@@ -342,14 +341,13 @@ SSL_rstate_string_long(const SSL *s)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_rstate_string_long);
 
 const char *
 SSL_state_string(const SSL *s)
 {
 	const char *str;
 
-	switch (s->s3->hs.state) {
+	switch (S3I(s)->hs.state) {
 	case SSL_ST_BEFORE:
 		str = "PINIT ";
 		break;
@@ -549,7 +547,6 @@ SSL_state_string(const SSL *s)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_state_string);
 
 const char *
 SSL_alert_type_string_long(int value)
@@ -562,7 +559,6 @@ SSL_alert_type_string_long(int value)
 	else
 		return ("unknown");
 }
-LSSL_ALIAS(SSL_alert_type_string_long);
 
 const char *
 SSL_alert_type_string(int value)
@@ -575,7 +571,6 @@ SSL_alert_type_string(int value)
 	else
 		return ("U");
 }
-LSSL_ALIAS(SSL_alert_type_string);
 
 const char *
 SSL_alert_desc_string(int value)
@@ -673,7 +668,6 @@ SSL_alert_desc_string(int value)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_alert_desc_string);
 
 const char *
 SSL_alert_desc_string_long(int value)
@@ -771,14 +765,13 @@ SSL_alert_desc_string_long(int value)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_alert_desc_string_long);
 
 const char *
 SSL_rstate_string(const SSL *s)
 {
 	const char *str;
 
-	switch (s->rstate) {
+	switch (s->internal->rstate) {
 	case SSL_ST_READ_HEADER:
 		str = "RH";
 		break;
@@ -794,4 +787,3 @@ SSL_rstate_string(const SSL *s)
 	}
 	return (str);
 }
-LSSL_ALIAS(SSL_rstate_string);

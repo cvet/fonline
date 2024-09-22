@@ -8,9 +8,7 @@
 #endif
 
 #ifndef _WIN32
-#ifdef HAVE_NETINET_IP_H
 #include_next <netinet/ip.h>
-#endif
 #else
 #include <win32netcompat.h>
 #endif

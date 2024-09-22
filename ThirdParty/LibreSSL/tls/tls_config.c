@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_config.c,v 1.67 2023/07/02 06:37:27 beck Exp $ */
+/* $OpenBSD: tls_config.c,v 1.63 2021/01/21 22:03:25 eric Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <tls.h>
@@ -251,9 +250,9 @@ tls_config_parse_protocols(uint32_t *protocols, const char *protostr)
 		if (strcasecmp(p, "tlsv1") == 0)
 			proto = TLS_PROTOCOL_TLSv1;
 		else if (strcasecmp(p, "tlsv1.0") == 0)
-			proto = TLS_PROTOCOL_TLSv1_2;
+			proto = TLS_PROTOCOL_TLSv1_0;
 		else if (strcasecmp(p, "tlsv1.1") == 0)
-			proto = TLS_PROTOCOL_TLSv1_2;
+			proto = TLS_PROTOCOL_TLSv1_1;
 		else if (strcasecmp(p, "tlsv1.2") == 0)
 			proto = TLS_PROTOCOL_TLSv1_2;
 		else if (strcasecmp(p, "tlsv1.3") == 0)
@@ -723,7 +722,7 @@ tls_config_set_session_fd(struct tls_config *config, int session_fd)
 
 	if (sb.st_uid != getuid()) {
 		tls_config_set_errorx(config, "session file has incorrect "
-		    "owner (uid %u != %u)", sb.st_uid, getuid());
+		    "owner (uid %i != %i)", sb.st_uid, getuid());
 		return (-1);
 	}
 	mugo = sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO);
@@ -734,17 +733,6 @@ tls_config_set_session_fd(struct tls_config *config, int session_fd)
 	}
 
 	config->session_fd = session_fd;
-
-	return (0);
-}
-
-int
-tls_config_set_sign_cb(struct tls_config *config, tls_sign_cb cb, void *cb_arg)
-{
-	config->use_fake_private_key = 1;
-	config->skip_private_key_check = 1;
-	config->sign_cb = cb;
-	config->sign_cb_arg = cb_arg;
 
 	return (0);
 }

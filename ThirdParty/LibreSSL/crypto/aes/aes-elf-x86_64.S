@@ -1,16 +1,9 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 
 .text	
 .type	_x86_64_AES_encrypt,@function
 .align	16
 _x86_64_AES_encrypt:
-_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -164,7 +157,6 @@ _CET_ENDBR
 .type	_x86_64_AES_encrypt_compact,@function
 .align	16
 _x86_64_AES_encrypt_compact:
-_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -344,7 +336,6 @@ _CET_ENDBR
 .hidden	asm_AES_encrypt
 asm_AES_encrypt:
 AES_encrypt:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -408,7 +399,6 @@ _CET_ENDBR
 .type	_x86_64_AES_decrypt,@function
 .align	16
 _x86_64_AES_decrypt:
-_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -564,7 +554,6 @@ _CET_ENDBR
 .type	_x86_64_AES_decrypt_compact,@function
 .align	16
 _x86_64_AES_decrypt_compact:
-_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -795,7 +784,6 @@ _CET_ENDBR
 .hidden	asm_AES_decrypt
 asm_AES_decrypt:
 AES_decrypt:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -862,7 +850,6 @@ _CET_ENDBR
 .type	AES_set_encrypt_key,@function
 .align	16
 AES_set_encrypt_key:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -888,7 +875,6 @@ _CET_ENDBR
 .type	_x86_64_AES_set_encrypt_key,@function
 .align	16
 _x86_64_AES_set_encrypt_key:
-_CET_ENDBR
 	movl	%esi,%ecx
 	movq	%rdi,%rsi
 	movq	%rdx,%rdi
@@ -1129,7 +1115,6 @@ _CET_ENDBR
 .type	AES_set_decrypt_key,@function
 .align	16
 AES_set_decrypt_key:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1322,7 +1307,6 @@ _CET_ENDBR
 .hidden	asm_AES_cbc_encrypt
 asm_AES_cbc_encrypt:
 AES_cbc_encrypt:
-_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lcbc_epilogue
 	pushfq
@@ -1772,7 +1756,6 @@ _CET_ENDBR
 .Lcbc_epilogue:
 	retq
 .size	AES_cbc_encrypt,.-AES_cbc_encrypt
-.section	.rodata
 .align	64
 .LAES_Te:
 .long	0xa56363c6,0xa56363c6
@@ -2557,8 +2540,8 @@ _CET_ENDBR
 .byte	0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d
 .long	0x80808080, 0x80808080, 0xfefefefe, 0xfefefefe
 .long	0x1b1b1b1b, 0x1b1b1b1b, 0, 0
+.byte	65,69,83,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .align	64
-.text	
 #if defined(HAVE_GNU_STACK)
 .section .note.GNU-stack,"",%progbits
 #endif

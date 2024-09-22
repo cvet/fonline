@@ -1,8 +1,5 @@
 include $(top_srcdir)/Makefile.am.common
 
--include $(abs_top_builddir)/crypto/libcrypto_la_objects.mk
--include $(abs_top_builddir)/ssl/libssl_la_objects.mk
-
 if !ENABLE_LIBTLS_ONLY
 bin_PROGRAMS = openssl
 dist_man_MANS = openssl.1
@@ -10,10 +7,8 @@ else
 noinst_PROGRAMS = openssl
 endif
 
-openssl_LDADD = $(libcrypto_la_objects)
-openssl_LDADD += $(libcompat_la_objects)
-openssl_LDADD += $(libcompatnoopt_la_objects)
-openssl_LDADD += $(libssl_la_objects)
+openssl_LDADD = $(abs_top_builddir)/ssl/libssl.la
+openssl_LDADD += $(abs_top_builddir)/crypto/libcrypto.la
 openssl_LDADD += $(PLATFORM_LDADD) $(PROG_LDADD)
 
 openssl_SOURCES = apps.c
@@ -36,6 +31,7 @@ openssl_SOURCES += gendh.c
 openssl_SOURCES += gendsa.c
 openssl_SOURCES += genpkey.c
 openssl_SOURCES += genrsa.c
+openssl_SOURCES += nseq.c
 openssl_SOURCES += ocsp.c
 openssl_SOURCES += openssl.c
 openssl_SOURCES += passwd.c
@@ -86,6 +82,10 @@ if !HAVE_CLOCK_GETTIME
 if HOST_DARWIN
 openssl_SOURCES += compat/clock_gettime_osx.c
 endif
+endif
+
+if !HAVE_STRTONUM
+openssl_SOURCES += compat/strtonum.c
 endif
 
 noinst_HEADERS = apps.h

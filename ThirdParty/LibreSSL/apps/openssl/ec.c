@@ -1,4 +1,4 @@
-/* $OpenBSD: ec.c,v 1.16 2023/03/06 14:32:06 tb Exp $ */
+/* $OpenBSD: ec.c,v 1.14 2019/07/14 03:30:45 guenther Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -88,7 +88,7 @@ static struct {
 	int pubin;
 	int pubout;
 	int text;
-} cfg;
+} ec_config;
 
 static int
 ec_opt_enc(int argc, char **argv, int *argsused)
@@ -98,7 +98,7 @@ ec_opt_enc(int argc, char **argv, int *argsused)
 	if (*name++ != '-')
 		return (1);
 
-	if ((cfg.enc = EVP_get_cipherbyname(name)) != NULL) {
+	if ((ec_config.enc = EVP_get_cipherbyname(name)) != NULL) {
 		*argsused = 1;
 		return (0);
 	}
@@ -110,17 +110,17 @@ static int
 ec_opt_form(char *arg)
 {
 	if (strcmp(arg, "compressed") == 0)
-		cfg.form = POINT_CONVERSION_COMPRESSED;
+		ec_config.form = POINT_CONVERSION_COMPRESSED;
 	else if (strcmp(arg, "uncompressed") == 0)
-		cfg.form = POINT_CONVERSION_UNCOMPRESSED;
+		ec_config.form = POINT_CONVERSION_UNCOMPRESSED;
 	else if (strcmp(arg, "hybrid") == 0)
-		cfg.form = POINT_CONVERSION_HYBRID;
+		ec_config.form = POINT_CONVERSION_HYBRID;
 	else {
 		fprintf(stderr, "Invalid point conversion: %s\n", arg);
 		return (1);
 	}
 
-	cfg.new_form = 1;
+	ec_config.new_form = 1;
 	return (0);
 }
 
@@ -128,15 +128,15 @@ static int
 ec_opt_named(char *arg)
 {
 	if (strcmp(arg, "named_curve") == 0)
-		cfg.asn1_flag = OPENSSL_EC_NAMED_CURVE;
+		ec_config.asn1_flag = OPENSSL_EC_NAMED_CURVE;
 	else if (strcmp(arg, "explicit") == 0)
-		cfg.asn1_flag = 0;
+		ec_config.asn1_flag = 0;
 	else {
 		fprintf(stderr, "Invalid curve type: %s\n", arg);
 		return (1);
 	}
 
-	cfg.new_asn1_flag = 1;
+	ec_config.new_asn1_flag = 1;
 	return (0);
 }
 
@@ -154,34 +154,34 @@ static const struct option ec_options[] = {
 		.argname = "file",
 		.desc = "Input file (default stdin)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.infile,
+		.opt.arg = &ec_config.infile,
 	},
 	{
 		.name = "inform",
 		.argname = "format",
 		.desc = "Input format (DER or PEM (default))",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &cfg.informat,
+		.opt.value = &ec_config.informat,
 	},
 	{
 		.name = "noout",
 		.desc = "No output",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.noout,
+		.opt.flag = &ec_config.noout,
 	},
 	{
 		.name = "out",
 		.argname = "file",
 		.desc = "Output file (default stdout)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.outfile,
+		.opt.arg = &ec_config.outfile,
 	},
 	{
 		.name = "outform",
 		.argname = "format",
 		.desc = "Output format (DER or PEM (default))",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &cfg.outformat,
+		.opt.value = &ec_config.outformat,
 	},
 	{
 		.name = "param_enc",
@@ -195,39 +195,39 @@ static const struct option ec_options[] = {
 		.name = "param_out",
 		.desc = "Print the elliptic curve parameters",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.param_out,
+		.opt.flag = &ec_config.param_out,
 	},
 	{
 		.name = "passin",
 		.argname = "source",
 		.desc = "Input file passphrase source",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.passargin,
+		.opt.arg = &ec_config.passargin,
 	},
 	{
 		.name = "passout",
 		.argname = "source",
 		.desc = "Output file passphrase source",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.passargout,
+		.opt.arg = &ec_config.passargout,
 	},
 	{
 		.name = "pubin",
 		.desc = "Read public key instead of private key from input",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.pubin,
+		.opt.flag = &ec_config.pubin,
 	},
 	{
 		.name = "pubout",
 		.desc = "Output public key instead of private key in output",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.pubout,
+		.opt.flag = &ec_config.pubout,
 	},
 	{
 		.name = "text",
 		.desc = "Print the public/private key components and parameters",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.text,
+		.opt.flag = &ec_config.text,
 	},
 	{
 		.name = NULL,
@@ -267,24 +267,26 @@ ec_main(int argc, char **argv)
 	BIO *in = NULL, *out = NULL;
 	char *passin = NULL, *passout = NULL;
 
-	if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&ec_config, 0, sizeof(ec_config));
 
-	cfg.asn1_flag = OPENSSL_EC_NAMED_CURVE;
-	cfg.form = POINT_CONVERSION_UNCOMPRESSED;
-	cfg.informat = FORMAT_PEM;
-	cfg.outformat = FORMAT_PEM;
+	ec_config.asn1_flag = OPENSSL_EC_NAMED_CURVE;
+	ec_config.form = POINT_CONVERSION_UNCOMPRESSED;
+	ec_config.informat = FORMAT_PEM;
+	ec_config.outformat = FORMAT_PEM;
 
 	if (options_parse(argc, argv, ec_options, NULL, NULL) != 0) {
 		ec_usage();
 		goto end;
 	}
 
-	if (!app_passwd(bio_err, cfg.passargin, cfg.passargout,
+	if (!app_passwd(bio_err, ec_config.passargin, ec_config.passargout,
 	    &passin, &passout)) {
 		BIO_printf(bio_err, "Error getting passwords\n");
 		goto end;
@@ -295,23 +297,23 @@ ec_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (cfg.infile == NULL)
+	if (ec_config.infile == NULL)
 		BIO_set_fp(in, stdin, BIO_NOCLOSE);
 	else {
-		if (BIO_read_filename(in, cfg.infile) <= 0) {
-			perror(cfg.infile);
+		if (BIO_read_filename(in, ec_config.infile) <= 0) {
+			perror(ec_config.infile);
 			goto end;
 		}
 	}
 
 	BIO_printf(bio_err, "read EC key\n");
-	if (cfg.informat == FORMAT_ASN1) {
-		if (cfg.pubin)
+	if (ec_config.informat == FORMAT_ASN1) {
+		if (ec_config.pubin)
 			eckey = d2i_EC_PUBKEY_bio(in, NULL);
 		else
 			eckey = d2i_ECPrivateKey_bio(in, NULL);
-	} else if (cfg.informat == FORMAT_PEM) {
-		if (cfg.pubin)
+	} else if (ec_config.informat == FORMAT_PEM) {
+		if (ec_config.pubin)
 			eckey = PEM_read_bio_EC_PUBKEY(in, NULL, NULL,
 			    NULL);
 		else
@@ -326,49 +328,49 @@ ec_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (cfg.outfile == NULL) {
+	if (ec_config.outfile == NULL) {
 		BIO_set_fp(out, stdout, BIO_NOCLOSE);
 	} else {
-		if (BIO_write_filename(out, cfg.outfile) <= 0) {
-			perror(cfg.outfile);
+		if (BIO_write_filename(out, ec_config.outfile) <= 0) {
+			perror(ec_config.outfile);
 			goto end;
 		}
 	}
 
 	group = EC_KEY_get0_group(eckey);
 
-	if (cfg.new_form)
-		EC_KEY_set_conv_form(eckey, cfg.form);
+	if (ec_config.new_form)
+		EC_KEY_set_conv_form(eckey, ec_config.form);
 
-	if (cfg.new_asn1_flag)
-		EC_KEY_set_asn1_flag(eckey, cfg.asn1_flag);
+	if (ec_config.new_asn1_flag)
+		EC_KEY_set_asn1_flag(eckey, ec_config.asn1_flag);
 
-	if (cfg.text)
+	if (ec_config.text)
 		if (!EC_KEY_print(out, eckey, 0)) {
-			perror(cfg.outfile);
+			perror(ec_config.outfile);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
-	if (cfg.noout) {
+	if (ec_config.noout) {
 		ret = 0;
 		goto end;
 	}
 	BIO_printf(bio_err, "writing EC key\n");
-	if (cfg.outformat == FORMAT_ASN1) {
-		if (cfg.param_out)
+	if (ec_config.outformat == FORMAT_ASN1) {
+		if (ec_config.param_out)
 			i = i2d_ECPKParameters_bio(out, group);
-		else if (cfg.pubin || cfg.pubout)
+		else if (ec_config.pubin || ec_config.pubout)
 			i = i2d_EC_PUBKEY_bio(out, eckey);
 		else
 			i = i2d_ECPrivateKey_bio(out, eckey);
-	} else if (cfg.outformat == FORMAT_PEM) {
-		if (cfg.param_out)
+	} else if (ec_config.outformat == FORMAT_PEM) {
+		if (ec_config.param_out)
 			i = PEM_write_bio_ECPKParameters(out, group);
-		else if (cfg.pubin || cfg.pubout)
+		else if (ec_config.pubin || ec_config.pubout)
 			i = PEM_write_bio_EC_PUBKEY(out, eckey);
 		else
 			i = PEM_write_bio_ECPrivateKey(out, eckey,
-			    cfg.enc, NULL, 0, NULL, passout);
+			    ec_config.enc, NULL, 0, NULL, passout);
 	} else {
 		BIO_printf(bio_err, "bad output format specified for "
 		    "outfile\n");

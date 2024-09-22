@@ -1,9 +1,3 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 .align	16
@@ -11,7 +5,6 @@
 .globl	md5_block_asm_data_order
 .type	md5_block_asm_data_order,@function
 md5_block_asm_data_order:
-_CET_ENDBR
 	pushq	%rbp
 	pushq	%rbx
 	pushq	%r12

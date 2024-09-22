@@ -1,4 +1,4 @@
-/* $OpenBSD: dsaparam.c,v 1.15 2023/03/06 14:32:06 tb Exp $ */
+/* $OpenBSD: dsaparam.c,v 1.11 2019/07/14 03:30:45 guenther Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -88,60 +88,60 @@ static struct {
 	char *outfile;
 	int outformat;
 	int text;
-} cfg;
+} dsaparam_config;
 
 static const struct option dsaparam_options[] = {
 	{
 		.name = "C",
 		.desc = "Convert DSA parameters into C code",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.C,
+		.opt.flag = &dsaparam_config.C,
 	},
 	{
 		.name = "genkey",
 		.desc = "Generate a DSA key",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.genkey,
+		.opt.flag = &dsaparam_config.genkey,
 	},
 	{
 		.name = "in",
 		.argname = "file",
 		.desc = "Input file (default stdin)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.infile,
+		.opt.arg = &dsaparam_config.infile,
 	},
 	{
 		.name = "inform",
 		.argname = "format",
 		.desc = "Input format (DER or PEM (default))",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &cfg.informat,
+		.opt.value = &dsaparam_config.informat,
 	},
 	{
 		.name = "noout",
 		.desc = "No output",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.noout,
+		.opt.flag = &dsaparam_config.noout,
 	},
 	{
 		.name = "out",
 		.argname = "file",
 		.desc = "Output file (default stdout)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.outfile,
+		.opt.arg = &dsaparam_config.outfile,
 	},
 	{
 		.name = "outform",
 		.argname = "format",
 		.desc = "Output format (DER or PEM (default))",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &cfg.outformat,
+		.opt.value = &dsaparam_config.outformat,
 	},
 	{
 		.name = "text",
 		.desc = "Print as text",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.text,
+		.opt.flag = &dsaparam_config.text,
 	},
 	{ NULL },
 };
@@ -156,7 +156,7 @@ dsaparam_usage(void)
 	options_usage(dsaparam_options);
 }
 
-static int dsa_cb(int p, int n, BN_GENCB *cb);
+static int dsa_cb(int p, int n, BN_GENCB * cb);
 
 int
 dsaparam_main(int argc, char **argv)
@@ -164,20 +164,21 @@ dsaparam_main(int argc, char **argv)
 	DSA *dsa = NULL;
 	int i;
 	BIO *in = NULL, *out = NULL;
-	BN_GENCB *cb = NULL;
 	int ret = 1;
 	int numbits = -1;
 	char *strbits = NULL;
 
-	if (pledge("stdio cpath wpath rpath", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&dsaparam_config, 0, sizeof(dsaparam_config));
 
-	cfg.informat = FORMAT_PEM;
-	cfg.outformat = FORMAT_PEM;
+	dsaparam_config.informat = FORMAT_PEM;
+	dsaparam_config.outformat = FORMAT_PEM;
 
 	if (options_parse(argc, argv, dsaparam_options, &strbits, NULL) != 0) {
 		dsaparam_usage();
@@ -199,32 +200,26 @@ dsaparam_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (cfg.infile == NULL)
+	if (dsaparam_config.infile == NULL)
 		BIO_set_fp(in, stdin, BIO_NOCLOSE);
 	else {
-		if (BIO_read_filename(in, cfg.infile) <= 0) {
-			perror(cfg.infile);
+		if (BIO_read_filename(in, dsaparam_config.infile) <= 0) {
+			perror(dsaparam_config.infile);
 			goto end;
 		}
 	}
-	if (cfg.outfile == NULL) {
+	if (dsaparam_config.outfile == NULL) {
 		BIO_set_fp(out, stdout, BIO_NOCLOSE);
 	} else {
-		if (BIO_write_filename(out, cfg.outfile) <= 0) {
-			perror(cfg.outfile);
+		if (BIO_write_filename(out, dsaparam_config.outfile) <= 0) {
+			perror(dsaparam_config.outfile);
 			goto end;
 		}
 	}
 
 	if (numbits > 0) {
-		if ((cb = BN_GENCB_new()) == NULL) {
-			BIO_printf(bio_err,
-			    "Error allocating BN_GENCB object\n");
-			goto end;
-		}
-
-		BN_GENCB_set(cb, dsa_cb, bio_err);
-
+		BN_GENCB cb;
+		BN_GENCB_set(&cb, dsa_cb, bio_err);
 		dsa = DSA_new();
 		if (!dsa) {
 			BIO_printf(bio_err, "Error allocating DSA object\n");
@@ -232,14 +227,14 @@ dsaparam_main(int argc, char **argv)
 		}
 		BIO_printf(bio_err, "Generating DSA parameters, %d bit long prime\n", numbits);
 		BIO_printf(bio_err, "This could take some time\n");
-		if (!DSA_generate_parameters_ex(dsa, numbits, NULL, 0, NULL, NULL, cb)) {
+		if (!DSA_generate_parameters_ex(dsa, numbits, NULL, 0, NULL, NULL, &cb)) {
 			ERR_print_errors(bio_err);
 			BIO_printf(bio_err, "Error, DSA key generation failed\n");
 			goto end;
 		}
-	} else if (cfg.informat == FORMAT_ASN1)
+	} else if (dsaparam_config.informat == FORMAT_ASN1)
 		dsa = d2i_DSAparams_bio(in, NULL);
-	else if (cfg.informat == FORMAT_PEM)
+	else if (dsaparam_config.informat == FORMAT_PEM)
 		dsa = PEM_read_bio_DSAparams(in, NULL, NULL, NULL);
 	else {
 		BIO_printf(bio_err, "bad input format specified\n");
@@ -250,21 +245,21 @@ dsaparam_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (cfg.text) {
+	if (dsaparam_config.text) {
 		DSAparams_print(out, dsa);
 	}
-	if (cfg.C) {
+	if (dsaparam_config.C) {
 		unsigned char *data;
 		int l, len, bits_p;
 
-		len = BN_num_bytes(DSA_get0_p(dsa));
-		bits_p = BN_num_bits(DSA_get0_p(dsa));
+		len = BN_num_bytes(dsa->p);
+		bits_p = BN_num_bits(dsa->p);
 		data = malloc(len + 20);
 		if (data == NULL) {
 			perror("malloc");
 			goto end;
 		}
-		l = BN_bn2bin(DSA_get0_p(dsa), data);
+		l = BN_bn2bin(dsa->p, data);
 		printf("static unsigned char dsa%d_p[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -273,7 +268,7 @@ dsaparam_main(int argc, char **argv)
 		}
 		printf("\n\t};\n");
 
-		l = BN_bn2bin(DSA_get0_q(dsa), data);
+		l = BN_bn2bin(dsa->q, data);
 		printf("static unsigned char dsa%d_q[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -282,7 +277,7 @@ dsaparam_main(int argc, char **argv)
 		}
 		printf("\n\t};\n");
 
-		l = BN_bn2bin(DSA_get0_g(dsa), data);
+		l = BN_bn2bin(dsa->g, data);
 		printf("static unsigned char dsa%d_g[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -293,24 +288,22 @@ dsaparam_main(int argc, char **argv)
 		printf("\n\t};\n\n");
 
 		printf("DSA *get_dsa%d()\n\t{\n", bits_p);
-		printf("\tBIGNUM *p = NULL, *q = NULL, *g = NULL;\n");
 		printf("\tDSA *dsa;\n\n");
 		printf("\tif ((dsa = DSA_new()) == NULL) return(NULL);\n");
-		printf("\tp = BN_bin2bn(dsa%d_p, sizeof(dsa%d_p), NULL);\n",
+		printf("\tdsa->p = BN_bin2bn(dsa%d_p, sizeof(dsa%d_p), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tq = BN_bin2bn(dsa%d_q, sizeof(dsa%d_q), NULL);\n",
+		printf("\tdsa->q = BN_bin2bn(dsa%d_q, sizeof(dsa%d_q), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tg = BN_bin2bn(dsa%d_g, sizeof(dsa%d_g), NULL);\n",
+		printf("\tdsa->g = BN_bin2bn(dsa%d_g, sizeof(dsa%d_g), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tif (p == NULL || q == NULL || g == NULL)\n");
-		printf("\t\t{ BN_free(p); BN_free(q); BN_free(g); DSA_free(dsa); return(NULL); }\n");
-		printf("\tDSA_set0_pqg(dsa, p, q, g);\n");
+		printf("\tif ((dsa->p == NULL) || (dsa->q == NULL) || (dsa->g == NULL))\n");
+		printf("\t\t{ DSA_free(dsa); return(NULL); }\n");
 		printf("\treturn(dsa);\n\t}\n");
 	}
-	if (!cfg.noout) {
-		if (cfg.outformat == FORMAT_ASN1)
+	if (!dsaparam_config.noout) {
+		if (dsaparam_config.outformat == FORMAT_ASN1)
 			i = i2d_DSAparams_bio(out, dsa);
-		else if (cfg.outformat == FORMAT_PEM)
+		else if (dsaparam_config.outformat == FORMAT_PEM)
 			i = PEM_write_bio_DSAparams(out, dsa);
 		else {
 			BIO_printf(bio_err, "bad output format specified for outfile\n");
@@ -322,7 +315,7 @@ dsaparam_main(int argc, char **argv)
 			goto end;
 		}
 	}
-	if (cfg.genkey) {
+	if (dsaparam_config.genkey) {
 		DSA *dsakey;
 
 		if ((dsakey = DSAparams_dup(dsa)) == NULL)
@@ -332,9 +325,9 @@ dsaparam_main(int argc, char **argv)
 			DSA_free(dsakey);
 			goto end;
 		}
-		if (cfg.outformat == FORMAT_ASN1)
+		if (dsaparam_config.outformat == FORMAT_ASN1)
 			i = i2d_DSAPrivateKey_bio(out, dsakey);
-		else if (cfg.outformat == FORMAT_PEM)
+		else if (dsaparam_config.outformat == FORMAT_PEM)
 			i = PEM_write_bio_DSAPrivateKey(out, dsakey, NULL, NULL, 0, NULL, NULL);
 		else {
 			BIO_printf(bio_err, "bad output format specified for outfile\n");
@@ -348,14 +341,13 @@ dsaparam_main(int argc, char **argv)
  end:
 	BIO_free(in);
 	BIO_free_all(out);
-	BN_GENCB_free(cb);
 	DSA_free(dsa);
 
 	return (ret);
 }
 
 static int
-dsa_cb(int p, int n, BN_GENCB *cb)
+dsa_cb(int p, int n, BN_GENCB * cb)
 {
 	char c = '*';
 
@@ -367,8 +359,8 @@ dsa_cb(int p, int n, BN_GENCB *cb)
 		c = '*';
 	if (p == 3)
 		c = '\n';
-	BIO_write(BN_GENCB_get_arg(cb), &c, 1);
-	(void) BIO_flush(BN_GENCB_get_arg(cb));
+	BIO_write(cb->arg, &c, 1);
+	(void) BIO_flush(cb->arg);
 #ifdef GENCB_TEST
 	if (stop_keygen_flag)
 		return 0;

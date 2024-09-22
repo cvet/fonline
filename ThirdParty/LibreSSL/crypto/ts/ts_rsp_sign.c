@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_rsp_sign.c,v 1.32 2023/08/22 08:09:36 tb Exp $ */
+/* $OpenBSD: ts_rsp_sign.c,v 1.23 2019/07/03 03:24:04 deraadt Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -65,10 +65,6 @@
 #include <openssl/pkcs7.h>
 #include <openssl/ts.h>
 
-#include "evp_local.h"
-#include "ts_local.h"
-#include "x509_local.h"
-
 /* Private function declarations. */
 
 static ASN1_INTEGER *def_serial_cb(struct TS_resp_ctx *, void *);
@@ -98,21 +94,18 @@ static ASN1_GENERALIZEDTIME *TS_RESP_set_genTime_with_precision(
 static ASN1_INTEGER *
 def_serial_cb(struct TS_resp_ctx *ctx, void *data)
 {
-	ASN1_INTEGER *serial;
+	ASN1_INTEGER *serial = ASN1_INTEGER_new();
 
-	if ((serial = ASN1_INTEGER_new()) == NULL)
+	if (!serial)
 		goto err;
 	if (!ASN1_INTEGER_set(serial, 1))
 		goto err;
-
 	return serial;
 
- err:
-	ASN1_INTEGER_free(serial);
+err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
 	    "Error during serial number generation.");
-
 	return NULL;
 }
 
@@ -146,14 +139,6 @@ def_extension_cb(struct TS_resp_ctx *ctx, X509_EXTENSION *ext, void *data)
 	return 0;
 }
 
-void
-TS_RESP_CTX_set_time_cb(TS_RESP_CTX *ctx, TS_time_cb cb, void *data)
-{
-	ctx->time_cb = cb;
-	ctx->time_cb_data = data;
-}
-LCRYPTO_ALIAS(TS_RESP_CTX_set_time_cb);
-
 /* TS_RESP_CTX management functions. */
 
 TS_RESP_CTX *
@@ -173,7 +158,6 @@ TS_RESP_CTX_new(void)
 
 	return ctx;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_new);
 
 void
 TS_RESP_CTX_free(TS_RESP_CTX *ctx)
@@ -192,7 +176,6 @@ TS_RESP_CTX_free(TS_RESP_CTX *ctx)
 	ASN1_INTEGER_free(ctx->micros);
 	free(ctx);
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_free);
 
 int
 TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer)
@@ -206,7 +189,6 @@ TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer)
 	CRYPTO_add(&ctx->signer_cert->references, +1, CRYPTO_LOCK_X509);
 	return 1;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_signer_cert);
 
 int
 TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key)
@@ -217,7 +199,6 @@ TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key)
 
 	return 1;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_signer_key);
 
 int
 TS_RESP_CTX_set_def_policy(TS_RESP_CTX *ctx, const ASN1_OBJECT *def_policy)
@@ -232,7 +213,6 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_def_policy);
 
 int
 TS_RESP_CTX_set_certs(TS_RESP_CTX *ctx, STACK_OF(X509) *certs)
@@ -256,7 +236,6 @@ TS_RESP_CTX_set_certs(TS_RESP_CTX *ctx, STACK_OF(X509) *certs)
 
 	return 1;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_certs);
 
 int
 TS_RESP_CTX_add_policy(TS_RESP_CTX *ctx, const ASN1_OBJECT *policy)
@@ -278,7 +257,6 @@ err:
 	ASN1_OBJECT_free(copy);
 	return 0;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_add_policy);
 
 int
 TS_RESP_CTX_add_md(TS_RESP_CTX *ctx, const EVP_MD *md)
@@ -296,7 +274,6 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_add_md);
 
 #define TS_RESP_CTX_accuracy_free(ctx)		\
 	ASN1_INTEGER_free(ctx->seconds);	\
@@ -327,14 +304,12 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_accuracy);
 
 void
 TS_RESP_CTX_add_flags(TS_RESP_CTX *ctx, int flags)
 {
 	ctx->flags |= flags;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_add_flags);
 
 void
 TS_RESP_CTX_set_serial_cb(TS_RESP_CTX *ctx, TS_serial_cb cb, void *data)
@@ -342,7 +317,6 @@ TS_RESP_CTX_set_serial_cb(TS_RESP_CTX *ctx, TS_serial_cb cb, void *data)
 	ctx->serial_cb = cb;
 	ctx->serial_cb_data = data;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_serial_cb);
 
 void
 TS_RESP_CTX_set_extension_cb(TS_RESP_CTX *ctx, TS_extension_cb cb, void *data)
@@ -350,7 +324,6 @@ TS_RESP_CTX_set_extension_cb(TS_RESP_CTX *ctx, TS_extension_cb cb, void *data)
 	ctx->extension_cb = cb;
 	ctx->extension_cb_data = data;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_extension_cb);
 
 int
 TS_RESP_CTX_set_status_info(TS_RESP_CTX *ctx, int status, const char *text)
@@ -384,7 +357,6 @@ err:
 	ASN1_UTF8STRING_free(utf8_text);
 	return ret;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_status_info);
 
 int
 TS_RESP_CTX_set_status_info_cond(TS_RESP_CTX *ctx, int status, const char *text)
@@ -398,7 +370,6 @@ TS_RESP_CTX_set_status_info_cond(TS_RESP_CTX *ctx, int status, const char *text)
 	}
 	return ret;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_status_info_cond);
 
 int
 TS_RESP_CTX_add_failure_info(TS_RESP_CTX *ctx, int failure)
@@ -415,21 +386,18 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_add_failure_info);
 
 TS_REQ *
 TS_RESP_CTX_get_request(TS_RESP_CTX *ctx)
 {
 	return ctx->request;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_get_request);
 
 TS_TST_INFO *
 TS_RESP_CTX_get_tst_info(TS_RESP_CTX *ctx)
 {
 	return ctx->tst_info;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_get_tst_info);
 
 int
 TS_RESP_CTX_set_clock_precision_digits(TS_RESP_CTX *ctx, unsigned precision)
@@ -439,7 +407,6 @@ TS_RESP_CTX_set_clock_precision_digits(TS_RESP_CTX *ctx, unsigned precision)
 	ctx->clock_precision_digits = precision;
 	return 1;
 }
-LCRYPTO_ALIAS(TS_RESP_CTX_set_clock_precision_digits);
 
 /* Main entry method of the response generation. */
 TS_RESP *
@@ -510,7 +477,6 @@ end:
 	TS_RESP_CTX_cleanup(ctx);
 	return response;
 }
-LCRYPTO_ALIAS(TS_RESP_create_response);
 
 /* Initializes the variable part of the context. */
 static void
@@ -685,7 +651,7 @@ TS_RESP_create_tst_info(TS_RESP_CTX *ctx, ASN1_OBJECT *policy)
 			goto end;
 		tsa_name->type = GEN_DIRNAME;
 		tsa_name->d.dirn =
-		    X509_NAME_dup(X509_get_subject_name(ctx->signer_cert));
+		    X509_NAME_dup(ctx->signer_cert->cert_info->subject);
 		if (!tsa_name->d.dirn)
 			goto end;
 		if (!TS_TST_INFO_set_tsa(tst_info, tsa_name))
@@ -881,18 +847,14 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 {
 	ESS_CERT_ID *cid = NULL;
 	GENERAL_NAME *name = NULL;
-	unsigned char cert_hash[TS_HASH_LEN];
 
 	/* Recompute SHA1 hash of certificate if necessary (side effect). */
 	X509_check_purpose(cert, -1, 0);
 
 	if (!(cid = ESS_CERT_ID_new()))
 		goto err;
-
-	if (!X509_digest(cert, TS_HASH_EVP, cert_hash, NULL))
-		goto err;
-
-	if (!ASN1_OCTET_STRING_set(cid->hash, cert_hash, sizeof(cert_hash)))
+	if (!ASN1_OCTET_STRING_set(cid->hash, cert->sha1_hash,
+	    sizeof(cert->sha1_hash)))
 		goto err;
 
 	/* Setting the issuer/serial if requested. */
@@ -905,7 +867,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		if (!(name = GENERAL_NAME_new()))
 			goto err;
 		name->type = GEN_DIRNAME;
-		if ((name->d.dirn = X509_NAME_dup(X509_get_issuer_name(cert))) == NULL)
+		if (!(name->d.dirn = X509_NAME_dup(cert->cert_info->issuer)))
 			goto err;
 		if (!sk_GENERAL_NAME_push(cid->issuer_serial->issuer, name))
 			goto err;
@@ -913,7 +875,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		/* Setting the serial number. */
 		ASN1_INTEGER_free(cid->issuer_serial->serial);
 		if (!(cid->issuer_serial->serial =
-		    ASN1_INTEGER_dup(X509_get_serialNumber(cert))))
+		    ASN1_INTEGER_dup(cert->cert_info->serialNumber)))
 			goto err;
 	}
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_rand.c,v 1.29 2023/08/03 18:53:55 tb Exp $ */
+/* $OpenBSD: bn_rand.c,v 1.25 2021/08/31 11:19:19 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -116,7 +116,7 @@
 
 #include <openssl/err.h>
 
-#include "bn_local.h"
+#include "bn_lcl.h"
 
 static int
 bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
@@ -190,6 +190,7 @@ bnrand(int pseudorand, BIGNUM *rnd, int bits, int top, int bottom)
 
 err:
 	freezero(buf, bytes);
+	bn_check_top(rnd);
 	return (ret);
 }
 
@@ -198,14 +199,12 @@ BN_rand(BIGNUM *rnd, int bits, int top, int bottom)
 {
 	return bnrand(0, rnd, bits, top, bottom);
 }
-LCRYPTO_ALIAS(BN_rand);
 
 int
 BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom)
 {
 	return bnrand(1, rnd, bits, top, bottom);
 }
-LCRYPTO_ALIAS(BN_pseudo_rand);
 
 #if 1
 int
@@ -273,6 +272,7 @@ bn_rand_range(int pseudo, BIGNUM *r, const BIGNUM *range)
 		} while (BN_cmp(r, range) >= 0);
 	}
 
+	bn_check_top(r);
 	return 1;
 }
 
@@ -281,49 +281,31 @@ BN_rand_range(BIGNUM *r, const BIGNUM *range)
 {
 	return bn_rand_range(0, r, range);
 }
-LCRYPTO_ALIAS(BN_rand_range);
 
 int
-bn_rand_in_range(BIGNUM *rnd, const BIGNUM *lower_inc, const BIGNUM *upper_exc)
+bn_rand_interval(BIGNUM *rnd, const BIGNUM *lower_inc, const BIGNUM *upper_exc)
 {
-	BIGNUM *len;
+	BIGNUM *len = NULL;
 	int ret = 0;
+
+	if (BN_cmp(lower_inc, upper_exc) >= 0)
+		goto err;
 
 	if ((len = BN_new()) == NULL)
 		goto err;
+
 	if (!BN_sub(len, upper_exc, lower_inc))
 		goto err;
-	if (!BN_rand_range(rnd, len))
+
+	if (!bn_rand_range(0, rnd, len))
 		goto err;
+
 	if (!BN_add(rnd, rnd, lower_inc))
 		goto err;
 
 	ret = 1;
-
  err:
 	BN_free(len);
-
-	return ret;
-}
-
-int
-bn_rand_interval(BIGNUM *rnd, BN_ULONG lower_word, const BIGNUM *upper_exc)
-{
-	BIGNUM *lower_inc = NULL;
-	int ret = 0;
-
-	if ((lower_inc = BN_new()) == NULL)
-		goto err;
-	if (!BN_set_word(lower_inc, lower_word))
-		goto err;
-	if (!bn_rand_in_range(rnd, lower_inc, upper_exc))
-		goto err;
-
-	ret = 1;
-
- err:
-	BN_free(lower_inc);
-
 	return ret;
 }
 
@@ -332,4 +314,3 @@ BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range)
 {
 	return bn_rand_range(1, r, range);
 }
-LCRYPTO_ALIAS(BN_pseudo_rand_range);

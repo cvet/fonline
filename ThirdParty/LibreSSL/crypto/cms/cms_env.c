@@ -1,4 +1,4 @@
-/* $OpenBSD: cms_env.c,v 1.27 2024/01/14 18:40:24 tb Exp $ */
+/* $OpenBSD: cms_env.c,v 1.24 2021/09/08 14:33:02 tb Exp $ */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
@@ -54,17 +54,16 @@
 
 #include <string.h>
 
+#include "cryptlib.h"
 #include <openssl/asn1t.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
 #include <openssl/cms.h>
 #include <openssl/aes.h>
-
-#include "asn1/asn1_local.h"
-#include "cms_local.h"
-#include "evp/evp_local.h"
-#include "x509_local.h"
+#include "cms_lcl.h"
+#include "asn1/asn1_locl.h"
+#include "evp/evp_locl.h"
 
 /* CMS EnvelopedData Utilities */
 
@@ -140,14 +139,12 @@ CMS_get0_RecipientInfos(CMS_ContentInfo *cms)
 
 	return env->recipientInfos;
 }
-LCRYPTO_ALIAS(CMS_get0_RecipientInfos);
 
 int
 CMS_RecipientInfo_type(CMS_RecipientInfo *ri)
 {
 	return ri->type;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_type);
 
 EVP_PKEY_CTX *
 CMS_RecipientInfo_get0_pkey_ctx(CMS_RecipientInfo *ri)
@@ -159,7 +156,6 @@ CMS_RecipientInfo_get0_pkey_ctx(CMS_RecipientInfo *ri)
 
 	return NULL;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_get0_pkey_ctx);
 
 CMS_ContentInfo *
 CMS_EnvelopedData_create(const EVP_CIPHER *cipher)
@@ -184,7 +180,6 @@ CMS_EnvelopedData_create(const EVP_CIPHER *cipher)
 	CMSerror(ERR_R_MALLOC_FAILURE);
 	return NULL;
 }
-LCRYPTO_ALIAS(CMS_EnvelopedData_create);
 
 /* Key Transport Recipient Info (KTRI) routines */
 
@@ -293,7 +288,6 @@ CMS_add1_recipient_cert(CMS_ContentInfo *cms, X509 *recip, unsigned int flags)
 	ASN1_item_free((ASN1_VALUE *)ri, &CMS_RecipientInfo_it);
 	return NULL;
 }
-LCRYPTO_ALIAS(CMS_add1_recipient_cert);
 
 int
 CMS_RecipientInfo_ktri_get0_algs(CMS_RecipientInfo *ri, EVP_PKEY **pk,
@@ -317,7 +311,6 @@ CMS_RecipientInfo_ktri_get0_algs(CMS_RecipientInfo *ri, EVP_PKEY **pk,
 
 	return 1;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_ktri_get0_algs);
 
 int
 CMS_RecipientInfo_ktri_get0_signer_id(CMS_RecipientInfo *ri,
@@ -333,7 +326,6 @@ CMS_RecipientInfo_ktri_get0_signer_id(CMS_RecipientInfo *ri,
 
 	return cms_SignerIdentifier_get0_signer_id(ktri->rid, keyid, issuer, sno);
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_ktri_get0_signer_id);
 
 int
 CMS_RecipientInfo_ktri_cert_cmp(CMS_RecipientInfo *ri, X509 *cert)
@@ -345,7 +337,6 @@ CMS_RecipientInfo_ktri_cert_cmp(CMS_RecipientInfo *ri, X509 *cert)
 
 	return cms_SignerIdentifier_cert_cmp(ri->d.ktri->rid, cert);
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_ktri_cert_cmp);
 
 int
 CMS_RecipientInfo_set0_pkey(CMS_RecipientInfo *ri, EVP_PKEY *pkey)
@@ -359,7 +350,6 @@ CMS_RecipientInfo_set0_pkey(CMS_RecipientInfo *ri, EVP_PKEY *pkey)
 
 	return 1;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_set0_pkey);
 
 /* Encrypt content key in key transport recipient info */
 
@@ -532,7 +522,6 @@ CMS_RecipientInfo_kekri_id_cmp(CMS_RecipientInfo *ri, const unsigned char *id,
 
 	return ASN1_OCTET_STRING_cmp(&tmp_os, kekri->kekid->keyIdentifier);
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_kekri_id_cmp);
 
 /* For now hard code AES key wrap info */
 
@@ -650,7 +639,6 @@ CMS_add0_recipient_key(CMS_ContentInfo *cms, int nid, unsigned char *key,
 	ASN1_item_free((ASN1_VALUE *)ri, &CMS_RecipientInfo_it);
 	return NULL;
 }
-LCRYPTO_ALIAS(CMS_add0_recipient_key);
 
 int
 CMS_RecipientInfo_kekri_get0_id(CMS_RecipientInfo *ri, X509_ALGOR **palg,
@@ -685,7 +673,6 @@ CMS_RecipientInfo_kekri_get0_id(CMS_RecipientInfo *ri, X509_ALGOR **palg,
 
 	return 1;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_kekri_get0_id);
 
 int
 CMS_RecipientInfo_set0_key(CMS_RecipientInfo *ri, unsigned char *key,
@@ -703,7 +690,6 @@ CMS_RecipientInfo_set0_key(CMS_RecipientInfo *ri, unsigned char *key,
 	kekri->keylen = keylen;
 	return 1;
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_set0_key);
 
 /* Encrypt content key in KEK recipient info */
 
@@ -839,7 +825,6 @@ CMS_RecipientInfo_decrypt(CMS_ContentInfo *cms, CMS_RecipientInfo *ri)
 		return 0;
 	}
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_decrypt);
 
 int
 CMS_RecipientInfo_encrypt(CMS_ContentInfo *cms, CMS_RecipientInfo *ri)
@@ -862,7 +847,6 @@ CMS_RecipientInfo_encrypt(CMS_ContentInfo *cms, CMS_RecipientInfo *ri)
 		return 0;
 	}
 }
-LCRYPTO_ALIAS(CMS_RecipientInfo_encrypt);
 
 /* Check structures and fixup version numbers (if necessary) */
 

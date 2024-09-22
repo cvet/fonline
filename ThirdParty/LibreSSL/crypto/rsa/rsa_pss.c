@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_pss.c,v 1.18 2024/02/18 15:45:42 tb Exp $ */
+/* $OpenBSD: rsa_pss.c,v 1.13 2018/09/05 00:55:33 djm Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2005.
  */
@@ -66,9 +66,6 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "evp_local.h"
-#include "rsa_local.h"
-
 static const unsigned char zeroes[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 int
@@ -77,7 +74,6 @@ RSA_verify_PKCS1_PSS(RSA *rsa, const unsigned char *mHash, const EVP_MD *Hash,
 {
 	return RSA_verify_PKCS1_PSS_mgf1(rsa, mHash, Hash, NULL, EM, sLen);
 }
-LCRYPTO_ALIAS(RSA_verify_PKCS1_PSS);
 
 int
 RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
@@ -92,7 +88,7 @@ RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
 	EVP_MD_CTX ctx;
 	unsigned char H_[EVP_MAX_MD_SIZE];
 
-	EVP_MD_CTX_legacy_clear(&ctx);
+	EVP_MD_CTX_init(&ctx);
 
 	if (mgf1Hash == NULL)
 		mgf1Hash = Hash;
@@ -179,7 +175,6 @@ err:
 
 	return ret;
 }
-LCRYPTO_ALIAS(RSA_verify_PKCS1_PSS_mgf1);
 
 int
 RSA_padding_add_PKCS1_PSS(RSA *rsa, unsigned char *EM,
@@ -187,7 +182,6 @@ RSA_padding_add_PKCS1_PSS(RSA *rsa, unsigned char *EM,
 {
 	return RSA_padding_add_PKCS1_PSS_mgf1(rsa, EM, mHash, Hash, NULL, sLen);
 }
-LCRYPTO_ALIAS(RSA_padding_add_PKCS1_PSS);
 
 int
 RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
@@ -200,7 +194,7 @@ RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
 	unsigned char *H, *salt = NULL, *p;
 	EVP_MD_CTX ctx;
 
-	EVP_MD_CTX_legacy_clear(&ctx);
+	EVP_MD_CTX_init(&ctx);
 
 	if (mgf1Hash == NULL)
 		mgf1Hash = Hash;
@@ -285,4 +279,3 @@ err:
 
 	return ret;
 }
-LCRYPTO_ALIAS(RSA_padding_add_PKCS1_PSS_mgf1);

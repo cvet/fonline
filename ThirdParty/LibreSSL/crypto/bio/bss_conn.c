@@ -1,4 +1,4 @@
-/* $OpenBSD: bss_conn.c,v 1.39 2023/07/07 19:37:53 beck Exp $ */
+/* $OpenBSD: bss_conn.c,v 1.35 2018/05/12 18:51:59 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -70,8 +70,6 @@
 #include <openssl/buffer.h>
 #include <openssl/err.h>
 
-#include "bio_local.h"
-
 #define SOCKET_PROTOCOL IPPROTO_TCP
 
 typedef struct bio_connect_st {
@@ -92,7 +90,7 @@ typedef struct bio_connect_st {
 	/* called when the connection is initially made
 	 *  callback(BIO,state,ret);  The callback should return
 	 * 'ret'.  state is for compatibility with the ssl info_callback */
-	BIO_info_cb *info_callback;
+	int (*info_callback)(const BIO *bio, int state, int ret);
 } BIO_CONNECT;
 
 static int conn_write(BIO *h, const char *buf, int num);
@@ -101,7 +99,7 @@ static int conn_puts(BIO *h, const char *str);
 static long conn_ctrl(BIO *h, int cmd, long arg1, void *arg2);
 static int conn_new(BIO *h);
 static int conn_free(BIO *data);
-static long conn_callback_ctrl(BIO *h, int cmd, BIO_info_cb *);
+static long conn_callback_ctrl(BIO *h, int cmd, bio_info_cb *);
 
 static int conn_state(BIO *b, BIO_CONNECT *c);
 static void conn_close_socket(BIO *data);
@@ -126,7 +124,7 @@ conn_state(BIO *b, BIO_CONNECT *c)
 	int ret = -1, i;
 	unsigned long l;
 	char *p, *q;
-	BIO_info_cb *cb = NULL;
+	int (*cb)(const BIO *, int, int) = NULL;
 
 	if (c->info_callback != NULL)
 		cb = c->info_callback;
@@ -326,7 +324,6 @@ BIO_s_connect(void)
 {
 	return (&methods_connectp);
 }
-LCRYPTO_ALIAS(BIO_s_connect);
 
 static int
 conn_new(BIO *bi)
@@ -524,7 +521,9 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 				BIO_set_conn_hostname(dbio,
 				    data->param_hostname);
 			BIO_set_nbio(dbio, data->nbio);
-			(void)BIO_set_info_callback(dbio, data->info_callback);
+			/* FIXME: the cast of the function seems unlikely to be a good idea */
+			(void)BIO_set_info_callback(dbio,
+			    (bio_info_cb *)data->info_callback);
 		}
 		break;
 	case BIO_CTRL_SET_CALLBACK:
@@ -539,8 +538,9 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 		break;
 	case BIO_CTRL_GET_CALLBACK:
 		{
-			BIO_info_cb **fptr = ptr;
+			int (**fptr)(const BIO *bio, int state, int xret);
 
+			fptr = (int (**)(const BIO *bio, int state, int xret))ptr;
 			*fptr = data->info_callback;
 		}
 		break;
@@ -552,7 +552,7 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 }
 
 static long
-conn_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
+conn_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
 {
 	long ret = 1;
 	BIO_CONNECT *data;
@@ -561,7 +561,9 @@ conn_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
 
 	switch (cmd) {
 	case BIO_CTRL_SET_CALLBACK:
-		data->info_callback = (BIO_info_cb *)fp;
+		{
+			data->info_callback = (int (*)(const struct bio_st *, int, int))fp;
+		}
 		break;
 	default:
 		ret = 0;
@@ -595,4 +597,4 @@ BIO_new_connect(const char *str)
 		return (NULL);
 	}
 }
-LCRYPTO_ALIAS(BIO_new_connect);
+

@@ -1,4 +1,4 @@
-/* $OpenBSD: txt_db.c,v 1.19 2023/07/08 11:28:03 beck Exp $ */
+/* $OpenBSD: txt_db.c,v 1.18 2014/07/11 08:44:49 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -184,7 +184,6 @@ err:
 	} else
 		return (ret);
 }
-LCRYPTO_ALIAS(TXT_DB_read);
 
 OPENSSL_STRING *
 TXT_DB_get_by_index(TXT_DB *db, int idx, OPENSSL_STRING *value)
@@ -205,7 +204,6 @@ TXT_DB_get_by_index(TXT_DB *db, int idx, OPENSSL_STRING *value)
 	db->error = DB_ERROR_OK;
 	return (ret);
 }
-LCRYPTO_ALIAS(TXT_DB_get_by_index);
 
 int
 TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
@@ -243,7 +241,6 @@ TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
 	db->qual[field] = qual;
 	return (1);
 }
-LCRYPTO_ALIAS(TXT_DB_create_index);
 
 long
 TXT_DB_write(BIO *out, TXT_DB *db)
@@ -294,7 +291,6 @@ err:
 		BUF_MEM_free(buf);
 	return (ret);
 }
-LCRYPTO_ALIAS(TXT_DB_write);
 
 int
 TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *row)
@@ -333,7 +329,6 @@ TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *row)
 err:
 	return (0);
 }
-LCRYPTO_ALIAS(TXT_DB_insert);
 
 void
 TXT_DB_free(TXT_DB *db)
@@ -375,4 +370,3 @@ TXT_DB_free(TXT_DB *db)
 	}
 	free(db);
 }
-LCRYPTO_ALIAS(TXT_DB_free);

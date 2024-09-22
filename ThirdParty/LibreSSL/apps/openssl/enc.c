@@ -1,4 +1,4 @@
-/* $OpenBSD: enc.c,v 1.31 2023/07/29 17:15:45 tb Exp $ */
+/* $OpenBSD: enc.c,v 1.23 2019/07/25 11:42:12 bcook Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -59,14 +59,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "apps.h"
 
 #include <openssl/bio.h>
+#include <openssl/comp.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 int set_hex(char *in, unsigned char *out, int size);
 
@@ -78,6 +80,9 @@ static struct {
 	char *bufsize;
 	const EVP_CIPHER *cipher;
 	int debug;
+#ifdef ZLIB
+	int do_zlib;
+#endif
 	int enc;
 	char *hiv;
 	char *hkey;
@@ -95,7 +100,7 @@ static struct {
 	int pbkdf2;
 	int printkey;
 	int verbose;
-} cfg;
+} enc_config;
 
 static int
 enc_opt_cipher(int argc, char **argv, int *argsused)
@@ -106,12 +111,12 @@ enc_opt_cipher(int argc, char **argv, int *argsused)
 		return (1);
 
 	if (strcmp(name, "none") == 0) {
-		cfg.cipher = NULL;
+		enc_config.cipher = NULL;
 		*argsused = 1;
 		return (0);
 	}
 
-	if ((cfg.cipher = EVP_get_cipherbyname(name)) != NULL) {
+	if ((enc_config.cipher = EVP_get_cipherbyname(name)) != NULL) {
 		*argsused = 1;
 		return (0);
 	}
@@ -124,44 +129,44 @@ static const struct option enc_options[] = {
 		.name = "A",
 		.desc = "Process base64 data on one line (requires -a)",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.olb64,
+		.opt.flag = &enc_config.olb64,
 	},
 	{
 		.name = "a",
 		.desc = "Perform base64 encoding/decoding (alias -base64)",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.base64,
+		.opt.flag = &enc_config.base64,
 	},
 	{
 		.name = "base64",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.base64,
+		.opt.flag = &enc_config.base64,
 	},
 	{
 		.name = "bufsize",
 		.argname = "size",
 		.desc = "Specify the buffer size to use for I/O",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.bufsize,
+		.opt.arg = &enc_config.bufsize,
 	},
 	{
 		.name = "d",
 		.desc = "Decrypt the input data",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.enc,
+		.opt.value = &enc_config.enc,
 		.value = 0,
 	},
 	{
 		.name = "debug",
 		.desc = "Print debugging information",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.debug,
+		.opt.flag = &enc_config.debug,
 	},
 	{
 		.name = "e",
 		.desc = "Encrypt the input data (default)",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.enc,
+		.opt.value = &enc_config.enc,
 		.value = 1,
 	},
 	{
@@ -169,45 +174,45 @@ static const struct option enc_options[] = {
 		.argname = "file",
 		.desc = "Input file to read from (default stdin)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.inf,
+		.opt.arg = &enc_config.inf,
 	},
 	{
 		.name = "iter",
 		.argname = "iterations",
 		.desc = "Specify iteration count and force use of PBKDF2",
 		.type = OPTION_ARG_INT,
-		.opt.value = &cfg.iter,
+		.opt.value = &enc_config.iter,
 	},
 	{
 		.name = "iv",
 		.argname = "IV",
 		.desc = "IV to use, specified as a hexadecimal string",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.hiv,
+		.opt.arg = &enc_config.hiv,
 	},
 	{
 		.name = "K",
 		.argname = "key",
 		.desc = "Key to use, specified as a hexadecimal string",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.hkey,
+		.opt.arg = &enc_config.hkey,
 	},
 	{
 		.name = "k",		/* Superseded by -pass. */
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.keystr,
+		.opt.arg = &enc_config.keystr,
 	},
 	{
 		.name = "kfile",	/* Superseded by -pass. */
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.keyfile,
+		.opt.arg = &enc_config.keyfile,
 	},
 	{
 		.name = "md",
 		.argname = "digest",
 		.desc = "Digest to use to create a key from the passphrase",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.md,
+		.opt.arg = &enc_config.md,
 	},
 	{
 		.name = "none",
@@ -219,12 +224,12 @@ static const struct option enc_options[] = {
 		.name = "nopad",
 		.desc = "Disable standard block padding",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.nopad,
+		.opt.flag = &enc_config.nopad,
 	},
 	{
 		.name = "nosalt",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.nosalt,
+		.opt.value = &enc_config.nosalt,
 		.value = 1,
 	},
 	{
@@ -232,21 +237,21 @@ static const struct option enc_options[] = {
 		.argname = "file",
 		.desc = "Output file to write to (default stdout)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.outf,
+		.opt.arg = &enc_config.outf,
 	},
 	{
 		.name = "P",
 		.desc = "Print out the salt, key and IV used, then exit\n"
 		    "  (no encryption or decryption is performed)",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.printkey,
+		.opt.value = &enc_config.printkey,
 		.value = 2,
 	},
 	{
 		.name = "p",
 		.desc = "Print out the salt, key and IV used",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.printkey,
+		.opt.value = &enc_config.printkey,
 		.value = 1,
 	},
 	{
@@ -254,34 +259,42 @@ static const struct option enc_options[] = {
 		.argname = "source",
 		.desc = "Password source",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.passarg,
+		.opt.arg = &enc_config.passarg,
 	},
 	{
 		.name = "pbkdf2",
 		.desc = "Use the pbkdf2 key derivation function",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.pbkdf2,
+		.opt.flag = &enc_config.pbkdf2,
 	},
 	{
 		.name = "S",
 		.argname = "salt",
 		.desc = "Salt to use, specified as a hexadecimal string",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.hsalt,
+		.opt.arg = &enc_config.hsalt,
 	},
 	{
 		.name = "salt",
 		.desc = "Use a salt in the key derivation routines (default)",
 		.type = OPTION_VALUE,
-		.opt.value = &cfg.nosalt,
+		.opt.value = &enc_config.nosalt,
 		.value = 0,
 	},
 	{
 		.name = "v",
 		.desc = "Verbose",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.verbose,
+		.opt.flag = &enc_config.verbose,
 	},
+#ifdef ZLIB
+	{
+		.name = "z",
+		.desc = "Perform zlib compression/decompression",
+		.type = OPTION_FLAG,
+		.opt.flag = &enc_config.do_zlib,
+	},
+#endif
 	{
 		.name = NULL,
 		.type = OPTION_ARGV_FUNC,
@@ -289,22 +302,6 @@ static const struct option enc_options[] = {
 	},
 	{ NULL },
 };
-
-static void
-skip_aead_and_xts(const OBJ_NAME *name, void *arg)
-{
-	const EVP_CIPHER *cipher;
-
-	if ((cipher = EVP_get_cipherbyname(name->name)) == NULL)
-		return;
-
-	if ((EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) != 0)
-		return;
-	if (EVP_CIPHER_mode(cipher) == EVP_CIPH_XTS_MODE)
-		return;
-
-	show_cipher(name, arg);
-}
 
 static void
 enc_usage(void)
@@ -321,7 +318,7 @@ enc_usage(void)
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "Valid ciphername values:\n\n");
-	OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH, skip_aead_and_xts, &n);
+	OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH, show_cipher, &n);
 	fprintf(stderr, "\n");
 }
 
@@ -336,6 +333,9 @@ enc_main(int argc, char **argv)
 	int ret = 1, inl;
 	unsigned char key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	unsigned char salt[PKCS5_SALT_LEN];
+#ifdef ZLIB
+	BIO *bzl = NULL;
+#endif
 	EVP_CIPHER_CTX *ctx = NULL;
 	const EVP_MD *dgst = NULL;
 	BIO *in = NULL, *out = NULL, *b64 = NULL, *benc = NULL;
@@ -344,23 +344,37 @@ enc_main(int argc, char **argv)
 	char pname[PROG_NAME_SIZE + 1];
 	int i;
 
-	if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.enc = 1;
+	memset(&enc_config, 0, sizeof(enc_config));
+	enc_config.enc = 1;
 
 	/* first check the program name */
 	program_name(argv[0], pname, sizeof(pname));
 
 	if (strcmp(pname, "base64") == 0)
-		cfg.base64 = 1;
+		enc_config.base64 = 1;
 
-	cfg.cipher = EVP_get_cipherbyname(pname);
+#ifdef ZLIB
+	if (strcmp(pname, "zlib") == 0)
+		enc_config.do_zlib = 1;
+#endif
 
-	if (!cfg.base64 && cfg.cipher == NULL && strcmp(pname, "enc") != 0) {
+	enc_config.cipher = EVP_get_cipherbyname(pname);
+
+#ifdef ZLIB
+	if (!enc_config.do_zlib && !enc_config.base64 &&
+	    enc_config.cipher == NULL && strcmp(pname, "enc") != 0)
+#else
+	if (!enc_config.base64 && enc_config.cipher == NULL &&
+	    strcmp(pname, "enc") != 0)
+#endif
+	{
 		BIO_printf(bio_err, "%s is an unknown cipher\n", pname);
 		goto end;
 	}
@@ -370,60 +384,49 @@ enc_main(int argc, char **argv)
 		goto end;
 	}
 
-	if (cfg.keyfile != NULL) {
+	if (enc_config.keyfile != NULL) {
 		static char buf[128];
 		FILE *infile;
 
-		infile = fopen(cfg.keyfile, "r");
+		infile = fopen(enc_config.keyfile, "r");
 		if (infile == NULL) {
 			BIO_printf(bio_err, "unable to read key from '%s'\n",
-			    cfg.keyfile);
+			    enc_config.keyfile);
 			goto end;
 		}
 		buf[0] = '\0';
 		if (!fgets(buf, sizeof buf, infile)) {
 			BIO_printf(bio_err, "unable to read key from '%s'\n",
-			    cfg.keyfile);
+			    enc_config.keyfile);
 			fclose(infile);
 			goto end;
 		}
 		fclose(infile);
 		i = strlen(buf);
-		if (i > 0 && (buf[i - 1] == '\n' || buf[i - 1] == '\r'))
+		if ((i > 0) && ((buf[i - 1] == '\n') || (buf[i - 1] == '\r')))
 			buf[--i] = '\0';
-		if (i > 0 && (buf[i - 1] == '\n' || buf[i - 1] == '\r'))
+		if ((i > 0) && ((buf[i - 1] == '\n') || (buf[i - 1] == '\r')))
 			buf[--i] = '\0';
 		if (i < 1) {
 			BIO_printf(bio_err, "zero length password\n");
 			goto end;
 		}
-		cfg.keystr = buf;
+		enc_config.keystr = buf;
 	}
 
-	if (cfg.cipher != NULL &&
-	    (EVP_CIPHER_flags(cfg.cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) != 0) {
-		BIO_printf(bio_err, "enc does not support AEAD ciphers\n");
-		goto end;
-	}
-
-	if (cfg.cipher != NULL &&
-	    EVP_CIPHER_mode(cfg.cipher) == EVP_CIPH_XTS_MODE) {
-		BIO_printf(bio_err, "enc does not support XTS mode\n");
-		goto end;
-	}
-
-	if (cfg.md != NULL &&
-	    (dgst = EVP_get_digestbyname(cfg.md)) == NULL) {
+	if (enc_config.md != NULL &&
+	    (dgst = EVP_get_digestbyname(enc_config.md)) == NULL) {
 		BIO_printf(bio_err,
 		    "%s is an unsupported message digest type\n",
-		    cfg.md);
+		    enc_config.md);
 		goto end;
 	}
-	if (dgst == NULL)
+	if (dgst == NULL) {
 		dgst = EVP_sha256();
+	}
 
-	if (cfg.bufsize != NULL) {
-		char *p = cfg.bufsize;
+	if (enc_config.bufsize != NULL) {
+		char *p = enc_config.bufsize;
 		unsigned long n;
 
 		/* XXX - provide an OPTION_ARG_DISKUNIT. */
@@ -442,58 +445,60 @@ enc_main(int argc, char **argv)
 			goto end;
 		}
 		/* It must be large enough for a base64 encoded line. */
-		if (cfg.base64 && n < 80)
+		if (enc_config.base64 && n < 80)
 			n = 80;
 
 		bsize = (int)n;
-		if (cfg.verbose)
+		if (enc_config.verbose)
 			BIO_printf(bio_err, "bufsize=%d\n", bsize);
 	}
 	strbuf = malloc(SIZE);
 	buff = malloc(EVP_ENCODE_LENGTH(bsize));
-	if (buff == NULL || strbuf == NULL) {
+	if ((buff == NULL) || (strbuf == NULL)) {
 		BIO_printf(bio_err, "malloc failure %ld\n", (long) EVP_ENCODE_LENGTH(bsize));
 		goto end;
 	}
 	in = BIO_new(BIO_s_file());
 	out = BIO_new(BIO_s_file());
-	if (in == NULL || out == NULL) {
+	if ((in == NULL) || (out == NULL)) {
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (cfg.debug) {
+	if (enc_config.debug) {
 		BIO_set_callback(in, BIO_debug_callback);
 		BIO_set_callback(out, BIO_debug_callback);
 		BIO_set_callback_arg(in, (char *) bio_err);
 		BIO_set_callback_arg(out, (char *) bio_err);
 	}
-	if (cfg.inf == NULL) {
-		if (cfg.bufsize != NULL)
+	if (enc_config.inf == NULL) {
+		if (enc_config.bufsize != NULL)
 			setvbuf(stdin, (char *) NULL, _IONBF, 0);
 		BIO_set_fp(in, stdin, BIO_NOCLOSE);
 	} else {
-		if (BIO_read_filename(in, cfg.inf) <= 0) {
-			perror(cfg.inf);
+		if (BIO_read_filename(in, enc_config.inf) <= 0) {
+			perror(enc_config.inf);
 			goto end;
 		}
 	}
 
-	if (!cfg.keystr && cfg.passarg) {
-		if (!app_passwd(bio_err, cfg.passarg, NULL, &pass, NULL)) {
+	if (!enc_config.keystr && enc_config.passarg) {
+		if (!app_passwd(bio_err, enc_config.passarg, NULL,
+		    &pass, NULL)) {
 			BIO_printf(bio_err, "Error getting password\n");
 			goto end;
 		}
-		cfg.keystr = pass;
+		enc_config.keystr = pass;
 	}
-	if (cfg.keystr == NULL && cfg.cipher != NULL && cfg.hkey == NULL) {
+	if (enc_config.keystr == NULL && enc_config.cipher != NULL &&
+	    enc_config.hkey == NULL) {
 		for (;;) {
 			char buf[200];
 			int retval;
 
 			retval = snprintf(buf, sizeof buf,
 			    "enter %s %s password:",
-			    OBJ_nid2ln(EVP_CIPHER_nid(cfg.cipher)),
-			    cfg.enc ? "encryption" : "decryption");
+			    OBJ_nid2ln(EVP_CIPHER_nid(enc_config.cipher)),
+			    enc_config.enc ? "encryption" : "decryption");
 			if ((size_t)retval >= sizeof buf) {
 				BIO_printf(bio_err,
 				    "Password prompt too long\n");
@@ -501,13 +506,13 @@ enc_main(int argc, char **argv)
 			}
 			strbuf[0] = '\0';
 			i = EVP_read_pw_string((char *)strbuf, SIZE, buf,
-			    cfg.enc);
+			    enc_config.enc);
 			if (i == 0) {
 				if (strbuf[0] == '\0') {
 					ret = 1;
 					goto end;
 				}
-				cfg.keystr = strbuf;
+				enc_config.keystr = strbuf;
 				break;
 			}
 			if (i < 0) {
@@ -516,13 +521,13 @@ enc_main(int argc, char **argv)
 			}
 		}
 	}
-	if (cfg.outf == NULL) {
+	if (enc_config.outf == NULL) {
 		BIO_set_fp(out, stdout, BIO_NOCLOSE);
-		if (cfg.bufsize != NULL)
+		if (enc_config.bufsize != NULL)
 			setvbuf(stdout, (char *)NULL, _IONBF, 0);
 	} else {
-		if (BIO_write_filename(out, cfg.outf) <= 0) {
-			perror(cfg.outf);
+		if (BIO_write_filename(out, enc_config.outf) <= 0) {
+			perror(enc_config.outf);
 			goto end;
 		}
 	}
@@ -530,38 +535,49 @@ enc_main(int argc, char **argv)
 	rbio = in;
 	wbio = out;
 
-	if (cfg.base64) {
+#ifdef ZLIB
+	if (do_zlib) {
+		if ((bzl = BIO_new(BIO_f_zlib())) == NULL)
+			goto end;
+		if (enc)
+			wbio = BIO_push(bzl, wbio);
+		else
+			rbio = BIO_push(bzl, rbio);
+	}
+#endif
+
+	if (enc_config.base64) {
 		if ((b64 = BIO_new(BIO_f_base64())) == NULL)
 			goto end;
-		if (cfg.debug) {
+		if (enc_config.debug) {
 			BIO_set_callback(b64, BIO_debug_callback);
 			BIO_set_callback_arg(b64, (char *) bio_err);
 		}
-		if (cfg.olb64)
+		if (enc_config.olb64)
 			BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-		if (cfg.enc)
+		if (enc_config.enc)
 			wbio = BIO_push(b64, wbio);
 		else
 			rbio = BIO_push(b64, rbio);
 	}
-	if (cfg.cipher != NULL) {
+	if (enc_config.cipher != NULL) {
 		/*
 		 * Note that keystr is NULL if a key was passed on the command
 		 * line, so we get no salt in that case. Is this a bug?
 		 */
-		if (cfg.keystr != NULL) {
+		if (enc_config.keystr != NULL) {
 			/*
 			 * Salt handling: if encrypting generate a salt and
 			 * write to output BIO. If decrypting read salt from
 			 * input BIO.
 			 */
 			unsigned char *sptr;
-			if (cfg.nosalt)
+			if (enc_config.nosalt)
 				sptr = NULL;
 			else {
-				if (cfg.enc) {
-					if (cfg.hsalt) {
-						if (!set_hex(cfg.hsalt, salt, sizeof salt)) {
+				if (enc_config.enc) {
+					if (enc_config.hsalt) {
+						if (!set_hex(enc_config.hsalt, salt, sizeof salt)) {
 							BIO_printf(bio_err,
 							    "invalid hex salt value\n");
 							goto end;
@@ -573,7 +589,7 @@ enc_main(int argc, char **argv)
 					 * If -P option then don't bother
 					 * writing
 					 */
-					if ((cfg.printkey != 2)
+					if ((enc_config.printkey != 2)
 					    && (BIO_write(wbio, magic,
 						    sizeof magic - 1) != sizeof magic - 1
 						|| BIO_write(wbio,
@@ -594,23 +610,23 @@ enc_main(int argc, char **argv)
 				}
 				sptr = salt;
 			}
-			if (cfg.pbkdf2 == 1 || cfg.iter > 0) {
+			if (enc_config.pbkdf2 == 1 || enc_config.iter > 0) {
 				/*
 				 * derive key and default iv
 				 * concatenated into a temporary buffer
 				 */
 				unsigned char tmpkeyiv[EVP_MAX_KEY_LENGTH + EVP_MAX_IV_LENGTH];
-				int iklen = EVP_CIPHER_key_length(cfg.cipher);
-				int ivlen = EVP_CIPHER_iv_length(cfg.cipher);
+				int iklen = EVP_CIPHER_key_length(enc_config.cipher);
+				int ivlen = EVP_CIPHER_iv_length(enc_config.cipher);
 				/* not needed if HASH_UPDATE() is fixed : */
 				int islen = (sptr != NULL ? sizeof(salt) : 0);
 
-				if (cfg.iter == 0)
-					cfg.iter = 10000;
+				if (enc_config.iter == 0)
+					enc_config.iter = 10000;
 
-				if (!PKCS5_PBKDF2_HMAC(cfg.keystr,
-					strlen(cfg.keystr), sptr, islen,
-					cfg.iter, dgst, iklen+ivlen, tmpkeyiv)) {
+				if (!PKCS5_PBKDF2_HMAC(enc_config.keystr,
+					strlen(enc_config.keystr), sptr, islen,
+					enc_config.iter, dgst, iklen+ivlen, tmpkeyiv)) {
 					BIO_printf(bio_err, "PKCS5_PBKDF2_HMAC failed\n");
 					goto end;
 				}
@@ -619,9 +635,9 @@ enc_main(int argc, char **argv)
 				memcpy(iv, tmpkeyiv + iklen, ivlen);
 				explicit_bzero(tmpkeyiv, sizeof tmpkeyiv);
 			} else {
-				EVP_BytesToKey(cfg.cipher, dgst, sptr,
-				    (unsigned char *)cfg.keystr,
-				    strlen(cfg.keystr), 1, key, iv);
+				EVP_BytesToKey(enc_config.cipher, dgst, sptr,
+				    (unsigned char *)enc_config.keystr,
+				    strlen(enc_config.keystr), 1, key, iv);
 			}
 
 			/*
@@ -629,18 +645,19 @@ enc_main(int argc, char **argv)
 			 * the command line bug picked up by Larry J. Hughes
 			 * Jr. <hughes@indiana.edu>
 			 */
-			if (cfg.keystr == strbuf)
-				explicit_bzero(cfg.keystr, SIZE);
+			if (enc_config.keystr == strbuf)
+				explicit_bzero(enc_config.keystr, SIZE);
 			else
-				explicit_bzero(cfg.keystr,
-				    strlen(cfg.keystr));
+				explicit_bzero(enc_config.keystr,
+				    strlen(enc_config.keystr));
 		}
-		if (cfg.hiv != NULL && !set_hex(cfg.hiv, iv, sizeof iv)) {
+		if (enc_config.hiv != NULL &&
+		    !set_hex(enc_config.hiv, iv, sizeof iv)) {
 			BIO_printf(bio_err, "invalid hex iv value\n");
 			goto end;
 		}
-		if (cfg.hiv == NULL && cfg.keystr == NULL &&
-		    EVP_CIPHER_iv_length(cfg.cipher) != 0) {
+		if (enc_config.hiv == NULL && enc_config.keystr == NULL &&
+		    EVP_CIPHER_iv_length(enc_config.cipher) != 0) {
 			/*
 			 * No IV was explicitly set and no IV was generated
 			 * during EVP_BytesToKey. Hence the IV is undefined,
@@ -649,7 +666,8 @@ enc_main(int argc, char **argv)
 			BIO_printf(bio_err, "iv undefined\n");
 			goto end;
 		}
-		if (cfg.hkey != NULL && !set_hex(cfg.hkey, key, sizeof key)) {
+		if (enc_config.hkey != NULL &&
+		    !set_hex(enc_config.hkey, key, sizeof key)) {
 			BIO_printf(bio_err, "invalid hex key value\n");
 			goto end;
 		}
@@ -663,50 +681,47 @@ enc_main(int argc, char **argv)
 
 		BIO_get_cipher_ctx(benc, &ctx);
 
-		if (!EVP_CipherInit_ex(ctx, cfg.cipher, NULL, NULL,
-		    NULL, cfg.enc)) {
+		if (!EVP_CipherInit_ex(ctx, enc_config.cipher, NULL, NULL,
+		    NULL, enc_config.enc)) {
 			BIO_printf(bio_err, "Error setting cipher %s\n",
-			    EVP_CIPHER_name(cfg.cipher));
+			    EVP_CIPHER_name(enc_config.cipher));
 			ERR_print_errors(bio_err);
 			goto end;
 		}
-		if (cfg.nopad)
+		if (enc_config.nopad)
 			EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-		if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, cfg.enc)) {
+		if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv,
+		    enc_config.enc)) {
 			BIO_printf(bio_err, "Error setting cipher %s\n",
-			    EVP_CIPHER_name(cfg.cipher));
+			    EVP_CIPHER_name(enc_config.cipher));
 			ERR_print_errors(bio_err);
 			goto end;
 		}
-		if (cfg.debug) {
+		if (enc_config.debug) {
 			BIO_set_callback(benc, BIO_debug_callback);
 			BIO_set_callback_arg(benc, (char *) bio_err);
 		}
-		if (cfg.printkey) {
-			int key_len, iv_len;
-
-			if (!cfg.nosalt) {
+		if (enc_config.printkey) {
+			if (!enc_config.nosalt) {
 				printf("salt=");
 				for (i = 0; i < (int) sizeof(salt); i++)
 					printf("%02X", salt[i]);
 				printf("\n");
 			}
-			key_len = EVP_CIPHER_key_length(cfg.cipher);
-			if (key_len > 0) {
+			if (enc_config.cipher->key_len > 0) {
 				printf("key=");
-				for (i = 0; i < key_len; i++)
+				for (i = 0; i < enc_config.cipher->key_len; i++)
 					printf("%02X", key[i]);
 				printf("\n");
 			}
-			iv_len = EVP_CIPHER_iv_length(cfg.cipher);
-			if (iv_len > 0) {
+			if (enc_config.cipher->iv_len > 0) {
 				printf("iv =");
-				for (i = 0; i < iv_len; i++)
+				for (i = 0; i < enc_config.cipher->iv_len; i++)
 					printf("%02X", iv[i]);
 				printf("\n");
 			}
-			if (cfg.printkey == 2) {
+			if (enc_config.printkey == 2) {
 				ret = 0;
 				goto end;
 			}
@@ -730,7 +745,7 @@ enc_main(int argc, char **argv)
 		goto end;
 	}
 	ret = 0;
-	if (cfg.verbose) {
+	if (enc_config.verbose) {
 		BIO_printf(bio_err, "bytes read   :%8ld\n", BIO_number_read(in));
 		BIO_printf(bio_err, "bytes written:%8ld\n", BIO_number_written(out));
 	}
@@ -742,6 +757,9 @@ enc_main(int argc, char **argv)
 	BIO_free_all(out);
 	BIO_free(benc);
 	BIO_free(b64);
+#ifdef ZLIB
+	BIO_free(bzl);
+#endif
 	free(pass);
 
 	return (ret);
@@ -764,11 +782,11 @@ set_hex(char *in, unsigned char *out, int size)
 		*(in++) = '\0';
 		if (j == 0)
 			break;
-		if (j >= '0' && j <= '9')
+		if ((j >= '0') && (j <= '9'))
 			j -= '0';
-		else if (j >= 'A' && j <= 'F')
+		else if ((j >= 'A') && (j <= 'F'))
 			j = j - 'A' + 10;
-		else if (j >= 'a' && j <= 'f')
+		else if ((j >= 'a') && (j <= 'f'))
 			j = j - 'a' + 10;
 		else {
 			BIO_printf(bio_err, "non-hex digit\n");

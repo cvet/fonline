@@ -1,4 +1,4 @@
-/* $OpenBSD: b_sock.c,v 1.71 2023/07/05 21:23:37 beck Exp $ */
+/* $OpenBSD: b_sock.c,v 1.69 2018/02/07 00:52:05 bluhm Exp $ */
 /*
  * Copyright (c) 2017 Bob Beck <beck@openbsd.org>
  *
@@ -47,7 +47,6 @@ BIO_get_host_ip(const char *str, unsigned char *ip)
 	int error;
 
 	if (str == NULL) {
-		BIOerror(BIO_R_BAD_HOSTNAME_LOOKUP);
 		ERR_asprintf_error_data("NULL host provided");
 		return (0);
 	}
@@ -62,7 +61,6 @@ BIO_get_host_ip(const char *str, unsigned char *ip)
 	freeaddrinfo(res);
 	return (1);
 }
-LCRYPTO_ALIAS(BIO_get_host_ip);
 
 int
 BIO_get_port(const char *str, unsigned short *port_ptr)
@@ -81,7 +79,6 @@ BIO_get_port(const char *str, unsigned short *port_ptr)
 	}
 
 	if ((error = getaddrinfo(NULL, str, &hints, &res)) != 0) {
-		BIOerror(BIO_R_INVALID_ARGUMENT);
 		ERR_asprintf_error_data("getaddrinfo: service='%s' : %s'", str,
 		    gai_strerror(error));
 		return (0);
@@ -90,7 +87,6 @@ BIO_get_port(const char *str, unsigned short *port_ptr)
 	freeaddrinfo(res);
 	return (1);
 }
-LCRYPTO_ALIAS(BIO_get_port);
 
 int
 BIO_sock_error(int sock)
@@ -103,14 +99,12 @@ BIO_sock_error(int sock)
 		return (1);
 	return (err);
 }
-LCRYPTO_ALIAS(BIO_sock_error);
 
 struct hostent *
 BIO_gethostbyname(const char *name)
 {
 	return gethostbyname(name);
 }
-LCRYPTO_ALIAS(BIO_gethostbyname);
 
 int
 BIO_socket_ioctl(int fd, long type, void *arg)
@@ -122,7 +116,6 @@ BIO_socket_ioctl(int fd, long type, void *arg)
 		SYSerror(errno);
 	return (ret);
 }
-LCRYPTO_ALIAS(BIO_socket_ioctl);
 
 int
 BIO_get_accept_socket(char *host, int bind_mode)
@@ -136,14 +129,8 @@ BIO_get_accept_socket(char *host, int bind_mode)
 	char *h, *p, *str = NULL;
 	int error, ret = 0, s = -1;
 
-	if (host == NULL) {
-		BIOerror(BIO_R_NO_PORT_SPECIFIED);
+	if (host == NULL || (str = strdup(host)) == NULL)
 		return (-1);
-	}
-	if ((str = strdup(host)) == NULL) {
-		BIOerror(ERR_R_MALLOC_FAILURE);
-		return (-1);
-	}
 	p = NULL;
 	h = str;
 	if ((p = strrchr(str, ':')) == NULL) {
@@ -161,7 +148,6 @@ BIO_get_accept_socket(char *host, int bind_mode)
 	}
 
 	if ((error = getaddrinfo(h, p, &hints, &res)) != 0) {
-		BIOerror(BIO_R_BAD_HOSTNAME_LOOKUP);
 		ERR_asprintf_error_data("getaddrinfo: '%s:%s': %s'", h, p,
 		    gai_strerror(error));
 		goto err;
@@ -208,7 +194,6 @@ err:
 	}
 	return (s);
 }
-LCRYPTO_ALIAS(BIO_get_accept_socket);
 
 int
 BIO_accept(int sock, char **addr)
@@ -218,10 +203,9 @@ BIO_accept(int sock, char **addr)
 	socklen_t sin_len = sizeof(sin);
 	int ret = -1;
 
-	if (addr == NULL) {
-		BIOerror(BIO_R_NULL_PARAMETER);
+	if (addr == NULL)
 		goto end;
-	}
+
 	ret = accept(sock, (struct sockaddr *)&sin, &sin_len);
 	if (ret == -1) {
 		if (BIO_sock_should_retry(ret))
@@ -251,11 +235,9 @@ BIO_accept(int sock, char **addr)
 end:
 	return (ret);
 }
-LCRYPTO_ALIAS(BIO_accept);
 
 int
 BIO_set_tcp_ndelay(int s, int on)
 {
 	return (setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == 0);
 }
-LCRYPTO_ALIAS(BIO_set_tcp_ndelay);

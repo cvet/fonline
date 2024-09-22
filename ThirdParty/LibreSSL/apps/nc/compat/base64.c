@@ -1,4 +1,4 @@
-/*	$OpenBSD: base64.c,v 1.15 2021/10/25 14:41:09 jca Exp $	*/
+/*	$OpenBSD: base64.c,v 1.9 2021/10/11 14:32:26 deraadt Exp $	*/
 
 /*
  * Copyright (c) 1996 by Internet Software Consortium.
@@ -49,6 +49,7 @@
 
 #include <ctype.h>
 #include <resolv.h>
+#include <stdio.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -105,9 +106,9 @@ static const char Pad64 = '=';
    end of the data is performed using the '=' character.
 
    Since all base64 input is an integral number of octets, only the
-         -------------------------------------------------
+         -------------------------------------------------                       
    following cases can arise:
-
+   
        (1) the final quantum of encoding input is an integral
            multiple of 24 bits; here, the final unit of encoded
 	   output will be an integral multiple of 4 characters
@@ -121,12 +122,15 @@ static const char Pad64 = '=';
    */
 
 int
-b64_ntop(unsigned char const *src, size_t srclength, char *target,
-    size_t targsize)
+b64_ntop(src, srclength, target, targsize)
+	u_char const *src;
+	size_t srclength;
+	char *target;
+	size_t targsize;
 {
 	size_t datalength = 0;
-	unsigned char input[3];
-	unsigned char output[4];
+	u_char input[3];
+	u_char output[4];
 	int i;
 
 	while (2 < srclength) {
@@ -147,14 +151,14 @@ b64_ntop(unsigned char const *src, size_t srclength, char *target,
 		target[datalength++] = Base64[output[2]];
 		target[datalength++] = Base64[output[3]];
 	}
-
+    
 	/* Now we worry about padding. */
 	if (0 != srclength) {
 		/* Get what's left. */
 		input[0] = input[1] = input[2] = '\0';
 		for (i = 0; i < srclength; i++)
 			input[i] = *src++;
-
+	
 		output[0] = input[0] >> 2;
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
@@ -182,10 +186,13 @@ b64_ntop(unsigned char const *src, size_t srclength, char *target,
  */
 
 int
-b64_pton(char const *src, unsigned char *target, size_t targsize)
+b64_pton(src, target, targsize)
+	char const *src;
+	u_char *target;
+	size_t targsize;
 {
 	int tarindex, state, ch;
-	unsigned char nextbyte;
+	u_char nextbyte;
 	char *pos;
 
 	state = 0;
@@ -199,7 +206,7 @@ b64_pton(char const *src, unsigned char *target, size_t targsize)
 			break;
 
 		pos = strchr(Base64, ch);
-		if (pos == 0)		/* A non-base64 character. */
+		if (pos == 0) 		/* A non-base64 character. */
 			return (-1);
 
 		switch (state) {

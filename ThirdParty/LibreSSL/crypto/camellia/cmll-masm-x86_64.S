@@ -1,33 +1,26 @@
 ; 1 "crypto/camellia/cmll-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 371 "<built-in>" 3
+; 340 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/camellia/cmll-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
-
-
-
-
-
-
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
-   
 
 
 
 
 
-   
+
+
 
 
 ; 40 "./crypto/x86_arch.h"
-   
 
 
 
@@ -72,7 +65,8 @@ OPTION	DOTNAME
 
 
 
-; 9 "crypto/camellia/cmll-masm-x86_64.S.tmp" 2
+
+; 3 "crypto/camellia/cmll-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 
@@ -80,7 +74,6 @@ PUBLIC	Camellia_EncryptBlock
 
 ALIGN	16
 Camellia_EncryptBlock	PROC PUBLIC
-
 	mov	eax,128
 	sub	eax,edi
 	mov	edi,3
@@ -101,7 +94,6 @@ $L$SEH_begin_Camellia_EncryptBlock_Rounds::
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
 
 
 	push	rbx
@@ -155,7 +147,6 @@ Camellia_EncryptBlock_Rounds	ENDP
 
 ALIGN	16
 _x86_64_Camellia_encrypt	PROC PRIVATE
-
 	xor	r9d,DWORD PTR[r14]
 	xor	r8d,DWORD PTR[4+r14]
 	xor	r11d,DWORD PTR[8+r14]
@@ -365,7 +356,6 @@ PUBLIC	Camellia_DecryptBlock
 
 ALIGN	16
 Camellia_DecryptBlock	PROC PUBLIC
-
 	mov	eax,128
 	sub	eax,edi
 	mov	edi,3
@@ -386,7 +376,6 @@ $L$SEH_begin_Camellia_DecryptBlock_Rounds::
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
 
 
 	push	rbx
@@ -440,7 +429,6 @@ Camellia_DecryptBlock_Rounds	ENDP
 
 ALIGN	16
 _x86_64_Camellia_decrypt	PROC PRIVATE
-
 	xor	r9d,DWORD PTR[r14]
 	xor	r8d,DWORD PTR[4+r14]
 	xor	r11d,DWORD PTR[8+r14]
@@ -656,7 +644,6 @@ $L$SEH_begin_Camellia_Ekeygen::
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
-
 
 
 	push	rbx
@@ -1202,8 +1189,6 @@ $L$key_epilogue::
 	DB	0F3h,0C3h		;repret
 $L$SEH_end_Camellia_Ekeygen::
 Camellia_Ekeygen	ENDP
-.text$	ENDS
-.rdata	SEGMENT READONLY ALIGN(64)
 ALIGN	64
 $L$Camellia_SIGMA::
 	DD	03bcc908bh,0a09e667fh,04caa73b2h,0b67ae858h
@@ -1723,8 +1708,6 @@ $L$Camellia_SBOX::
 	DD	0008f8f8fh,0e300e3e3h
 	DD	000010101h,040004040h
 	DD	0003d3d3dh,04f004f4fh
-.rdata	ENDS
-.text$	SEGMENT ALIGN(64) 'CODE'
 PUBLIC	Camellia_cbc_encrypt
 
 ALIGN	16
@@ -1739,7 +1722,6 @@ $L$SEH_begin_Camellia_cbc_encrypt::
 	mov	rcx,r9
 	mov	r8,QWORD PTR[40+rsp]
 	mov	r9,QWORD PTR[48+rsp]
-
 
 
 	cmp	rdx,0
@@ -1974,6 +1956,10 @@ $L$cbc_abort::
 	DB	0F3h,0C3h		;repret
 $L$SEH_end_Camellia_cbc_encrypt::
 Camellia_cbc_encrypt	ENDP
+
+DB	67,97,109,101,108,108,105,97,32,102,111,114,32,120,56,54
+DB	95,54,52,32,98,121,32,60,97,112,112,114,111,64,111,112
+DB	101,110,115,115,108,46,111,114,103,62,0
 
 .text$	ENDS
 END

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_txt.c,v 1.37 2023/07/08 16:40:13 beck Exp $ */
+/* $OpenBSD: ssl_txt.c,v 1.29 2021/06/11 11:13:53 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -82,11 +82,12 @@
  * OTHERWISE.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include <openssl/buffer.h>
 
-#include "ssl_local.h"
+#include "ssl_locl.h"
 
 int
 SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x)
@@ -94,108 +95,94 @@ SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x)
 	BIO *b;
 	int ret;
 
-	if ((b = BIO_new(BIO_s_file())) == NULL) {
+	if ((b = BIO_new(BIO_s_file_internal())) == NULL) {
 		SSLerrorx(ERR_R_BUF_LIB);
-		return 0;
+		return (0);
 	}
 	BIO_set_fp(b, fp, BIO_NOCLOSE);
 	ret = SSL_SESSION_print(b, x);
 	BIO_free(b);
-	return ret;
+	return (ret);
 }
-LSSL_ALIAS(SSL_SESSION_print_fp);
 
 int
 SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 {
-	size_t i;
-	int ret = 0;
+	unsigned int i;
+	const char *s;
 
 	if (x == NULL)
 		goto err;
-
 	if (BIO_puts(bp, "SSL-Session:\n") <= 0)
 		goto err;
 
-	if (BIO_printf(bp, "    Protocol  : %s\n",
-	    ssl_version_string(x->ssl_version)) <= 0)
+	s = ssl_version_string(x->ssl_version);
+	if (BIO_printf(bp, "    Protocol  : %s\n", s) <= 0)
 		goto err;
 
 	if (x->cipher == NULL) {
-		if (BIO_printf(bp, "    Cipher    : %04lX\n",
-		    x->cipher_id & SSL3_CK_VALUE_MASK) <= 0)
-			goto err;
+		if (((x->cipher_id) & 0xff000000) == 0x02000000) {
+			if (BIO_printf(bp, "    Cipher    : %06lX\n", x->cipher_id&0xffffff) <= 0)
+				goto err;
+		} else {
+			if (BIO_printf(bp, "    Cipher    : %04lX\n", x->cipher_id&0xffff) <= 0)
+				goto err;
+		}
 	} else {
-		const char *cipher_name = "unknown";
-
-		if (x->cipher->name != NULL)
-			cipher_name = x->cipher->name;
-
-		if (BIO_printf(bp, "    Cipher    : %s\n", cipher_name) <= 0)
+		if (BIO_printf(bp, "    Cipher    : %s\n",((x->cipher == NULL)?"unknown":x->cipher->name)) <= 0)
 			goto err;
 	}
-
 	if (BIO_puts(bp, "    Session-ID: ") <= 0)
 		goto err;
-
 	for (i = 0; i < x->session_id_length; i++) {
 		if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0)
 			goto err;
 	}
-
 	if (BIO_puts(bp, "\n    Session-ID-ctx: ") <= 0)
 		goto err;
-
 	for (i = 0; i < x->sid_ctx_length; i++) {
 		if (BIO_printf(bp, "%02X", x->sid_ctx[i]) <= 0)
 			goto err;
 	}
-
 	if (BIO_puts(bp, "\n    Master-Key: ") <= 0)
 		goto err;
-
-	for (i = 0; i < x->master_key_length; i++) {
+	for (i = 0; i < (unsigned int)x->master_key_length; i++) {
 		if (BIO_printf(bp, "%02X", x->master_key[i]) <= 0)
 			goto err;
 	}
-
-	if (x->tlsext_tick_lifetime_hint > 0) {
+	if (x->tlsext_tick_lifetime_hint) {
 		if (BIO_printf(bp,
-		    "\n    TLS session ticket lifetime hint: %u (seconds)",
+		    "\n    TLS session ticket lifetime hint: %ld (seconds)",
 		    x->tlsext_tick_lifetime_hint) <= 0)
 			goto err;
 	}
-
-	if (x->tlsext_tick != NULL) {
+	if (x->tlsext_tick) {
 		if (BIO_puts(bp, "\n    TLS session ticket:\n") <= 0)
 			goto err;
-		if (BIO_dump_indent(bp, x->tlsext_tick, x->tlsext_ticklen,
-		    4) <= 0)
+		if (BIO_dump_indent(bp, (char *)x->tlsext_tick, x->tlsext_ticklen, 4) <= 0)
 			goto err;
 	}
 
 	if (x->time != 0) {
-		if (BIO_printf(bp, "\n    Start Time: %lld",
-		    (long long)x->time) <= 0)
+		if (BIO_printf(bp, "\n    Start Time: %"PRId64, (int64_t)x->time) <= 0)
 			goto err;
 	}
-
-	if (x->timeout != 0) {
-		if (BIO_printf(bp, "\n    Timeout   : %ld (sec)",
-		    x->timeout) <= 0)
+	if (x->timeout != 0L) {
+		if (BIO_printf(bp, "\n    Timeout   : %ld (sec)", x->timeout) <= 0)
 			goto err;
 	}
-
 	if (BIO_puts(bp, "\n") <= 0)
 		goto err;
 
-	if (BIO_printf(bp, "    Verify return code: %ld (%s)\n",
-	    x->verify_result,
+	if (BIO_puts(bp, "    Verify return code: ") <= 0)
+		goto err;
+
+	if (BIO_printf(bp, "%ld (%s)\n", x->verify_result,
 	    X509_verify_cert_error_string(x->verify_result)) <= 0)
 		goto err;
 
-	ret = 1;
+	return (1);
  err:
-	return ret;
+	return (0);
 }
-LSSL_ALIAS(SSL_SESSION_print);
+

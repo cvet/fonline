@@ -1,33 +1,26 @@
 ; 1 "crypto/md5/md5-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 371 "<built-in>" 3
+; 340 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/md5/md5-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
-
-
-
-
-
-
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
-   
 
 
 
 
 
-   
+
+
 
 
 ; 40 "./crypto/x86_arch.h"
-   
 
 
 
@@ -72,7 +65,8 @@ OPTION	DOTNAME
 
 
 
-; 9 "crypto/md5/md5-masm-x86_64.S.tmp" 2
+
+; 3 "crypto/md5/md5-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 ALIGN	16
 
@@ -86,7 +80,6 @@ $L$SEH_begin_md5_block_asm_data_order::
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
-
 
 
 	push	rbp

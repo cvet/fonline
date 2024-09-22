@@ -1,33 +1,26 @@
 ; 1 "crypto/bn/modexp512-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 371 "<built-in>" 3
+; 340 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/bn/modexp512-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
-
-
-
-
-
-
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
-   
 
 
 
 
 
-   
+
+
 
 
 ; 40 "./crypto/x86_arch.h"
-   
 
 
 
@@ -72,13 +65,13 @@ OPTION	DOTNAME
 
 
 
-; 9 "crypto/bn/modexp512-masm-x86_64.S.tmp" 2
+
+; 3 "crypto/bn/modexp512-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 
 ALIGN	16
 MULADD_128x512	PROC PRIVATE
-
 	mov	rax,QWORD PTR[rsi]
 	mul	rbp
 	add	r8,rax
@@ -209,7 +202,6 @@ MULADD_128x512	ENDP
 
 ALIGN	16
 mont_reduce	PROC PRIVATE
-
 	lea	rdi,QWORD PTR[192+rsp]
 	mov	rsi,QWORD PTR[32+rsp]
 	add	rsi,576
@@ -653,7 +645,6 @@ mont_reduce	ENDP
 
 ALIGN	16
 mont_mul_a3b	PROC PRIVATE
-
 
 
 
@@ -1160,7 +1151,6 @@ mont_mul_a3b	ENDP
 
 ALIGN	16
 sqr_reduce	PROC PRIVATE
-
 	mov	rcx,QWORD PTR[16+rsp]
 
 
@@ -1552,7 +1542,6 @@ $L$SEH_begin_mod_exp_512::
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
 
 
 	push	rbp

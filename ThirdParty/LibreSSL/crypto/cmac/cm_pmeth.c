@@ -1,4 +1,4 @@
-/* $OpenBSD: cm_pmeth.c,v 1.12 2023/12/28 21:56:12 tb Exp $ */
+/* $OpenBSD: cm_pmeth.c,v 1.8 2014/07/11 08:44:48 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2010.
  */
@@ -59,7 +59,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "evp_local.h"
+#include "evp_locl.h"
 
 /* The context structure and "key" is simply a CMAC_CTX */
 
@@ -92,23 +92,18 @@ pkey_cmac_cleanup(EVP_PKEY_CTX *ctx)
 static int
 pkey_cmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
-	CMAC_CTX *cmkey;
-	int ret = 0;
+	CMAC_CTX *cmkey = CMAC_CTX_new();
+	CMAC_CTX *cmctx = ctx->data;
 
-	if ((cmkey = CMAC_CTX_new()) == NULL)
-		goto err;
-	if (!CMAC_CTX_copy(cmkey, ctx->data))
-		goto err;
-	if (!EVP_PKEY_assign(pkey, EVP_PKEY_CMAC, cmkey))
-		goto err;
-	cmkey = NULL;
+	if (!cmkey)
+		return 0;
+	if (!CMAC_CTX_copy(cmkey, cmctx)) {
+		CMAC_CTX_free(cmkey);
+		return 0;
+	}
+	EVP_PKEY_assign(pkey, EVP_PKEY_CMAC, cmkey);
 
-	ret = 1;
-
- err:
-	CMAC_CTX_free(cmkey);
-
-	return ret;
+	return 1;
 }
 
 static int
@@ -148,12 +143,13 @@ pkey_cmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 		break;
 
 	case EVP_PKEY_CTRL_CIPHER:
-		if (!CMAC_Init(cmctx, NULL, 0, p2, NULL))
+		if (!CMAC_Init(cmctx, NULL, 0, p2, ctx->engine))
 			return 0;
 		break;
 
 	case EVP_PKEY_CTRL_MD:
-		if (ctx->pkey && !CMAC_CTX_copy(ctx->data, ctx->pkey->pkey.ptr))
+		if (ctx->pkey && !CMAC_CTX_copy(ctx->data,
+		    (CMAC_CTX *)ctx->pkey->pkey.ptr))
 			return 0;
 		if (!CMAC_Init(cmctx, NULL, 0, NULL, NULL))
 			return 0;

@@ -1,16 +1,9 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 
 .text	
 .def	_x86_64_AES_encrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_encrypt:
-_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -164,7 +157,6 @@ _CET_ENDBR
 .def	_x86_64_AES_encrypt_compact;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_encrypt_compact:
-_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -352,7 +344,6 @@ AES_encrypt:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -418,7 +409,6 @@ _CET_ENDBR
 .def	_x86_64_AES_decrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_decrypt:
-_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -574,7 +564,6 @@ _CET_ENDBR
 .def	_x86_64_AES_decrypt_compact;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_decrypt_compact:
-_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -813,7 +802,6 @@ AES_decrypt:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -890,7 +878,6 @@ AES_set_encrypt_key:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -918,7 +905,6 @@ _CET_ENDBR
 .def	_x86_64_AES_set_encrypt_key;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_set_encrypt_key:
-_CET_ENDBR
 	movl	%esi,%ecx
 	movq	%rdi,%rsi
 	movq	%rdx,%rdi
@@ -1167,7 +1153,6 @@ AES_set_decrypt_key:
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1373,7 +1358,6 @@ AES_cbc_encrypt:
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
 
-_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lcbc_epilogue
 	pushfq
@@ -1825,7 +1809,6 @@ _CET_ENDBR
 	movq	16(%rsp),%rsi
 	retq
 .LSEH_end_AES_cbc_encrypt:
-.section	.rodata
 .p2align	6
 .LAES_Te:
 .long	0xa56363c6,0xa56363c6
@@ -2610,13 +2593,12 @@ _CET_ENDBR
 .byte	0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d
 .long	0x80808080, 0x80808080, 0xfefefefe, 0xfefefefe
 .long	0x1b1b1b1b, 0x1b1b1b1b, 0, 0
+.byte	65,69,83,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .p2align	6
-.text	
 
 .def	block_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 block_se_handler:
-_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx
@@ -2675,7 +2657,6 @@ _CET_ENDBR
 .def	key_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 key_se_handler:
-_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx
@@ -2733,7 +2714,6 @@ _CET_ENDBR
 .def	cbc_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 cbc_se_handler:
-_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx

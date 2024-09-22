@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_alt.c,v 1.16 2023/08/30 00:49:32 tb Exp $ */
+/* $OpenBSD: x509_alt.c,v 1.2 2021/08/24 15:23:03 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -62,8 +62,6 @@
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
-
-#include "x509_internal.h"
 
 static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
@@ -152,7 +150,6 @@ i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method, GENERAL_NAMES *gens,
 
 	return NULL;
 }
-LCRYPTO_ALIAS(i2v_GENERAL_NAMES);
 
 STACK_OF(CONF_VALUE) *
 i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen,
@@ -245,7 +242,6 @@ i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen,
 
 	return NULL;
 }
-LCRYPTO_ALIAS(i2v_GENERAL_NAME);
 
 int
 GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen)
@@ -312,7 +308,6 @@ GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen)
 	}
 	return 1;
 }
-LCRYPTO_ALIAS(GENERAL_NAME_print);
 
 static GENERAL_NAMES *
 v2i_issuer_alt(X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -354,11 +349,10 @@ err:
 static int
 copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens)
 {
-	GENERAL_NAMES *ialt = NULL;
-	GENERAL_NAME *gen = NULL;
+	GENERAL_NAMES *ialt;
+	GENERAL_NAME *gen;
 	X509_EXTENSION *ext;
 	int i;
-	int ret = 0;
 
 	if (ctx && (ctx->flags == CTX_TEST))
 		return 1;
@@ -376,24 +370,19 @@ copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens)
 	}
 
 	for (i = 0; i < sk_GENERAL_NAME_num(ialt); i++) {
-		GENERAL_NAME *val = sk_GENERAL_NAME_value(ialt, i);
-
-		if ((gen = GENERAL_NAME_dup(val)) == NULL)
-			goto err;
+		gen = sk_GENERAL_NAME_value(ialt, i);
 		if (!sk_GENERAL_NAME_push(gens, gen)) {
 			X509V3error(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
-		gen = NULL;
 	}
+	sk_GENERAL_NAME_free(ialt);
 
-	ret = 1;
+	return 1;
 
- err:
-	sk_GENERAL_NAME_pop_free(ialt, GENERAL_NAME_free);
-	GENERAL_NAME_free(gen);
+err:
+	return 0;
 
-	return ret;
 }
 
 static GENERAL_NAMES *
@@ -521,7 +510,6 @@ err:
 	sk_GENERAL_NAME_pop_free(gens, GENERAL_NAME_free);
 	return NULL;
 }
-LCRYPTO_ALIAS(v2i_GENERAL_NAMES);
 
 GENERAL_NAME *
 v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -529,7 +517,6 @@ v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 {
 	return v2i_GENERAL_NAME_ex(NULL, method, ctx, cnf, 0);
 }
-LCRYPTO_ALIAS(v2i_GENERAL_NAME);
 
 GENERAL_NAME *
 a2i_GENERAL_NAME(GENERAL_NAME *out, const X509V3_EXT_METHOD *method,
@@ -620,18 +607,13 @@ err:
 		GENERAL_NAME_free(gen);
 	return NULL;
 }
-LCRYPTO_ALIAS(a2i_GENERAL_NAME);
 
 GENERAL_NAME *
 v2i_GENERAL_NAME_ex(GENERAL_NAME *out, const X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, CONF_VALUE *cnf, int is_nc)
 {
-	uint8_t *bytes = NULL;
-	char *name, *value;
-	GENERAL_NAME *ret;
-	size_t len = 0;
 	int type;
-	CBS cbs;
+	char *name, *value;
 
 	name = cnf->name;
 	value = cnf->value;
@@ -661,70 +643,8 @@ v2i_GENERAL_NAME_ex(GENERAL_NAME *out, const X509V3_EXT_METHOD *method,
 		return NULL;
 	}
 
-	ret = a2i_GENERAL_NAME(out, method, ctx, type, value, is_nc);
-	if (ret == NULL)
-		return NULL;
-
-	/*
-	 * Validate what we have for sanity.
-	 */
-
-	if (is_nc) {
-		struct x509_constraints_name *constraints_name = NULL;
-
-		if (!x509_constraints_validate(ret, &constraints_name, NULL)) {
-			X509V3error(X509V3_R_BAD_OBJECT);
-			ERR_asprintf_error_data("name=%s", name);
-			goto err;
-		}
-		x509_constraints_name_free(constraints_name);
-		return ret;
-	}
-
-	type = x509_constraints_general_to_bytes(ret, &bytes, &len);
-	CBS_init(&cbs, bytes, len);
-	switch (type) {
-	case GEN_DNS:
-		if (!x509_constraints_valid_sandns(&cbs)) {
-			X509V3error(X509V3_R_BAD_OBJECT);
-			ERR_asprintf_error_data("name=%s value='%.*s'", name,
-			    (int)len, bytes);
-			goto err;
-		}
-		break;
-	case GEN_URI:
-		if (!x509_constraints_uri_host(bytes, len, NULL)) {
-			X509V3error(X509V3_R_BAD_OBJECT);
-			ERR_asprintf_error_data("name=%s value='%.*s'", name,
-			    (int)len, bytes);
-			goto err;
-		}
-		break;
-	case GEN_EMAIL:
-		if (!x509_constraints_parse_mailbox(&cbs, NULL)) {
-			X509V3error(X509V3_R_BAD_OBJECT);
-			ERR_asprintf_error_data("name=%s value='%.*s'", name,
-			    (int)len, bytes);
-			goto err;
-		}
-		break;
-	case GEN_IPADD:
-		if (len != 4 && len != 16) {
-			X509V3error(X509V3_R_BAD_IP_ADDRESS);
-			ERR_asprintf_error_data("name=%s len=%zu", name, len);
-			goto err;
-		}
-		break;
-	default:
-		break;
-	}
-	return ret;
- err:
-	if (out == NULL)
-		GENERAL_NAME_free(ret);
-	return NULL;
+	return a2i_GENERAL_NAME(out, method, ctx, type, value, is_nc);
 }
-LCRYPTO_ALIAS(v2i_GENERAL_NAME_ex);
 
 static int
 do_othername(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx)

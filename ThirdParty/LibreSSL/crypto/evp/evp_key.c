@@ -1,4 +1,4 @@
-/* $OpenBSD: evp_key.c,v 1.34 2024/02/18 15:45:42 tb Exp $ */
+/* $OpenBSD: evp_key.c,v 1.26 2018/08/14 17:59:26 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -65,8 +65,6 @@
 #include <openssl/ui.h>
 #include <openssl/x509.h>
 
-#include "evp_local.h"
-
 /* should be init to zeros. */
 static char prompt_string[80];
 
@@ -75,17 +73,18 @@ EVP_set_pw_prompt(const char *prompt)
 {
 	if (prompt == NULL)
 		prompt_string[0] = '\0';
-	else
+	else {
 		strlcpy(prompt_string, prompt, sizeof(prompt_string));
+	}
 }
 
 char *
 EVP_get_pw_prompt(void)
 {
 	if (prompt_string[0] == '\0')
-		return NULL;
-
-	return prompt_string;
+		return (NULL);
+	else
+		return (prompt_string);
 }
 
 int
@@ -98,35 +97,30 @@ int
 EVP_read_pw_string_min(char *buf, int min, int len, const char *prompt,
     int verify)
 {
-	UI *ui = NULL;
+	int ret;
 	char buff[BUFSIZ];
-	int ret = -1;
+	UI *ui;
 
 	if (len > BUFSIZ)
 		len = BUFSIZ;
 	/* Ensure that 0 <= min <= len - 1. In particular, 1 <= len. */
 	if (min < 0 || len - 1 < min)
-		goto err;
-
-	if (prompt == NULL && prompt_string[0] != '\0')
+		return -1;
+	if ((prompt == NULL) && (prompt_string[0] != '\0'))
 		prompt = prompt_string;
-
-	if ((ui = UI_new()) == NULL)
-		goto err;
+	ui = UI_new();
+	if (ui == NULL)
+		return -1;
 	if (UI_add_input_string(ui, prompt, 0, buf, min, len - 1) < 0)
-		goto err;
+		return -1;
 	if (verify) {
-		if (UI_add_verify_string(ui, prompt, 0, buff, min, len - 1,
-		    buf) < 0)
-			goto err;
+		if (UI_add_verify_string(ui, prompt, 0, buff, min, len - 1, buf)
+		    < 0)
+			return -1;
 	}
-
 	ret = UI_process(ui);
-
- err:
 	UI_free(ui);
 	explicit_bzero(buff, BUFSIZ);
-
 	return ret;
 }
 
@@ -154,9 +148,9 @@ EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 	}
 
 	if (data == NULL)
-		return nkey;
+		return (nkey);
 
-	EVP_MD_CTX_legacy_clear(&c);
+	EVP_MD_CTX_init(&c);
 	for (;;) {
 		if (!EVP_DigestInit_ex(&c, md, NULL))
 			goto err;

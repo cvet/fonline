@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_lib.c,v 1.14 2023/07/07 07:25:21 beck Exp $ */
+/* $OpenBSD: ts_lib.c,v 1.10 2015/09/10 14:29:22 jsing Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -64,9 +64,6 @@
 #include <openssl/ts.h>
 #include <openssl/x509v3.h>
 
-#include "bn_local.h"
-#include "x509_local.h"
-
 /* Local function declarations. */
 
 /* Function definitions. */
@@ -89,7 +86,6 @@ TS_ASN1_INTEGER_print_bio(BIO *bio, const ASN1_INTEGER *num)
 
 	return result;
 }
-LCRYPTO_ALIAS(TS_ASN1_INTEGER_print_bio);
 
 int
 TS_OBJ_print_bio(BIO *bio, const ASN1_OBJECT *obj)
@@ -103,7 +99,6 @@ TS_OBJ_print_bio(BIO *bio, const ASN1_OBJECT *obj)
 	BIO_write(bio, "\n", 1);
 	return 1;
 }
-LCRYPTO_ALIAS(TS_OBJ_print_bio);
 
 int
 TS_ext_print_bio(BIO *bio, const STACK_OF(X509_EXTENSION) *extensions)
@@ -129,7 +124,6 @@ TS_ext_print_bio(BIO *bio, const STACK_OF(X509_EXTENSION) *extensions)
 
 	return 1;
 }
-LCRYPTO_ALIAS(TS_ext_print_bio);
 
 int
 TS_X509_ALGOR_print_bio(BIO *bio, const X509_ALGOR *alg)
@@ -139,7 +133,6 @@ TS_X509_ALGOR_print_bio(BIO *bio, const X509_ALGOR *alg)
 	return BIO_printf(bio, "Hash Algorithm: %s\n",
 	    (i == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(i));
 }
-LCRYPTO_ALIAS(TS_X509_ALGOR_print_bio);
 
 int
 TS_MSG_IMPRINT_print_bio(BIO *bio, TS_MSG_IMPRINT *a)
@@ -155,4 +148,3 @@ TS_MSG_IMPRINT_print_bio(BIO *bio, TS_MSG_IMPRINT *a)
 
 	return 1;
 }
-LCRYPTO_ALIAS(TS_MSG_IMPRINT_print_bio);

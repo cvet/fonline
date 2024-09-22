@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_kiss.c,v 1.27 2023/02/16 08:38:17 tb Exp $ */
+/* $OpenBSD: p12_kiss.c,v 1.21 2021/07/09 14:08:00 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -61,8 +61,6 @@
 #include <openssl/err.h>
 #include <openssl/pkcs12.h>
 
-#include "pkcs12_local.h"
-
 /* Simplified PKCS#12 routines */
 
 static int parse_pk12( PKCS12 *p12, const char *pass, int passlen,
@@ -86,16 +84,17 @@ PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert,
 {
 	STACK_OF(X509) *ocerts = NULL;
 	X509 *x = NULL;
+	/* Check for NULL PKCS12 structure */
 
-	if (pkey != NULL)
-		*pkey = NULL;
-	if (cert != NULL)
-		*cert = NULL;
-
-	if (p12 == NULL) {
+	if (!p12) {
 		PKCS12error(PKCS12_R_INVALID_NULL_PKCS12_POINTER);
-		goto err;
+		return 0;
 	}
+
+	if (pkey)
+		*pkey = NULL;
+	if (cert)
+		*cert = NULL;
 
 	/* Check the mac */
 
@@ -105,7 +104,7 @@ PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert,
 	 * password are two different things...
 	 */
 
-	if (pass == NULL || *pass == '\0') {
+	if (!pass || !*pass) {
 		if (PKCS12_verify_mac(p12, NULL, 0))
 			pass = NULL;
 		else if (PKCS12_verify_mac(p12, "", 0))
@@ -120,9 +119,10 @@ PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert,
 	}
 
 	/* Allocate stack for other certificates */
-	if ((ocerts = sk_X509_new_null()) == NULL) {
+	ocerts = sk_X509_new_null();
+	if (!ocerts) {
 		PKCS12error(ERR_R_MALLOC_FAILURE);
-		goto err;
+		return 0;
 	}
 
 	if (!parse_pk12(p12, pass, -1, pkey, ocerts)) {
@@ -130,9 +130,8 @@ PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert,
 		goto err;
 	}
 
-	while ((x = sk_X509_pop(ocerts)) != NULL) {
-		if (pkey != NULL && *pkey != NULL &&
-		    cert != NULL && *cert == NULL) {
+	while ((x = sk_X509_pop(ocerts))) {
+		if (pkey && *pkey && cert && !*cert) {
 			ERR_set_mark();
 			if (X509_check_private_key(x, *pkey)) {
 				*cert = x;
@@ -141,34 +140,33 @@ PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert,
 			ERR_pop_to_mark();
 		}
 
-		if (ca != NULL && x != NULL) {
-			if (*ca == NULL)
+		if (ca && x) {
+			if (!*ca)
 				*ca = sk_X509_new_null();
-			if (*ca == NULL)
+			if (!*ca)
 				goto err;
 			if (!sk_X509_push(*ca, x))
 				goto err;
 			x = NULL;
 		}
 		X509_free(x);
-		x = NULL;
 	}
 
-	sk_X509_pop_free(ocerts, X509_free);
+	if (ocerts)
+		sk_X509_pop_free(ocerts, X509_free);
 
 	return 1;
 
 err:
-	if (pkey != NULL)
+	if (pkey && *pkey)
 		EVP_PKEY_free(*pkey);
-	if (cert != NULL)
+	if (cert)
 		X509_free(*cert);
 	X509_free(x);
-	sk_X509_pop_free(ocerts, X509_free);
-
+	if (ocerts)
+		sk_X509_pop_free(ocerts, X509_free);
 	return 0;
 }
-LCRYPTO_ALIAS(PKCS12_parse);
 
 /* Parse the outer PKCS#12 structure */
 
@@ -227,14 +225,14 @@ parse_bag(PKCS12_SAFEBAG *bag, const char *pass, int passlen, EVP_PKEY **pkey,
 {
 	PKCS8_PRIV_KEY_INFO *p8;
 	X509 *x509;
-	const ASN1_TYPE *attrib;
+	ASN1_TYPE *attrib;
 	ASN1_BMPSTRING *fname = NULL;
 	ASN1_OCTET_STRING *lkid = NULL;
 
-	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_friendlyName)))
+	if ((attrib = PKCS12_get_attr(bag, NID_friendlyName)))
 		fname = attrib->value.bmpstring;
 
-	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_localKeyID)))
+	if ((attrib = PKCS12_get_attr(bag, NID_localKeyID)))
 		lkid = attrib->value.octet_string;
 
 	switch (OBJ_obj2nid(bag->type)) {
@@ -267,7 +265,7 @@ parse_bag(PKCS12_SAFEBAG *bag, const char *pass, int passlen, EVP_PKEY **pkey,
 		}
 		if (fname) {
 			int len, r;
-			unsigned char *data = NULL;
+			unsigned char *data;
 			len = ASN1_STRING_to_UTF8(&data, fname);
 			if (len >= 0) {
 				r = X509_alias_set1(x509, data, len);

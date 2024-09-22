@@ -1,4 +1,4 @@
-/* $OpenBSD: m_wp.c,v 1.13 2023/07/07 19:37:54 beck Exp $ */
+/* $OpenBSD: m_wp.c,v 1.8 2014/07/13 09:30:02 miod Exp $ */
 
 #include <stdio.h>
 
@@ -10,8 +10,6 @@
 #include <openssl/objects.h>
 #include <openssl/x509.h>
 #include <openssl/whrlpool.h>
-
-#include "evp_local.h"
 
 static int
 init(EVP_MD_CTX *ctx)
@@ -41,6 +39,11 @@ static const EVP_MD whirlpool_md = {
 	.final = final,
 	.copy = NULL,
 	.cleanup = NULL,
+	.sign = NULL,
+	.verify = NULL,
+	.required_pkey_type = {
+		0, 0, 0, 0,
+	},
 	.block_size = WHIRLPOOL_BBLOCK / 8,
 	.ctx_size = sizeof(EVP_MD *) + sizeof(WHIRLPOOL_CTX),
 };

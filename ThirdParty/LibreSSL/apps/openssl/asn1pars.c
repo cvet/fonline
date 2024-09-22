@@ -1,4 +1,4 @@
-/* $OpenBSD: asn1pars.c,v 1.16 2023/07/23 11:39:29 tb Exp $ */
+/* $OpenBSD: asn1pars.c,v 1.10 2019/07/14 03:30:45 guenther Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -86,14 +86,14 @@ static struct {
 	int offset;
 	char *oidfile;
 	STACK_OF(OPENSSL_STRING) *osk;
-} cfg;
+} asn1pars_config;
 
 static int
 asn1pars_opt_dlimit(char *arg)
 {
 	const char *errstr;
 
-	cfg.dump = strtonum(arg, 1, INT_MAX, &errstr);
+	asn1pars_config.dump = strtonum(arg, 1, INT_MAX, &errstr);
 	if (errstr) {
 		fprintf(stderr, "-dlimit must be from 1 to INT_MAX: %s\n",
 		    errstr);
@@ -107,7 +107,7 @@ asn1pars_opt_length(char *arg)
 {
 	const char *errstr;
 
-	cfg.length = strtonum(arg, 1, UINT_MAX, &errstr);
+	asn1pars_config.length = strtonum(arg, 1, UINT_MAX, &errstr);
 	if (errstr) {
 		fprintf(stderr, "-length must be from 1 to UINT_MAX: %s\n",
 		    errstr);
@@ -119,7 +119,7 @@ asn1pars_opt_length(char *arg)
 static int
 asn1pars_opt_strparse(char *arg)
 {
-	if (sk_OPENSSL_STRING_push(cfg.osk, arg) == 0) {
+	if (sk_OPENSSL_STRING_push(asn1pars_config.osk, arg) == 0) {
 		fprintf(stderr, "-strparse cannot add argument\n");
 		return (-1);
 	}
@@ -132,7 +132,7 @@ static const struct option asn1pars_options[] = {
 		.desc = "Dump unknown data in hex form",
 		.type = OPTION_VALUE,
 		.value = -1,
-		.opt.value = &cfg.dump,
+		.opt.value = &asn1pars_config.dump,
 	},
 	{
 		.name = "dlimit",
@@ -146,34 +146,34 @@ static const struct option asn1pars_options[] = {
 		.argname = "file",
 		.desc = "File to generate ASN.1 structure from",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.genconf,
+		.opt.arg = &asn1pars_config.genconf,
 	},
 	{
 		.name = "genstr",
 		.argname = "string",
 		.desc = "String to generate ASN.1 structure from",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.genstr,
+		.opt.arg = &asn1pars_config.genstr,
 	},
 	{
 		.name = "i",
 		.desc = "Indent output according to depth of structures",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.indent,
+		.opt.flag = &asn1pars_config.indent,
 	},
 	{
 		.name = "in",
 		.argname = "file",
 		.desc = "The input file (default stdin)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.infile,
+		.opt.arg = &asn1pars_config.infile,
 	},
 	{
 		.name = "inform",
 		.argname = "fmt",
 		.desc = "Input format (DER, TXT or PEM (default))",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &cfg.informat,
+		.opt.value = &asn1pars_config.informat,
 	},
 	{
 		.name = "length",
@@ -186,28 +186,28 @@ static const struct option asn1pars_options[] = {
 		.name = "noout",
 		.desc = "Do not produce any output",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.noout,
+		.opt.flag = &asn1pars_config.noout,
 	},
 	{
 		.name = "offset",
 		.argname = "num",
 		.desc = "Offset to begin parsing",
 		.type = OPTION_ARG_INT,
-		.opt.value = &cfg.offset,
+		.opt.value = &asn1pars_config.offset,
 	},
 	{
 		.name = "oid",
 		.argname = "file",
 		.desc = "File containing additional object identifiers (OIDs)",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.oidfile,
+		.opt.arg = &asn1pars_config.oidfile,
 	},
 	{
 		.name = "out",
 		.argname = "file",
 		.desc = "Output file in DER format",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.derfile,
+		.opt.arg = &asn1pars_config.derfile,
 	},
 	{
 		.name = "strparse",
@@ -221,7 +221,7 @@ static const struct option asn1pars_options[] = {
 };
 
 static void
-asn1pars_usage(void)
+asn1pars_usage()
 {
 	fprintf(stderr,
 	    "usage: asn1parse [-i] [-dlimit num] [-dump] [-genconf file] "
@@ -247,15 +247,17 @@ asn1parse_main(int argc, char **argv)
 	BUF_MEM *buf = NULL;
 	ASN1_TYPE *at = NULL;
 
-	if (pledge("stdio cpath wpath rpath", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&asn1pars_config, 0, sizeof(asn1pars_config));
 
-	cfg.informat = FORMAT_PEM;
-	if ((cfg.osk = sk_OPENSSL_STRING_new_null()) == NULL) {
+	asn1pars_config.informat = FORMAT_PEM;
+	if ((asn1pars_config.osk = sk_OPENSSL_STRING_new_null()) == NULL) {
 		BIO_printf(bio_err, "Memory allocation failure\n");
 		goto end;
 	}
@@ -267,34 +269,34 @@ asn1parse_main(int argc, char **argv)
 
 	in = BIO_new(BIO_s_file());
 	out = BIO_new(BIO_s_file());
-	if (in == NULL || out == NULL) {
+	if ((in == NULL) || (out == NULL)) {
 		ERR_print_errors(bio_err);
 		goto end;
 	}
 	BIO_set_fp(out, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
 
-	if (cfg.oidfile != NULL) {
-		if (BIO_read_filename(in, cfg.oidfile) <= 0) {
+	if (asn1pars_config.oidfile != NULL) {
+		if (BIO_read_filename(in, asn1pars_config.oidfile) <= 0) {
 			BIO_printf(bio_err, "problems opening %s\n",
-			    cfg.oidfile);
+			    asn1pars_config.oidfile);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 		OBJ_create_objects(in);
 	}
-	if (cfg.infile == NULL)
+	if (asn1pars_config.infile == NULL)
 		BIO_set_fp(in, stdin, BIO_NOCLOSE);
 	else {
-		if (BIO_read_filename(in, cfg.infile) <= 0) {
-			perror(cfg.infile);
+		if (BIO_read_filename(in, asn1pars_config.infile) <= 0) {
+			perror(asn1pars_config.infile);
 			goto end;
 		}
 	}
 
-	if (cfg.derfile != NULL) {
-		if ((derout = BIO_new_file(cfg.derfile, "wb")) == NULL) {
+	if (asn1pars_config.derfile) {
+		if (!(derout = BIO_new_file(asn1pars_config.derfile, "wb"))) {
 			BIO_printf(bio_err, "problems opening %s\n",
-			    cfg.derfile);
+			    asn1pars_config.derfile);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
@@ -302,16 +304,18 @@ asn1parse_main(int argc, char **argv)
 	if ((buf = BUF_MEM_new()) == NULL)
 		goto end;
 	if (!BUF_MEM_grow(buf, BUFSIZ * 8))
-		goto end;
+		goto end;	/* Pre-allocate :-) */
 
-	if (cfg.genstr != NULL || cfg.genconf) {
-		num = do_generate(bio_err, cfg.genstr, cfg.genconf, buf);
+	if (asn1pars_config.genstr || asn1pars_config.genconf) {
+		num = do_generate(bio_err, asn1pars_config.genstr,
+		    asn1pars_config.genconf, buf);
 		if (num < 0) {
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 	} else {
-		if (cfg.informat == FORMAT_PEM) {
+
+		if (asn1pars_config.informat == FORMAT_PEM) {
 			BIO *tmp;
 
 			if ((b64 = BIO_new(BIO_f_base64())) == NULL)
@@ -335,18 +339,21 @@ asn1parse_main(int argc, char **argv)
 
 	/* If any structs to parse go through in sequence */
 
-	if (sk_OPENSSL_STRING_num(cfg.osk) > 0) {
+	if (sk_OPENSSL_STRING_num(asn1pars_config.osk)) {
 		tmpbuf = (unsigned char *) str;
 		tmplen = num;
-		for (i = 0; i < sk_OPENSSL_STRING_num(cfg.osk); i++) {
+		for (i = 0; i < sk_OPENSSL_STRING_num(asn1pars_config.osk);
+		     i++) {
 			ASN1_TYPE *atmp;
 			int typ;
-			j = strtonum(sk_OPENSSL_STRING_value(cfg.osk, i),
+			j = strtonum(
+			    sk_OPENSSL_STRING_value(asn1pars_config.osk, i),
 			    1, INT_MAX, &errstr);
 			if (errstr) {
 				BIO_printf(bio_err,
 				    "'%s' is an invalid number: %s\n",
-				    sk_OPENSSL_STRING_value(cfg.osk, i), errstr);
+				    sk_OPENSSL_STRING_value(asn1pars_config.osk,
+				    i), errstr);
 				continue;
 			}
 			tmpbuf += j;
@@ -361,10 +368,10 @@ asn1parse_main(int argc, char **argv)
 				goto end;
 			}
 			typ = ASN1_TYPE_get(at);
-			if (typ == V_ASN1_BOOLEAN || typ == V_ASN1_NULL ||
-			    typ == V_ASN1_OBJECT) {
+			if ((typ == V_ASN1_OBJECT) ||
+			    (typ == V_ASN1_NULL)) {
 				BIO_printf(bio_err, "Can't parse %s type\n",
-				    ASN1_tag2str(typ));
+				    typ == V_ASN1_NULL ? "NULL" : "OBJECT");
 				ERR_print_errors(bio_err);
 				goto end;
 			}
@@ -375,24 +382,28 @@ asn1parse_main(int argc, char **argv)
 		str = (char *) tmpbuf;
 		num = tmplen;
 	}
-	if (cfg.offset >= num) {
+	if (asn1pars_config.offset >= num) {
 		BIO_printf(bio_err, "Error: offset too large\n");
 		goto end;
 	}
-	num -= cfg.offset;
+	num -= asn1pars_config.offset;
 
-	if (cfg.length == 0 || (long)cfg.length > num)
-		cfg.length = (unsigned int) num;
-	if (derout != NULL) {
-		if (BIO_write(derout, str + cfg.offset,
-		    cfg.length) != (int)cfg.length) {
+	if ((asn1pars_config.length == 0) ||
+	    ((long)asn1pars_config.length > num))
+		asn1pars_config.length = (unsigned int) num;
+	if (derout) {
+		if (BIO_write(derout, str + asn1pars_config.offset,
+		    asn1pars_config.length) != (int)asn1pars_config.length) {
 			BIO_printf(bio_err, "Error writing output\n");
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 	}
-	if (!cfg.noout && !ASN1_parse_dump(out,
-	    (unsigned char *)&str[cfg.offset], cfg.length, cfg.indent, cfg.dump)) {
+	if (!asn1pars_config.noout &&
+	    !ASN1_parse_dump(out,
+	    (unsigned char *)&(str[asn1pars_config.offset]),
+	    asn1pars_config.length, asn1pars_config.indent,
+	    asn1pars_config.dump)) {
 		ERR_print_errors(bio_err);
 		goto end;
 	}
@@ -406,14 +417,14 @@ asn1parse_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 	BUF_MEM_free(buf);
 	ASN1_TYPE_free(at);
-	sk_OPENSSL_STRING_free(cfg.osk);
+	sk_OPENSSL_STRING_free(asn1pars_config.osk);
 	OBJ_cleanup();
 
 	return (ret);
 }
 
 static int
-do_generate(BIO *bio, char *genstr, char *genconf, BUF_MEM *buf)
+do_generate(BIO * bio, char *genstr, char *genconf, BUF_MEM * buf)
 {
 	CONF *cnf = NULL;
 	int len;

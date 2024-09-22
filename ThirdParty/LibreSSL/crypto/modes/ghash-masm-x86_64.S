@@ -1,33 +1,26 @@
 ; 1 "crypto/modes/ghash-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 371 "<built-in>" 3
+; 340 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/modes/ghash-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
-
-
-
-
-
-
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
-   
 
 
 
 
 
-   
+
+
 
 
 ; 40 "./crypto/x86_arch.h"
-   
 
 
 
@@ -72,7 +65,8 @@ OPTION	DOTNAME
 
 
 
-; 9 "crypto/modes/ghash-masm-x86_64.S.tmp" 2
+
+; 3 "crypto/modes/ghash-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 PUBLIC	gcm_gmult_4bit
@@ -85,7 +79,6 @@ gcm_gmult_4bit	PROC PUBLIC
 $L$SEH_begin_gcm_gmult_4bit::
 	mov	rdi,rcx
 	mov	rsi,rdx
-
 
 
 	push	rbx
@@ -187,7 +180,6 @@ $L$SEH_begin_gcm_ghash_4bit::
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
-
 
 
 	push	rbx
@@ -711,6 +703,7 @@ $L$outer_loop::
 	xor	r9,r13
 	shr	r8,8
 	movzx	r12,r12b
+	mov	edx,DWORD PTR[((-4))+rdi]
 	shr	r9,8
 	xor	r8,QWORD PTR[((-128))+rbx*8+rbp]
 	shl	r10,56
@@ -758,7 +751,6 @@ PUBLIC	gcm_init_clmul
 
 ALIGN	16
 gcm_init_clmul	PROC PUBLIC
-
 	movdqu	xmm2,XMMWORD PTR[rdx]
 	pshufd	xmm2,xmm2,78
 
@@ -824,7 +816,6 @@ PUBLIC	gcm_gmult_clmul
 
 ALIGN	16
 gcm_gmult_clmul	PROC PUBLIC
-
 	movdqu	xmm0,XMMWORD PTR[rcx]
 	movdqa	xmm5,XMMWORD PTR[$L$bswap_mask]
 	movdqu	xmm2,XMMWORD PTR[rdx]
@@ -875,7 +866,6 @@ PUBLIC	gcm_ghash_clmul
 
 ALIGN	16
 gcm_ghash_clmul	PROC PUBLIC
-
 $L$SEH_begin_gcm_ghash_clmul::
 
 DB	048h,083h,0ech,058h		
@@ -1092,8 +1082,6 @@ DB	102,15,56,0,197
 	DB	0F3h,0C3h		;repret
 $L$SEH_end_gcm_ghash_clmul::
 gcm_ghash_clmul	ENDP
-.text$	ENDS
-.rdata	SEGMENT READONLY ALIGN(64)
 ALIGN	64
 $L$bswap_mask::
 DB	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
@@ -1140,14 +1128,16 @@ $L$rem_8bit::
 	DW	0A7D0h,0A612h,0A454h,0A596h,0A0D8h,0A11Ah,0A35Ch,0A29Eh
 	DW	0B5E0h,0B422h,0B664h,0B7A6h,0B2E8h,0B32Ah,0B16Ch,0B0AEh
 	DW	0BBF0h,0BA32h,0B874h,0B9B6h,0BCF8h,0BD3Ah,0BF7Ch,0BEBEh
+
+DB	71,72,65,83,72,32,102,111,114,32,120,56,54,95,54,52
+DB	44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32
+DB	60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111
+DB	114,103,62,0
 ALIGN	64
-.rdata	ENDS
-.text$	SEGMENT ALIGN(64) 'CODE'
 EXTERN	__imp_RtlVirtualUnwind:NEAR
 
 ALIGN	16
 se_handler	PROC PRIVATE
-
 	push	rsi
 	push	rdi
 	push	rbx

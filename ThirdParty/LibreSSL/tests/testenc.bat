@@ -2,35 +2,32 @@
 setlocal enabledelayedexpansion
 REM	testenc.bat
 
-set test=P
+set test=p
 
 set openssl_bin=%1
 set openssl_bin=%openssl_bin:/=\%
 if not exist %openssl_bin% exit /b 1
 
-echo copy %srcdir%\openssl.cnf %test%
 copy %srcdir%\openssl.cnf %test%
 
 echo cat
-echo %openssl_bin% enc -in %test% -out %test%.CIPHER
-%openssl_bin% enc -in %test% -out %test%.CIPHER
-%openssl_bin% enc -in %test%.CIPHER -out %test%.CLEAR
-fc /b %test% %test%.CLEAR
+%openssl_bin% enc -in %test% -out %test%.cipher
+%openssl_bin% enc -in %test%.cipher -out %test%.clear
+fc /b %test% %test%.clear
 if !errorlevel! neq 0 (
 	exit /b 1
 ) else (
-	del %test%.CIPHER %test%.CLEAR
+	del %test%.cipher %test%.clear
 )
 
 echo base64
-%openssl_bin% enc -a -e -in %test% -out %test%.CIPHER
-%openssl_bin% enc -a -d -in %test%.CIPHER -out %test%.CLEAR
-dir
-fc /b %test% %test%.CLEAR
+%openssl_bin% enc -a -e -in %test% -out %test%.cipher
+%openssl_bin% enc -a -d -in %test%.cipher -out %test%.clear
+fc /b %test% %test%.clear
 if !errorlevel! neq 0 (
 	exit /b 1
 ) else (
-	del %test%.CIPHER %test%.CLEAR
+	del %test%.cipher %test%.clear
 )
 
 for %%i in (
@@ -48,23 +45,23 @@ for %%i in (
 	rc4 rc4-40
 ) do (
 	echo %%i
-	%openssl_bin% %%i -e -k test -in %test% -out %test%.%%i.CIPHER
-	%openssl_bin% %%i -d -k test -in %test%.%%i.CIPHER -out %test%.%%i.CLEAR
-	fc /b %test% %test%.%%i.CLEAR
+	%openssl_bin% %%i -e -k test -in %test% -out %test%.%%i.cipher
+	%openssl_bin% %%i -d -k test -in %test%.%%i.cipher -out %test%.%%i.clear
+	fc /b %test% %test%.%%i.clear
 	if !errorlevel! neq 0 (
 		exit /b 1
 	) else (
-		del %test%.%%i.CIPHER %test%.%%i.CLEAR
+		del %test%.%%i.cipher %test%.%%i.clear
 	)
 
 	echo %%i base64
-	%openssl_bin% %%i -a -e -k test -in %test% -out %test%.%%i.CIPHER
-	%openssl_bin% %%i -a -d -k test -in %test%.%%i.CIPHER -out %test%.%%i.CLEAR
-	fc /b %test% %test%.%%i.CLEAR
+	%openssl_bin% %%i -a -e -k test -in %test% -out %test%.%%i.cipher
+	%openssl_bin% %%i -a -d -k test -in %test%.%%i.cipher -out %test%.%%i.clear
+	fc /b %test% %test%.%%i.clear
 	if !errorlevel! neq 0 (
 		exit /b 1
 	) else (
-		del %test%.%%i.CIPHER %test%.%%i.CLEAR
+		del %test%.%%i.cipher %test%.%%i.clear
 	)
 )
 

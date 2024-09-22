@@ -1,4 +1,4 @@
-/* $OpenBSD: cm_ameth.c,v 1.11 2024/01/04 17:01:26 tb Exp $ */
+/* $OpenBSD: cm_ameth.c,v 1.7 2014/07/12 16:03:37 miod Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2010.
  */
@@ -56,8 +56,7 @@
 #include <openssl/cmac.h>
 #include <openssl/evp.h>
 
-#include "asn1_local.h"
-#include "evp_local.h"
+#include "asn1_locl.h"
 
 /* CMAC "ASN1" method. This is just here to indicate the
  * maximum CMAC output length and to free up a CMAC
@@ -73,12 +72,14 @@ cmac_size(const EVP_PKEY *pkey)
 static void
 cmac_key_free(EVP_PKEY *pkey)
 {
-	CMAC_CTX_free(pkey->pkey.ptr);
+	CMAC_CTX *cmctx = (CMAC_CTX *)pkey->pkey.ptr;
+
+	CMAC_CTX_free(cmctx);
 }
 
 const EVP_PKEY_ASN1_METHOD cmac_asn1_meth = {
-	.base_method = &cmac_asn1_meth,
 	.pkey_id = EVP_PKEY_CMAC,
+	.pkey_base_id = EVP_PKEY_CMAC,
 
 	.pem_str = "CMAC",
 	.info = "OpenSSL CMAC method",

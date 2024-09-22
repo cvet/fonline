@@ -1,33 +1,26 @@
 ; 1 "crypto/aes/bsaes-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 371 "<built-in>" 3
+; 340 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/aes/bsaes-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
-
-
-
-
-
-
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
-   
 
 
 
 
 
-   
+
+
 
 
 ; 40 "./crypto/x86_arch.h"
-   
 
 
 
@@ -72,7 +65,8 @@ OPTION	DOTNAME
 
 
 
-; 9 "crypto/aes/bsaes-masm-x86_64.S.tmp" 2
+
+; 3 "crypto/aes/bsaes-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 EXTERN	asm_AES_encrypt:NEAR
@@ -81,7 +75,6 @@ EXTERN	asm_AES_decrypt:NEAR
 
 ALIGN	64
 _bsaes_encrypt8	PROC PRIVATE
-
 	lea	r11,QWORD PTR[$L$BS0]
 
 	movdqa	xmm8,XMMWORD PTR[rax]
@@ -554,7 +547,6 @@ _bsaes_encrypt8	ENDP
 
 ALIGN	64
 _bsaes_decrypt8	PROC PRIVATE
-
 	lea	r11,QWORD PTR[$L$BS0]
 
 	movdqa	xmm8,XMMWORD PTR[rax]
@@ -1060,7 +1052,6 @@ _bsaes_decrypt8	ENDP
 
 ALIGN	16
 _bsaes_key_convert	PROC PRIVATE
-
 	lea	r11,QWORD PTR[$L$masks]
 	movdqu	xmm7,XMMWORD PTR[rcx]
 	lea	rcx,QWORD PTR[16+rcx]
@@ -1145,7 +1136,6 @@ PUBLIC	bsaes_cbc_encrypt
 
 ALIGN	16
 bsaes_cbc_encrypt	PROC PUBLIC
-
 	mov	r11d,DWORD PTR[48+rsp]
 	cmp	r11d,0
 	jne	asm_AES_cbc_encrypt
@@ -1421,7 +1411,6 @@ PUBLIC	bsaes_ctr32_encrypt_blocks
 
 ALIGN	16
 bsaes_ctr32_encrypt_blocks	PROC PUBLIC
-
 	mov	rax,rsp
 $L$ctr_enc_prologue::
 	push	rbp
@@ -1645,7 +1634,6 @@ PUBLIC	bsaes_xts_encrypt
 
 ALIGN	16
 bsaes_xts_encrypt	PROC PUBLIC
-
 	mov	rax,rsp
 $L$xts_enc_prologue::
 	push	rbp
@@ -2123,7 +2111,6 @@ PUBLIC	bsaes_xts_decrypt
 
 ALIGN	16
 bsaes_xts_decrypt	PROC PUBLIC
-
 	mov	rax,rsp
 $L$xts_dec_prologue::
 	push	rbp
@@ -2622,8 +2609,6 @@ $L$xts_dec_bzero::
 $L$xts_dec_epilogue::
 	DB	0F3h,0C3h		;repret
 bsaes_xts_decrypt	ENDP
-.text$	ENDS
-.rdata	SEGMENT READONLY ALIGN(64)
 
 ALIGN	64
 _bsaes_const::
@@ -2676,15 +2661,17 @@ $L$M0::
 	DQ	002060a0e03070b0fh,00004080c0105090dh
 $L$63::
 	DQ	06363636363636363h,06363636363636363h
+DB	66,105,116,45,115,108,105,99,101,100,32,65,69,83,32,102
+DB	111,114,32,120,56,54,95,54,52,47,83,83,83,69,51,44
+DB	32,69,109,105,108,105,97,32,75,195,164,115,112,101,114,44
+DB	32,80,101,116,101,114,32,83,99,104,119,97,98,101,44,32
+DB	65,110,100,121,32,80,111,108,121,97,107,111,118,0
 ALIGN	64
 
-.rdata	ENDS
-.text$	SEGMENT ALIGN(64) 'CODE'
 EXTERN	__imp_RtlVirtualUnwind:NEAR
 
 ALIGN	16
 se_handler	PROC PRIVATE
-
 	push	rsi
 	push	rdi
 	push	rbx

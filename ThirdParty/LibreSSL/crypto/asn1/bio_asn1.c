@@ -1,4 +1,4 @@
-/* $OpenBSD: bio_asn1.c,v 1.23 2023/07/28 09:58:30 tb Exp $ */
+/* $OpenBSD: bio_asn1.c,v 1.13 2018/05/01 13:29:09 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -67,11 +67,6 @@
 #include <openssl/bio.h>
 #include <openssl/asn1.h>
 
-#include "bio_local.h"
-
-#define BIO_C_SET_PREFIX			149
-#define BIO_C_SET_SUFFIX			151
-
 /* Must be large enough for biggest tag+length */
 #define DEFAULT_ASN1_BUF_SIZE 20
 
@@ -121,8 +116,9 @@ static int asn1_bio_gets(BIO *h, char *str, int size);
 static long asn1_bio_ctrl(BIO *h, int cmd, long arg1, void *arg2);
 static int asn1_bio_new(BIO *h);
 static int asn1_bio_free(BIO *data);
-static long asn1_bio_callback_ctrl(BIO *h, int cmd, BIO_info_cb *fp);
+static long asn1_bio_callback_ctrl(BIO *h, int cmd, bio_info_cb *fp);
 
+static int asn1_bio_init(BIO_ASN1_BUF_CTX *ctx, int size);
 static int asn1_bio_flush_ex(BIO *b, BIO_ASN1_BUF_CTX *ctx,
     asn1_ps_func *cleanup, asn1_bio_state_t next);
 static int asn1_bio_setup_ex(BIO *b, BIO_ASN1_BUF_CTX *ctx,
@@ -152,39 +148,46 @@ static int
 asn1_bio_new(BIO *b)
 {
 	BIO_ASN1_BUF_CTX *ctx;
-
-	if ((ctx = calloc(1, sizeof(*ctx))) == NULL)
+	ctx = malloc(sizeof(BIO_ASN1_BUF_CTX));
+	if (!ctx)
 		return 0;
-
-	if ((ctx->buf = malloc(DEFAULT_ASN1_BUF_SIZE)) == NULL) {
+	if (!asn1_bio_init(ctx, DEFAULT_ASN1_BUF_SIZE)) {
 		free(ctx);
 		return 0;
 	}
-	ctx->bufsize = DEFAULT_ASN1_BUF_SIZE;
+	b->init = 1;
+	b->ptr = (char *)ctx;
+	b->flags = 0;
+	return 1;
+}
+
+static int
+asn1_bio_init(BIO_ASN1_BUF_CTX *ctx, int size)
+{
+	ctx->buf = malloc(size);
+	if (!ctx->buf)
+		return 0;
+	ctx->bufsize = size;
+	ctx->bufpos = 0;
+	ctx->buflen = 0;
+	ctx->copylen = 0;
 	ctx->asn1_class = V_ASN1_UNIVERSAL;
 	ctx->asn1_tag = V_ASN1_OCTET_STRING;
+	ctx->ex_buf = NULL;
+	ctx->ex_pos = 0;
+	ctx->ex_len = 0;
 	ctx->state = ASN1_STATE_START;
-
-	b->init = 1;
-	b->ptr = ctx;
-	b->flags = 0;
-
 	return 1;
 }
 
 static int
 asn1_bio_free(BIO *b)
 {
-	BIO_ASN1_BUF_CTX *ctx = b->ptr;
+	BIO_ASN1_BUF_CTX *ctx;
 
+	ctx = (BIO_ASN1_BUF_CTX *) b->ptr;
 	if (ctx == NULL)
 		return 0;
-
-	if (ctx->prefix_free != NULL)
-		ctx->prefix_free(b, &ctx->ex_buf, &ctx->ex_len, &ctx->ex_arg);
-	if (ctx->suffix_free != NULL)
-		ctx->suffix_free(b, &ctx->ex_buf, &ctx->ex_len, &ctx->ex_arg);
-
 	free(ctx->buf);
 	free(ctx);
 	b->init = 0;
@@ -202,8 +205,8 @@ asn1_bio_write(BIO *b, const char *in , int inl)
 
 	if (!in || (inl < 0) || (b->next_bio == NULL))
 		return 0;
-
-	if ((ctx = b->ptr) == NULL)
+	ctx = (BIO_ASN1_BUF_CTX *) b->ptr;
+	if (ctx == NULL)
 		return 0;
 
 	wrlen = 0;
@@ -262,7 +265,7 @@ asn1_bio_write(BIO *b, const char *in , int inl)
 				wrmax = inl;
 			ret = BIO_write(b->next_bio, in, wrmax);
 			if (ret <= 0)
-				goto done;
+				break;
 			wrlen += ret;
 			ctx->copylen -= ret;
 			in += ret;
@@ -281,7 +284,7 @@ asn1_bio_write(BIO *b, const char *in , int inl)
 
 	}
 
- done:
+done:
 	BIO_clear_retry_flags(b);
 	BIO_copy_next_retry(b);
 
@@ -354,7 +357,7 @@ asn1_bio_gets(BIO *b, char *str, int size)
 }
 
 static long
-asn1_bio_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
+asn1_bio_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
 {
 	if (b->next_bio == NULL)
 		return (0);
@@ -368,7 +371,8 @@ asn1_bio_ctrl(BIO *b, int cmd, long arg1, void *arg2)
 	BIO_ASN1_EX_FUNCS *ex_func;
 	long ret = 1;
 
-	if ((ctx = b->ptr) == NULL)
+	ctx = (BIO_ASN1_BUF_CTX *) b->ptr;
+	if (ctx == NULL)
 		return 0;
 	switch (cmd) {
 
@@ -378,10 +382,22 @@ asn1_bio_ctrl(BIO *b, int cmd, long arg1, void *arg2)
 		ctx->prefix_free = ex_func->ex_free_func;
 		break;
 
+	case BIO_C_GET_PREFIX:
+		ex_func = arg2;
+		ex_func->ex_func = ctx->prefix;
+		ex_func->ex_free_func = ctx->prefix_free;
+		break;
+
 	case BIO_C_SET_SUFFIX:
 		ex_func = arg2;
 		ctx->suffix = ex_func->ex_func;
 		ctx->suffix_free = ex_func->ex_free_func;
+		break;
+
+	case BIO_C_GET_SUFFIX:
+		ex_func = arg2;
+		ex_func->ex_func = ctx->suffix;
+		ex_func->ex_free_func = ctx->suffix_free;
 		break;
 
 	case BIO_C_SET_EX_ARG:
@@ -440,6 +456,21 @@ asn1_bio_set_ex(BIO *b, int cmd, asn1_ps_func *ex_func, asn1_ps_func
 	return BIO_ctrl(b, cmd, 0, &extmp);
 }
 
+static int
+asn1_bio_get_ex(BIO *b, int cmd, asn1_ps_func **ex_func,
+    asn1_ps_func **ex_free_func)
+{
+	BIO_ASN1_EX_FUNCS extmp;
+	int ret;
+
+	ret = BIO_ctrl(b, cmd, 0, &extmp);
+	if (ret > 0) {
+		*ex_func = extmp.ex_func;
+		*ex_free_func = extmp.ex_free_func;
+	}
+	return ret;
+}
+
 int
 BIO_asn1_set_prefix(BIO *b, asn1_ps_func *prefix, asn1_ps_func *prefix_free)
 {
@@ -447,7 +478,19 @@ BIO_asn1_set_prefix(BIO *b, asn1_ps_func *prefix, asn1_ps_func *prefix_free)
 }
 
 int
+BIO_asn1_get_prefix(BIO *b, asn1_ps_func **pprefix, asn1_ps_func **pprefix_free)
+{
+	return asn1_bio_get_ex(b, BIO_C_GET_PREFIX, pprefix, pprefix_free);
+}
+
+int
 BIO_asn1_set_suffix(BIO *b, asn1_ps_func *suffix, asn1_ps_func *suffix_free)
 {
 	return asn1_bio_set_ex(b, BIO_C_SET_SUFFIX, suffix, suffix_free);
+}
+
+int
+BIO_asn1_get_suffix(BIO *b, asn1_ps_func **psuffix, asn1_ps_func **psuffix_free)
+{
+	return asn1_bio_get_ex(b, BIO_C_GET_SUFFIX, psuffix, psuffix_free);
 }

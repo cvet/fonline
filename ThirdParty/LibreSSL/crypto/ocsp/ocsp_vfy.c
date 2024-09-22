@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_vfy.c,v 1.23 2023/07/08 10:44:00 beck Exp $ */
+/* $OpenBSD: ocsp_vfy.c,v 1.15 2017/01/29 17:49:23 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -60,9 +60,6 @@
 #include <openssl/err.h>
 #include <string.h>
 
-#include "ocsp_local.h"
-#include "x509_local.h"
-
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
     STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags);
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
@@ -97,9 +94,10 @@ OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 	if (!(flags & OCSP_NOSIGS)) {
 		EVP_PKEY *skey;
 
-		skey = X509_get0_pubkey(signer);
+		skey = X509_get_pubkey(signer);
 		if (skey) {
 			ret = OCSP_BASICRESP_verify(bs, skey, 0);
+			EVP_PKEY_free(skey);
 		}
 		if (!skey || ret <= 0) {
 			OCSPerror(OCSP_R_SIGNATURE_FAILURE);
@@ -120,11 +118,8 @@ OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 					goto end;
 				}
 			}
-		} else if (certs != NULL) {
-			untrusted = certs;
-		} else {
+		} else
 			untrusted = bs->certs;
-		}
 		init_res = X509_STORE_CTX_init(&ctx, st, signer, untrusted);
 		if (!init_res) {
 			ret = -1;
@@ -183,15 +178,6 @@ end:
 		sk_X509_free(untrusted);
 	return ret;
 }
-LCRYPTO_ALIAS(OCSP_basic_verify);
-
-int
-OCSP_resp_get0_signer(OCSP_BASICRESP *bs, X509 **signer,
-    STACK_OF(X509) *extra_certs)
-{
-	return ocsp_find_signer(signer, bs, extra_certs, NULL, 0) > 0;
-}
-LCRYPTO_ALIAS(OCSP_resp_get0_signer);
 
 static int
 ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
@@ -409,9 +395,9 @@ OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs, X509_STORE *store,
 	if (!(flags & OCSP_NOSIGS)) {
 		EVP_PKEY *skey;
 
-		if ((skey = X509_get0_pubkey(signer)) == NULL)
-			return 0;
+		skey = X509_get_pubkey(signer);
 		ret = OCSP_REQUEST_verify(req, skey);
+		EVP_PKEY_free(skey);
 		if (ret <= 0) {
 			OCSPerror(OCSP_R_SIGNATURE_FAILURE);
 			return 0;
@@ -450,7 +436,6 @@ OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs, X509_STORE *store,
 	}
 	return 1;
 }
-LCRYPTO_ALIAS(OCSP_request_verify);
 
 static int
 ocsp_req_find_signer(X509 **psigner, OCSP_REQUEST *req, X509_NAME *nm,

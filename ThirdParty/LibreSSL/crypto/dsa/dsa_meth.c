@@ -1,4 +1,4 @@
-/*	$OpenBSD: dsa_meth.c,v 1.7 2023/07/08 14:28:15 beck Exp $	*/
+/*	$OpenBSD: dsa_meth.c,v 1.1 2018/03/17 15:19:12 tb Exp $	*/
 /*
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
  *
@@ -21,8 +21,6 @@
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 
-#include "dsa_local.h"
-
 DSA_METHOD *
 DSA_meth_new(const char *name, int flags)
 {
@@ -38,18 +36,15 @@ DSA_meth_new(const char *name, int flags)
 
 	return meth;
 }
-LCRYPTO_ALIAS(DSA_meth_new);
 
 void
 DSA_meth_free(DSA_METHOD *meth)
 {
-	if (meth == NULL)
-		return;
-
-	free(meth->name);
-	free(meth);
+	if (meth != NULL) {
+		free((char *)meth->name);
+		free(meth);
+	}
 }
-LCRYPTO_ALIAS(DSA_meth_free);
 
 DSA_METHOD *
 DSA_meth_dup(const DSA_METHOD *meth)
@@ -63,34 +58,9 @@ DSA_meth_dup(const DSA_METHOD *meth)
 		free(copy);
 		return NULL;
 	}
-
+	
 	return copy;
 }
-LCRYPTO_ALIAS(DSA_meth_dup);
-
-const char *
-DSA_meth_get0_name(const DSA_METHOD *meth)
-{
-	return meth->name;
-}
-LCRYPTO_ALIAS(DSA_meth_get0_name);
-
-int
-DSA_meth_set1_name(DSA_METHOD *meth, const char *name)
-{
-	char *new_name;
-
-	if ((new_name = strdup(name)) == NULL) {
-		DSAerror(ERR_R_MALLOC_FAILURE);
-		return 0;
-	}
-
-	free(meth->name);
-	meth->name = new_name;
-
-	return 1;
-}
-LCRYPTO_ALIAS(DSA_meth_set1_name);
 
 int
 DSA_meth_set_sign(DSA_METHOD *meth,
@@ -99,7 +69,6 @@ DSA_meth_set_sign(DSA_METHOD *meth,
 	meth->dsa_do_sign = sign;
 	return 1;
 }
-LCRYPTO_ALIAS(DSA_meth_set_sign);
 
 int
 DSA_meth_set_finish(DSA_METHOD *meth, int (*finish)(DSA *))
@@ -107,4 +76,3 @@ DSA_meth_set_finish(DSA_METHOD *meth, int (*finish)(DSA *))
 	meth->finish = finish;
 	return 1;
 }
-LCRYPTO_ALIAS(DSA_meth_set_finish);

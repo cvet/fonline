@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_prn.c,v 1.10 2023/07/08 10:44:00 beck Exp $ */
+/* $OpenBSD: ocsp_prn.c,v 1.8 2015/07/16 02:16:19 miod Exp $ */
 /* Written by Tom Titchener <Tom_Titchener@groove.net> for the OpenSSL
  * project. */
 
@@ -66,8 +66,6 @@
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
 
-#include "ocsp_local.h"
-
 static int
 ocsp_certid_print(BIO *bp, OCSP_CERTID* a, int indent)
 {
@@ -114,7 +112,6 @@ OCSP_response_status_str(long s)
 	};
 	return table2string(s, rstat_tbl, 6);
 }
-LCRYPTO_ALIAS(OCSP_response_status_str);
 
 const char *
 OCSP_cert_status_str(long s)
@@ -126,7 +123,6 @@ OCSP_cert_status_str(long s)
 	};
 	return table2string(s, cstat_tbl, 3);
 }
-LCRYPTO_ALIAS(OCSP_cert_status_str);
 
 const char *
 OCSP_crl_reason_str(long s)
@@ -143,7 +139,6 @@ OCSP_crl_reason_str(long s)
 	};
 	return table2string(s, reason_tbl, 8);
 }
-LCRYPTO_ALIAS(OCSP_crl_reason_str);
 
 int
 OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST* o, unsigned long flags)
@@ -195,7 +190,6 @@ OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST* o, unsigned long flags)
 err:
 	return 0;
 }
-LCRYPTO_ALIAS(OCSP_REQUEST_print);
 
 int
 OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE* o, unsigned long flags)
@@ -316,4 +310,3 @@ err:
 	OCSP_BASICRESP_free(br);
 	return ret;
 }
-LCRYPTO_ALIAS(OCSP_RESPONSE_print);

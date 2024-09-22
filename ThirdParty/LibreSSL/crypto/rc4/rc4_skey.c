@@ -1,4 +1,4 @@
-/* $OpenBSD: rc4_skey.c,v 1.16 2023/07/28 10:35:14 tb Exp $ */
+/* $OpenBSD: rc4_skey.c,v 1.14 2015/10/20 15:50:13 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,8 +57,24 @@
  */
 
 #include <openssl/rc4.h>
+#include "rc4_locl.h"
+#include <openssl/opensslv.h>
 
-#include "rc4_local.h"
+const char *
+RC4_options(void)
+{
+#ifdef RC4_INDEX
+	if (sizeof(RC4_INT) == 1)
+		return("rc4(idx,char)");
+	else
+		return("rc4(idx,int)");
+#else
+	if (sizeof(RC4_INT) == 1)
+		return("rc4(ptr,char)");
+	else
+		return("rc4(ptr,int)");
+#endif
+}
 
 /* RC4 as implemented from a posting from
  * Newsgroups: sci.crypt

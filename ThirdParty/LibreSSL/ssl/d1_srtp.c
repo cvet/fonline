@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_srtp.c,v 1.33 2023/07/08 16:40:13 beck Exp $ */
+/* $OpenBSD: d1_srtp.c,v 1.29 2021/06/11 15:28:13 landry Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -123,8 +123,8 @@
 #ifndef OPENSSL_NO_SRTP
 
 #include "bytestring.h"
-#include "dtls_local.h"
-#include "ssl_local.h"
+#include "dtls_locl.h"
+#include "ssl_locl.h"
 #include "srtp.h"
 
 static const SRTP_PROTECTION_PROFILE srtp_known_profiles[] = {
@@ -204,10 +204,7 @@ ssl_ctx_make_profiles(const char *profiles_string,
 
 		if (!srtp_find_profile_by_name(ptr, &p,
 		    col ? col - ptr : (int)strlen(ptr))) {
-			if (!sk_SRTP_PROTECTION_PROFILE_push(profiles, p)) {
-				sk_SRTP_PROTECTION_PROFILE_free(profiles);
-				return 1;
-			}
+			sk_SRTP_PROTECTION_PROFILE_push(profiles, p);
 		} else {
 			SSLerrorx(SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
 			sk_SRTP_PROTECTION_PROFILE_free(profiles);
@@ -227,40 +224,36 @@ ssl_ctx_make_profiles(const char *profiles_string,
 int
 SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles)
 {
-	return ssl_ctx_make_profiles(profiles, &ctx->srtp_profiles);
+	return ssl_ctx_make_profiles(profiles, &ctx->internal->srtp_profiles);
 }
-LSSL_ALIAS(SSL_CTX_set_tlsext_use_srtp);
 
 int
 SSL_set_tlsext_use_srtp(SSL *s, const char *profiles)
 {
-	return ssl_ctx_make_profiles(profiles, &s->srtp_profiles);
+	return ssl_ctx_make_profiles(profiles, &s->internal->srtp_profiles);
 }
-LSSL_ALIAS(SSL_set_tlsext_use_srtp);
 
 
 STACK_OF(SRTP_PROTECTION_PROFILE) *
 SSL_get_srtp_profiles(SSL *s)
 {
 	if (s != NULL) {
-		if (s->srtp_profiles != NULL) {
-			return s->srtp_profiles;
+		if (s->internal->srtp_profiles != NULL) {
+			return s->internal->srtp_profiles;
 		} else if ((s->ctx != NULL) &&
-		    (s->ctx->srtp_profiles != NULL)) {
-			return s->ctx->srtp_profiles;
+		    (s->ctx->internal->srtp_profiles != NULL)) {
+			return s->ctx->internal->srtp_profiles;
 		}
 	}
 
 	return NULL;
 }
-LSSL_ALIAS(SSL_get_srtp_profiles);
 
 SRTP_PROTECTION_PROFILE *
 SSL_get_selected_srtp_profile(SSL *s)
 {
 	/* XXX cast away the const */
-	return (SRTP_PROTECTION_PROFILE *)s->srtp_profile;
+	return (SRTP_PROTECTION_PROFILE *)s->internal->srtp_profile;
 }
-LSSL_ALIAS(SSL_get_selected_srtp_profile);
 
 #endif

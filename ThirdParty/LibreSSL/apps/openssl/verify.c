@@ -1,4 +1,4 @@
-/* $OpenBSD: verify.c,v 1.18 2023/11/21 17:56:19 tb Exp $ */
+/* $OpenBSD: verify.c,v 1.14 2021/02/15 17:57:58 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -81,7 +81,7 @@ static struct {
 	char *untfile;
 	int verbose;
 	X509_VERIFY_PARAM *vpm;
-} cfg;
+} verify_config;
 
 static int
 verify_opt_args(int argc, char **argv, int *argsused)
@@ -89,7 +89,7 @@ verify_opt_args(int argc, char **argv, int *argsused)
 	int oargc = argc;
 	int badarg = 0;
 
-	if (!args_verify(&argv, &argc, &badarg, bio_err, &cfg.vpm))
+	if (!args_verify(&argv, &argc, &badarg, bio_err, &verify_config.vpm))
 		return (1);
 	if (badarg)
 		return (1);
@@ -105,41 +105,41 @@ static const struct option verify_options[] = {
 		.argname = "file",
 		.desc = "Certificate Authority file",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.CAfile,
+		.opt.arg = &verify_config.CAfile,
 	},
 	{
 		.name = "CApath",
 		.argname = "path",
 		.desc = "Certificate Authority path",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.CApath,
+		.opt.arg = &verify_config.CApath,
 	},
 	{
 		.name = "CRLfile",
 		.argname = "file",
 		.desc = "Certificate Revocation List file",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.crlfile,
+		.opt.arg = &verify_config.crlfile,
 	},
 	{
 		.name = "trusted",
 		.argname = "file",
 		.desc = "Trusted certificates file",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.trustfile,
+		.opt.arg = &verify_config.trustfile,
 	},
 	{
 		.name = "untrusted",
 		.argname = "file",
 		.desc = "Untrusted certificates file",
 		.type = OPTION_ARG,
-		.opt.arg = &cfg.untfile,
+		.opt.arg = &verify_config.untfile,
 	},
 	{
 		.name = "verbose",
 		.desc = "Verbose",
 		.type = OPTION_FLAG,
-		.opt.flag = &cfg.verbose,
+		.opt.flag = &verify_config.verbose,
 	},
 	{
 		.name = NULL,
@@ -251,7 +251,7 @@ verify_usage(void)
 
 	fprintf(stderr, "\nValid purposes:\n\n");
 	for (i = 0; i < X509_PURPOSE_get_count(); i++) {
-		const X509_PURPOSE *ptmp = X509_PURPOSE_get0(i);
+		X509_PURPOSE *ptmp = X509_PURPOSE_get0(i);
 		fprintf(stderr, "  %-18s%s\n", X509_PURPOSE_get0_sname(ptmp),
 		    X509_PURPOSE_get0_name(ptmp));
 	}
@@ -268,12 +268,14 @@ verify_main(int argc, char **argv)
 	int argsused;
 	int ret = 1;
 
-	if (pledge("stdio rpath", NULL) == -1) {
-		perror("pledge");
-		exit(1);
+	if (single_execution) {
+		if (pledge("stdio rpath", NULL) == -1) {
+			perror("pledge");
+			exit(1);
+		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
+	memset(&verify_config, 0, sizeof(verify_config));
 
 	if (options_parse(argc, argv, verify_options, NULL, &argsused) != 0) {
 		verify_usage();
@@ -288,17 +290,17 @@ verify_main(int argc, char **argv)
 		goto end;
 	X509_STORE_set_verify_cb(cert_ctx, cb);
 
-	if (cfg.vpm)
-		X509_STORE_set1_param(cert_ctx, cfg.vpm);
+	if (verify_config.vpm)
+		X509_STORE_set1_param(cert_ctx, verify_config.vpm);
 
 	lookup = X509_STORE_add_lookup(cert_ctx, X509_LOOKUP_file());
 	if (lookup == NULL)
 		abort(); /* XXX */
-	if (cfg.CAfile) {
-		if (!X509_LOOKUP_load_file(lookup, cfg.CAfile,
+	if (verify_config.CAfile) {
+		if (!X509_LOOKUP_load_file(lookup, verify_config.CAfile,
 		    X509_FILETYPE_PEM)) {
 			BIO_printf(bio_err, "Error loading file %s\n",
-			    cfg.CAfile);
+			    verify_config.CAfile);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
@@ -308,11 +310,11 @@ verify_main(int argc, char **argv)
 	lookup = X509_STORE_add_lookup(cert_ctx, X509_LOOKUP_hash_dir());
 	if (lookup == NULL)
 		abort(); /* XXX */
-	if (cfg.CApath) {
-		if (!X509_LOOKUP_add_dir(lookup, cfg.CApath,
+	if (verify_config.CApath) {
+		if (!X509_LOOKUP_add_dir(lookup, verify_config.CApath,
 		    X509_FILETYPE_PEM)) {
 			BIO_printf(bio_err, "Error loading directory %s\n",
-			    cfg.CApath);
+			    verify_config.CApath);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
@@ -321,20 +323,20 @@ verify_main(int argc, char **argv)
 
 	ERR_clear_error();
 
-	if (cfg.untfile) {
-		untrusted = load_certs(bio_err, cfg.untfile,
+	if (verify_config.untfile) {
+		untrusted = load_certs(bio_err, verify_config.untfile,
 		    FORMAT_PEM, NULL, "untrusted certificates");
 		if (!untrusted)
 			goto end;
 	}
-	if (cfg.trustfile) {
-		trusted = load_certs(bio_err, cfg.trustfile,
+	if (verify_config.trustfile) {
+		trusted = load_certs(bio_err, verify_config.trustfile,
 		    FORMAT_PEM, NULL, "trusted certificates");
 		if (!trusted)
 			goto end;
 	}
-	if (cfg.crlfile) {
-		crls = load_crls(bio_err, cfg.crlfile, FORMAT_PEM,
+	if (verify_config.crlfile) {
+		crls = load_crls(bio_err, verify_config.crlfile, FORMAT_PEM,
 		    NULL, "other CRLs");
 		if (!crls)
 			goto end;
@@ -352,8 +354,8 @@ verify_main(int argc, char **argv)
 	}
 
  end:
-	if (cfg.vpm)
-		X509_VERIFY_PARAM_free(cfg.vpm);
+	if (verify_config.vpm)
+		X509_VERIFY_PARAM_free(verify_config.vpm);
 	if (cert_ctx != NULL)
 		X509_STORE_free(cert_ctx);
 	sk_X509_pop_free(untrusted, X509_free);
@@ -427,6 +429,7 @@ cb(int ok, X509_STORE_CTX *ctx)
 		    X509_verify_cert_error_string(cert_error));
 		switch (cert_error) {
 		case X509_V_ERR_NO_EXPLICIT_POLICY:
+			policies_print(NULL, ctx);
 		case X509_V_ERR_CERT_HAS_EXPIRED:
 
 			/*
@@ -451,7 +454,9 @@ cb(int ok, X509_STORE_CTX *ctx)
 		return ok;
 
 	}
-	if (!cfg.verbose)
+	if (cert_error == X509_V_OK && ok == 2)
+		policies_print(NULL, ctx);
+	if (!verify_config.verbose)
 		ERR_clear_error();
 	return (ok);
 }

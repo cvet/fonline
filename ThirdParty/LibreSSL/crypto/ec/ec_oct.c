@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_oct.c,v 1.16 2023/07/07 19:37:53 beck Exp $ */
+/* $OpenBSD: ec_oct.c,v 1.8 2021/04/20 17:34:33 tb Exp $ */
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -68,38 +68,45 @@
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
 
-#include "ec_local.h"
+#include "ec_lcl.h"
 
 int
 EC_POINT_set_compressed_coordinates(const EC_GROUP *group, EC_POINT *point,
-    const BIGNUM *x, int y_bit, BN_CTX *ctx_in)
+    const BIGNUM *x, int y_bit, BN_CTX *ctx)
 {
-	BN_CTX *ctx;
-	int ret = 0;
-
-	if ((ctx = ctx_in) == NULL)
-		ctx = BN_CTX_new();
-	if (ctx == NULL)
-		goto err;
-
-	if (group->meth->point_set_compressed_coordinates == NULL) {
+	if (group->meth->point_set_compressed_coordinates == NULL &&
+	    !(group->meth->flags & EC_FLAGS_DEFAULT_OCT)) {
 		ECerror(ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-		goto err;
+		return 0;
 	}
 	if (group->meth != point->meth) {
 		ECerror(EC_R_INCOMPATIBLE_OBJECTS);
-		goto err;
+		return 0;
 	}
-	ret = group->meth->point_set_compressed_coordinates(group, point,
-	    x, y_bit, ctx);
-
- err:
-	if (ctx != ctx_in)
-		BN_CTX_free(ctx);
-
-	return ret;
+	if (group->meth->flags & EC_FLAGS_DEFAULT_OCT) {
+		if (group->meth->field_type == NID_X9_62_prime_field)
+			return ec_GFp_simple_set_compressed_coordinates(
+			    group, point, x, y_bit, ctx);
+		else
+#ifdef OPENSSL_NO_EC2M
+		{
+			ECerror(EC_R_GF2M_NOT_SUPPORTED);
+			return 0;
+		}
+#else
+			return ec_GF2m_simple_set_compressed_coordinates(
+			    group, point, x, y_bit, ctx);
+#endif
+	}
+	if (!group->meth->point_set_compressed_coordinates(group, point, x,
+	    y_bit, ctx))
+		return 0;
+	if (EC_POINT_is_on_curve(group, point, ctx) <= 0) {
+		ECerror(EC_R_POINT_IS_NOT_ON_CURVE);
+		return 0;
+	}
+	return 1;
 }
-LCRYPTO_ALIAS(EC_POINT_set_compressed_coordinates);
 
 int
 EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
@@ -108,63 +115,74 @@ EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
 	return EC_POINT_set_compressed_coordinates(group, point, x, y_bit, ctx);
 }
 
+#ifndef OPENSSL_NO_EC2M
+int
+EC_POINT_set_compressed_coordinates_GF2m(const EC_GROUP *group, EC_POINT *point,
+    const BIGNUM *x, int y_bit, BN_CTX *ctx)
+{
+	return EC_POINT_set_compressed_coordinates(group, point, x, y_bit, ctx);
+}
+#endif
+
 size_t
 EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
-    point_conversion_form_t form, unsigned char *buf, size_t len,
-    BN_CTX *ctx_in)
+    point_conversion_form_t form,
+    unsigned char *buf, size_t len, BN_CTX *ctx)
 {
-	BN_CTX *ctx;
-	size_t ret = 0;
-
-	if ((ctx = ctx_in) == NULL)
-		ctx = BN_CTX_new();
-	if (ctx == NULL)
-		goto err;
-
-	if (group->meth->point2oct == NULL) {
+	if (group->meth->point2oct == 0
+	    && !(group->meth->flags & EC_FLAGS_DEFAULT_OCT)) {
 		ECerror(ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-		goto err;
+		return 0;
 	}
 	if (group->meth != point->meth) {
 		ECerror(EC_R_INCOMPATIBLE_OBJECTS);
-		goto err;
+		return 0;
 	}
-	ret = group->meth->point2oct(group, point, form, buf, len, ctx);
-
- err:
-	if (ctx != ctx_in)
-		BN_CTX_free(ctx);
-
-	return ret;
+	if (group->meth->flags & EC_FLAGS_DEFAULT_OCT) {
+		if (group->meth->field_type == NID_X9_62_prime_field)
+			return ec_GFp_simple_point2oct(group, point,
+			    form, buf, len, ctx);
+		else
+#ifdef OPENSSL_NO_EC2M
+		{
+			ECerror(EC_R_GF2M_NOT_SUPPORTED);
+			return 0;
+		}
+#else
+			return ec_GF2m_simple_point2oct(group, point,
+			    form, buf, len, ctx);
+#endif
+	}
+	return group->meth->point2oct(group, point, form, buf, len, ctx);
 }
-LCRYPTO_ALIAS(EC_POINT_point2oct);
 
 int
 EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
-    const unsigned char *buf, size_t len, BN_CTX *ctx_in)
+    const unsigned char *buf, size_t len, BN_CTX *ctx)
 {
-	BN_CTX *ctx;
-	int ret = 0;
-
-	if ((ctx = ctx_in) == NULL)
-		ctx = BN_CTX_new();
-	if (ctx == NULL)
-		goto err;
-
-	if (group->meth->oct2point == NULL) {
+	if (group->meth->oct2point == 0 &&
+	    !(group->meth->flags & EC_FLAGS_DEFAULT_OCT)) {
 		ECerror(ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-		goto err;
+		return 0;
 	}
 	if (group->meth != point->meth) {
 		ECerror(EC_R_INCOMPATIBLE_OBJECTS);
-		goto err;
+		return 0;
 	}
-	ret = group->meth->oct2point(group, point, buf, len, ctx);
-
- err:
-	if (ctx != ctx_in)
-		BN_CTX_free(ctx);
-
-	return ret;
+	if (group->meth->flags & EC_FLAGS_DEFAULT_OCT) {
+		if (group->meth->field_type == NID_X9_62_prime_field)
+			return ec_GFp_simple_oct2point(group, point,
+			    buf, len, ctx);
+		else
+#ifdef OPENSSL_NO_EC2M
+		{
+			ECerror(EC_R_GF2M_NOT_SUPPORTED);
+			return 0;
+		}
+#else
+			return ec_GF2m_simple_oct2point(group, point,
+			    buf, len, ctx);
+#endif
+	}
+	return group->meth->oct2point(group, point, buf, len, ctx);
 }
-LCRYPTO_ALIAS(EC_POINT_oct2point);

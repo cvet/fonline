@@ -1,9 +1,3 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 
@@ -12,7 +6,6 @@
 .type	Camellia_EncryptBlock,@function
 .align	16
 Camellia_EncryptBlock:
-_CET_ENDBR
 	movl	$128,%eax
 	subl	%edi,%eax
 	movl	$3,%edi
@@ -25,7 +18,6 @@ _CET_ENDBR
 .align	16
 .Lenc_rounds:
 Camellia_EncryptBlock_Rounds:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -74,7 +66,6 @@ _CET_ENDBR
 .type	_x86_64_Camellia_encrypt,@function
 .align	16
 _x86_64_Camellia_encrypt:
-_CET_ENDBR
 	xorl	0(%r14),%r9d
 	xorl	4(%r14),%r8d
 	xorl	8(%r14),%r11d
@@ -284,7 +275,6 @@ _CET_ENDBR
 .type	Camellia_DecryptBlock,@function
 .align	16
 Camellia_DecryptBlock:
-_CET_ENDBR
 	movl	$128,%eax
 	subl	%edi,%eax
 	movl	$3,%edi
@@ -297,7 +287,6 @@ _CET_ENDBR
 .align	16
 .Ldec_rounds:
 Camellia_DecryptBlock_Rounds:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -346,7 +335,6 @@ _CET_ENDBR
 .type	_x86_64_Camellia_decrypt,@function
 .align	16
 _x86_64_Camellia_decrypt:
-_CET_ENDBR
 	xorl	0(%r14),%r9d
 	xorl	4(%r14),%r8d
 	xorl	8(%r14),%r11d
@@ -555,7 +543,6 @@ _CET_ENDBR
 .type	Camellia_Ekeygen,@function
 .align	16
 Camellia_Ekeygen:
-_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r13
@@ -1096,7 +1083,6 @@ _CET_ENDBR
 .Lkey_epilogue:
 	retq
 .size	Camellia_Ekeygen,.-Camellia_Ekeygen
-.section	.rodata
 .align	64
 .LCamellia_SIGMA:
 .long	0x3bcc908b, 0xa09e667f, 0x4caa73b2, 0xb67ae858
@@ -1616,12 +1602,10 @@ _CET_ENDBR
 .long	0x008f8f8f,0xe300e3e3
 .long	0x00010101,0x40004040
 .long	0x003d3d3d,0x4f004f4f
-.text	
 .globl	Camellia_cbc_encrypt
 .type	Camellia_cbc_encrypt,@function
 .align	16
 Camellia_cbc_encrypt:
-_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lcbc_abort
 	pushq	%rbx
@@ -1851,6 +1835,8 @@ _CET_ENDBR
 .Lcbc_abort:
 	retq
 .size	Camellia_cbc_encrypt,.-Camellia_cbc_encrypt
+
+.byte	67,97,109,101,108,108,105,97,32,102,111,114,32,120,56,54,95,54,52,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 #if defined(HAVE_GNU_STACK)
 .section .note.GNU-stack,"",%progbits
 #endif

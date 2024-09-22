@@ -1,4 +1,4 @@
-/* $OpenBSD: pem_sign.c,v 1.15 2023/07/07 13:40:44 beck Exp $ */
+/* $OpenBSD: pem_sign.c,v 1.14 2018/08/24 19:51:31 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -69,7 +69,6 @@ PEM_SignInit(EVP_MD_CTX *ctx, EVP_MD *type)
 {
 	return EVP_DigestInit_ex(ctx, type, NULL);
 }
-LCRYPTO_ALIAS(PEM_SignInit);
 
 int
 PEM_SignUpdate(EVP_MD_CTX *ctx, unsigned char *data,
@@ -77,7 +76,6 @@ PEM_SignUpdate(EVP_MD_CTX *ctx, unsigned char *data,
 {
 	return EVP_DigestUpdate(ctx, data, count);
 }
-LCRYPTO_ALIAS(PEM_SignUpdate);
 
 int
 PEM_SignFinal(EVP_MD_CTX *ctx, unsigned char *sigret, unsigned int *siglen,
@@ -105,4 +103,3 @@ err:
 	free(m);
 	return (ret);
 }
-LCRYPTO_ALIAS(PEM_SignFinal);

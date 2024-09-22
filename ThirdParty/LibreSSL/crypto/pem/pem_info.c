@@ -1,4 +1,4 @@
-/* $OpenBSD: pem_info.c,v 1.27 2023/07/07 13:40:44 beck Exp $ */
+/* $OpenBSD: pem_info.c,v 1.24 2020/07/25 11:53:37 schwarze Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -75,8 +75,6 @@
 #include <openssl/rsa.h>
 #endif
 
-#include "evp_local.h"
-
 STACK_OF(X509_INFO) *
 PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb,
     void *u)
@@ -93,7 +91,6 @@ PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb,
 	BIO_free(b);
 	return (ret);
 }
-LCRYPTO_ALIAS(PEM_X509_INFO_read);
 
 STACK_OF(X509_INFO) *
 PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb,
@@ -289,7 +286,6 @@ err:
 
 	return ret;
 }
-LCRYPTO_ALIAS(PEM_X509_INFO_read_bio);
 
 
 /* A TJH addition */
@@ -384,4 +380,3 @@ err:
 	explicit_bzero(buf, PEM_BUFSIZE);
 	return (ret);
 }
-LCRYPTO_ALIAS(PEM_X509_INFO_write_bio);

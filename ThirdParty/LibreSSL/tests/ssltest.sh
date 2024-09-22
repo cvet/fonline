@@ -22,6 +22,5 @@ if [ -z $srcdir ]; then
 	srcdir=.
 fi
 
-$srcdir/testssl $srcdir/server1-rsa.pem $srcdir/server1-rsa-chain.pem \
-	$srcdir/ca-root-rsa.pem \
+$srcdir/testssl $srcdir/server.pem $srcdir/server.pem $srcdir/ca.pem \
 	$ssltest_bin $openssl_bin

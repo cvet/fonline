@@ -1,9 +1,3 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 .p2align	4
@@ -22,7 +16,6 @@ rc4_md5_enc:
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
 
-_CET_ENDBR
 	cmpq	$0,%r9
 	je	.Labort
 	pushq	%rbx

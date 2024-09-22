@@ -1,16 +1,9 @@
-#if defined(__CET__)
-#include <cet.h>
-#else
-#define _CET_ENDBR
-#endif
-
 #include "x86_arch.h"
 .text	
 .globl	aesni_encrypt
 .type	aesni_encrypt,@function
 .align	16
 aesni_encrypt:
-_CET_ENDBR
 	movups	(%rdi),%xmm2
 	movl	240(%rdx),%eax
 	movups	(%rdx),%xmm0
@@ -32,7 +25,6 @@ _CET_ENDBR
 .type	aesni_decrypt,@function
 .align	16
 aesni_decrypt:
-_CET_ENDBR
 	movups	(%rdi),%xmm2
 	movl	240(%rdx),%eax
 	movups	(%rdx),%xmm0
@@ -52,7 +44,6 @@ _CET_ENDBR
 .type	_aesni_encrypt3,@function
 .align	16
 _aesni_encrypt3:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -86,7 +77,6 @@ _CET_ENDBR
 .type	_aesni_decrypt3,@function
 .align	16
 _aesni_decrypt3:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -120,7 +110,6 @@ _CET_ENDBR
 .type	_aesni_encrypt4,@function
 .align	16
 _aesni_encrypt4:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -159,7 +148,6 @@ _CET_ENDBR
 .type	_aesni_decrypt4,@function
 .align	16
 _aesni_decrypt4:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -198,7 +186,6 @@ _CET_ENDBR
 .type	_aesni_encrypt6,@function
 .align	16
 _aesni_encrypt6:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -256,7 +243,6 @@ _CET_ENDBR
 .type	_aesni_decrypt6,@function
 .align	16
 _aesni_decrypt6:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -314,7 +300,6 @@ _CET_ENDBR
 .type	_aesni_encrypt8,@function
 .align	16
 _aesni_encrypt8:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -385,7 +370,6 @@ _CET_ENDBR
 .type	_aesni_decrypt8,@function
 .align	16
 _aesni_decrypt8:
-_CET_ENDBR
 	movups	(%rcx),%xmm0
 	shrl	$1,%eax
 	movups	16(%rcx),%xmm1
@@ -457,7 +441,6 @@ _CET_ENDBR
 .type	aesni_ecb_encrypt,@function
 .align	16
 aesni_ecb_encrypt:
-_CET_ENDBR
 	andq	$-16,%rdx
 	jz	.Lecb_ret
 
@@ -760,7 +743,6 @@ _CET_ENDBR
 .type	aesni_ccm64_encrypt_blocks,@function
 .align	16
 aesni_ccm64_encrypt_blocks:
-_CET_ENDBR
 	movl	240(%rcx),%eax
 	movdqu	(%r8),%xmm9
 	movdqa	.Lincrement64(%rip),%xmm6
@@ -818,7 +800,6 @@ _CET_ENDBR
 .type	aesni_ccm64_decrypt_blocks,@function
 .align	16
 aesni_ccm64_decrypt_blocks:
-_CET_ENDBR
 	movl	240(%rcx),%eax
 	movups	(%r8),%xmm9
 	movdqu	(%r9),%xmm3
@@ -906,11 +887,6 @@ _CET_ENDBR
 .type	aesni_ctr32_encrypt_blocks,@function
 .align	16
 aesni_ctr32_encrypt_blocks:
-_CET_ENDBR
-	leaq	(%rsp),%rax
-	pushq	%rbp
-	subq	$32,%rsp
-	leaq	-8(%rax),%rbp
 	cmpq	$1,%rdx
 	je	.Lctr32_one_shortcut
 
@@ -935,9 +911,9 @@ _CET_ENDBR
 .byte	102,69,15,58,34,226,2
 	incq	%r11
 .byte	102,69,15,58,34,235,2
-	movdqa	%xmm12,0(%rsp)
+	movdqa	%xmm12,-40(%rsp)
 .byte	102,69,15,56,0,231
-	movdqa	%xmm13,16(%rsp)
+	movdqa	%xmm13,-24(%rsp)
 .byte	102,69,15,56,0,239
 
 	pshufd	$192,%xmm12,%xmm2
@@ -977,7 +953,7 @@ _CET_ENDBR
 	movdqa	.Lincrement32(%rip),%xmm13
 	pxor	%xmm0,%xmm5
 	aesenc	%xmm1,%xmm4
-	movdqa	(%rsp),%xmm12
+	movdqa	-40(%rsp),%xmm12
 	pxor	%xmm0,%xmm6
 	aesenc	%xmm1,%xmm5
 	pxor	%xmm0,%xmm7
@@ -1010,11 +986,11 @@ _CET_ENDBR
 	aesenc	%xmm1,%xmm2
 	paddd	%xmm13,%xmm12
 	aesenc	%xmm1,%xmm3
-	paddd	16(%rsp),%xmm13
+	paddd	-24(%rsp),%xmm13
 	aesenc	%xmm1,%xmm4
-	movdqa	%xmm12,0(%rsp)
+	movdqa	%xmm12,-40(%rsp)
 	aesenc	%xmm1,%xmm5
-	movdqa	%xmm13,16(%rsp)
+	movdqa	%xmm13,-24(%rsp)
 	aesenc	%xmm1,%xmm6
 .byte	102,69,15,56,0,231
 	aesenc	%xmm1,%xmm7
@@ -1153,20 +1129,13 @@ _CET_ENDBR
 	movups	%xmm11,48(%rsi)
 
 .Lctr32_done:
-	leaq	(%rbp),%rsp
-	popq	%rbp
-.Lctr32_ret:
 	retq
 .size	aesni_ctr32_encrypt_blocks,.-aesni_ctr32_encrypt_blocks
 .globl	aesni_xts_encrypt
 .type	aesni_xts_encrypt,@function
 .align	16
 aesni_xts_encrypt:
-_CET_ENDBR
-	leaq	(%rsp),%rax
-	pushq	%rbp
-	subq	$96,%rsp
-	leaq	-8(%rax),%rbp
+	leaq	-104(%rsp),%rsp
 	movups	(%r9),%xmm15
 	movl	240(%r8),%eax
 	movl	240(%rcx),%r10d
@@ -1554,8 +1523,7 @@ _CET_ENDBR
 	movups	%xmm2,-16(%rsi)
 
 .Lxts_enc_ret:
-	leaq	(%rbp),%rsp
-	popq	%rbp
+	leaq	104(%rsp),%rsp
 .Lxts_enc_epilogue:
 	retq
 .size	aesni_xts_encrypt,.-aesni_xts_encrypt
@@ -1563,11 +1531,7 @@ _CET_ENDBR
 .type	aesni_xts_decrypt,@function
 .align	16
 aesni_xts_decrypt:
-_CET_ENDBR
-	leaq	(%rsp),%rax
-	pushq	%rbp
-	subq	$96,%rsp
-	leaq	-8(%rax),%rbp
+	leaq	-104(%rsp),%rsp
 	movups	(%r9),%xmm15
 	movl	240(%r8),%eax
 	movl	240(%rcx),%r10d
@@ -1999,8 +1963,7 @@ _CET_ENDBR
 	movups	%xmm2,(%rsi)
 
 .Lxts_dec_ret:
-	leaq	(%rbp),%rsp
-	popq	%rbp
+	leaq	104(%rsp),%rsp
 .Lxts_dec_epilogue:
 	retq
 .size	aesni_xts_decrypt,.-aesni_xts_decrypt
@@ -2008,7 +1971,6 @@ _CET_ENDBR
 .type	aesni_cbc_encrypt,@function
 .align	16
 aesni_cbc_encrypt:
-_CET_ENDBR
 	testq	%rdx,%rdx
 	jz	.Lcbc_ret
 
@@ -2068,10 +2030,6 @@ _CET_ENDBR
 
 .align	16
 .Lcbc_decrypt:
-	leaq	(%rsp),%rax
-	pushq	%rbp
-	subq	$16,%rsp
-	leaq	-8(%rax),%rbp
 	movups	(%r8),%xmm9
 	movl	%r10d,%eax
 	cmpq	$112,%rdx
@@ -2079,11 +2037,11 @@ _CET_ENDBR
 	shrl	$1,%r10d
 	subq	$112,%rdx
 	movl	%r10d,%eax
-	movaps	%xmm9,(%rsp)
+	movaps	%xmm9,-24(%rsp)
 	jmp	.Lcbc_dec_loop8_enter
 .align	16
 .Lcbc_dec_loop8:
-	movaps	%xmm0,(%rsp)
+	movaps	%xmm0,-24(%rsp)
 	movups	%xmm9,(%rsi)
 	leaq	16(%rsi),%rsi
 .Lcbc_dec_loop8_enter:
@@ -2123,7 +2081,7 @@ _CET_ENDBR
 
 	movups	(%rdi),%xmm1
 	movups	16(%rdi),%xmm0
-	xorps	(%rsp),%xmm2
+	xorps	-24(%rsp),%xmm2
 	xorps	%xmm1,%xmm3
 	movups	32(%rdi),%xmm1
 	xorps	%xmm0,%xmm4
@@ -2187,11 +2145,11 @@ _CET_ENDBR
 	jbe	.Lcbc_dec_six
 
 	movups	96(%rdi),%xmm8
-	movaps	%xmm9,(%rsp)
+	movaps	%xmm9,-24(%rsp)
 	call	_aesni_decrypt8
 	movups	(%rdi),%xmm1
 	movups	16(%rdi),%xmm0
-	xorps	(%rsp),%xmm2
+	xorps	-24(%rsp),%xmm2
 	xorps	%xmm1,%xmm3
 	movups	32(%rdi),%xmm1
 	xorps	%xmm0,%xmm4
@@ -2323,16 +2281,14 @@ _CET_ENDBR
 	jmp	.Lcbc_dec_ret
 .align	16
 .Lcbc_dec_tail_partial:
-	movaps	%xmm2,(%rsp)
+	movaps	%xmm2,-24(%rsp)
 	movq	$16,%rcx
 	movq	%rsi,%rdi
 	subq	%rdx,%rcx
-	leaq	(%rsp),%rsi
+	leaq	-24(%rsp),%rsi
 .long	0x9066A4F3	
 
 .Lcbc_dec_ret:
-	leaq	(%rbp),%rsp
-	popq	%rbp
 .Lcbc_ret:
 	retq
 .size	aesni_cbc_encrypt,.-aesni_cbc_encrypt
@@ -2340,7 +2296,6 @@ _CET_ENDBR
 .type	aesni_set_decrypt_key,@function
 .align	16
 aesni_set_decrypt_key:
-_CET_ENDBR
 	subq	$8,%rsp
 	call	__aesni_set_encrypt_key
 	shll	$4,%esi
@@ -2379,7 +2334,6 @@ _CET_ENDBR
 .type	aesni_set_encrypt_key,@function
 .align	16
 aesni_set_encrypt_key:
-_CET_ENDBR
 __aesni_set_encrypt_key:
 	subq	$8,%rsp
 	movq	$-1,%rax
@@ -2568,7 +2522,6 @@ __aesni_set_encrypt_key:
 	retq
 .size	aesni_set_encrypt_key,.-aesni_set_encrypt_key
 .size	__aesni_set_encrypt_key,.-__aesni_set_encrypt_key
-.section	.rodata
 .align	64
 .Lbswap_mask:
 .byte	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
@@ -2578,8 +2531,9 @@ __aesni_set_encrypt_key:
 .long	1,0,0,0
 .Lxts_magic:
 .long	0x87,0,1,0
+
+.byte	65,69,83,32,102,111,114,32,73,110,116,101,108,32,65,69,83,45,78,73,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .align	64
-.text	
 #if defined(HAVE_GNU_STACK)
 .section .note.GNU-stack,"",%progbits
 #endif

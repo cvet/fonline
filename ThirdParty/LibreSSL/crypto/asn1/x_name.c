@@ -1,4 +1,4 @@
-/* $OpenBSD: x_name.c,v 1.41 2023/07/24 06:56:54 tb Exp $ */
+/* $OpenBSD: x_name.c,v 1.35 2021/07/04 11:38:37 schwarze Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -64,8 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 
-#include "asn1_local.h"
-#include "x509_local.h"
+#include "asn1_locl.h"
 
 typedef STACK_OF(X509_NAME_ENTRY) STACK_OF_X509_NAME_ENTRY;
 DECLARE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
@@ -189,13 +188,13 @@ const ASN1_ITEM X509_NAME_INTERNAL_it = {
  */
 
 const ASN1_EXTERN_FUNCS x509_name_ff = {
-	.app_data = NULL,
-	.asn1_ex_new = x509_name_ex_new,
-	.asn1_ex_free = x509_name_ex_free,
-	.asn1_ex_clear = NULL,
-	.asn1_ex_d2i = x509_name_ex_d2i,
-	.asn1_ex_i2d = x509_name_ex_i2d,
-	.asn1_ex_print = x509_name_ex_print,
+	NULL,
+	x509_name_ex_new,
+	x509_name_ex_free,
+	0,	/* Default clear behaviour is OK */
+	x509_name_ex_d2i,
+	x509_name_ex_i2d,
+	x509_name_ex_print
 };
 
 const ASN1_ITEM X509_NAME_it = {
@@ -257,7 +256,7 @@ x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it)
 	*val = (ASN1_VALUE *)ret;
 	return 1;
 
- memerr:
+memerr:
 	ASN1error(ERR_R_MALLOC_FAILURE);
 	if (ret) {
 		if (ret->entries)
@@ -337,7 +336,7 @@ x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in, long len,
 	*in = p;
 	return ret;
 
- err:
+err:
 	if (nm.x != NULL)
 		X509_NAME_free(nm.x);
 	ASN1error(ERR_R_NESTED_ASN1_ERROR);
@@ -422,7 +421,7 @@ x509_name_encode(X509_NAME *a)
 	a->modified = 0;
 	return len;
 
- memerr:
+memerr:
 	sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s,
 	    local_sk_X509_NAME_ENTRY_free);
 	ASN1error(ERR_R_MALLOC_FAILURE);
@@ -512,7 +511,7 @@ x509_name_canon(X509_NAME *a)
 	i2d_name_canon(intname, &p);
 	ret = 1;
 
- err:
+err:
 	if (tmpentry)
 		X509_NAME_ENTRY_free(tmpentry);
 	if (intname)

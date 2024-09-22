@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_attr.c,v 1.20 2023/02/16 08:38:17 tb Exp $ */
+/* $OpenBSD: p12_attr.c,v 1.13 2021/07/09 14:07:59 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -60,9 +60,6 @@
 
 #include <openssl/pkcs12.h>
 
-#include "pkcs12_local.h"
-#include "x509_local.h"
-
 /* Add a local keyid to a safebag */
 
 int
@@ -74,7 +71,6 @@ PKCS12_add_localkeyid(PKCS12_SAFEBAG *bag, unsigned char *name, int namelen)
 	else
 		return 0;
 }
-LCRYPTO_ALIAS(PKCS12_add_localkeyid);
 
 /* Add key usage to PKCS#8 structure */
 
@@ -86,7 +82,6 @@ PKCS8_add_keyusage(PKCS8_PRIV_KEY_INFO *p8, int usage)
 	return PKCS8_pkey_add1_attr_by_NID(p8, NID_key_usage, V_ASN1_BIT_STRING,
 	    &us_val, 1);
 }
-LCRYPTO_ALIAS(PKCS8_add_keyusage);
 
 /* Add a friendlyname to a safebag */
 
@@ -99,7 +94,6 @@ PKCS12_add_friendlyname_asc(PKCS12_SAFEBAG *bag, const char *name, int namelen)
 	else
 		return 0;
 }
-LCRYPTO_ALIAS(PKCS12_add_friendlyname_asc);
 
 
 int
@@ -112,7 +106,6 @@ PKCS12_add_friendlyname_uni(PKCS12_SAFEBAG *bag, const unsigned char *name,
 	else
 		return 0;
 }
-LCRYPTO_ALIAS(PKCS12_add_friendlyname_uni);
 
 int
 PKCS12_add_CSPName_asc(PKCS12_SAFEBAG *bag, const char *name, int namelen)
@@ -123,7 +116,6 @@ PKCS12_add_CSPName_asc(PKCS12_SAFEBAG *bag, const char *name, int namelen)
 	else
 		return 0;
 }
-LCRYPTO_ALIAS(PKCS12_add_CSPName_asc);
 
 ASN1_TYPE *
 PKCS12_get_attr_gen(const STACK_OF(X509_ATTRIBUTE) *attrs, int attr_nid)
@@ -135,30 +127,25 @@ PKCS12_get_attr_gen(const STACK_OF(X509_ATTRIBUTE) *attrs, int attr_nid)
 		return NULL;
 	for (i = 0; i < sk_X509_ATTRIBUTE_num(attrs); i++) {
 		attrib = sk_X509_ATTRIBUTE_value(attrs, i);
-		if (OBJ_obj2nid(attrib->object) == attr_nid)
-			return sk_ASN1_TYPE_value(attrib->set, 0);
+		if (OBJ_obj2nid(attrib->object) == attr_nid) {
+			if (sk_ASN1_TYPE_num(attrib->value.set))
+				return sk_ASN1_TYPE_value(attrib->value.set, 0);
+			else
+				return NULL;
+		}
 	}
 	return NULL;
 }
-LCRYPTO_ALIAS(PKCS12_get_attr_gen);
 
 char *
 PKCS12_get_friendlyname(PKCS12_SAFEBAG *bag)
 {
-	const ASN1_TYPE *atype;
+	ASN1_TYPE *atype;
 
-	if (!(atype = PKCS12_SAFEBAG_get0_attr(bag, NID_friendlyName)))
+	if (!(atype = PKCS12_get_attr(bag, NID_friendlyName)))
 		return NULL;
 	if (atype->type != V_ASN1_BMPSTRING)
 		return NULL;
 	return OPENSSL_uni2asc(atype->value.bmpstring->data,
 	    atype->value.bmpstring->length);
 }
-LCRYPTO_ALIAS(PKCS12_get_friendlyname);
-
-const STACK_OF(X509_ATTRIBUTE) *
-PKCS12_SAFEBAG_get0_attrs(const PKCS12_SAFEBAG *bag)
-{
-	return bag->attrib;
-}
-LCRYPTO_ALIAS(PKCS12_SAFEBAG_get0_attrs);

@@ -12,7 +12,7 @@
 #else
 #include <../include/resolv.h>
 #endif
-#elif defined(HAVE_RESOLV_H)
+#else
 #include_next <resolv.h>
 #endif
 

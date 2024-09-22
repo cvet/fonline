@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_new.c,v 1.25 2023/07/28 10:00:10 tb Exp $ */
+/* $OpenBSD: tasn_new.c,v 1.18 2019/04/01 15:48:04 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -64,9 +64,8 @@
 #include <openssl/asn1t.h>
 #include <string.h>
 
-#include "asn1_local.h"
-
-static int asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
+static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
+    int combine);
 static void asn1_item_clear(ASN1_VALUE **pval, const ASN1_ITEM *it);
 static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
 static void asn1_primitive_clear(ASN1_VALUE **pval, const ASN1_ITEM *it);
@@ -79,19 +78,17 @@ ASN1_item_new(const ASN1_ITEM *it)
 		return ret;
 	return NULL;
 }
-LCRYPTO_ALIAS(ASN1_item_new);
 
 /* Allocate an ASN1 structure */
 
 int
 ASN1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 {
-	return asn1_item_ex_new(pval, it);
+	return asn1_item_ex_combine_new(pval, it, 0);
 }
-LCRYPTO_ALIAS(ASN1_item_ex_new);
 
 static int
-asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
+asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it, int combine)
 {
 	const ASN1_TEMPLATE *tt = NULL;
 	const ASN1_EXTERN_FUNCS *ef;
@@ -103,7 +100,13 @@ asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 	if (aux != NULL && aux->asn1_cb != NULL)
 		asn1_cb = aux->asn1_cb;
 
-	*pval = NULL;
+	if (!combine)
+		*pval = NULL;
+
+#ifdef CRYPTO_MDEBUG
+	if (it->sname)
+		CRYPTO_push_info(it->sname);
+#endif
 
 	switch (it->itype) {
 	case ASN1_ITYPE_EXTERN:
@@ -133,12 +136,18 @@ asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 			if (!i)
 				goto auxerr;
 			if (i == 2) {
+#ifdef CRYPTO_MDEBUG
+				if (it->sname)
+					CRYPTO_pop_info();
+#endif
 				return 1;
 			}
 		}
-		*pval = calloc(1, it->size);
-		if (!*pval)
-			goto memerr;
+		if (!combine) {
+			*pval = calloc(1, it->size);
+			if (!*pval)
+				goto memerr;
+		}
 		asn1_set_choice_selector(pval, -1, it);
 		if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
 			goto auxerr;
@@ -151,14 +160,20 @@ asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 			if (!i)
 				goto auxerr;
 			if (i == 2) {
+#ifdef CRYPTO_MDEBUG
+				if (it->sname)
+					CRYPTO_pop_info();
+#endif
 				return 1;
 			}
 		}
-		*pval = calloc(1, it->size);
-		if (!*pval)
-			goto memerr;
-		asn1_do_lock(pval, 0, it);
-		asn1_enc_init(pval, it);
+		if (!combine) {
+			*pval = calloc(1, it->size);
+			if (!*pval)
+				goto memerr;
+			asn1_do_lock(pval, 0, it);
+			asn1_enc_init(pval, it);
+		}
 		for (i = 0, tt = it->templates; i < it->tcount; tt++, i++) {
 			pseqval = asn1_get_field_ptr(pval, tt);
 			if (!ASN1_template_new(pseqval, tt))
@@ -168,15 +183,27 @@ asn1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 			goto auxerr;
 		break;
 	}
+#ifdef CRYPTO_MDEBUG
+	if (it->sname)
+		CRYPTO_pop_info();
+#endif
 	return 1;
 
- memerr:
+memerr:
 	ASN1error(ERR_R_MALLOC_FAILURE);
+#ifdef CRYPTO_MDEBUG
+	if (it->sname)
+		CRYPTO_pop_info();
+#endif
 	return 0;
 
- auxerr:
+auxerr:
 	ASN1error(ASN1_R_AUX_ERROR);
 	ASN1_item_ex_free(pval, it);
+#ifdef CRYPTO_MDEBUG
+	if (it->sname)
+		CRYPTO_pop_info();
+#endif
 	return 0;
 
 }
@@ -230,6 +257,10 @@ ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 		*pval = NULL;
 		return 1;
 	}
+#ifdef CRYPTO_MDEBUG
+	if (tt->field_name)
+		CRYPTO_push_info(tt->field_name);
+#endif
 	/* If SET OF or SEQUENCE OF, its a STACK */
 	if (tt->flags & ASN1_TFLG_SK_MASK) {
 		STACK_OF(ASN1_VALUE) *skval;
@@ -244,8 +275,12 @@ ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 		goto done;
 	}
 	/* Otherwise pass it back to the item routine */
-	ret = asn1_item_ex_new(pval, it);
- done:
+	ret = asn1_item_ex_combine_new(pval, it, tt->flags & ASN1_TFLG_COMBINE);
+done:
+#ifdef CRYPTO_MDEBUG
+	if (it->sname)
+		CRYPTO_pop_info();
+#endif
 	return ret;
 }
 
