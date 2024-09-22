@@ -354,7 +354,6 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(LIBRESSL_INCLUDE_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
     set(LIBRESSL_LIBRARY_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
     list(APPEND FO_SERVER_LIBS "ssl" "crypto" "tls")
-    list(APPEND FO_DUMMY_TARGETS "bs_obj" "compat_obj" "crypto_obj" "ssl_obj" "tls_compat_obj" "tls_obj" "uninstall")
     DisableLibWarnings(ssl crypto tls)
 endif()
 
