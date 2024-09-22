@@ -125,7 +125,7 @@ add_compile_definitions(GL_GLEXT_PROTOTYPES)
 target_compile_definitions(SDL2main PRIVATE "GL_GLEXT_PROTOTYPES")
 target_compile_definitions(SDL2-static PRIVATE "GL_GLEXT_PROTOTYPES")
 list(APPEND FO_RENDER_LIBS "SDL2main" "SDL2-static")
-list(APPEND FO_DUMMY_TRAGETS "sdl_headers_copy")
+list(APPEND FO_DUMMY_TARGETS "sdl_headers_copy")
 DisableLibWarnings(SDL2main SDL2-static)
 
 # Tracy profiler
@@ -153,7 +153,8 @@ set(FO_ZLIB_CONTRIB_SOURCE
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
 add_library(zlibcontrib ${FO_ZLIB_CONTRIB_SOURCE})
 list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
-DisableLibWarnings(zlibstatic zlibcontrib)
+list(APPEND FO_DUMMY_TARGETS "zlib")
+DisableLibWarnings(zlibstatic zlibcontrib zlib)
 
 # PNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -353,6 +354,7 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(LIBRESSL_INCLUDE_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
     set(LIBRESSL_LIBRARY_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
     list(APPEND FO_SERVER_LIBS "ssl" "crypto" "tls")
+    list(APPEND FO_DUMMY_TARGETS "bs_obj" "compat_obj" "crypto_obj" "ssl_obj" "tls_compat_obj" "tls_obj" "uninstall")
     DisableLibWarnings(ssl crypto tls)
 endif()
 
@@ -411,7 +413,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
         include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
         target_compile_definitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
         list(APPEND FO_SERVER_LIBS "mongoc_static")
-        list(APPEND FO_DUMMY_TRAGETS "mongoc-cxx-check" "dist" "distcheck")
+        list(APPEND FO_DUMMY_TARGETS "mongoc-cxx-check" "dist" "distcheck")
         DisableLibWarnings(mongoc_static mongoc-cxx-check)
     endif()
 endif()
@@ -1645,7 +1647,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications")
 set_property(TARGET ${FO_CORE_LIBS_GROUP} PROPERTY FOLDER "CoreLibs")
 set_property(TARGET ${FO_COMMANDS_GROUP} PROPERTY FOLDER "Commands")
-set_property(TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TRAGETS} PROPERTY FOLDER "ThirdParty")
+set_property(TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty")
+set_property(TARGET ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty/Extra")
 
 # Print cached variables
 if(FO_VERBOSE_BUILD)

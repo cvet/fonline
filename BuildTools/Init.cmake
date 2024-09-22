@@ -29,6 +29,8 @@ endfunction()
 # Skip all install rules
 function(install)
 endfunction()
+function(export)
+endfunction()
 
 set(CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE)
 
@@ -74,7 +76,7 @@ set(FO_RENDER_LIBS "")
 set(FO_BAKER_SYSTEM_LIBS "")
 set(FO_BAKER_LIBS "")
 set(FO_TESTING_LIBS "")
-set(FO_DUMMY_TRAGETS "")
+set(FO_DUMMY_TARGETS "")
 set(FO_USE_GLEW NO)
 set(FO_RPMALLOC_DIR "")
 set(FO_SDL_DIR "")
