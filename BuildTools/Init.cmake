@@ -43,6 +43,13 @@ function(DisableLibWarnings)
 	endforeach()
 endfunction()
 
+# Add C/CXX compile option
+macro(add_compile_options_C_CXX)
+	foreach(option ${ARGV})
+		add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:${option}>)
+	endforeach()
+endmacro()
+
 # Temporary variables
 set(FO_ENGINE_ROOT "")
 set(FO_BUILD_HASH "")
