@@ -278,13 +278,11 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@STANDALONE_FALSE@EXAMPLES_CPP03 = examples/cpp03
 @HAVE_CXX11_TRUE@EXAMPLES_CPP11 = examples/cpp11
 @HAVE_CXX14_TRUE@EXAMPLES_CPP14 = examples/cpp14
 @HAVE_CXX17_TRUE@EXAMPLES_CPP17 = examples/cpp17
 @HAVE_CXX20_TRUE@EXAMPLES_CPP20 = examples/cpp20
 SUBDIRS = \
-	$(EXAMPLES_CPP03) \
 	$(EXAMPLES_CPP11) \
 	$(EXAMPLES_CPP14) \
 	$(EXAMPLES_CPP17) \
@@ -292,7 +290,6 @@ SUBDIRS = \
 	tests
 
 DIST_SUBDIRS = \
-	examples/cpp03 \
 	examples/cpp11 \
 	examples/cpp14 \
 	examples/cpp17 \
