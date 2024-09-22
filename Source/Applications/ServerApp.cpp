@@ -55,7 +55,7 @@ struct ServerAppData
 GLOBAL_DATA(ServerAppData, Data);
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif

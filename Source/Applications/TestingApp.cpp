@@ -47,7 +47,7 @@
 #include "Application.h"
 #include "GenericUtils.h"
 
-extern "C" int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     STACK_TRACE_ENTRY();
 
