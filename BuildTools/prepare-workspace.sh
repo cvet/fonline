@@ -9,7 +9,7 @@ echo "Prepare workspace"
 
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
-source $CUR_DIR/tools.sh
+source $CUR_DIR/internal-tools.sh
 
 # All packages:
 # clang clang-format build-essential git cmake python3 wget unzip binutils-dev libc++-dev libc++abi-dev libx11-dev freeglut3-dev libssl-dev libevent-dev libxi-dev nodejs default-jre android-sdk openjdk-8-jdk ant
