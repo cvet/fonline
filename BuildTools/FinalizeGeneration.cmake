@@ -265,9 +265,9 @@ set(FO_SHA_DIR "${FO_ENGINE_ROOT}/ThirdParty/SHA")
 include_directories("${FO_SHA_DIR}")
 set(FO_SHA_SOURCE
     "${FO_SHA_DIR}/sha1.h"
-    "${FO_SHA_DIR}/sha1.cpp"
+    "${FO_SHA_DIR}/sha1.c"
     "${FO_SHA_DIR}/sha2.h"
-    "${FO_SHA_DIR}/sha2.cpp")
+    "${FO_SHA_DIR}/sha2.c")
 add_library(SHA ${FO_SHA_SOURCE})
 list(APPEND FO_COMMON_LIBS "SHA")
 DisableLibWarnings(SHA)
