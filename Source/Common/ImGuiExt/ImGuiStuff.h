@@ -39,7 +39,7 @@
 
 DECLARE_EXCEPTION(ImGuiAssertationException);
 
-extern void ImGuiRaiseAssert(const char* message);
+[[noreturn]] extern void ImGuiRaiseAssert(const char* message);
 
 namespace ImGuiExt
 {
