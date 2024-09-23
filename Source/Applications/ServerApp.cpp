@@ -36,10 +36,9 @@
 #include "Application.h"
 #include "Client.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Settings.h"
-
-#include "imgui.h"
 
 #if !FO_TESTING_APP
 #include "SDL_main.h"
@@ -55,7 +54,7 @@ struct ServerAppData
 GLOBAL_DATA(ServerAppData, Data);
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif

@@ -34,10 +34,9 @@
 #include "Editor.h"
 #include "Application.h"
 #include "AssetExplorer.h"
+#include "ImGuiStuff.h"
 #include "ParticleEditor.h"
 #include "StringUtils.h"
-
-#include "imgui.h"
 
 EditorView::EditorView(string_view view_name, FOEditor& editor) :
     _viewName {view_name},

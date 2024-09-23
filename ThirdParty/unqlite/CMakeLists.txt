@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0...3.16.3)
 PROJECT(unqlite)
 
 # If the user did not customize the install prefix,

@@ -46,21 +46,25 @@ add_compile_definitions(FO_DIRECT_SPRITES_DRAW=$<CONFIG:Release_Ext>)
 set(CMAKE_CXX_STANDARD 17)
 
 if(MSVC)
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/std:c++17>)
-    add_compile_options(/permissive-)
+    add_compile_options_C_CXX($<$<COMPILE_LANGUAGE:CXX>:/std:c++17>)
+    add_compile_options_C_CXX(/permissive-)
 else()
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
+    add_compile_options_C_CXX($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(--param=max-vartrack-size=1000000)
+    add_compile_options_C_CXX(--param=max-vartrack-size=1000000)
 endif()
 
 if(FO_CODE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        add_compile_options(-O0 -fprofile -instr-generate -fcoverage-mapping)
+        add_compile_options_C_CXX(-O0)
+        add_compile_options_C_CXX(-fprofile)
+        add_compile_options_C_CXX(-instr-generate)
+        add_compile_options_C_CXX(-fcoverage-mapping)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        add_compile_options(-O0 --coverage)
+        add_compile_options_C_CXX(-O0)
+        add_compile_options_C_CXX(--coverage)
         add_link_options(--coverage)
     endif()
 endif()
@@ -122,7 +126,7 @@ add_compile_definitions(GL_GLEXT_PROTOTYPES)
 target_compile_definitions(SDL2main PRIVATE "GL_GLEXT_PROTOTYPES")
 target_compile_definitions(SDL2-static PRIVATE "GL_GLEXT_PROTOTYPES")
 list(APPEND FO_RENDER_LIBS "SDL2main" "SDL2-static")
-list(APPEND FO_DUMMY_TRAGETS "sdl_headers_copy")
+list(APPEND FO_DUMMY_TARGETS "sdl_headers_copy")
 DisableLibWarnings(SDL2main SDL2-static)
 
 # Tracy profiler
@@ -140,16 +144,23 @@ DisableLibWarnings(TracyClient)
 # Zlib
 StatusMessage("+ Zlib")
 set(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_ZLIB_DIR}")
 include_directories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
-list(APPEND FO_COMMON_LIBS "zlibstatic")
-DisableLibWarnings(zlibstatic)
+set(FO_ZLIB_CONTRIB_SOURCE
+    "${FO_ZLIB_DIR}/contrib/minizip/unzip.c"
+    "${FO_ZLIB_DIR}/contrib/minizip/unzip.h"
+    "${FO_ZLIB_DIR}/contrib/minizip/ioapi.c"
+    "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
+add_library(zlibcontrib ${FO_ZLIB_CONTRIB_SOURCE})
+list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
+list(APPEND FO_DUMMY_TARGETS "zlib")
+DisableLibWarnings(zlibstatic zlibcontrib zlib)
 
 # PNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ PNG")
     set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/PNG")
-    set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
     set(ZLIB_INCLUDE_DIR "../${FO_ZLIB_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
     set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -241,16 +252,24 @@ DisableLibWarnings(Theora)
 # Acm
 StatusMessage("+ Acm")
 set(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-add_subdirectory("${FO_ACM_DIR}")
 include_directories("${FO_ACM_DIR}")
-list(APPEND FO_CLIENT_LIBS "Acm")
-DisableLibWarnings(Acm)
+set(FO_ACM_SOURCE
+    "${FO_ACM_DIR}/acmstrm.cpp"
+    "${FO_ACM_DIR}/acmstrm.h")
+add_library(AcmSound ${FO_ACM_SOURCE})
+list(APPEND FO_CLIENT_LIBS "AcmSound")
+DisableLibWarnings(AcmSound)
 
 # SHA
 StatusMessage("+ SHA")
 set(FO_SHA_DIR "${FO_ENGINE_ROOT}/ThirdParty/SHA")
-add_subdirectory("${FO_SHA_DIR}")
 include_directories("${FO_SHA_DIR}")
+set(FO_SHA_SOURCE
+    "${FO_SHA_DIR}/sha1.h"
+    "${FO_SHA_DIR}/sha1.c"
+    "${FO_SHA_DIR}/sha2.h"
+    "${FO_SHA_DIR}/sha2.c")
+add_library(SHA ${FO_SHA_SOURCE})
 list(APPEND FO_COMMON_LIBS "SHA")
 DisableLibWarnings(SHA)
 
@@ -331,7 +350,6 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(LIBRESSL_APPS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(LIBRESSL_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_ASM ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_EXTRATESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_NC OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -403,7 +421,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
         include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
         target_compile_definitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
         list(APPEND FO_SERVER_LIBS "mongoc_static")
-        list(APPEND FO_DUMMY_TRAGETS "mongoc-cxx-check" "dist" "distcheck")
+        list(APPEND FO_DUMMY_TARGETS "mongoc-cxx-check" "dist" "distcheck")
         DisableLibWarnings(mongoc_static mongoc-cxx-check)
     endif()
 endif()
@@ -436,11 +454,15 @@ set(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imgui_widgets.cpp"
     "${FO_DEAR_IMGUI_DIR}/imstb_rectpack.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
-    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h")
+    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h")
 include_directories("${FO_DEAR_IMGUI_DIR}")
+include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(ImGui ${FO_IMGUI_SOURCE})
-target_compile_definitions(ImGui PRIVATE "IMGUI_DISABLE_OBSOLETE_FUNCTIONS" "IMGUI_DISABLE_DEMO_WINDOWS" "IMGUI_DISABLE_DEBUG_TOOLS")
-add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DISABLE_DEMO_WINDOWS IMGUI_DISABLE_DEBUG_TOOLS)
+target_compile_definitions(ImGui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
+add_compile_definitions("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
 list(APPEND FO_COMMON_LIBS "ImGui")
 
 if(WIN32 AND WINRT)
@@ -453,7 +475,14 @@ DisableLibWarnings(ImGui)
 # Catch2
 StatusMessage("+ Catch2")
 set(FO_CATCH2_DIR "${FO_ENGINE_ROOT}/ThirdParty/Catch2")
-include_directories("${FO_CATCH2_DIR}/single_include/catch2")
+include_directories("${FO_CATCH2_DIR}")
+set(FO_CATCH2_SOURCE
+    "${FO_CATCH2_DIR}/catch_amalgamated.cpp"
+    "${FO_CATCH2_DIR}/catch_amalgamated.hpp")
+add_library(Catch2 ${FO_CATCH2_SOURCE})
+target_compile_definitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
+list(APPEND FO_TESTING_LIBS "Catch2")
+DisableLibWarnings(Catch2)
 
 # Backward-cpp
 if(WIN32 OR LINUX OR(APPLE AND NOT PLATFORM))
@@ -492,20 +521,21 @@ DisableLibWarnings(SPARK_Core PugiXML)
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ glslang")
     set(FO_GLSLANG_DIR "${FO_ENGINE_ROOT}/ThirdParty/glslang")
+    set(GLSLANG_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
+    set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(BUILD_EXTERNAL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(OVERRIDE_MSVCCRT OFF CACHE BOOL "Forced by FOnline" FORCE)
+    set(BUILD_WERROR OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(SKIP_GLSLANG_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_HLSL OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_SPVREMAPPER OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_AMD_EXTENSIONS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_NV_EXTENSIONS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_CTEST OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_RTTI ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_EXCEPTIONS ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_OPT OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_PCH OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_GLSLANG_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
+    set(ALLOW_EXTERNAL_SPIRV_TOOLS OFF CACHE BOOL "Forced by FOnline" FORCE)
 
     if(EMSCRIPTEN)
         set(ENABLE_GLSLANG_WEB ON CACHE BOOL "Forced by FOnline" FORCE)
@@ -517,8 +547,8 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_subdirectory("${FO_GLSLANG_DIR}")
     include_directories("${FO_GLSLANG_DIR}/glslang/Public")
     include_directories("${FO_GLSLANG_DIR}/SPIRV")
-    list(APPEND FO_BAKER_LIBS "glslang" "glslang-default-resource-limits" "OGLCompiler" "OSDependent" "SPIRV" "GenericCodeGen" "MachineIndependent")
-    DisableLibWarnings(glslang glslang-default-resource-limits OGLCompiler OSDependent SPIRV GenericCodeGen MachineIndependent)
+    list(APPEND FO_BAKER_LIBS "glslang" "glslang-default-resource-limits" "OSDependent" "SPIRV" "GenericCodeGen" "MachineIndependent")
+    DisableLibWarnings(glslang glslang-default-resource-limits OSDependent SPIRV GenericCodeGen MachineIndependent)
 
     StatusMessage("+ SPIRV-Cross")
     set(FO_SPIRV_CROSS_DIR "${FO_ENGINE_ROOT}/ThirdParty/SPIRV-Cross")
@@ -1638,7 +1668,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications")
 set_property(TARGET ${FO_CORE_LIBS_GROUP} PROPERTY FOLDER "CoreLibs")
 set_property(TARGET ${FO_COMMANDS_GROUP} PROPERTY FOLDER "Commands")
-set_property(TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TRAGETS} PROPERTY FOLDER "ThirdParty")
+set_property(TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty")
+set_property(TARGET ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty/Dummy")
 
 # Print cached variables
 if(FO_VERBOSE_BUILD)

@@ -11,9 +11,9 @@ export FO_PROJECT_ROOT=$(cd $FO_PROJECT_ROOT; pwd)
 export FO_ENGINE_ROOT=$(cd $FO_ENGINE_ROOT; pwd)
 export FO_WORKSPACE=$(mkdir -p $FO_WORKSPACE; cd $FO_WORKSPACE; pwd)
 export FO_OUTPUT=$(mkdir -p $FO_OUTPUT; cd $FO_OUTPUT; pwd)
-export EMSCRIPTEN_VERSION="3.1.45"
+export EMSCRIPTEN_VERSION="3.1.67"
 export ANDROID_HOME="/usr/lib/android-sdk"
-export ANDROID_NDK_VERSION="android-ndk-r25c"
+export ANDROID_NDK_VERSION="android-ndk-r27b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 export ANDROID_NATIVE_API_LEVEL_NUMBER=23
 

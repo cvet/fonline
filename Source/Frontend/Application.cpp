@@ -35,6 +35,7 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ImGuiStuff.h"
 #include "Log.h"
 #include "Platform.h"
 #include "StringUtils.h"
@@ -45,8 +46,6 @@
 #include "SDL_events.h"
 #include "SDL_syswm.h"
 #include "SDL_video.h"
-
-#include "imgui.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -522,9 +521,10 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #endif
 
         // Init Dear ImGui
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
+        ImGuiExt::Init();
+
         ImGuiIO& io = ImGui::GetIO();
+        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
         io.BackendPlatformName = "fonline";
         io.WantSaveIniSettings = false;
@@ -546,9 +546,9 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        io.GetClipboardTextFn = [](void*) -> const char* { return App->Input.GetClipboardText().c_str(); };
-        io.SetClipboardTextFn = [](void*, const char* text) { App->Input.SetClipboardText(text); };
-        io.ClipboardUserData = nullptr;
+        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* { return App->Input.GetClipboardText().c_str(); };
+        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) { App->Input.SetClipboardText(text); };
+        platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
         if (ActiveRendererType != RenderType::Null) {

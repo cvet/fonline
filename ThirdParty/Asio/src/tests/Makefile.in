@@ -91,8 +91,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @HAVE_OPENSSL_TRUE@@SEPARATE_COMPILATION_TRUE@am__append_1 = ../asio_ssl.cpp
-check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
-	unit/associated_allocator$(EXEEXT) \
+check_PROGRAMS = unit/any_completion_executor$(EXEEXT) \
+	unit/any_completion_handler$(EXEEXT) \
+	unit/any_io_executor$(EXEEXT) unit/append$(EXEEXT) \
+	unit/as_tuple$(EXEEXT) unit/associated_allocator$(EXEEXT) \
 	unit/associated_cancellation_slot$(EXEEXT) \
 	unit/associated_executor$(EXEEXT) \
 	unit/associated_immediate_executor$(EXEEXT) \
@@ -130,26 +132,13 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/execution/any_executor$(EXEEXT) \
 	unit/execution/blocking$(EXEEXT) \
 	unit/execution/blocking_adaptation$(EXEEXT) \
-	unit/execution/bulk_execute$(EXEEXT) \
-	unit/execution/bulk_guarantee$(EXEEXT) \
-	unit/execution/connect$(EXEEXT) \
 	unit/execution/context_as$(EXEEXT) \
-	unit/execution/execute$(EXEEXT) \
 	unit/execution/executor$(EXEEXT) \
 	unit/execution/invocable_archetype$(EXEEXT) \
 	unit/execution/mapping$(EXEEXT) \
-	unit/execution/operation_state$(EXEEXT) \
 	unit/execution/outstanding_work$(EXEEXT) \
 	unit/execution/prefer_only$(EXEEXT) \
-	unit/execution/receiver$(EXEEXT) \
 	unit/execution/relationship$(EXEEXT) \
-	unit/execution/schedule$(EXEEXT) \
-	unit/execution/scheduler$(EXEEXT) \
-	unit/execution/sender$(EXEEXT) \
-	unit/execution/set_done$(EXEEXT) \
-	unit/execution/set_error$(EXEEXT) \
-	unit/execution/set_value$(EXEEXT) \
-	unit/execution/start$(EXEEXT) unit/execution/submit$(EXEEXT) \
 	unit/execution_context$(EXEEXT) unit/executor$(EXEEXT) \
 	unit/executor_work_guard$(EXEEXT) unit/file_base$(EXEEXT) \
 	unit/generic/basic_endpoint$(EXEEXT) \
@@ -229,7 +218,8 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 @HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel \
 @HAVE_CXX11_TRUE@	unit/experimental/channel \
 @HAVE_CXX11_TRUE@	unit/experimental/channel_traits \
-@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/parallel_group
 
 @HAVE_CXX20_TRUE@am__append_3 = \
 @HAVE_CXX20_TRUE@	unit/experimental/promise
@@ -256,8 +246,10 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 @HAVE_OPENSSL_TRUE@	unit/ssl/stream_base \
 @HAVE_OPENSSL_TRUE@	unit/ssl/stream
 
-TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
-	unit/associated_allocator$(EXEEXT) \
+TESTS = unit/any_completion_executor$(EXEEXT) \
+	unit/any_completion_handler$(EXEEXT) \
+	unit/any_io_executor$(EXEEXT) unit/append$(EXEEXT) \
+	unit/as_tuple$(EXEEXT) unit/associated_allocator$(EXEEXT) \
 	unit/associated_cancellation_slot$(EXEEXT) \
 	unit/associated_executor$(EXEEXT) \
 	unit/associated_immediate_executor$(EXEEXT) \
@@ -294,26 +286,13 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/error$(EXEEXT) unit/execution/any_executor$(EXEEXT) \
 	unit/execution/blocking$(EXEEXT) \
 	unit/execution/blocking_adaptation$(EXEEXT) \
-	unit/execution/bulk_execute$(EXEEXT) \
-	unit/execution/bulk_guarantee$(EXEEXT) \
-	unit/execution/connect$(EXEEXT) \
 	unit/execution/context_as$(EXEEXT) \
-	unit/execution/execute$(EXEEXT) \
 	unit/execution/executor$(EXEEXT) \
 	unit/execution/invocable_archetype$(EXEEXT) \
 	unit/execution/mapping$(EXEEXT) \
-	unit/execution/operation_state$(EXEEXT) \
 	unit/execution/outstanding_work$(EXEEXT) \
 	unit/execution/prefer_only$(EXEEXT) \
-	unit/execution/receiver$(EXEEXT) \
 	unit/execution/relationship$(EXEEXT) \
-	unit/execution/schedule$(EXEEXT) \
-	unit/execution/scheduler$(EXEEXT) \
-	unit/execution/sender$(EXEEXT) \
-	unit/execution/set_done$(EXEEXT) \
-	unit/execution/set_error$(EXEEXT) \
-	unit/execution/set_value$(EXEEXT) \
-	unit/execution/start$(EXEEXT) unit/execution/submit$(EXEEXT) \
 	unit/execution_context$(EXEEXT) unit/executor$(EXEEXT) \
 	unit/executor_work_guard$(EXEEXT) unit/file_base$(EXEEXT) \
 	unit/high_resolution_timer$(EXEEXT) unit/io_context$(EXEEXT) \
@@ -382,7 +361,8 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 @HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel \
 @HAVE_CXX11_TRUE@	unit/experimental/channel \
 @HAVE_CXX11_TRUE@	unit/experimental/channel_traits \
-@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/parallel_group
 
 @HAVE_CXX20_TRUE@am__append_7 = \
 @HAVE_CXX20_TRUE@	unit/experimental/promise
@@ -424,7 +404,8 @@ CONFIG_CLEAN_VPATH_FILES =
 @HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel$(EXEEXT) \
 @HAVE_CXX11_TRUE@	unit/experimental/channel$(EXEEXT) \
 @HAVE_CXX11_TRUE@	unit/experimental/channel_traits$(EXEEXT) \
-@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel$(EXEEXT)
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel$(EXEEXT) \
+@HAVE_CXX11_TRUE@	unit/experimental/parallel_group$(EXEEXT)
 @HAVE_CXX20_TRUE@am__EXEEXT_2 = unit/experimental/promise$(EXEEXT)
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am__EXEEXT_3 = unit/experimental/awaitable_operators$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/co_composed$(EXEEXT) \
@@ -501,6 +482,25 @@ am__performance_server_SOURCES_DIST = performance/server.cpp
 performance_server_OBJECTS = $(am_performance_server_OBJECTS)
 performance_server_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@performance_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_any_completion_executor_OBJECTS =  \
+	unit/any_completion_executor.$(OBJEXT)
+unit_any_completion_executor_OBJECTS =  \
+	$(am_unit_any_completion_executor_OBJECTS)
+unit_any_completion_executor_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_any_completion_executor_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_any_completion_handler_OBJECTS =  \
+	unit/any_completion_handler.$(OBJEXT)
+unit_any_completion_handler_OBJECTS =  \
+	$(am_unit_any_completion_handler_OBJECTS)
+unit_any_completion_handler_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_any_completion_handler_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_any_io_executor_OBJECTS = unit/any_io_executor.$(OBJEXT)
+unit_any_io_executor_OBJECTS = $(am_unit_any_io_executor_OBJECTS)
+unit_any_io_executor_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_any_io_executor_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_append_OBJECTS = unit/append.$(OBJEXT)
 unit_append_OBJECTS = $(am_unit_append_OBJECTS)
@@ -801,36 +801,12 @@ unit_execution_blocking_adaptation_OBJECTS =  \
 unit_execution_blocking_adaptation_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_execution_blocking_adaptation_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_bulk_execute_OBJECTS =  \
-	unit/execution/bulk_execute.$(OBJEXT)
-unit_execution_bulk_execute_OBJECTS =  \
-	$(am_unit_execution_bulk_execute_OBJECTS)
-unit_execution_bulk_execute_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_bulk_execute_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_bulk_guarantee_OBJECTS =  \
-	unit/execution/bulk_guarantee.$(OBJEXT)
-unit_execution_bulk_guarantee_OBJECTS =  \
-	$(am_unit_execution_bulk_guarantee_OBJECTS)
-unit_execution_bulk_guarantee_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_bulk_guarantee_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_connect_OBJECTS = unit/execution/connect.$(OBJEXT)
-unit_execution_connect_OBJECTS = $(am_unit_execution_connect_OBJECTS)
-unit_execution_connect_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_connect_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_execution_context_as_OBJECTS =  \
 	unit/execution/context_as.$(OBJEXT)
 unit_execution_context_as_OBJECTS =  \
 	$(am_unit_execution_context_as_OBJECTS)
 unit_execution_context_as_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_execution_context_as_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_execute_OBJECTS = unit/execution/execute.$(OBJEXT)
-unit_execution_execute_OBJECTS = $(am_unit_execution_execute_OBJECTS)
-unit_execution_execute_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_execute_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_execution_executor_OBJECTS =  \
 	unit/execution/executor.$(OBJEXT)
@@ -851,13 +827,6 @@ unit_execution_mapping_OBJECTS = $(am_unit_execution_mapping_OBJECTS)
 unit_execution_mapping_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_execution_mapping_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_operation_state_OBJECTS =  \
-	unit/execution/operation_state.$(OBJEXT)
-unit_execution_operation_state_OBJECTS =  \
-	$(am_unit_execution_operation_state_OBJECTS)
-unit_execution_operation_state_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_operation_state_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_execution_outstanding_work_OBJECTS =  \
 	unit/execution/outstanding_work.$(OBJEXT)
 unit_execution_outstanding_work_OBJECTS =  \
@@ -872,69 +841,12 @@ unit_execution_prefer_only_OBJECTS =  \
 unit_execution_prefer_only_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_execution_prefer_only_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_receiver_OBJECTS =  \
-	unit/execution/receiver.$(OBJEXT)
-unit_execution_receiver_OBJECTS =  \
-	$(am_unit_execution_receiver_OBJECTS)
-unit_execution_receiver_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_receiver_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_execution_relationship_OBJECTS =  \
 	unit/execution/relationship.$(OBJEXT)
 unit_execution_relationship_OBJECTS =  \
 	$(am_unit_execution_relationship_OBJECTS)
 unit_execution_relationship_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_execution_relationship_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_schedule_OBJECTS =  \
-	unit/execution/schedule.$(OBJEXT)
-unit_execution_schedule_OBJECTS =  \
-	$(am_unit_execution_schedule_OBJECTS)
-unit_execution_schedule_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_schedule_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_scheduler_OBJECTS =  \
-	unit/execution/scheduler.$(OBJEXT)
-unit_execution_scheduler_OBJECTS =  \
-	$(am_unit_execution_scheduler_OBJECTS)
-unit_execution_scheduler_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_scheduler_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_sender_OBJECTS = unit/execution/sender.$(OBJEXT)
-unit_execution_sender_OBJECTS = $(am_unit_execution_sender_OBJECTS)
-unit_execution_sender_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_sender_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_set_done_OBJECTS =  \
-	unit/execution/set_done.$(OBJEXT)
-unit_execution_set_done_OBJECTS =  \
-	$(am_unit_execution_set_done_OBJECTS)
-unit_execution_set_done_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_set_done_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_set_error_OBJECTS =  \
-	unit/execution/set_error.$(OBJEXT)
-unit_execution_set_error_OBJECTS =  \
-	$(am_unit_execution_set_error_OBJECTS)
-unit_execution_set_error_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_set_error_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_set_value_OBJECTS =  \
-	unit/execution/set_value.$(OBJEXT)
-unit_execution_set_value_OBJECTS =  \
-	$(am_unit_execution_set_value_OBJECTS)
-unit_execution_set_value_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_set_value_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_start_OBJECTS = unit/execution/start.$(OBJEXT)
-unit_execution_start_OBJECTS = $(am_unit_execution_start_OBJECTS)
-unit_execution_start_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_start_DEPENDENCIES =  \
-@SEPARATE_COMPILATION_TRUE@	libasio.a
-am_unit_execution_submit_OBJECTS = unit/execution/submit.$(OBJEXT)
-unit_execution_submit_OBJECTS = $(am_unit_execution_submit_OBJECTS)
-unit_execution_submit_LDADD = $(LDADD)
-@SEPARATE_COMPILATION_TRUE@unit_execution_submit_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_execution_context_OBJECTS = unit/execution_context.$(OBJEXT)
 unit_execution_context_OBJECTS = $(am_unit_execution_context_OBJECTS)
@@ -1082,6 +994,15 @@ unit_experimental_coro_use_coro_OBJECTS =  \
 	$(am_unit_experimental_coro_use_coro_OBJECTS)
 unit_experimental_coro_use_coro_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_experimental_coro_use_coro_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am__unit_experimental_parallel_group_SOURCES_DIST =  \
+	unit/experimental/parallel_group.cpp
+@HAVE_CXX11_TRUE@am_unit_experimental_parallel_group_OBJECTS =  \
+@HAVE_CXX11_TRUE@	unit/experimental/parallel_group.$(OBJEXT)
+unit_experimental_parallel_group_OBJECTS =  \
+	$(am_unit_experimental_parallel_group_OBJECTS)
+unit_experimental_parallel_group_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_experimental_parallel_group_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_promise_SOURCES_DIST =  \
 	unit/experimental/promise.cpp
@@ -1674,7 +1595,10 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	latency/$(DEPDIR)/udp_client.Po \
 	latency/$(DEPDIR)/udp_server.Po \
 	performance/$(DEPDIR)/client.Po \
-	performance/$(DEPDIR)/server.Po unit/$(DEPDIR)/append.Po \
+	performance/$(DEPDIR)/server.Po \
+	unit/$(DEPDIR)/any_completion_executor.Po \
+	unit/$(DEPDIR)/any_completion_handler.Po \
+	unit/$(DEPDIR)/any_io_executor.Po unit/$(DEPDIR)/append.Po \
 	unit/$(DEPDIR)/as_tuple.Po \
 	unit/$(DEPDIR)/associated_allocator.Po \
 	unit/$(DEPDIR)/associated_cancellation_slot.Po \
@@ -1751,27 +1675,13 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/execution/$(DEPDIR)/any_executor.Po \
 	unit/execution/$(DEPDIR)/blocking.Po \
 	unit/execution/$(DEPDIR)/blocking_adaptation.Po \
-	unit/execution/$(DEPDIR)/bulk_execute.Po \
-	unit/execution/$(DEPDIR)/bulk_guarantee.Po \
-	unit/execution/$(DEPDIR)/connect.Po \
 	unit/execution/$(DEPDIR)/context_as.Po \
-	unit/execution/$(DEPDIR)/execute.Po \
 	unit/execution/$(DEPDIR)/executor.Po \
 	unit/execution/$(DEPDIR)/invocable_archetype.Po \
 	unit/execution/$(DEPDIR)/mapping.Po \
-	unit/execution/$(DEPDIR)/operation_state.Po \
 	unit/execution/$(DEPDIR)/outstanding_work.Po \
 	unit/execution/$(DEPDIR)/prefer_only.Po \
-	unit/execution/$(DEPDIR)/receiver.Po \
 	unit/execution/$(DEPDIR)/relationship.Po \
-	unit/execution/$(DEPDIR)/schedule.Po \
-	unit/execution/$(DEPDIR)/scheduler.Po \
-	unit/execution/$(DEPDIR)/sender.Po \
-	unit/execution/$(DEPDIR)/set_done.Po \
-	unit/execution/$(DEPDIR)/set_error.Po \
-	unit/execution/$(DEPDIR)/set_value.Po \
-	unit/execution/$(DEPDIR)/start.Po \
-	unit/execution/$(DEPDIR)/submit.Po \
 	unit/experimental/$(DEPDIR)/awaitable_operators.Po \
 	unit/experimental/$(DEPDIR)/basic_channel.Po \
 	unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po \
@@ -1779,6 +1689,7 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/experimental/$(DEPDIR)/channel_traits.Po \
 	unit/experimental/$(DEPDIR)/co_composed.Po \
 	unit/experimental/$(DEPDIR)/concurrent_channel.Po \
+	unit/experimental/$(DEPDIR)/parallel_group.Po \
 	unit/experimental/$(DEPDIR)/promise.Po \
 	unit/experimental/coro/$(DEPDIR)/allocator.Po \
 	unit/experimental/coro/$(DEPDIR)/cancel.Po \
@@ -1856,7 +1767,10 @@ am__v_CXXLD_1 =
 SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(latency_tcp_server_SOURCES) $(latency_udp_client_SOURCES) \
 	$(latency_udp_server_SOURCES) $(performance_client_SOURCES) \
-	$(performance_server_SOURCES) $(unit_append_SOURCES) \
+	$(performance_server_SOURCES) \
+	$(unit_any_completion_executor_SOURCES) \
+	$(unit_any_completion_handler_SOURCES) \
+	$(unit_any_io_executor_SOURCES) $(unit_append_SOURCES) \
 	$(unit_as_tuple_SOURCES) $(unit_associated_allocator_SOURCES) \
 	$(unit_associated_cancellation_slot_SOURCES) \
 	$(unit_associated_executor_SOURCES) \
@@ -1899,27 +1813,13 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_execution_any_executor_SOURCES) \
 	$(unit_execution_blocking_SOURCES) \
 	$(unit_execution_blocking_adaptation_SOURCES) \
-	$(unit_execution_bulk_execute_SOURCES) \
-	$(unit_execution_bulk_guarantee_SOURCES) \
-	$(unit_execution_connect_SOURCES) \
 	$(unit_execution_context_as_SOURCES) \
-	$(unit_execution_execute_SOURCES) \
 	$(unit_execution_executor_SOURCES) \
 	$(unit_execution_invocable_archetype_SOURCES) \
 	$(unit_execution_mapping_SOURCES) \
-	$(unit_execution_operation_state_SOURCES) \
 	$(unit_execution_outstanding_work_SOURCES) \
 	$(unit_execution_prefer_only_SOURCES) \
-	$(unit_execution_receiver_SOURCES) \
 	$(unit_execution_relationship_SOURCES) \
-	$(unit_execution_schedule_SOURCES) \
-	$(unit_execution_scheduler_SOURCES) \
-	$(unit_execution_sender_SOURCES) \
-	$(unit_execution_set_done_SOURCES) \
-	$(unit_execution_set_error_SOURCES) \
-	$(unit_execution_set_value_SOURCES) \
-	$(unit_execution_start_SOURCES) \
-	$(unit_execution_submit_SOURCES) \
 	$(unit_execution_context_SOURCES) $(unit_executor_SOURCES) \
 	$(unit_executor_work_guard_SOURCES) \
 	$(unit_experimental_awaitable_operators_SOURCES) \
@@ -1938,6 +1838,7 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_experimental_coro_simple_test_SOURCES) \
 	$(unit_experimental_coro_stack_test_SOURCES) \
 	$(unit_experimental_coro_use_coro_SOURCES) \
+	$(unit_experimental_parallel_group_SOURCES) \
 	$(unit_experimental_promise_SOURCES) $(unit_file_base_SOURCES) \
 	$(unit_generic_basic_endpoint_SOURCES) \
 	$(unit_generic_datagram_protocol_SOURCES) \
@@ -2018,7 +1919,10 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__latency_udp_client_SOURCES_DIST) \
 	$(am__latency_udp_server_SOURCES_DIST) \
 	$(am__performance_client_SOURCES_DIST) \
-	$(am__performance_server_SOURCES_DIST) $(unit_append_SOURCES) \
+	$(am__performance_server_SOURCES_DIST) \
+	$(unit_any_completion_executor_SOURCES) \
+	$(unit_any_completion_handler_SOURCES) \
+	$(unit_any_io_executor_SOURCES) $(unit_append_SOURCES) \
 	$(unit_as_tuple_SOURCES) $(unit_associated_allocator_SOURCES) \
 	$(unit_associated_cancellation_slot_SOURCES) \
 	$(unit_associated_executor_SOURCES) \
@@ -2061,27 +1965,13 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(unit_execution_any_executor_SOURCES) \
 	$(unit_execution_blocking_SOURCES) \
 	$(unit_execution_blocking_adaptation_SOURCES) \
-	$(unit_execution_bulk_execute_SOURCES) \
-	$(unit_execution_bulk_guarantee_SOURCES) \
-	$(unit_execution_connect_SOURCES) \
 	$(unit_execution_context_as_SOURCES) \
-	$(unit_execution_execute_SOURCES) \
 	$(unit_execution_executor_SOURCES) \
 	$(unit_execution_invocable_archetype_SOURCES) \
 	$(unit_execution_mapping_SOURCES) \
-	$(unit_execution_operation_state_SOURCES) \
 	$(unit_execution_outstanding_work_SOURCES) \
 	$(unit_execution_prefer_only_SOURCES) \
-	$(unit_execution_receiver_SOURCES) \
 	$(unit_execution_relationship_SOURCES) \
-	$(unit_execution_schedule_SOURCES) \
-	$(unit_execution_scheduler_SOURCES) \
-	$(unit_execution_sender_SOURCES) \
-	$(unit_execution_set_done_SOURCES) \
-	$(unit_execution_set_error_SOURCES) \
-	$(unit_execution_set_value_SOURCES) \
-	$(unit_execution_start_SOURCES) \
-	$(unit_execution_submit_SOURCES) \
 	$(unit_execution_context_SOURCES) $(unit_executor_SOURCES) \
 	$(unit_executor_work_guard_SOURCES) \
 	$(am__unit_experimental_awaitable_operators_SOURCES_DIST) \
@@ -2100,6 +1990,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__unit_experimental_coro_simple_test_SOURCES_DIST) \
 	$(am__unit_experimental_coro_stack_test_SOURCES_DIST) \
 	$(am__unit_experimental_coro_use_coro_SOURCES_DIST) \
+	$(am__unit_experimental_parallel_group_SOURCES_DIST) \
 	$(am__unit_experimental_promise_SOURCES_DIST) \
 	$(unit_file_base_SOURCES) \
 	$(unit_generic_basic_endpoint_SOURCES) \
@@ -2569,6 +2460,9 @@ AM_CXXFLAGS = -I$(srcdir)/../../include
 @STANDALONE_FALSE@latency_udp_server_SOURCES = latency/udp_server.cpp
 @STANDALONE_FALSE@performance_client_SOURCES = performance/client.cpp
 @STANDALONE_FALSE@performance_server_SOURCES = performance/server.cpp
+unit_any_completion_executor_SOURCES = unit/any_completion_executor.cpp
+unit_any_completion_handler_SOURCES = unit/any_completion_handler.cpp
+unit_any_io_executor_SOURCES = unit/any_io_executor.cpp
 unit_append_SOURCES = unit/append.cpp
 unit_as_tuple_SOURCES = unit/as_tuple.cpp
 unit_associated_allocator_SOURCES = unit/associated_allocator.cpp
@@ -2623,27 +2517,13 @@ unit_error_SOURCES = unit/error.cpp
 unit_execution_any_executor_SOURCES = unit/execution/any_executor.cpp
 unit_execution_blocking_SOURCES = unit/execution/blocking.cpp
 unit_execution_blocking_adaptation_SOURCES = unit/execution/blocking_adaptation.cpp
-unit_execution_bulk_execute_SOURCES = unit/execution/bulk_execute.cpp
-unit_execution_bulk_guarantee_SOURCES = unit/execution/bulk_guarantee.cpp
-unit_execution_connect_SOURCES = unit/execution/connect.cpp
 unit_execution_context_as_SOURCES = unit/execution/context_as.cpp
-unit_execution_execute_SOURCES = unit/execution/execute.cpp
 unit_execution_executor_SOURCES = unit/execution/executor.cpp
 unit_execution_invocable_archetype_SOURCES = unit/execution/invocable_archetype.cpp
 unit_execution_mapping_SOURCES = unit/execution/mapping.cpp
 unit_execution_outstanding_work_SOURCES = unit/execution/outstanding_work.cpp
-unit_execution_operation_state_SOURCES = unit/execution/operation_state.cpp
 unit_execution_prefer_only_SOURCES = unit/execution/prefer_only.cpp
-unit_execution_receiver_SOURCES = unit/execution/receiver.cpp
 unit_execution_relationship_SOURCES = unit/execution/relationship.cpp
-unit_execution_schedule_SOURCES = unit/execution/schedule.cpp
-unit_execution_scheduler_SOURCES = unit/execution/scheduler.cpp
-unit_execution_sender_SOURCES = unit/execution/sender.cpp
-unit_execution_set_done_SOURCES = unit/execution/set_done.cpp
-unit_execution_set_error_SOURCES = unit/execution/set_error.cpp
-unit_execution_set_value_SOURCES = unit/execution/set_value.cpp
-unit_execution_start_SOURCES = unit/execution/start.cpp
-unit_execution_submit_SOURCES = unit/execution/submit.cpp
 unit_execution_context_SOURCES = unit/execution_context.cpp
 unit_executor_SOURCES = unit/executor.cpp
 unit_executor_work_guard_SOURCES = unit/executor_work_guard.cpp
@@ -2748,6 +2628,7 @@ unit_write_at_SOURCES = unit/write_at.cpp
 @HAVE_CXX11_TRUE@unit_experimental_channel_SOURCES = unit/experimental/channel.cpp
 @HAVE_CXX11_TRUE@unit_experimental_channel_traits_SOURCES = unit/experimental/channel_traits.cpp
 @HAVE_CXX11_TRUE@unit_experimental_concurrent_channel_SOURCES = unit/experimental/concurrent_channel.cpp
+@HAVE_CXX11_TRUE@unit_experimental_parallel_group_SOURCES = unit/experimental/parallel_group.cpp
 @HAVE_CXX20_TRUE@unit_experimental_promise_SOURCES = unit/experimental/promise.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_awaitable_operators_SOURCES = unit/experimental/awaitable_operators.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_co_composed_SOURCES = unit/experimental/co_composed.cpp
@@ -2888,6 +2769,24 @@ unit/$(am__dirstamp):
 unit/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) unit/$(DEPDIR)
 	@: > unit/$(DEPDIR)/$(am__dirstamp)
+unit/any_completion_executor.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/any_completion_executor$(EXEEXT): $(unit_any_completion_executor_OBJECTS) $(unit_any_completion_executor_DEPENDENCIES) $(EXTRA_unit_any_completion_executor_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/any_completion_executor$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_any_completion_executor_OBJECTS) $(unit_any_completion_executor_LDADD) $(LIBS)
+unit/any_completion_handler.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/any_completion_handler$(EXEEXT): $(unit_any_completion_handler_OBJECTS) $(unit_any_completion_handler_DEPENDENCIES) $(EXTRA_unit_any_completion_handler_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/any_completion_handler$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_any_completion_handler_OBJECTS) $(unit_any_completion_handler_LDADD) $(LIBS)
+unit/any_io_executor.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/any_io_executor$(EXEEXT): $(unit_any_io_executor_OBJECTS) $(unit_any_io_executor_DEPENDENCIES) $(EXTRA_unit_any_io_executor_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/any_io_executor$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_any_io_executor_OBJECTS) $(unit_any_io_executor_LDADD) $(LIBS)
 unit/append.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -3219,37 +3118,12 @@ unit/execution/blocking_adaptation.$(OBJEXT):  \
 unit/execution/blocking_adaptation$(EXEEXT): $(unit_execution_blocking_adaptation_OBJECTS) $(unit_execution_blocking_adaptation_DEPENDENCIES) $(EXTRA_unit_execution_blocking_adaptation_DEPENDENCIES) unit/execution/$(am__dirstamp)
 	@rm -f unit/execution/blocking_adaptation$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_blocking_adaptation_OBJECTS) $(unit_execution_blocking_adaptation_LDADD) $(LIBS)
-unit/execution/bulk_execute.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/bulk_execute$(EXEEXT): $(unit_execution_bulk_execute_OBJECTS) $(unit_execution_bulk_execute_DEPENDENCIES) $(EXTRA_unit_execution_bulk_execute_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/bulk_execute$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_bulk_execute_OBJECTS) $(unit_execution_bulk_execute_LDADD) $(LIBS)
-unit/execution/bulk_guarantee.$(OBJEXT):  \
-	unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/bulk_guarantee$(EXEEXT): $(unit_execution_bulk_guarantee_OBJECTS) $(unit_execution_bulk_guarantee_DEPENDENCIES) $(EXTRA_unit_execution_bulk_guarantee_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/bulk_guarantee$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_bulk_guarantee_OBJECTS) $(unit_execution_bulk_guarantee_LDADD) $(LIBS)
-unit/execution/connect.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/connect$(EXEEXT): $(unit_execution_connect_OBJECTS) $(unit_execution_connect_DEPENDENCIES) $(EXTRA_unit_execution_connect_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/connect$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_connect_OBJECTS) $(unit_execution_connect_LDADD) $(LIBS)
 unit/execution/context_as.$(OBJEXT): unit/execution/$(am__dirstamp) \
 	unit/execution/$(DEPDIR)/$(am__dirstamp)
 
 unit/execution/context_as$(EXEEXT): $(unit_execution_context_as_OBJECTS) $(unit_execution_context_as_DEPENDENCIES) $(EXTRA_unit_execution_context_as_DEPENDENCIES) unit/execution/$(am__dirstamp)
 	@rm -f unit/execution/context_as$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_context_as_OBJECTS) $(unit_execution_context_as_LDADD) $(LIBS)
-unit/execution/execute.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/execute$(EXEEXT): $(unit_execution_execute_OBJECTS) $(unit_execution_execute_DEPENDENCIES) $(EXTRA_unit_execution_execute_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/execute$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_execute_OBJECTS) $(unit_execution_execute_LDADD) $(LIBS)
 unit/execution/executor.$(OBJEXT): unit/execution/$(am__dirstamp) \
 	unit/execution/$(DEPDIR)/$(am__dirstamp)
 
@@ -3269,13 +3143,6 @@ unit/execution/mapping.$(OBJEXT): unit/execution/$(am__dirstamp) \
 unit/execution/mapping$(EXEEXT): $(unit_execution_mapping_OBJECTS) $(unit_execution_mapping_DEPENDENCIES) $(EXTRA_unit_execution_mapping_DEPENDENCIES) unit/execution/$(am__dirstamp)
 	@rm -f unit/execution/mapping$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_mapping_OBJECTS) $(unit_execution_mapping_LDADD) $(LIBS)
-unit/execution/operation_state.$(OBJEXT):  \
-	unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/operation_state$(EXEEXT): $(unit_execution_operation_state_OBJECTS) $(unit_execution_operation_state_DEPENDENCIES) $(EXTRA_unit_execution_operation_state_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/operation_state$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_operation_state_OBJECTS) $(unit_execution_operation_state_LDADD) $(LIBS)
 unit/execution/outstanding_work.$(OBJEXT):  \
 	unit/execution/$(am__dirstamp) \
 	unit/execution/$(DEPDIR)/$(am__dirstamp)
@@ -3289,66 +3156,12 @@ unit/execution/prefer_only.$(OBJEXT): unit/execution/$(am__dirstamp) \
 unit/execution/prefer_only$(EXEEXT): $(unit_execution_prefer_only_OBJECTS) $(unit_execution_prefer_only_DEPENDENCIES) $(EXTRA_unit_execution_prefer_only_DEPENDENCIES) unit/execution/$(am__dirstamp)
 	@rm -f unit/execution/prefer_only$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_prefer_only_OBJECTS) $(unit_execution_prefer_only_LDADD) $(LIBS)
-unit/execution/receiver.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/receiver$(EXEEXT): $(unit_execution_receiver_OBJECTS) $(unit_execution_receiver_DEPENDENCIES) $(EXTRA_unit_execution_receiver_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/receiver$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_receiver_OBJECTS) $(unit_execution_receiver_LDADD) $(LIBS)
 unit/execution/relationship.$(OBJEXT): unit/execution/$(am__dirstamp) \
 	unit/execution/$(DEPDIR)/$(am__dirstamp)
 
 unit/execution/relationship$(EXEEXT): $(unit_execution_relationship_OBJECTS) $(unit_execution_relationship_DEPENDENCIES) $(EXTRA_unit_execution_relationship_DEPENDENCIES) unit/execution/$(am__dirstamp)
 	@rm -f unit/execution/relationship$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_relationship_OBJECTS) $(unit_execution_relationship_LDADD) $(LIBS)
-unit/execution/schedule.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/schedule$(EXEEXT): $(unit_execution_schedule_OBJECTS) $(unit_execution_schedule_DEPENDENCIES) $(EXTRA_unit_execution_schedule_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/schedule$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_schedule_OBJECTS) $(unit_execution_schedule_LDADD) $(LIBS)
-unit/execution/scheduler.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/scheduler$(EXEEXT): $(unit_execution_scheduler_OBJECTS) $(unit_execution_scheduler_DEPENDENCIES) $(EXTRA_unit_execution_scheduler_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/scheduler$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_scheduler_OBJECTS) $(unit_execution_scheduler_LDADD) $(LIBS)
-unit/execution/sender.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/sender$(EXEEXT): $(unit_execution_sender_OBJECTS) $(unit_execution_sender_DEPENDENCIES) $(EXTRA_unit_execution_sender_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/sender$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_sender_OBJECTS) $(unit_execution_sender_LDADD) $(LIBS)
-unit/execution/set_done.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/set_done$(EXEEXT): $(unit_execution_set_done_OBJECTS) $(unit_execution_set_done_DEPENDENCIES) $(EXTRA_unit_execution_set_done_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/set_done$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_set_done_OBJECTS) $(unit_execution_set_done_LDADD) $(LIBS)
-unit/execution/set_error.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/set_error$(EXEEXT): $(unit_execution_set_error_OBJECTS) $(unit_execution_set_error_DEPENDENCIES) $(EXTRA_unit_execution_set_error_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/set_error$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_set_error_OBJECTS) $(unit_execution_set_error_LDADD) $(LIBS)
-unit/execution/set_value.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/set_value$(EXEEXT): $(unit_execution_set_value_OBJECTS) $(unit_execution_set_value_DEPENDENCIES) $(EXTRA_unit_execution_set_value_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/set_value$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_set_value_OBJECTS) $(unit_execution_set_value_LDADD) $(LIBS)
-unit/execution/start.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/start$(EXEEXT): $(unit_execution_start_OBJECTS) $(unit_execution_start_DEPENDENCIES) $(EXTRA_unit_execution_start_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/start$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_start_OBJECTS) $(unit_execution_start_LDADD) $(LIBS)
-unit/execution/submit.$(OBJEXT): unit/execution/$(am__dirstamp) \
-	unit/execution/$(DEPDIR)/$(am__dirstamp)
-
-unit/execution/submit$(EXEEXT): $(unit_execution_submit_OBJECTS) $(unit_execution_submit_DEPENDENCIES) $(EXTRA_unit_execution_submit_DEPENDENCIES) unit/execution/$(am__dirstamp)
-	@rm -f unit/execution/submit$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(unit_execution_submit_OBJECTS) $(unit_execution_submit_LDADD) $(LIBS)
 unit/execution_context.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -3491,6 +3304,13 @@ unit/experimental/coro/use_coro.$(OBJEXT):  \
 unit/experimental/coro/use_coro$(EXEEXT): $(unit_experimental_coro_use_coro_OBJECTS) $(unit_experimental_coro_use_coro_DEPENDENCIES) $(EXTRA_unit_experimental_coro_use_coro_DEPENDENCIES) unit/experimental/coro/$(am__dirstamp)
 	@rm -f unit/experimental/coro/use_coro$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_experimental_coro_use_coro_OBJECTS) $(unit_experimental_coro_use_coro_LDADD) $(LIBS)
+unit/experimental/parallel_group.$(OBJEXT):  \
+	unit/experimental/$(am__dirstamp) \
+	unit/experimental/$(DEPDIR)/$(am__dirstamp)
+
+unit/experimental/parallel_group$(EXEEXT): $(unit_experimental_parallel_group_OBJECTS) $(unit_experimental_parallel_group_DEPENDENCIES) $(EXTRA_unit_experimental_parallel_group_DEPENDENCIES) unit/experimental/$(am__dirstamp)
+	@rm -f unit/experimental/parallel_group$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_experimental_parallel_group_OBJECTS) $(unit_experimental_parallel_group_LDADD) $(LIBS)
 unit/experimental/promise.$(OBJEXT):  \
 	unit/experimental/$(am__dirstamp) \
 	unit/experimental/$(DEPDIR)/$(am__dirstamp)
@@ -4196,6 +4016,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@latency/$(DEPDIR)/udp_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@performance/$(DEPDIR)/client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@performance/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/any_completion_executor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/any_completion_handler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/any_io_executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/append.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/as_tuple.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associated_allocator.Po@am__quote@ # am--include-marker
@@ -4295,27 +4118,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/any_executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/blocking.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/blocking_adaptation.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/bulk_execute.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/bulk_guarantee.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/connect.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/context_as.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/execute.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/invocable_archetype.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/mapping.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/operation_state.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/outstanding_work.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/prefer_only.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/receiver.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/relationship.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/schedule.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/scheduler.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/sender.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/set_done.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/set_error.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/set_value.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/start.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unit/execution/$(DEPDIR)/submit.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/awaitable_operators.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/basic_channel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po@am__quote@ # am--include-marker
@@ -4323,6 +4132,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/channel_traits.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/co_composed.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/concurrent_channel.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/parallel_group.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/promise.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/allocator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/cancel.Po@am__quote@ # am--include-marker
@@ -4657,6 +4467,27 @@ recheck: all $(check_PROGRAMS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
+unit/any_completion_executor.log: unit/any_completion_executor$(EXEEXT)
+	@p='unit/any_completion_executor$(EXEEXT)'; \
+	b='unit/any_completion_executor'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/any_completion_handler.log: unit/any_completion_handler$(EXEEXT)
+	@p='unit/any_completion_handler$(EXEEXT)'; \
+	b='unit/any_completion_handler'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/any_io_executor.log: unit/any_io_executor$(EXEEXT)
+	@p='unit/any_io_executor$(EXEEXT)'; \
+	b='unit/any_io_executor'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/append.log: unit/append$(EXEEXT)
 	@p='unit/append$(EXEEXT)'; \
 	b='unit/append'; \
@@ -5028,37 +4859,9 @@ unit/execution/blocking_adaptation.log: unit/execution/blocking_adaptation$(EXEE
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/bulk_execute.log: unit/execution/bulk_execute$(EXEEXT)
-	@p='unit/execution/bulk_execute$(EXEEXT)'; \
-	b='unit/execution/bulk_execute'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/bulk_guarantee.log: unit/execution/bulk_guarantee$(EXEEXT)
-	@p='unit/execution/bulk_guarantee$(EXEEXT)'; \
-	b='unit/execution/bulk_guarantee'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/connect.log: unit/execution/connect$(EXEEXT)
-	@p='unit/execution/connect$(EXEEXT)'; \
-	b='unit/execution/connect'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/execution/context_as.log: unit/execution/context_as$(EXEEXT)
 	@p='unit/execution/context_as$(EXEEXT)'; \
 	b='unit/execution/context_as'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/execute.log: unit/execution/execute$(EXEEXT)
-	@p='unit/execution/execute$(EXEEXT)'; \
-	b='unit/execution/execute'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -5084,13 +4887,6 @@ unit/execution/mapping.log: unit/execution/mapping$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/operation_state.log: unit/execution/operation_state$(EXEEXT)
-	@p='unit/execution/operation_state$(EXEEXT)'; \
-	b='unit/execution/operation_state'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/execution/outstanding_work.log: unit/execution/outstanding_work$(EXEEXT)
 	@p='unit/execution/outstanding_work$(EXEEXT)'; \
 	b='unit/execution/outstanding_work'; \
@@ -5105,72 +4901,9 @@ unit/execution/prefer_only.log: unit/execution/prefer_only$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/receiver.log: unit/execution/receiver$(EXEEXT)
-	@p='unit/execution/receiver$(EXEEXT)'; \
-	b='unit/execution/receiver'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/execution/relationship.log: unit/execution/relationship$(EXEEXT)
 	@p='unit/execution/relationship$(EXEEXT)'; \
 	b='unit/execution/relationship'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/schedule.log: unit/execution/schedule$(EXEEXT)
-	@p='unit/execution/schedule$(EXEEXT)'; \
-	b='unit/execution/schedule'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/scheduler.log: unit/execution/scheduler$(EXEEXT)
-	@p='unit/execution/scheduler$(EXEEXT)'; \
-	b='unit/execution/scheduler'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/sender.log: unit/execution/sender$(EXEEXT)
-	@p='unit/execution/sender$(EXEEXT)'; \
-	b='unit/execution/sender'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/set_done.log: unit/execution/set_done$(EXEEXT)
-	@p='unit/execution/set_done$(EXEEXT)'; \
-	b='unit/execution/set_done'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/set_error.log: unit/execution/set_error$(EXEEXT)
-	@p='unit/execution/set_error$(EXEEXT)'; \
-	b='unit/execution/set_error'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/set_value.log: unit/execution/set_value$(EXEEXT)
-	@p='unit/execution/set_value$(EXEEXT)'; \
-	b='unit/execution/set_value'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/start.log: unit/execution/start$(EXEEXT)
-	@p='unit/execution/start$(EXEEXT)'; \
-	b='unit/execution/start'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-unit/execution/submit.log: unit/execution/submit$(EXEEXT)
-	@p='unit/execution/submit$(EXEEXT)'; \
-	b='unit/execution/submit'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -5868,6 +5601,13 @@ unit/experimental/concurrent_channel.log: unit/experimental/concurrent_channel$(
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/experimental/parallel_group.log: unit/experimental/parallel_group$(EXEEXT)
+	@p='unit/experimental/parallel_group$(EXEEXT)'; \
+	b='unit/experimental/parallel_group'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/experimental/promise.log: unit/experimental/promise$(EXEEXT)
 	@p='unit/experimental/promise$(EXEEXT)'; \
 	b='unit/experimental/promise'; \
@@ -6156,6 +5896,9 @@ distclean: distclean-recursive
 	-rm -f latency/$(DEPDIR)/udp_server.Po
 	-rm -f performance/$(DEPDIR)/client.Po
 	-rm -f performance/$(DEPDIR)/server.Po
+	-rm -f unit/$(DEPDIR)/any_completion_executor.Po
+	-rm -f unit/$(DEPDIR)/any_completion_handler.Po
+	-rm -f unit/$(DEPDIR)/any_io_executor.Po
 	-rm -f unit/$(DEPDIR)/append.Po
 	-rm -f unit/$(DEPDIR)/as_tuple.Po
 	-rm -f unit/$(DEPDIR)/associated_allocator.Po
@@ -6255,27 +5998,13 @@ distclean: distclean-recursive
 	-rm -f unit/execution/$(DEPDIR)/any_executor.Po
 	-rm -f unit/execution/$(DEPDIR)/blocking.Po
 	-rm -f unit/execution/$(DEPDIR)/blocking_adaptation.Po
-	-rm -f unit/execution/$(DEPDIR)/bulk_execute.Po
-	-rm -f unit/execution/$(DEPDIR)/bulk_guarantee.Po
-	-rm -f unit/execution/$(DEPDIR)/connect.Po
 	-rm -f unit/execution/$(DEPDIR)/context_as.Po
-	-rm -f unit/execution/$(DEPDIR)/execute.Po
 	-rm -f unit/execution/$(DEPDIR)/executor.Po
 	-rm -f unit/execution/$(DEPDIR)/invocable_archetype.Po
 	-rm -f unit/execution/$(DEPDIR)/mapping.Po
-	-rm -f unit/execution/$(DEPDIR)/operation_state.Po
 	-rm -f unit/execution/$(DEPDIR)/outstanding_work.Po
 	-rm -f unit/execution/$(DEPDIR)/prefer_only.Po
-	-rm -f unit/execution/$(DEPDIR)/receiver.Po
 	-rm -f unit/execution/$(DEPDIR)/relationship.Po
-	-rm -f unit/execution/$(DEPDIR)/schedule.Po
-	-rm -f unit/execution/$(DEPDIR)/scheduler.Po
-	-rm -f unit/execution/$(DEPDIR)/sender.Po
-	-rm -f unit/execution/$(DEPDIR)/set_done.Po
-	-rm -f unit/execution/$(DEPDIR)/set_error.Po
-	-rm -f unit/execution/$(DEPDIR)/set_value.Po
-	-rm -f unit/execution/$(DEPDIR)/start.Po
-	-rm -f unit/execution/$(DEPDIR)/submit.Po
 	-rm -f unit/experimental/$(DEPDIR)/awaitable_operators.Po
 	-rm -f unit/experimental/$(DEPDIR)/basic_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po
@@ -6283,6 +6012,7 @@ distclean: distclean-recursive
 	-rm -f unit/experimental/$(DEPDIR)/channel_traits.Po
 	-rm -f unit/experimental/$(DEPDIR)/co_composed.Po
 	-rm -f unit/experimental/$(DEPDIR)/concurrent_channel.Po
+	-rm -f unit/experimental/$(DEPDIR)/parallel_group.Po
 	-rm -f unit/experimental/$(DEPDIR)/promise.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/allocator.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/cancel.Po
@@ -6407,6 +6137,9 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f latency/$(DEPDIR)/udp_server.Po
 	-rm -f performance/$(DEPDIR)/client.Po
 	-rm -f performance/$(DEPDIR)/server.Po
+	-rm -f unit/$(DEPDIR)/any_completion_executor.Po
+	-rm -f unit/$(DEPDIR)/any_completion_handler.Po
+	-rm -f unit/$(DEPDIR)/any_io_executor.Po
 	-rm -f unit/$(DEPDIR)/append.Po
 	-rm -f unit/$(DEPDIR)/as_tuple.Po
 	-rm -f unit/$(DEPDIR)/associated_allocator.Po
@@ -6506,27 +6239,13 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/execution/$(DEPDIR)/any_executor.Po
 	-rm -f unit/execution/$(DEPDIR)/blocking.Po
 	-rm -f unit/execution/$(DEPDIR)/blocking_adaptation.Po
-	-rm -f unit/execution/$(DEPDIR)/bulk_execute.Po
-	-rm -f unit/execution/$(DEPDIR)/bulk_guarantee.Po
-	-rm -f unit/execution/$(DEPDIR)/connect.Po
 	-rm -f unit/execution/$(DEPDIR)/context_as.Po
-	-rm -f unit/execution/$(DEPDIR)/execute.Po
 	-rm -f unit/execution/$(DEPDIR)/executor.Po
 	-rm -f unit/execution/$(DEPDIR)/invocable_archetype.Po
 	-rm -f unit/execution/$(DEPDIR)/mapping.Po
-	-rm -f unit/execution/$(DEPDIR)/operation_state.Po
 	-rm -f unit/execution/$(DEPDIR)/outstanding_work.Po
 	-rm -f unit/execution/$(DEPDIR)/prefer_only.Po
-	-rm -f unit/execution/$(DEPDIR)/receiver.Po
 	-rm -f unit/execution/$(DEPDIR)/relationship.Po
-	-rm -f unit/execution/$(DEPDIR)/schedule.Po
-	-rm -f unit/execution/$(DEPDIR)/scheduler.Po
-	-rm -f unit/execution/$(DEPDIR)/sender.Po
-	-rm -f unit/execution/$(DEPDIR)/set_done.Po
-	-rm -f unit/execution/$(DEPDIR)/set_error.Po
-	-rm -f unit/execution/$(DEPDIR)/set_value.Po
-	-rm -f unit/execution/$(DEPDIR)/start.Po
-	-rm -f unit/execution/$(DEPDIR)/submit.Po
 	-rm -f unit/experimental/$(DEPDIR)/awaitable_operators.Po
 	-rm -f unit/experimental/$(DEPDIR)/basic_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po
@@ -6534,6 +6253,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/experimental/$(DEPDIR)/channel_traits.Po
 	-rm -f unit/experimental/$(DEPDIR)/co_composed.Po
 	-rm -f unit/experimental/$(DEPDIR)/concurrent_channel.Po
+	-rm -f unit/experimental/$(DEPDIR)/parallel_group.Po
 	-rm -f unit/experimental/$(DEPDIR)/promise.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/allocator.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/cancel.Po

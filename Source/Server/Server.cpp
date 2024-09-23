@@ -36,14 +36,13 @@
 #include "AnyData.h"
 #include "Application.h"
 #include "GenericUtils.h"
+#include "ImGuiStuff.h"
 #include "Networking.h"
 #include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
-
-#include "imgui.h"
 
 FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER

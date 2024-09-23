@@ -1002,7 +1002,7 @@ void CompilerHLSL::emit_interface_block_member_in_struct(const SPIRVariable &var
 
 	statement(to_interpolation_qualifiers(get_member_decoration_bitset(type.self, member_index)),
 	          type_to_glsl(mbr_type),
-	          " ", mbr_name, type_to_array_glsl(mbr_type),
+	          " ", mbr_name, type_to_array_glsl(mbr_type, var.self),
 	          " : ", semantic, ";");
 
 	// Structs and arrays should consume more locations.
@@ -1149,29 +1149,48 @@ void CompilerHLSL::emit_builtin_variables()
 	builtins.merge_or(active_output_builtins);
 
 	std::unordered_map<uint32_t, ID> builtin_to_initializer;
-	ir.for_each_typed_id<SPIRVariable>([&](uint32_t, SPIRVariable &var) {
-		if (!is_builtin_variable(var) || var.storage != StorageClassOutput || !var.initializer)
-			return;
 
-		auto *c = this->maybe_get<SPIRConstant>(var.initializer);
-		if (!c)
+	// We need to declare sample mask with the same type that module declares it.
+	// Sample mask is somewhat special in that SPIR-V has an array, and we can copy that array, so we need to
+	// match sign.
+	SPIRType::BaseType sample_mask_in_basetype = SPIRType::Void;
+	SPIRType::BaseType sample_mask_out_basetype = SPIRType::Void;
+
+	ir.for_each_typed_id<SPIRVariable>([&](uint32_t, SPIRVariable &var) {
+		if (!is_builtin_variable(var))
 			return;
 
 		auto &type = this->get<SPIRType>(var.basetype);
-		if (type.basetype == SPIRType::Struct)
+		auto builtin = BuiltIn(get_decoration(var.self, DecorationBuiltIn));
+
+		if (var.storage == StorageClassInput && builtin == BuiltInSampleMask)
+			sample_mask_in_basetype = type.basetype;
+		else if (var.storage == StorageClassOutput && builtin == BuiltInSampleMask)
+			sample_mask_out_basetype = type.basetype;
+
+		if (var.initializer && var.storage == StorageClassOutput)
 		{
-			uint32_t member_count = uint32_t(type.member_types.size());
-			for (uint32_t i = 0; i < member_count; i++)
+			auto *c = this->maybe_get<SPIRConstant>(var.initializer);
+			if (!c)
+				return;
+
+			if (type.basetype == SPIRType::Struct)
 			{
-				if (has_member_decoration(type.self, i, DecorationBuiltIn))
+				uint32_t member_count = uint32_t(type.member_types.size());
+				for (uint32_t i = 0; i < member_count; i++)
 				{
-					builtin_to_initializer[get_member_decoration(type.self, i, DecorationBuiltIn)] =
-						c->subconstants[i];
+					if (has_member_decoration(type.self, i, DecorationBuiltIn))
+					{
+						builtin_to_initializer[get_member_decoration(type.self, i, DecorationBuiltIn)] =
+								c->subconstants[i];
+					}
 				}
 			}
+			else if (has_decoration(var.self, DecorationBuiltIn))
+			{
+				builtin_to_initializer[builtin] = var.initializer;
+			}
 		}
-		else if (has_decoration(var.self, DecorationBuiltIn))
-			builtin_to_initializer[get_decoration(var.self, DecorationBuiltIn)] = var.initializer;
 	});
 
 	// Emit global variables for the interface variables which are statically used by the shader.
@@ -1288,7 +1307,11 @@ void CompilerHLSL::emit_builtin_variables()
 			break;
 
 		case BuiltInSampleMask:
-			type = "int";
+			if (active_input_builtins.get(BuiltInSampleMask))
+				type = sample_mask_in_basetype == SPIRType::UInt ? "uint" : "int";
+			else
+				type = sample_mask_out_basetype == SPIRType::UInt ? "uint" : "int";
+			array_size = 1;
 			break;
 
 		case BuiltInPrimitiveId:
@@ -1322,7 +1345,11 @@ void CompilerHLSL::emit_builtin_variables()
 		// declared the input variable and we need to add the output one now.
 		if (builtin == BuiltInSampleMask && storage == StorageClassInput && this->active_output_builtins.get(i))
 		{
-			statement("static ", type, " ", this->builtin_to_glsl(builtin, StorageClassOutput), init_expr, ";");
+			type = sample_mask_out_basetype == SPIRType::UInt ? "uint" : "int";
+			if (array_size)
+				statement("static ", type, " ", this->builtin_to_glsl(builtin, StorageClassOutput), "[", array_size, "]", init_expr, ";");
+			else
+				statement("static ", type, " ", this->builtin_to_glsl(builtin, StorageClassOutput), init_expr, ";");
 		}
 	});
 
@@ -1534,6 +1561,18 @@ void CompilerHLSL::replace_illegal_names()
 
 	CompilerGLSL::replace_illegal_names(keywords);
 	CompilerGLSL::replace_illegal_names();
+}
+
+SPIRType::BaseType CompilerHLSL::get_builtin_basetype(BuiltIn builtin, SPIRType::BaseType default_type)
+{
+	switch (builtin)
+	{
+	case BuiltInSampleMask:
+		// We declare sample mask array with module type, so always use default_type here.
+		return default_type;
+	default:
+		return CompilerGLSL::get_builtin_basetype(builtin, default_type);
+	}
 }
 
 void CompilerHLSL::emit_resources()
@@ -2238,7 +2277,7 @@ void CompilerHLSL::emit_resources()
 		// Need out variable since HLSL does not support returning arrays.
 		auto &type = get<SPIRType>(type_id);
 		auto type_str = type_to_glsl(type);
-		auto type_arr_str = type_to_array_glsl(type);
+		auto type_arr_str = type_to_array_glsl(type, 0);
 		statement("void spvSelectComposite(out ", type_str, " out_value", type_arr_str, ", bool cond, ",
 		          type_str, " true_val", type_arr_str, ", ",
 		          type_str, " false_val", type_arr_str, ")");
@@ -2393,7 +2432,7 @@ void CompilerHLSL::analyze_meshlet_writes()
 		uint32_t op_ptr = op_type + 2;
 		uint32_t op_var = op_type + 3;
 
-		auto &type = set<SPIRType>(op_type);
+		auto &type = set<SPIRType>(op_type, OpTypeStruct);
 		type.basetype = SPIRType::Struct;
 		set_name(op_type, block_name);
 		set_decoration(op_type, DecorationBlock);
@@ -2640,7 +2679,7 @@ void CompilerHLSL::emit_buffer_block(const SPIRVariable &var)
 			type_name = is_readonly ? "ByteAddressBuffer" : is_interlocked ? "RasterizerOrderedByteAddressBuffer" : "RWByteAddressBuffer";
 
 		add_resource_name(var.self);
-		statement(is_coherent ? "globallycoherent " : "", type_name, " ", to_name(var.self), type_to_array_glsl(type),
+		statement(is_coherent ? "globallycoherent " : "", type_name, " ", to_name(var.self), type_to_array_glsl(type, var.self),
 		          to_resource_binding(var), ";");
 	}
 	else
@@ -2727,7 +2766,7 @@ void CompilerHLSL::emit_buffer_block(const SPIRVariable &var)
 			}
 
 			emit_struct(get<SPIRType>(type.self));
-			statement("ConstantBuffer<", to_name(type.self), "> ", to_name(var.self), type_to_array_glsl(type),
+			statement("ConstantBuffer<", to_name(type.self), "> ", to_name(var.self), type_to_array_glsl(type, var.self),
 			          to_resource_binding(var), ";");
 		}
 	}
@@ -2913,7 +2952,7 @@ void CompilerHLSL::emit_function_prototype(SPIRFunction &func, const Bitset &ret
 		out_argument += type_to_glsl(type);
 		out_argument += " ";
 		out_argument += "spvReturnValue";
-		out_argument += type_to_array_glsl(type);
+		out_argument += type_to_array_glsl(type, 0);
 		arglist.push_back(std::move(out_argument));
 	}
 
@@ -2939,7 +2978,7 @@ void CompilerHLSL::emit_function_prototype(SPIRFunction &func, const Bitset &ret
 		{
 			// Manufacture automatic sampler arg for SampledImage texture
 			arglist.push_back(join(is_depth_image(arg_type, arg.id) ? "SamplerComparisonState " : "SamplerState ",
-			                       to_sampler_expression(arg.id), type_to_array_glsl(arg_type)));
+			                       to_sampler_expression(arg.id), type_to_array_glsl(arg_type, arg.id)));
 		}
 
 		// Hold a pointer to the parameter so we can invalidate the readonly field if needed.
@@ -3121,6 +3160,10 @@ void CompilerHLSL::emit_hlsl_entry_point()
 			statement(builtin, " = int(stage_input.", builtin, ");");
 			break;
 
+		case BuiltInSampleMask:
+			statement(builtin, "[0] = stage_input.", builtin, ";");
+			break;
+
 		case BuiltInNumWorkgroups:
 		case BuiltInPointCoord:
 		case BuiltInSubgroupSize:
@@ -3293,6 +3336,10 @@ void CompilerHLSL::emit_hlsl_entry_point()
 				for (uint32_t cull = 0; cull < cull_distance_count; cull++)
 					statement("stage_output.gl_CullDistance", cull / 4, ".", "xyzw"[cull & 3], " = gl_CullDistance[",
 					          cull, "];");
+				break;
+
+			case BuiltInSampleMask:
+				statement("stage_output.gl_SampleMask = gl_SampleMask[0];");
 				break;
 
 			default:
@@ -4029,16 +4076,16 @@ void CompilerHLSL::emit_modern_uniform(const SPIRVariable &var)
 			is_coherent = has_decoration(var.self, DecorationCoherent);
 
 		statement(is_coherent ? "globallycoherent " : "", image_type_hlsl_modern(type, var.self), " ",
-		          to_name(var.self), type_to_array_glsl(type), to_resource_binding(var), ";");
+		          to_name(var.self), type_to_array_glsl(type, var.self), to_resource_binding(var), ";");
 
 		if (type.basetype == SPIRType::SampledImage && type.image.dim != DimBuffer)
 		{
 			// For combined image samplers, also emit a combined image sampler.
 			if (is_depth_image(type, var.self))
-				statement("SamplerComparisonState ", to_sampler_expression(var.self), type_to_array_glsl(type),
+				statement("SamplerComparisonState ", to_sampler_expression(var.self), type_to_array_glsl(type, var.self),
 				          to_resource_binding_sampler(var), ";");
 			else
-				statement("SamplerState ", to_sampler_expression(var.self), type_to_array_glsl(type),
+				statement("SamplerState ", to_sampler_expression(var.self), type_to_array_glsl(type, var.self),
 				          to_resource_binding_sampler(var), ";");
 		}
 		break;
@@ -4046,10 +4093,10 @@ void CompilerHLSL::emit_modern_uniform(const SPIRVariable &var)
 
 	case SPIRType::Sampler:
 		if (comparison_ids.count(var.self))
-			statement("SamplerComparisonState ", to_name(var.self), type_to_array_glsl(type), to_resource_binding(var),
+			statement("SamplerComparisonState ", to_name(var.self), type_to_array_glsl(type, var.self), to_resource_binding(var),
 			          ";");
 		else
-			statement("SamplerState ", to_name(var.self), type_to_array_glsl(type), to_resource_binding(var), ";");
+			statement("SamplerState ", to_name(var.self), type_to_array_glsl(type, var.self), to_resource_binding(var), ";");
 		break;
 
 	default:
@@ -4401,6 +4448,18 @@ void CompilerHLSL::emit_glsl_op(uint32_t result_type, uint32_t id, uint32_t eop,
 			CompilerGLSL::emit_glsl_op(result_type, id, eop, args, count);
 		break;
 
+	case GLSLstd450NMin:
+		CompilerGLSL::emit_glsl_op(result_type, id, GLSLstd450FMin, args, count);
+		break;
+
+	case GLSLstd450NMax:
+		CompilerGLSL::emit_glsl_op(result_type, id, GLSLstd450FMax, args, count);
+		break;
+
+	case GLSLstd450NClamp:
+		CompilerGLSL::emit_glsl_op(result_type, id, GLSLstd450FClamp, args, count);
+		break;
+
 	default:
 		CompilerGLSL::emit_glsl_op(result_type, id, eop, args, count);
 		break;
@@ -4461,7 +4520,7 @@ void CompilerHLSL::read_access_chain(string *expr, const string &lhs, const SPIR
 {
 	auto &type = get<SPIRType>(chain.basetype);
 
-	SPIRType target_type;
+	SPIRType target_type { is_scalar(type) ? OpTypeInt : type.op };
 	target_type.basetype = SPIRType::UInt;
 	target_type.vecsize = type.vecsize;
 	target_type.columns = type.columns;
@@ -4696,14 +4755,19 @@ void CompilerHLSL::emit_load(const Instruction &instruction)
 void CompilerHLSL::write_access_chain_array(const SPIRAccessChain &chain, uint32_t value,
                                             const SmallVector<uint32_t> &composite_chain)
 {
-	auto &type = get<SPIRType>(chain.basetype);
+	auto *ptype = &get<SPIRType>(chain.basetype);
+	while (ptype->pointer)
+	{
+		ptype = &get<SPIRType>(ptype->basetype);
+	}
+	auto &type = *ptype;
 
 	// Need to use a reserved identifier here since it might shadow an identifier in the access chain input or other loops.
 	auto ident = get_unique_identifier();
 
 	uint32_t id = ir.increase_bound_by(2);
 	uint32_t int_type_id = id + 1;
-	SPIRType int_type;
+	SPIRType int_type { OpTypeInt };
 	int_type.basetype = SPIRType::Int;
 	int_type.width = 32;
 	set<SPIRType>(int_type_id, int_type);
@@ -4791,7 +4855,7 @@ void CompilerHLSL::write_access_chain(const SPIRAccessChain &chain, uint32_t val
 	// Make sure we trigger a read of the constituents in the access chain.
 	track_expression_read(chain.self);
 
-	SPIRType target_type;
+	SPIRType target_type { is_scalar(type) ? OpTypeInt : type.op };
 	target_type.basetype = SPIRType::UInt;
 	target_type.vecsize = type.vecsize;
 	target_type.columns = type.columns;
@@ -6531,14 +6595,14 @@ VariableID CompilerHLSL::remap_num_workgroups_builtin()
 	uint32_t block_pointer_type_id = offset + 2;
 	uint32_t variable_id = offset + 3;
 
-	SPIRType uint_type;
+	SPIRType uint_type { OpTypeVector };
 	uint_type.basetype = SPIRType::UInt;
 	uint_type.width = 32;
 	uint_type.vecsize = 3;
 	uint_type.columns = 1;
 	set<SPIRType>(uint_type_id, uint_type);
 
-	SPIRType block_type;
+	SPIRType block_type { OpTypeStruct };
 	block_type.basetype = SPIRType::Struct;
 	block_type.member_types.push_back(uint_type_id);
 	set<SPIRType>(block_type_id, block_type);
@@ -6744,11 +6808,6 @@ void CompilerHLSL::set_hlsl_force_storage_buffer_as_uav(uint32_t desc_set, uint3
 {
 	SetBindingPair pair = { desc_set, binding };
 	force_uav_buffer_bindings.insert(pair);
-}
-
-bool CompilerHLSL::builtin_translates_to_nonarray(spv::BuiltIn builtin) const
-{
-	return (builtin == BuiltInSampleMask);
 }
 
 bool CompilerHLSL::is_user_type_structured(uint32_t id) const

@@ -39,15 +39,14 @@
 #error FO_TESTING_APP is not enabled
 #endif
 
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 #include "Common.h"
 
 #include "Application.h"
 #include "GenericUtils.h"
 
-extern "C" int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     STACK_TRACE_ENTRY();
 

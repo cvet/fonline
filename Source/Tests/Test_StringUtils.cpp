@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 #include "StringUtils.h"
 

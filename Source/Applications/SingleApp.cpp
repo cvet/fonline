@@ -89,7 +89,7 @@ static void MainEntry(void*)
 }
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto SingleApp(int argc, char** argv) -> int
 #endif
