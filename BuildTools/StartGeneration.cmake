@@ -55,6 +55,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
+set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
 
 # Check options
 set(requiredOptions "FO_DEV_NAME" "FO_NICE_NAME" "FO_AUTHOR_NAME" "FO_GAME_VERSION" "FO_GEOMETRY" "FO_APP_ICON" "FO_OUTPUT_PATH")

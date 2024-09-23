@@ -39,6 +39,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+#include "../Include/Types.h"
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
 #include "spirv_glsl.hpp"
