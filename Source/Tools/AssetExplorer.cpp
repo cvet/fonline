@@ -33,8 +33,7 @@
 
 #include "AssetExplorer.h"
 #include "Application.h"
-
-#include "imgui.h"
+#include "ImGuiStuff.h"
 
 AssetExplorer::AssetExplorer(FOEditor& editor) :
     EditorView("Asset Explorer", editor)

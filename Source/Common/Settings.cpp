@@ -36,11 +36,10 @@
 #include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
-
-#include "imgui.h"
 
 template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)

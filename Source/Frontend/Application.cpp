@@ -35,6 +35,7 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ImGuiStuff.h"
 #include "Log.h"
 #include "Platform.h"
 #include "StringUtils.h"
@@ -45,8 +46,6 @@
 #include "SDL_events.h"
 #include "SDL_syswm.h"
 #include "SDL_video.h"
-
-#include "imgui.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -522,8 +521,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #endif
 
         // Init Dear ImGui
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
+        ImGuiExt::Init();
+
         ImGuiIO& io = ImGui::GetIO();
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 

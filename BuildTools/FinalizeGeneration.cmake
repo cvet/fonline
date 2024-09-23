@@ -457,11 +457,15 @@ set(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imgui_widgets.cpp"
     "${FO_DEAR_IMGUI_DIR}/imstb_rectpack.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
-    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h")
+    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h")
 include_directories("${FO_DEAR_IMGUI_DIR}")
+include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(ImGui ${FO_IMGUI_SOURCE})
-target_compile_definitions(ImGui PRIVATE "IMGUI_DISABLE_OBSOLETE_FUNCTIONS" "IMGUI_DISABLE_DEMO_WINDOWS" "IMGUI_DISABLE_DEBUG_TOOLS")
-add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DISABLE_DEMO_WINDOWS IMGUI_DISABLE_DEBUG_TOOLS)
+target_compile_definitions(ImGui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
+add_compile_definitions("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
 list(APPEND FO_COMMON_LIBS "ImGui")
 
 if(WIN32 AND WINRT)

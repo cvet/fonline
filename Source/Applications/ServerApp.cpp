@@ -36,10 +36,9 @@
 #include "Application.h"
 #include "Client.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Settings.h"
-
-#include "imgui.h"
 
 #if !FO_TESTING_APP
 #include "SDL_main.h"

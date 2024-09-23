@@ -33,13 +33,13 @@
 
 #include "ParticleEditor.h"
 #include "GenericUtils.h"
+#include "ImGuiStuff.h"
 #include "SparkExtension.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "VisualParticles.h"
 
 #include "SPARK.h"
-#include "imgui.h"
 
 struct ParticleEditor::Impl
 {
