@@ -119,7 +119,7 @@ public:
     FileCollection(const FileCollection&) = delete;
     FileCollection(FileCollection&&) noexcept = default;
     auto operator=(const FileCollection&) = delete;
-    auto operator=(FileCollection&&) noexcept = delete;
+    auto operator=(FileCollection&&) noexcept -> FileCollection& = default;
     ~FileCollection() = default;
 
     [[nodiscard]] auto GetCurFile() const -> File;

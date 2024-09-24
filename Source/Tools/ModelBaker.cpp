@@ -197,8 +197,8 @@ struct AnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
+ModelBaker::ModelBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+    BaseBaker(settings, std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
 
@@ -226,18 +226,17 @@ ModelBaker::~ModelBaker()
 #endif
 }
 
-void ModelBaker::AutoBake()
+void ModelBaker::BakeFiles(FileCollection&& files)
 {
     STACK_TRACE_ENTRY();
 
     _errors = 0;
 
-    _files.ResetCounter();
-    while (_files.MoveNext()) {
-        auto file_header = _files.GetCurFileHeader();
-
+    for (files.ResetCounter(); files.MoveNext();) {
+        auto file_header = files.GetCurFileHeader();
         string ext = format(file_header.GetPath()).getFileExtension();
-        if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
+
+        if (!IsExtSupported(ext)) {
             continue;
         }
 
@@ -245,7 +244,7 @@ void ModelBaker::AutoBake()
             continue;
         }
 
-        auto file = _files.GetCurFile();
+        auto file = files.GetCurFile();
 
         try {
             if (ext == "fo3d") {

@@ -53,14 +53,16 @@ class ModelBaker final : public BaseBaker
 {
 public:
     ModelBaker() = delete;
-    ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ModelBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ModelBaker(const ModelBaker&) = delete;
     ModelBaker(ModelBaker&&) noexcept = default;
     auto operator=(const ModelBaker&) = delete;
     auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker() override;
 
-    void AutoBake() override;
+    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj"; }
+
+    void BakeFiles(FileCollection&& files) override;
 
 private:
     [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uint8>;

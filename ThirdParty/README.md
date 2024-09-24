@@ -9,7 +9,6 @@
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-1.3.290.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
-* PNG/APNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html) [libpng-apng](https://github.com/rickytan/libpng-apng)
 * SDL2 - [SDL2-2.30.7](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
 * small_vector - [small_vector](https://github.com/gharveymn/small_vector)
@@ -21,6 +20,7 @@
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
 * fmt - [fmt-11.0.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.91.2](https://github.com/ocornut/imgui)
+* libpng - [libpng-1.6.44](https://github.com/pnggroup/libpng)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.24.4](https://github.com/mongodb/mongo-c-driver)
 * mono - [mono-5.16.0.209](https://www.mono-project.com/)
