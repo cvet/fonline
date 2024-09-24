@@ -51,18 +51,19 @@ public:
     using WriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
 
     BaseBaker() = delete;
-    BaseBaker(BakerSettings& settings, FileCollection&& files, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
+    BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = default;
     auto operator=(const BaseBaker&) = delete;
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
-    virtual void AutoBake() = 0;
+    [[nodiscard]] virtual auto IsExtSupported(string_view ext) const -> bool = 0;
+
+    virtual void BakeFiles(FileCollection&& files) = 0;
 
 protected:
     BakerSettings& _settings;
-    FileCollection _files;
     BakeCheckerCallback _bakeChecker;
     WriteDataCallback _writeData;
 };
@@ -80,7 +81,7 @@ public:
 
 private:
     [[nodiscard]] auto MakeOutputPath(string_view path) const -> string;
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
+    auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
 
     BakerSettings& _settings;
 };
@@ -104,7 +105,10 @@ public:
 private:
     [[nodiscard]] auto FindFile(const string& path) const -> File*;
 
+    void WriteData(string_view baked_path, const_span<uint8> baked_data);
+
     FileSystem& _inputResources;
     BakerSettings& _settings;
+    vector<unique_ptr<BaseBaker>> _bakers {};
     mutable unordered_map<string, unique_ptr<File>> _bakedFiles {};
 };

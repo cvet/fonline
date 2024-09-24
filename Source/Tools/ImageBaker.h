@@ -44,18 +44,6 @@ DECLARE_EXCEPTION(ImageBakerException);
 class ImageBaker final : public BaseBaker
 {
 public:
-    ImageBaker() = delete;
-    ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    ImageBaker(const ImageBaker&) = delete;
-    ImageBaker(ImageBaker&&) noexcept = default;
-    auto operator=(const ImageBaker&) = delete;
-    auto operator=(ImageBaker&&) noexcept = delete;
-    ~ImageBaker() override = default;
-
-    static auto IsImageExt(string_view ext) -> bool;
-    void AutoBake() override;
-
-private:
     static constexpr int MAX_FRAME_SEQUENCE = 200;
     static constexpr int MAX_DIRS_MINUS_ONE = 7;
 
@@ -90,7 +78,20 @@ private:
 
     using LoadFunc = std::function<FrameCollection(string_view, string_view, File&)>;
 
-    void ProcessImages(string_view target_ext, const LoadFunc& loader);
+    ImageBaker() = delete;
+    ImageBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ImageBaker(const ImageBaker&) = delete;
+    ImageBaker(ImageBaker&&) noexcept = default;
+    auto operator=(const ImageBaker&) = delete;
+    auto operator=(ImageBaker&&) noexcept = delete;
+    ~ImageBaker() override = default;
+
+    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
+
+    void AddLoader(LoadFunc loader, const vector<string_view>& file_extensions);
+    void BakeFiles(FileCollection&& files) override;
+
+private:
     void BakeCollection(string_view fname, const FrameCollection& collection);
 
     [[nodiscard]] auto LoadAny(string_view fname_with_opt) -> FrameCollection;
@@ -107,7 +108,8 @@ private:
     [[nodiscard]] auto LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection;
     [[nodiscard]] auto LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection;
 
+    unordered_map<string, LoadFunc> _fileLoaders {};
     unordered_map<string, File> _cachedFiles {};
-    int _errors {};
+    FileCollection _files {};
     bool _nonConstHelper {};
 };

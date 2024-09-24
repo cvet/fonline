@@ -49,14 +49,16 @@ class EffectBaker final : public BaseBaker
 {
 public:
     EffectBaker() = delete;
-    EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    EffectBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = default;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
 
-    void AutoBake() override;
+    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fofx"; }
+
+    void BakeFiles(FileCollection&& files) override;
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);

@@ -109,9 +109,8 @@ struct Critter;
 struct Map;
 struct Location;
 
-BaseBaker::BaseBaker(BakerSettings& settings, FileCollection&& files, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
-    _settings {settings}, //
-    _files {std::move(files)},
+BaseBaker::BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
+    _settings {settings},
     _bakeChecker {std::move(bake_checker)},
     _writeData {std::move(write_data)}
 {
@@ -234,14 +233,14 @@ void Baker::BakeAll()
                     };
 
                     vector<unique_ptr<BaseBaker>> bakers;
-                    bakers.emplace_back(std::make_unique<ImageBaker>(_settings, res_files.GetAllFiles(), bake_checker, write_data));
-                    bakers.emplace_back(std::make_unique<EffectBaker>(_settings, res_files.GetAllFiles(), bake_checker, write_data));
+                    bakers.emplace_back(std::make_unique<ImageBaker>(_settings, bake_checker, write_data));
+                    bakers.emplace_back(std::make_unique<EffectBaker>(_settings, bake_checker, write_data));
 #if FO_ENABLE_3D
-                    bakers.emplace_back(std::make_unique<ModelBaker>(_settings, res_files.GetAllFiles(), bake_checker, write_data));
+                    bakers.emplace_back(std::make_unique<ModelBaker>(_settings, bake_checker, write_data));
 #endif
 
                     for (auto&& baker : bakers) {
-                        baker->AutoBake();
+                        baker->BakeFiles(res_files.GetAllFiles());
                     }
                 }
 
@@ -1181,6 +1180,20 @@ BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& set
     _settings {settings}
 {
     STACK_TRACE_ENTRY();
+
+    _bakers.emplace_back(std::make_unique<ImageBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
+    _bakers.emplace_back(std::make_unique<EffectBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
+#if FO_ENABLE_3D
+    _bakers.emplace_back(std::make_unique<ModelBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
+#endif
+}
+
+void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_data)
+{
+    STACK_TRACE_ENTRY();
+
+    auto baked_file = File(format(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
+    _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
 }
 
 auto BakerDataSource::FindFile(const string& path) const -> File*
@@ -1191,39 +1204,25 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
         return it->second ? it->second.get() : nullptr;
     }
 
-    const string ext = format(path).getFileExtension();
+    bool file_baked = false;
 
-    if (ext == "fopts") {
-        if (auto file = _inputResources.ReadFile(path)) {
+    if (auto file = _inputResources.ReadFile(path)) {
+        const string ext = format(path).getFileExtension();
+
+        for (auto&& baker : _bakers) {
+            if (baker->IsExtSupported(ext)) {
+                baker->BakeFiles(FileCollection({file.Duplicate()}));
+                file_baked = true;
+            }
+        }
+
+        if (!file_baked) {
             _bakedFiles[path] = std::make_unique<File>(std::move(file));
         }
-        else {
-            _bakedFiles[path] = nullptr;
-        }
     }
-    else if (ext == "fofx") {
-        if (auto file = _inputResources.ReadFile(path)) {
-            auto baker = EffectBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uint8> baked_data) {
-                auto baked_file = File(format(baked_path).extractFileName().eraseFileExtension(), baked_path, file.GetWriteTime(), const_cast<BakerDataSource*>(this), baked_data, true);
-                _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
-            });
-            baker.AutoBake();
-        }
-        else {
-            _bakedFiles[path] = nullptr;
-        }
-    }
-    else if (ImageBaker::IsImageExt(ext)) {
-        if (auto file = _inputResources.ReadFile(path)) {
-            auto baker = ImageBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uint8> baked_data) {
-                auto baked_file = File(format(baked_path).extractFileName().eraseFileExtension(), baked_path, file.GetWriteTime(), const_cast<BakerDataSource*>(this), baked_data, true);
-                _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
-            });
-            baker.AutoBake();
-        }
-        else {
-            _bakedFiles[path] = nullptr;
-        }
+
+    if (!file_baked) {
+        _bakedFiles[path] = nullptr;
     }
 
     if (const auto it = _bakedFiles.find(path); it != _bakedFiles.end()) {
