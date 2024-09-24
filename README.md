@@ -124,7 +124,6 @@ They are located in ThirdParty directory.
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [PNG/APNG](https://github.com/rickytan/libpng-apng) - png/apng image loader
 * [SDL2](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
@@ -139,6 +138,7 @@ They are located in ThirdParty directory.
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
+* [libpng](https://github.com/pnggroup/libpng) - png image loader
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
 * [rpmalloc](https://github.com/mjansson/rpmalloc) - general purpose memory allocator
 * [unqlite](https://unqlite.org/) - nosql database engine
