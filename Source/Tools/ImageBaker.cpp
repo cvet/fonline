@@ -43,8 +43,8 @@
 
 #include "png.h"
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*;
-static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*;
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>;
+static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>;
 
 ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
     BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
@@ -2057,18 +2057,12 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(fname);
     UNUSED_VARIABLE(opt);
 
     uint w = 0;
     uint h = 0;
-    const auto* png_data = PngLoad(file.GetBuf(), w, h);
-
-    if (png_data == nullptr) {
-        throw ImageBakerException("Can't read PNG", fname);
-    }
-
-    vector<uint8> data(static_cast<size_t>(w) * h * 4);
-    std::memcpy(data.data(), png_data, static_cast<size_t>(w) * h * 4);
+    auto data = PngLoad(file.GetBuf(), w, h);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2076,8 +2070,6 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     collection.Main.Frames[0].Width = static_cast<uint16>(w);
     collection.Main.Frames[0].Height = static_cast<uint16>(h);
     collection.Main.Frames[0].Data = std::move(data);
-
-    delete[] png_data;
 
     return collection;
 }
@@ -2088,18 +2080,12 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(fname);
     UNUSED_VARIABLE(opt);
 
     uint w = 0;
     uint h = 0;
-    const auto* tga_data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
-
-    if (tga_data == nullptr) {
-        throw ImageBakerException("Can't read TGA", fname);
-    }
-
-    vector<uint8> data(static_cast<size_t>(w) * h * 4);
-    std::memcpy(data.data(), tga_data, static_cast<size_t>(w) * h * 4);
+    auto data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2108,131 +2094,117 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     collection.Main.Frames[0].Height = static_cast<uint16>(h);
     collection.Main.Frames[0].Data = std::move(data);
 
-    delete[] tga_data;
-
     return collection;
 }
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    struct PngMessage
-    {
-        static void Error(png_structp png_ptr, png_const_charp error_msg)
-        {
-            UNUSED_VARIABLE(png_ptr);
-            WriteLog("PNG error '{}'", error_msg);
-        }
-        static void Warning(png_structp png_ptr, png_const_charp /*error_msg*/)
-        {
-            UNUSED_VARIABLE(png_ptr);
-            // WriteLog( "PNG warning '{}'", error_msg );
-        }
-    };
-
-    // Setup PNG reader
     auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if (png_ptr == nullptr) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(png_ptr);
 
-    png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
-
-    auto* info_ptr = png_create_info_struct(png_ptr);
-    if (info_ptr == nullptr) {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-        return nullptr;
-    }
-
-    // Todo: move png lib setjmp to exceptions
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
-    }
-
-    struct PngReader
-    {
-        static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
+    try {
+        struct PngMessage
         {
-            auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
-            std::memcpy(png_data, *io_ptr, length);
-            *io_ptr += length;
+            static void Error(png_structp png_ptr, png_const_charp error_msg)
+            {
+                UNUSED_VARIABLE(png_ptr);
+                throw ImageBakerException("PNG loading error", error_msg);
+            }
+
+            static void Warning(png_structp png_ptr, png_const_charp error_msg)
+            {
+                UNUSED_VARIABLE(png_ptr);
+                UNUSED_VARIABLE(error_msg);
+                // WriteLog("PNG loading warning: {}", error_msg);
+            }
+        };
+
+        png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
+
+        auto* info_ptr = png_create_info_struct(png_ptr);
+        RUNTIME_ASSERT(info_ptr);
+
+        struct PngReader
+        {
+            static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
+            {
+                auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
+                std::memcpy(png_data, *io_ptr, length);
+                *io_ptr += length;
+            }
+        };
+
+        // Get info
+        png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
+        png_read_info(png_ptr, info_ptr);
+
+        png_uint_32 width = 0;
+        png_uint_32 height = 0;
+        auto bit_depth = 0;
+        auto color_type = 0;
+        png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
+
+        // Settings
+        png_set_strip_16(png_ptr);
+        png_set_packing(png_ptr);
+
+        if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
+            png_set_expand(png_ptr);
         }
-    };
-    png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
-    png_read_info(png_ptr, info_ptr);
+        if (color_type == PNG_COLOR_TYPE_PALETTE) {
+            png_set_expand(png_ptr);
+        }
+        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) != 0u) {
+            png_set_expand(png_ptr);
+        }
 
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
+        png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
+        png_read_update_info(png_ptr, info_ptr);
+
+        // Read
+        vector<png_bytep> row_pointers;
+        row_pointers.resize(height);
+
+        vector<uint8> result;
+        result.resize(static_cast<size_t>(width) * height * 4);
+
+        for (uint i = 0; i < height; i++) {
+            row_pointers[i] = result.data() + static_cast<size_t>(i) * width * 4;
+        }
+
+        png_read_image(png_ptr, row_pointers.data());
+        png_read_end(png_ptr, info_ptr);
+        png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
+
+        result_width = width;
+        result_height = height;
+
+        return result;
     }
+    catch (...) {
+        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
 
-    // Get information
-    png_uint_32 width = 0;
-    png_uint_32 height = 0;
-    auto bit_depth = 0;
-    auto color_type = 0;
-    png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
-
-    // Settings
-    png_set_strip_16(png_ptr);
-    png_set_packing(png_ptr);
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
-        png_set_expand(png_ptr);
+        throw;
     }
-    if (color_type == PNG_COLOR_TYPE_PALETTE) {
-        png_set_expand(png_ptr);
-    }
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) != 0u) {
-        png_set_expand(png_ptr);
-    }
-    png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
-    png_read_update_info(png_ptr, info_ptr);
-
-    // Allocate row pointers
-    auto* row_pointers = static_cast<png_bytepp>(malloc(height * sizeof(png_bytep)));
-    if (row_pointers == nullptr) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
-    }
-
-    // Set the individual row_pointers to point at the correct offsets
-    auto* result = new uint8[static_cast<size_t>(width) * height * 4];
-    for (uint i = 0; i < height; i++) {
-        row_pointers[i] = result + static_cast<size_t>(i) * width * 4;
-    }
-
-    // Read image
-    png_read_image(png_ptr, row_pointers);
-
-    // Clean up
-    png_read_end(png_ptr, info_ptr);
-    png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
-    free(row_pointers);
-
-    // Return
-    result_width = width;
-    result_height = height;
-    return result;
 }
 
-static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*
+static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    // Reading macros
-    auto read_error = false;
-    uint cur_pos = 0;
-#define READ_TGA(x, len) \
-    if (!read_error && cur_pos + (len) <= data_size) { \
-        std::memcpy(x, data + cur_pos, len); \
-        cur_pos += (len); \
-    } \
-    else { \
-        std::memset(x, 0, len); \
-        read_error = true; \
-    }
+    size_t cur_pos = 0;
+
+    const auto read_tga = [&](void* ptr, size_t len) {
+        if (cur_pos + len <= data_size) {
+            std::memcpy(ptr, data + cur_pos, len);
+            cur_pos += (len);
+        }
+        else {
+            throw ImageBakerException("TGA reading error");
+        }
+    };
 
     // Load header
     uint8 type = 0;
@@ -2241,95 +2213,89 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
     int16 height = 0;
     uint8 unused_char = 0;
     int16 unused_short = 0;
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&type, 1)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&width, 2)
-    READ_TGA(&height, 2)
-    READ_TGA(&pixel_depth, 1)
-    READ_TGA(&unused_char, 1)
-
-    // Check for errors when loading the header
-    if (read_error) {
-        return nullptr;
-    }
+    read_tga(&unused_char, 1);
+    read_tga(&unused_char, 1);
+    read_tga(&type, 1);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_char, 1);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_short, 2);
+    read_tga(&width, 2);
+    read_tga(&height, 2);
+    read_tga(&pixel_depth, 1);
+    read_tga(&unused_char, 1);
 
     // Check if the image is color indexed
     if (type == 1) {
-        return nullptr;
+        throw ImageBakerException("Indexed TGA is not supported");
     }
 
     // Check for TrueColor
     if (type != 2 && type != 10) {
-        return nullptr;
+        throw ImageBakerException("TGA TrueColor is not supported");
     }
 
     // Check for RGB(A)
     if (pixel_depth != 24 && pixel_depth != 32) {
-        return nullptr;
+        throw ImageBakerException("TGA support only 24 and 32 bpp");
     }
 
     // Read
     const auto bpp = pixel_depth / 8;
     const uint read_size = height * width * bpp;
-    auto* read_data = new uint8[read_size];
+    vector<uint8> read_data;
+    read_data.resize(read_size);
+
     if (type == 2) {
-        READ_TGA(read_data, read_size)
+        read_tga(read_data.data(), read_size);
     }
     else {
         uint bytes_read = 0;
         uint8 header = 0;
         uint8 color[4];
+
         while (bytes_read < read_size) {
-            READ_TGA(&header, 1)
+            read_tga(&header, 1);
+
             if ((header & 0x00000080) != 0) {
                 header &= ~0x00000080;
-                READ_TGA(color, bpp)
-                if (read_error) {
-                    delete[] read_data;
-                    return nullptr;
-                }
+                read_tga(color, bpp);
                 const uint run_len = (header + 1) * bpp;
+
                 for (uint i = 0; i < run_len; i += bpp) {
                     for (auto c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
                         read_data[bytes_read + i + c] = color[c];
                     }
                 }
+
                 bytes_read += run_len;
             }
             else {
                 const uint run_len = (header + 1) * bpp;
                 uint to_read;
+
                 if (bytes_read + run_len > read_size) {
                     to_read = read_size - bytes_read;
                 }
                 else {
                     to_read = run_len;
                 }
-                READ_TGA(read_data + bytes_read, to_read)
-                if (read_error) {
-                    delete[] read_data;
-                    return nullptr;
-                }
+
+                read_tga(read_data.data() + bytes_read, to_read);
                 bytes_read += run_len;
+
                 if (bytes_read + run_len > read_size) {
                     cur_pos += run_len - to_read;
                 }
             }
         }
     }
-    if (read_error) {
-        delete[] read_data;
-        return nullptr;
-    }
 
     // Copy data
-    auto* result = new uint8[static_cast<size_t>(width) * height * 4];
+    vector<uint8> result;
+    result.resize(static_cast<size_t>(width) * height * 4);
+
     for (int16 y = 0; y < height; y++) {
         for (int16 x = 0; x < width; x++) {
             const auto i = (height - y - 1) * width + x;
@@ -2340,12 +2306,10 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
             result[i * 4 + 3] = bpp == 4 ? read_data[j * bpp + 3] : 0xFF;
         }
     }
-    delete[] read_data;
 
     // Return data
     result_width = width;
     result_height = height;
-    return result;
 
-#undef READ_TGA
+    return result;
 }
