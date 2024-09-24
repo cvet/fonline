@@ -1082,7 +1082,7 @@ def parseTags():
             
             try:
                 name = tokenize(tagContext)[1]
-                assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook'], 'Invalid engine hook ' + name
+                assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
             
@@ -1476,6 +1476,9 @@ def genGenericCode():
         globalLines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
     if not isHookEnabled('ConfigEntryParseHook'):
         globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
+    if not isHookEnabled('SetupBakersHook'):
+        globalLines.append('class BaseBaker;')
+        globalLines.append('void SetupBakersHook(vector<unique_ptr<BaseBaker>>& bakers) { /* Stub */ }')
     globalLines.append('')
     
     # Engine properties

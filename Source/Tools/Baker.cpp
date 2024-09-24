@@ -119,6 +119,24 @@ BaseBaker::BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker
     RUNTIME_ASSERT(_writeData);
 }
 
+auto BaseBaker::SetupBakers(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>
+{
+    STACK_TRACE_ENTRY();
+
+    vector<unique_ptr<BaseBaker>> bakers;
+
+    bakers.emplace_back(std::make_unique<ImageBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(std::make_unique<EffectBaker>(settings, bake_checker, write_data));
+#if FO_ENABLE_3D
+    bakers.emplace_back(std::make_unique<ModelBaker>(settings, bake_checker, write_data));
+#endif
+
+    extern void SetupBakersHook(vector<unique_ptr<BaseBaker>> & bakers);
+    SetupBakersHook(bakers);
+
+    return bakers;
+}
+
 Baker::Baker(BakerSettings& settings) :
     _settings {settings}
 {
@@ -232,12 +250,7 @@ void Baker::BakeAll()
                         baked_files++;
                     };
 
-                    vector<unique_ptr<BaseBaker>> bakers;
-                    bakers.emplace_back(std::make_unique<ImageBaker>(_settings, bake_checker, write_data));
-                    bakers.emplace_back(std::make_unique<EffectBaker>(_settings, bake_checker, write_data));
-#if FO_ENABLE_3D
-                    bakers.emplace_back(std::make_unique<ModelBaker>(_settings, bake_checker, write_data));
-#endif
+                    auto bakers = BaseBaker::SetupBakers(_settings, bake_checker, write_data);
 
                     for (auto&& baker : bakers) {
                         baker->BakeFiles(res_files.GetAllFiles());
@@ -1181,11 +1194,7 @@ BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& set
 {
     STACK_TRACE_ENTRY();
 
-    _bakers.emplace_back(std::make_unique<ImageBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
-    _bakers.emplace_back(std::make_unique<EffectBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
-#if FO_ENABLE_3D
-    _bakers.emplace_back(std::make_unique<ModelBaker>(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2)));
-#endif
+    _bakers = BaseBaker::SetupBakers(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_data)
@@ -1243,6 +1252,7 @@ auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& writ
         write_time = file->GetWriteTime();
         return true;
     }
+
     return false;
 }
 
@@ -1255,6 +1265,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
         write_time = file->GetWriteTime();
         return {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};
     }
+
     return nullptr;
 }
 

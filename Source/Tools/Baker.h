@@ -58,6 +58,7 @@ public:
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
+    [[nodiscard]] static auto SetupBakers(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>;
     [[nodiscard]] virtual auto IsExtSupported(string_view ext) const -> bool = 0;
 
     virtual void BakeFiles(FileCollection&& files) = 0;
