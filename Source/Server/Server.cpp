@@ -566,6 +566,9 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
 
             _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayers().size();
@@ -592,6 +595,9 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
 
             return std::chrono::milliseconds {0};
@@ -612,6 +618,9 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
 
             return std::chrono::milliseconds {0};
@@ -631,6 +640,9 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
+                }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
                 }
             }
 
@@ -815,6 +827,9 @@ FOServer::~FOServer()
         WriteLog("Server stopped with error!");
 
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 

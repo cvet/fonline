@@ -97,6 +97,9 @@ static void MainEntry([[maybe_unused]] void* data)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
 
         // Client loop
@@ -118,11 +121,17 @@ static void MainEntry([[maybe_unused]] void* data)
                 Data->Client.reset();
             }
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
 
         App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -182,5 +191,8 @@ int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

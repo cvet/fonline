@@ -307,6 +307,9 @@ void Baker::BakeAll()
                 ReportExceptionAndContinue(ex);
                 errors++;
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
 
         WriteLog("Bake resource packs complete");
@@ -314,6 +317,9 @@ void Baker::BakeAll()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
         errors++;
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 
     // Content
@@ -395,6 +401,9 @@ void Baker::BakeAll()
             ReportExceptionAndContinue(ex);
             errors++;
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
 #endif
 
         // Validation engine
@@ -423,6 +432,9 @@ void Baker::BakeAll()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
             errors++;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
 
         RUNTIME_ASSERT(validation_engine);
@@ -565,6 +577,9 @@ void Baker::BakeAll()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
             errors++;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
 
         // Protos
@@ -774,6 +789,9 @@ void Baker::BakeAll()
                         ReportExceptionAndContinue(ex);
                         map_errors++;
                     }
+                    catch (...) {
+                        UNKNOWN_EXCEPTION();
+                    }
 
                     if (map_errors == 0) {
 #if !FO_SINGLEPLAYER
@@ -863,6 +881,9 @@ void Baker::BakeAll()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
             errors++;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
 
         // Dialogs
@@ -958,6 +979,9 @@ void Baker::BakeAll()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
             errors++;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
 
         // Texts
@@ -1078,12 +1102,18 @@ void Baker::BakeAll()
             ReportExceptionAndContinue(ex);
             errors++;
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
 
         WriteLog("Bake content complete");
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
         errors++;
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 
     WriteLog("Time {}", bake_time.GetDuration());

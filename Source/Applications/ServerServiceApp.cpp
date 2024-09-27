@@ -74,6 +74,9 @@ static void ServerEntry()
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 #if !FO_TESTING_APP
@@ -187,6 +190,9 @@ int main(int argc, char** argv)
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 
     return 0;
 }
@@ -223,6 +229,9 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
@@ -245,6 +254,9 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 

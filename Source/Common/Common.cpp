@@ -582,6 +582,9 @@ WorkThread::~WorkThread()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 auto WorkThread::GetJobsCount() const -> size_t
@@ -763,11 +766,17 @@ void WorkThread::ThreadEntry() noexcept
                         ReportExceptionAndContinue(ex2);
                     }
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
         }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 

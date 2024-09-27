@@ -136,6 +136,9 @@ int main(int argc, char** argv) // Handled by SDL
                         catch (const std::exception& ex) {
                             ReportExceptionAndContinue(ex);
                         }
+                        catch (...) {
+                            UNKNOWN_EXCEPTION();
+                        }
                     }
 
                     if (ImGui::Button("Create dump", control_btn_size)) {
@@ -180,6 +183,9 @@ int main(int argc, char** argv) // Handled by SDL
                     }
                     catch (const std::exception& ex) {
                         ReportExceptionAndContinue(ex);
+                    }
+                    catch (...) {
+                        UNKNOWN_EXCEPTION();
                     }
                 }
             }
@@ -236,6 +242,9 @@ int main(int argc, char** argv) // Handled by SDL
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
 
             App->EndFrame();
@@ -256,5 +265,8 @@ int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

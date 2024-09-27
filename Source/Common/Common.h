@@ -650,6 +650,7 @@ public:
             }
         }
         catch (...) {
+            // Do nothing
         }
 
         if (st_data != nullptr) {
@@ -660,6 +661,7 @@ public:
                 _stackTrace = GetStackTrace();
             }
             catch (...) {
+                // Do nothing
             }
         }
     }
@@ -672,12 +674,14 @@ public:
             _message = other._message;
         }
         catch (...) {
+            // Do nothing
         }
 
         try {
             _stackTrace = other._stackTrace;
         }
         catch (...) {
+            // Do nothing
         }
     }
 
@@ -726,6 +730,8 @@ private:
 #else
 #define STRONG_ASSERT(expr)
 #endif
+
+#define UNKNOWN_EXCEPTION() ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
 
 // Common exceptions
 DECLARE_EXCEPTION(GenericException);
@@ -794,6 +800,9 @@ public:
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
     }
 
@@ -826,6 +835,9 @@ public:
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
+            }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
             }
         }
     }
@@ -1740,7 +1752,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__);
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -1765,7 +1777,7 @@ inline auto safe_format(string_view message, Args&&... args) noexcept -> string
         }
     }
     catch (...) {
-        ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__);
+        UNKNOWN_EXCEPTION();
     }
 }
 

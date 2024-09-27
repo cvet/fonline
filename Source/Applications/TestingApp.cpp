@@ -58,4 +58,7 @@ int main(int argc, char** argv)
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }

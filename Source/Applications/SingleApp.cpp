@@ -72,6 +72,9 @@ static void MainEntry(void*)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
 
         try {
@@ -80,11 +83,17 @@ static void MainEntry(void*)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
 
         App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -134,5 +143,8 @@ int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

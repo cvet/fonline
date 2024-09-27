@@ -72,6 +72,9 @@ static void MapperEntry([[maybe_unused]] void* data)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
 
         Data->Mapper->MapperMainLoop();
@@ -80,6 +83,9 @@ static void MapperEntry([[maybe_unused]] void* data)
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -126,5 +132,8 @@ int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

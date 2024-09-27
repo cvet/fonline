@@ -216,6 +216,9 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
                 return false;
             }
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 
     return true;

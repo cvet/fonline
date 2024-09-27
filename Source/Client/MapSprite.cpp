@@ -255,6 +255,9 @@ MapSpriteList::~MapSpriteList()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 
     for (const auto* spr : _invalidatedSprites) {
         delete spr;

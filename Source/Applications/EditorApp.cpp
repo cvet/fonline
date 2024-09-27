@@ -72,4 +72,7 @@ int main(int argc, char** argv) // Handled by SDL
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }

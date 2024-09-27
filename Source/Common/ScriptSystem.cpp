@@ -99,6 +99,9 @@ void ScriptSystem::Process()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 }
 

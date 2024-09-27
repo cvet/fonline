@@ -539,6 +539,9 @@ public:
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
     }
 
@@ -653,6 +656,9 @@ void NetTcpServer::Run()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 void NetTcpServer::AcceptNext()
@@ -711,6 +717,9 @@ void NetNoTlsWebSocketsServer::Run()
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -773,6 +782,9 @@ void NetTlsWebSocketsServer::Run()
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
