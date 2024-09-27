@@ -161,7 +161,7 @@ set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
 
 # LibPNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
-    StatusMessage("+ LibPNG (${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR})")
+    StatusMessage("+ LibPNG")
     set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/libpng")
     set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(PNG_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
