@@ -148,13 +148,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, GroundLevel);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Weight);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Volume);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
@@ -201,10 +195,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoHighlight);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnim);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnimExt);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsLight);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Public, bool, IsGeck);
@@ -218,10 +208,6 @@ public:
     ENTITY_PROPERTY(Public, bool, IsGag);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsColorize);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsColorizeInv);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanTalk);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsRadio);
     ///@ ExportProperty
@@ -278,10 +264,6 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint16, MapLeaveHexY);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint16, HexX);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint16, HexY);
@@ -333,8 +315,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, int, ScaleFactor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, CurrentHp);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, DialogId);
@@ -358,18 +338,14 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist2);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsHide);
+    ENTITY_PROPERTY(Protected, bool, InSneakMode);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoHome);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsGeck);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
     ///@ ExportProperty
