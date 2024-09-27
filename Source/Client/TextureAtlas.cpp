@@ -247,7 +247,7 @@ void TextureAtlasManager::DumpAtlases() const
     }
 
     const auto date = Timer::GetCurrentDateTime();
-    const string dir = format("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
@@ -269,7 +269,7 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = format("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
+        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
         auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
         GenericUtils::WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
         cnt++;

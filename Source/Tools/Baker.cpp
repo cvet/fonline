@@ -147,7 +147,7 @@ auto Baker::MakeOutputPath(string_view path) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return format(_settings.BakeOutput).combinePath(path);
+    return strex(_settings.BakeOutput).combinePath(path);
 }
 
 void Baker::BakeAll()
@@ -177,7 +177,7 @@ void Baker::BakeAll()
 
         map<string, vector<string>> res_packs;
         for (const auto& re : _settings.BakeResourceEntries) {
-            auto re_splitted = format(re).split(',');
+            auto re_splitted = strex(re).split(',');
             RUNTIME_ASSERT(re_splitted.size() == 2);
             res_packs[re_splitted[0]].push_back(re_splitted[1]);
         }
@@ -218,8 +218,8 @@ void Baker::BakeAll()
                     return pos != string::npos ? string(path.substr(0, pos)) : string(path);
                 };
                 const auto make_output_path = [](string_view path) -> string {
-                    if (format(path).startsWith("art/critters/")) {
-                        return format("art/critters/{}", format(path.substr("art/critters/"_len)).lower());
+                    if (strex(path).startsWith("art/critters/")) {
+                        return strex("art/critters/{}", strex(path.substr("art/critters/"_len)).lower());
                     }
                     return string(path);
                 };
@@ -232,7 +232,7 @@ void Baker::BakeAll()
                         pack_resource_names.emplace(exclude_all_ext(output_path));
 
                         if (!_settings.ForceBakering) {
-                            return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(format(pack_name).combinePath(output_path)));
+                            return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(strex(pack_name).combinePath(output_path)));
                         }
                         else {
                             return true;
@@ -242,7 +242,7 @@ void Baker::BakeAll()
                     const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
                         const auto output_path = make_output_path(path);
 
-                        auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(format(pack_name).combinePath(output_path)), true);
+                        auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(strex(pack_name).combinePath(output_path)), true);
                         RUNTIME_ASSERT(res_file);
                         const auto res_file_write_ok = res_file.Write(baked_data);
                         RUNTIME_ASSERT(res_file_write_ok);
@@ -265,7 +265,7 @@ void Baker::BakeAll()
 
                     // Skip not necessary files
                     if (!is_raw_only) {
-                        const string ext = format(output_path).getFileExtension();
+                        const string ext = strex(output_path).getFileExtension();
                         const auto& base_exts = _settings.BakeExtraFileExtensions;
 
                         if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
@@ -276,7 +276,7 @@ void Baker::BakeAll()
                     resource_names.emplace(output_path);
                     pack_resource_names.emplace(exclude_all_ext(output_path));
 
-                    const string path_in_pack = format(pack_name).combinePath(output_path);
+                    const string path_in_pack = strex(pack_name).combinePath(output_path);
 
                     if (!_settings.ForceBakering && DiskFileSystem::GetWriteTime(MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
                         continue;
@@ -295,7 +295,7 @@ void Baker::BakeAll()
                     UNUSED_VARIABLE(size);
                     UNUSED_VARIABLE(write_time);
                     if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
-                        const string path_in_pack = format(pack_name).combinePath(path);
+                        const string path_in_pack = strex(pack_name).combinePath(path);
                         DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
                         WriteLog("Delete outdated file {}", path_in_pack);
                     }
@@ -352,18 +352,18 @@ void Baker::BakeAll()
                 while (script_files.MoveNext() && all_scripts_up_to_date) {
                     auto file = script_files.GetCurFileHeader();
 #if !FO_SINGLEPLAYER
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("ServerAngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("ServerAngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
 #else
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("AngelScript/RootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("AngelScript/RootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
 #endif
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("MapperAngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("MapperAngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
                 }
@@ -453,11 +453,11 @@ void Baker::BakeAll()
             bool all_configs_up_to_date = true;
             while (configs.MoveNext() && all_configs_up_to_date) {
                 auto file = configs.GetCurFileHeader();
-                if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
+                if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
                     all_configs_up_to_date = false;
                 }
 #if !FO_SINGLEPLAYER
-                if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
+                if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
                     all_configs_up_to_date = false;
                 }
 #endif
@@ -518,15 +518,15 @@ void Baker::BakeAll()
                         if (value.empty()) {
                             resolved_value = "";
                         }
-                        else if (format(value).isNumber()) {
+                        else if (strex(value).isNumber()) {
                             resolved_value = value;
                         }
-                        else if (format(value).isExplicitBool()) {
-                            resolved_value = format(value).toBool() ? "1" : "0";
+                        else if (strex(value).isExplicitBool()) {
+                            resolved_value = strex(value).toBool() ? "1" : "0";
                         }
                         else if (value.find("::") != string::npos) {
                             bool failed = false;
-                            resolved_value = format("{}", baker_engine.ResolveEnumValue(value, &failed));
+                            resolved_value = strex("{}", baker_engine.ResolveEnumValue(value, &failed));
                             if (failed) {
                                 settings_errors++;
                             }
@@ -535,7 +535,7 @@ void Baker::BakeAll()
                             resolved_value = value;
                         }
 
-                        config_content += format("{}={}\n", key, resolved_value);
+                        config_content += strex("{}={}\n", key, resolved_value);
 
 #if !FO_SINGLEPLAYER
                         const auto is_server_setting = server_settings.count(key) != 0;
@@ -544,7 +544,7 @@ void Baker::BakeAll()
                             server_settings.erase(key);
                         }
                         if (is_client_setting) {
-                            client_config_content += format("{}={}\n", key, resolved_value);
+                            client_config_content += strex("{}={}\n", key, resolved_value);
                             client_settings.erase(key);
                         }
                         if (!is_server_setting && !is_client_setting) {
@@ -559,7 +559,7 @@ void Baker::BakeAll()
                     }
 
                     const auto write_config = [this](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
-                        auto cfg_file = DiskFileSystem::OpenFile(MakeOutputPath(format("Configs/{}{}.focfg", cfg_name1, cfg_name2)), true);
+                        auto cfg_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Configs/{}{}.focfg", cfg_name1, cfg_name2)), true);
                         RUNTIME_ASSERT(cfg_file);
                         const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
                         RUNTIME_ASSERT(cfg_file_write_ok);
@@ -649,7 +649,7 @@ void Baker::BakeAll()
 
                 for (auto&& [type_name, protos] : proto_mngr.GetAllProtos()) {
                     for (auto&& [pid, proto] : protos) {
-                        proto_errors += ValidateProperties(proto->GetProperties(), format("proto {} {}", type_name, proto->GetName()), validation_engine->ScriptSys, resource_hashes);
+                        proto_errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), validation_engine->ScriptSys, resource_hashes);
                     }
                 }
 
@@ -701,7 +701,7 @@ void Baker::BakeAll()
 
                     // Skip if up to date
                     if (!_settings.ForceBakering) {
-                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(format("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
+                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
                             continue;
                         }
                     }
@@ -727,7 +727,7 @@ void Baker::BakeAll()
                                 auto props = copy(proto->GetProperties());
 
                                 if (props.ApplyFromText(kv)) {
-                                    map_errors += ValidateProperties(props, format("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+                                    map_errors += ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_cr_count++;
                                     map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -747,7 +747,7 @@ void Baker::BakeAll()
                                 auto props = copy(proto->GetProperties());
 
                                 if (props.ApplyFromText(kv)) {
-                                    map_errors += ValidateProperties(props, format("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+                                    map_errors += ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_item_count++;
                                     map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -810,7 +810,7 @@ void Baker::BakeAll()
                             final_writer.Write<uint>(map_item_count);
                             final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(format("Maps/{}.fomapb", proto_map->GetName())), true);
+                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
                             RUNTIME_ASSERT(map_bin_file);
                             auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                             RUNTIME_ASSERT(map_bin_file_write_ok);
@@ -828,7 +828,7 @@ void Baker::BakeAll()
                             final_writer.Write<uint>(map_client_item_count);
                             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
-                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(format("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
+                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
                             RUNTIME_ASSERT(map_bin_file);
                             auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                             RUNTIME_ASSERT(map_bin_file_write_ok);
@@ -841,7 +841,7 @@ void Baker::BakeAll()
                         final_writer.Write<uint>(map_item_count);
                         final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-                        auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(format("Maps/{}.fomapb", proto_map->GetName())), true);
+                        auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
                         RUNTIME_ASSERT(map_bin_file);
                         auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                         RUNTIME_ASSERT(map_bin_file_write_ok);
@@ -964,7 +964,7 @@ void Baker::BakeAll()
 
                 while (dialogs.MoveNext()) {
                     auto file = dialogs.GetCurFile();
-                    auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(format("Dialogs/{}.fodlg", file.GetName())), true);
+                    auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Dialogs/{}.fodlg", file.GetName())), true);
                     RUNTIME_ASSERT(dlg_file);
                     auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
                     RUNTIME_ASSERT(dlg_file_write_ok);
@@ -1231,7 +1231,7 @@ void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_
 {
     STACK_TRACE_ENTRY();
 
-    auto baked_file = File(format(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
+    auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
     _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
 }
 
@@ -1246,7 +1246,7 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
     bool file_baked = false;
 
     if (auto file = _inputResources.ReadFile(path)) {
-        const string ext = format(path).getFileExtension();
+        const string ext = strex(path).getFileExtension();
 
         for (auto&& baker : _bakers) {
             if (baker->IsExtSupported(ext)) {

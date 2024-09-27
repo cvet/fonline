@@ -67,7 +67,7 @@ void ResourceManager::IndexFiles()
         auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
-            _soundNames.emplace(format(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
+            _soundNames.emplace(strex(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
         }
     }
 
@@ -152,7 +152,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
     while (true) {
         // Load
-        if (!!model_name && format(model_name).startsWith("art/critters/")) {
+        if (!!model_name && strex(model_name).startsWith("art/critters/")) {
             // Hardcoded
             anim = LoadFalloutAnimFrames(model_name, state_anim, action_anim);
         }
@@ -461,13 +461,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
     // Try load from fofrm
     {
-        const string spr_name = format("{}{}{}.fofrm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.fofrm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = format("{}{}{}.frm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.frm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
@@ -555,7 +555,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = format(model_name).getFileExtension();
+    const string ext = strex(model_name).getFileExtension();
     if (ext != "fo3d") {
         const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
         return frames != nullptr ? frames : _critterDummyAnimFrames.get();

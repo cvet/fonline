@@ -70,7 +70,7 @@
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const string module_name = format(st_entry->file).extractFileName().eraseFileExtension();
+        const string module_name = strex(st_entry->file).extractFileName().eraseFileExtension();
 
         WriteLog("{}: {}", module_name, text);
     }
@@ -165,7 +165,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi = {};
-    auto* cmd_line = _wcsdup(format(command).toWideChar().c_str());
+    auto* cmd_line = _wcsdup(strex(command).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 

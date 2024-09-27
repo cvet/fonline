@@ -2343,11 +2343,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif type == 'any':
                     globalLines.append('    return any_t {' + 'value};')
                 elif type == 'bool':
-                    globalLines.append('    return format(value).toBool();')
+                    globalLines.append('    return strex(value).toBool();')
                 elif type in ['float', 'double']:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(format(value).toDouble());')
+                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
                 else:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(format(value).toInt64());')
+                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
@@ -2357,7 +2357,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if not isASCompiler:
                 globalLines.append('    STACK_TRACE_ENTRY();')
                 globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                globalLines.append('    script_sys->GameEngine->Settings.Custom["' + name + '"] = format("{' + '}", ' + marshalIn(type, 'value') + ');')
+                globalLines.append('    script_sys->GameEngine->Settings.Custom["' + name + '"] = strex("{' + '}", ' + marshalIn(type, 'value') + ');')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    UNUSED_VARIABLE(value);')

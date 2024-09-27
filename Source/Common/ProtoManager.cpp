@@ -87,7 +87,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
                 if (is_fomap && section_name == "Header") {
                     type_name = _engine->ToHashedString("Map");
                 }
-                else if (format(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
+                else if (strex(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
                     type_name = _engine->ToHashedString(section_name.substr("Proto"_len));
                 }
                 else {
@@ -119,7 +119,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
         for (auto&& [key, value] : from_kv) {
             RUNTIME_ASSERT(!key.empty());
 
-            if (key[0] != '$' || format(key).startsWith("$Text")) {
+            if (key[0] != '$' || strex(key).startsWith("$Text")) {
                 if (overwrite) {
                     to_kv[key] = value;
                 }
@@ -146,7 +146,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
         auto injection = [&](const string& key_name, bool overwrite) {
             for (auto&& [pid, kv] : file_proto_pids) {
                 if (kv.count(key_name) != 0) {
-                    for (const auto& inject_name : format(kv[key_name]).split(' ')) {
+                    for (const auto& inject_name : strex(kv[key_name]).split(' ')) {
                         if (inject_name == "All") {
                             for (auto&& [other_pid, other_kv] : file_proto_pids) {
                                 if (other_pid != pid) {
@@ -183,7 +183,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
             std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
                 const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv["$Parent"] : string();
 
-                for (auto& parent_name : format(parent_name_line).split(' ')) {
+                for (auto& parent_name : strex(parent_name_line).split(' ')) {
                     auto parent_pid = _engine->ToHashedString(parent_name);
 
                     parent_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
@@ -223,7 +223,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 
             // Components
             if (final_kv.count("$Components") != 0) {
-                for (const auto& component_name : format(final_kv["$Components"]).split(' ')) {
+                for (const auto& component_name : strex(final_kv["$Components"]).split(' ')) {
                     auto component_name_hashed = _engine->ToHashedString(component_name);
                     component_name_hashed = _engine->CheckMigrationRule(component_rule_name, type_name, component_name_hashed).value_or(component_name_hashed);
 
@@ -241,8 +241,8 @@ void ProtoManager::ParseProtos(FileSystem& resources)
             _parsedTexts[type_name][pid] = {};
 
             for (auto& kv : final_kv) {
-                if (format(kv.first).startsWith("$Text")) {
-                    const auto key_tok = format(kv.first).split(' ');
+                if (strex(kv.first).startsWith("$Text")) {
+                    const auto key_tok = strex(kv.first).split(' ');
                     const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
                     TextPackKey text_key = pid.as_uint();
@@ -251,8 +251,8 @@ void ProtoManager::ParseProtos(FileSystem& resources)
                         const string& num = key_tok[i];
 
                         if (!num.empty()) {
-                            if (format(num).isNumber()) {
-                                text_key += format(num).toUInt();
+                            if (strex(num).isNumber()) {
+                                text_key += strex(num).toUInt();
                             }
                             else {
                                 text_key += _engine->ToHashedString(num).as_uint();
@@ -269,7 +269,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
     // Mapper collections
     for (auto&& [pid, proto] : _itemProtos) {
         if (!proto->GetComponents().empty()) {
-            const_cast<ProtoItem*>(proto)->CollectionName = format(*proto->GetComponents().begin()).lower();
+            const_cast<ProtoItem*>(proto)->CollectionName = strex(*proto->GetComponents().begin()).lower();
         }
         else {
             const_cast<ProtoItem*>(proto)->CollectionName = "other";

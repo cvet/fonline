@@ -493,7 +493,7 @@ void CritterHexView::RefreshModel()
     _model = nullptr;
 
     const hstring model_name = GetModelName();
-    const string ext = format(model_name).getFileExtension();
+    const string ext = strex(model_name).getFileExtension();
 
     if (ext == "fo3d") {
         _modelSpr = dynamic_pointer_cast<ModelSprite>(_engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites));

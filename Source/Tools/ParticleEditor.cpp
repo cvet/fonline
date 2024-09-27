@@ -161,8 +161,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
         _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
     }
-    for (auto tex_files = _editor.InputResources.FilterFiles("tga", format(asset_path).extractDir()); tex_files.MoveNext();) {
-        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(format(asset_path).extractDir().length() + 1));
+    for (auto tex_files = _editor.InputResources.FilterFiles("tga", strex(asset_path).extractDir()); tex_files.MoveNext();) {
+        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(strex(asset_path).extractDir().length() + 1));
     }
 }
 
@@ -741,9 +741,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = format("{}: {} => {}", entry.x, entry.y0, entry.y1);
+            string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
-            if (ImGui::TreeNodeEx(format("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", const_cast<float*>(&entry.y0));
                 ImGui::InputFloat("End", const_cast<float*>(&entry.y1));
 
@@ -751,7 +751,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(format("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -798,9 +798,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = format("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
+            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
 
-            if (ImGui::TreeNodeEx(format("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
                 const_cast<unsigned char&>(entry.y0.r) = static_cast<unsigned char>(c1[0]);
@@ -818,7 +818,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(format("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -1275,15 +1275,15 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
         for (size_t i = 0; i < get_size(); i++) {
             auto&& obj = get(i);
 
-            const string name = format("{} ({})", obj->getName().empty() ? format("{}", i + 1) : obj->getName(), obj->getClassName());
+            const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : obj->getName(), obj->getClassName());
 
-            if (ImGui::TreeNodeEx(format("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(format("Remove {}", name).c_str())) {
+                if (ImGui::Button(strex("Remove {}", name).c_str())) {
                     delIndex = static_cast<int>(i);
                 }
             }

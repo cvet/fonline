@@ -149,10 +149,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(format("{}.log", format(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
     }
     else {
-        LogToFile(format("{}.log", FO_DEV_NAME));
+        LogToFile(strex("{}.log", FO_DEV_NAME));
     }
 #endif
 
@@ -532,7 +532,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return format(sdl_backend).startsWith(entry); });
+        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return strex(sdl_backend).startsWith(entry); });
 
         if (Settings.ImGuiColorStyle == "Dark") {
             ImGui::StyleColorsDark();
@@ -858,7 +858,7 @@ void Application::BeginFrame()
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
-                    ev1.Text = format("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
+                    ev1.Text = strex("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
                     EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
@@ -1546,7 +1546,7 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
     auto verb_message = string(message);
 
     if (!traceback.empty()) {
-        verb_message += format("\n\n{}", traceback);
+        verb_message += strex("\n\n{}", traceback);
     }
 
     static unordered_set<string> ignore_entries;

@@ -461,7 +461,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    const string ext = format(path).getFileExtension();
+    const string ext = strex(path).getFileExtension();
     if (ext.empty()) {
         BreakIntoDebugger();
         WriteLog("Extension not found, file '{}'", path);
@@ -1041,7 +1041,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 y1 -= iround(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), format("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), strex("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
         }
 
         // Process contour effect
@@ -1589,7 +1589,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     }
 
     // Load font data
-    string fname = format("Fonts/{}.fofnt", font_name);
+    string fname = strex("Fonts/{}.fofnt", font_name);
     auto file = _resources.ReadFile(fname);
     if (!file) {
         WriteLog("File '{}' not found", fname);
@@ -1756,7 +1756,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     auto&& font = std::make_unique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
-    auto file = _resources.ReadFile(format("Fonts/{}.fnt", font_name));
+    auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
         return false;

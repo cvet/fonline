@@ -234,7 +234,7 @@ void ModelBaker::BakeFiles(FileCollection&& files)
 
     for (files.ResetCounter(); files.MoveNext();) {
         auto file_header = files.GetCurFileHeader();
-        string ext = format(file_header.GetPath()).getFileExtension();
+        string ext = strex(file_header.GetPath()).getFileExtension();
 
         if (!IsExtSupported(ext)) {
             continue;
@@ -450,7 +450,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uint8>
             int file_minor;
             int file_revision;
             fbx_importer->GetFileVersion(file_major, file_minor, file_revision);
-            error_desc += format(" (minimum version {}.{}.{}, file version {}.{}.{})", sdk_major, sdk_minor, sdk_revision, file_major, file_minor, file_revision);
+            error_desc += strex(" (minimum version {}.{}.{}, file version {}.{}.{})", sdk_major, sdk_minor, sdk_revision, file_major, file_minor, file_revision);
         }
 
         throw ModelBakerException("Call to FbxImporter::Initialize() failed", fname, error_desc);
@@ -719,7 +719,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
             for (auto i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++) {
                 if (string(prop_diffuse.GetSrcObject(i)->GetClassId().GetName()) == "FbxFileTexture") {
                     auto* fbx_file_texture = static_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
-                    mesh->DiffuseTexture = format(fbx_file_texture->GetFileName()).extractFileName();
+                    mesh->DiffuseTexture = strex(fbx_file_texture->GetFileName()).extractFileName();
                     break;
                 }
             }

@@ -44,9 +44,9 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 {
     STACK_TRACE_ENTRY();
 
-    Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("FullProtos"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("FullProtos"));
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(format(Settings.ResourcesDir).combinePath("MapperAngelScript"));
+        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("MapperAngelScript"));
     }
 
     for (const auto& dir : settings.BakeContentEntries) {
@@ -160,7 +160,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         ConsoleHistory.push_back(history_part);
         prev = pos + 1;
     }
-    ConsoleHistory = format(history_str).normalizeLineEndings().split('\n');
+    ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
     while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
@@ -984,9 +984,9 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize(spr, x, y, w, h, false, true, col);
 
-            SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), format("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), strex("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && inner_item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                SprMngr.DrawStr(IRect(x, y, x + w, y + h), format("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                SprMngr.DrawStr(IRect(x, y, x + w, y + h), strex("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
         }
     }
@@ -996,7 +996,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i];
-            SprMngr.DrawStr(IRect(x, y, x + w, y + h), format(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawStr(IRect(x, y, x + w, y + h), strex(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 
@@ -1032,7 +1032,7 @@ void FOMapper::IntDraw()
             if (count == 0u) {
                 count = static_cast<uint>(stab.ItemProtos.size());
             }
-            name += format(" ({})", count);
+            name += strex(" ({})", count);
             SprMngr.DrawStr(r, name, 0, color, FONT_DEFAULT);
 
             posy -= line_height;
@@ -1052,12 +1052,12 @@ void FOMapper::IntDraw()
         }
         auto day_time = CurMap->GetGlobalDayTime();
         SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
-            format("Map '{}'\n"
-                   "Hex {} {}\n"
-                   "Time {} : {}\n"
-                   "Fps {}\n"
-                   "Tile layer {}\n"
-                   "{}",
+            strex("Map '{}'\n"
+                  "Hex {} {}\n"
+                  "Time {} : {}\n"
+                  "Fps {}\n"
+                  "Tile layer {}\n"
+                  "{}",
                 CurMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
     }
@@ -1104,7 +1104,7 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine("Id", "", format("{}", entity->GetId()), true, r);
+    DrawLine("Id", "", strex("{}", entity->GetId()), true, r);
     DrawLine("ProtoName", "", entity->GetName(), true, r);
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
@@ -1154,7 +1154,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
         }
     }
 
-    string str = format("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
+    string str = strex("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
     str += "........................................................................................................";
     SprMngr.DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, FONT_DEFAULT);
     SprMngr.DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, FONT_DEFAULT);
@@ -2890,7 +2890,7 @@ void FOMapper::ParseCommand(string_view command)
 
     // Load map
     if (command[0] == '~') {
-        string map_name = format(command.substr(1)).trim();
+        string map_name = strex(command.substr(1)).trim();
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2906,7 +2906,7 @@ void FOMapper::ParseCommand(string_view command)
     }
     // Save map
     else if (command[0] == '^') {
-        string map_name = format(command.substr(1)).trim();
+        string map_name = strex(command.substr(1)).trim();
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2937,13 +2937,13 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        string str = format(command).substringAfter(' ').trim();
+        string str = strex(command).substringAfter(' ').trim();
         if (!func(str)) {
             AddMess("Script execution fail");
             return;
         }
 
-        AddMess(format("Result: {}", func.GetResult()));
+        AddMess(strex("Result: {}", func.GetResult()));
     }
     // Critter animations
     else if (command[0] == '@') {
@@ -2954,7 +2954,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        vector<int> anims = format(command.substr(1)).splitToInt(' ');
+        vector<int> anims = strex(command.substr(1)).splitToInt(' ');
         if (anims.empty()) {
             return;
         }
@@ -3063,7 +3063,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
     const auto map_file_str = map_file.GetStr();
 
-    auto map_data = ConfigFile(format("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
+    auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
     }
@@ -3082,7 +3082,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         new_map->LoadFromFile(map_name, map_file.GetStr());
     }
     catch (const MapLoaderException& ex) {
-        AddMess(format("Map truncated: {}", ex.what()));
+        AddMess(strex("Map truncated: {}", ex.what()));
         return nullptr;
     }
 
@@ -3155,13 +3155,13 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
             fomap_path = fomap_file.GetFullPath();
         }
         else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-            fomap_path = format(fomap_file2.GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_file2.GetFullPath()).changeFileName(fomap_name);
         }
         else if (fomap_files.MoveNext()) {
-            fomap_path = format(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
         }
         else {
-            fomap_path = format("{}.fomap", fomap_path).formatPath();
+            fomap_path = strex("{}.fomap", fomap_path).formatPath();
         }
     }
 
@@ -3221,10 +3221,10 @@ void FOMapper::AddMess(string_view message_text)
 {
     STACK_TRACE_ENTRY();
 
-    const string str = format("|{} - {}\n", COLOR_TEXT, message_text);
+    const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
 
     const auto dt = Timer::GetCurrentDateTime();
-    const string mess_time = format("{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second);
+    const string mess_time = strex("{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second);
 
     MessBox.push_back({0, str, mess_time});
     MessBoxScroll = 0;

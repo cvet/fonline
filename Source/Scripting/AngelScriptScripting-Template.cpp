@@ -835,27 +835,27 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_VOID:
         return "";
     case asTYPEID_BOOL:
-        return format("{}", *static_cast<bool*>(ptr) ? "true" : "false");
+        return strex("{}", *static_cast<bool*>(ptr) ? "true" : "false");
     case asTYPEID_INT8:
-        return format("{}", *static_cast<int8*>(ptr));
+        return strex("{}", *static_cast<int8*>(ptr));
     case asTYPEID_INT16:
-        return format("{}", *static_cast<int16*>(ptr));
+        return strex("{}", *static_cast<int16*>(ptr));
     case asTYPEID_INT32:
-        return format("{}", *static_cast<int*>(ptr));
+        return strex("{}", *static_cast<int*>(ptr));
     case asTYPEID_INT64:
-        return format("{}", *static_cast<int64*>(ptr));
+        return strex("{}", *static_cast<int64*>(ptr));
     case asTYPEID_UINT8:
-        return format("{}", *static_cast<uint8*>(ptr));
+        return strex("{}", *static_cast<uint8*>(ptr));
     case asTYPEID_UINT16:
-        return format("{}", *static_cast<uint16*>(ptr));
+        return strex("{}", *static_cast<uint16*>(ptr));
     case asTYPEID_UINT32:
-        return format("{}", *static_cast<uint*>(ptr));
+        return strex("{}", *static_cast<uint*>(ptr));
     case asTYPEID_UINT64:
-        return format("{}", *static_cast<uint64*>(ptr));
+        return strex("{}", *static_cast<uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return format("{}", *static_cast<float*>(ptr));
+        return strex("{}", *static_cast<float*>(ptr));
     case asTYPEID_DOUBLE:
-        return format("{}", *static_cast<double*>(ptr));
+        return strex("{}", *static_cast<double*>(ptr));
     default:
         break;
     }
@@ -869,21 +869,21 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     const string type_name = type_info->GetName();
 
     if (type_name == "string") {
-        return format("{}", *static_cast<string*>(ptr));
+        return strex("{}", *static_cast<string*>(ptr));
     }
     if (type_name == "hstring") {
-        return format("{}", *static_cast<hstring*>(ptr));
+        return strex("{}", *static_cast<hstring*>(ptr));
     }
     if (type_name == "any") {
-        return format("{}", *static_cast<any_t*>(ptr));
+        return strex("{}", *static_cast<any_t*>(ptr));
     }
     if (type_name == IDENT_T_NAME) {
-        return format("{}", *static_cast<ident_t*>(ptr));
+        return strex("{}", *static_cast<ident_t*>(ptr));
     }
     if (type_name == TICK_T_NAME) {
-        return format("{}", *static_cast<tick_t*>(ptr));
+        return strex("{}", *static_cast<tick_t*>(ptr));
     }
-    return format("{}", type_name);
+    return strex("{}", type_name);
 }
 #endif
 
@@ -901,10 +901,10 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     string func_name;
 
     if (func->GetNamespace() == nullptr) {
-        func_name = format("{}", func->GetName()).str();
+        func_name = strex("{}", func->GetName()).str();
     }
     else {
-        func_name = format("{}::{}", func->GetNamespace(), func->GetName()).str();
+        func_name = strex("{}::{}", func->GetNamespace(), func->GetName()).str();
     }
 
     return hash_resolver.ToHashedString(func_name);
@@ -1256,7 +1256,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     std::memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
-                    auto* arr = CreateASArray(as_engine, format("{}[]", prop->GetBaseTypeName()).c_str());
+                    auto* arr = CreateASArray(as_engine, strex("{}[]", prop->GetBaseTypeName()).c_str());
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -2717,7 +2717,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     if (func->GetReturnTypeId() == asTYPEID_VOID) {
         throw ScriptException("Invalid getter function");
     }
-    if (prop->GetFullTypeName() != format(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
+    if (prop->GetFullTypeName() != strex(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
         throw ScriptException("Invalid getter function");
     }
 
@@ -2813,7 +2813,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     if (func->GetParamCount() > 1) {
         AS_VERIFY(func->GetParam(1, &type_id, &flags));
 
-        if (prop->GetFullTypeName() == format(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
+        if (prop->GetFullTypeName() == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
             has_value_ref = true;
             if (func->GetParamCount() == 3) {
                 throw ScriptException("Invalid setter function");
@@ -2829,7 +2829,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         if (func->GetParamCount() == 3) {
             AS_VERIFY(func->GetParam(2, &type_id, &flags));
 
-            if (prop->GetFullTypeName() == format(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
+            if (prop->GetFullTypeName() == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
                 has_value_ref = true;
             }
             else {
@@ -3324,7 +3324,7 @@ static void Any_ConstructFrom(any_t* self, const T& other)
 {
     NO_STACK_TRACE_ENTRY();
 
-    new (self) any_t {format("{}", other).str()};
+    new (self) any_t {strex("{}", other).str()};
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
@@ -3354,16 +3354,16 @@ static auto Any_Conv(const any_t& self) -> T
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, bool>) {
-        return format(self).toBool();
+        return strex(self).toBool();
     }
     else if constexpr (is_strong_type_v<T>) {
-        return T {static_cast<typename T::underlying_type>(format(self).toInt64())};
+        return T {static_cast<typename T::underlying_type>(strex(self).toInt64())};
     }
     else if constexpr (std::is_integral_v<T>) {
-        return static_cast<T>(format(self).toInt64());
+        return static_cast<T>(strex(self).toInt64());
     }
     else if constexpr (std::is_floating_point_v<T>) {
-        return static_cast<T>(format(self).toDouble());
+        return static_cast<T>(strex(self).toDouble());
     }
     else if constexpr (std::is_same_v<T, string>) {
         return self;
@@ -3392,7 +3392,7 @@ static auto Any_ConvFrom(const T& self) -> any_t
 {
     NO_STACK_TRACE_ENTRY();
 
-    return any_t {format("{}", self).str()};
+    return any_t {strex("{}", self).str()};
 }
 
 template<typename T>
@@ -3456,7 +3456,7 @@ static auto StrongType_GetStr(const T& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
 
-    return format("{}", self).str();
+    return strex("{}", self).str();
 }
 
 template<typename T>
@@ -3464,7 +3464,7 @@ static auto StrongType_AnyConv(const T& self) -> any_t
 {
     NO_STACK_TRACE_ENTRY();
 
-    return any_t {format("{}", self).str()};
+    return any_t {strex("{}", self).str()};
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
@@ -3525,7 +3525,7 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
     }
 
     auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
-    CScriptArray* result_arr = MarshalBackArray(as_engine, format("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
+    CScriptArray* result_arr = MarshalBackArray(as_engine, strex("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
     return result_arr;
 #else
     UNUSED_VARIABLE(engine);
@@ -3606,11 +3606,11 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
             casted_entities.emplace_back(casted_entity);
         }
 
-        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), format("{}[]", T2::ENTITY_TYPE_NAME).c_str(), casted_entities);
+        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str(), casted_entities);
         new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
     else {
-        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), format("{}[]", T2::ENTITY_TYPE_NAME).c_str());
+        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str());
         new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
 #else
@@ -3696,7 +3696,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
     }
 
     if (full_spec) {
-        enum_value_name = format("{}::{}", enum_info->EnumName, enum_value_name);
+        enum_value_name = strex("{}::{}", enum_info->EnumName, enum_value_name);
     }
 
     new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
@@ -3720,7 +3720,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
         type = "info";
     }
 
-    const auto formatted_message = format("{}({},{}): {} : {}", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message).str();
+    const auto formatted_message = strex("{}({},{}): {} : {}", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message).str();
 
 #if COMPILER_MODE
     extern unordered_set<string> CompilerPassedMessages;
@@ -3827,9 +3827,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
         AS_VERIFY(engine->SetDefaultNamespace("Enum"));
-        AS_VERIFY(engine->RegisterGlobalFunction(format("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->RegisterGlobalFunction(format("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->RegisterGlobalFunction(format("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(strex("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(strex("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(strex("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
         AS_VERIFY(engine->SetDefaultNamespace(""));
     }
 
@@ -3926,7 +3926,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
         static type ZERO_##type; \
-        AS_VERIFY(engine->RegisterGlobalFunction(format(name " get_ZERO_{}()", format(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
+        AS_VERIFY(engine->RegisterGlobalFunction(strex(name " get_ZERO_{}()", strex(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
     }
 
 #define REGISTER_RELAXED_STRONG_TYPE(name, type, underlying_type) \
@@ -4151,24 +4151,24 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
         for (const auto& component : registrator->GetComponents()) {
             {
-                const auto component_type = format("{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), format("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_abstract) {
-                const auto component_type = format("Abstract{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Abstract{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), format("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_protos) {
-                const auto component_type = format("Proto{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Proto{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), format("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
             if (is_has_statics) {
-                const auto component_type = format("Static{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Static{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), format("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
         }
 
@@ -4178,25 +4178,25 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 
             if (!prop->IsDisabled()) {
-                const auto decl_get = format("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? format("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                const auto decl_get = strex("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
                     if (is_has_abstract) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? format("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                     if (is_has_protos) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? format("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                     if (is_has_statics) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? format("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                     }
                 }
             }
 
             if (!prop->IsDisabled() && !prop->IsReadOnly()) {
-                const auto decl_set = format("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? format("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
+                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
             }
         }
 
@@ -4207,12 +4207,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(prop->GetRegIndex());
             }
 
-            AS_VERIFY(engine->SetDefaultNamespace(format("{}PropertyGroup", registrator->GetTypeName()).c_str()));
+            AS_VERIFY(engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, format("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
+            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(engine->RegisterGlobalFunction(format("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(engine->SetDefaultNamespace(""));
         }
     }
@@ -4240,13 +4240,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #else
 #if COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
-    game_engine->Resources.AddDataSource(format(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
 #elif CLIENT_SCRIPTING
-    game_engine->Resources.AddDataSource(format(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
 #elif SINGLE_SCRIPTING
-    game_engine->Resources.AddDataSource(format(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
 #elif MAPPER_SCRIPTING
-    game_engine->Resources.AddDataSource(format(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
 #endif
 #endif
 #if SERVER_SCRIPTING
@@ -4431,7 +4431,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             // Check for special module init function
             if (func_desc.ArgsType.empty() && func_desc.RetType != nullptr && type_index(*func_desc.RetType) == type_index(typeid(void))) {
                 RUNTIME_ASSERT(func_desc.CallSupported);
-                const auto func_name_ex = format(func->GetName());
+                const auto func_name_ex = strex(func->GetName());
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
                     _initFunc.push_back(&func_desc);
                 }
@@ -4592,7 +4592,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
         int sort = 0;
         const auto sort_pos = first_line.find("Sort ");
         if (sort_pos != string::npos) {
-            sort = format(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
+            sort = strex(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
         }
 
         final_script_files_order.push_back(std::make_tuple(sort, script_name, script_path));
@@ -4681,13 +4681,13 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
 #if SERVER_SCRIPTING
-    const string script_out_path = format(App->Settings.BakeOutput).combinePath("ServerAngelScript/ServerRootModule.fosb");
+    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ServerAngelScript/ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    const string script_out_path = format(App->Settings.BakeOutput).combinePath("ClientAngelScript/ClientRootModule.fosb");
+    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ClientAngelScript/ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    const string script_out_path = format(App->Settings.BakeOutput).combinePath("SingleAngelScript/SingleRootModule.fosb");
+    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("SingleAngelScript/SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    const string script_out_path = format(App->Settings.BakeOutput).combinePath("MapperAngelScript/MapperRootModule.fosb");
+    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("MapperAngelScript/MapperRootModule.fosb");
 #endif
 
     auto file = DiskFileSystem::OpenFile(script_out_path, true);

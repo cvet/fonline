@@ -45,7 +45,7 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
 {
     STACK_TRACE_ENTRY();
 
-    string path_fixed = format(path).normalizePathSlashes();
+    string path_fixed = strex(path).normalizePathSlashes();
     if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
     }
@@ -56,7 +56,7 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
     for (const auto& fname : fnames) {
         auto add = false;
         if (fname.compare(0, len, path_fixed) == 0 && (include_subdirs || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
-            if (ext.empty() || format(fname).getFileExtension() == ext) {
+            if (ext.empty() || strex(fname).getFileExtension() == ext) {
                 add = true;
             }
         }
@@ -276,7 +276,7 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     };
 
     if (is_file_present(path)) {
-        const string ext = format(path).getFileExtension();
+        const string ext = strex(path).getFileExtension();
         if (ext == "dat") {
             return std::make_unique<FalloutDat>(path);
         }
@@ -286,14 +286,14 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
 
         throw DataSourceException("Unknown file extension", ext, path, type);
     }
-    else if (is_file_present(format("{}.zip", path))) {
-        return std::make_unique<ZipFile>(format("{}.zip", path));
+    else if (is_file_present(strex("{}.zip", path))) {
+        return std::make_unique<ZipFile>(strex("{}.zip", path));
     }
-    else if (is_file_present(format("{}.bos", path))) {
-        return std::make_unique<ZipFile>(format("{}.bos", path));
+    else if (is_file_present(strex("{}.bos", path))) {
+        return std::make_unique<ZipFile>(strex("{}.bos", path));
     }
-    else if (is_file_present(format("{}.dat", path))) {
-        return std::make_unique<FalloutDat>(format("{}.dat", path));
+    else if (is_file_present(strex("{}.dat", path))) {
+        return std::make_unique<FalloutDat>(strex("{}.dat", path));
     }
 
     if (type == DataSourceType::MaybeNotAvailable) {
@@ -364,7 +364,7 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto file = DiskFileSystem::OpenFile(format("{}{}", _basePath, path), false);
+    const auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
     if (!file) {
         return false;
     }
@@ -378,7 +378,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     STACK_TRACE_ENTRY();
 
-    auto file = DiskFileSystem::OpenFile(format("{}{}", _basePath, path), false);
+    auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
     if (!file) {
         return nullptr;
     }
@@ -400,7 +400,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
     STACK_TRACE_ENTRY();
 
     FileNameVec fnames;
-    DiskFileSystem::IterateDir(format(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 
@@ -420,7 +420,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
 
     DiskFileSystem::IterateDir(_basePath, "", recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
-        fe.FileName = format("{}{}", _basePath, path);
+        fe.FileName = strex("{}{}", _basePath, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
@@ -557,7 +557,7 @@ auto FalloutDat::ReadTree() -> bool
             std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
-                string name = format(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
+                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
 
                 if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
@@ -637,7 +637,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         if (name_len != 0) {
-            string name = format(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
+            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
 
             _filesTree.insert(std::make_pair(name, ptr + 4 + name_len));
             _filesTreeNames.push_back(name);
@@ -929,7 +929,7 @@ auto ZipFile::ReadTree() -> bool
 
         if ((info.external_fa & 0x10) == 0) // Not folder
         {
-            string name = format(buf).normalizePathSlashes();
+            string name = strex(buf).normalizePathSlashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
@@ -1016,7 +1016,7 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    const auto names = format(buf).normalizeLineEndings().split('\n');
+    const auto names = strex(buf).normalizeLineEndings().split('\n');
     delete[] buf;
 
     // Parse

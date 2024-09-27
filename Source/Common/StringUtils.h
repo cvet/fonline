@@ -35,37 +35,49 @@
 
 #include "Common.h"
 
-class StringHelper final
+// ReSharper disable CppInconsistentNaming
+
+class strex final
 {
 public:
     static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
 
-    StringHelper() = default;
-    explicit StringHelper(const char* s) noexcept :
+    struct dynamic_format_tag
+    {
+    };
+
+    strex() = default;
+    explicit strex(const char* s) noexcept :
         _sv {s}
     {
     }
-    explicit StringHelper(string_view s) noexcept :
+    explicit strex(string_view s) noexcept :
         _sv {s}
     {
     }
-    explicit StringHelper(string&& s) noexcept :
+    explicit strex(string&& s) noexcept :
         _s {std::move(s)},
         _sv {_s}
     {
     }
     template<typename... Args>
-    explicit StringHelper(fmt::format_string<Args...>&& format, Args&&... args) :
+    explicit strex(fmt::format_string<Args...>&& format, Args&&... args) :
         _s {fmt::format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
+    template<typename... Args>
+    explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
+        _s {fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...))},
+        _sv {_s}
+    {
+    }
 
-    StringHelper(const StringHelper&) = delete;
-    StringHelper(StringHelper&&) noexcept = delete;
-    auto operator=(const StringHelper&) -> StringHelper& = delete;
-    auto operator=(StringHelper&&) noexcept -> StringHelper& = delete;
-    ~StringHelper() = default;
+    strex(const strex&) = delete;
+    strex(strex&&) noexcept = delete;
+    auto operator=(const strex&) -> strex& = delete;
+    auto operator=(strex&&) noexcept -> strex& = delete;
+    ~strex() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&();
@@ -74,8 +86,6 @@ public:
 
     auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
     auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
-
-    // ReSharper disable CppInconsistentNaming
 
     [[nodiscard]] auto c_str() -> const char*;
     [[nodiscard]] auto str() -> string&&;
@@ -104,47 +114,47 @@ public:
     [[nodiscard]] auto split(char delimiter) const -> vector<string>;
     [[nodiscard]] auto splitToInt(char delimiter) const -> vector<int>;
 
-    auto substringUntil(char separator) noexcept -> StringHelper&;
-    auto substringUntil(string_view separator) noexcept -> StringHelper&;
-    auto substringAfter(char separator) noexcept -> StringHelper&;
-    auto substringAfter(string_view separator) noexcept -> StringHelper&;
-    auto trim() noexcept -> StringHelper&;
+    auto substringUntil(char separator) noexcept -> strex&;
+    auto substringUntil(string_view separator) noexcept -> strex&;
+    auto substringAfter(char separator) noexcept -> strex&;
+    auto substringAfter(string_view separator) noexcept -> strex&;
+    auto trim() noexcept -> strex&;
 
-    auto erase(char what) -> StringHelper&;
-    auto erase(char begin, char end) -> StringHelper&;
-    auto replace(char from, char to) -> StringHelper&;
-    auto replace(char from1, char from2, char to) -> StringHelper&;
-    auto replace(string_view from, string_view to) -> StringHelper&;
-    auto lower() -> StringHelper&;
-    auto lowerUtf8() -> StringHelper&;
-    auto upper() -> StringHelper&;
-    auto upperUtf8() -> StringHelper&;
+    auto erase(char what) -> strex&;
+    auto erase(char begin, char end) -> strex&;
+    auto replace(char from, char to) -> strex&;
+    auto replace(char from1, char from2, char to) -> strex&;
+    auto replace(string_view from, string_view to) -> strex&;
+    auto lower() -> strex&;
+    auto lowerUtf8() -> strex&;
+    auto upper() -> strex&;
+    auto upperUtf8() -> strex&;
 
-    auto formatPath() -> StringHelper&;
-    auto extractDir() -> StringHelper&;
-    auto extractFileName() -> StringHelper&;
-    auto getFileExtension() -> StringHelper&; // Extension without dot and lowered
-    auto eraseFileExtension() noexcept -> StringHelper&; // Erase extension with dot
-    auto changeFileName(string_view new_name) -> StringHelper&;
-    auto combinePath(string_view path) -> StringHelper&;
-    auto normalizePathSlashes() -> StringHelper&;
+    auto formatPath() -> strex&;
+    auto extractDir() -> strex&;
+    auto extractFileName() -> strex&;
+    auto getFileExtension() -> strex&; // Extension without dot and lowered
+    auto eraseFileExtension() noexcept -> strex&; // Erase extension with dot
+    auto changeFileName(string_view new_name) -> strex&;
+    auto combinePath(string_view path) -> strex&;
+    auto normalizePathSlashes() -> strex&;
 
-    auto normalizeLineEndings() -> StringHelper&;
+    auto normalizeLineEndings() -> strex&;
 
 #if FO_WINDOWS
-    auto parseWideChar(const wchar_t* str) -> StringHelper&;
+    auto parseWideChar(const wchar_t* str) -> strex&;
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
 
-    // ReSharper restore CppInconsistentNaming
-
 private:
-    void OwnStorage();
+    void ownStorage();
 
     string _s {};
     string_view _sv {};
 };
-static_assert(!std::is_polymorphic_v<StringHelper>);
+static_assert(!std::is_polymorphic_v<strex>);
+
+// ReSharper restore CppInconsistentNaming
 
 namespace utf8
 {
@@ -157,47 +167,12 @@ namespace utf8
 }
 
 template<>
-struct fmt::formatter<StringHelper> : formatter<string_view>
+struct fmt::formatter<strex> : formatter<string_view>
 {
     template<typename FormatContext>
-    auto format(const StringHelper& value, FormatContext& ctx) const
+    // ReSharper disable once CppInconsistentNaming
+    auto format(const strex& value, FormatContext& ctx) const
     {
         return formatter<string_view>::format(value.strv(), ctx);
     }
 };
-
-template<typename... Args>
-[[nodiscard]] inline auto format(fmt::format_string<Args...>&& format, Args&&... args) -> StringHelper
-{
-    return StringHelper(std::move(format), std::forward<Args>(args)...);
-}
-
-template<typename...>
-[[nodiscard]] inline auto format(string_view str) noexcept -> StringHelper
-{
-    return StringHelper(str);
-}
-
-template<typename...>
-[[nodiscard]] inline auto format(string&& str) noexcept -> StringHelper
-{
-    return StringHelper(std::move(str));
-}
-
-template<typename...>
-[[nodiscard]] inline auto format(const string& str) noexcept -> StringHelper
-{
-    return StringHelper(str);
-}
-
-template<typename...>
-[[nodiscard]] inline auto format(const char* str) noexcept -> StringHelper
-{
-    return StringHelper(str);
-}
-
-template<typename...>
-[[nodiscard]] inline auto format() noexcept -> StringHelper
-{
-    return StringHelper();
-}

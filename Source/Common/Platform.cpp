@@ -71,7 +71,7 @@ static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 void Platform::InfoLog(const string& str)
 {
 #if FO_WINDOWS
-    ::OutputDebugStringW(format(str).toWideChar().c_str());
+    ::OutputDebugStringW(strex(str).toWideChar().c_str());
 #elif FO_ANDROID
     __android_log_write(ANDROID_LOG_INFO, FO_DEV_NAME, str.c_str());
 #endif
@@ -84,7 +84,7 @@ void Platform::SetThreadName(const string& str)
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
 
     if (set_thread_description != nullptr) {
-        set_thread_description(::GetCurrentThread(), format(str).toWideChar().c_str());
+        set_thread_description(::GetCurrentThread(), strex(str).toWideChar().c_str());
     }
 #endif
 }
@@ -112,7 +112,7 @@ auto Platform::GetExePath() -> optional<string>
         }
     }
 
-    return format().parseWideChar(path.data());
+    return strex().parseWideChar(path.data());
 
 #elif FO_LINUX
     char path[FILENAME_MAX];

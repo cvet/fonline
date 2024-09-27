@@ -42,7 +42,7 @@ ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const P
 {
     STACK_TRACE_ENTRY();
 
-    _name = format("{}_{}", proto->GetName(), id);
+    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void ItemView::OnDestroySelf()

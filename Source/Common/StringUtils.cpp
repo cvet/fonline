@@ -38,38 +38,38 @@
 
 // ReSharper disable CppInconsistentNaming
 
-StringHelper::operator string&&()
+strex::operator string&&()
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     _sv = {};
 
     return std::move(_s);
 }
 
-auto StringHelper::str() -> string&&
+auto strex::str() -> string&&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     _sv = {};
 
     return std::move(_s);
 }
 
-auto StringHelper::c_str() -> const char*
+auto strex::c_str() -> const char*
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     return _s.c_str();
 }
 
-void StringHelper::OwnStorage()
+void strex::ownStorage()
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -89,21 +89,21 @@ void StringHelper::OwnStorage()
     _sv = _s;
 }
 
-auto StringHelper::length() const noexcept -> size_t
+auto strex::length() const noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.length();
 }
 
-auto StringHelper::empty() const noexcept -> bool
+auto strex::empty() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.empty();
 }
 
-auto StringHelper::compareIgnoreCase(string_view other) const noexcept -> bool
+auto strex::compareIgnoreCase(string_view other) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -120,7 +120,7 @@ auto StringHelper::compareIgnoreCase(string_view other) const noexcept -> bool
     return true;
 }
 
-auto StringHelper::compareIgnoreCaseUtf8(string_view other) const -> bool
+auto strex::compareIgnoreCaseUtf8(string_view other) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -128,38 +128,38 @@ auto StringHelper::compareIgnoreCaseUtf8(string_view other) const -> bool
         return false;
     }
 
-    return StringHelper(_sv).lowerUtf8() == StringHelper(other).lowerUtf8();
+    return strex(_sv).lowerUtf8() == strex(other).lowerUtf8();
 }
 
-auto StringHelper::startsWith(char r) const noexcept -> bool
+auto strex::startsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= 1 && _sv.front() == r;
 }
 
-auto StringHelper::startsWith(string_view r) const noexcept -> bool
+auto strex::startsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= r.length() && std::memcmp(_sv.data(), r.data(), r.length()) == 0;
 }
 
-auto StringHelper::endsWith(char r) const noexcept -> bool
+auto strex::endsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= 1 && _sv.back() == r;
 }
 
-auto StringHelper::endsWith(string_view r) const noexcept -> bool
+auto strex::endsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= r.length() && _sv.compare(_sv.length() - r.length(), r.length(), r) == 0;
 }
 
-auto StringHelper::isValidUtf8() const noexcept -> bool
+auto strex::isValidUtf8() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -181,7 +181,7 @@ auto StringHelper::isValidUtf8() const noexcept -> bool
     return true;
 }
 
-auto StringHelper::lengthUtf8() const noexcept -> size_t
+auto strex::lengthUtf8() const noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -194,7 +194,7 @@ auto StringHelper::lengthUtf8() const noexcept -> size_t
     return length;
 }
 
-auto StringHelper::substringUntil(char separator) noexcept -> StringHelper&
+auto strex::substringUntil(char separator) noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -207,7 +207,7 @@ auto StringHelper::substringUntil(char separator) noexcept -> StringHelper&
     return *this;
 }
 
-auto StringHelper::substringUntil(string_view separator) noexcept -> StringHelper&
+auto strex::substringUntil(string_view separator) noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -220,7 +220,7 @@ auto StringHelper::substringUntil(string_view separator) noexcept -> StringHelpe
     return *this;
 }
 
-auto StringHelper::substringAfter(char separator) noexcept -> StringHelper&
+auto strex::substringAfter(char separator) noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -236,7 +236,7 @@ auto StringHelper::substringAfter(char separator) noexcept -> StringHelper&
     return *this;
 }
 
-auto StringHelper::substringAfter(string_view separator) noexcept -> StringHelper&
+auto strex::substringAfter(string_view separator) noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -252,7 +252,7 @@ auto StringHelper::substringAfter(string_view separator) noexcept -> StringHelpe
     return *this;
 }
 
-auto StringHelper::trim() noexcept -> StringHelper&
+auto strex::trim() noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -278,11 +278,11 @@ auto StringHelper::trim() noexcept -> StringHelper&
     return *this;
 }
 
-auto StringHelper::erase(char what) -> StringHelper&
+auto strex::erase(char what) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     _s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
 
@@ -291,11 +291,11 @@ auto StringHelper::erase(char what) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::erase(char begin, char end) -> StringHelper&
+auto strex::erase(char begin, char end) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     while (true) {
         const auto begin_pos = _s.find(begin);
@@ -318,18 +318,18 @@ auto StringHelper::erase(char begin, char end) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::replace(char from, char to) -> StringHelper&
+auto strex::replace(char from, char to) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     std::replace(_s.begin(), _s.end(), from, to);
 
     return *this;
 }
 
-auto StringHelper::replace(char from1, char from2, char to) -> StringHelper&
+auto strex::replace(char from1, char from2, char to) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -341,11 +341,11 @@ auto StringHelper::replace(char from1, char from2, char to) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::replace(string_view from, string_view to) -> StringHelper&
+auto strex::replace(string_view from, string_view to) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     size_t pos = 0;
 
@@ -359,33 +359,33 @@ auto StringHelper::replace(string_view from, string_view to) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::lower() -> StringHelper&
+auto strex::lower() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     std::transform(_s.begin(), _s.end(), _s.begin(), tolower);
 
     return *this;
 }
 
-auto StringHelper::upper() -> StringHelper&
+auto strex::upper() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     std::transform(_s.begin(), _s.end(), _s.begin(), toupper);
 
     return *this;
 }
 
-auto StringHelper::lowerUtf8() -> StringHelper&
+auto strex::lowerUtf8() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     for (size_t i = 0; i < _s.length();) {
         size_t length = _s.length() - i;
@@ -406,11 +406,11 @@ auto StringHelper::lowerUtf8() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::upperUtf8() -> StringHelper&
+auto strex::upperUtf8() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     for (size_t i = 0; i < _s.length();) {
         size_t length = _s.length() - i;
@@ -431,7 +431,7 @@ auto StringHelper::upperUtf8() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::split(char delimiter) const -> vector<string>
+auto strex::split(char delimiter) const -> vector<string>
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -442,7 +442,7 @@ auto StringHelper::split(char delimiter) const -> vector<string>
         string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            entry = StringHelper(entry).trim().strv();
+            entry = strex(entry).trim().strv();
 
             if (!entry.empty()) {
                 result.emplace_back(entry);
@@ -460,7 +460,7 @@ auto StringHelper::split(char delimiter) const -> vector<string>
     return result;
 }
 
-auto StringHelper::splitToInt(char delimiter) const -> vector<int>
+auto strex::splitToInt(char delimiter) const -> vector<int>
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -471,10 +471,10 @@ auto StringHelper::splitToInt(char delimiter) const -> vector<int>
         string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            entry = StringHelper(entry).trim().strv();
+            entry = strex(entry).trim().strv();
 
             if (!entry.empty()) {
-                result.emplace_back(StringHelper(entry).toInt());
+                result.emplace_back(strex(entry).toInt());
             }
         }
 
@@ -505,7 +505,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
     if (len == 0) {
         return false;
     }
-    if (len > StringHelper::MAX_NUMBER_STRING_LENGTH) {
+    if (len > strex::MAX_NUMBER_STRING_LENGTH) {
         return false;
     }
 
@@ -554,7 +554,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
             // Assume all our strings are null terminated
             if (*end_ptr != 0) {
                 const auto count = static_cast<size_t>(end_ptr - ptr);
-                array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
                 std::memcpy(str_nt.data(), ptr, count);
                 str_nt[count] = 0;
 
@@ -645,7 +645,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 // Assume all our strings are null terminated
                 if (*end_ptr != 0) {
                     const auto count = static_cast<size_t>(end_ptr - ptr);
-                    array<char, StringHelper::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                    array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
                     std::memcpy(str_nt.data(), ptr, count);
                     str_nt[count] = 0;
 
@@ -668,7 +668,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 
 #undef USE_FROM_CHARS
 
-auto StringHelper::isNumber() const noexcept -> bool
+auto strex::isNumber() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -677,98 +677,98 @@ auto StringHelper::isNumber() const noexcept -> bool
     }
 
     double value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
     UNUSED_VARIABLE(value);
 
     return success;
 }
 
-auto StringHelper::isExplicitBool() const noexcept -> bool
+auto strex::isExplicitBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
+    if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
+    if (strex(_sv).trim().compareIgnoreCase("false")) {
         return true;
     }
 
     return false;
 }
 
-auto StringHelper::toInt() const noexcept -> int
+auto strex::toInt() const noexcept -> int
 {
     NO_STACK_TRACE_ENTRY();
 
     int64 value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? clamp_to<int>(value) : 0;
 }
 
-auto StringHelper::toUInt() const noexcept -> uint
+auto strex::toUInt() const noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
     int64 value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? clamp_to<uint>(value) : 0;
 }
 
-auto StringHelper::toInt64() const noexcept -> int64
+auto strex::toInt64() const noexcept -> int64
 {
     NO_STACK_TRACE_ENTRY();
 
     int64 value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? value : 0;
 }
 
-auto StringHelper::toFloat() const noexcept -> float
+auto strex::toFloat() const noexcept -> float
 {
     NO_STACK_TRACE_ENTRY();
 
     double value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? static_cast<float>(value) : 0.0f;
 }
 
-auto StringHelper::toDouble() const noexcept -> double
+auto strex::toDouble() const noexcept -> double
 {
     NO_STACK_TRACE_ENTRY();
 
     double value;
-    const auto success = ConvertToNumber(StringHelper(_sv).trim(), value);
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? value : 0.0;
 }
 
-auto StringHelper::toBool() const noexcept -> bool
+auto strex::toBool() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (StringHelper(_sv).trim().compareIgnoreCase("true")) {
+    if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (StringHelper(_sv).trim().compareIgnoreCase("false")) {
+    if (strex(_sv).trim().compareIgnoreCase("false")) {
         return false;
     }
 
     return toInt() != 0;
 }
 
-auto StringHelper::formatPath() -> StringHelper&
+auto strex::formatPath() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
     trim();
     normalizePathSlashes();
 
-    OwnStorage();
+    ownStorage();
 
     // Erase first './'
     while (_s[0] == '.' && _s[1] == '/') {
@@ -822,7 +822,7 @@ auto StringHelper::formatPath() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::extractDir() -> StringHelper&
+auto strex::extractDir() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -837,7 +837,7 @@ auto StringHelper::extractDir() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::extractFileName() -> StringHelper&
+auto strex::extractFileName() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -852,7 +852,7 @@ auto StringHelper::extractFileName() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::getFileExtension() -> StringHelper&
+auto strex::getFileExtension() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -865,7 +865,7 @@ auto StringHelper::getFileExtension() -> StringHelper&
     return *this;
 }
 
-auto StringHelper::eraseFileExtension() noexcept -> StringHelper&
+auto strex::eraseFileExtension() noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -878,20 +878,20 @@ auto StringHelper::eraseFileExtension() noexcept -> StringHelper&
     return *this;
 }
 
-auto StringHelper::changeFileName(string_view new_name) -> StringHelper&
+auto strex::changeFileName(string_view new_name) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
-    const auto ext = StringHelper(_s).getFileExtension().str();
+    const auto ext = strex(_s).getFileExtension().str();
 
     if (!ext.empty()) {
-        const auto new_name_with_ext = StringHelper("{}.{}", new_name, ext);
-        _s = StringHelper(_s).extractDir().combinePath(new_name_with_ext);
+        const auto new_name_with_ext = strex("{}.{}", new_name, ext);
+        _s = strex(_s).extractDir().combinePath(new_name_with_ext);
     }
     else {
-        _s = StringHelper(_s).extractDir().combinePath(new_name);
+        _s = strex(_s).extractDir().combinePath(new_name);
     }
 
     _sv = _s;
@@ -899,12 +899,12 @@ auto StringHelper::changeFileName(string_view new_name) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::combinePath(string_view path) -> StringHelper&
+auto strex::combinePath(string_view path) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
     if (!path.empty()) {
-        OwnStorage();
+        ownStorage();
 
         if (!_s.empty() && _s.back() != '/' && path.front() != '/') {
             _s += "/";
@@ -920,18 +920,18 @@ auto StringHelper::combinePath(string_view path) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::normalizePathSlashes() -> StringHelper&
+auto strex::normalizePathSlashes() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     std::replace(_s.begin(), _s.end(), '\\', '/');
 
     return *this;
 }
 
-auto StringHelper::normalizeLineEndings() -> StringHelper&
+auto strex::normalizeLineEndings() -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -942,11 +942,11 @@ auto StringHelper::normalizeLineEndings() -> StringHelper&
 }
 
 #if FO_WINDOWS
-auto StringHelper::parseWideChar(const wchar_t* str) -> StringHelper&
+auto strex::parseWideChar(const wchar_t* str) -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    OwnStorage();
+    ownStorage();
 
     const auto len = static_cast<int>(::wcslen(str));
 
@@ -964,7 +964,7 @@ auto StringHelper::parseWideChar(const wchar_t* str) -> StringHelper&
     return *this;
 }
 
-auto StringHelper::toWideChar() const -> std::wstring
+auto strex::toWideChar() const -> std::wstring
 {
     NO_STACK_TRACE_ENTRY();
 

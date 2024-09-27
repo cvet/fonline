@@ -1134,7 +1134,7 @@
     /*for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
     {
         TextListener& tl = *it;
-        if (sayType == tl.SayType && format(firstStr).compareIgnoreCaseUtf8(tl.FirstStr) && tl.Parameter == parameter)
+        if (sayType == tl.SayType && strex(firstStr).compareIgnoreCaseUtf8(tl.FirstStr) && tl.Parameter == parameter)
         {
             server->TextListeners.erase(it);
             return;

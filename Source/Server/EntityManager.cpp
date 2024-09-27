@@ -49,11 +49,11 @@ EntityManager::EntityManager(FOServer* engine) :
     _mapTypeName {engine->ToHashedString(Map::ENTITY_TYPE_NAME)},
     _critterTypeName {engine->ToHashedString(Critter::ENTITY_TYPE_NAME)},
     _itemTypeName {engine->ToHashedString(Item::ENTITY_TYPE_NAME)},
-    _playerCollectionName {engine->ToHashedString(format("{}s", Player::ENTITY_TYPE_NAME))},
-    _locationCollectionName {engine->ToHashedString(format("{}s", Location::ENTITY_TYPE_NAME))},
-    _mapCollectionName {engine->ToHashedString(format("{}s", Map::ENTITY_TYPE_NAME))},
-    _critterCollectionName {engine->ToHashedString(format("{}s", Critter::ENTITY_TYPE_NAME))},
-    _itemCollectionName {engine->ToHashedString(format("{}s", Item::ENTITY_TYPE_NAME))},
+    _playerCollectionName {engine->ToHashedString(strex("{}s", Player::ENTITY_TYPE_NAME))},
+    _locationCollectionName {engine->ToHashedString(strex("{}s", Location::ENTITY_TYPE_NAME))},
+    _mapCollectionName {engine->ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
+    _critterCollectionName {engine->ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
+    _itemCollectionName {engine->ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
     _removeMigrationRuleName {engine->ToHashedString("Remove")}
 {
     STACK_TRACE_ENTRY();
@@ -1035,7 +1035,7 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
 
     RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
 
-    const auto collection_name = _engine->ToHashedString(format("{}s", type_name));
+    const auto collection_name = _engine->ToHashedString(strex("{}s", type_name));
     auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
     if (doc.empty()) {

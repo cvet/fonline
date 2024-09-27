@@ -205,7 +205,7 @@ auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_t
     STACK_TRACE_ENTRY();
 
     auto fixed_fname = string(fname);
-    string ext = format(fname).getFileExtension();
+    string ext = strex(fname).getFileExtension();
 
     // Default ext
     if (ext.empty()) {
@@ -563,7 +563,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Make 'NAME'
-    const string sound_name = format(name).eraseFileExtension().lower();
+    const string sound_name = strex(name).eraseFileExtension().lower();
 
     // Find base
     const auto it = sound_names.find(sound_name);
@@ -575,12 +575,12 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     // Check random pattern 'NAME_X'
     uint count = 0;
 
-    while (sound_names.find(format("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
+    while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
         count++;
     }
 
     if (count != 0u) {
-        return Load(sound_names.find(format("{}_{}", sound_name, GenericUtils::Random(1u, count)).str())->second, false, time_duration {});
+        return Load(sound_names.find(strex("{}_{}", sound_name, GenericUtils::Random(1u, count)).str())->second, false, time_duration {});
     }
 
     return false;

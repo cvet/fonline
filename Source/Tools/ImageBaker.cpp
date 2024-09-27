@@ -107,7 +107,7 @@ void ImageBaker::BakeFiles(FileCollection&& files)
     for (auto&& [ext, loader] : _fileLoaders) {
         for (_files.ResetCounter(); _files.MoveNext();) {
             auto file_header = _files.GetCurFileHeader();
-            string file_ext = format(file_header.GetPath()).getFileExtension();
+            string file_ext = strex(file_header.GetPath()).getFileExtension();
 
             if (file_ext != ext) {
                 continue;
@@ -181,7 +181,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<uint8>(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _writeData(format("{}.{}", format(fname).eraseFileExtension(), collection.NewExtension), data);
+        _writeData(strex("{}.{}", strex(fname).eraseFileExtension(), collection.NewExtension), data);
     }
     else {
         _writeData(fname, data);
@@ -192,11 +192,11 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = format(fname_with_opt).getFileExtension();
-    const string dir = format(fname_with_opt).extractDir();
-    const string name = format(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
-    const string fname = format("{}/{}.{}", dir, name, ext);
-    const string opt = format(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
+    const string ext = strex(fname_with_opt).getFileExtension();
+    const string dir = strex(fname_with_opt).extractDir();
+    const string name = strex(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
+    const string fname = strex("{}/{}.{}", dir, name, ext);
+    const string opt = strex(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
 
     File temp_storage;
 
@@ -263,7 +263,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         vector<tuple<FrameCollection, int, int>> sub_collections;
         sub_collections.reserve(10);
 
-        string dir_str = format("dir_{}", dir);
+        string dir_str = strex("dir_{}", dir);
         if (!fofrm.HasSection(dir_str)) {
             dir_str = "";
         }
@@ -282,23 +282,23 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
             oy = fofrm.GetInt(dir_str, "offs_y", oy);
         }
 
-        string frm_dir = format(fname).extractDir();
+        string frm_dir = strex(fname).extractDir();
 
         uint frames = 0;
         auto no_info = false;
         auto load_fail = false;
         for (auto frm = 0; frm < frm_num; frm++) {
             string frm_name;
-            if ((frm_name = fofrm.GetStr(dir_str, format("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
+            if ((frm_name = fofrm.GetStr(dir_str, strex("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
                 no_info = true;
                 break;
             }
 
-            auto sub_collection = LoadAny(format("{}/{}", frm_dir, frm_name));
+            auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name));
             frames += sub_collection.SequenceSize;
 
-            auto next_x = fofrm.GetInt(dir_str, format("next_x_{}", frm), 0);
-            auto next_y = fofrm.GetInt(dir_str, format("next_y_{}", frm), 0);
+            auto next_x = fofrm.GetInt(dir_str, strex("next_x_{}", frm), 0);
+            auto next_y = fofrm.GetInt(dir_str, strex("next_y_{}", frm), 0);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
@@ -404,7 +404,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(format("{}.pal", format(fname).eraseFileExtension()));
+        auto fm_palette = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;
@@ -625,7 +625,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         }
 
         if (dir_frm != 0) {
-            string next_fname = format("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
+            string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
             file = _files.FindFileByPath(next_fname);
             if (!file) {
                 if (dir > 1) {
@@ -650,7 +650,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(format("{}.pal", format(fname).eraseFileExtension()));
+        auto fm_palette = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uint8 r = fm_palette.GetUChar() * 4;
@@ -1259,7 +1259,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
             file.GoForward(name_len);
             auto index = file.GetLEUShort();
 
-            if (seq_name.empty() || format(seq_name).compareIgnoreCase(name)) {
+            if (seq_name.empty() || strex(seq_name).compareIgnoreCase(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1792,7 +1792,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!format(head).startsWith("MOS")) {
+    if (!strex(head).startsWith("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1812,7 +1812,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!format(head).startsWith("MOS")) {
+        if (!strex(head).startsWith("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -1911,7 +1911,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!format(head).startsWith("BAM")) {
+    if (!strex(head).startsWith("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -1931,7 +1931,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!format(head).startsWith("BAM")) {
+        if (!strex(head).startsWith("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }

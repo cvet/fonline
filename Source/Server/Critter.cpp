@@ -48,7 +48,7 @@ Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const 
 {
     STACK_TRACE_ENTRY();
 
-    _name = format("{}_{}", proto->GetName(), id);
+    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 Critter::~Critter()

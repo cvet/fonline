@@ -110,14 +110,14 @@ private:
 
 CacheStorage::CacheStorage(string_view path)
 {
-    if (format(path).startsWith("unqlite:/")) {
+    if (strex(path).startsWith("unqlite:/")) {
 #if FO_HAVE_UNQLITE
-        _impl = std::make_unique<UnqliteCacheStorage>(format(path).replace("unqlite:/", ""));
+        _impl = std::make_unique<UnqliteCacheStorage>(strex(path).replace("unqlite:/", ""));
         return;
 #endif
     }
 
-    _impl = std::make_unique<FileCacheStorage>(format(path).replace("unqlite:/", ""));
+    _impl = std::make_unique<FileCacheStorage>(strex(path).replace("unqlite:/", ""));
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
@@ -174,11 +174,11 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
 {
     STACK_TRACE_ENTRY();
 
-    return format(work_path).combinePath(format(data_name).replace('/', '_').replace('\\', '_'));
+    return strex(work_path).combinePath(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path) :
-    _workPath {format(real_path).eraseFileExtension()}
+    _workPath {strex(real_path).eraseFileExtension()}
 {
     STACK_TRACE_ENTRY();
 

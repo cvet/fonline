@@ -67,7 +67,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 {
     STACK_TRACE_ENTRY();
 
-    string args = format(str).trim();
+    string args = strex(str).trim();
     auto cmd_str = args;
     auto space = cmd_str.find(' ');
     if (space != string::npos) {
@@ -78,7 +78,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
     uint8 cmd = 0;
     for (const auto& cur_cmd : CMD_LIST) {
-        if (format(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
+        if (strex(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
         }
     }
@@ -182,8 +182,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
             logcb("Invalid arguments. Example: getaccess name password");
             break;
         }
-        name_access = format(name_access).replace('*', ' ');
-        pasw_access = format(pasw_access).replace('*', ' ');
+        name_access = strex(name_access).replace('*', ' ');
+        pasw_access = strex(pasw_access).replace('*', ' ');
 
         buf.StartMsg(msg);
         buf.Write(cmd);

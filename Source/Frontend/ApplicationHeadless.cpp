@@ -119,10 +119,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(format("{}.log", format(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
     }
     else {
-        LogToFile(format("{}.log", FO_DEV_NAME));
+        LogToFile(strex("{}.log", FO_DEV_NAME));
     }
 #endif
 

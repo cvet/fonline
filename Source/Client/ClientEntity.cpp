@@ -42,7 +42,7 @@ ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrat
 {
     STACK_TRACE_ENTRY();
 
-    _name = format("{}_{}", GetTypeName(), _id);
+    _name = strex("{}_{}", GetTypeName(), _id);
 
     if (_id) {
         _engine->RegisterEntity(this);

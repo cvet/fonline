@@ -49,7 +49,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Header
-    ConfigFile map_data(format("{}.fomap", name), buf, &hash_resolver);
+    ConfigFile map_data(strex("{}.fomap", name), buf, &hash_resolver);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
@@ -89,16 +89,16 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? format(kv["$Id"]).toUInt() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoCritterSafe(hashed_proto_name);
 
         if (proto == nullptr) {
-            errors.emplace_back(format("Proto critter '{}' not found", proto_name));
+            errors.emplace_back(strex("Proto critter '{}' not found", proto_name));
         }
         else if (!cr_load(id, proto, kv)) {
-            errors.emplace_back(format("Unable to load critter '{}' properties", proto_name));
+            errors.emplace_back(strex("Unable to load critter '{}' properties", proto_name));
         }
     }
 
@@ -111,16 +111,16 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? format(kv["$Id"]).toUInt() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoItemSafe(hashed_proto_name);
 
         if (proto == nullptr) {
-            errors.emplace_back(format("Proto item '{}' not found", proto_name));
+            errors.emplace_back(strex("Proto item '{}' not found", proto_name));
         }
         else if (!item_load(id, proto, kv)) {
-            errors.emplace_back(format("Unable to load item '{}' properties", proto_name));
+            errors.emplace_back(strex("Unable to load item '{}' properties", proto_name));
         }
     }
 

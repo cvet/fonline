@@ -251,7 +251,7 @@ static void AdminWork(FOServer* server, Session* session)
         }
 
         cmd_raw[len] = 0;
-        string cmd = format(cmd_raw).trim();
+        string cmd = strex(cmd_raw).trim();
 
         // Authorization
         if (!session->Authorized) {
@@ -264,7 +264,7 @@ static void AdminWork(FOServer* server, Session* session)
             }
 
             if (pos != -1) {
-                admin_name = format("{}", pos);
+                admin_name = strex("{}", pos);
 
                 session->Authorized = true;
                 WriteLog("Admin panel ({}): Authorized for admin '{}', IP '{}'", admin_name, admin_name, inet_ntoa(session->From.sin_addr));
