@@ -55,8 +55,8 @@ public:
     {
     }
     template<typename... Args>
-    explicit StringHelper(string_view format, Args&&... args) :
-        _s {fmt::format(format, std::forward<Args>(args)...)},
+    explicit StringHelper(fmt::format_string<Args...>&& format, Args&&... args) :
+        _s {fmt::format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
@@ -157,12 +157,47 @@ namespace utf8
 }
 
 template<>
-struct fmt::formatter<StringHelper> : formatter<std::string_view>
+struct fmt::formatter<StringHelper> : formatter<string_view>
 {
+    template<typename FormatContext>
+    auto format(const StringHelper& value, FormatContext& ctx) const
+    {
+        return formatter<string_view>::format(value.strv(), ctx);
+    }
 };
 
 template<typename... Args>
-inline auto format(Args&&... args) noexcept(noexcept(StringHelper(std::forward<Args>(args)...))) -> StringHelper
+[[nodiscard]] inline auto format(fmt::format_string<Args...>&& format, Args&&... args) -> StringHelper
 {
-    return StringHelper(std::forward<Args>(args)...);
+    return StringHelper(std::move(format), std::forward<Args>(args)...);
+}
+
+template<typename...>
+[[nodiscard]] inline auto format(string_view str) noexcept -> StringHelper
+{
+    return StringHelper(str);
+}
+
+template<typename...>
+[[nodiscard]] inline auto format(string&& str) noexcept -> StringHelper
+{
+    return StringHelper(std::move(str));
+}
+
+template<typename...>
+[[nodiscard]] inline auto format(const string& str) noexcept -> StringHelper
+{
+    return StringHelper(str);
+}
+
+template<typename...>
+[[nodiscard]] inline auto format(const char* str) noexcept -> StringHelper
+{
+    return StringHelper(str);
+}
+
+template<typename...>
+[[nodiscard]] inline auto format() noexcept -> StringHelper
+{
+    return StringHelper();
 }

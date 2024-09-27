@@ -192,6 +192,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         std::cout.flush();
     }
     catch (...) {
+        BreakIntoDebugger();
     }
 }
 
@@ -210,5 +211,6 @@ extern void WriteLogFatalMessage(string_view message) noexcept
         std::cout.flush();
     }
     catch (...) {
+        BreakIntoDebugger();
     }
 }

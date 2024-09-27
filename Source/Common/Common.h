@@ -140,13 +140,6 @@ DISABLE_WARNINGS_PUSH()
 #include "fmt/format.h"
 DISABLE_WARNINGS_POP()
 
-// Todo: improve named enums
-template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-inline auto format_as(T v)
-{
-    return fmt::underlying(v);
-}
-
 #ifndef __has_builtin
 #define __has_builtin(x) 0
 #endif
@@ -157,13 +150,13 @@ inline auto format_as(T v)
 #endif
 
 // Base types
-using int8 = char;
-using uint8 = unsigned char;
-using int16 = short;
-using uint16 = unsigned short;
-using uint = unsigned int;
-using int64 = int64_t;
-using uint64 = uint64_t;
+using int8 = std::int8_t;
+using uint8 = std::uint8_t;
+using int16 = std::int16_t;
+using uint16 = std::uint16_t;
+using uint = std::uint32_t;
+using int64 = std::int64_t;
+using uint64 = std::uint64_t;
 
 // Check the sizes of base types
 static_assert(sizeof(int8) == 1);
@@ -272,6 +265,17 @@ struct pair_hash
     }
 };
 
+// Todo: improve named enums
+template<typename T>
+struct fmt::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<std::underlying_type_t<T>>::format(static_cast<std::underlying_type_t<T>>(value), ctx);
+    }
+};
+
 // Strong types
 template<typename T>
 struct strong_type
@@ -300,28 +304,6 @@ private:
     underlying_type _value;
 };
 
-template<typename T>
-struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
-{
-    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
-};
-
-template<typename T>
-struct fmt::formatter<strong_type<T>>
-{
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
-    template<typename FormatContext>
-    auto format(const strong_type<T>& s, FormatContext& ctx) const
-    {
-        return format_to(ctx.out(), "{}", s.underlying_value());
-    }
-};
-
 template<typename T, typename = int>
 struct has_is_strong_type : std::false_type
 {
@@ -332,6 +314,22 @@ struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_t
 };
 template<typename T>
 constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
+
+template<typename T>
+struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
+{
+    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
+};
+
+template<typename T>
+struct fmt::formatter<T, std::enable_if_t<is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<typename T::underlying_type>::format(value.underlying_value(), ctx);
+    }
+};
 
 ///@ ExportType ident ident_t uint HardStrong
 #define IDENT_T_NAME "ident"
@@ -358,6 +356,16 @@ static_assert(std::is_standard_layout_v<tick_t>);
 // Custom any as string
 class any_t : public string
 {
+};
+
+template<>
+struct fmt::formatter<any_t> : formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(const any_t& value, FormatContext& ctx) const
+    {
+        return formatter<string_view>::format(static_cast<const string&>(value), ctx);
+    }
 };
 
 // Game clock
@@ -393,62 +401,58 @@ inline constexpr auto time_duration_div(time_duration duration1, time_duration d
 }
 
 template<>
-struct fmt::formatter<time_duration>
+struct fmt::formatter<time_duration> : formatter<string_view>
 {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
     template<typename FormatContext>
-    auto format(const time_duration& t, FormatContext& ctx) const
+    auto format(const time_duration& value, FormatContext& ctx) const
     {
-        if (t < std::chrono::milliseconds {1}) {
-            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
-            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t).count() % 1000;
-            return format_to(ctx.out(), "{}.{:03} us", us, ns);
+        string buf;
+
+        if (value < std::chrono::milliseconds {1}) {
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
+            format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
-        else if (t < std::chrono::seconds {1}) {
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
-            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
-            return format_to(ctx.out(), "{}.{:03} ms", ms, us);
+        else if (value < std::chrono::seconds {1}) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
-        else if (t < std::chrono::minutes {1}) {
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count();
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
-            return format_to(ctx.out(), "{}.{:03} sec", sec, ms);
+        else if (value < std::chrono::minutes {1}) {
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
-        else if (t < std::chrono::hours {24}) {
-            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count();
-            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
-            return format_to(ctx.out(), "{:02}:{:02}:{:02} sec", hour, min, sec);
+        else if (value < std::chrono::hours {24}) {
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            const auto day = std::chrono::duration_cast<std::chrono::hours>(t).count() / 24;
-            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count() % 24;
-            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
-            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
-            return format_to(ctx.out(), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+            const auto day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
+
+        return formatter<string_view>::format(buf, ctx);
     }
 };
 
 template<>
-struct fmt::formatter<time_point>
+struct fmt::formatter<time_point> : formatter<string_view>
 {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
     template<typename FormatContext>
-    auto format(const time_point& t, FormatContext& ctx) const
+    auto format(const time_point& value, FormatContext& ctx) const
     {
-        const auto td = time_point_desc(t);
-        return format_to(ctx.out(), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
+        string buf;
+
+        const auto td = time_point_desc(value);
+        format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
+
+        return formatter<string_view>::format(buf, ctx);
     }
 };
 
@@ -1367,18 +1371,15 @@ struct std::hash<ucolor>
 };
 
 template<>
-struct fmt::formatter<ucolor>
+struct fmt::formatter<ucolor> : formatter<string_view>
 {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
     template<typename FormatContext>
-    auto format(const ucolor& c, FormatContext& ctx) const
+    auto format(const ucolor& value, FormatContext& ctx) const
     {
-        return format_to(ctx.out(), "0x{:x}", c.rgba);
+        string buf;
+        format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
+
+        return formatter<string_view>::format(buf, ctx);
     }
 };
 
@@ -1429,18 +1430,12 @@ struct std::hash<hstring>
 };
 
 template<>
-struct fmt::formatter<hstring>
+struct fmt::formatter<hstring> : formatter<string_view>
 {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
-        return ctx.begin();
-    }
-
     template<typename FormatContext>
-    auto format(const hstring& s, FormatContext& ctx) const
+    auto format(const hstring& value, FormatContext& ctx) const
     {
-        return format_to(ctx.out(), "{}", s.as_str());
+        return formatter<string_view>::format(value.as_str(), ctx);
     }
 };
 
@@ -1757,10 +1752,10 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 }
 
 template<typename... Args>
-inline auto safe_format(string_view message, Args&&... args) noexcept -> string
+inline auto safe_format(fmt::format_string<Args...>&& format, Args&&... args) noexcept -> string
 {
     try {
-        return fmt::format(message, std::forward<Args>(args)...);
+        return fmt::format(std::move(format), std::forward<Args>(args)...);
     }
     catch (const std::exception& ex) {
         BreakIntoDebugger(ex.what());
