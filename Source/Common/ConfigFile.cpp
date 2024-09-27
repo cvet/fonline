@@ -86,7 +86,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
         }
 
         // New section
-        if (line[0] == '[') {
+        if (line.front() == '[') {
             if (IsEnumSet(_options, ConfigFileOption::ReadFirstSection) && _sectionKeyValues.size() == 2) {
                 break;
             }
@@ -116,7 +116,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
             // Store current section content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-                (*cur_section)[_emptyStr] = section_content;
+                (*cur_section)[_emptyStr] = std::move(section_content);
                 section_content.clear();
 
                 if (!section_kv.empty()) {
@@ -138,7 +138,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
             }
 
             // Text format {}{}{}
-            if (line[0] == '{') {
+            if (line.front() == '{') {
                 uint num = 0;
                 size_t offset = 0;
 
@@ -153,23 +153,23 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                     auto str2 = line.substr(first + 1, last - first - 1);
                     offset = last + 1;
 
-                    if (i == 0 && num == 0u) {
+                    if (i == 0 && num == 0) {
                         num = format(str2).isNumber() ? format(str2).toInt() : _hashResolver->ToHashedString(str2).as_int();
                     }
-                    else if (i == 1 && num != 0u) {
+                    else if (i == 1 && num != 0) {
                         num += !str2.empty() ? (format(str2).isNumber() ? format(str2).toInt() : _hashResolver->ToHashedString(str2).as_int()) : 0;
                     }
-                    else if (i == 2 && num != 0u) {
+                    else if (i == 2 && num != 0) {
                         (*cur_section)[format("{}", num)] = str2;
                     }
                 }
             }
             else {
                 // Cut comments
-                auto comment = line.find('#');
+                const auto comment_pos = line.find('#');
 
-                if (comment != string::npos) {
-                    line.erase(comment);
+                if (comment_pos != string::npos) {
+                    line.erase(comment_pos);
                 }
 
                 if (line.empty()) {
@@ -189,7 +189,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                         ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
 
                         if (!key.empty()) {
-                            if (cur_section->count(key) != 0u) {
+                            if (cur_section->count(key) != 0) {
                                 if (!value.empty()) {
                                     (*cur_section)[key] += " ";
                                     (*cur_section)[key] += value;
