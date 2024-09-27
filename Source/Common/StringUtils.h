@@ -42,30 +42,62 @@ class strex final
 public:
     static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
 
+    struct safe_format_tag
+    {
+    };
     struct dynamic_format_tag
     {
     };
 
     strex() = default;
+
     explicit strex(const char* s) noexcept :
         _sv {s}
     {
     }
+
     explicit strex(string_view s) noexcept :
         _sv {s}
     {
     }
+
     explicit strex(string&& s) noexcept :
         _s {std::move(s)},
         _sv {_s}
     {
     }
+
     template<typename... Args>
     explicit strex(fmt::format_string<Args...>&& format, Args&&... args) :
         _s {fmt::format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
+
+    template<typename... Args>
+    explicit strex(safe_format_tag /*tag*/, fmt::format_string<Args...>&& format, Args&&... args) noexcept
+    {
+        try {
+            _s = fmt::format(std::move(format), std::forward<Args>(args)...);
+        }
+        catch (const std::exception& ex) {
+            BreakIntoDebugger(ex.what());
+
+            try {
+                _s.append("Format error: ");
+                _s.append(ex.what());
+            }
+            catch (...) {
+                // Bad alloc
+            }
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
+
+        _sv = _s;
+    }
+
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
         _s {fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...))},

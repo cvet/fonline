@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "Platform.h"
-#include "StringUtils.h"
 
 [[maybe_unused]] static void FlushLogAtExit();
 

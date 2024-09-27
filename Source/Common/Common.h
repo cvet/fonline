@@ -1751,31 +1751,6 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
     }
 }
 
-template<typename... Args>
-inline auto safe_format(fmt::format_string<Args...>&& format, Args&&... args) noexcept -> string
-{
-    try {
-        return fmt::format(std::move(format), std::forward<Args>(args)...);
-    }
-    catch (const std::exception& ex) {
-        BreakIntoDebugger(ex.what());
-
-        try {
-            string result;
-            result.append("Format error: ");
-            result.append(ex.what());
-            return result;
-        }
-        catch (...) {
-            // Bad alloc
-            return {};
-        }
-    }
-    catch (...) {
-        UNKNOWN_EXCEPTION();
-    }
-}
-
 // Ref holders
 template<typename T>
 class ref_hold_vector : public vector<T>

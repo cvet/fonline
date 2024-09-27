@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "StringUtils.h"
+
 using LogFunc = std::function<void(string_view)>;
 
 enum class LogType
@@ -52,13 +54,13 @@ extern void WriteLogFatalMessage(string_view message) noexcept;
 template<typename... Args>
 void WriteLog(fmt::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(LogType::Info, safe_format(std::move(format), std::forward<Args>(args)...));
+    WriteLogMessage(LogType::Info, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
 }
 
 template<typename... Args>
 void WriteLog(LogType type, fmt::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(type, safe_format(std::move(format), std::forward<Args>(args)...));
+    WriteLogMessage(type, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
 }
 
 // Control
