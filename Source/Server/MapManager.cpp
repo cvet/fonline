@@ -407,7 +407,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     result += "          Map                 Id          Time Rain Script\n";
 
     for (auto&& [id, loc] : locations) {
-        result += format("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
+        result += format("{:<20} {:<10}   {:<5} {:<5} {:<6} {:<10} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
 
         uint map_index = 0;
 
@@ -1431,9 +1431,6 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
             }
         }
 
-        cr->SetMapLeaveHexX(cr->GetHexX());
-        cr->SetMapLeaveHexY(cr->GetHexY());
-
         RemoveCritterFromMap(cr, prev_map);
         AddCritterToMap(cr, map, start_hx, start_hy, dir, global_cr_id);
 
@@ -1774,7 +1771,7 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         }
 
         // Sneak
-        if (target->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
+        if (target->GetInSneakMode() && dist != std::numeric_limits<uint>::max()) {
             auto sneak_opp = target->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
@@ -1929,7 +1926,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
 
         // Hide modifier
         uint vis;
-        if (cr->GetIsHide()) {
+
+        if (cr->GetInSneakMode()) {
             auto sneak_opp = cr->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {

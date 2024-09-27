@@ -128,11 +128,11 @@ void ProtoManager::ParseProtos(FileSystem& resources)
                 }
             }
             else if (key == "$Components" && !value.empty()) {
-                if (to_kv.count("$Components") == 0) {
-                    to_kv["$Components"] = value;
+                if (to_kv.count(key) == 0) {
+                    to_kv[key] = value;
                 }
                 else {
-                    to_kv["$Components"] += " " + value;
+                    to_kv[key] += " " + value;
                 }
             }
         }
