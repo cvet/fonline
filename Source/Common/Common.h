@@ -411,30 +411,30 @@ struct fmt::formatter<time_duration> : formatter<string_view>
         if (value < std::chrono::milliseconds {1}) {
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
             const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
-            format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
+            fmt::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
+            fmt::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
+            fmt::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
+            fmt::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
             const auto day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+            fmt::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
         return formatter<string_view>::format(buf, ctx);
@@ -450,7 +450,7 @@ struct fmt::formatter<time_point> : formatter<string_view>
         string buf;
 
         const auto td = time_point_desc(value);
-        format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
+        fmt::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
 
         return formatter<string_view>::format(buf, ctx);
     }
@@ -1377,7 +1377,7 @@ struct fmt::formatter<ucolor> : formatter<string_view>
     auto format(const ucolor& value, FormatContext& ctx) const
     {
         string buf;
-        format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
+        fmt::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
 
         return formatter<string_view>::format(buf, ctx);
     }
