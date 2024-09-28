@@ -3,15 +3,15 @@ cmake_minimum_required(VERSION 3.16.3)
 StatusMessage("Start project generation")
 
 # Options
-function(DeclareOption var desc value)
+macro(DeclareOption var desc value)
 	if(NOT DEFINED ${var}) # Prevent moving to cache
-		set(${var} ${value} PARENT_SCOPE)
+		set(${var} ${value})
 	endif()
 
 	option(${var} ${desc} ${value})
 
 	StatusMessage("${var} = ${${var}}")
-endfunction()
+endmacro()
 
 DeclareOption(FO_DEV_NAME "Short name for project" "") # Required
 DeclareOption(FO_NICE_NAME "More readable name for project" "") # Required
