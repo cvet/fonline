@@ -137,7 +137,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         if (!Data->LogDisableTimestamp) {
             const auto now = time_point::clock::now();
             const auto now_desc = time_point_desc(now);
-            result += strex("[{:02}:{:02}:{:02}] ", now_desc.tm_hour, now_desc.tm_min, now_desc.tm_sec);
+            result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
         }
 
         result.reserve(result.size() + message.length() + 1u);

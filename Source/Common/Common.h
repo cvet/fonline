@@ -65,6 +65,16 @@
 #error "Multiple operating systems not allowed"
 #endif
 
+#if __cplusplus < 201703L
+#error "Invalid __cplusplus version, must be at least C++17 (201703)"
+#endif
+
+#if __cplusplus >= 202002L
+#define CPLUSPLUS_20 1
+#else
+#define CPLUSPLUS_20 0
+#endif
+
 // Standard API
 #include <algorithm>
 #include <any>
@@ -112,8 +122,6 @@
 #define GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
 #include <small_vector.hpp>
 
-#include <span.hpp>
-
 // OS specific API
 #if FO_MAC || FO_IOS
 #include <TargetConditionals.h>
@@ -135,14 +143,28 @@
 #endif
 
 // String formatting lib
+#if CPLUSPLUS_20
+#include <format>
+#define FMTNS std
+#else
 DISABLE_WARNINGS_PUSH()
 #include "fmt/chrono.h"
 #include "fmt/format.h"
 DISABLE_WARNINGS_POP()
-
-#ifndef __has_builtin
-#define __has_builtin(x) 0
+#define FMTNS fmt
 #endif
+
+// Span
+#if CPLUSPLUS_20
+#include <span>
+using std::span;
+#else
+#include <span.hpp>
+using tcb::span;
+#endif
+
+template<typename T>
+using const_span = span<const T>;
 
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP
@@ -208,10 +230,6 @@ using vector = std::vector<T>; // To see vector entries in debugger
 #endif
 using gch::small_vector;
 
-using tcb::span;
-template<typename T>
-using const_span = span<const T>;
-
 template<typename T>
 using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
 
@@ -267,7 +285,7 @@ struct pair_hash
 
 // Todo: improve named enums
 template<typename T>
-struct fmt::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
+struct FMTNS::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -322,7 +340,7 @@ struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
 };
 
 template<typename T>
-struct fmt::formatter<T, std::enable_if_t<is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
+struct FMTNS::formatter<T, std::enable_if_t<is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -359,7 +377,7 @@ class any_t : public string
 };
 
 template<>
-struct fmt::formatter<any_t> : formatter<string_view>
+struct FMTNS::formatter<any_t> : formatter<string_view>
 {
     template<typename FormatContext>
     auto format(const any_t& value, FormatContext& ctx) const
@@ -382,11 +400,57 @@ inline auto time_point_to_unix_time(const time_point& t) -> time_t
     return unix_time;
 }
 
-inline auto time_point_desc(const time_point& t) -> std::tm
+struct time_point_desc_t
 {
+    int Year {};
+    int Month {}; // 1..12
+    int Day {}; // 1..31
+    int Hour {}; // 0..23
+    int Minute {}; // 0..59
+    int Second {}; // 0..59
+    int Millisecond {}; // 0..999
+};
+
+inline auto time_point_desc(const time_point& t) -> time_point_desc_t
+{
+    time_point_desc_t result;
+
+#if CPLUSPLUS_20
+    const auto ymd_days = std::chrono::floor<std::chrono::days>(t);
+    const auto ymd = std::chrono::year_month_day(std::chrono::sys_days(ymd_days.time_since_epoch()));
+
+    auto rest_day = t - ymd_days;
+
+    const auto hours = std::chrono::duration_cast<std::chrono::hours>(rest_day);
+    rest_day -= hours;
+    const auto minutes = std::chrono::duration_cast<std::chrono::minutes>(rest_day);
+    rest_day -= minutes;
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(rest_day);
+    rest_day -= seconds;
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(rest_day);
+
+    result.Year = static_cast<int>(ymd.year());
+    result.Month = static_cast<int>(static_cast<uint>(ymd.month()));
+    result.Day = static_cast<int>(static_cast<uint>(ymd.day()));
+    result.Hour = static_cast<int>(hours.count());
+    result.Minute = static_cast<int>(minutes.count());
+    result.Second = static_cast<int>(seconds.count());
+    result.Millisecond = static_cast<int>(milliseconds.count());
+#else
+
     const auto unix_time = time_point_to_unix_time(t);
     const auto tm_struct = fmt::localtime(unix_time);
-    return tm_struct;
+
+    result.Year = tm_struct.tm_year;
+    result.Month = tm_struct.tm_mon;
+    result.Day = tm_struct.tm_mday;
+    result.Hour = tm_struct.tm_hour;
+    result.Minute = tm_struct.tm_min;
+    result.Second = tm_struct.tm_sec;
+    result.Millisecond = 0;
+#endif
+
+    return result;
 }
 
 template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
@@ -401,7 +465,7 @@ inline constexpr auto time_duration_div(time_duration duration1, time_duration d
 }
 
 template<>
-struct fmt::formatter<time_duration> : formatter<string_view>
+struct FMTNS::formatter<time_duration> : formatter<string_view>
 {
     template<typename FormatContext>
     auto format(const time_duration& value, FormatContext& ctx) const
@@ -411,30 +475,30 @@ struct fmt::formatter<time_duration> : formatter<string_view>
         if (value < std::chrono::milliseconds {1}) {
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
             const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
-            fmt::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
+            FMTNS::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            fmt::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
+            FMTNS::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            fmt::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
+            FMTNS::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            fmt::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
+            FMTNS::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
             const auto day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            fmt::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+            FMTNS::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
         return formatter<string_view>::format(buf, ctx);
@@ -442,7 +506,7 @@ struct fmt::formatter<time_duration> : formatter<string_view>
 };
 
 template<>
-struct fmt::formatter<time_point> : formatter<string_view>
+struct FMTNS::formatter<time_point> : formatter<string_view>
 {
     template<typename FormatContext>
     auto format(const time_point& value, FormatContext& ctx) const
@@ -450,7 +514,7 @@ struct fmt::formatter<time_point> : formatter<string_view>
         string buf;
 
         const auto td = time_point_desc(value);
-        fmt::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
+        FMTNS::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.Year, td.Month, td.Day, td.Hour, td.Minute, td.Second);
 
         return formatter<string_view>::format(buf, ctx);
     }
@@ -646,7 +710,7 @@ public:
             _message.append(": ");
             _message.append(message);
 
-            const vector<string> params = {fmt::format("{}", std::forward<Args>(args))...};
+            const vector<string> params = {FMTNS::format("{}", std::forward<Args>(args))...};
 
             for (const auto& param : params) {
                 _message.append("\n- ");
@@ -1371,13 +1435,13 @@ struct std::hash<ucolor>
 };
 
 template<>
-struct fmt::formatter<ucolor> : formatter<string_view>
+struct FMTNS::formatter<ucolor> : formatter<string_view>
 {
     template<typename FormatContext>
     auto format(const ucolor& value, FormatContext& ctx) const
     {
         string buf;
-        fmt::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
+        FMTNS::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
 
         return formatter<string_view>::format(buf, ctx);
     }
@@ -1430,7 +1494,7 @@ struct std::hash<hstring>
 };
 
 template<>
-struct fmt::formatter<hstring> : formatter<string_view>
+struct FMTNS::formatter<hstring> : formatter<string_view>
 {
     template<typename FormatContext>
     auto format(const hstring& value, FormatContext& ctx) const

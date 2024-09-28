@@ -68,17 +68,17 @@ public:
     }
 
     template<typename... Args>
-    explicit strex(fmt::format_string<Args...>&& format, Args&&... args) :
-        _s {fmt::format(std::move(format), std::forward<Args>(args)...)},
+    explicit strex(FMTNS::format_string<Args...>&& format, Args&&... args) :
+        _s {FMTNS::format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
 
     template<typename... Args>
-    explicit strex(safe_format_tag /*tag*/, fmt::format_string<Args...>&& format, Args&&... args) noexcept
+    explicit strex(safe_format_tag /*tag*/, FMTNS::format_string<Args...>&& format, Args&&... args) noexcept
     {
         try {
-            _s = fmt::format(std::move(format), std::forward<Args>(args)...);
+            _s = FMTNS::format(std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
             BreakIntoDebugger(ex.what());
@@ -100,7 +100,7 @@ public:
 
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        _s {fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...))},
+        _s {FMTNS::vformat(format, FMTNS::make_format_args(std::forward<Args>(args)...))},
         _sv {_s}
     {
     }
@@ -199,7 +199,7 @@ namespace utf8
 }
 
 template<>
-struct fmt::formatter<strex> : formatter<string_view>
+struct FMTNS::formatter<strex> : formatter<string_view>
 {
     template<typename FormatContext>
     // ReSharper disable once CppInconsistentNaming

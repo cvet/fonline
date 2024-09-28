@@ -451,7 +451,7 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> b
         ::DebugBreak();
         return true;
 #elif FO_LINUX
-#if __has_builtin(__builtin_debugtrap)
+#if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
         __builtin_debugtrap();
 #else
         ::raise(SIGTRAP);
@@ -904,7 +904,6 @@ extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag)
     return p;
 }
 
-#if (__cplusplus >= 201402L || _MSC_VER >= 1916)
 extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
 {
     UNUSED_VARIABLE(size);
@@ -926,9 +925,7 @@ extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
     rpfree(p);
 #endif
 }
-#endif
 
-#if (__cplusplus > 201402L || defined(__cpp_aligned_new))
 extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(align);
@@ -1030,7 +1027,6 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 #endif
     return p;
 }
-#endif
 
 #undef CRTDECL
 

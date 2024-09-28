@@ -52,7 +52,7 @@ namespace IO
 		* @param is : the input stream from which to load the system
 		* @return the loaded system or NULL if loading failed
 		*/
-        Ref<System> load(std::istream& is, const std::string &path = 0) const;
+        Ref<System> load(std::istream& is, const std::string &path) const;
 
 		/**
 		* @brief Loads a system from a file
@@ -129,7 +129,7 @@ namespace IO
 		* @param graph : the graph that allows to build the system
 		* @return true if the loading was successful, false if it failed
 		*/
-        virtual bool innerLoad(std::istream& is,Graph& graph,const std::string& path=0) const = 0;
+        virtual bool innerLoad(std::istream& is,Graph& graph,const std::string& path) const = 0;
 
         /**
         * @brief The inner load buffer method to be implemented in derived classes

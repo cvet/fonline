@@ -43,7 +43,7 @@ namespace IO
 	{
 	private :
 
-        virtual bool innerLoad(std::istream& is, Graph& graph, const std::string &path=0) const override;
+        virtual bool innerLoad(std::istream& is, Graph& graph, const std::string &path) const override;
         virtual bool innerLoadFromBuffer(Graph& graph, const char * data, unsigned int datasize) override;
 
 		const std::string getValue(const pugi::xml_node& element) const;

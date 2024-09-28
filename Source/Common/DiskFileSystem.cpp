@@ -896,7 +896,7 @@ auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
 #if !FO_IOS
 static auto MakeFilesystemPath(string_view path)
 {
-#if __cplusplus >= 202002
+#if CPLUSPLUS_20
     return std::u8string(path.begin(), path.end());
 #else
     return std::filesystem::u8path(path);

@@ -30,55 +30,6 @@ if(FO_BUILD_ASCOMPILER AND NOT FO_ANGELSCRIPT_SCRIPTING)
     AbortMessage("AngelScript compiler build can not be without AngelScript scripting enabled")
 endif()
 
-# Global defines
-add_compile_definitions(FO_SINGLEPLAYER=$<BOOL:${FO_SINGLEPLAYER}>)
-add_compile_definitions(FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>)
-add_compile_definitions(FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>)
-add_compile_definitions(FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>)
-add_compile_definitions(FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
-add_compile_definitions(FO_GEOMETRY=$<IF:$<STREQUAL:${FO_GEOMETRY},HEXAGONAL>,1,$<IF:$<STREQUAL:${FO_GEOMETRY},SQUARE>,2,0>>)
-add_compile_definitions(FO_NO_MANUAL_STACK_TRACE=$<CONFIG:Release_Ext>)
-add_compile_definitions(FO_NO_EXTRA_ASSERTS=0) # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> for first need separate asserts from valid error
-add_compile_definitions(FO_NO_TEXTURE_LOOKUP=$<CONFIG:Release_Ext>)
-add_compile_definitions(FO_DIRECT_SPRITES_DRAW=$<CONFIG:Release_Ext>)
-
-# Compiler options
-set(CMAKE_CXX_STANDARD 17)
-
-if(MSVC)
-    add_compile_options_C_CXX($<$<COMPILE_LANGUAGE:CXX>:/std:c++17>)
-    add_compile_options_C_CXX(/permissive-)
-else()
-    add_compile_options_C_CXX($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
-endif()
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options_C_CXX(--param=max-vartrack-size=1000000)
-endif()
-
-if(FO_CODE_COVERAGE)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        add_compile_options_C_CXX(-O0)
-        add_compile_options_C_CXX(-fprofile)
-        add_compile_options_C_CXX(-instr-generate)
-        add_compile_options_C_CXX(-fcoverage-mapping)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        add_compile_options_C_CXX(-O0)
-        add_compile_options_C_CXX(--coverage)
-        add_link_options(--coverage)
-    endif()
-endif()
-
-# Basic includes
-include_directories("${FO_ENGINE_ROOT}/Source/Common")
-include_directories("${FO_ENGINE_ROOT}/Source/Server")
-include_directories("${FO_ENGINE_ROOT}/Source/Client")
-include_directories("${FO_ENGINE_ROOT}/Source/Tools")
-include_directories("${FO_ENGINE_ROOT}/Source/Scripting")
-include_directories("${FO_ENGINE_ROOT}/Source/Frontend")
-include_directories("${FO_ENGINE_ROOT}/Source/Singleplayer")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
-
 # Third-party libs
 StatusMessage("Third-party libs:")
 
