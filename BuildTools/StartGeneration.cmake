@@ -31,6 +31,7 @@ DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
 DeclareOption(FO_INFO_MARKDOWN_OUTPUT "Path where information markdown files will be stored" "")
 DeclareOption(FO_CPP_STANDARD "C++ standard for engine compilation (17 (default) or 20)" 17)
+DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Multiplayer client binaries" OFF)

@@ -1617,6 +1617,15 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
     configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
 endif()
 
+# Copy ReSharper config
+if(MSVC)
+    if(FO_RESHARPER_SETTINGS)
+        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_RESHARPER_SETTINGS}" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings")
+    else()
+        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/ReSharper.sln.DotSettings" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings")
+    endif()
+endif()
+
 # Setup targets grouping
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications")
