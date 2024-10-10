@@ -451,8 +451,12 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> b
         ::DebugBreak();
         return true;
 #elif FO_LINUX
-#if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
+#ifdef __has_builtin
+#if __has_builtin(__builtin_debugtrap)
         __builtin_debugtrap();
+#else
+        ::raise(SIGTRAP);
+#endif
 #else
         ::raise(SIGTRAP);
 #endif
