@@ -580,12 +580,12 @@ template<typename T>
 auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
 
 template<typename T>
-struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<typename T::value_type>
+struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<decltype(std::declval<T>().load())>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
-        return formatter<typename T::value_type>::format(value.load(), ctx);
+        return formatter<decltype(std::declval<T>().load())>::format(value.load(), ctx);
     }
 };
 
