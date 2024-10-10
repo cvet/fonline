@@ -48,7 +48,7 @@ public:
     ModelBaker() = delete;
     ModelBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = default;
+    ModelBaker(ModelBaker&&) noexcept = delete;
     auto operator=(const ModelBaker&) = delete;
     auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker() override;

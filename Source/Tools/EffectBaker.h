@@ -51,7 +51,7 @@ public:
     EffectBaker() = delete;
     EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = default;
+    EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;

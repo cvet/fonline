@@ -295,22 +295,6 @@ struct FMTNS::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatte
     }
 };
 
-// Atomic types
-template<typename T>
-auto constexpr is_atomic_v = false;
-template<typename T>
-auto constexpr is_atomic_v<std::atomic<T>> = true;
-
-template<typename T>
-struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<typename T::value_type>
-{
-    template<typename FormatContext>
-    auto format(const T& value, FormatContext& ctx) const
-    {
-        return formatter<typename T::value_type>::format(value.load(), ctx);
-    }
-};
-
 // Strong types
 template<typename T>
 struct strong_type
@@ -590,6 +574,20 @@ template<typename T>
 static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value;
 template<typename T>
 static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value;
+
+// Atomic formatter
+template<typename T>
+auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
+
+template<typename T>
+struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<typename T::value_type>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<typename T::value_type>::format(value.load(), ctx);
+    }
+};
 
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)

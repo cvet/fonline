@@ -53,7 +53,7 @@ public:
     BaseBaker() = delete;
     BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
     BaseBaker(const BaseBaker&) = delete;
-    BaseBaker(BaseBaker&&) noexcept = default;
+    BaseBaker(BaseBaker&&) noexcept = delete;
     auto operator=(const BaseBaker&) = delete;
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;

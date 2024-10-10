@@ -81,7 +81,7 @@ public:
     ImageBaker() = delete;
     ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ImageBaker(const ImageBaker&) = delete;
-    ImageBaker(ImageBaker&&) noexcept = default;
+    ImageBaker(ImageBaker&&) noexcept = delete;
     auto operator=(const ImageBaker&) = delete;
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
