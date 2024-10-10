@@ -61,7 +61,7 @@ template<typename T>
 static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 {
     STACK_TRACE_ENTRY();
-    
+
     if (auto* hmod = ::GetModuleHandleA(mod); hmod != nullptr) {
         return reinterpret_cast<T>(::GetProcAddress(hmod, name)); // NOLINT(clang-diagnostic-cast-function-type-strict)
     }
