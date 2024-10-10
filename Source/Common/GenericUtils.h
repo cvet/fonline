@@ -45,6 +45,7 @@ public:
 
 private:
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
+    mutable std::shared_mutex _hashStorageLocker {};
 };
 
 class Hashing final

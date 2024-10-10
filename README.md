@@ -132,7 +132,6 @@ They are located in ThirdParty directory.
 * [tracy](https://github.com/wolfpld/tracy) - profiler
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
-* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
@@ -141,6 +140,7 @@ They are located in ThirdParty directory.
 * [libpng](https://github.com/pnggroup/libpng) - png image loader
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
 * [rpmalloc](https://github.com/mjansson/rpmalloc) - general purpose memory allocator
+* [ufbx](https://github.com/ufbx/ufbx) - fbx file format loader
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
@@ -149,8 +149,8 @@ They are located in ThirdParty directory.
 
 Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client/singleplayer output.  
 Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.  
-This process in terms of fonline engine called `Bakering`.  
-Also as you can see all third-party dependencies linked statically to final executable (except one - proprietary libfbxsdk.dll/so for Baker but the last one is not target for small footprint) and this frees up end user from installing additional runtime to play in your game.  
+This process in terms of fonline engine called `Baking`.  
+Also as you can see all third-party dependencies linked statically to final executable and this frees up end user from installing additional runtime to play in your game.  
 *Todo: write about memory footprint*  
 *Todo: write about network footprint*
 

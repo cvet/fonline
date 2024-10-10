@@ -254,39 +254,20 @@ endif()
 StatusMessage("+ Assimp (math headers)")
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/AssimpMath")
 
-# Fbx SDK
-if(FO_ENABLE_3D)
-    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR) AND NOT((WIN32 OR LINUX) AND CMAKE_SIZEOF_VOID_P EQUAL 8))
-        AbortMessage("Using of FBX SDK for non 64 bit Linux & Windows builds is not supported")
-    endif()
-
-    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND(WIN32 OR LINUX) AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-        StatusMessage("+ Fbx SDK")
-
-        set(FO_FBXSDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/fbxsdk")
-        include_directories("${FO_FBXSDK_DIR}")
-
-        if(WIN32)
-            list(APPEND FO_BAKER_SYSTEM_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/ThirdParty/fbxsdk/libfbxsdk.lib")
-        else()
-            list(APPEND FO_BAKER_SYSTEM_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/ThirdParty/fbxsdk/libfbxsdk.so")
-        endif()
-
-        add_compile_definitions(FO_HAVE_FBXSDK=1)
-
-    else()
-        add_compile_definitions(FO_HAVE_FBXSDK=0)
-    endif()
+# ufbx
+if(FO_ENABLE_3D AND(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+    StatusMessage("+ ufbx")
+    set(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
+    include_directories("${FO_UFBX_DIR}")
+    set(FO_UFBX_SOURCE
+        "${FO_UFBX_DIR}/ufbx.h"
+        "${FO_UFBX_DIR}/ufbx.c")
+    add_library(ufbx STATIC EXCLUDE_FROM_ALL ${FO_UFBX_SOURCE})
+    target_compile_definitions(ufbx PUBLIC "UFBX_NO_STDIO")
+    target_compile_definitions(ufbx PUBLIC "UFBX_EXTERNAL_MALLOC")
+    list(APPEND FO_BAKER_LIBS "ufbx")
+    DisableLibWarnings(ufbx)
 endif()
-
-macro(CopyFbxSdkLib target)
-    if(FO_ENABLE_3D)
-        if(WIN32)
-            get_target_property(dir ${target} RUNTIME_OUTPUT_DIRECTORY)
-            add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/ThirdParty/fbxsdk/libfbxsdk.dll" ${dir})
-        endif()
-    endif()
-endmacro()
 
 # Nlohmann Json
 StatusMessage("+ Nlohmann Json")
@@ -1222,7 +1203,6 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ BakerLib")
     add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
     add_dependencies(BakerLib CodeGeneration)
-    set_target_properties(BakerLib PROPERTIES COMPILE_DEFINITIONS "FO_ASYNC_BAKE=0")
     target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "BakerLib")
 endif()
@@ -1340,7 +1320,6 @@ if(FO_BUILD_EDITOR)
     endif()
 
     WriteBuildHash(${FO_DEV_NAME}_Editor)
-    CopyFbxSdkLib(${FO_DEV_NAME}_Editor)
 endif()
 
 if(FO_BUILD_MAPPER)
@@ -1387,7 +1366,6 @@ if(FO_BUILD_BAKER)
     endif()
 
     WriteBuildHash(${FO_DEV_NAME}_Baker)
-    CopyFbxSdkLib(${FO_DEV_NAME}_Baker)
 endif()
 
 if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1426,7 +1404,6 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 
         target_link_libraries(${target} "AppHeadless")
 
-        CopyFbxSdkLib(${target})
         add_custom_target(Run${name}
             COMMAND ${target}
             COMMENT "Run ${name}")
@@ -1485,7 +1462,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
     endif()
 endif()
 
-# Bakering
+# Baking
 set(bakeResources "${FO_DEV_NAME}_Baker")
 
 list(APPEND bakeResources -BakeOutput "${FO_BACKED_RESOURCES_OUTPUT}")
@@ -1499,13 +1476,13 @@ foreach(entry ${FO_RESOURCES})
 endforeach()
 
 add_custom_target(BakeResources
-    COMMAND ${bakeResources} -ForceBakering False
+    COMMAND ${bakeResources} -ForceBaking False
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
 list(APPEND FO_COMMANDS_GROUP "BakeResources")
 
 add_custom_target(ForceBakeResources
-    COMMAND ${bakeResources} -ForceBakering True
+    COMMAND ${bakeResources} -ForceBaking True
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
 list(APPEND FO_COMMANDS_GROUP "ForceBakeResources")
@@ -1599,7 +1576,7 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-bininput \"Binaries\"")
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-defaultcfg \"${FO_DEFAULT_CONFIG}\"")
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-mappercfg \"${FO_MAPPER_CONFIG}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-bakering \"${resourcesDir}\"")
+    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-baking \"${resourcesDir}\"")
 
     foreach(entry ${FO_CONTENT})
         cmake_path(RELATIVE_PATH entry BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE entry)

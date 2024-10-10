@@ -105,11 +105,11 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
     auto&& system = SPK::SPKObject::copy(base_system);
     system->initialize();
 
-    auto&& particles = unique_ptr<ParticleSystem>(new ParticleSystem(*this));
+    auto particles = unique_ptr<ParticleSystem>(new ParticleSystem(*this));
     particles->_impl->System = system;
     particles->_impl->BaseSystem = base_system;
 
-    return std::move(particles);
+    return particles;
 }
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :

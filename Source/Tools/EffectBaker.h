@@ -49,9 +49,9 @@ class EffectBaker final : public BaseBaker
 {
 public:
     EffectBaker() = delete;
-    EffectBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = default;
+    EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
@@ -64,8 +64,5 @@ private:
     void BakeShaderProgram(string_view fname, string_view content);
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
 
-    int _errors {};
-#if FO_ASYNC_BAKE
-    std::mutex _bakedFilesLocker;
-#endif
+    bool _nonConstHelper {};
 };

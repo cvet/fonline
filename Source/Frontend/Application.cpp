@@ -113,6 +113,8 @@ void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
+    SetThisThreadName("Main");
+
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -599,6 +601,8 @@ void Application::OpenLink(string_view link)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     SDL_OpenURL(string(link).c_str());
 }
 
@@ -621,6 +625,8 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -1266,12 +1272,16 @@ auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool 
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
@@ -1281,12 +1291,16 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
@@ -1295,12 +1309,16 @@ void AppRender::EnableScissor(int x, int y, int width, int height)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     ActiveRenderer->EnableScissor(x, y, width, height);
 }
 
 void AppRender::DisableScissor()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->DisableScissor();
 }
@@ -1309,12 +1327,16 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
@@ -1323,12 +1345,16 @@ auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float t
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->IsRenderTargetFlipped();
 }
@@ -1351,6 +1377,8 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MouseX = x;
@@ -1375,6 +1403,8 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (!EventsQueue->empty()) {
         ev = EventsQueue->front();
         EventsQueue->erase(EventsQueue->begin());
@@ -1387,12 +1417,16 @@ void AppInput::ClearEvents()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (push_to_this_frame) {
         EventsQueue->emplace_back(ev);
@@ -1406,6 +1440,8 @@ void AppInput::SetClipboardText(string_view text)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     SDL_SetClipboardText(string(text).c_str());
 }
 
@@ -1417,14 +1453,14 @@ auto AppInput::GetClipboardText() -> const string&
     return _clipboardTextStorage;
 }
 
-auto AppAudio::IsEnabled() -> bool
+auto AppAudio::IsEnabled() const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return AudioDeviceId >= 2;
 }
 
-auto AppAudio::GetStreamSize() -> uint
+auto AppAudio::GetStreamSize() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -1433,7 +1469,7 @@ auto AppAudio::GetStreamSize() -> uint
     return AudioSpec.size;
 }
 
-auto AppAudio::GetSilence() -> uint8
+auto AppAudio::GetSilence() const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -1509,6 +1545,8 @@ void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(IsEnabled());
 
     volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
@@ -1519,6 +1557,8 @@ void AppAudio::LockDevice()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(IsEnabled());
 
     SDL_LockAudioDevice(AudioDeviceId);
@@ -1527,6 +1567,8 @@ void AppAudio::LockDevice()
 void AppAudio::UnlockDevice()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(IsEnabled());
 

@@ -13,7 +13,7 @@ BIN_NEED_BACKED_RESOURCES = ['Server', 'Client', 'Single', 'Mapper']
 parser = argparse.ArgumentParser(description='FOnline packager')
 parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
-parser.add_argument('-bakering', dest='bakering', required=True, help='bakering dir')
+parser.add_argument('-baking', dest='baking', required=True, help='baking dir')
 parser.add_argument('-bininput', dest='bininput', required=True, action='append', default=[], help='binary input dir')
 parser.add_argument('-defaultcfg', dest='defaultcfg', help='Game default config')
 parser.add_argument('-mappercfg', dest='mappercfg', help='Mapper default config')
@@ -66,11 +66,11 @@ def checkDirHash(dir, inputType):
 
 try:
 	log('Build hash', args.buildhash)
-	bakeringEntry = os.path.realpath(args.bakering)
+	bakingEntry = os.path.realpath(args.baking)
 
-	if not checkDirHash(bakeringEntry, 'Resources'):
+	if not checkDirHash(bakingEntry, 'Resources'):
 		log('Baked resources not found')
-		bakeringEntry = None
+		bakingEntry = None
 
 	binaryEntries = []
 	
@@ -89,7 +89,7 @@ try:
 			elif platform.system() == 'Darwin' and '-macOS-' in entry.name and verifyBinaryHash():
 				binaryEntries.append(binDir)
 
-	if not bakeringEntry:
+	if not bakingEntry:
 		binaryEntries = list(filter(lambda x: os.path.basename(x).split('-')[0] not in BIN_NEED_BACKED_RESOURCES, binaryEntries))
 	binaryEntries = list(filter(lambda x: len(os.path.basename(x).split('-')) >= 3, binaryEntries))
 	binaryEntries = list(filter(lambda x: os.path.basename(x).split('-')[0] in BIN_TYPES, binaryEntries))
@@ -103,9 +103,9 @@ try:
 
 	configs = []
 
-	if bakeringEntry:
-		for entry in os.listdir(os.path.join(bakeringEntry, 'Configs')):
-			if os.path.isfile(os.path.join(bakeringEntry, 'Configs', entry)) and not entry.startswith('Client_') and os.path.splitext(entry)[1] == '.focfg':
+	if bakingEntry:
+		for entry in os.listdir(os.path.join(bakingEntry, 'Configs')):
+			if os.path.isfile(os.path.join(bakingEntry, 'Configs', entry)) and not entry.startswith('Client_') and os.path.splitext(entry)[1] == '.focfg':
 				log('Found config', os.path.splitext(entry)[0])
 				configs.append(os.path.splitext(entry)[0])
 		if args.defaultcfg and args.defaultcfg in configs:
@@ -131,8 +131,8 @@ try:
 				if not config:
 					sys.exit(0)
 			elif binType == 'Baker':
-				bakeringType = choicebox('Select bakering mode', ['Iterative', 'Force'])
-				if not bakeringType:
+				bakingType = choicebox('Select baking mode', ['Iterative', 'Force'])
+				if not bakingType:
 					sys.exit(0)
 
 			exePath = os.path.join(binEntry, args.devname + '_' + binType)
@@ -142,15 +142,15 @@ try:
 			
 			exeArgs = []
 			if binType in ['Server', 'Client', 'Single', 'Mapper']:
-				exeArgs += ['-ResourcesDir', os.path.relpath(bakeringEntry)]
-				exeArgs += ['-EmbeddedResources', os.path.relpath(os.path.join(bakeringEntry, 'Embedded'))]
+				exeArgs += ['-ResourcesDir', os.path.relpath(bakingEntry)]
+				exeArgs += ['-EmbeddedResources', os.path.relpath(os.path.join(bakingEntry, 'Embedded'))]
 				exeArgs += ['-DataSynchronization', 'False']
 			if config:
-				exeArgs += ['-ExternalConfig', os.path.relpath(os.path.join(bakeringEntry, 'Configs', f'{config}.focfg'))]
+				exeArgs += ['-ExternalConfig', os.path.relpath(os.path.join(bakingEntry, 'Configs', f'{config}.focfg'))]
 			if binType == 'Baker':
-				exeArgs += ['-ForceBakering', 'True' if bakeringType == 'Force' else 'False']
+				exeArgs += ['-ForceBaking', 'True' if bakingType == 'Force' else 'False']
 			if binType in ['Editor', 'Baker', 'ASCompiler', 'Mapper']:
-				exeArgs += ['-BakeOutput', os.path.relpath(os.path.realpath(args.bakering))]
+				exeArgs += ['-BakeOutput', os.path.relpath(os.path.realpath(args.baking))]
 				for c in args.content:
 					exeArgs += ['-BakeContentEntries', f'+{c}']
 				for r in args.resource:

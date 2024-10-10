@@ -51,25 +51,33 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0);
 
-    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-        const auto collision_detected = s != it->second.Str;
+            const auto collision_detected = s != it->second.Str;
 #else
-        const auto collision_detected = s.length() != it->second.Str.length();
+            const auto collision_detected = s.length() != it->second.Str.length();
 #endif
 
-        if (collision_detected) {
-            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+            }
+
+            return hstring(&it->second);
         }
+    }
+
+    {
+        // Add new entry
+        auto locker = std::unique_lock {_hashStorageLocker};
+
+        const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+        UNUSED_VARIABLE(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(&it->second);
     }
-
-    // Add new entry
-    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
-    RUNTIME_ASSERT(inserted);
-
-    return hstring(&it->second);
 }
 
 auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
@@ -85,18 +93,22 @@ auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0);
 
-    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-        const auto collision_detected = s != it->second.Str;
+            const auto collision_detected = s != it->second.Str;
 #else
-        const auto collision_detected = s.length() != it->second.Str.length();
+            const auto collision_detected = s.length() != it->second.Str.length();
 #endif
 
-        if (collision_detected) {
-            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
-        }
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+            }
 
-        return hstring(&it->second);
+            return hstring(&it->second);
+        }
     }
 
     throw HashInsertException("String value is not in hash storage", s);
@@ -110,8 +122,12 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
         return {};
     }
 
-    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        return hstring(&it->second);
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+            return hstring(&it->second);
+        }
     }
 
     BreakIntoDebugger("Can't resolve hash");
@@ -127,8 +143,12 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
         return {};
     }
 
-    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        return hstring(&it->second);
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+            return hstring(&it->second);
+        }
     }
 
     BreakIntoDebugger();

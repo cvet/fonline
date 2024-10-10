@@ -105,6 +105,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <shared_mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -573,6 +574,20 @@ template<typename T>
 static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value;
 template<typename T>
 static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value;
+
+// Atomic formatter
+template<typename T>
+auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
+
+template<typename T>
+struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<decltype(std::declval<T>().load())>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<decltype(std::declval<T>().load())>::format(value.load(), ctx);
+    }
+};
 
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)
@@ -2150,6 +2165,9 @@ private:
     bool _clearJobs {};
     bool _finish {};
 };
+
+extern void SetThisThreadName(const string& name);
+extern auto GetThisThreadName() -> const string&;
 
 // Interthread communication between server and client
 using InterthreadDataCallback = std::function<void(const_span<uint8>)>;

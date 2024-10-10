@@ -882,7 +882,6 @@ private:
     vector<Property*> _registeredProperties {};
     vector<const Property*> _constRegisteredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
-    mutable string _registeredPropertiesLookupBuf {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<const Property*>> _propertyGroups {};
     unordered_map<string_view, Property::AccessType> _accessMap {};

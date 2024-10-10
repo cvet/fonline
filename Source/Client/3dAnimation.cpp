@@ -39,22 +39,24 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
+    string tmp;
     uint len = 0;
+
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
     reader.ReadPtr(_animFileName.data(), len);
     reader.ReadPtr(&len, sizeof(len));
     _animName.resize(len);
     reader.ReadPtr(_animName.data(), len);
-    reader.ReadPtr(&_durationTicks, sizeof(_durationTicks));
-    reader.ReadPtr(&_ticksPerSecond, sizeof(_ticksPerSecond));
+    reader.ReadPtr(&_duration, sizeof(_duration));
     reader.ReadPtr(&len, sizeof(len));
 
     _bonesHierarchy.resize(len);
-    string tmp;
+
     for (uint i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         _bonesHierarchy[i].resize(len);
+
         for (uint k = 0, l = len; k < l; k++) {
             reader.ReadPtr(&len, sizeof(len));
             tmp.resize(len);
@@ -90,31 +92,6 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     }
 }
 
-void ModelAnimation::SetData(string_view fname, string_view name, float ticks, float tps)
-{
-    STACK_TRACE_ENTRY();
-
-    _animFileName = fname;
-    _animName = name;
-    _durationTicks = ticks;
-    _ticksPerSecond = tps;
-}
-
-void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv)
-{
-    STACK_TRACE_ENTRY();
-
-    auto& o = _boneOutputs.emplace_back();
-    o.BoneName = hierarchy.back();
-    o.ScaleTime = st;
-    o.ScaleValue = sv;
-    o.RotationTime = rt;
-    o.RotationValue = rv;
-    o.TranslationTime = tt;
-    o.TranslationValue = tv;
-    _bonesHierarchy.emplace_back(std::move(hierarchy));
-}
-
 auto ModelAnimation::GetFileName() const noexcept -> string_view
 {
     NO_STACK_TRACE_ENTRY();
@@ -129,18 +106,18 @@ auto ModelAnimation::GetName() const noexcept -> string_view
     return _animName;
 }
 
-auto ModelAnimation::GetBoneOutputCount() const noexcept -> uint
+auto ModelAnimation::GetBoneOutputs() const noexcept -> const vector<BoneOutput>&
 {
     NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_boneOutputs.size());
+    return _boneOutputs;
 }
 
 auto ModelAnimation::GetDuration() const noexcept -> float
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _durationTicks / _ticksPerSecond;
+    return _duration;
 }
 
 auto ModelAnimation::GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&
@@ -225,9 +202,9 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const noe
 {
     NO_STACK_TRACE_ENTRY();
 
-    for (const auto* s : *_sets) {
-        if (s->_animName == name) {
-            return s;
+    for (const auto* set : *_sets) {
+        if (set->GetName() == name) {
+            return set;
         }
     }
 
@@ -260,11 +237,13 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
     STACK_TRACE_ENTRY();
 
     _tracks[track].Anim = anim;
-    const auto count = anim->GetBoneOutputCount();
-    _tracks[track].AnimOutput.resize(count);
-    for (uint i = 0; i < count; i++) {
-        const auto link_name = anim->_boneOutputs[i].BoneName;
+    const auto& outputs = anim->GetBoneOutputs();
+    _tracks[track].AnimOutput.resize(outputs.size());
+
+    for (size_t i = 0; i < outputs.size(); i++) {
+        const auto link_name = outputs[i].BoneName;
         Output* output = nullptr;
+
         if (allowed_bones == nullptr || allowed_bones->count(link_name) != 0) {
             for (auto& o : *_outputs) {
                 if (o.BoneName == link_name) {
@@ -273,6 +252,7 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
                 }
             }
         }
+
         _tracks[track].AnimOutput[i] = output;
     }
 }
@@ -431,18 +411,19 @@ void ModelAnimationController::AdvanceTime(float time)
             continue;
         }
 
-        for (size_t j = 0; j < track.Anim->_boneOutputs.size(); j++) {
+        const auto& anim_outputs = track.Anim->GetBoneOutputs();
+
+        for (size_t j = 0; j < anim_outputs.size(); j++) {
             if (track.AnimOutput[j] == nullptr) {
                 continue;
             }
 
-            const auto& o = track.Anim->_boneOutputs[j];
+            const auto& anim_output = anim_outputs[j];
+            const auto t = std::fmod(track.Position, track.Anim->GetDuration());
 
-            const auto t = std::fmod(track.Position * track.Anim->_ticksPerSecond, track.Anim->_durationTicks);
-
-            FindSrtValue<vec3>(t, o.ScaleTime, o.ScaleValue, track.AnimOutput[j]->Scale[i]);
-            FindSrtValue<quaternion>(t, o.RotationTime, o.RotationValue, track.AnimOutput[j]->Rotation[i]);
-            FindSrtValue<vec3>(t, o.TranslationTime, o.TranslationValue, track.AnimOutput[j]->Translation[i]);
+            FindSrtValue<vec3>(t, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
+            FindSrtValue<quaternion>(t, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
+            FindSrtValue<vec3>(t, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
 
             track.AnimOutput[j]->Valid[i] = true;
             track.AnimOutput[j]->Factor[i] = track.Weight;

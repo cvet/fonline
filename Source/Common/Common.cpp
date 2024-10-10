@@ -451,8 +451,12 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> b
         ::DebugBreak();
         return true;
 #elif FO_LINUX
-#if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
+#ifdef __has_builtin
+#if __has_builtin(__builtin_debugtrap)
         __builtin_debugtrap();
+#else
+        ::raise(SIGTRAP);
+#endif
 #else
         ::raise(SIGTRAP);
 #endif
@@ -679,11 +683,7 @@ void WorkThread::ThreadEntry() noexcept
     STACK_TRACE_ENTRY();
 
     try {
-        Platform::SetThreadName(_name);
-
-#if FO_TRACY
-        tracy::SetThreadName(_name.c_str());
-#endif
+        SetThisThreadName(_name);
 
         while (true) {
             Job job;
@@ -778,6 +778,35 @@ void WorkThread::ThreadEntry() noexcept
     catch (...) {
         UNKNOWN_EXCEPTION();
     }
+}
+
+static thread_local string ThreadName;
+
+void SetThisThreadName(const string& name)
+{
+    STACK_TRACE_ENTRY();
+
+    ThreadName = name;
+
+    Platform::SetThreadName(ThreadName);
+
+#if FO_TRACY
+    tracy::SetThreadName(ThreadName.c_str());
+#endif
+}
+
+auto GetThisThreadName() -> const string&
+{
+    STACK_TRACE_ENTRY();
+
+    if (ThreadName.empty()) {
+        static size_t thread_counter = 0;
+        thread_local size_t thread_num = ++thread_counter;
+
+        ThreadName = strex("{}", thread_num);
+    }
+
+    return ThreadName;
 }
 
 // Dummy symbols for web build to avoid linker errors

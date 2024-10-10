@@ -79,9 +79,9 @@ public:
     using LoadFunc = std::function<FrameCollection(string_view, string_view, File&)>;
 
     ImageBaker() = delete;
-    ImageBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ImageBaker(const ImageBaker&) = delete;
-    ImageBaker(ImageBaker&&) noexcept = default;
+    ImageBaker(ImageBaker&&) noexcept = delete;
     auto operator=(const ImageBaker&) = delete;
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
@@ -111,5 +111,6 @@ private:
     unordered_map<string, LoadFunc> _fileLoaders {};
     unordered_map<string, File> _cachedFiles {};
     FileCollection _files {};
+    mutable std::mutex _filesLocker {};
     bool _nonConstHelper {};
 };
