@@ -46,7 +46,7 @@
 [[nodiscard]] static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>;
 [[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>;
 
-ImageBaker::ImageBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+ImageBaker::ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
     BaseBaker(settings, std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
@@ -79,6 +79,8 @@ auto ImageBaker::IsExtSupported(string_view ext) const -> bool
 {
     STACK_TRACE_ENTRY();
 
+    auto locker = std::unique_lock {_filesLocker};
+
     if (const auto it = _fileLoaders.find(string(ext)); it != _fileLoaders.end() && it->second) {
         return true;
     }
@@ -91,6 +93,8 @@ void ImageBaker::AddLoader(LoadFunc loader, const vector<string_view>& file_exte
 {
     STACK_TRACE_ENTRY();
 
+    auto locker = std::unique_lock {_filesLocker};
+
     for (const auto& ext : file_extensions) {
         _fileLoaders[string(ext)] = loader;
     }
@@ -100,42 +104,57 @@ void ImageBaker::BakeFiles(FileCollection&& files)
 {
     STACK_TRACE_ENTRY();
 
-    _files = std::move(files);
+    vector<pair<File, LoadFunc>> files_to_bake;
 
-    int errors = 0;
+    {
+        auto locker = std::unique_lock {_filesLocker};
 
-    for (auto&& [ext, loader] : _fileLoaders) {
-        for (_files.ResetCounter(); _files.MoveNext();) {
-            auto file_header = _files.GetCurFileHeader();
-            string file_ext = strex(file_header.GetPath()).getFileExtension();
+        _files = std::move(files);
 
-            if (file_ext != ext) {
-                continue;
-            }
+        for (auto&& [ext, loader] : _fileLoaders) {
+            for (_files.ResetCounter(); _files.MoveNext();) {
+                auto file_header = _files.GetCurFileHeader();
+                string file_ext = strex(file_header.GetPath()).getFileExtension();
 
-            if (_bakeChecker && !_bakeChecker(file_header)) {
-                continue;
-            }
+                if (file_ext != ext) {
+                    continue;
+                }
 
-            auto file = _files.GetCurFile();
+                if (_bakeChecker && !_bakeChecker(file_header)) {
+                    continue;
+                }
 
-            try {
-                auto collection = loader(file_header.GetPath(), "", file);
-                BakeCollection(file_header.GetPath(), collection);
-            }
-            catch (const ImageBakerException& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
-            }
-            catch (const FileSystemExeption& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
+                files_to_bake.emplace_back(_files.GetCurFile(), loader);
             }
         }
     }
 
+    vector<std::future<void>> file_bakings;
+
+    for (auto&& file_to_bake : files_to_bake) {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &file_to_bake] {
+            const auto collection = file_to_bake.second(file_to_bake.first.GetPath(), "", file_to_bake.first);
+            BakeCollection(file_to_bake.first.GetPath(), collection);
+        }));
+    }
+
+    int errors = 0;
+
+    for (auto&& file_baking : file_bakings) {
+        try {
+            file_baking.get();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
+    }
+
     if (errors != 0) {
-        throw ImageBakerException("Errors during images bakering", errors);
+        throw ImageBakerException("Errors during images baking", errors);
     }
 }
 
@@ -201,6 +220,8 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
     File temp_storage;
 
     auto find_file = [this, &fname, &ext, &temp_storage]() -> File& {
+        auto locker = std::unique_lock {_filesLocker};
+
         const auto it = _cachedFiles.find(fname);
         if (it != _cachedFiles.end()) {
             return it->second;
@@ -404,12 +425,18 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
-        if (fm_palette) {
+        File palette_file;
+
+        {
+            auto locker = std::unique_lock {_filesLocker};
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        }
+
+        if (palette_file) {
             for (auto& i : palette_entry) {
-                uint8 r = fm_palette.GetUChar() * 4;
-                uint8 g = fm_palette.GetUChar() * 4;
-                uint8 b = fm_palette.GetUChar() * 4;
+                uint8 r = palette_file.GetUChar() * 4;
+                uint8 g = palette_file.GetUChar() * 4;
+                uint8 b = palette_file.GetUChar() * 4;
                 i = ucolor {r, g, b};
             }
             palette = palette_entry;
@@ -626,7 +653,12 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
 
         if (dir_frm != 0) {
             string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
-            file = _files.FindFileByPath(next_fname);
+
+            {
+                auto locker = std::unique_lock {_filesLocker};
+                file = _files.FindFileByPath(next_fname);
+            }
+
             if (!file) {
                 if (dir > 1) {
                     throw ImageBakerException("FRX file not found", next_fname);
@@ -650,12 +682,18 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
-        if (fm_palette) {
+        File palette_file;
+
+        {
+            auto locker = std::unique_lock {_filesLocker};
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        }
+
+        if (palette_file) {
             for (auto& i : palette_entry) {
-                uint8 r = fm_palette.GetUChar() * 4;
-                uint8 g = fm_palette.GetUChar() * 4;
-                uint8 b = fm_palette.GetUChar() * 4;
+                uint8 r = palette_file.GetUChar() * 4;
+                uint8 g = palette_file.GetUChar() * 4;
+                uint8 b = palette_file.GetUChar() * 4;
                 i = ucolor {r, g, b};
             }
             palette = palette_entry;

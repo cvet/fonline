@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+void MapLoader::Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     STACK_TRACE_ENTRY();
 
@@ -58,6 +58,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     // Automatic id fixier
     unordered_set<ident_t::underlying_type> busy_ids;
     ident_t::underlying_type last_lowest_id = std::numeric_limits<ident_t::underlying_type>::max();
+
     const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
         if (id < std::numeric_limits<ident_t::underlying_type>::max() / 2 || !busy_ids.emplace(id).second) {
             auto new_id = last_lowest_id - 1;

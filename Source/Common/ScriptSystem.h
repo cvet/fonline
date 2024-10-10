@@ -167,6 +167,18 @@ public:
         return {};
     }
 
+    template<typename TRet, typename... Args>
+    [[nodiscard]] auto CheckFunc(hstring func_name) const -> bool
+    {
+        const auto range = _funcMap.equal_range(func_name);
+        for (auto it = range.first; it != range.second; ++it) {
+            if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) -> bool
     {
@@ -186,7 +198,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) const -> bool;
 
     vector<std::function<void()>> _loopCallbacks {};
     std::unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};

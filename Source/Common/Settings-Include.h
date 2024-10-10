@@ -209,11 +209,12 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-VARIABLE_SETTING(bool, ForceBakering, false);
-VARIABLE_SETTING(string, BakeOutput);
-VARIABLE_SETTING(vector<string>, BakeResourceEntries);
-VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+FIXED_SETTING(bool, ForceBaking, false);
+FIXED_SETTING(bool, SingleThreadBaking, false);
+FIXED_SETTING(string, BakeOutput);
+FIXED_SETTING(vector<string>, BakeResourceEntries);
+FIXED_SETTING(vector<string>, BakeContentEntries);
+FIXED_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

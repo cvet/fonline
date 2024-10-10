@@ -74,29 +74,29 @@ GlobalSettings BakerEngine::_dummySettings {};
 #if !FO_SINGLEPLAYER
 struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 struct ASCompiler_ServerScriptSystem_Validation : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources, FOEngineBase** out_engine);
+    void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
 };
 struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 #else
 struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 struct ASCompiler_SingleScriptSystem_Validation : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources, FOEngineBase** out_engine);
+    void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
 };
 #endif
 struct ASCompiler_MapperScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 
 // External variable for compiler messages
@@ -109,7 +109,7 @@ struct Critter;
 struct Map;
 struct Location;
 
-BaseBaker::BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
+BaseBaker::BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
     _settings {settings},
     _bakeChecker {std::move(bake_checker)},
     _writeData {std::move(write_data)}
@@ -119,7 +119,7 @@ BaseBaker::BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker
     RUNTIME_ASSERT(_writeData);
 }
 
-auto BaseBaker::SetupBakers(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>
 {
     STACK_TRACE_ENTRY();
 
@@ -131,7 +131,7 @@ auto BaseBaker::SetupBakers(BakerSettings& settings, BakeCheckerCallback bake_ch
     bakers.emplace_back(std::make_unique<ModelBaker>(settings, bake_checker, write_data));
 #endif
 
-    extern void SetupBakersHook(vector<unique_ptr<BaseBaker>> & bakers);
+    extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&);
     SetupBakersHook(bakers);
 
     return bakers;
@@ -154,154 +154,185 @@ void Baker::BakeAll()
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Start bakering");
+#if FO_DEBUG
+    if (IsRunInDebugger()) {
+        const_cast<bool&>(_settings.ForceBaking) = true;
+        const_cast<bool&>(_settings.SingleThreadBaking) = true;
+    }
+#endif
+
+    WriteLog("Start baking");
 
     const auto bake_time = TimeMeter();
 
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
     RUNTIME_ASSERT(build_hash_deleted);
 
-    if (_settings.ForceBakering) {
+    if (_settings.ForceBaking) {
         WriteLog("Force rebuild all resources");
     }
 
-    auto errors = 0;
+    int errors = 0;
+
+    const auto async_mode = _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
 
     // Resource packs
-    auto resource_names = unordered_set<string>();
+    unordered_set<string> resource_names;
+    std::mutex resource_names_locker;
 
     try {
-        WriteLog("Bake resource packs");
+        WriteLog("Start bake resource packs");
 
         RUNTIME_ASSERT(!_settings.BakeResourceEntries.empty());
 
         map<string, vector<string>> res_packs;
+
         for (const auto& re : _settings.BakeResourceEntries) {
             auto re_splitted = strex(re).split(',');
             RUNTIME_ASSERT(re_splitted.size() == 2);
-            res_packs[re_splitted[0]].push_back(re_splitted[1]);
+            res_packs[re_splitted[0]].emplace_back(std::move(re_splitted[1]));
         }
 
-        for (auto&& res_pack : res_packs) {
-            const auto& pack_name = res_pack.first;
-            const auto& paths = res_pack.second;
+        const auto bake_resource_pack = [ // clang-format off
+            &thiz = std::as_const(*this),
+            &settings = std::as_const(_settings),
+            &resource_names = resource_names,
+            &resource_names_locker = resource_names_locker // clang-format on
+        ](const string& pack_name, const vector<string>& paths) {
+            FileSystem res_files;
 
-            try {
-                WriteLog("Bake {}", pack_name);
+            for (const auto& path : paths) {
+                res_files.AddDataSource(path);
+            }
 
-                FileSystem res_files;
-                for (const auto& path : paths) {
-                    WriteLog("Add resource pack {} entry {}", pack_name, path);
-                    res_files.AddDataSource(path);
+            // Cleanup previous
+            if (settings.ForceBaking) {
+                auto del_res_ok = DiskFileSystem::DeleteDir(thiz.MakeOutputPath(pack_name));
+                RUNTIME_ASSERT(del_res_ok);
+            }
+
+            DiskFileSystem::MakeDirTree(thiz.MakeOutputPath(pack_name));
+
+            const auto is_raw_only = pack_name == "Raw";
+
+            std::atomic_int baked_files = 0;
+
+            // Bake files
+            auto pack_resource_names = unordered_set<string>();
+
+            const auto exclude_all_ext = [](string_view path) -> string {
+                size_t pos = path.rfind('/');
+                pos = path.find('.', pos != string::npos ? pos : 0);
+                return pos != string::npos ? string(path.substr(0, pos)) : string(path);
+            };
+            const auto make_output_path = [](string_view path) -> string {
+                if (strex(path).startsWith("art/critters/")) {
+                    return strex("art/critters/{}", strex(path.substr("art/critters/"_len)).lower());
                 }
+                return string(path);
+            };
 
-                // Cleanup previous
-                if (_settings.ForceBakering) {
-                    auto del_res_ok = DiskFileSystem::DeleteDir(MakeOutputPath(pack_name));
-                    RUNTIME_ASSERT(del_res_ok);
-                }
-
-                DiskFileSystem::MakeDirTree(MakeOutputPath(pack_name));
-
-                const auto is_raw_only = pack_name == "Raw";
-                auto resources = res_files.GetAllFiles();
-                size_t baked_files = 0;
-
-                WriteLog("Create resource pack {} from {} files", pack_name, resources.GetFilesCount());
-
-                // Bake files
-                auto pack_resource_names = unordered_set<string>();
-
-                const auto exclude_all_ext = [](string_view path) -> string {
-                    size_t pos = path.rfind('/');
-                    pos = path.find('.', pos != string::npos ? pos : 0);
-                    return pos != string::npos ? string(path.substr(0, pos)) : string(path);
-                };
-                const auto make_output_path = [](string_view path) -> string {
-                    if (strex(path).startsWith("art/critters/")) {
-                        return strex("art/critters/{}", strex(path.substr("art/critters/"_len)).lower());
-                    }
-                    return string(path);
-                };
-
-                if (!is_raw_only) {
-                    const auto bake_checker = [&](const FileHeader& file_header) -> bool {
-                        const auto output_path = make_output_path(file_header.GetPath());
-
-                        resource_names.emplace(output_path);
-                        pack_resource_names.emplace(exclude_all_ext(output_path));
-
-                        if (!_settings.ForceBakering) {
-                            return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(strex(pack_name).combinePath(output_path)));
-                        }
-                        else {
-                            return true;
-                        }
-                    };
-
-                    const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
-                        const auto output_path = make_output_path(path);
-
-                        auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(strex(pack_name).combinePath(output_path)), true);
-                        RUNTIME_ASSERT(res_file);
-                        const auto res_file_write_ok = res_file.Write(baked_data);
-                        RUNTIME_ASSERT(res_file_write_ok);
-
-                        baked_files++;
-                    };
-
-                    auto bakers = BaseBaker::SetupBakers(_settings, bake_checker, write_data);
-
-                    for (auto&& baker : bakers) {
-                        baker->BakeFiles(res_files.GetAllFiles());
-                    }
-                }
-
-                // Raw copy
-                resources.ResetCounter();
-                while (resources.MoveNext()) {
-                    auto file_header = resources.GetCurFileHeader();
+            if (!is_raw_only) {
+                const auto bake_checker = [&](const FileHeader& file_header) -> bool {
                     const auto output_path = make_output_path(file_header.GetPath());
 
-                    // Skip not necessary files
-                    if (!is_raw_only) {
-                        const string ext = strex(output_path).getFileExtension();
-                        const auto& base_exts = _settings.BakeExtraFileExtensions;
-
-                        if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
-                            continue;
-                        }
+                    {
+                        auto locker = std::unique_lock {resource_names_locker};
+                        resource_names.emplace(output_path);
                     }
 
-                    resource_names.emplace(output_path);
                     pack_resource_names.emplace(exclude_all_ext(output_path));
 
-                    const string path_in_pack = strex(pack_name).combinePath(output_path);
+                    if (!settings.ForceBaking) {
+                        return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(strex(pack_name).combinePath(output_path)));
+                    }
+                    else {
+                        return true;
+                    }
+                };
 
-                    if (!_settings.ForceBakering && DiskFileSystem::GetWriteTime(MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
+                const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
+                    const auto output_path = make_output_path(path);
+
+                    auto res_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex(pack_name).combinePath(output_path)), true);
+                    RUNTIME_ASSERT(res_file);
+                    const auto res_file_write_ok = res_file.Write(baked_data);
+                    RUNTIME_ASSERT(res_file_write_ok);
+
+                    ++baked_files;
+                };
+
+                auto bakers = BaseBaker::SetupBakers(settings, bake_checker, write_data);
+
+                for (auto&& baker : bakers) {
+                    baker->BakeFiles(res_files.GetAllFiles());
+                }
+            }
+
+            // Raw copy
+            for (auto files_to_bake = res_files.GetAllFiles(); files_to_bake.MoveNext();) {
+                auto file_header = files_to_bake.GetCurFileHeader();
+                const auto output_path = make_output_path(file_header.GetPath());
+
+                // Skip not necessary files
+                if (!is_raw_only) {
+                    const string ext = strex(output_path).getFileExtension();
+                    const auto& base_exts = settings.BakeExtraFileExtensions;
+
+                    if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
                         continue;
                     }
-
-                    auto file = resources.GetCurFile();
-
-                    auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(path_in_pack), true);
-                    RUNTIME_ASSERT(res_file);
-                    auto res_file_write_ok = res_file.Write(file.GetData());
-                    RUNTIME_ASSERT(res_file_write_ok);
                 }
 
-                // Delete outdated
-                DiskFileSystem::IterateDir(MakeOutputPath(pack_name), "", true, [this, &pack_name, &pack_resource_names, &exclude_all_ext](string_view path, size_t size, uint64 write_time) {
-                    UNUSED_VARIABLE(size);
-                    UNUSED_VARIABLE(write_time);
-                    if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
-                        const string path_in_pack = strex(pack_name).combinePath(path);
-                        DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
-                        WriteLog("Delete outdated file {}", path_in_pack);
-                    }
-                });
+                {
+                    auto locker = std::unique_lock {resource_names_locker};
+                    resource_names.emplace(output_path);
+                }
 
-                WriteLog("Bake {} complete. Baked {} files (rest are skipped)", pack_name, baked_files);
+                pack_resource_names.emplace(exclude_all_ext(output_path));
+
+                const string path_in_pack = strex(pack_name).combinePath(output_path);
+
+                if (!settings.ForceBaking && DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
+                    continue;
+                }
+
+                auto file = files_to_bake.GetCurFile();
+
+                auto res_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(path_in_pack), true);
+                RUNTIME_ASSERT(res_file);
+                auto res_file_write_ok = res_file.Write(file.GetData());
+                RUNTIME_ASSERT(res_file_write_ok);
+
+                ++baked_files;
+            }
+
+            // Delete outdated
+            DiskFileSystem::IterateDir(thiz.MakeOutputPath(pack_name), "", true, [&](string_view path, size_t size, uint64 write_time) {
+                UNUSED_VARIABLE(size);
+                UNUSED_VARIABLE(write_time);
+
+                if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
+                    const string path_in_pack = strex(pack_name).combinePath(path);
+                    DiskFileSystem::DeleteFile(thiz.MakeOutputPath(path_in_pack));
+                    WriteLog("Delete outdated file {}", path_in_pack);
+                }
+            });
+
+            WriteLog("Baking of {} complete, baked {} files", pack_name, baked_files);
+        };
+
+        vector<std::future<void>> res_bakings;
+
+        for (auto&& res_pack : res_packs) {
+            WriteLog("Bake {}", res_pack.first);
+            auto res_baking = std::async(async_mode, [&bake_resource_pack, res_pack] { bake_resource_pack(res_pack.first, res_pack.second); });
+            res_bakings.emplace_back(std::move(res_baking));
+        }
+
+        for (auto&& res_baking : res_bakings) {
+            try {
+                res_baking.get();
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -312,9 +343,10 @@ void Baker::BakeAll()
             }
         }
 
-        WriteLog("Bake resource packs complete");
+        WriteLog("Bake resources packs complete");
     }
     catch (const std::exception& ex) {
+        WriteLog("Resource baking failed");
         ReportExceptionAndContinue(ex);
         errors++;
     }
@@ -344,11 +376,12 @@ void Baker::BakeAll()
 
             auto all_scripts_up_to_date = true;
 
-            if (_settings.ForceBakering) {
+            if (_settings.ForceBaking) {
                 all_scripts_up_to_date = false;
             }
             else {
                 auto script_files = baker_engine.Resources.FilterFiles("fos");
+
                 while (script_files.MoveNext() && all_scripts_up_to_date) {
                     auto file = script_files.GetCurFileHeader();
 #if !FO_SINGLEPLAYER
@@ -443,14 +476,14 @@ void Baker::BakeAll()
         try {
             WriteLog("Bake configs");
 
-            if (_settings.ForceBakering) {
+            if (_settings.ForceBaking) {
                 auto del_configs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Configs"));
                 RUNTIME_ASSERT(del_configs_ok);
             }
 
             auto configs = baker_engine.Resources.FilterFiles("focfg");
-
             bool all_configs_up_to_date = true;
+
             while (configs.MoveNext() && all_configs_up_to_date) {
                 auto file = configs.GetCurFileHeader();
                 if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
@@ -470,7 +503,7 @@ void Baker::BakeAll()
 
                     WriteLog("Process config {}", file.GetName());
 
-                    auto settings_errors = 0;
+                    int settings_errors = 0;
 
                     // Collect content from end to beginning
                     string final_content;
@@ -590,7 +623,7 @@ void Baker::BakeAll()
 
             auto parse_protos = false;
 
-            if (_settings.ForceBakering) {
+            if (_settings.ForceBaking) {
                 auto del_protos_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Protos"));
                 RUNTIME_ASSERT(del_protos_ok);
 
@@ -612,12 +645,15 @@ void Baker::BakeAll()
                 if (last_write_time > 0) {
                     const auto check_up_to_date = [last_write_time, &resources = baker_engine.Resources](string_view ext) -> bool {
                         auto files = resources.FilterFiles(ext);
+
                         while (files.MoveNext()) {
                             auto file = files.GetCurFileHeader();
+
                             if (file.GetWriteTime() > last_write_time) {
                                 return false;
                             }
                         }
+
                         return true;
                     };
 
@@ -639,13 +675,14 @@ void Baker::BakeAll()
 
                 // Protos validation
                 unordered_set<hstring> resource_hashes;
+
                 for (const auto& name : resource_names) {
                     resource_hashes.insert(baker_engine.ToHashedString(name));
                 }
 
                 WriteLog("Validate protos");
 
-                auto proto_errors = 0;
+                int proto_errors = 0;
 
                 for (auto&& [type_name, protos] : proto_mngr.GetAllProtos()) {
                     for (auto&& [pid, proto] : protos) {
@@ -657,6 +694,7 @@ void Baker::BakeAll()
                 {
                     const auto& loc_protos = proto_mngr.GetProtoLocations();
                     const auto& map_protos = proto_mngr.GetProtoMaps();
+
                     for (auto&& [pid, proto] : loc_protos) {
                         for (auto map_pid : proto->GetMapProtos()) {
                             if (map_protos.count(map_pid) == 0) {
@@ -674,35 +712,48 @@ void Baker::BakeAll()
                 WriteLog("Process server protos");
                 auto server_engine = BakerEngine(PropertiesRelationType::ServerRelative);
                 auto server_proto_mngr = ProtoManager(&server_engine);
-                server_proto_mngr.ParseProtos(baker_engine.Resources);
 
                 WriteLog("Process client protos");
                 auto client_engine = BakerEngine(PropertiesRelationType::ClientRelative);
                 auto client_proto_mngr = ProtoManager(&client_engine);
-                client_proto_mngr.ParseProtos(baker_engine.Resources);
+
+                vector<std::future<void>> proto_bakings;
+
+                proto_bakings.emplace_back(std::async(async_mode, [&] { server_proto_mngr.ParseProtos(baker_engine.Resources); }));
+                proto_bakings.emplace_back(std::async(async_mode, [&] { client_proto_mngr.ParseProtos(baker_engine.Resources); }));
+
+                for (auto&& proto_baking : proto_bakings) {
+                    proto_baking.get();
+                }
 
                 // Maps
                 WriteLog("Process maps");
 
-                if (_settings.ForceBakering) {
+                if (_settings.ForceBaking) {
                     auto del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Maps"));
                     RUNTIME_ASSERT(del_maps_ok);
                     del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("StaticMaps"));
                     RUNTIME_ASSERT(del_maps_ok);
                 }
 
-                const auto fomap_files = baker_engine.Resources.FilterFiles("fomap");
-
-                for (const auto& proto_entry : proto_mngr.GetProtoMaps()) {
-                    const auto* proto_map = proto_entry.second;
-
+                const auto bake_map = [ // clang-format off
+                    &thiz = std::as_const(*this),
+                    &settings = std::as_const(_settings),
+                    &baker_engine = std::as_const(baker_engine),
+                    &server_proto_mngr = std::as_const(server_proto_mngr),
+                    &client_proto_mngr = std::as_const(client_proto_mngr),
+                    &hash_resolver = server_engine,
+                    &script_sys = std::as_const(*validation_engine->ScriptSys),
+                    &resource_hashes = std::as_const(resource_hashes) // clang-format on
+                ](const ProtoMap* proto_map) {
+                    const auto fomap_files = baker_engine.Resources.FilterFiles("fomap");
                     auto map_file = fomap_files.FindFileByName(proto_map->GetName());
                     RUNTIME_ASSERT(map_file);
 
                     // Skip if up to date
-                    if (!_settings.ForceBakering) {
-                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
-                            continue;
+                    if (!settings.ForceBaking) {
+                        if (DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
+                            return;
                         }
                     }
 
@@ -718,142 +769,152 @@ void Baker::BakeAll()
                     auto map_client_item_data_writer = DataWriter(map_client_item_data);
                     set<hstring> str_hashes;
                     set<hstring> client_str_hashes;
-                    auto map_errors = 0;
+                    int map_errors = 0;
 
-                    try {
-                        MapLoader::Load(
-                            proto_map->GetName(), map_file.GetStr(), server_proto_mngr, server_engine,
-                            [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-                                auto props = copy(proto->GetProperties());
+                    MapLoader::Load(
+                        proto_map->GetName(), map_file.GetStr(), server_proto_mngr, hash_resolver,
+                        [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                            auto props = copy(proto->GetProperties());
 
-                                if (props.ApplyFromText(kv)) {
-                                    map_errors += ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+                            if (props.ApplyFromText(kv)) {
+                                map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), &script_sys, resource_hashes);
 
-                                    map_cr_count++;
-                                    map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                    map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data, str_hashes);
-                                    map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                    map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
-                                }
-                                else {
-                                    WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                    map_errors++;
-                                }
+                                map_cr_count++;
+                                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                                props.StoreAllData(props_data, str_hashes);
+                                map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
+                            }
+                            else {
+                                WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                map_errors++;
+                            }
 
-                                return true;
-                            },
-                            [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-                                auto props = copy(proto->GetProperties());
+                            return true;
+                        },
+                        [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                            auto props = copy(proto->GetProperties());
 
-                                if (props.ApplyFromText(kv)) {
-                                    map_errors += ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+                            if (props.ApplyFromText(kv)) {
+                                map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), &script_sys, resource_hashes);
 
-                                    map_item_count++;
-                                    map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                    map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data, str_hashes);
-                                    map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                    map_item_data_writer.WritePtr(props_data.data(), props_data.size());
+                                map_item_count++;
+                                map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                                props.StoreAllData(props_data, str_hashes);
+                                map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                    const auto is_static = props.GetValue<bool>(proto->GetPropertyIsStatic());
-                                    const auto is_hidden = props.GetValue<bool>(proto->GetPropertyIsHidden());
+                                const auto is_static = props.GetValue<bool>(proto->GetPropertyIsStatic());
+                                const auto is_hidden = props.GetValue<bool>(proto->GetPropertyIsHidden());
 
-                                    if (is_static && !is_hidden) {
-                                        const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
-                                        auto client_props = copy(client_proto->GetProperties());
+                                if (is_static && !is_hidden) {
+                                    const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
+                                    auto client_props = copy(client_proto->GetProperties());
 
-                                        if (client_props.ApplyFromText(kv)) {
-                                            map_client_item_count++;
-                                            map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                            map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
-                                            client_props.StoreAllData(props_data, client_str_hashes);
-                                            map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                            map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
-                                        }
-                                        else {
-                                            WriteLog("Invalid item (client side) {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                            map_errors++;
-                                        }
+                                    if (client_props.ApplyFromText(kv)) {
+                                        map_client_item_count++;
+                                        map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                                        map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                                        client_props.StoreAllData(props_data, client_str_hashes);
+                                        map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                        map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
+                                    }
+                                    else {
+                                        WriteLog("Invalid item (client side) {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                        map_errors++;
                                     }
                                 }
-                                else {
-                                    WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                    map_errors++;
-                                }
+                            }
+                            else {
+                                WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                map_errors++;
+                            }
 
-                                return true;
-                            });
-                    }
-                    catch (const std::exception& ex) {
-                        ReportExceptionAndContinue(ex);
-                        map_errors++;
-                    }
-                    catch (...) {
-                        UNKNOWN_EXCEPTION();
+                            return true;
+                        });
+
+                    if (map_errors != 0) {
+                        throw GenericException("Map loading error(s)");
                     }
 
-                    if (map_errors == 0) {
 #if !FO_SINGLEPLAYER
-                        // Server side
-                        {
-                            vector<uint8> map_data;
-                            auto final_writer = DataWriter(map_data);
-                            final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
-                            for (const auto& hstr : str_hashes) {
-                                const auto& str = hstr.as_str();
-                                final_writer.Write<uint>(static_cast<uint>(str.length()));
-                                final_writer.WritePtr(str.c_str(), str.length());
-                            }
-                            final_writer.Write<uint>(map_cr_count);
-                            final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
-                            final_writer.Write<uint>(map_item_count);
-                            final_writer.WritePtr(map_item_data.data(), map_item_data.size());
-
-                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
-                            RUNTIME_ASSERT(map_bin_file);
-                            auto map_bin_file_write_ok = map_bin_file.Write(map_data);
-                            RUNTIME_ASSERT(map_bin_file_write_ok);
-                        }
-                        // Client side
-                        {
-                            vector<uint8> map_data;
-                            auto final_writer = DataWriter(map_data);
-                            final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
-                            for (const auto& hstr : client_str_hashes) {
-                                const auto& str = hstr.as_str();
-                                final_writer.Write<uint>(static_cast<uint>(str.length()));
-                                final_writer.WritePtr(str.c_str(), str.length());
-                            }
-                            final_writer.Write<uint>(map_client_item_count);
-                            final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
-
-                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
-                            RUNTIME_ASSERT(map_bin_file);
-                            auto map_bin_file_write_ok = map_bin_file.Write(map_data);
-                            RUNTIME_ASSERT(map_bin_file_write_ok);
-                        }
-#else
+                    // Server side
+                    {
                         vector<uint8> map_data;
                         auto final_writer = DataWriter(map_data);
+                        final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+                        for (const auto& hstr : str_hashes) {
+                            const auto& str = hstr.as_str();
+                            final_writer.Write<uint>(static_cast<uint>(str.length()));
+                            final_writer.WritePtr(str.c_str(), str.length());
+                        }
                         final_writer.Write<uint>(map_cr_count);
                         final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
                         final_writer.Write<uint>(map_item_count);
                         final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-                        auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
+                        auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
                         RUNTIME_ASSERT(map_bin_file);
                         auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                         RUNTIME_ASSERT(map_bin_file_write_ok);
-#endif
                     }
-                    else {
+                    // Client side
+                    {
+                        vector<uint8> map_data;
+                        auto final_writer = DataWriter(map_data);
+                        final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
+                        for (const auto& hstr : client_str_hashes) {
+                            const auto& str = hstr.as_str();
+                            final_writer.Write<uint>(static_cast<uint>(str.length()));
+                            final_writer.WritePtr(str.c_str(), str.length());
+                        }
+                        final_writer.Write<uint>(map_client_item_count);
+                        final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
+
+                        auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
+                        RUNTIME_ASSERT(map_bin_file);
+                        auto map_bin_file_write_ok = map_bin_file.Write(map_data);
+                        RUNTIME_ASSERT(map_bin_file_write_ok);
+                    }
+#else
+                    vector<uint8> map_data;
+                    auto final_writer = DataWriter(map_data);
+                    final_writer.Write<uint>(map_cr_count);
+                    final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
+                    final_writer.Write<uint>(map_item_count);
+                    final_writer.WritePtr(map_item_data.data(), map_item_data.size());
+
+                    auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
+                    RUNTIME_ASSERT(map_bin_file);
+                    auto map_bin_file_write_ok = map_bin_file.Write(map_data);
+                    RUNTIME_ASSERT(map_bin_file_write_ok);
+#endif
+                };
+
+                vector<std::future<void>> map_bakings;
+
+                for (const auto& proto_entry : proto_mngr.GetProtoMaps()) {
+                    auto map_baking = std::async(async_mode, [&] { bake_map(proto_entry.second); });
+                    map_bakings.emplace_back(std::move(map_baking));
+                }
+
+                for (auto&& map_baking : map_bakings) {
+                    try {
+                        map_baking.get();
+                    }
+                    catch (const std::exception& ex) {
+                        ReportExceptionAndContinue(ex);
                         proto_errors++;
+                    }
+                    catch (...) {
+                        UNKNOWN_EXCEPTION();
                     }
                 }
 
                 if (proto_errors != 0) {
-                    throw ProtoValidationException("Proto maps verification failed");
+                    throw GenericException("Proto maps verification failed");
                 }
 
                 // Write protos
@@ -892,7 +953,7 @@ void Baker::BakeAll()
         try {
             WriteLog("Bake dialogs");
 
-            if (_settings.ForceBakering) {
+            if (_settings.ForceBaking) {
                 auto del_dialogs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Dialogs"));
                 RUNTIME_ASSERT(del_dialogs_ok);
             }
@@ -1120,11 +1181,11 @@ void Baker::BakeAll()
 
     // Finalize
     if (errors != 0) {
-        WriteLog("Bakering failed!");
+        WriteLog("Baking failed!");
         ExitApp(false);
     }
 
-    WriteLog("Bakering complete!");
+    WriteLog("Baking complete!");
 
     {
         auto build_hash_file = DiskFileSystem::OpenFile(MakeOutputPath("Resources.build-hash"), true, true);
@@ -1134,17 +1195,17 @@ void Baker::BakeAll()
     }
 }
 
-static unordered_map<string, std::function<bool(hstring, ScriptSystem*)>> ScriptFuncVerify = {
-    {"ItemInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
-    {"ItemScenery", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-    {"ItemTrigger", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-    {"CritterInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
-    {"MapInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
-    {"LocationInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-    {"LocationEntrance", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
+static unordered_map<string, std::function<bool(hstring, const ScriptSystem*)>> ScriptFuncVerify = {
+    {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Item*, bool>(func_name); }},
+    {"ItemScenery", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+    {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
+    {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Critter*, bool>(func_name); }},
+    {"MapInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Map*, bool>(func_name); }},
+    {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Location*, bool>(func_name); }},
+    {"LocationEntrance", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
 };
 
-auto Baker::ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
+auto Baker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) const -> int
 {
     STACK_TRACE_ENTRY();
 

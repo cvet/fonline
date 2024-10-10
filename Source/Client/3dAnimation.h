@@ -39,27 +39,7 @@
 
 class ModelAnimation final
 {
-    friend class ModelAnimationController;
-
 public:
-    ModelAnimation() = default;
-    ModelAnimation(const ModelAnimation&) = delete;
-    ModelAnimation(ModelAnimation&&) noexcept = default;
-    auto operator=(const ModelAnimation&) = delete;
-    auto operator=(ModelAnimation&&) noexcept = delete;
-    ~ModelAnimation() = default;
-
-    [[nodiscard]] auto GetFileName() const noexcept -> string_view;
-    [[nodiscard]] auto GetName() const noexcept -> string_view;
-    [[nodiscard]] auto GetBoneOutputCount() const noexcept -> uint;
-    [[nodiscard]] auto GetDuration() const noexcept -> float;
-    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&;
-
-    void Load(DataReader& reader, HashResolver& hash_resolver);
-    void SetData(string_view fname, string_view name, float ticks, float tps);
-    void AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
-
-private:
     struct BoneOutput
     {
         hstring BoneName {};
@@ -71,10 +51,25 @@ private:
         vector<vec3> TranslationValue {};
     };
 
+    ModelAnimation() = default;
+    ModelAnimation(const ModelAnimation&) = delete;
+    ModelAnimation(ModelAnimation&&) noexcept = default;
+    auto operator=(const ModelAnimation&) = delete;
+    auto operator=(ModelAnimation&&) noexcept = delete;
+    ~ModelAnimation() = default;
+
+    [[nodiscard]] auto GetFileName() const noexcept -> string_view;
+    [[nodiscard]] auto GetName() const noexcept -> string_view;
+    [[nodiscard]] auto GetBoneOutputs() const noexcept -> const vector<BoneOutput>&;
+    [[nodiscard]] auto GetDuration() const noexcept -> float;
+    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&;
+
+    void Load(DataReader& reader, HashResolver& hash_resolver);
+
+private:
     string _animFileName {};
     string _animName {};
-    float _durationTicks {};
-    float _ticksPerSecond {};
+    float _duration {};
     vector<BoneOutput> _boneOutputs {};
     vector<vector<hstring>> _bonesHierarchy {};
 };
@@ -153,7 +148,7 @@ private:
     void Interpolate(vec3& v1, const vec3& v2, float factor) const;
 
     template<class T>
-    void FindSrtValue(const float time, const vector<float>& times, const vector<T>& values, T& result)
+    void FindSrtValue(float time, const vector<float>& times, const vector<T>& values, T& result)
     {
         for (size_t n = 0; n < times.size(); n++) {
             if (n + 1 < times.size()) {

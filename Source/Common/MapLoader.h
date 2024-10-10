@@ -47,5 +47,5 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, const string& buf, ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
+    static void Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
 };

@@ -109,7 +109,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
     particles->_impl->System = system;
     particles->_impl->BaseSystem = base_system;
 
-    return std::move(particles);
+    return particles;
 }
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :

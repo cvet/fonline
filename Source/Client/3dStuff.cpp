@@ -1588,6 +1588,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
         uint i_pos = 0;
         uint i_count = 0;
+
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
             // Move shape to face space
             auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
@@ -1598,13 +1599,14 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
             sm.Decompose(ss, sr, sp);
 
             // Check anim layer
-            auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
-            auto skip = (std::find(cut->Layers.begin(), cut->Layers.end(), mesh_anim_layer) == cut->Layers.end());
+            const auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
+            const auto skip = std::find(cut->Layers.begin(), cut->Layers.end(), mesh_anim_layer) == cut->Layers.end();
 
             // Process faces
             i_count += combined_mesh->MeshIndices[k];
             auto vertices_old_size = result_vertices.size();
             auto indices_old_size = result_indices.size();
+
             for (; i_pos < i_count; i_pos += 3) {
                 // Face points
                 const auto& v1 = vertices[indices[i_pos + 0]];
@@ -1635,6 +1637,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     bool outside = (r1 == 0 && r2 == 0 && r3 == 0);
                     bool ignore = (r1 == -2 || r2 == -2 || r3 == -2);
                     int sum = r1 + r2 + r3;
+
                     if (!ignore && sum == 2) {
                         // 1 1 0, corner in
                         const Vertex3D& vv1 = (r1 == 0 ? v1 : (r2 == 0 ? v2 : v3));
@@ -1705,6 +1708,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
             result_mesh_vertices.push_back(static_cast<uint>(result_vertices.size() - vertices_old_size));
             result_mesh_indices.push_back(static_cast<uint>(result_indices.size() - indices_old_size));
         }
+
         vertices = result_vertices;
         indices = result_indices;
         combined_mesh->MeshVertices = result_mesh_vertices;
@@ -1718,6 +1722,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
         float unskin_bone1_index = 0.0f;
         ModelBone* unskin_bone2 = nullptr;
         float unskin_bone2_index = 0.0f;
+
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone1) {
                 unskin_bone1 = combined_mesh->SkinBones[i];
@@ -1737,6 +1742,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
             // Process meshes
             size_t v_pos = 0;
             size_t v_count = 0;
+
             for (size_t i = 0, j = combined_mesh->MeshVertices.size(); i < j; i++) {
                 // Check anim layer
                 if (std::find(cut->Layers.begin(), cut->Layers.end(), combined_mesh->MeshAnimLayers[i]) == cut->Layers.end()) {
@@ -1757,6 +1763,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
                 // Process mesh vertices
                 v_count += combined_mesh->MeshVertices[i];
+
                 for (; v_pos < v_count; v_pos++) {
                     auto& v = vertices[v_pos];
 
@@ -1864,8 +1871,9 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Advance animation time
-    auto prev_track_pos = 0.0f;
-    auto new_track_pos = 0.0f;
+    float prev_track_pos = 0.0f;
+    float new_track_pos = 0.0f;
+
     if (_bodyAnimController != nullptr && elapsed >= 0.0f) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
 
@@ -1884,10 +1892,13 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
         if (_animPosPeriod > 0.0f) {
             _animPosProc = new_track_pos / _animPosPeriod;
+
             if (_animPosProc >= 1.0f) {
                 _animPosProc = std::fmod(_animPosProc, 1.0f);
             }
+
             _animPosTime = new_track_pos;
+
             if (_animPosTime >= _animPosPeriod) {
                 _animPosTime = std::fmod(_animPosTime, _animPosPeriod);
             }
@@ -1955,15 +1966,15 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
         mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
-        bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
+        bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
         mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
-        bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
+        bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else {
-        bone->CombinedTransformationMatrix = (*parent_matrix) * bone->TransformationMatrix;
+        bone->CombinedTransformationMatrix = *parent_matrix * bone->TransformationMatrix;
     }
 
     // Update child

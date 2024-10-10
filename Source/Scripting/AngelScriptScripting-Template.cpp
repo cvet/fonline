@@ -183,9 +183,9 @@ struct CustomEntityWithProtoView : BaseEntity
 };
 
 #if COMPILER_VALIDATION_MODE
-#define INIT_ARGS FileSystem &resources, FOEngineBase **out_engine
+#define INIT_ARGS const FileSystem &resources, FOEngineBase **out_engine
 #else
-#define INIT_ARGS FileSystem& resources
+#define INIT_ARGS const FileSystem& resources
 #endif
 
 struct SCRIPTING_CLASS : public ScriptSystem
@@ -3736,7 +3736,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources);
+static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resources);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_bin);
 #endif
@@ -4493,7 +4493,7 @@ private:
 };
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
+static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 

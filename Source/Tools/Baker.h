@@ -51,20 +51,22 @@ public:
     using WriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
 
     BaseBaker() = delete;
-    BaseBaker(BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
+    BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = default;
     auto operator=(const BaseBaker&) = delete;
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
-    [[nodiscard]] static auto SetupBakers(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>;
+    [[nodiscard]] static auto SetupBakers(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>;
     [[nodiscard]] virtual auto IsExtSupported(string_view ext) const -> bool = 0;
 
     virtual void BakeFiles(FileCollection&& files) = 0;
 
 protected:
-    BakerSettings& _settings;
+    [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred; }
+
+    const BakerSettings& _settings;
     BakeCheckerCallback _bakeChecker;
     WriteDataCallback _writeData;
 };
@@ -82,7 +84,7 @@ public:
 
 private:
     [[nodiscard]] auto MakeOutputPath(string_view path) const -> string;
-    auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
+    auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) const -> int;
 
     BakerSettings& _settings;
 };

@@ -1173,10 +1173,7 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 {
     STACK_TRACE_ENTRY();
 
-    auto& key = _registeredPropertiesLookupBuf;
-
-    key = property_name;
-
+    auto key = string(property_name);
     const auto hkey = _hashResolver.ToHashedString(key);
 
     if (const auto rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _typeName, hkey); rule.has_value()) {

@@ -43,21 +43,21 @@
 // ReSharper disable CppInconsistentNaming
 struct ASCompiler_ServerScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 struct ASCompiler_ClientScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 #else
 struct ASCompiler_SingleScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 #endif
 struct ASCompiler_MapperScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 // ReSharper restore CppInconsistentNaming
 

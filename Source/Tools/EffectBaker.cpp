@@ -163,7 +163,7 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
         /* .generalConstantMatrixVectorIndexing = */ true,
     }};
 
-EffectBaker::EffectBaker(BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+EffectBaker::EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
     BaseBaker(settings, std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
@@ -182,11 +182,7 @@ void EffectBaker::BakeFiles(FileCollection&& files)
 {
     STACK_TRACE_ENTRY();
 
-    _errors = 0;
-
-#if FO_ASYNC_BAKE
-    vector<std::future<void>> futs;
-#endif
+    vector<std::future<void>> file_bakings;
 
     for (files.ResetCounter(); files.MoveNext();) {
         auto file_header = files.GetCurFileHeader();
@@ -202,43 +198,32 @@ void EffectBaker::BakeFiles(FileCollection&& files)
         }
 #endif
 
-        {
-#if FO_ASYNC_BAKE
-            std::scoped_lock locker(_bakedFilesLocker);
-#endif
-            if (_bakeChecker && !_bakeChecker(file_header)) {
-                continue;
-            }
+        if (_bakeChecker && !_bakeChecker(file_header)) {
+            continue;
         }
 
         auto file = files.GetCurFile();
-        string content = file.GetStr();
 
-#if FO_ASYNC_BAKE
-        futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));
-#else
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, path = file.GetPath(), content = file.GetStr()] { BakeShaderProgram(path, content); }));
+    }
+
+    int errors = 0;
+
+    for (auto&& file_baking : file_bakings) {
         try {
-            BakeShaderProgram(file_header.GetPath(), content);
+            file_baking.get();
         }
-        catch (const EffectBakerException& ex) {
+        catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-            _errors++;
+            errors++;
         }
-        catch (const FileSystemExeption& ex) {
-            ReportExceptionAndContinue(ex);
-            _errors++;
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
-#endif
     }
 
-#if FO_ASYNC_BAKE
-    for (auto& fut : futs) {
-        fut.wait();
-    }
-#endif
-
-    if (_errors > 0) {
-        throw EffectBakerException("Errors during effects bakering", _errors);
+    if (errors != 0) {
+        throw EffectBakerException("Errors during effects baking", errors);
     }
 }
 
@@ -375,25 +360,17 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         BakeShaderStage(strex("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
         BakeShaderStage(strex("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 
-        {
-#if FO_ASYNC_BAKE
-            std::scoped_lock locker(_bakedFilesLocker);
-#endif
-            _writeData(strex("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
-        }
+        _writeData(strex("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
     }
 
-    {
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
-        _writeData(fname, vector<uint8>(content.begin(), content.end()));
-    }
+    _writeData(fname, vector<uint8>(content.begin(), content.end()));
 }
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
@@ -412,9 +389,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uint8> data(spirv.size() * sizeof(uint32_t));
         std::memcpy(data.data(), spirv.data(), data.size());
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.spv", fname_wo_ext), data);
     };
 
@@ -427,9 +401,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
@@ -442,9 +413,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.glsl-es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
@@ -455,9 +423,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.shader_model = 40;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
@@ -468,9 +433,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.msl-mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
@@ -481,31 +443,19 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-#if FO_ASYNC_BAKE
-        std::scoped_lock locker(_bakedFilesLocker);
-#endif
         _writeData(strex("{}.msl-ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
-#if FO_ASYNC_BAKE
     // Make all asynchronously
-    auto futs = {
-        std::async(std::launch::async | std::launch::deferred, make_spirv),
-        std::async(std::launch::async | std::launch::deferred, make_glsl),
-        std::async(std::launch::async | std::launch::deferred, make_glsl_es),
-        std::async(std::launch::async | std::launch::deferred, make_hlsl),
-        std::async(std::launch::async | std::launch::deferred, make_msl_mac),
-        std::async(std::launch::async | std::launch::deferred, make_msl_ios),
-    };
-    for (const auto& fut : futs) {
-        fut.wait();
+    vector<std::future<void>> file_bakings;
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_spirv));
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_glsl));
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_glsl_es));
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_hlsl));
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_mac));
+    file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_ios));
+
+    for (auto&& file_baking : file_bakings) {
+        file_baking.get();
     }
-#else
-    make_spirv();
-    make_glsl();
-    make_glsl_es();
-    make_hlsl();
-    make_msl_mac();
-    make_msl_ios();
-#endif
 }

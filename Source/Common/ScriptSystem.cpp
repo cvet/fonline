@@ -35,7 +35,7 @@
 #include "Application.h"
 #include "EngineBase.h"
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
