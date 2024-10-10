@@ -2151,6 +2151,9 @@ private:
     bool _finish {};
 };
 
+extern void SetThisThreadName(const string& name);
+extern auto GetThisThreadName() -> const string&;
+
 // Interthread communication between server and client
 using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
 extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
