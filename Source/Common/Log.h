@@ -64,6 +64,5 @@ void WriteLog(LogType type, FMTNS::format_string<Args...>&& format, Args&&... ar
 }
 
 // Control
-extern void LogWithoutTimestamp();
 extern void LogToFile(string_view fname);
 extern void SetLogCallback(string_view key, LogFunc callback);

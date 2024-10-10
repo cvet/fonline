@@ -305,6 +305,8 @@ public:
 
 private:
     AppRender() = default;
+
+    int _nonConstHelper {};
 };
 
 class AppInput final
@@ -328,6 +330,7 @@ private:
     AppInput() = default;
 
     string _clipboardTextStorage {};
+    int _nonConstHelper {};
 };
 
 class AppAudio final
@@ -340,9 +343,9 @@ public:
 
     using AudioStreamCallback = std::function<void(uint8*)>;
 
-    [[nodiscard]] auto IsEnabled() -> bool;
-    [[nodiscard]] auto GetStreamSize() -> uint;
-    [[nodiscard]] auto GetSilence() -> uint8;
+    [[nodiscard]] auto IsEnabled() const -> bool;
+    [[nodiscard]] auto GetStreamSize() const -> uint;
+    [[nodiscard]] auto GetSilence() const -> uint8;
 
     [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool;
 
@@ -356,6 +359,7 @@ private:
 
     struct AudioConverter;
     vector<AudioConverter*> _converters {};
+    int _nonConstHelper {};
 };
 
 class Application final

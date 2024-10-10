@@ -47,7 +47,6 @@ int main(int argc, char** argv)
 
     try {
         InitApp(argc, argv);
-        LogWithoutTimestamp();
 
         auto baker = Baker(App->Settings);
 

@@ -49,14 +49,16 @@ struct LogData
 
         const auto result = std::at_quick_exit(FlushLogAtExit);
         UNUSED_VARIABLE(result);
+
+        MainThreadId = std::this_thread::get_id();
     }
 #endif
 
     std::mutex LogLocker {};
-    bool LogDisableTimestamp {};
     unique_ptr<DiskFile> LogFileHandle {};
     map<string, LogFunc> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
+    std::thread::id MainThreadId {};
 };
 GLOBAL_DATA(LogData, Data);
 
@@ -71,15 +73,6 @@ static void FlushLogAtExit()
             Data->LogFileHandle.reset();
         }
     }
-}
-
-void LogWithoutTimestamp()
-{
-    STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker(Data->LogLocker);
-
-    Data->LogDisableTimestamp = true;
 }
 
 void LogToFile(string_view fname)
@@ -133,14 +126,16 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 
         // Make message
         string result;
+        result.reserve(message.length() + 64);
 
-        if (!Data->LogDisableTimestamp) {
-            const auto now = time_point::clock::now();
-            const auto now_desc = time_point_desc(now);
-            result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
+        const auto now = time_point::clock::now();
+        const auto now_desc = time_point_desc(now);
+        result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
+
+        if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
+            result += strex("[{}] ", GetThisThreadName());
         }
 
-        result.reserve(result.size() + message.length() + 1u);
         result += message;
         result += '\n';
 

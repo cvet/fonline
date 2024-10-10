@@ -294,6 +294,22 @@ struct FMTNS::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatte
     }
 };
 
+// Atomic types
+template<typename T>
+auto constexpr is_atomic_v = false;
+template<typename T>
+auto constexpr is_atomic_v<std::atomic<T>> = true;
+
+template<typename T>
+struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<typename T::value_type>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<typename T::value_type>::format(value.load(), ctx);
+    }
+};
+
 // Strong types
 template<typename T>
 struct strong_type

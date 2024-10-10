@@ -73,7 +73,6 @@ int main(int argc, char** argv)
 
     try {
         InitApp(argc, argv);
-        LogWithoutTimestamp();
 
 #if !FO_SINGLEPLAYER
         auto server_failed = false;
