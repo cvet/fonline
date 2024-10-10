@@ -419,7 +419,7 @@ void ModelAnimationController::AdvanceTime(float time)
             }
 
             const auto& anim_output = anim_outputs[j];
-            const auto t = std::fmodf(track.Position, track.Anim->GetDuration());
+            const auto t = std::fmod(track.Position, track.Anim->GetDuration());
 
             FindSrtValue<vec3>(t, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
             FindSrtValue<quaternion>(t, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
