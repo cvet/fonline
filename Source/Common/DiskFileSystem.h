@@ -70,7 +70,7 @@ private:
     DiskFile(string_view fname, bool write, bool write_through);
 
     struct Impl;
-    unique_ptr<Impl> _pImpl {};
+    unique_ptr<Impl> _impl;
     bool _openedForWriting {};
     bool _nonConstHelper {};
 };
@@ -98,7 +98,7 @@ private:
     DiskFind(string_view path, string_view ext);
 
     struct Impl;
-    unique_ptr<Impl> _pImpl {};
+    unique_ptr<Impl> _impl;
     bool _findDataValid {};
 };
 

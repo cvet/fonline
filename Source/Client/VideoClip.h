@@ -62,6 +62,6 @@ private:
 
     auto DecodePacket() -> int;
 
-    unique_ptr<Impl> _impl {};
+    unique_ptr<Impl> _impl;
     bool _nonConstHelper {};
 };

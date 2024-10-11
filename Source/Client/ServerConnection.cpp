@@ -62,8 +62,8 @@
 
 struct ServerConnection::Impl
 {
-    auto GetLastSocketError() -> string;
-    void FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port);
+    auto GetLastSocketError() const -> string;
+    void FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) const;
 
     z_stream ZStream {};
     bool ZStreamActive {};
@@ -75,7 +75,7 @@ struct ServerConnection::Impl
 
 ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
     _settings {settings},
-    _impl {new Impl()},
+    _impl {std::make_unique<Impl>()},
     _netIn(_settings.NetBufferSize),
     _netOut(_settings.NetBufferSize)
 {
@@ -100,8 +100,6 @@ ServerConnection::~ServerConnection()
     if (_impl->ZStreamActive) {
         inflateEnd(&_impl->ZStream);
     }
-
-    delete _impl;
 }
 
 void ServerConnection::AddConnectHandler(ConnectCallback handler)
@@ -801,8 +799,10 @@ auto ServerConnection::ReceiveData(bool unpack) -> bool
     return _netIn.GetEndPos() - old_pos > 0;
 }
 
-void ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port)
+void ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) const
 {
+    STACK_TRACE_ENTRY();
+
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
 
@@ -820,8 +820,10 @@ void ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, 
     }
 }
 
-auto ServerConnection::Impl::GetLastSocketError() -> string
+auto ServerConnection::Impl::GetLastSocketError() const -> string
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
     const auto error_code = ::WSAGetLastError();
     wchar_t* ws = nullptr;
@@ -841,6 +843,8 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 
 void ServerConnection::Net_SendHandshake()
 {
+    STACK_TRACE_ENTRY();
+
     _netOut.StartMsg(NETMSG_HANDSHAKE);
     _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
 
@@ -857,6 +861,8 @@ void ServerConnection::Net_SendHandshake()
 
 void ServerConnection::Net_OnPing()
 {
+    STACK_TRACE_ENTRY();
+
     const auto ping = _netIn.Read<uint8>();
 
     if (ping == PING_CLIENT) {

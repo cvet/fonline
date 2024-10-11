@@ -59,6 +59,6 @@ public:
     void RemoveEntry(string_view entry_name);
 
 private:
-    unique_ptr<CacheStorageImpl> _impl {};
+    unique_ptr<CacheStorageImpl> _impl;
     bool _nonConstHelper {};
 };

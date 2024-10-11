@@ -91,7 +91,7 @@ private:
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;
-    Impl* _impl;
+    unique_ptr<Impl> _impl;
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     vector<uint8> _incomeBuf {};

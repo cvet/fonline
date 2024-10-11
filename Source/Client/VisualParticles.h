@@ -72,7 +72,7 @@ public:
 
 private:
     struct Impl;
-    unique_ptr<Impl> _ipml {};
+    unique_ptr<Impl> _impl;
     RenderSettings& _settings;
     EffectManager& _effectMngr;
     FileSystem& _resources;
@@ -115,7 +115,7 @@ private:
     [[nodiscard]] auto GetTime() const -> time_point;
 
     struct Impl;
-    unique_ptr<Impl> _impl {};
+    unique_ptr<Impl> _impl;
     ParticleManager& _particleMngr;
     mat44 _projMat {};
     vec3 _viewOffset {};

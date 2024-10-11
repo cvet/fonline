@@ -50,6 +50,7 @@ struct ParticleSystem::Impl
 
 ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
     _settings {settings},
+    _impl {std::make_unique<Impl>()},
     _effectMngr {effect_mngr},
     _resources {resources},
     _gameTime {game_time},
@@ -59,8 +60,6 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
 
     static std::once_flag once;
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
-
-    _ipml = std::make_unique<Impl>();
 
     if (_settings.Animation3dFPS != 0) {
         _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
@@ -78,7 +77,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 
     SPK::Ref<SPK::System> base_system;
 
-    if (const auto it = _ipml->BaseSystems.find(string(name)); it == _ipml->BaseSystems.end()) {
+    if (const auto it = _impl->BaseSystems.find(string(name)); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources.ReadFile(name)) {
             base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), static_cast<unsigned>(file.GetSize()));
         }
@@ -92,7 +91,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
             }
         }
 
-        _ipml->BaseSystems.emplace(name, base_system);
+        _impl->BaseSystems.emplace(name, base_system);
     }
     else {
         base_system = it->second;
@@ -113,11 +112,10 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 }
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
+    _impl {std::make_unique<Impl>()},
     _particleMngr {particle_mngr}
 {
     STACK_TRACE_ENTRY();
-
-    _impl = std::make_unique<Impl>();
 
     _forceDraw = true;
     _lastDrawTime = GetTime();

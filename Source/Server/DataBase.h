@@ -73,7 +73,7 @@ public:
 private:
     explicit DataBase(DataBaseImpl* impl);
 
-    unique_ptr<DataBaseImpl> _impl {};
+    unique_ptr<DataBaseImpl> _impl;
     bool _nonConstHelper {};
 };
 
