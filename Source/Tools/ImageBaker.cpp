@@ -105,6 +105,7 @@ void ImageBaker::BakeFiles(FileCollection&& files)
     STACK_TRACE_ENTRY();
 
     vector<pair<File, LoadFunc>> files_to_bake;
+    files_to_bake.reserve(files.GetFilesCount());
 
     {
         auto locker = std::unique_lock {_filesLocker};
@@ -131,10 +132,11 @@ void ImageBaker::BakeFiles(FileCollection&& files)
 
     vector<std::future<void>> file_bakings;
 
-    for (auto&& file_to_bake : files_to_bake) {
+    for (auto& file_to_bake : files_to_bake) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &file_to_bake] {
-            const auto collection = file_to_bake.second(file_to_bake.first.GetPath(), "", file_to_bake.first);
-            BakeCollection(file_to_bake.first.GetPath(), collection);
+            const auto path = file_to_bake.first.GetPath();
+            const auto collection = file_to_bake.second(path, "", file_to_bake.first);
+            BakeCollection(path, collection);
         }));
     }
 

@@ -623,6 +623,7 @@ auto Critter::CountInvItems() const noexcept -> uint
 
     return count;
 }
+
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();
