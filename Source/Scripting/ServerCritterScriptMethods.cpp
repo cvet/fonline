@@ -966,7 +966,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_RmoveKnownLocation(Critter* self, ident_t locId)
+[[maybe_unused]] void Server_Critter_RemoveKnownLocation(Critter* self, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Invalid location id");
