@@ -73,7 +73,7 @@ auto Location::IsLocVisible() const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
+    return !GetHidden();
 }
 
 auto Location::GetMapsRaw() noexcept -> vector<Map*>&
@@ -147,30 +147,4 @@ auto Location::GetMapIndex(hstring map_pid) const noexcept -> uint
     }
 
     return static_cast<uint>(-1);
-}
-
-auto Location::IsCanDelete() const noexcept -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (GeckCount > 0) {
-        return false;
-    }
-
-    // Check for players
-    for (const auto* map : _locMaps) {
-        if (map->GetPlayerCrittersCount() != 0) {
-            return false;
-        }
-    }
-
-    // Check for npc
-    for (auto* map : _locMaps) {
-        for (const auto* npc : map->GetNonPlayerCritters()) {
-            if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
-                return false;
-            }
-        }
-    }
-    return true;
 }

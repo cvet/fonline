@@ -387,6 +387,8 @@ protected:
     void Net_OnTimeSync();
     void Net_OnLoadMap();
     void Net_OnGlobalInfo();
+    void Net_OnGlobalLocation();
+    void Net_OnGlobalFog();
     void Net_OnSomeItems();
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();

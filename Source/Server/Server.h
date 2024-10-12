@@ -270,7 +270,6 @@ private:
     void OnSetItemChangeView(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemBlockLines(Entity* entity, const Property* prop);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop);
     void OnSetItemIsRadio(Entity* entity, const Property* prop);
 
     void ProcessCritter(Critter* cr);

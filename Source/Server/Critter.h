@@ -97,7 +97,6 @@ public:
     [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> uint;
     [[nodiscard]] auto RealCountInvItems() const noexcept -> uint { return static_cast<uint>(_invItems.size()); }
     [[nodiscard]] auto CountInvItems() const noexcept -> uint;
-    [[nodiscard]] auto IsHaveGeckItem() const noexcept -> bool;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;

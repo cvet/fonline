@@ -403,11 +403,11 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
 
     string result = strex("Locations count: {}\n", static_cast<uint>(locations.size()));
     result += strex("Maps count: {}\n", static_cast<uint>(maps.size()));
-    result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
+    result += "Location             Id           X     Y     Radius Color    Hidden\n";
     result += "          Map                 Id          Time Rain Script\n";
 
     for (auto&& [id, loc] : locations) {
-        result += strex("{:<20} {:<10}   {:<5} {:<5} {:<6} {:<10} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
+        result += strex("{:<20} {:<10}   {:<5} {:<5} {:<6} {:<10} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false");
 
         uint map_index = 0;
 
@@ -624,21 +624,6 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
 
     for (auto* cl : map->GetPlayerCritters()) {
         TransitToGlobal(cl, {});
-    }
-}
-
-void MapManager::LocationGarbager()
-{
-    STACK_TRACE_ENTRY();
-
-    if (_runGarbager) {
-        _runGarbager = false;
-
-        for (auto* loc : copy_hold_ref(_engine->EntityMngr.GetLocations())) {
-            if (!loc->IsDestroyed() && loc->GetAutoGarbage() && loc->IsCanDelete()) {
-                DestroyLocation(loc);
-            }
-        }
     }
 }
 
@@ -1547,6 +1532,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
@@ -1568,8 +1555,6 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
             vec_remove_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
         }
-
-        _runGarbager = true;
     }
     else {
         RUNTIME_ASSERT(!cr->GetMapId());
@@ -2022,6 +2007,8 @@ void MapManager::AddKnownLoc(Critter* cr, ident_t loc_id)
 void MapManager::RemoveKnownLoc(Critter* cr, ident_t loc_id)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     auto known_locs = cr->GetKnownLocations();
 

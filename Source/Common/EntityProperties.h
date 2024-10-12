@@ -196,8 +196,6 @@ public:
     ENTITY_PROPERTY(Public, bool, IsNoHighlight);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsLight);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, IsGeck);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsTrap);
     ///@ ExportProperty
@@ -321,16 +319,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ident_t, HomeMapId);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, HomeMapPid);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, HomeHexX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, HomeHexY);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint8, HomeDir);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, KnownLocations);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1);
@@ -342,10 +330,6 @@ public:
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, InSneakMode);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoHome);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsGeck);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
     ///@ ExportProperty
@@ -459,10 +443,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, GeckVisible);
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
@@ -474,9 +454,5 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, Hidden);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, ToGarbage);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ucolor, Color);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsEncounter);
 };

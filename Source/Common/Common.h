@@ -1567,12 +1567,6 @@ static constexpr uint8 GM_FOG_FULL = 0;
 static constexpr uint8 GM_FOG_HALF = 1;
 static constexpr uint8 GM_FOG_NONE = 3;
 
-// GM Info
-static constexpr uint8 GM_INFO_LOCATIONS = 0x01;
-static constexpr uint8 GM_INFO_ZONES_FOG = 0x08;
-static constexpr uint8 GM_INFO_FOG = 0x10;
-static constexpr uint8 GM_INFO_LOCATION = 0x20;
-
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;
 static constexpr uint16 MAXHEX_MIN = 10;

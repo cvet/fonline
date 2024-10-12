@@ -570,55 +570,49 @@ void Player::Send_GlobalInfo()
 
     RUNTIME_ASSERT(_controlledCr);
 
-    constexpr uint8 info_flags = GM_INFO_LOCATIONS | GM_INFO_ZONES_FOG;
-
     const auto known_locs = _controlledCr->GetKnownLocations();
-
-    auto loc_count = static_cast<uint16>(known_locs.size());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
     Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
 
-    if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
-        Connection->OutBuf.Write(loc_count);
+    uint16 loc_count = 0;
 
-        for (uint16 i = 0; i < loc_count;) {
-            const auto loc_id = known_locs[i];
-            const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
-            if (loc != nullptr && !loc->GetToGarbage()) {
-                i++;
-                Connection->OutBuf.Write(loc_id);
-                Connection->OutBuf.Write(loc->GetProtoId());
-                Connection->OutBuf.Write(loc->GetWorldX());
-                Connection->OutBuf.Write(loc->GetWorldY());
-                Connection->OutBuf.Write(loc->GetRadius());
-                Connection->OutBuf.Write(loc->GetColor());
-                uint8 count = 0;
-                if (loc->IsNonEmptyMapEntrances()) {
-                    count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
-                }
-                Connection->OutBuf.Write(count);
-            }
-            else {
-                loc_count--;
-                _engine->MapMngr.RemoveKnownLoc(_controlledCr, loc_id);
+    for (size_t i = 0; i < known_locs.size(); i++) {
+        const auto loc_id = known_locs[i];
+        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
 
-                constexpr size_t send_location_size = sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8);
-                constexpr char empty_loc[send_location_size] = {0};
-                Connection->OutBuf.Push(empty_loc, sizeof(empty_loc));
-            }
+        if (loc != nullptr) {
+            loc_count++;
+        }
+        else {
+            _engine->MapMngr.RemoveKnownLoc(_controlledCr, loc_id);
         }
     }
 
-    if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
-        auto gmap_fog = _controlledCr->GetGlobalMapFog();
-        if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-            gmap_fog.resize(GM_ZONES_FOG_SIZE);
+    Connection->OutBuf.Write(loc_count);
+
+    for (uint16 i = 0; i < loc_count; i++) {
+        const ident_t loc_id = known_locs[i];
+        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
+        Connection->OutBuf.Write(loc_id);
+        Connection->OutBuf.Write(loc->GetProtoId());
+        Connection->OutBuf.Write(loc->GetWorldX());
+        Connection->OutBuf.Write(loc->GetWorldY());
+        Connection->OutBuf.Write(loc->GetRadius());
+        Connection->OutBuf.Write(loc->GetColor());
+        uint8 count = 0;
+        if (loc->IsNonEmptyMapEntrances()) {
+            count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
         }
-        Connection->OutBuf.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
+        Connection->OutBuf.Write(count);
     }
+
+    auto gmap_fog = _controlledCr->GetGlobalMapFog();
+    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
+        gmap_fog.resize(GM_ZONES_FOG_SIZE);
+    }
+    Connection->OutBuf.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
 
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -630,11 +624,8 @@ void Player::Send_GlobalLocation(const Location* loc, bool add)
 
     NON_CONST_METHOD_HINT();
 
-    constexpr auto info_flags = GM_INFO_LOCATION;
-
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_LOCATION);
     Connection->OutBuf.Write(add);
     Connection->OutBuf.Write(loc->GetId());
     Connection->OutBuf.Write(loc->GetProtoId());
@@ -657,11 +648,8 @@ void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 
     NON_CONST_METHOD_HINT();
 
-    constexpr auto info_flags = GM_INFO_FOG;
-
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_FOG);
     Connection->OutBuf.Write(zx);
     Connection->OutBuf.Write(zy);
     Connection->OutBuf.Write(fog);

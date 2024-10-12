@@ -336,10 +336,6 @@ void Map::SetItem(Item* item)
 
     vec_add_unique_value(field.Items, item);
 
-    if (item->GetIsGeck()) {
-        _mapLocation->GeckCount++;
-    }
-
     RecacheHexFlags(field);
 
     if (item->IsNonEmptyBlockLines()) {
@@ -381,10 +377,6 @@ void Map::RemoveItem(ident_t item_id)
     auto item_ids = GetItemIds();
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
-
-    if (item->GetIsGeck()) {
-        _mapLocation->GeckCount--;
-    }
 
     RecacheHexFlags(field);
 

@@ -192,6 +192,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
     _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
+    _conn.AddMessageHandler(NETMSG_GLOBAL_LOCATION, [this] { Net_OnGlobalLocation(); });
+    _conn.AddMessageHandler(NETMSG_GLOBAL_FOG, [this] { Net_OnGlobalFog(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
     _conn.AddMessageHandler(NETMSG_REMOTE_CALL, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
@@ -2602,32 +2604,12 @@ void FOClient::Net_OnGlobalInfo()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto info_flags = _conn.InBuf.Read<uint8>();
 
-    if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
-        _worldmapLoc.clear();
+    _worldmapLoc.clear();
 
-        const auto count_loc = _conn.InBuf.Read<uint16>();
+    const auto count_loc = _conn.InBuf.Read<uint16>();
 
-        for (auto i = 0; i < count_loc; i++) {
-            GmapLocation loc;
-            loc.LocId = _conn.InBuf.Read<ident_t>();
-            loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-            loc.LocWx = _conn.InBuf.Read<uint16>();
-            loc.LocWy = _conn.InBuf.Read<uint16>();
-            loc.Radius = _conn.InBuf.Read<uint16>();
-            loc.Color = _conn.InBuf.Read<ucolor>();
-            loc.Entrances = _conn.InBuf.Read<uint8>();
-
-            if (loc.LocId) {
-                _worldmapLoc.push_back(loc);
-            }
-        }
-    }
-
-    if (IsBitSet(info_flags, GM_INFO_LOCATION)) {
-        const auto add = _conn.InBuf.Read<bool>();
-
+    for (auto i = 0; i < count_loc; i++) {
         GmapLocation loc;
         loc.LocId = _conn.InBuf.Read<ident_t>();
         loc.LocPid = _conn.InBuf.Read<hstring>(*this);
@@ -2636,35 +2618,57 @@ void FOClient::Net_OnGlobalInfo()
         loc.Radius = _conn.InBuf.Read<uint16>();
         loc.Color = _conn.InBuf.Read<ucolor>();
         loc.Entrances = _conn.InBuf.Read<uint8>();
+        _worldmapLoc.push_back(loc);
+    }
 
-        const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
-        if (add) {
-            if (it != _worldmapLoc.end()) {
-                *it = loc;
-            }
-            else {
-                _worldmapLoc.push_back(loc);
-            }
+    auto* fog_data = _worldmapFog.GetData();
+    _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
+}
+
+void FOClient::Net_OnGlobalLocation()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+
+    const auto add = _conn.InBuf.Read<bool>();
+
+    GmapLocation loc;
+    loc.LocId = _conn.InBuf.Read<ident_t>();
+    loc.LocPid = _conn.InBuf.Read<hstring>(*this);
+    loc.LocWx = _conn.InBuf.Read<uint16>();
+    loc.LocWy = _conn.InBuf.Read<uint16>();
+    loc.Radius = _conn.InBuf.Read<uint16>();
+    loc.Color = _conn.InBuf.Read<ucolor>();
+    loc.Entrances = _conn.InBuf.Read<uint8>();
+
+    const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
+    if (add) {
+        if (it != _worldmapLoc.end()) {
+            *it = loc;
         }
         else {
-            if (it != _worldmapLoc.end()) {
-                _worldmapLoc.erase(it);
-            }
+            _worldmapLoc.push_back(loc);
         }
     }
-
-    if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
-        auto* fog_data = _worldmapFog.GetData();
-        _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
+    else {
+        if (it != _worldmapLoc.end()) {
+            _worldmapLoc.erase(it);
+        }
     }
+}
 
-    if (IsBitSet(info_flags, GM_INFO_FOG)) {
-        const auto zx = _conn.InBuf.Read<uint16>();
-        const auto zy = _conn.InBuf.Read<uint16>();
-        const auto fog = _conn.InBuf.Read<uint8>();
+void FOClient::Net_OnGlobalFog()
+{
+    STACK_TRACE_ENTRY();
 
-        _worldmapFog.Set2Bit(zx, zy, fog);
-    }
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+
+    const auto zx = _conn.InBuf.Read<uint16>();
+    const auto zy = _conn.InBuf.Read<uint16>();
+    const auto fog = _conn.InBuf.Read<uint8>();
+
+    _worldmapFog.Set2Bit(zx, zy, fog);
 }
 
 void FOClient::Net_OnSomeItems()

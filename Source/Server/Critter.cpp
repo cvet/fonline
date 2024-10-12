@@ -623,20 +623,6 @@ auto Critter::CountInvItems() const noexcept -> uint
 
     return count;
 }
-
-auto Critter::IsHaveGeckItem() const noexcept -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto* item : _invItems) {
-        if (item->GetIsGeck()) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();

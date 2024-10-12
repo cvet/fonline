@@ -147,7 +147,6 @@ public:
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> NON_NULL Location*;
     void DestroyLocation(Location* loc);
-    void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
     void AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id);
@@ -172,7 +171,6 @@ private:
     void DestroyMapContent(Map* map);
 
     FOServer* _engine;
-    bool _runGarbager {true};
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
     int _mapGridOffsX {};
     int _mapGridOffsY {};

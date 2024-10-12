@@ -62,7 +62,6 @@ public:
     [[nodiscard]] auto GetMapByIndex(uint index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> uint;
-    [[nodiscard]] auto IsCanDelete() const noexcept -> bool;
 
     void BindScript();
 
@@ -71,7 +70,6 @@ public:
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
-    int GeckCount {};
 
 private:
     vector<Map*> _locMaps {};

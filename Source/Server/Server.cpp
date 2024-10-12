@@ -299,7 +299,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
         }
 
@@ -645,15 +644,6 @@ FOServer::FOServer(GlobalSettings& settings) :
                     UNKNOWN_EXCEPTION();
                 }
             }
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Location garbager
-        _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("LocationGarbageJob");
-
-            MapMngr.LocationGarbager();
 
             return std::chrono::milliseconds {0};
         });
@@ -3398,23 +3388,6 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
-        }
-    }
-}
-
-void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(prop);
-
-    const auto* item = dynamic_cast<Item*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = EntityMngr.GetMap(item->GetMapId());
-
-        if (map != nullptr) {
-            map->GetLocation()->GeckCount += item->GetIsGeck() ? 1 : -1;
         }
     }
 }
