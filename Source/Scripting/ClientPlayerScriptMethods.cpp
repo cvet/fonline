@@ -32,5 +32,3 @@
 //
 
 #include "Common.h"
-
-// ReSharper disable CppInconsistentNaming

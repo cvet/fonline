@@ -35,8 +35,6 @@
 
 #include "Server.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {

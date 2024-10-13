@@ -126,30 +126,30 @@
 #if !COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompiler
-#define SCRIPTING_CLASS ASCompiler_ServerScriptSystem
+#define SCRIPTING_CLASS AngelScriptCompiler_ServerScriptSystem
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompiler
-#define SCRIPTING_CLASS ASCompiler_ClientScriptSystem
+#define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompiler
-#define SCRIPTING_CLASS ASCompiler_SingleScriptSystem
+#define SCRIPTING_CLASS AngelScriptCompiler_SingleScriptSystem
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompiler
-#define SCRIPTING_CLASS ASCompiler_MapperScriptSystem
+#define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem
 #endif
 #else
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompilerValidation
-#define SCRIPTING_CLASS ASCompiler_ServerScriptSystem_Validation
+#define SCRIPTING_CLASS AngelScriptCompiler_ServerScriptSystem_Validation
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompilerValidation
-#define SCRIPTING_CLASS ASCompiler_ClientScriptSystem_Validation
+#define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem_Validation
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompilerValidation
-#define SCRIPTING_CLASS ASCompiler_SingleScriptSystem_Validation
+#define SCRIPTING_CLASS AngelScriptCompiler_SingleScriptSystem_Validation
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompilerValidation
-#define SCRIPTING_CLASS ASCompiler_MapperScriptSystem_Validation
+#define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem_Validation
 #endif
 #endif
 #endif
@@ -3754,6 +3754,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     game_engine->AddRef();
 #else
     FOEngine* game_engine = new FOEngine();
+    game_engine->ScriptSys = this;
 #endif
 
     auto game_engine_releaser = ScopeCallback([game_engine]() noexcept { game_engine->Release(); });

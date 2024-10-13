@@ -37,8 +37,6 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///# param initFunc ...
 ///@ ExportMethod

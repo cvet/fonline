@@ -36,8 +36,6 @@
 #include "Client.h"
 #include "MapSprite.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_DrawMap(MapView* self)

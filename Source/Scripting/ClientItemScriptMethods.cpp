@@ -35,8 +35,6 @@
 
 #include "Client.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///# return ...
 ///@ ExportMethod

@@ -42,8 +42,6 @@
 #include "StringUtils.h"
 #include "TwoBitMask.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {

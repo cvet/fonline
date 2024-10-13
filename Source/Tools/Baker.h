@@ -84,7 +84,7 @@ public:
 
 private:
     [[nodiscard]] auto MakeOutputPath(string_view path) const -> string;
-    auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) const -> int;
+    auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem& script_sys, const unordered_set<hstring>& resource_hashes) const -> int;
 
     BakerSettings& _settings;
 };

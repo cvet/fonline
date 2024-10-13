@@ -72,29 +72,29 @@ GlobalSettings BakerEngine::_dummySettings {};
 // Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-struct ASCompiler_ServerScriptSystem : public ScriptSystem
+struct AngelScriptCompiler_ServerScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
-struct ASCompiler_ServerScriptSystem_Validation : public ScriptSystem
+struct AngelScriptCompiler_ServerScriptSystem_Validation : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
 };
-struct ASCompiler_ClientScriptSystem : public ScriptSystem
+struct AngelScriptCompiler_ClientScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
 #else
-struct ASCompiler_SingleScriptSystem : public ScriptSystem
+struct AngelScriptCompiler_SingleScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
-struct ASCompiler_SingleScriptSystem_Validation : public ScriptSystem
+struct AngelScriptCompiler_SingleScriptSystem_Validation : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
 };
 #endif
-struct ASCompiler_MapperScriptSystem : public ScriptSystem
+struct AngelScriptCompiler_MapperScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
@@ -409,23 +409,23 @@ void Baker::BakeAll()
 #if !FO_SINGLEPLAYER
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile server scripts");
-                ASCompiler_ServerScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
                 as_server_recompiled = true;
             }
 
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile client scripts");
-                ASCompiler_ClientScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
             }
 #else
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile game scripts");
-                ASCompiler_SingleScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                AngelScriptCompiler_SingleScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
             }
 #endif
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile mapper scripts");
-                ASCompiler_MapperScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
             }
 
             WriteLog("Compile AngelScript scripts complete");
@@ -443,9 +443,9 @@ void Baker::BakeAll()
         FOEngineBase* validation_engine = nullptr;
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-        ASCompiler_ServerScriptSystem_Validation script_sys;
+        AngelScriptCompiler_ServerScriptSystem_Validation compiler_script_sys;
 #else
-        ASCompiler_SingleScriptSystem_Validation script_sys;
+        AngelScriptCompiler_SingleScriptSystem_Validation compiler_script_sys;
 #endif
 #endif
 
@@ -454,11 +454,9 @@ void Baker::BakeAll()
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-            script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-            validation_engine->ScriptSys = &script_sys;
+            compiler_script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
 #else
-            script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-            validation_engine->ScriptSys = &script_sys;
+            compiler_script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
 #endif
 #endif
         }
@@ -471,6 +469,7 @@ void Baker::BakeAll()
         }
 
         RUNTIME_ASSERT(validation_engine);
+        const ScriptSystem& script_sys = compiler_script_sys;
 
         // Configs
         try {
@@ -686,7 +685,7 @@ void Baker::BakeAll()
 
                 for (auto&& [type_name, protos] : proto_mngr.GetAllProtos()) {
                     for (auto&& [pid, proto] : protos) {
-                        proto_errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), validation_engine->ScriptSys, resource_hashes);
+                        proto_errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys, resource_hashes);
                     }
                 }
 
@@ -742,8 +741,8 @@ void Baker::BakeAll()
                     &baker_engine = std::as_const(baker_engine),
                     &server_proto_mngr = std::as_const(server_proto_mngr),
                     &client_proto_mngr = std::as_const(client_proto_mngr),
-                    &hash_resolver = server_engine,
-                    &script_sys = std::as_const(*validation_engine->ScriptSys),
+                    &hash_resolver = static_cast<HashResolver&>(server_engine),
+                    &script_sys = std::as_const(compiler_script_sys),
                     &resource_hashes = std::as_const(resource_hashes) // clang-format on
                 ](const ProtoMap* proto_map) {
                     const auto fomap_files = baker_engine.Resources.FilterFiles("fomap");
@@ -777,7 +776,7 @@ void Baker::BakeAll()
                             auto props = copy(proto->GetProperties());
 
                             if (props.ApplyFromText(kv)) {
-                                map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), &script_sys, resource_hashes);
+                                map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
 
                                 map_cr_count++;
                                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -797,7 +796,7 @@ void Baker::BakeAll()
                             auto props = copy(proto->GetProperties());
 
                             if (props.ApplyFromText(kv)) {
-                                map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), &script_sys, resource_hashes);
+                                map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
 
                                 map_item_count++;
                                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -965,8 +964,8 @@ void Baker::BakeAll()
             for (auto* dlg_pack : dialog_mngr.GetDialogs()) {
                 for (auto&& dlg : dlg_pack->Dialogs) {
                     if (dlg.DlgScriptFuncName) {
-                        if (!validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
-                            !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
+                        if (!script_sys.CheckFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
+                            !script_sys.CheckFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
                             WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
                             dlg_errors++;
                         }
@@ -975,12 +974,12 @@ void Baker::BakeAll()
                     for (auto&& answer : dlg.Answers) {
                         for (auto&& demand : answer.Demands) {
                             if (demand.Type == DR_SCRIPT) {
-                                if ((demand.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName))) {
+                                if ((demand.ValuesCount == 0 && !script_sys.CheckFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 1 && !script_sys.CheckFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 2 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 3 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 4 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 5 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName))) {
                                     WriteLog("Dialog {} answer demand invalid function {}", dlg_pack->PackName, demand.AnswerScriptFuncName);
                                     dlg_errors++;
                                 }
@@ -991,21 +990,21 @@ void Baker::BakeAll()
                             if (result.Type == DR_SCRIPT) {
                                 int not_found_count = 0;
 
-                                if ((result.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
+                                if ((result.ValuesCount == 0 && !script_sys.CheckFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 1 && !script_sys.CheckFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 2 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 3 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 4 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 5 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
                                     not_found_count++;
                                 }
 
-                                if ((result.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
+                                if ((result.ValuesCount == 0 && !script_sys.CheckFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 1 && !script_sys.CheckFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 2 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 3 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 4 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 5 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
                                     not_found_count++;
                                 }
 
@@ -1195,17 +1194,17 @@ void Baker::BakeAll()
     }
 }
 
-static unordered_map<string, std::function<bool(hstring, const ScriptSystem*)>> ScriptFuncVerify = {
-    {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Item*, bool>(func_name); }},
-    {"ItemScenery", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-    {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-    {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Critter*, bool>(func_name); }},
-    {"MapInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Map*, bool>(func_name); }},
-    {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<void, Location*, bool>(func_name); }},
-    {"LocationEntrance", [](hstring func_name, const ScriptSystem* script_sys) { return !!script_sys->CheckFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
+static unordered_map<string, std::function<bool(hstring, const ScriptSystem&)>> ScriptFuncVerify = {
+    {"ItemInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Item*, bool>(func_name); }},
+    {"ItemScenery", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+    {"ItemTrigger", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
+    {"CritterInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, bool>(func_name); }},
+    {"MapInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Map*, bool>(func_name); }},
+    {"LocationInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Location*, bool>(func_name); }},
+    {"LocationEntrance", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
 };
 
-auto Baker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) const -> int
+auto Baker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem& script_sys, const unordered_set<hstring>& resource_hashes) const -> int
 {
     STACK_TRACE_ENTRY();
 
