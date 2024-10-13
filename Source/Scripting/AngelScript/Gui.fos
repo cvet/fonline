@@ -2607,7 +2607,7 @@ class MessageBox : Text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
             ucolor[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
-            messageText = "|" + sayColors[type] + " " + Game.EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
+            messageText = "|" + sayColors[type] + " " + Game.EncodeUtf8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
         else {
             messageText = text;
