@@ -259,14 +259,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     const int new_frame = iround(cur_second * static_cast<double>(_impl->VideoInfo.fps_numerator) / static_cast<double>(_impl->VideoInfo.fps_denominator));
     const int next_frame_diff = new_frame - _impl->CurFrame;
 
-    if (next_frame_diff == 0) {
+    if (next_frame_diff <= 0) {
         return _impl->RenderedTextureData;
-    }
-
-    // Todo: allow video playing in back direction
-    RUNTIME_ASSERT(next_frame_diff > 0);
-    if (next_frame_diff < 0) {
-        // ...
     }
 
     bool last_frame = false;
