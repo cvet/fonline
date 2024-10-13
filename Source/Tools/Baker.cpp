@@ -319,7 +319,7 @@ void Baker::BakeAll()
                 }
             });
 
-            WriteLog("Baking of {} complete, baked {} files", pack_name, baked_files);
+            WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
         };
 
         vector<std::future<void>> res_bakings;
