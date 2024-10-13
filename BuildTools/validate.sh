@@ -116,13 +116,13 @@ if [ "$TARGET" = "linux" ]; then
 	fi
 
     $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$FO_PROJECT_ROOT"
-    $CMAKE --build . --config Debug
+    $CMAKE --build . --config Debug --parallel
 
 elif [ "$TARGET" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
     $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
-    $CMAKE --build . --config Debug
+    $CMAKE --build . --config Debug --parallel
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
     export ANDROID_NDK=$FO_WORKSPACE/android-ndk
@@ -136,7 +136,7 @@ elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET"
     fi
 
     $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
-    $CMAKE --build . --config Debug
+    $CMAKE --build . --config Debug --parallel
 
 elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
     if [ ! -x "$(command -v cmake)" ]; then
@@ -149,16 +149,16 @@ elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
         $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
     fi
 
-    $CMAKE --build . --config Debug
+    $CMAKE --build . --config Debug --parallel
 fi
 
 if [ "$1" = "unit-tests" ]; then
     echo "Run unit tests"
-    $CMAKE --build . --config Debug --target RunUnitTests
+    $CMAKE --build . --config Debug --target RunUnitTests --parallel
 
 elif [ "$1" = "code-coverage" ]; then
     echo "Run code coverage"
-    $CMAKE --build . --config Debug --target RunCodeCoverage
+    $CMAKE --build . --config Debug --target RunCodeCoverage --parallel
 
     if [[ ! -z "$CODECOV_TOKEN" ]]; then
         echo "Upload reports to codecov.io"

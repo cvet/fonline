@@ -13,4 +13,4 @@ then
 fi
 
 cd build-linux-toolset
-cmake --build . --config Release --target $1
+cmake --build . --config Release --target $1 --parallel

@@ -85,10 +85,10 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
 
     if [ "$1" = "mac" ]; then
         $CMAKE -G "Xcode" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
-        $CMAKE --build . --config $CONFIG
+        $CMAKE --build . --config $CONFIG --parallel
     else
         $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
-        $CMAKE --build . --config $CONFIG
+        $CMAKE --build . --config $CONFIG --parallel
     fi
 
 elif [ "$1" = "ps4" ]; then
