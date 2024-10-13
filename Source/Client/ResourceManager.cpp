@@ -459,15 +459,18 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
     shared_ptr<SpriteSheet> anim;
 
+    string shorten_model_name = strex(model_name).eraseFileExtension();
+    shorten_model_name = shorten_model_name.substr(0, shorten_model_name.length() - 2);
+
     // Try load from fofrm
     {
-        const string spr_name = strex("{}{}{}.fofrm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = strex("{}{}{}.frm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
