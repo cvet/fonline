@@ -45,8 +45,6 @@
 #include "sha1.h"
 #include "sha2.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine)
@@ -268,7 +266,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param length ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
+[[maybe_unused]] uint Common_Game_DecodeUtf8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
     size_t decode_length = text.length();
     const auto ch = utf8::Decode(text.data(), decode_length);
@@ -281,7 +279,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param ucs ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_EncodeUTF8([[maybe_unused]] FOEngineBase* engine, uint ucs)
+[[maybe_unused]] string Common_Game_EncodeUtf8([[maybe_unused]] FOEngineBase* engine, uint ucs)
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
@@ -292,7 +290,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA1([[maybe_unused]] FOEngineBase* engine, string_view text)
+[[maybe_unused]] string Common_Game_Sha1([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
@@ -313,7 +311,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
+[[maybe_unused]] string Common_Game_Sha2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     constexpr uint digest_size = 32;
     uint8 digest[digest_size];

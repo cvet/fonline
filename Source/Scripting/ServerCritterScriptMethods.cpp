@@ -38,9 +38,6 @@
 #include "StringUtils.h"
 #include "TwoBitMask.h"
 
-// ReSharper disable CppInconsistentNaming
-// ReSharper disable CppClangTidyPerformanceUnnecessaryValueParam
-
 ///# ...
 ///# param initFunc ...
 ///@ ExportMethod

@@ -40,8 +40,6 @@
 #include "GeometryHelper.h"
 #include "StringUtils.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///# return ...
 ///@ ExportMethod

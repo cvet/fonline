@@ -37,8 +37,6 @@
 #include "CritterHexView.h"
 #include "CritterView.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///# ...
 ///# param name ...
 ///@ ExportMethod
