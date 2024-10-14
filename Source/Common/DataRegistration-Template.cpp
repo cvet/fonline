@@ -110,7 +110,7 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
 
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
-        static unordered_map<string, const type_info*> enum_type_map = {
+        static unordered_map<string, const std::type_info*> enum_type_map = {
             {"int8", &typeid(int8)},
             {"int16", &typeid(int16)},
             {"int", &typeid(int)},
