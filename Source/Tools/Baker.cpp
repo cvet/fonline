@@ -103,11 +103,11 @@ struct AngelScriptCompiler_MapperScriptSystem : public ScriptSystem
 unordered_set<string> CompilerPassedMessages;
 #endif
 
-struct Item;
-struct StaticItem;
-struct Critter;
-struct Map;
-struct Location;
+class Item;
+class StaticItem;
+class Critter;
+class Map;
+class Location;
 
 BaseBaker::BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
     _settings {settings},

@@ -157,30 +157,16 @@
 #if COMPILER_MODE
 DECLARE_EXCEPTION(ScriptCompilerException);
 
-struct FOServer;
-struct FOClient;
-struct FOSingle;
-struct FOMapper;
+class FOServer;
+class FOClient;
+class FOSingle;
+class FOMapper;
 
-struct BaseEntity : Entity
-{
-};
-
-struct CustomEntity : BaseEntity
-{
-};
-
-struct CustomEntityWithProto : BaseEntity
-{
-};
-
-struct CustomEntityView : BaseEntity
-{
-};
-
-struct CustomEntityWithProtoView : BaseEntity
-{
-};
+class BaseEntity;
+class CustomEntity;
+class CustomEntityWithProto;
+class CustomEntityView;
+class CustomEntityWithProtoView;
 
 #if COMPILER_VALIDATION_MODE
 #define INIT_ARGS const FileSystem &resources, FOEngineBase **out_engine
@@ -677,9 +663,9 @@ static T* ScriptableObject_Factory()
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
     RUNTIME_ASSERT(type_id);
-    auto* type_info = as_engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(type_info);
-    auto* as_array = CScriptArray::Create(type_info);
+    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
+    RUNTIME_ASSERT(as_type_info);
+    auto* as_array = CScriptArray::Create(as_type_info);
     RUNTIME_ASSERT(as_array);
     return as_array;
 }
@@ -754,9 +740,9 @@ template<typename T, typename T2 = T>
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
     RUNTIME_ASSERT(type_id);
-    auto* type_info = as_engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(type_info);
-    auto* as_dict = CScriptDict::Create(type_info);
+    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
+    RUNTIME_ASSERT(as_type_info);
+    auto* as_dict = CScriptDict::Create(as_type_info);
     RUNTIME_ASSERT(as_dict);
     return as_dict;
 }
@@ -864,9 +850,9 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
     auto* engine = ctx->GetEngine();
-    auto* type_info = engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(type_info);
-    const string type_name = type_info->GetName();
+    auto* as_type_info = engine->GetTypeInfoById(type_id);
+    RUNTIME_ASSERT(as_type_info);
+    const string type_name = as_type_info->GetName();
 
     if (type_name == "string") {
         return strex("{}", *static_cast<string*>(ptr));
@@ -891,9 +877,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    if (func == nullptr) {
-        return hstring();
-    }
+    RUNTIME_ASSERT(func);
+
     if (func->GetDelegateObject() != nullptr) {
         throw ScriptException("Function can't be delegate", func->GetDelegateFunction()->GetName());
     }
@@ -1018,11 +1003,11 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 
         if (ret != nullptr) {
             RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-            RUNTIME_ASSERT(type_index(*func_desc->RetType) != type_index(typeid(void)));
+            RUNTIME_ASSERT(func_desc->RetType != type_index(typeid(void)));
         }
         else {
             RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-            RUNTIME_ASSERT(type_index(*func_desc->RetType) == type_index(typeid(void)));
+            RUNTIME_ASSERT(func_desc->RetType == type_index(typeid(void)));
         }
 
         auto* ctx = script_sys->PrepareContext(func);
@@ -1030,13 +1015,13 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
         if (args.size() != 0) {
             auto it = args.begin();
             for (asUINT i = 0; i < args.size(); i++, it++) {
-                CtxSetValueMap[type_index(*func_desc->ArgsType[i])](ctx, i, *it);
+                CtxSetValueMap[func_desc->ArgsType[i]](ctx, i, *it);
             }
         }
 
         if (script_sys->RunContext(ctx, ret == nullptr)) {
             if (ret != nullptr) {
-                CtxReturnValueMap[type_index(*func_desc->RetType)](ctx, ret);
+                CtxReturnValueMap[func_desc->RetType](ctx, ret);
             }
 
             script_sys->ReturnContext(ctx);
@@ -1055,11 +1040,12 @@ template<typename TRet, typename... Args>
 {
     STACK_TRACE_ENTRY();
 
+    // Todo: free ScriptFuncDesc instances
     auto* func_desc = new ScriptFuncDesc();
     func_desc->Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
     func_desc->CallSupported = true;
-    func_desc->RetType = &typeid(TRet);
-    func_desc->ArgsType = {&typeid(Args)...};
+    func_desc->RetType = type_index(typeid(TRet));
+    func_desc->ArgsType = {type_index(typeid(Args))...};
     func_desc->Delegate = func->GetDelegateObject() != nullptr;
     func_desc->Call = [script_sys, func_desc, func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
         return AngelScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
@@ -1929,6 +1915,7 @@ static void Entity_AddRef(const T* self)
 
 #if !COMPILER_MODE
     self->AddRef();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -1942,6 +1929,7 @@ static void Entity_Release(const T* self)
 
 #if !COMPILER_MODE
     self->Release();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -1956,6 +1944,7 @@ static auto Entity_IsDestroyed(const T* self) -> bool
 #if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroyed();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -1970,6 +1959,7 @@ static auto Entity_IsDestroying(const T* self) -> bool
 #if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroying();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -1985,6 +1975,7 @@ static auto Entity_Name(const T* self) -> string
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return string(self->GetName());
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -2000,6 +1991,7 @@ static auto Entity_Id(const T* self) -> ident_t
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetId();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -2015,6 +2007,7 @@ static auto Entity_ProtoId(const T* self) -> hstring
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetProtoId();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -2033,6 +2026,7 @@ auto Entity_ProtoId(const Entity* self) -> hstring
         return self_with_proto->GetProtoId();
     }
     return {};
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -2048,6 +2042,7 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetProto();
+
 #else
     UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
@@ -2064,6 +2059,7 @@ static void Global_Assert_0(bool condition)
     if (!condition) {
         throw ScriptException("Assertion failed");
     }
+
 #else
     UNUSED_VARIABLE(condition);
     throw ScriptCompilerException("Stub");
@@ -2079,6 +2075,7 @@ static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
         auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
         throw ScriptException("Assertion failed", obj_info1);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2097,6 +2094,7 @@ static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
         throw ScriptException("Assertion failed", obj_info1, obj_info2);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2118,6 +2116,7 @@ static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2142,6 +2141,7 @@ static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2169,6 +2169,7 @@ static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2199,6 +2200,7 @@ static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2232,6 +2234,7 @@ static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2268,6 +2271,7 @@ static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2307,6 +2311,7 @@ static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2P
         auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2349,6 +2354,7 @@ static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2
         auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
     }
+
 #else
     UNUSED_VARIABLE(condition);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2381,6 +2387,7 @@ static void Global_ThrowException_0(string message)
 
 #if !COMPILER_MODE
     throw ScriptException(message);
+
 #else
     UNUSED_VARIABLE(message);
     throw ScriptCompilerException("Stub");
@@ -2394,6 +2401,7 @@ static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
     throw ScriptException(message, obj_info1);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2410,6 +2418,7 @@ static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
     auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
     throw ScriptException(message, obj_info1, obj_info2);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2429,6 +2438,7 @@ static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
     auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2451,6 +2461,7 @@ static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
     auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2476,6 +2487,7 @@ static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
     auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2504,6 +2516,7 @@ static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
     auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2535,6 +2548,7 @@ static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
     auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2569,6 +2583,7 @@ static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
     auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2606,6 +2621,7 @@ static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
     auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2646,6 +2662,7 @@ static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, vo
     auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
     auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
+
 #else
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(obj1Ptr);
@@ -2683,6 +2700,7 @@ static void Global_Yield(uint time)
     auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
     ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
+
 #else
     UNUSED_VARIABLE(time);
     throw ScriptCompilerException("Stub");
@@ -2766,6 +2784,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         script_sys->ReturnContext(ctx);
         return prop_data;
     });
+
 #else
     UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
@@ -2896,6 +2915,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
             UNUSED_VARIABLE(prop_data);
         }
     });
+
 #else
     UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
@@ -2910,6 +2930,7 @@ static void Global_Get(asIScriptGeneric* gen)
 #if !COMPILER_MODE
     const auto& value = *static_cast<T*>(gen->GetAuxiliary());
     *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
+
 #else
     UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
@@ -2925,6 +2946,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
     // Don't verify entity for destroying
     ENTITY_VERIFY_NULL(entity);
     return entity;
+
 #else
     UNUSED_VARIABLE(entity);
     throw ScriptCompilerException("Stub");
@@ -3072,6 +3094,7 @@ static void Property_GetComponent(asIScriptGeneric* gen)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
 
@@ -3083,6 +3106,11 @@ static void Property_GetComponent(asIScriptGeneric* gen)
     }
 
     *(T**)gen->GetAddressOfReturnLocation() = entity;
+
+#else
+    UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3117,8 +3145,10 @@ static void Property_GetValue(asIScriptGeneric* gen)
     }
 
     PropsToAS(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3158,8 +3188,10 @@ static void Property_SetValue(asIScriptGeneric* gen)
             }
         }
     }
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3168,6 +3200,7 @@ static auto EntityDownCast(T* a) -> Entity*
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
 
     if (a == nullptr) {
@@ -3175,6 +3208,11 @@ static auto EntityDownCast(T* a) -> Entity*
     }
 
     return static_cast<Entity*>(a);
+
+#else
+    UNUSED_VARIABLE(a);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3182,6 +3220,7 @@ static auto EntityUpCast(Entity* a) -> T*
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
 
     if (a == nullptr) {
@@ -3189,6 +3228,11 @@ static auto EntityUpCast(Entity* a) -> T*
     }
 
     return dynamic_cast<T*>(a);
+
+#else
+    UNUSED_VARIABLE(a);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void HashedString_Construct(hstring* self)
@@ -3207,8 +3251,10 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3223,8 +3269,10 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
     auto hstr = engine->ResolveHash(hash, &failed);
     UNUSED_VARIABLE(hstr);
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3237,8 +3285,10 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3246,77 +3296,147 @@ static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) hstring(other);
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     self = other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self == other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.as_str() == other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_StringCast(const hstring& self) -> const string&
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.as_str();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_StringConv(const hstring& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.as_str();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_GetString(const hstring& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return string(self.as_str());
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_GetHash(const hstring& self) -> int
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.as_int();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto HashedString_GetUHash(const hstring& self) -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.as_uint();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Any_Construct(any_t* self)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) any_t();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Any_Destruct(any_t* self)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     self->~any_t();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3324,28 +3444,56 @@ static void Any_ConstructFrom(any_t* self, const T& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) any_t {strex("{}", other).str()};
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) any_t(other);
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Any_Assign(any_t& self, const any_t& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     self = other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self == other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3353,6 +3501,7 @@ static auto Any_Conv(const any_t& self) -> T
 {
     STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     if constexpr (std::is_same_v<T, bool>) {
         return strex(self).toBool();
     }
@@ -3368,6 +3517,11 @@ static auto Any_Conv(const any_t& self) -> T
     else if constexpr (std::is_same_v<T, string>) {
         return self;
     }
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3382,8 +3536,10 @@ static void Any_ConvGen(asIScriptGeneric* gen)
         auto hstr = engine->ToHashedString(*self);
         new (gen->GetAddressOfReturnLocation()) hstring(hstr);
     }
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3392,7 +3548,13 @@ static auto Any_ConvFrom(const T& self) -> any_t
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return any_t {strex("{}", self).str()};
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3400,7 +3562,13 @@ static void StrongType_Construct(T* self)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) T();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3408,7 +3576,14 @@ static void StrongType_ConstructCopy(T* self, const T& other)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) T(other);
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3416,7 +3591,14 @@ static void StrongType_ConstructFromUnderlying(T* self, const typename T::underl
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) T(other);
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3424,7 +3606,14 @@ static auto StrongType_Equals(const T& self, const T& other) -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self == other;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3432,7 +3621,13 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.underlying_value();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3440,7 +3635,13 @@ static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return self.underlying_value();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3448,7 +3649,14 @@ static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     self.underlying_value() = value;
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(value);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3456,7 +3664,13 @@ static auto StrongType_GetStr(const T& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return strex("{}", self).str();
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3464,26 +3678,46 @@ static auto StrongType_AnyConv(const T& self) -> any_t
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     return any_t {strex("{}", self).str()};
+
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     new (self) ucolor {rgba};
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(rgba);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 {
     NO_STACK_TRACE_ENTRY();
 
+#if !COMPILER_MODE
     const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
     const auto clamped_g = static_cast<uint8>(std::clamp(g, 0, 255));
     const auto clamped_b = static_cast<uint8>(std::clamp(b, 0, 255));
     const auto clamped_a = static_cast<uint8>(std::clamp(a, 0, 255));
 
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(r, g, b, a);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 template<typename T>
@@ -3500,9 +3734,10 @@ static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const Pr
         return casted_proto;
     }
     return nullptr;
+
 #else
     UNUSED_VARIABLE(engine, pid);
-    return nullptr;
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3527,9 +3762,10 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
     auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
     CScriptArray* result_arr = MarshalBackArray(as_engine, strex("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
     return result_arr;
+
 #else
     UNUSED_VARIABLE(engine);
-    return nullptr;
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3538,13 +3774,17 @@ static void Game_DestroyOne(FOEngine* engine, T* entity)
 {
     STACK_TRACE_ENTRY();
 
-#if !COMPILER_MODE && SERVER_SCRIPTING
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
     if (entity != nullptr) {
         engine->EntityMngr.DestroyEntity(entity);
     }
+#endif
+
 #else
     UNUSED_VARIABLE(engine);
     UNUSED_VARIABLE(entity);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3553,7 +3793,8 @@ static void Game_DestroyAll(FOEngine* engine, CScriptArray* as_entities)
 {
     STACK_TRACE_ENTRY();
 
-#if !COMPILER_MODE && SERVER_SCRIPTING
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
     auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
     const auto entities = MarshalArray<T*>(as_engine, as_entities);
     for (auto* entity : entities) {
@@ -3561,9 +3802,12 @@ static void Game_DestroyAll(FOEngine* engine, CScriptArray* as_entities)
             engine->EntityMngr.DestroyEntity(entity);
         }
     }
+#endif
+
 #else
     UNUSED_VARIABLE(engine);
     UNUSED_VARIABLE(as_entities);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3572,15 +3816,19 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();
 
-#if !COMPILER_MODE && SERVER_SCRIPTING
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
     hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
     H* holder = static_cast<H*>(gen->GetObject());
     const hstring pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
     CustomEntity* entity = holder->GetEngine()->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
     RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
     new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
+#endif
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3613,8 +3861,10 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
         CScriptArray* result_arr = CreateASArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str());
         new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3647,8 +3897,10 @@ static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
         CScriptArray* result_arr = CreateASArray(gen->GetEngine(), "ident[]");
         new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
+
 #else
     UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
@@ -3673,6 +3925,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) int(enum_value);
+
 #else
     UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
@@ -3700,6 +3953,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
+
 #else
     UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
@@ -4110,16 +4364,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if SERVER_SCRIPTING
     AS_VERIFY(engine->RegisterObjectType("CritterRemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
+#endif
 
-#define PLAYER_ENTITY Player
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
+#define REMOTE_CALL_RECEIVER_ENTITY static_cast<Player*>(entity)
 #else
-#define PLAYER_ENTITY PlayerView
+#define REMOTE_CALL_RECEIVER_ENTITY static_cast<PlayerView*>(entity)
+#endif
+#else
+#define REMOTE_CALL_RECEIVER_ENTITY nullptr
 #endif
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
     if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(static_cast<PLAYER_ENTITY*>(entity), func.get()); }); \
+        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, func.get()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4269,52 +4529,53 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         auto* mod = engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> const std::type_info* {
+        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> type_index {
 #define CHECK_CLASS(class_name, real_class) \
-    if (string_view(type_info->GetName()) == class_name) { \
-        return &typeid(real_class); \
+    if (string_view(as_type_info->GetName()) == class_name) { \
+        return typeid(real_class); \
     } \
-    if (is_array && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == class_name) { \
-        return &typeid(vector<real_class>); \
+    if (is_array && as_type_info->GetSubType() != nullptr && string_view(as_type_info->GetSubType()->GetName()) == class_name) { \
+        return typeid(vector<real_class>); \
     }
 #define CHECK_POD_ARRAY(as_type, type) \
-    if (is_array && type_info->GetSubTypeId() == as_type) { \
-        return &typeid(vector<type>); \
+    if (is_array && as_type_info->GetSubTypeId() == as_type) { \
+        return typeid(vector<type>); \
     }
-            auto* type_info = engine->GetTypeInfoById(type_id);
-            const auto is_array = type_info != nullptr && string_view(type_info->GetName()) == "array";
+       
+            auto* as_type_info = engine->GetTypeInfoById(type_id);
+            const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
             if (const auto is_ref = (flags & asTM_INOUTREF) != 0) {
                 if (is_ret) {
-                    return nullptr;
+                    return typeid(UnsupportedScriptFuncType);
                 }
                 if (is_array) {
-                    return nullptr;
+                    return typeid(UnsupportedScriptFuncType);
                 }
 
                 switch (type_id) {
                 case asTYPEID_BOOL:
-                    return &typeid(bool*);
+                    return typeid(bool*);
                 case asTYPEID_INT8:
-                    return &typeid(int8*);
+                    return typeid(int8*);
                 case asTYPEID_INT16:
-                    return &typeid(int16*);
+                    return typeid(int16*);
                 case asTYPEID_INT32:
-                    return &typeid(int*);
+                    return typeid(int*);
                 case asTYPEID_INT64:
-                    return &typeid(int64*);
+                    return typeid(int64*);
                 case asTYPEID_UINT8:
-                    return &typeid(uint8*);
+                    return typeid(uint8*);
                 case asTYPEID_UINT16:
-                    return &typeid(uint16*);
+                    return typeid(uint16*);
                 case asTYPEID_UINT32:
-                    return &typeid(uint*);
+                    return typeid(uint*);
                 case asTYPEID_UINT64:
-                    return &typeid(uint64*);
+                    return typeid(uint64*);
                 case asTYPEID_FLOAT:
-                    return &typeid(float*);
+                    return typeid(float*);
                 case asTYPEID_DOUBLE:
-                    return &typeid(double*);
+                    return typeid(double*);
                 default:
                     break;
                 }
@@ -4325,35 +4586,35 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 CHECK_CLASS(IDENT_T_NAME, ident_t*);
                 CHECK_CLASS(TICK_T_NAME, tick_t*);
 
-                return nullptr;
+                return typeid(UnsupportedScriptFuncType);
             }
 
             switch (type_id) {
             case asTYPEID_VOID:
                 RUNTIME_ASSERT(is_ret);
-                return &typeid(void);
+                return typeid(void);
             case asTYPEID_BOOL:
-                return &typeid(bool);
+                return typeid(bool);
             case asTYPEID_INT8:
-                return &typeid(int8);
+                return typeid(int8);
             case asTYPEID_INT16:
-                return &typeid(int16);
+                return typeid(int16);
             case asTYPEID_INT32:
-                return &typeid(int);
+                return typeid(int);
             case asTYPEID_INT64:
-                return &typeid(int64);
+                return typeid(int64);
             case asTYPEID_UINT8:
-                return &typeid(uint8);
+                return typeid(uint8);
             case asTYPEID_UINT16:
-                return &typeid(uint16);
+                return typeid(uint16);
             case asTYPEID_UINT32:
-                return &typeid(uint);
+                return typeid(uint);
             case asTYPEID_UINT64:
-                return &typeid(uint64);
+                return typeid(uint64);
             case asTYPEID_FLOAT:
-                return &typeid(float);
+                return typeid(float);
             case asTYPEID_DOUBLE:
-                return &typeid(double);
+                return typeid(double);
             default:
                 break;
             }
@@ -4392,7 +4653,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 CHECK_POD_ARRAY(asTYPEID_DOUBLE, double);
             }
 
-            return nullptr;
+            return typeid(UnsupportedScriptFuncType);
 
 #undef CHECK_CLASS
 #undef CHECK_POD_ARRAY
@@ -4427,12 +4688,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
-            func_desc.CallSupported = (func_desc.RetType != nullptr && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), nullptr) == func_desc.ArgsType.end());
-
+            func_desc.CallSupported = (func_desc.RetType != typeid(UnsupportedScriptFuncType) && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), typeid(UnsupportedScriptFuncType)) == func_desc.ArgsType.end());
+            
             // Check for special module init function
-            if (func_desc.ArgsType.empty() && func_desc.RetType != nullptr && type_index(*func_desc.RetType) == type_index(typeid(void))) {
+            if (func_desc.ArgsType.empty() && func_desc.RetType == type_index(typeid(void))) {
                 RUNTIME_ASSERT(func_desc.CallSupported);
                 const auto func_name_ex = strex(func->GetName());
+
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
                     _initFunc.push_back(&func_desc);
                 }

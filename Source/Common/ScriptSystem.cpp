@@ -35,7 +35,7 @@
 #include "Application.h"
 #include "EngineBase.h"
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) const -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<type_index> args_type, type_index ret_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -43,18 +43,21 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
         return false;
     }
 
-    if (type_index(*func_desc.RetType) != type_index(*ret_type)) {
+    if (func_desc.RetType != ret_type) {
         return false;
     }
+
     if (func_desc.ArgsType.size() != args_type.size()) {
         return false;
     }
 
     size_t index = 0;
-    for (const auto* arg_type : args_type) {
-        if (type_index(*arg_type) != type_index(*func_desc.ArgsType[index])) {
+
+    for (const auto& arg_type : args_type) {
+        if (arg_type != func_desc.ArgsType[index]) {
             return false;
         }
+
         ++index;
     }
 

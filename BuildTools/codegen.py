@@ -2066,9 +2066,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if not gameEntitiesInfo[entity]['Exported']:
                     continue
                 engineEntityType = engineEntityType
-                globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
+                globalLines.append('class ' + engineEntityType + ';')
                 if gameEntitiesInfo[entity]['HasStatics']:
-                    globalLines.append('struct Static' + entity + ' : BaseEntity { };')
+                    globalLines.append('class Static' + entity + ';')
             globalLines.append('')
             
             globalLines.append('// Scriptable objects')

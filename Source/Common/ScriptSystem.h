@@ -89,12 +89,16 @@ class ProtoLocation;
 
 using AbstractItem = Entity;
 
+struct UnsupportedScriptFuncType
+{
+};
+
 struct ScriptFuncDesc
 {
     hstring Name {};
     string Declaration {};
-    const type_info* RetType {};
-    vector<const type_info*> ArgsType {};
+    type_index RetType {typeid(UnsupportedScriptFuncType)};
+    vector<type_index> ArgsType {};
     bool CallSupported {};
     std::function<bool(initializer_list<void*>, void*)> Call {};
     bool Delegate {};
@@ -160,7 +164,7 @@ public:
     {
         const auto range = _funcMap.equal_range(func_name);
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
+            if (ValidateArgs(it->second, {type_index(typeid(Args))...}, type_index(typeid(TRet)))) {
                 return ScriptFunc<TRet, Args...>(&it->second);
             }
         }
@@ -172,7 +176,7 @@ public:
     {
         const auto range = _funcMap.equal_range(func_name);
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
+            if (ValidateArgs(it->second, {type_index(typeid(Args))...}, type_index(typeid(TRet)))) {
                 return true;
             }
         }
@@ -198,7 +202,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) const -> bool;
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<type_index> args_type, type_index ret_type) const -> bool;
 
     vector<std::function<void()>> _loopCallbacks {};
     std::unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
