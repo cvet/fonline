@@ -106,7 +106,8 @@ if not [%BUILD_TOOLSET%] == [] (
 ) else (
     cmake -A %BUILD_ARCH% -C "%FO_ENGINE_ROOT%\BuildTool\%BUILD_CACHE%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
 )
-cmake --build . --config Debug
+
+cmake --build . --config Debug --parallel
 
 exit /B
 
