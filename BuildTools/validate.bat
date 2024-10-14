@@ -109,8 +109,8 @@ if not [%BUILD_TOOLSET%] == [] (
 
 cmake --build . --config Debug --parallel
 
-exit /B
+exit /b
 
 :NORMALIZEPATH
   set RETVAL=%~f1
-  exit /B
+  exit /b
