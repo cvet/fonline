@@ -900,99 +900,99 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 {
     STACK_TRACE_ENTRY();
 
-    static unordered_map<type_index, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
-        {type_index(typeid(bool)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
-        {type_index(typeid(int8)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<int8*>(ptr)); }},
-        {type_index(typeid(int16)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<int16*>(ptr)); }},
-        {type_index(typeid(int)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<int*>(ptr)); }},
-        {type_index(typeid(int64)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<int64*>(ptr)); }},
-        {type_index(typeid(uint8)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uint8*>(ptr)); }},
-        {type_index(typeid(uint16)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<uint16*>(ptr)); }},
-        {type_index(typeid(uint)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<uint*>(ptr)); }},
-        {type_index(typeid(uint64)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
-        {type_index(typeid(float)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
-        {type_index(typeid(double)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
-        {type_index(typeid(bool*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<bool*>(ptr)); }},
-        {type_index(typeid(int8*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int8*>(ptr)); }},
-        {type_index(typeid(int16*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int16*>(ptr)); }},
-        {type_index(typeid(int*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int*>(ptr)); }},
-        {type_index(typeid(int64*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int64*>(ptr)); }},
-        {type_index(typeid(uint8*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint8*>(ptr)); }},
-        {type_index(typeid(uint16*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint16*>(ptr)); }},
-        {type_index(typeid(uint*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint*>(ptr)); }},
-        {type_index(typeid(uint64*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
-        {type_index(typeid(float*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
-        {type_index(typeid(double*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
-        {type_index(typeid(hstring)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
-        {type_index(typeid(string)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
-        {type_index(typeid(any_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
-        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
-        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
-        {type_index(typeid(hstring*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
-        {type_index(typeid(string*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
-        {type_index(typeid(any_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<any_t*>(ptr)); }},
-        {type_index(typeid(ident_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ident_t*>(ptr)); }},
-        {type_index(typeid(tick_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<tick_t*>(ptr)); }},
+    static unordered_map<std::type_index, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
+        {typeid(bool), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
+        {typeid(int8), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<int8*>(ptr)); }},
+        {typeid(int16), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<int16*>(ptr)); }},
+        {typeid(int), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<int*>(ptr)); }},
+        {typeid(int64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<int64*>(ptr)); }},
+        {typeid(uint8), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uint8*>(ptr)); }},
+        {typeid(uint16), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<uint16*>(ptr)); }},
+        {typeid(uint), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<uint*>(ptr)); }},
+        {typeid(uint64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
+        {typeid(float), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
+        {typeid(double), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
+        {typeid(bool*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<bool*>(ptr)); }},
+        {typeid(int8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int8*>(ptr)); }},
+        {typeid(int16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int16*>(ptr)); }},
+        {typeid(int*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int*>(ptr)); }},
+        {typeid(int64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int64*>(ptr)); }},
+        {typeid(uint8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint8*>(ptr)); }},
+        {typeid(uint16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint16*>(ptr)); }},
+        {typeid(uint*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint*>(ptr)); }},
+        {typeid(uint64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
+        {typeid(float*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
+        {typeid(double*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
+        {typeid(hstring), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
+        {typeid(string), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
+        {typeid(any_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
+        {typeid(ident_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
+        {typeid(tick_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
+        {typeid(hstring*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
+        {typeid(string*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
+        {typeid(any_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<any_t*>(ptr)); }},
+        {typeid(ident_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ident_t*>(ptr)); }},
+        {typeid(tick_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<tick_t*>(ptr)); }},
 #if SERVER_SCRIPTING
-        {type_index(typeid(Player*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
-        {type_index(typeid(Item*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
-        {type_index(typeid(StaticItem*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<StaticItem**>(ptr)); }},
-        {type_index(typeid(Critter*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Critter**>(ptr)); }},
-        {type_index(typeid(Map*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Map**>(ptr)); }},
-        {type_index(typeid(Location*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Location**>(ptr)); }},
-        {type_index(typeid(vector<Player*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<Player*>*>(ptr))); }},
-        {type_index(typeid(vector<Item*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<Item*>*>(ptr))); }},
-        {type_index(typeid(vector<StaticItem*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "StaticItem[]", *static_cast<vector<StaticItem*>*>(ptr))); }},
-        {type_index(typeid(vector<Critter*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<Critter*>*>(ptr))); }},
-        {type_index(typeid(vector<Map*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<Map*>*>(ptr))); }},
-        {type_index(typeid(vector<Location*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<Location*>*>(ptr))); }},
+        {typeid(Player*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
+        {typeid(Item*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
+        {typeid(StaticItem*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<StaticItem**>(ptr)); }},
+        {typeid(Critter*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Critter**>(ptr)); }},
+        {typeid(Map*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Map**>(ptr)); }},
+        {typeid(Location*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Location**>(ptr)); }},
+        {typeid(vector<Player*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<Player*>*>(ptr))); }},
+        {typeid(vector<Item*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<Item*>*>(ptr))); }},
+        {typeid(vector<StaticItem*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "StaticItem[]", *static_cast<vector<StaticItem*>*>(ptr))); }},
+        {typeid(vector<Critter*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<Critter*>*>(ptr))); }},
+        {typeid(vector<Map*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<Map*>*>(ptr))); }},
+        {typeid(vector<Location*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<Location*>*>(ptr))); }},
 #else
-        {type_index(typeid(PlayerView*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<PlayerView**>(ptr)); }},
-        {type_index(typeid(ItemView*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<ItemView**>(ptr)); }},
-        {type_index(typeid(CritterView*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<CritterView**>(ptr)); }},
-        {type_index(typeid(MapView*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<MapView**>(ptr)); }},
-        {type_index(typeid(LocationView*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<LocationView**>(ptr)); }},
-        {type_index(typeid(vector<PlayerView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<PlayerView*>*>(ptr))); }},
-        {type_index(typeid(vector<ItemView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<ItemView*>*>(ptr))); }},
-        {type_index(typeid(vector<CritterView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<CritterView*>*>(ptr))); }},
-        {type_index(typeid(vector<MapView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<MapView*>*>(ptr))); }},
-        {type_index(typeid(vector<LocationView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
+        {typeid(PlayerView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<PlayerView**>(ptr)); }},
+        {typeid(ItemView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<ItemView**>(ptr)); }},
+        {typeid(CritterView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<CritterView**>(ptr)); }},
+        {typeid(MapView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<MapView**>(ptr)); }},
+        {typeid(LocationView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<LocationView**>(ptr)); }},
+        {typeid(vector<PlayerView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<PlayerView*>*>(ptr))); }},
+        {typeid(vector<ItemView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<ItemView*>*>(ptr))); }},
+        {typeid(vector<CritterView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<CritterView*>*>(ptr))); }},
+        {typeid(vector<MapView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<MapView*>*>(ptr))); }},
+        {typeid(vector<LocationView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
 #endif
-        {type_index(typeid(vector<bool>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "bool[]", *static_cast<vector<bool>*>(ptr))); }},
-        {type_index(typeid(vector<int8>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<int8>*>(ptr))); }},
-        {type_index(typeid(vector<int16>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<int16>*>(ptr))); }},
-        {type_index(typeid(vector<int>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int[]", *static_cast<vector<int>*>(ptr))); }},
-        {type_index(typeid(vector<int64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int64[]", *static_cast<vector<int64>*>(ptr))); }},
-        {type_index(typeid(vector<uint8>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uint8>*>(ptr))); }},
-        {type_index(typeid(vector<uint16>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<uint16>*>(ptr))); }},
-        {type_index(typeid(vector<uint>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint[]", *static_cast<vector<uint>*>(ptr))); }},
-        {type_index(typeid(vector<uint64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
-        {type_index(typeid(vector<float>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
-        {type_index(typeid(vector<double>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
-        {type_index(typeid(vector<string>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
-        {type_index(typeid(vector<hstring>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
-        {type_index(typeid(vector<any_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "any[]", *static_cast<vector<any_t>*>(ptr))); }},
-        {type_index(typeid(vector<ident_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), IDENT_T_NAME "[]", *static_cast<vector<ident_t>*>(ptr))); }},
-        {type_index(typeid(vector<tick_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), TICK_T_NAME "[]", *static_cast<vector<tick_t>*>(ptr))); }},
+        {typeid(vector<bool>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "bool[]", *static_cast<vector<bool>*>(ptr))); }},
+        {typeid(vector<int8>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<int8>*>(ptr))); }},
+        {typeid(vector<int16>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<int16>*>(ptr))); }},
+        {typeid(vector<int>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int[]", *static_cast<vector<int>*>(ptr))); }},
+        {typeid(vector<int64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int64[]", *static_cast<vector<int64>*>(ptr))); }},
+        {typeid(vector<uint8>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uint8>*>(ptr))); }},
+        {typeid(vector<uint16>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<uint16>*>(ptr))); }},
+        {typeid(vector<uint>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint[]", *static_cast<vector<uint>*>(ptr))); }},
+        {typeid(vector<uint64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
+        {typeid(vector<float>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
+        {typeid(vector<double>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
+        {typeid(vector<string>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
+        {typeid(vector<hstring>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
+        {typeid(vector<any_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "any[]", *static_cast<vector<any_t>*>(ptr))); }},
+        {typeid(vector<ident_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), IDENT_T_NAME "[]", *static_cast<vector<ident_t>*>(ptr))); }},
+        {typeid(vector<tick_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), TICK_T_NAME "[]", *static_cast<vector<tick_t>*>(ptr))); }},
     };
 
-    static unordered_map<type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
-        {type_index(typeid(bool)), [](asIScriptContext* ctx, void* ptr) { *static_cast<bool*>(ptr) = ctx->GetReturnByte() != 0; }},
-        {type_index(typeid(int8)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int8*>(ptr) = static_cast<int8>(ctx->GetReturnByte()); }},
-        {type_index(typeid(int16)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int16*>(ptr) = static_cast<int16>(ctx->GetReturnWord()); }},
-        {type_index(typeid(int)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int*>(ptr) = static_cast<int>(ctx->GetReturnDWord()); }},
-        {type_index(typeid(int64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int64*>(ptr) = static_cast<int64>(ctx->GetReturnQWord()); }},
-        {type_index(typeid(uint8)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint8*>(ptr) = static_cast<uint8>(ctx->GetReturnByte()); }},
-        {type_index(typeid(uint16)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint16*>(ptr) = static_cast<uint16>(ctx->GetReturnWord()); }},
-        {type_index(typeid(uint)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint*>(ptr) = static_cast<uint>(ctx->GetReturnDWord()); }},
-        {type_index(typeid(uint64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
-        {type_index(typeid(float)), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
-        {type_index(typeid(double)), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
-        {type_index(typeid(string)), [](asIScriptContext* ctx, void* ptr) { *static_cast<string*>(ptr) = *static_cast<string*>(ctx->GetReturnObject()); }},
-        {type_index(typeid(hstring)), [](asIScriptContext* ctx, void* ptr) { *static_cast<hstring*>(ptr) = *static_cast<hstring*>(ctx->GetReturnObject()); }},
-        {type_index(typeid(any_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<any_t*>(ptr) = *static_cast<any_t*>(ctx->GetReturnObject()); }},
-        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<ident_t*>(ptr) = *static_cast<ident_t*>(ctx->GetReturnObject()); }},
-        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<tick_t*>(ptr) = *static_cast<tick_t*>(ctx->GetReturnObject()); }},
+    static unordered_map<std::type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
+        {typeid(bool), [](asIScriptContext* ctx, void* ptr) { *static_cast<bool*>(ptr) = ctx->GetReturnByte() != 0; }},
+        {typeid(int8), [](asIScriptContext* ctx, void* ptr) { *static_cast<int8*>(ptr) = static_cast<int8>(ctx->GetReturnByte()); }},
+        {typeid(int16), [](asIScriptContext* ctx, void* ptr) { *static_cast<int16*>(ptr) = static_cast<int16>(ctx->GetReturnWord()); }},
+        {typeid(int), [](asIScriptContext* ctx, void* ptr) { *static_cast<int*>(ptr) = static_cast<int>(ctx->GetReturnDWord()); }},
+        {typeid(int64), [](asIScriptContext* ctx, void* ptr) { *static_cast<int64*>(ptr) = static_cast<int64>(ctx->GetReturnQWord()); }},
+        {typeid(uint8), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint8*>(ptr) = static_cast<uint8>(ctx->GetReturnByte()); }},
+        {typeid(uint16), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint16*>(ptr) = static_cast<uint16>(ctx->GetReturnWord()); }},
+        {typeid(uint), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint*>(ptr) = static_cast<uint>(ctx->GetReturnDWord()); }},
+        {typeid(uint64), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
+        {typeid(float), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
+        {typeid(double), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
+        {typeid(string), [](asIScriptContext* ctx, void* ptr) { *static_cast<string*>(ptr) = *static_cast<string*>(ctx->GetReturnObject()); }},
+        {typeid(hstring), [](asIScriptContext* ctx, void* ptr) { *static_cast<hstring*>(ptr) = *static_cast<hstring*>(ctx->GetReturnObject()); }},
+        {typeid(any_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<any_t*>(ptr) = *static_cast<any_t*>(ctx->GetReturnObject()); }},
+        {typeid(ident_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<ident_t*>(ptr) = *static_cast<ident_t*>(ctx->GetReturnObject()); }},
+        {typeid(tick_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<tick_t*>(ptr) = *static_cast<tick_t*>(ctx->GetReturnObject()); }},
     };
 
     try {
@@ -1003,11 +1003,11 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 
         if (ret != nullptr) {
             RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-            RUNTIME_ASSERT(func_desc->RetType != type_index(typeid(void)));
+            RUNTIME_ASSERT(func_desc->RetType != typeid(void));
         }
         else {
             RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-            RUNTIME_ASSERT(func_desc->RetType == type_index(typeid(void)));
+            RUNTIME_ASSERT(func_desc->RetType == typeid(void));
         }
 
         auto* ctx = script_sys->PrepareContext(func);
@@ -1044,8 +1044,8 @@ template<typename TRet, typename... Args>
     auto* func_desc = new ScriptFuncDesc();
     func_desc->Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
     func_desc->CallSupported = true;
-    func_desc->RetType = type_index(typeid(TRet));
-    func_desc->ArgsType = {type_index(typeid(Args))...};
+    func_desc->RetType = std::type_index(typeid(TRet));
+    func_desc->ArgsType = {std::type_index(typeid(Args))...};
     func_desc->Delegate = func->GetDelegateObject() != nullptr;
     func_desc->Call = [script_sys, func_desc, func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
         return AngelScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
@@ -2720,7 +2720,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     auto* as_engine = gen->GetEngine();
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
-    if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
+    if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
     }
 
@@ -2744,7 +2744,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     int as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
-    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
+    if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
         throw ScriptException("Invalid getter function");
     }
 
@@ -2804,7 +2804,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     auto* as_engine = gen->GetEngine();
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
-    if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
+    if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
     }
 
@@ -2822,7 +2822,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     int as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
-    if (auto* type_info = as_engine->GetTypeInfoById(type_id); type_info == nullptr || string_view(type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
+    if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
         throw ScriptException("Invalid setter function");
     }
 
@@ -4529,7 +4529,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         auto* mod = engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> type_index {
+        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> std::type_index {
 #define CHECK_CLASS(class_name, real_class) \
     if (string_view(as_type_info->GetName()) == class_name) { \
         return typeid(real_class); \
@@ -4541,7 +4541,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     if (is_array && as_type_info->GetSubTypeId() == as_type) { \
         return typeid(vector<type>); \
     }
-       
             auto* as_type_info = engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
@@ -4689,9 +4688,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             func_desc.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
             func_desc.CallSupported = (func_desc.RetType != typeid(UnsupportedScriptFuncType) && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), typeid(UnsupportedScriptFuncType)) == func_desc.ArgsType.end());
-            
+
             // Check for special module init function
-            if (func_desc.ArgsType.empty() && func_desc.RetType == type_index(typeid(void))) {
+            if (func_desc.ArgsType.empty() && func_desc.RetType == typeid(void)) {
                 RUNTIME_ASSERT(func_desc.CallSupported);
                 const auto func_name_ex = strex(func->GetName());
 

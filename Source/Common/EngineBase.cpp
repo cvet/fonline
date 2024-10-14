@@ -79,7 +79,7 @@ void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_vie
     it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
 }
 
-void FOEngineBase::RegisterEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
+void FOEngineBase::RegisterEnumGroup(string_view name, const std::type_info& underlying_type, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 

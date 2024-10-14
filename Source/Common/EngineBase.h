@@ -78,7 +78,7 @@ public:
 
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
-    void RegisterEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+    void RegisterEnumGroup(string_view name, const std::type_info& underlying_type, unordered_map<string, int>&& key_values);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
@@ -101,7 +101,7 @@ private:
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
-    unordered_map<string, const type_info*> _enumTypes {};
+    unordered_map<string, const std::type_info*> _enumTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
