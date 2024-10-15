@@ -4379,7 +4379,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
     if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, func.get()); }); \
+        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, func.get()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
