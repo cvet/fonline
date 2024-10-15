@@ -371,7 +371,11 @@ _global_rpmalloc_xib(void) {
 
 #pragma section(".CRT$XIB",read)
 __declspec(allocate(".CRT$XIB")) void (*_rpmalloc_module_init)(void) = _global_rpmalloc_xib;
+#if defined(_M_IX86) // (FOnline Patch)
+#pragma comment(linker, "/include:__rpmalloc_module_init")
+#else
 #pragma comment(linker, "/include:_rpmalloc_module_init")
+#endif
 
 #endif
 
