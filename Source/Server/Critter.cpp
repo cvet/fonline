@@ -1212,17 +1212,6 @@ void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critt
     }
 }
 
-void Critter::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_AutomapsInfo(locs_vec, loc);
-    }
-}
-
 void Critter::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
@@ -1308,17 +1297,6 @@ void Critter::Send_PlaceToGameComplete()
 
     if (_player != nullptr) {
         _player->Send_PlaceToGameComplete();
-    }
-}
-
-void Critter::Send_AllAutomapsInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_AllAutomapsInfo();
     }
 }
 

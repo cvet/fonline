@@ -3779,6 +3779,8 @@ static void Game_DestroyOne(FOEngine* engine, T* entity)
     if (entity != nullptr) {
         engine->EntityMngr.DestroyEntity(entity);
     }
+#else
+    UNUSED_VARIABLE(engine, entity);
 #endif
 
 #else
@@ -3802,6 +3804,8 @@ static void Game_DestroyAll(FOEngine* engine, CScriptArray* as_entities)
             engine->EntityMngr.DestroyEntity(entity);
         }
     }
+#else
+    UNUSED_VARIABLE(engine, as_entities);
 #endif
 
 #else
@@ -3824,6 +3828,8 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
     CustomEntity* entity = holder->GetEngine()->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
     RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
     new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 
 #else

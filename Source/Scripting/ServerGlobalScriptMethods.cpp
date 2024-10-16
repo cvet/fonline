@@ -695,9 +695,6 @@
         if (!cr->GetMapId()) {
             cr->Send_GlobalLocation(loc, true);
         }
-        if (loc->IsNonEmptyAutomaps()) {
-            cr->Send_AutomapsInfo(nullptr, loc);
-        }
 
         const auto zx = static_cast<uint16>(loc->GetWorldX() / server->Settings.GlobalMapZoneLength);
         const auto zy = static_cast<uint16>(loc->GetWorldY() / server->Settings.GlobalMapZoneLength);

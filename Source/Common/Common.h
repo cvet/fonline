@@ -1520,7 +1520,6 @@ struct FMTNS::formatter<hstring> : formatter<string_view>
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
-static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr float MIN_ZOOM = 0.1f;

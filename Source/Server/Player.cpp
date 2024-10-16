@@ -905,86 +905,6 @@ void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    // Todo: restore automaps
-    UNUSED_VARIABLE(locs_vec);
-    UNUSED_VARIABLE(loc);
-    /*if (locs_vec)
-    {
-        LocationVec* locs = (LocationVec*)locs_vec;
-        for (uint i = 0, j = (uint)locs->size(); i < j; i++)
-        {
-            Location* loc_ = (*locs)[i];
-            if (loc_->IsNonEmptyAutomaps())
-            {
-                CScriptArray* automaps = loc_->GetAutomaps();
-                automaps->Release();
-            }
-        }
-
-        CONNECTION_OUTPUT_BEGIN(Connection);
-        Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf.Write((bool)true; // Clear list
-        Connection->OutBuf.Write((uint16)locs->size();
-        for (uint i = 0, j = (uint)locs->size(); i < j; i++)
-        {
-            Location* loc_ = (*locs)[i];
-            Connection->OutBuf.Write(loc_->GetId();
-            Connection->OutBuf.Write(loc_->GetProtoId();
-            if (loc_->IsNonEmptyAutomaps())
-            {
-                CScriptArray* automaps = loc_->GetAutomaps();
-                Connection->OutBuf.Write((uint16)automaps->GetSize();
-                for (uint k = 0, l = (uint)automaps->GetSize(); k < l; k++)
-                {
-                    hstring pid = *(hash*)automaps->At(k);
-                    Connection->OutBuf.Write(pid;
-                    Connection->OutBuf.Write((uint8)loc_->GetMapIndex(pid);
-                }
-                automaps->Release();
-            }
-            else
-            {
-                Connection->OutBuf.Write((uint16)0;
-            }
-        }
-        Connection->OutBuf.EndMsg();
-        CONNECTION_OUTPUT_END(Connection);
-    }
-
-    if (loc)
-    {
-        CScriptArray* automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr);
-
-        CONNECTION_OUTPUT_BEGIN(Connection);
-        Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf.Write((bool)false; // Append this information
-        Connection->OutBuf.Write((uint16)1;
-        Connection->OutBuf.Write(loc->GetId();
-        Connection->OutBuf.Write(loc->GetProtoId();
-        Connection->OutBuf.Write((uint16)(automaps ? automaps->GetSize() : 0);
-        if (automaps)
-        {
-            for (uint i = 0, j = (uint)automaps->GetSize(); i < j; i++)
-            {
-                hash pid = *(hash*)automaps->At(i);
-                Connection->OutBuf.Write(pid;
-                Connection->OutBuf.Write((uint8)loc->GetMapIndex(pid);
-            }
-        }
-        Connection->OutBuf.EndMsg();
-        CONNECTION_OUTPUT_END(Connection);
-
-        if (automaps)
-            automaps->Release();
-    }*/
-}
-
 void Player::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
@@ -1062,26 +982,6 @@ void Player::Send_PlaceToGameComplete()
     Connection->OutBuf.StartMsg(NETMSG_PLACE_TO_GAME_COMPLETE);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_AllAutomapsInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_controlledCr);
-
-    vector<Location*> locs;
-
-    for (const auto loc_id : _controlledCr->GetKnownLocations()) {
-        auto* loc = _engine->EntityMngr.GetLocation(loc_id);
-        if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
-            locs.push_back(loc);
-        }
-    }
-
-    Send_AutomapsInfo(&locs, nullptr);
 }
 
 void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)

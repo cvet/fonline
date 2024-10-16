@@ -188,7 +188,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CHOSEN_REMOVE_ITEM, [this] { Net_OnChosenRemoveItem(); });
     _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
     _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
-    _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, [this] { Net_OnAutomapsInfo(); });
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
     _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
@@ -2701,55 +2700,6 @@ void FOClient::Net_OnSomeItems()
 
     for (const auto* item : items) {
         item->Release();
-    }
-}
-
-void FOClient::Net_OnAutomapsInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto clear = _conn.InBuf.Read<bool>();
-
-    if (clear) {
-        _automaps.clear();
-    }
-
-    const auto locs_count = _conn.InBuf.Read<uint16>();
-
-    for (uint16 i = 0; i < locs_count; i++) {
-        const auto loc_id = _conn.InBuf.Read<ident_t>();
-        const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
-        const auto maps_count = _conn.InBuf.Read<uint16>();
-
-        auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
-
-        if (maps_count == 0) {
-            if (it != _automaps.end()) {
-                _automaps.erase(it);
-            }
-        }
-        else {
-            Automap amap;
-            amap.LocId = loc_id;
-            amap.LocPid = loc_pid;
-
-            for (uint16 j = 0; j < maps_count; j++) {
-                const auto map_pid = _conn.InBuf.Read<hstring>(*this);
-                const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
-
-                UNUSED_VARIABLE(map_index_in_loc);
-
-                amap.MapPids.push_back(map_pid);
-            }
-
-            if (it != _automaps.end()) {
-                *it = amap;
-            }
-            else {
-                _automaps.push_back(amap);
-            }
-        }
     }
 }
 

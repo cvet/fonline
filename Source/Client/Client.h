@@ -317,14 +317,6 @@ protected:
         uint8 Entrances {};
     };
 
-    struct Automap
-    {
-        ident_t LocId {};
-        hstring LocPid {};
-        vector<hstring> MapPids {};
-        uint CurMap {};
-    };
-
     void TryAutoLogin();
     void TryExit();
     void FlashGameWindow();
@@ -390,7 +382,6 @@ protected:
     void Net_OnGlobalLocation();
     void Net_OnGlobalFog();
     void Net_OnSomeItems();
-    void Net_OnAutomapsInfo();
     void Net_OnViewMap();
     void Net_OnRemoteCall();
     void Net_OnAddCustomEntity();
@@ -467,9 +458,6 @@ protected:
     uint8 _pupTransferType {};
     uint _pupContId {};
     hstring _pupContPid {};
-
-    uint _holoInfo[MAX_HOLO_INFO] {};
-    vector<Automap> _automaps {};
 
     unordered_map<ident_t, ClientEntity*> _allEntities {};
 
