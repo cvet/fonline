@@ -229,7 +229,7 @@
     }
     else {
         if (item == nullptr) {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (!cr->GetIsChosen()) {
                     item = cr->GetInvItem(itemId);
 
@@ -263,7 +263,7 @@
         return cr;
     }
     else {
-        return client->GetWorldmapCritter(crId);
+        return client->GetGlobalMapCritter(crId);
     }
 }
 
@@ -286,7 +286,7 @@
         }
     }
     else {
-        critters = client->GetWorldmapCritters();
+        critters = client->GetGlobalMapCritters();
     }
 
     return critters;
@@ -319,14 +319,14 @@
     }
     else {
         if (!pid) {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
             }
         }
         else {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
@@ -598,7 +598,7 @@
         throw ScriptException("Invalid world map pos arg");
     }
 
-    return client->GetWorldmapFog().Get2Bit(zoneX, zoneY);
+    return client->GetGlobalMapFog().Get2Bit(zoneX, zoneY);
 }
 
 ///# ...

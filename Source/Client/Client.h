@@ -144,10 +144,10 @@ public:
     [[nodiscard]] auto GetConnection() noexcept -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() noexcept -> CritterView*;
     [[nodiscard]] auto GetMapChosen() noexcept -> CritterHexView*;
-    [[nodiscard]] auto GetWorldmapCritter(ident_t cr_id) -> CritterView*;
-    [[nodiscard]] auto GetWorldmapCritters() noexcept -> vector<CritterView*> { return _worldmapCritters; }
+    [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
+    [[nodiscard]] auto GetGlobalMapCritters() noexcept -> const vector<CritterView*>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
-    [[nodiscard]] auto GetWorldmapFog() const noexcept -> const TwoBitMask& { return _worldmapFog; }
+    [[nodiscard]] auto GetGlobalMapFog() const noexcept -> const TwoBitMask& { return _globalMapFog; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
 
     void MainLoop();
@@ -461,11 +461,11 @@ protected:
 
     unordered_map<ident_t, ClientEntity*> _allEntities {};
 
-    vector<CritterView*> _worldmapCritters {};
-    TwoBitMask _worldmapFog {};
-    vector<PrimitivePoint> _worldmapFogPix {};
-    vector<GmapLocation> _worldmapLoc {};
-    GmapLocation _worldmapTownLoc {};
+    vector<CritterView*> _globalMapCritters {};
+    TwoBitMask _globalMapFog {};
+    vector<PrimitivePoint> _globalMapFogPix {};
+    vector<GmapLocation> _globalMapLocs {};
+    GmapLocation _globalMapTownLoc {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
