@@ -57,7 +57,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     Cache(strex(Settings.ResourcesDir).combinePath("Cache.fobin")),
     ClientDeferredCalls(this),
     _conn(Settings),
-    _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+    _globalMapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     STACK_TRACE_ENTRY();
 
@@ -360,12 +360,12 @@ auto FOClient::GetMapChosen() noexcept -> CritterHexView*
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
-auto FOClient::GetWorldmapCritter(ident_t cr_id) -> CritterView*
+auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
-    return it != _worldmapCritters.end() ? *it : nullptr;
+    const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+    return it != _globalMapCritters.end() ? *it : nullptr;
 }
 
 void FOClient::TryAutoLogin()
@@ -1092,18 +1092,18 @@ void FOClient::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
-        const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
 
-        if (it != _worldmapCritters.end()) {
+        if (it != _globalMapCritters.end()) {
             BreakIntoDebugger();
             (*it)->MarkAsDestroyed();
             (*it)->Release();
-            _worldmapCritters.erase(it);
+            _globalMapCritters.erase(it);
         }
 
         cr = new CritterView(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
-        _worldmapCritters.emplace_back(cr);
+        _globalMapCritters.emplace_back(cr);
 
         hex_cr = nullptr;
     }
@@ -1222,8 +1222,8 @@ void FOClient::Net_OnRemoveCritter()
         }
     }
     else {
-        const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
-        if (it == _worldmapCritters.end()) {
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+        if (it == _globalMapCritters.end()) {
             BreakIntoDebugger();
             return;
         }
@@ -1231,7 +1231,7 @@ void FOClient::Net_OnRemoveCritter()
         auto* cr = *it;
 
         OnCritterOut.Fire(cr);
-        _worldmapCritters.erase(it);
+        _globalMapCritters.erase(it);
 
         if (cr == _chosen) {
             _chosen->Release();
@@ -1744,7 +1744,7 @@ void FOClient::Net_OnCritterMoveItem()
         cr = CurMap->GetCritter(cr_id);
     }
     else {
-        cr = GetWorldmapCritter(cr_id);
+        cr = GetGlobalMapCritter(cr_id);
     }
 
     if (cr == nullptr) {
@@ -1870,7 +1870,7 @@ void FOClient::Net_OnCritterSetAnims()
         cr = hex_cr;
     }
     else {
-        cr = GetWorldmapCritter(cr_id);
+        cr = GetGlobalMapCritter(cr_id);
         hex_cr = nullptr;
     }
 
@@ -2031,7 +2031,7 @@ void FOClient::Net_OnCritterAttachments()
         }
     }
     else {
-        auto* cr = GetWorldmapCritter(cr_id);
+        auto* cr = GetGlobalMapCritter(cr_id);
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -2605,7 +2605,7 @@ void FOClient::Net_OnGlobalInfo()
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
 
-    _worldmapLoc.clear();
+    _globalMapLocs.clear();
 
     const auto count_loc = _conn.InBuf.Read<uint16>();
 
@@ -2618,10 +2618,10 @@ void FOClient::Net_OnGlobalInfo()
         loc.Radius = _conn.InBuf.Read<uint16>();
         loc.Color = _conn.InBuf.Read<ucolor>();
         loc.Entrances = _conn.InBuf.Read<uint8>();
-        _worldmapLoc.push_back(loc);
+        _globalMapLocs.push_back(loc);
     }
 
-    auto* fog_data = _worldmapFog.GetData();
+    auto* fog_data = _globalMapFog.GetData();
     _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
 }
 
@@ -2642,18 +2642,18 @@ void FOClient::Net_OnGlobalLocation()
     loc.Color = _conn.InBuf.Read<ucolor>();
     loc.Entrances = _conn.InBuf.Read<uint8>();
 
-    const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
+    const auto it = std::find_if(_globalMapLocs.begin(), _globalMapLocs.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
     if (add) {
-        if (it != _worldmapLoc.end()) {
+        if (it != _globalMapLocs.end()) {
             *it = loc;
         }
         else {
-            _worldmapLoc.push_back(loc);
+            _globalMapLocs.push_back(loc);
         }
     }
     else {
-        if (it != _worldmapLoc.end()) {
-            _worldmapLoc.erase(it);
+        if (it != _globalMapLocs.end()) {
+            _globalMapLocs.erase(it);
         }
     }
 }
@@ -2668,7 +2668,7 @@ void FOClient::Net_OnGlobalFog()
     const auto zy = _conn.InBuf.Read<uint16>();
     const auto fog = _conn.InBuf.Read<uint8>();
 
-    _worldmapFog.Set2Bit(zx, zy, fog);
+    _globalMapFog.Set2Bit(zx, zy, fog);
 }
 
 void FOClient::Net_OnSomeItems()
@@ -3641,14 +3641,14 @@ void FOClient::GmapNullParams()
 {
     STACK_TRACE_ENTRY();
 
-    _worldmapLoc.clear();
-    _worldmapFog.Fill(0);
+    _globalMapLocs.clear();
+    _globalMapFog.Fill(0);
 
-    for (auto* cr : _worldmapCritters) {
+    for (auto* cr : _globalMapCritters) {
         cr->DestroySelf();
     }
 
-    _worldmapCritters.clear();
+    _globalMapCritters.clear();
 }
 
 void FOClient::WaitDraw()
