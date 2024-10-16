@@ -2212,7 +2212,6 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
     cr->Send_AddCritter(cr);
-    cr->Send_AllAutomapsInfo();
 
     if (map == nullptr) {
         RUNTIME_ASSERT(cr->GlobalMapGroup);
@@ -4680,7 +4679,7 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
 
-    const auto add_item = [&, this]() -> Item* {
+    const auto add_item = [&]() -> Item* {
         auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);
         map->AddItem(item, hx, hy, nullptr);
 

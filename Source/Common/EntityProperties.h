@@ -443,8 +443,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps);
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty

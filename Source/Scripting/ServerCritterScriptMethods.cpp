@@ -930,10 +930,6 @@
 
     self->GetEngine()->MapMngr.AddKnownLoc(self, loc->GetId());
 
-    if (loc->IsNonEmptyAutomaps()) {
-        self->Send_AutomapsInfo(nullptr, loc);
-    }
-
     if (!self->GetMapId()) {
         self->Send_GlobalLocation(loc, true);
     }

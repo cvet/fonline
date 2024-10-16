@@ -285,7 +285,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
 {
     STACK_TRACE_ENTRY();
 
-    const auto create_proto = [&, this]() -> ProtoEntity* {
+    const auto create_proto = [&]() -> ProtoEntity* {
         const auto* registrator = _engine->GetPropertyRegistrator(type_name);
         RUNTIME_ASSERT(registrator);
 

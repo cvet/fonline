@@ -168,7 +168,6 @@ static auto GetMsgSize(uint msg) -> uint
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_LOCATION:
     case NETMSG_GLOBAL_FOG:
-    case NETMSG_AUTOMAPS_INFO:
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_SEND_MOVE:

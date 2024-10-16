@@ -96,7 +96,6 @@ public:
     void Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
-    void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
     void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
@@ -105,7 +104,6 @@ public:
     void Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
-    void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
     void Send_AddCustomEntity(CustomEntity* entity, bool owned);
