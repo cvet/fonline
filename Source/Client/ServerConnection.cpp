@@ -221,7 +221,7 @@ void ServerConnection::ProcessConnection()
 
         if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
             _netOut.StartMsg(NETMSG_PING);
-            _netOut.Write(PING_SERVER);
+            _netOut.Write(false);
             _pingTime = Timer::CurTime();
             _netOut.EndMsg();
         }
@@ -863,17 +863,17 @@ void ServerConnection::Net_OnPing()
 {
     STACK_TRACE_ENTRY();
 
-    const auto ping = _netIn.Read<uint8>();
+    const auto answer = _netIn.Read<bool>();
 
-    if (ping == PING_CLIENT) {
-        _netOut.StartMsg(NETMSG_PING);
-        _netOut.Write(PING_CLIENT);
-        _netOut.EndMsg();
-    }
-    else if (ping == PING_SERVER) {
+    if (answer) {
         const auto time = Timer::CurTime();
         _settings.Ping = time_duration_to_ms<uint>(time - _pingTime);
         _pingTime = time_point {};
         _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
+    }
+    else {
+        _netOut.StartMsg(NETMSG_PING);
+        _netOut.Write(true);
+        _netOut.EndMsg();
     }
 }

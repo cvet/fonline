@@ -102,10 +102,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PING MAKE_NETMSG_HEADER(5)
-#define NETMSG_PING_SIZE (sizeof(uint) + sizeof(uint8))
+#define NETMSG_PING_SIZE (sizeof(uint) + sizeof(bool))
 // ////////////////////////////////////////////////////////////////////////
 // Ping
-// uint8 ping (see Ping in FOdefines.h)
+// bool answer
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PLACE_TO_GAME_COMPLETE MAKE_NETMSG_HEADER(7)
