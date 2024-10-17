@@ -939,17 +939,6 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_SendPing(uint8 ping)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NETMSG_PING);
-    _conn.OutBuf.Write(ping);
-    _conn.OutBuf.EndMsg();
-}
-
 void FOClient::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();

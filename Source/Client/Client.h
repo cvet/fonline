@@ -340,7 +340,6 @@ protected:
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
-    void Net_SendPing(uint8 ping);
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();

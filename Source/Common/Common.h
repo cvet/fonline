@@ -1532,10 +1532,6 @@ constexpr auto SQRT3_FLOAT = 1.732050807f;
 constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
 constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
-// Ping
-static constexpr uint8 PING_SERVER = 0;
-static constexpr uint8 PING_CLIENT = 2;
-
 // Message box types
 static constexpr int FOMB_GAME = 0;
 static constexpr int FOMB_TALK = 1;

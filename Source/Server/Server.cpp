@@ -1240,7 +1240,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
 
         CONNECTION_OUTPUT_BEGIN(connection);
         connection->OutBuf.StartMsg(NETMSG_PING);
-        connection->OutBuf.Write(PING_CLIENT);
+        connection->OutBuf.Write(false);
         connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(connection);
 
@@ -2375,24 +2375,19 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     NON_CONST_METHOD_HINT();
 
-    const auto ping = connection->InBuf.Read<uint8>();
+    const auto answer = connection->InBuf.Read<bool>();
 
-    if (ping == PING_CLIENT) {
+    if (answer) {
         connection->PingOk = true;
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
-        return;
     }
-
-    if (ping != PING_SERVER) {
-        WriteLog("Unknown ping {}, client host '{}'", ping, connection->GetHost());
-        return;
+    else {
+        CONNECTION_OUTPUT_BEGIN(connection);
+        connection->OutBuf.StartMsg(NETMSG_PING);
+        connection->OutBuf.Write(true);
+        connection->OutBuf.EndMsg();
+        CONNECTION_OUTPUT_END(connection);
     }
-
-    CONNECTION_OUTPUT_BEGIN(connection);
-    connection->OutBuf.StartMsg(NETMSG_PING);
-    connection->OutBuf.Write(ping);
-    connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(connection);
 }
 
 void FOServer::Process_UpdateFile(ClientConnection* connection)
