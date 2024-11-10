@@ -84,6 +84,52 @@
     return self->GetInnerItems(stackId);
 }
 
+///@ ExportMethod
+[[maybe_unused]] Map* Server_Item_GetMap(Item* self)
+{
+    Map* map;
+
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+        if (cr == nullptr) {
+            throw ScriptException("Critter ownership, critter not found");
+        }
+
+        if (cr->GetMapId() == ident_t {}) {
+            return nullptr;
+        }
+
+        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+        if (map == nullptr) {
+            throw ScriptException("Critter ownership, map not found");
+        }
+    } break;
+    case ItemOwnership::MapHex: {
+        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        if (map == nullptr) {
+            throw ScriptException("Hex ownership, map not found");
+        }
+    } break;
+    case ItemOwnership::ItemContainer: {
+        if (self->GetId() == self->GetContainerId()) {
+            throw ScriptException("Container ownership, crosslink");
+        }
+
+        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+        if (cont == nullptr) {
+            throw ScriptException("Container ownership, container not found");
+        }
+
+        map = Server_Item_GetMap(cont);
+    } break;
+    default:
+        throw ScriptException("Unknown ownership");
+    }
+
+    return map;
+}
+
 ///# ...
 ///# param hx ...
 ///# param hy ...
@@ -97,7 +143,7 @@
     case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
         if (cr == nullptr) {
-            throw ScriptException("Critter accessory, critter not found");
+            throw ScriptException("Critter ownership, critter not found");
         }
 
         if (cr->GetMapId() == ident_t {}) {
@@ -107,8 +153,8 @@
         }
 
         map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
-        if (!map) {
-            throw ScriptException("Critter accessory, map not found");
+        if (map == nullptr) {
+            throw ScriptException("Critter ownership, map not found");
         }
 
         hx = cr->GetHexX();
@@ -117,7 +163,7 @@
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
         if (map == nullptr) {
-            throw ScriptException("Hex accessory, map not found");
+            throw ScriptException("Hex ownership, map not found");
         }
 
         hx = self->GetHexX();
@@ -125,18 +171,18 @@
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
-            throw ScriptException("Container accessory, crosslink");
+            throw ScriptException("Container ownership, crosslink");
         }
 
         auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
         if (cont == nullptr) {
-            throw ScriptException("Container accessory, container not found");
+            throw ScriptException("Container ownership, container not found");
         }
 
         map = Server_Item_GetMapPosition(cont, hx, hy);
     } break;
     default:
-        throw ScriptException("Unknown accessory");
+        throw ScriptException("Unknown ownership");
     }
 
     return map;

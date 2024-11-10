@@ -817,15 +817,23 @@
     return critters;
 }
 
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, uint16 hx, uint16 hy, CritterFindType findType)
+{
+    vector<Critter*> critters;
+    const auto& map_critters = self->GetCritters();
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), static_cast<int>(cr->GetLookDistance()), hx, hy, hx, hy)) {
+            critters.push_back(cr);
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, CritterFindType findType)
 {
     vector<Critter*> critters;
     const auto& map_critters = self->GetCritters();
