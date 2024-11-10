@@ -2721,22 +2721,22 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
-        throw ScriptException("Invalid function object");
+        throw ScriptException("Invalid function object", prop->GetName());
     }
 
     auto* func = *reinterpret_cast<asIScriptFunction**>(gen->GetArgAddress(1));
 
     if (!prop->IsVirtual()) {
-        throw ScriptException("Property is not virtual");
+        throw ScriptException("Property is not virtual", prop->GetName());
     }
     if (func->GetParamCount() != 1 && func->GetParamCount() != 2) {
-        throw ScriptException("Invalid getter function");
+        throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
     if (func->GetReturnTypeId() == asTYPEID_VOID) {
-        throw ScriptException("Invalid getter function");
+        throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
     if (prop->GetFullTypeName() != strex(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
-        throw ScriptException("Invalid getter function");
+        throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
     int type_id;
@@ -2745,14 +2745,14 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
-        throw ScriptException("Invalid getter function");
+        throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
     if (func->GetParamCount() == 2) {
         AS_VERIFY(func->GetParam(1, &type_id, &flags));
 
         if (type_id != gen->GetArgTypeId(0) || flags != 0) {
-            throw ScriptException("Invalid getter function");
+            throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
         }
     }
 
@@ -2805,16 +2805,16 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
-        throw ScriptException("Invalid function object");
+        throw ScriptException("Invalid function object", prop->GetName());
     }
 
     auto* func = *reinterpret_cast<asIScriptFunction**>(gen->GetArgAddress(1));
 
     if (func->GetParamCount() != 1 && func->GetParamCount() != 2 && func->GetParamCount() != 3) {
-        throw ScriptException("Invalid setter function");
+        throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
     if (func->GetReturnTypeId() != asTYPEID_VOID) {
-        throw ScriptException("Invalid setter function");
+        throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
 
     int type_id;
@@ -2823,7 +2823,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
-        throw ScriptException("Invalid setter function");
+        throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
 
     bool has_proto_enum = false;
@@ -2835,14 +2835,14 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         if (prop->GetFullTypeName() == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
             has_value_ref = true;
             if (func->GetParamCount() == 3) {
-                throw ScriptException("Invalid setter function");
+                throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
             }
         }
         else if (type_id == gen->GetArgTypeId(0) && flags == 0) {
             has_proto_enum = true;
         }
         else {
-            throw ScriptException("Invalid setter function");
+            throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
         }
 
         if (func->GetParamCount() == 3) {
@@ -2852,14 +2852,14 @@ static void ASPropertySetter(asIScriptGeneric* gen)
                 has_value_ref = true;
             }
             else {
-                throw ScriptException("Invalid setter function");
+                throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
             }
         }
     }
 
     if constexpr (Deferred::value) {
         if (has_value_ref) {
-            throw ScriptException("Invalid setter function");
+            throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
         }
     }
 

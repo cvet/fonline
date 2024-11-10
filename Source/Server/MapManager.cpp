@@ -208,7 +208,7 @@ void MapManager::LoadFromResources()
                         const auto hx = item->GetHexX();
                         const auto hy = item->GetHexY();
 
-                        if (!item->GetIsHiddenInStatic()) {
+                        if (!item->GetHiddenInStatic()) {
                             static_map->StaticItems.emplace_back(item);
                             static_map->StaticItemsById.emplace(item_id, item);
 

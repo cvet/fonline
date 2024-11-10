@@ -857,7 +857,7 @@ public:
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetCount() const noexcept -> size_t { return _registeredProperties.size(); }
-    [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
+    [[nodiscard]] auto Find(string_view property_name, bool* is_component = nullptr) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const noexcept -> const Property*;
     [[nodiscard]] auto GetByIndexFast(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index]; }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
@@ -876,7 +876,8 @@ private:
     const hstring _typeName;
     const hstring _typeNamePlural;
     const PropertiesRelationType _relation;
-    const hstring _migrationRuleName;
+    const hstring _propMigrationRuleName;
+    const hstring _componentMigrationRuleName;
     HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};

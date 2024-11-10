@@ -119,21 +119,11 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
         for (auto&& [key, value] : from_kv) {
             RUNTIME_ASSERT(!key.empty());
 
-            if (key[0] != '$' || strex(key).startsWith("$Text")) {
-                if (overwrite) {
-                    to_kv[key] = value;
-                }
-                else {
-                    to_kv.emplace(key, value);
-                }
+            if (overwrite) {
+                to_kv[key] = value;
             }
-            else if (key == "$Components" && !value.empty()) {
-                if (to_kv.count(key) == 0) {
-                    to_kv[key] = value;
-                }
-                else {
-                    to_kv[key] += " " + value;
-                }
+            else {
+                to_kv.emplace(key, value);
             }
         }
     };
@@ -222,16 +212,32 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
             auto* proto = CreateProto(type_name, pid, &props);
 
             // Components
-            if (final_kv.count("$Components") != 0) {
-                for (const auto& component_name : strex(final_kv["$Components"]).split(' ')) {
-                    auto component_name_hashed = _engine->ToHashedString(component_name);
-                    component_name_hashed = _engine->CheckMigrationRule(component_rule_name, type_name, component_name_hashed).value_or(component_name_hashed);
+            for (auto&& [key, value] : final_kv) {
+                if (key.front() == '$') {
+                    continue;
+                }
 
-                    if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
-                        throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
-                    }
+                bool is_component;
+                const auto* prop = property_registrator->Find(key, &is_component);
+                UNUSED_VARIABLE(prop);
 
-                    proto->EnableComponent(component_name_hashed);
+                if (!is_component) {
+                    continue;
+                }
+
+                if (value != "Enabled" && value != "Disabled") {
+                    throw ProtoManagerException("Proto item has invalid component value (expected Enabled or Disabled)", base_name, key, value);
+                }
+
+                auto component_name = _engine->ToHashedString(key);
+                component_name = _engine->CheckMigrationRule(component_rule_name, type_name, component_name).value_or(component_name);
+
+                if (!property_registrator->IsComponentRegistered(component_name)) {
+                    throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
+                }
+
+                if (value == "Enabled") {
+                    proto->EnableComponent(component_name);
                 }
             }
 
