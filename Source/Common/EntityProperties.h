@@ -178,8 +178,9 @@ public:
     ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, AlwaysHideSprite);
+    ///@ MigrationRule Property Item IsHiddenInStatic HiddenInStatic
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenInStatic);
+    ENTITY_PROPERTY(PrivateCommon, bool, HiddenInStatic);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsFlat);
     ///@ ExportProperty

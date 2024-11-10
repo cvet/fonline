@@ -424,8 +424,14 @@ auto Properties::ApplyFromText(const map<string, string>& key_values) -> bool
         }
 
         // Find property
-        const auto* prop = _registrator->Find(key);
+        bool is_component;
+        const auto* prop = _registrator->Find(key, &is_component);
+
         if (prop == nullptr) {
+            if (is_component) {
+                continue;
+            }
+
             WriteLog("Unknown property {}", key);
             is_error = true;
             continue;
@@ -1109,7 +1115,8 @@ PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelati
     _typeName {hash_resolver.ToHashedString(type_name)},
     _typeNamePlural {hash_resolver.ToHashedString(strex("{}s", type_name))},
     _relation {relation},
-    _migrationRuleName {hash_resolver.ToHashedString("Property")},
+    _propMigrationRuleName {hash_resolver.ToHashedString("Property")},
+    _componentMigrationRuleName {hash_resolver.ToHashedString("Component")},
     _hashResolver {hash_resolver},
     _nameResolver {name_resolver}
 {
@@ -1169,14 +1176,26 @@ auto PropertyRegistrator::GetByIndex(int property_index) const noexcept -> const
     return nullptr;
 }
 
-auto PropertyRegistrator::Find(string_view property_name) const -> const Property*
+auto PropertyRegistrator::Find(string_view property_name, bool* is_component) const -> const Property*
 {
     STACK_TRACE_ENTRY();
 
     auto key = string(property_name);
     const auto hkey = _hashResolver.ToHashedString(key);
 
-    if (const auto rule = _nameResolver.CheckMigrationRule(_migrationRuleName, _typeName, hkey); rule.has_value()) {
+    if (IsComponentRegistered(hkey)) {
+        if (is_component != nullptr) {
+            *is_component = true;
+        }
+
+        return nullptr;
+    }
+
+    if (is_component != nullptr) {
+        *is_component = false;
+    }
+
+    if (const auto rule = _nameResolver.CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
     }
 
@@ -1195,7 +1214,13 @@ auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const no
 {
     STACK_TRACE_ENTRY();
 
-    return _registeredComponents.find(component_name) != _registeredComponents.end();
+    hstring migrated_component_name = component_name;
+
+    if (const auto rule = _nameResolver.CheckMigrationRule(_componentMigrationRuleName, _typeName, migrated_component_name); rule.has_value()) {
+        migrated_component_name = rule.value();
+    }
+
+    return _registeredComponents.find(migrated_component_name) != _registeredComponents.end();
 }
 
 auto PropertyRegistrator::GetWholeDataSize() const noexcept -> uint

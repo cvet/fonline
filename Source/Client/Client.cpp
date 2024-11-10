@@ -3128,6 +3128,8 @@ void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
@@ -3139,6 +3141,8 @@ void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -3159,6 +3163,8 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
@@ -3169,6 +3175,8 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -3216,6 +3224,8 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
     UNUSED_VARIABLE(entity);
@@ -3230,6 +3240,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -3240,6 +3252,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     // OffsetX, OffsetY
 
@@ -3254,6 +3268,8 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -3272,6 +3288,8 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 

@@ -102,7 +102,8 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
         }
 
         // Find property
-        const auto* prop = props->GetRegistrator()->Find(key);
+        bool is_component;
+        const auto* prop = props->GetRegistrator()->Find(key, &is_component);
 
         if (prop != nullptr && !prop->IsDisabled() && !prop->IsVirtual() && !prop->IsTemporary()) {
             if (!LoadPropertyFromValue(props, prop, value, hash_resolver, name_resolver)) {
@@ -112,6 +113,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
         else {
             // Todo: maybe need some optional warning for unknown/wrong properties
             // WriteLog("Skip unknown property {}", key);
+            UNUSED_VARIABLE(is_component);
         }
     }
 
