@@ -551,6 +551,10 @@ class Object
 
     void _Show(dict<string, any> params)
     {
+        if (!Active) {
+            return;
+        }
+
         OnShow();
         OnShow(params);
         for (uint i = 0; i < _Children.length(); i++) {
@@ -568,6 +572,10 @@ class Object
 
     void _Appear()
     {
+        if (!Active) {
+            return;
+        }
+
         OnAppear();
         for (uint i = 0; i < _Children.length(); i++) {
             _Children[i]._Appear();
@@ -644,6 +652,10 @@ class Object
 
     void _Draw(bool callCallback)
     {
+        if (!Active) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -3197,9 +3209,30 @@ void RegisterScreen(int screenIndex, CreateScreenFunc screenFunc)
     }
 }
 
+void ShowScreen(int screenIndex)
+{
+    Game.ShowScreen(screenIndex);
+}
+
+void ShowScreen(int screenIndex, dict<string, any> params)
+{
+    Game.ShowScreen(screenIndex, params);
+}
+
+void HideScreen()
+{
+    Game.HideScreen();
+}
+
+void HideScreen(int screenIndex)
+{
+    Game.HideScreen(screenIndex);
+}
+
 Screen GetScreen(int screenIndex)
 {
-    Screen lastMultiinstanceScreen = null;
+    Screen firstMultiinstanceScreen = null;
+
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
         if (screen.Index == screenIndex) {
@@ -3207,40 +3240,67 @@ Screen GetScreen(int screenIndex)
                 return screen;
             }
             else {
-                lastMultiinstanceScreen = screen;
+                firstMultiinstanceScreen = screen;
             }
         }
     }
-    return lastMultiinstanceScreen;
+
+    return firstMultiinstanceScreen;
 }
 
 Screen GetActiveMainScreen()
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf && Screens[i].IsMain) {
-            return Screens[i];
+        Screen screen = Screens[i];
+        if (screen.Active && screen.IsMain) {
+            return screen;
         }
     }
-    return null; // Should not be reach this point
+
+    return null;
 }
 
 Screen GetActiveScreen()
 {
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        if (Screens[i].ActiveSelf) {
-            return Screens[i];
+        Screen screen = Screens[i];
+        if (screen.Active) {
+            return screen;
         }
     }
-    return null; // Should not be reach this point
+
+    return null;
 }
 
-void GetActiveScreens(Screen[] result)
+Screen GetActiveScreen(int screenIndex)
 {
-    for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf) {
-            result.insertLast(Screens[i]);
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        if (screen.Index == screenIndex && screen.Active) {
+            return screen;
         }
     }
+
+    return null;
+}
+
+bool IsScreenActive(int screenIndex)
+{
+    return GetActiveScreen(screenIndex) != null;
+}
+
+Screen[] GetActiveScreens()
+{
+    Screen[] result = {};
+
+    for (uint i = 0; i < Screens.length(); i++) {
+        Screen screen = Screens[i];
+        if (screen.Active) {
+            result.insertLast(screen);
+        }
+    }
+
+    return result;
 }
 
 Object GetFocusedObject()
