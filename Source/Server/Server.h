@@ -266,6 +266,7 @@ private:
     void OnSendLocationValue(Entity* entity, const Property* prop);
     void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
+    void OnSetCritterLook(Entity* entity, const Property* prop);
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);

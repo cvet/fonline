@@ -289,6 +289,9 @@ FOServer::FOServer(GlobalSettings& settings) :
                 prop->AddPostSetter(std::move(callback));
             };
 
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::InSneakMode_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::SneakCoefficient_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
             set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
@@ -3288,6 +3291,20 @@ void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
             player->Send_Property(NetProperty::CustomEntity, prop, custom_entity);
         }
     });
+}
+
+void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    // LookDistance, InSneakMode, SneakCoefficient
+    auto* cr = dynamic_cast<Critter*>(entity);
+
+    MapMngr.ProcessVisibleCritters(cr);
+
+    if (prop == cr->GetPropertyLookDistance()) {
+        MapMngr.ProcessVisibleItems(cr);
+    }
 }
 
 void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
