@@ -139,7 +139,7 @@ uint GetDaysInMonth(uint16 year, uint16 month)
     return 0;
 }
 
-#ifdef __CLIENT
+#if CLIENT
 string GetTimeString(const string format, uint fullSecond)
 {
     uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;

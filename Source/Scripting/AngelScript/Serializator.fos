@@ -43,7 +43,7 @@ class Serializator
         dataArray.resize(bufSize);
     }
 
-#ifdef __CLIENT
+#if CLIENT
     void SaveToCache(string name)
     {
         Game.SetCacheData(name, dataArray, dataSize);
