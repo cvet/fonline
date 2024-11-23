@@ -160,8 +160,8 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetAliveActionAnim());
     Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
     Connection->OutBuf.Write(cr->GetDeadActionAnim());
-    Connection->OutBuf.Write(cr->GetIsControlledByPlayer());
-    Connection->OutBuf.Write(cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr);
+    Connection->OutBuf.Write(cr->GetControlledByPlayer());
+    Connection->OutBuf.Write(cr->GetControlledByPlayer() && cr->GetPlayer() == nullptr);
     Connection->OutBuf.Write(is_chosen);
     Connection->OutBuf.WritePropsData(cr_data, cr_data_sizes);
 

@@ -245,13 +245,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
@@ -1108,7 +1107,7 @@ void FOClient::Net_OnAddCritter()
     cr->SetAliveActionAnim(alive_action_anim);
     cr->SetKnockoutActionAnim(knockout_action_anim);
     cr->SetDeadActionAnim(dead_action_anim);
-    cr->SetIsControlledByPlayer(is_controlled_by_player);
+    cr->SetControlledByPlayer(is_controlled_by_player);
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
 
@@ -2156,7 +2155,7 @@ void FOClient::Net_OnRemoveItemFromMap()
         OnItemMapOut.Fire(item);
 
         // Refresh borders
-        if (!item->GetIsShootThru()) {
+        if (!item->GetShootThru()) {
             CurMap->RebuildFog();
         }
 
@@ -3062,7 +3061,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
+    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->GetIsChosen()) {
@@ -3192,27 +3191,27 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
     NON_CONST_METHOD_HINT();
 
-    // IsColorize, ColorizeColor, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
+    // Colorize, ColorizeColor, BadItem, ShootThru, LightThru, NoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
 
-        if (prop == item->GetPropertyIsColorize() || prop == item->GetPropertyColorizeColor()) {
+        if (prop == item->GetPropertyColorize() || prop == item->GetPropertyColorizeColor()) {
             item->RefreshAlpha();
             item->RefreshSprite();
         }
-        else if (prop == item->GetPropertyIsBadItem()) {
+        else if (prop == item->GetPropertyBadItem()) {
             item->RefreshSprite();
         }
-        else if (prop == item->GetPropertyIsShootThru()) {
+        else if (prop == item->GetPropertyShootThru()) {
             CurMap->RebuildFog();
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyIsLightThru()) {
+        else if (prop == item->GetPropertyLightThru()) {
             item->GetMap()->UpdateHexLightSources(item->GetHexX(), item->GetHexY());
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyIsNoBlock()) {
+        else if (prop == item->GetPropertyNoBlock()) {
             rebuild_cache = true;
         }
 
@@ -3276,7 +3275,7 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        if (item->GetIsCanOpen()) {
+        if (item->GetCanOpen()) {
             if (item->GetOpened()) {
                 item->GetAnim()->Play({}, false, false);
             }
@@ -3391,7 +3390,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             }
             // Sex
             else if (strex(tag).compareIgnoreCase("sex")) {
-                sex = (cr != nullptr && cr->GetIsSexTagFemale() ? 2 : 1);
+                sex = (cr != nullptr && cr->GetSexTagFemale() ? 2 : 1);
                 sex_tags = true;
                 continue;
             }
@@ -3616,14 +3615,14 @@ void FOClient::LmapPrepareMap()
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
-            else if (field.Flags.IsWall || field.Flags.IsScen) {
+            else if (field.Flags.HasWall || field.Flags.HasScenery) {
                 if (field.Flags.ScrollBlock) {
                     continue;
                 }
-                if (!_lmapSwitchHi && !field.Flags.IsWall) {
+                if (!_lmapSwitchHi && !field.Flags.HasWall) {
                     continue;
                 }
-                cur_color = ucolor {(field.Flags.IsWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
+                cur_color = ucolor {(field.Flags.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
             }
             else {
                 continue;

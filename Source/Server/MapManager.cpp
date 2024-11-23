@@ -185,11 +185,11 @@ void MapManager::LoadFromResources()
                     }
 
                     // Bind scripts
-                    if (item->GetSceneryScript()) {
-                        item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(item->GetSceneryScript());
+                    if (item->GetStaticScript()) {
+                        item->StaticScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, any_t>(item->GetStaticScript());
 
-                        if (!item->SceneryScriptFunc) {
-                            throw MapManagerException("Can't bind static item scenery function", map_proto->GetName(), item->GetSceneryScript());
+                        if (!item->StaticScriptFunc) {
+                            throw MapManagerException("Can't bind static item function", map_proto->GetName(), item->GetStaticScript());
                         }
                     }
 
@@ -202,7 +202,7 @@ void MapManager::LoadFromResources()
                     }
 
                     // Sort
-                    if (item->GetIsStatic()) {
+                    if (item->GetStatic()) {
                         RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
                         const auto hx = item->GetHexX();
@@ -238,26 +238,26 @@ void MapManager::LoadFromResources()
 
         // Fill hex flags from static items on map
         for (auto&& [item_id, item] : static_map->ItemBillets) {
-            if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetIsStatic() || item->GetIsTile()) {
+            if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetStatic() || item->GetIsTile()) {
                 continue;
             }
 
             const auto hx = item->GetHexX();
             const auto hy = item->GetHexY();
 
-            if (!item->GetIsNoBlock()) {
+            if (!item->GetNoBlock()) {
                 auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
                 static_field.IsMoveBlocked = true;
             }
 
-            if (!item->GetIsShootThru()) {
+            if (!item->GetShootThru()) {
                 auto& static_field = static_map->HexField->GetCellForWriting(hx, hy);
                 static_field.IsShootBlocked = true;
                 static_field.IsMoveBlocked = true;
             }
 
             // Block around scroll blocks
-            if (item->GetIsScrollBlock()) {
+            if (item->GetScrollBlock()) {
                 for (uint8 k = 0; k < GameSettings::MAP_DIR_COUNT; k++) {
                     auto hx2 = hx;
                     auto hy2 = hy;
@@ -270,7 +270,7 @@ void MapManager::LoadFromResources()
             }
 
             if (item->IsNonEmptyBlockLines()) {
-                const auto shooted = item->GetIsShootThru();
+                const auto shooted = item->GetShootThru();
 
                 GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, map_width, map_height, [&static_map, shooted](uint16 hx2, uint16 hy2) {
                     auto& static_field2 = static_map->HexField->GetCellForWriting(hx2, hy2);
@@ -326,8 +326,8 @@ void MapManager::GenerateMapContent(Map* map)
 
         id_map.emplace(base_item_id, item->GetId());
 
-        if (item->GetIsCanOpen() && item->GetOpened()) {
-            item->SetIsLightThru(true);
+        if (item->GetCanOpen() && item->GetOpened()) {
+            item->SetLightThru(true);
         }
 
         map->AddItem(item, base_item->GetHexX(), base_item->GetHexY(), nullptr);
@@ -412,9 +412,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
         uint map_index = 0;
 
         for (const auto* map : loc->GetMaps()) {
-            result += strex("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
-            result += map->GetInitScript();
-            result += "\n";
+            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetInitScript());
             map_index++;
         }
     }
@@ -1484,7 +1482,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ui
         cr->SetHexY(hy);
         cr->ChangeDir(dir);
 
-        if (!cr->GetIsControlledByPlayer()) {
+        if (!cr->GetControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             vec_add_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
@@ -1550,7 +1548,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         map->RemoveCritter(cr);
         cr->SetMapId({});
 
-        if (!cr->GetIsControlledByPlayer()) {
+        if (!cr->GetControlledByPlayer()) {
             auto cr_ids = map->GetCritterIds();
             vec_remove_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
@@ -1809,11 +1807,11 @@ void MapManager::ProcessVisibleItems(Critter* cr)
         if (item->IsDestroyed()) {
             continue;
         }
-        if (item->GetIsHidden()) {
+        if (item->GetHidden()) {
             continue;
         }
 
-        if (item->GetIsAlwaysView()) {
+        if (item->GetAlwaysView()) {
             if (cr->AddIdVisItem(item->GetId())) {
                 cr->Send_AddItemOnMap(item);
                 cr->OnItemOnMapAppeared.Fire(item, nullptr);
@@ -1946,11 +1944,11 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
         if (item->IsDestroyed()) {
             continue;
         }
-        if (item->GetIsHidden()) {
+        if (item->GetHidden()) {
             continue;
         }
 
-        if (item->GetIsAlwaysView()) {
+        if (item->GetAlwaysView()) {
             view_cr->Send_AddItemOnMap(item);
         }
         else {

@@ -805,8 +805,8 @@ void Baker::BakeAll()
                                 map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                 map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                const auto is_static = props.GetValue<bool>(proto->GetPropertyIsStatic());
-                                const auto is_hidden = props.GetValue<bool>(proto->GetPropertyIsHidden());
+                                const auto is_static = props.GetValue<bool>(proto->GetPropertyStatic());
+                                const auto is_hidden = props.GetValue<bool>(proto->GetPropertyHidden());
 
                                 if (is_static && !is_hidden) {
                                     const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
@@ -1196,7 +1196,7 @@ void Baker::BakeAll()
 
 static unordered_map<string, std::function<bool(hstring, const ScriptSystem&)>> ScriptFuncVerify = {
     {"ItemInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Item*, bool>(func_name); }},
-    {"ItemScenery", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+    {"ItemStatic", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Critter*, StaticItem*, Item*, any_t>(func_name); }},
     {"ItemTrigger", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
     {"CritterInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, bool>(func_name); }},
     {"MapInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Map*, bool>(func_name); }},

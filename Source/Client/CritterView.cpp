@@ -76,7 +76,7 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
 
     auto* item = new ItemView(_engine, id, proto, props);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
@@ -101,7 +101,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
 
 auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
 {
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(!item->GetStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
     RUNTIME_ASSERT(item->GetCritterId() == GetId());
 
@@ -184,10 +184,10 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {

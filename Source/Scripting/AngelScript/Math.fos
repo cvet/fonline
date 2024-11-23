@@ -89,3 +89,16 @@ int RoundToInt(float x)
 {
     return math::fraction(x) >= 0.5f ? int(x) + 1 : int(x);
 }
+
+int Fib(int n)
+{
+    int x = 1;
+    int y = 0;
+
+    for (int i = 1; i < n; i++) {
+        x += y;
+        y = x - y;
+    }
+
+    return y;
+}

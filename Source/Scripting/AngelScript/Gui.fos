@@ -3,7 +3,6 @@
 ///@ Enum CursorType Default = 0
 
 ///@ Setting Client CursorType Cursor
-///@ Setting Client any CursorData
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
 

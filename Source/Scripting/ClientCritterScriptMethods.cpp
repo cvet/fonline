@@ -50,7 +50,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
-    return self->GetIsControlledByPlayer() && self->GetIsPlayerOffline();
+    return self->GetControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
 ///# ...

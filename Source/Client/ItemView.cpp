@@ -77,7 +77,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, ContainerI
 
     auto* item = new ItemView(_engine, id, proto, props);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
@@ -101,7 +101,7 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(!item->GetStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
     RUNTIME_ASSERT(item->GetContainerId() == GetId());
 

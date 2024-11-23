@@ -221,7 +221,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Critter* toCr)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -230,11 +230,11 @@
         throw ScriptException("Critter arg is null");
     }
 
-    server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Critter* toCr)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -244,14 +244,14 @@
     }
 
     if (count == 0) {
-        return;
+        return nullptr;
     }
 
-    server->ItemMngr.MoveItem(item, count, toCr);
+    return server->ItemMngr.MoveItem(item, count, toCr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Map* toMap, uint16 toHx, uint16 toHy)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, Map* toMap, uint16 toHx, uint16 toHy)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -263,11 +263,11 @@
         throw ScriptException("Invalid hexex args");
     }
 
-    server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy);
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHx, toHy);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -280,14 +280,14 @@
     }
 
     if (count == 0) {
-        return;
+        return nullptr;
     }
 
-    server->ItemMngr.MoveItem(item, count, toMap, toHx, toHy);
+    return server->ItemMngr.MoveItem(item, count, toMap, toHx, toHy);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -296,11 +296,11 @@
         throw ScriptException("Container arg is null");
     }
 
-    server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
+[[maybe_unused]] Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -310,10 +310,10 @@
     }
 
     if (count == 0) {
-        return;
+        return nullptr;
     }
 
-    server->ItemMngr.MoveItem(item, count, toCont, stackId);
+    return server->ItemMngr.MoveItem(item, count, toCont, stackId);
 }
 
 ///@ ExportMethod
@@ -489,7 +489,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DestroyCritter(FOServer* server, Critter* cr)
 {
-    if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
+    if (cr != nullptr && !cr->GetControlledByPlayer()) {
         server->CrMngr.DestroyCritter(cr);
     }
 }
@@ -500,7 +500,7 @@
 [[maybe_unused]] void Server_Game_DestroyCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetIsControlledByPlayer()) {
+        if (Critter* cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetControlledByPlayer()) {
             server->CrMngr.DestroyCritter(cr);
         }
     }
@@ -512,7 +512,7 @@
 [[maybe_unused]] void Server_Game_DestroyCritters(FOServer* server, const vector<Critter*>& critters)
 {
     for (auto* cr : critters) {
-        if (cr != nullptr && !cr->GetIsControlledByPlayer()) {
+        if (cr != nullptr && !cr->GetControlledByPlayer()) {
             server->CrMngr.DestroyCritter(cr);
         }
     }
@@ -525,7 +525,7 @@
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (Critter* cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetIsControlledByPlayer()) {
+            if (Critter* cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetControlledByPlayer()) {
                 server->CrMngr.DestroyCritter(cr);
             }
         }
@@ -965,7 +965,7 @@
 
     for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && //
-            (loc->IsLocVisible() || (cr != nullptr && cr->GetIsControlledByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
+            (loc->IsLocVisible() || (cr != nullptr && cr->GetControlledByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -995,13 +995,13 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->GetIsControlledByPlayer()) {
+    if (!cr->GetControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
         throw ScriptException("Npc arg is null");
     }
-    if (npc->GetIsControlledByPlayer()) {
+    if (npc->GetControlledByPlayer()) {
         throw ScriptException("Npc arg is not npc");
     }
 
@@ -1026,13 +1026,13 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->GetIsControlledByPlayer()) {
+    if (!cr->GetControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
         throw ScriptException("Npc arg is null");
     }
-    if (npc->GetIsControlledByPlayer()) {
+    if (npc->GetControlledByPlayer()) {
         throw ScriptException("Npc arg is not npc");
     }
 
@@ -1058,7 +1058,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->GetIsControlledByPlayer()) {
+    if (!cr->GetControlledByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (server->DlgMngr.GetDialog(dlgPack) == nullptr) {
@@ -1256,15 +1256,15 @@
 ///# param param ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, int param)
+[[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, any_t param)
 {
     UNUSED_VARIABLE(server);
 
-    if (!staticItem->SceneryScriptFunc) {
+    if (!staticItem->StaticScriptFunc) {
         return false;
     }
 
-    return staticItem->SceneryScriptFunc(cr, staticItem, usedItem, param) && staticItem->SceneryScriptFunc.GetResult();
+    return staticItem->StaticScriptFunc(cr, staticItem, usedItem, param) && staticItem->StaticScriptFunc.GetResult();
 }
 
 ///# ...

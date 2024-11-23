@@ -173,7 +173,7 @@ void Map::AddCritter(Critter* cr)
     _crittersMap.emplace(cr->GetId(), cr);
     vec_add_unique_value(_critters, cr);
 
-    if (cr->GetIsControlledByPlayer()) {
+    if (cr->GetControlledByPlayer()) {
         vec_add_unique_value(_playerCritters, cr);
     }
     else {
@@ -193,7 +193,7 @@ void Map::RemoveCritter(Critter* cr)
 
     vec_remove_unique_value(_critters, cr);
 
-    if (cr->GetIsControlledByPlayer()) {
+    if (cr->GetControlledByPlayer()) {
         vec_remove_unique_value(_playerCritters, cr);
     }
     else {
@@ -269,7 +269,7 @@ void Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper)
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(!item->GetStatic());
 
     if (hx >= _width || hy >= _height) {
         throw GenericException("Invalid item pos");
@@ -292,8 +292,8 @@ void Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper)
             continue;
         }
 
-        if (!item->GetIsHidden()) {
-            if (!item->GetIsAlwaysView()) {
+        if (!item->GetHidden()) {
+            if (!item->GetAlwaysView()) {
                 bool allowed;
 
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
@@ -435,7 +435,7 @@ auto Map::IsHexMovable(uint16 hx, uint16 hy) const noexcept -> bool
     const auto& field = _hexField->GetCellForReading(hx, hy);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return !field.IsMoveBlocked && !static_field.IsMoveBlocked;
+    return !field.MoveBlocked && !static_field.IsMoveBlocked;
 }
 
 auto Map::IsHexShootable(uint16 hx, uint16 hy) const noexcept -> bool
@@ -445,7 +445,7 @@ auto Map::IsHexShootable(uint16 hx, uint16 hy) const noexcept -> bool
     const auto& field = _hexField->GetCellForReading(hx, hy);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hx, hy);
 
-    return !field.IsShootBlocked && !static_field.IsShootBlocked;
+    return !field.ShootBlocked && !static_field.IsShootBlocked;
 }
 
 auto Map::IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool
@@ -505,12 +505,12 @@ void Map::ChangeViewItem(Item* item)
         }
 
         if (cr->CountIdVisItem(item->GetId())) {
-            if (item->GetIsHidden()) {
+            if (item->GetHidden()) {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
-            else if (!item->GetIsAlwaysView()) { // Check distance for non-hide items
+            else if (!item->GetAlwaysView()) { // Check distance for non-hide items
                 bool allowed;
 
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
@@ -532,8 +532,8 @@ void Map::ChangeViewItem(Item* item)
                 }
             }
         }
-        else if (!item->GetIsHidden()) {
-            if (!item->GetIsAlwaysView()) { // Check distance for non-hide items
+        else if (!item->GetHidden()) {
+            if (!item->GetAlwaysView()) { // Check distance for non-hide items
                 bool allowed;
 
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
@@ -579,7 +579,7 @@ auto Map::IsBlockItem(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsNoMoveItem;
+    return field.HasNoMoveItem;
 }
 
 auto Map::IsItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool
@@ -588,7 +588,7 @@ auto Map::IsItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsTriggerItem;
+    return field.HasTriggerItem;
 }
 
 auto Map::IsItemGag(uint16 hx, uint16 hy) const noexcept -> bool
@@ -597,7 +597,7 @@ auto Map::IsItemGag(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsGagItem;
+    return field.HasGagItem;
 }
 
 auto Map::GetItem(ident_t item_id) noexcept -> Item*
@@ -618,7 +618,7 @@ auto Map::GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) ->
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
     for (auto* item : field.Items) {
-        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
+        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CountIdVisItem(item->GetId())))) {
             return item;
         }
     }
@@ -742,23 +742,23 @@ void Map::RecacheHexFlags(Field& field)
 
     NON_CONST_METHOD_HINT();
 
-    field.IsNonDeadCritter = false;
-    field.IsDeadCritter = false;
-    field.IsGagItem = false;
-    field.IsTriggerItem = false;
-    field.IsNoMoveItem = false;
-    field.IsNoShootItem = false;
+    field.HasNonDeadCritter = false;
+    field.HasDeadCritter = false;
+    field.HasGagItem = false;
+    field.HasTriggerItem = false;
+    field.HasNoMoveItem = false;
+    field.HasNoShootItem = false;
 
     if (!field.Critters.empty()) {
         for (const auto* cr : field.Critters) {
             if (cr->IsDead()) {
-                field.IsDeadCritter = true;
+                field.HasDeadCritter = true;
             }
             else {
-                field.IsNonDeadCritter = true;
+                field.HasNonDeadCritter = true;
             }
 
-            if (field.IsDeadCritter && field.IsNonDeadCritter) {
+            if (field.HasDeadCritter && field.HasNonDeadCritter) {
                 break;
             }
         }
@@ -767,13 +767,13 @@ void Map::RecacheHexFlags(Field& field)
     if (!field.MultihexCritters.empty()) {
         for (const auto* cr : field.MultihexCritters) {
             if (cr->IsDead()) {
-                field.IsDeadCritter = true;
+                field.HasDeadCritter = true;
             }
             else {
-                field.IsNonDeadCritter = true;
+                field.HasNonDeadCritter = true;
             }
 
-            if (field.IsDeadCritter && field.IsNonDeadCritter) {
+            if (field.HasDeadCritter && field.HasNonDeadCritter) {
                 break;
             }
         }
@@ -781,40 +781,40 @@ void Map::RecacheHexFlags(Field& field)
 
     if (!field.Items.empty()) {
         for (const auto* item : field.Items) {
-            if (!field.IsNoMoveItem && !item->GetIsNoBlock()) {
-                field.IsNoMoveItem = true;
+            if (!field.HasNoMoveItem && !item->GetNoBlock()) {
+                field.HasNoMoveItem = true;
             }
-            if (!field.IsNoShootItem && !item->GetIsShootThru()) {
-                field.IsNoShootItem = true;
+            if (!field.HasNoShootItem && !item->GetShootThru()) {
+                field.HasNoShootItem = true;
             }
-            if (!field.IsGagItem && item->GetIsGag()) {
-                field.IsGagItem = true;
+            if (!field.HasGagItem && item->GetIsGag()) {
+                field.HasGagItem = true;
             }
-            if (!field.IsTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
-                field.IsTriggerItem = true;
+            if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
+                field.HasTriggerItem = true;
             }
 
-            if (field.IsNoMoveItem && field.IsNoShootItem && field.IsGagItem && field.IsTriggerItem) {
+            if (field.HasNoMoveItem && field.HasNoShootItem && field.HasGagItem && field.HasTriggerItem) {
                 break;
             }
         }
     }
 
-    if (!field.BlockLines.empty() && (!field.IsNoMoveItem || !field.IsNoShootItem)) {
-        field.IsNoMoveItem = true;
+    if (!field.BlockLines.empty() && (!field.HasNoMoveItem || !field.HasNoShootItem)) {
+        field.HasNoMoveItem = true;
 
         for (const auto* item : field.BlockLines) {
-            if (!item->GetIsShootThru()) {
-                field.IsNoShootItem = true;
+            if (!item->GetShootThru()) {
+                field.HasNoShootItem = true;
                 break;
             }
         }
     }
 
-    const auto is_critter_block = _engine->Settings.CritterBlockHex && field.IsNonDeadCritter;
+    const auto is_critter_block = _engine->Settings.CritterBlockHex && field.HasNonDeadCritter;
 
-    field.IsShootBlocked = field.IsNoShootItem || (field.ManualBlock && field.ManualBlockFull);
-    field.IsMoveBlocked = field.IsShootBlocked || field.IsNoMoveItem || is_critter_block || field.ManualBlock;
+    field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
+    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || is_critter_block || field.ManualBlock;
 }
 
 void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
@@ -835,7 +835,7 @@ auto Map::IsAnyCritter(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsNonDeadCritter || field.IsDeadCritter;
+    return field.HasNonDeadCritter || field.HasDeadCritter;
 }
 
 auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
@@ -844,7 +844,7 @@ auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsNonDeadCritter;
+    return field.HasNonDeadCritter;
 }
 
 auto Map::IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
@@ -853,7 +853,7 @@ auto Map::IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.IsDeadCritter;
+    return field.HasDeadCritter;
 }
 
 auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
@@ -864,7 +864,7 @@ auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.IsNonDeadCritter || field.IsDeadCritter) {
+    if (field.HasNonDeadCritter || field.HasDeadCritter) {
         const auto it1 = std::find(field.Critters.begin(), field.Critters.end(), cr);
         if (it1 != field.Critters.end()) {
             return true;
@@ -900,7 +900,7 @@ auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.IsNonDeadCritter) {
+    if (field.HasNonDeadCritter) {
         for (auto* cr : field.Critters) {
             if (!cr->IsDead()) {
                 return cr;
@@ -925,7 +925,7 @@ auto Map::GetDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.IsDeadCritter) {
+    if (field.HasDeadCritter) {
         for (auto* cr : field.Critters) {
             if (cr->IsDead()) {
                 return cr;
