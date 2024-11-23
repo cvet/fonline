@@ -752,7 +752,12 @@ int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemL
             {
                 LexemList ll;
                 ll.push_back( lexem );
-                ExpandDefine( ll.begin(), ll.end(), ll, define_table );
+                LLITR res = ExpandDefine( ll.begin(), ll.end(), ll, define_table );
+                if( res != ll.begin() )
+                {
+                    PrintErrorMessage("Unknown identifier in #if: " + lexem.Value + ".");
+                    return 0;
+                }
                 LexemList out;
                 bool      success = ConvertExpression( ll, out );
                 if( !success )
