@@ -1109,10 +1109,10 @@ void FOMapper::ObjDraw()
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
     }
-    else if (item != nullptr && !item->GetIsStatic()) {
+    else if (item != nullptr && !item->GetStatic()) {
         DrawLine("Type", "", "Dynamic Item", true, r);
     }
-    else if (item != nullptr && item->GetIsStatic()) {
+    else if (item != nullptr && item->GetStatic()) {
         DrawLine("Type", "", "Static Item", true, r);
     }
     else {

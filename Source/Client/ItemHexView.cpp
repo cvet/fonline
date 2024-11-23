@@ -67,14 +67,14 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetColor(GetIsColorize() ? GetLightColor() : ucolor::clear);
+    mspr->SetColor(GetColorize() ? GetLightColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
-    if (GetIsBadItem()) {
+    if (GetBadItem()) {
         mspr->SetContour(ContourType::Red);
     }
 
-    if (!GetIsNoLightInfluence()) {
+    if (!GetNoLightInfluence()) {
         mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetWidth(), _map->GetHeight());
     }
 
@@ -166,7 +166,7 @@ void ItemHexView::RefreshAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    SetMaxAlpha(GetIsColorize() ? GetLightColor().comp.a : 255);
+    SetMaxAlpha(GetColorize() ? GetLightColor().comp.a : 255);
 }
 
 void ItemHexView::RefreshAnim()
@@ -192,7 +192,7 @@ void ItemHexView::RefreshAnim()
 
     _anim->UseGameplayTimer();
 
-    if (GetIsCanOpen()) {
+    if (GetCanOpen()) {
         _anim->Stop();
 
         if (GetOpened()) {
@@ -218,7 +218,7 @@ auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (GetDisableEgg() || GetIsFlat()) {
+    if (GetDisableEgg() || GetDrawFlatten()) {
         return EggAppearenceType::None;
     }
 

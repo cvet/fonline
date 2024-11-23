@@ -78,7 +78,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
 
-    ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, Item*, any_t> StaticScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uint8> TriggerScriptFunc {};
 
 private:

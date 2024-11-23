@@ -67,9 +67,9 @@ public:
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DestroyItem(Item* item);
-    void MoveItem(Item* item, uint count, Critter* to_cr);
-    void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy);
-    void MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id);
+    auto MoveItem(Item* item, uint count, Critter* to_cr) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> NON_NULL Item*;
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
@@ -77,7 +77,7 @@ public:
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
-    [[nodiscard]] auto GetItemHolder(Item* item) -> Entity*;
+    [[nodiscard]] auto GetItemHolder(Item* item) -> NON_NULL Entity*;
 
     void RemoveItemHolder(Item* item, Entity* holder);
 

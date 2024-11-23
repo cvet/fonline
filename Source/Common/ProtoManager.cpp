@@ -119,11 +119,13 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
         for (auto&& [key, value] : from_kv) {
             RUNTIME_ASSERT(!key.empty());
 
-            if (overwrite) {
-                to_kv[key] = value;
-            }
-            else {
-                to_kv.emplace(key, value);
+            if (key[0] != '$' || strex(key).startsWith("$Text")) {
+                if (overwrite) {
+                    to_kv[key] = value;
+                }
+                else {
+                    to_kv.emplace(key, value);
+                }
             }
         }
     };

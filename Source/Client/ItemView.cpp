@@ -77,7 +77,7 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
 
     auto* item = new ItemView(_engine, id, proto, props);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
@@ -97,7 +97,7 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
 
     item->RestoreData(props_data);
 
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(!item->GetStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
     RUNTIME_ASSERT(item->GetContainerId() == GetId());
     RUNTIME_ASSERT(item->GetContainerStack() == stack_id);

@@ -4888,16 +4888,20 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     }
 
     Preprocessor::UndefAll();
+    Preprocessor::Define("SERVER 0");
+    Preprocessor::Define("CLIENT 0");
+    Preprocessor::Define("MAPPER 0");
+    Preprocessor::Define("SINGLE 0");
 #if SERVER_SCRIPTING
-    Preprocessor::Define("__SERVER");
+    Preprocessor::Define("SERVER 1");
 #elif CLIENT_SCRIPTING
-    Preprocessor::Define("__CLIENT");
+    Preprocessor::Define("CLIENT 1");
 #elif SINGLE_SCRIPTING
-    Preprocessor::Define("__SINGLE");
-    Preprocessor::Define("__SERVER");
-    Preprocessor::Define("__CLIENT");
+    Preprocessor::Define("SINGLE 1");
+    Preprocessor::Define("SERVER 1");
+    Preprocessor::Define("CLIENT 1");
 #elif MAPPER_SCRIPTING
-    Preprocessor::Define("__MAPPER");
+    Preprocessor::Define("MAPPER 1");
 #endif
 
     auto loader = ScriptLoader(&root_script, &final_script_files);

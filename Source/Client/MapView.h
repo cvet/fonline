@@ -100,12 +100,12 @@ struct LightSource
 struct FieldFlags
 {
     bool ScrollBlock {};
-    bool IsWall {};
-    bool IsWallTransp {};
-    bool IsScen {};
-    bool IsMoveBlocked {};
-    bool IsShootBlocked {};
-    bool IsLightBlocked {};
+    bool HasWall {};
+    bool HasTransparentWall {};
+    bool HasScenery {};
+    bool MoveBlocked {};
+    bool ShootBlocked {};
+    bool LightBlocked {};
 };
 
 struct Field

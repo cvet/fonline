@@ -422,7 +422,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         return nullptr;
     }
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
 
     if (item->GetIsRadio()) {
         _engine->ItemMngr.RegisterRadio(item);
@@ -760,7 +760,7 @@ void EntityManager::UnregisterEntity(Critter* entity)
     const auto it = _allCritters.find(entity->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
-    UnregisterEntityEx(entity, !entity->GetIsControlledByPlayer());
+    UnregisterEntityEx(entity, !entity->GetControlledByPlayer());
 }
 
 void EntityManager::RegisterEntity(Item* entity)

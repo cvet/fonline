@@ -76,7 +76,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot
 
     auto* item = new ItemView(_engine, id, proto, props);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
@@ -96,7 +96,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot
 
     item->RestoreData(props_data);
 
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(!item->GetStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
     RUNTIME_ASSERT(item->GetCritterId() == GetId());
     RUNTIME_ASSERT(item->GetCritterSlot() == slot);
@@ -179,10 +179,10 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {

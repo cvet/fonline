@@ -105,15 +105,15 @@
 
     if (mapSpr->ProtoId) {
         const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        color = proto->GetIsColorize() ? proto->GetLightColor() : ucolor::clear;
-        is_flat = proto->GetIsFlat();
+        color = proto->GetColorize() ? proto->GetLightColor() : ucolor::clear;
+        is_flat = proto->GetDrawFlatten();
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;
         draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
-        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto->GetDrawOrderOffsetHexY()));
+        draw_order_hy_offset = static_cast<int>(proto->GetDrawOrderOffsetHexY());
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
-        contour_color = proto->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
+        contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
@@ -901,7 +901,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hx, hy).Flags.IsMoveBlocked;
+    return !self->GetField(hx, hy).Flags.MoveBlocked;
 }
 
 ///# ...
@@ -915,7 +915,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hx, hy).Flags.IsShootBlocked;
+    return !self->GetField(hx, hy).Flags.ShootBlocked;
 }
 
 ///# ...

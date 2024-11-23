@@ -287,7 +287,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (!self->GetIsControlledByPlayer()) {
+    if (!self->GetControlledByPlayer()) {
         return;
     }
 
@@ -321,7 +321,7 @@
     if (howSay != SAY_FLASH_WINDOW && text.empty()) {
         return;
     }
-    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
+    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -340,7 +340,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr)
 {
-    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
+    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -360,7 +360,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr, string_view lexems)
 {
-    if (!self->GetIsControlledByPlayer() && !self->IsAlive()) {
+    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
         return;
     }
 
@@ -1053,7 +1053,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Critter_Disconnect(Critter* self)
 {
-    if (!self->GetIsControlledByPlayer()) {
+    if (!self->GetControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
@@ -1067,7 +1067,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Server_Critter_IsOnline(Critter* self)
 {
-    if (!self->GetIsControlledByPlayer()) {
+    if (!self->GetControlledByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 

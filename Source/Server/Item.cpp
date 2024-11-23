@@ -241,7 +241,7 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
         return false;
     }
 
-    if (GetIsHidden()) {
+    if (GetHidden()) {
         return false;
     }
 

@@ -63,7 +63,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
         break;
     }
 
-    return nullptr;
+    throw GenericException("Item does not has holder", item->GetId(), item->GetProtoId());
 }
 
 void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
@@ -115,7 +115,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     auto* item = new Item(_engine, ident_t {}, proto, props);
     auto self_destroy_fuse = RefCountHolder(item);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
 
     // Reset ownership properties
@@ -213,75 +213,69 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     return new_item;
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr)
+auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
-
-    if (holder == nullptr) {
-        return;
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         _engine->CrMngr.AddItemToCritter(to_cr, item, true);
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        _engine->CrMngr.AddItemToCritter(to_cr, item_, true);
+        auto* splitted_item = SplitItem(item, count);
+        _engine->CrMngr.AddItemToCritter(to_cr, splitted_item, true);
+        return splitted_item;
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy)
+auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
-
-    if (holder == nullptr) {
-        return;
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        auto* splitted_item = SplitItem(item, count);
+        to_map->AddItem(splitted_item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        return splitted_item;
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id)
+auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
 
-    if (holder == nullptr) {
-        return;
-    }
-
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
         to_cont->AddItemToContainer(item, stack_id);
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        to_cont->AddItemToContainer(item_, stack_id);
+        auto* splitted_item = SplitItem(item, count);
+        to_cont->AddItemToContainer(splitted_item, stack_id);
+        return splitted_item;
     }
 }
 

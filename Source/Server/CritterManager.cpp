@@ -85,7 +85,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     vec_add_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
 
-    if (send && !item->GetIsHidden()) {
+    if (send && !item->GetHidden()) {
         cr->Send_ChosenAddItem(item);
 
         if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
@@ -229,7 +229,7 @@ void CritterManager::DestroyCritter(Critter* cr)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(!cr->GetIsControlledByPlayer());
+    RUNTIME_ASSERT(!cr->GetControlledByPlayer());
 
     // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
@@ -306,7 +306,7 @@ auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
     non_player_critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (!cr->GetIsControlledByPlayer()) {
+        if (!cr->GetControlledByPlayer()) {
             non_player_critters.emplace_back(cr);
         }
     }
@@ -326,7 +326,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     player_critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (cr->GetIsControlledByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
+        if (cr->GetControlledByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
             player_critters.emplace_back(cr);
         }
     }

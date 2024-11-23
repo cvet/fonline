@@ -675,7 +675,7 @@ void CritterHexView::Process()
     // Combat mode
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        if (const auto is_combat = GetIsModelInCombatMode(); is_combat != _model->IsCombatMode()) {
+        if (const auto is_combat = GetModelInCombatMode(); is_combat != _model->IsCombatMode()) {
             if (_engine->Settings.CombatAnimIdle != CritterActionAnim::None && _animSequence.empty() && GetCondition() == CritterCondition::Alive && GetAliveActionAnim() == CritterActionAnim::None && !IsMoving()) {
                 if (_engine->Settings.CombatAnimBegin != CritterActionAnim::None && is_combat && _model->GetActionAnim() != _engine->Settings.CombatAnimIdle) {
                     Animate(CritterStateAnim::None, _engine->Settings.CombatAnimBegin, nullptr);
@@ -950,13 +950,13 @@ auto CritterHexView::IsNameVisible() const noexcept -> bool
     if (!_engine->Settings.ShowCritterName) {
         return false;
     }
-    if (!_engine->Settings.ShowPlayerName && GetIsControlledByPlayer()) {
+    if (!_engine->Settings.ShowPlayerName && GetControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowNpcName && !GetIsControlledByPlayer()) {
+    if (!_engine->Settings.ShowNpcName && !GetControlledByPlayer()) {
         return false;
     }
-    if (!_engine->Settings.ShowDeadNpcName && !GetIsControlledByPlayer() && IsDead()) {
+    if (!_engine->Settings.ShowDeadNpcName && !GetControlledByPlayer() && IsDead()) {
         return false;
     }
 
@@ -976,7 +976,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
         str = _name;
 
-        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
+        if (GetControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
     }
@@ -1012,7 +1012,7 @@ void CritterHexView::DrawTextOnHead()
 
         str = _name;
 
-        if (GetIsControlledByPlayer() && GetIsPlayerOffline()) {
+        if (GetControlledByPlayer() && GetIsPlayerOffline()) {
             str += _engine->Settings.PlayerOffAppendix;
         }
 

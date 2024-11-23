@@ -158,14 +158,14 @@ public:
 private:
     struct Field
     {
-        bool IsNonDeadCritter {};
-        bool IsDeadCritter {};
-        bool IsGagItem {};
-        bool IsTriggerItem {};
-        bool IsNoMoveItem {};
-        bool IsNoShootItem {};
-        bool IsMoveBlocked {};
-        bool IsShootBlocked {};
+        bool HasNonDeadCritter {};
+        bool HasDeadCritter {};
+        bool HasGagItem {};
+        bool HasTriggerItem {};
+        bool HasNoMoveItem {};
+        bool HasNoShootItem {};
+        bool MoveBlocked {};
+        bool ShootBlocked {};
         vector<Critter*> Critters {};
         vector<Critter*> MultihexCritters {};
         vector<Item*> Items {};

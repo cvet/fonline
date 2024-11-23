@@ -53,7 +53,7 @@ static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
         return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Tile) + item->GetTileLayer());
     }
 
-    if (item->GetIsFlat()) {
+    if (item->GetDrawFlatten()) {
         return !item->GetIsScenery() && !item->GetIsWall() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery;
     }
 
@@ -64,7 +64,7 @@ static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 {
     NO_STACK_TRACE_ENTRY();
 
-    return cr->IsDead() && !cr->GetIsNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
+    return cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
 }
 
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
@@ -298,7 +298,7 @@ void MapView::LoadStaticData()
 
             auto* static_item = new ItemHexView(this, static_id, item_proto, &item_props);
 
-            static_item->SetIsStatic(true);
+            static_item->SetStatic(true);
 
             AddItemInternal(static_item);
         }
@@ -326,7 +326,7 @@ void MapView::LoadStaticData()
                     auto hx_ = hx;
                     auto hy_ = hy;
                     GeometryHelper::MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _width, _height);
-                    _hexField->GetCellForWriting(hx_, hy_).Flags.IsMoveBlocked = true;
+                    _hexField->GetCellForWriting(hx_, hy_).Flags.MoveBlocked = true;
                 }
             }
         }
@@ -492,7 +492,7 @@ void MapView::AddItemToField(ItemHexView* item)
         }
     }
 
-    if (!item->GetIsLightThru()) {
+    if (!item->GetLightThru()) {
         UpdateHexLightSources(hx, hy);
     }
 
@@ -538,7 +538,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         }
     }
 
-    if (!item->GetIsLightThru()) {
+    if (!item->GetLightThru()) {
         UpdateHexLightSources(hx, hy);
     }
 
@@ -559,7 +559,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, con
     item->SetHexX(hx);
     item->SetHexY(hy);
 
-    if (!item->GetIsShootThru()) {
+    if (!item->GetShootThru()) {
         RebuildFog();
     }
 
@@ -621,7 +621,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     _allItems.emplace_back(item);
 
-    if (item->GetIsStatic()) {
+    if (item->GetStatic()) {
         _staticItems.emplace_back(item);
 
         if (item->IsNeedProcess()) {
@@ -692,7 +692,7 @@ void MapView::DestroyItem(ItemHexView* item)
         _allItems.erase(it);
     }
 
-    if (item->GetIsStatic()) {
+    if (item->GetStatic()) {
         const auto it = std::find(_staticItems.begin(), _staticItems.end(), item);
         RUNTIME_ASSERT(it != _staticItems.end());
         _staticItems.erase(it);
@@ -955,7 +955,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
         const auto cy = cr->GetHexY();
         const auto mh = cr->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0 || !GeometryHelper::CheckDist(cx, cy, hx, hy, mh)))) {
+        if ((cx == hx && cy == hy) || (field.Flags.MoveBlocked && (mh == 0 || !GeometryHelper::CheckDist(cx, cy, hx, hy, mh)))) {
             _drawCursorX = -1;
         }
         else {
@@ -1650,7 +1650,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
     bool light_added = false;
 
     for (const auto* item : cr->GetConstInvItems()) {
-        if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
+        if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
             UpdateLightSource(cr->GetId(), cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY);
             light_added = true;
             break;
@@ -1674,7 +1674,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
 
     RUNTIME_ASSERT(item->GetMap() == this);
 
-    if (item->GetIsLight()) {
+    if (item->GetLightSource()) {
         UpdateLightSource(item->GetId(), item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->ScrX, &item->ScrY);
     }
     else {
@@ -1983,7 +1983,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
             // Left side
             ox = old_curx1_i + ox;
 
-            if (ox < 0 || ox >= _width || _hexField->GetCellForReading(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.IsLightBlocked) {
+            if (ox < 0 || ox >= _width || _hexField->GetCellForReading(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.LightBlocked) {
                 hx = static_cast<uint16>(ox < 0 || ox >= _width ? old_curx1_i : ox);
                 hy = static_cast<uint16>(old_cury1_i);
 
@@ -1996,7 +1996,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
             // Right side
             oy = old_cury1_i + oy;
 
-            if (oy < 0 || oy >= _height || _hexField->GetCellForReading(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.IsLightBlocked) {
+            if (oy < 0 || oy >= _height || _hexField->GetCellForReading(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.LightBlocked) {
                 hx = static_cast<uint16>(old_curx1_i);
                 hy = static_cast<uint16>(oy < 0 || oy >= _height ? old_cury1_i : oy);
 
@@ -2008,7 +2008,7 @@ void MapView::TraceLightLine(LightSource* ls, uint16 from_hx, uint16 from_hy, ui
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || _hexField->GetCellForReading(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.IsLightBlocked) {
+        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || _hexField->GetCellForReading(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.LightBlocked) {
             hx = static_cast<uint16>(curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
             hy = static_cast<uint16>(cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
 
@@ -2030,7 +2030,7 @@ void MapView::MarkLightStep(LightSource* ls, uint16 from_hx, uint16 from_hy, uin
 
     const auto& field = _hexField->GetCellForReading(to_hx, to_hy);
 
-    if (field.Flags.IsWallTransp) {
+    if (field.Flags.HasTransparentWall) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
         const auto dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
 
@@ -2051,7 +2051,7 @@ void MapView::MarkLightEnd(LightSource* ls, uint16 from_hx, uint16 from_hy, uint
     bool north_south = false;
     const auto& field = _hexField->GetCellForReading(to_hx, to_hy);
 
-    if (field.Flags.IsWall) {
+    if (field.Flags.HasWall) {
         is_wall = true;
 
         if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
@@ -2105,7 +2105,7 @@ void MapView::MarkLightEndNeighbor(LightSource* ls, uint16 hx, uint16 hy, bool n
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.Flags.IsWall) {
+    if (field.Flags.HasWall) {
         const auto corner = field.Corner;
 
         if ((north_south && (corner == CornerType::NorthSouth || corner == CornerType::North || corner == CornerType::West)) || (!north_south && (corner == CornerType::EastWest || corner == CornerType::East)) || corner == CornerType::South) {
@@ -2341,28 +2341,28 @@ void MapView::RecacheHexFlags(Field& field)
 
     NON_CONST_METHOD_HINT();
 
-    field.Flags.IsWall = false;
-    field.Flags.IsWallTransp = false;
-    field.Flags.IsScen = false;
-    field.Flags.IsMoveBlocked = false;
-    field.Flags.IsShootBlocked = false;
-    field.Flags.IsLightBlocked = false;
+    field.Flags.HasWall = false;
+    field.Flags.HasTransparentWall = false;
+    field.Flags.HasScenery = false;
+    field.Flags.MoveBlocked = false;
+    field.Flags.ShootBlocked = false;
+    field.Flags.LightBlocked = false;
     field.Flags.ScrollBlock = false;
     field.Corner = CornerType::NorthSouth;
 
     if (_engine->Settings.CritterBlockHex) {
         if (!field.Critters.empty()) {
             for (const auto* cr : field.Critters) {
-                if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
-                    field.Flags.IsMoveBlocked = true;
+                if (!field.Flags.MoveBlocked && !cr->IsDead()) {
+                    field.Flags.MoveBlocked = true;
                 }
             }
         }
 
         if (!field.MultihexCritters.empty()) {
             for (const auto* cr : field.MultihexCritters) {
-                if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
-                    field.Flags.IsMoveBlocked = true;
+                if (!field.Flags.MoveBlocked && !cr->IsDead()) {
+                    field.Flags.MoveBlocked = true;
                 }
             }
         }
@@ -2370,50 +2370,50 @@ void MapView::RecacheHexFlags(Field& field)
 
     if (!field.Items.empty()) {
         for (const auto* item : field.Items) {
-            if (!field.Flags.IsWall && item->GetIsWall()) {
-                field.Flags.IsWall = true;
-                field.Flags.IsWallTransp = item->GetIsLightThru();
+            if (!field.Flags.HasWall && item->GetIsWall()) {
+                field.Flags.HasWall = true;
+                field.Flags.HasTransparentWall = item->GetLightThru();
 
                 field.Corner = item->GetCorner();
             }
-            else if (!field.Flags.IsScen && item->GetIsScenery()) {
-                field.Flags.IsScen = true;
+            else if (!field.Flags.HasScenery && item->GetIsScenery()) {
+                field.Flags.HasScenery = true;
 
-                if (!field.Flags.IsWall) {
+                if (!field.Flags.HasWall) {
                     field.Corner = item->GetCorner();
                 }
             }
 
-            if (!field.Flags.IsMoveBlocked && !item->GetIsNoBlock()) {
-                field.Flags.IsMoveBlocked = true;
+            if (!field.Flags.MoveBlocked && !item->GetNoBlock()) {
+                field.Flags.MoveBlocked = true;
             }
-            if (!field.Flags.IsShootBlocked && !item->GetIsShootThru()) {
-                field.Flags.IsShootBlocked = true;
+            if (!field.Flags.ShootBlocked && !item->GetShootThru()) {
+                field.Flags.ShootBlocked = true;
             }
-            if (!field.Flags.ScrollBlock && item->GetIsScrollBlock()) {
+            if (!field.Flags.ScrollBlock && item->GetScrollBlock()) {
                 field.Flags.ScrollBlock = true;
             }
-            if (!field.Flags.IsLightBlocked && !item->GetIsLightThru()) {
-                field.Flags.IsLightBlocked = true;
+            if (!field.Flags.LightBlocked && !item->GetLightThru()) {
+                field.Flags.LightBlocked = true;
             }
         }
     }
 
     if (!field.BlockLineItems.empty()) {
         for (const auto* item : field.BlockLineItems) {
-            field.Flags.IsMoveBlocked = true;
+            field.Flags.MoveBlocked = true;
 
-            if (!field.Flags.IsShootBlocked && !item->GetIsShootThru()) {
-                field.Flags.IsShootBlocked = true;
+            if (!field.Flags.ShootBlocked && !item->GetShootThru()) {
+                field.Flags.ShootBlocked = true;
             }
-            if (!field.Flags.IsLightBlocked && !item->GetIsLightThru()) {
-                field.Flags.IsLightBlocked = true;
+            if (!field.Flags.LightBlocked && !item->GetLightThru()) {
+                field.Flags.LightBlocked = true;
             }
         }
     }
 
-    if (field.Flags.IsShootBlocked) {
-        field.Flags.IsMoveBlocked = true;
+    if (field.Flags.ShootBlocked) {
+        field.Flags.MoveBlocked = true;
     }
 }
 
@@ -3977,7 +3977,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 GRID_AT(nx, ny) = -1;
 
                 if (mh == 0) {
-                    if (_hexField->GetCellForReading(static_cast<uint16>(nx), static_cast<uint16>(ny)).Flags.IsMoveBlocked) {
+                    if (_hexField->GetCellForReading(static_cast<uint16>(nx), static_cast<uint16>(ny)).Flags.MoveBlocked) {
                         continue;
                     }
                 }
@@ -3991,7 +3991,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     if (nx_ < 0 || ny_ < 0 || nx_ >= _width || ny_ >= _height) {
                         continue;
                     }
-                    if (_hexField->GetCellForReading(static_cast<uint16>(nx_), static_cast<uint16>(ny_)).Flags.IsMoveBlocked) {
+                    if (_hexField->GetCellForReading(static_cast<uint16>(nx_), static_cast<uint16>(ny_)).Flags.MoveBlocked) {
                         continue;
                     }
 
@@ -4008,7 +4008,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     auto ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
-                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
+                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.MoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -4024,7 +4024,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
-                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
+                        not_passed = _hexField->GetCellForReading(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.MoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -4274,7 +4274,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
         }
 
         const auto& field = _hexField->GetCellForReading(check_hx, check_hy);
-        if (field.Flags.IsMoveBlocked) {
+        if (field.Flags.MoveBlocked) {
             return false;
         }
 
@@ -4357,7 +4357,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
             continue;
         }
 
-        if (check_passed && _hexField->GetCellForReading(cx, cy).Flags.IsShootBlocked) {
+        if (check_passed && _hexField->GetCellForReading(cx, cy).Flags.ShootBlocked) {
             break;
         }
         if (critters != nullptr) {
@@ -4706,10 +4706,10 @@ void MapView::MarkBlockedHexes()
 
             track = 0;
 
-            if (field.Flags.IsMoveBlocked) {
+            if (field.Flags.MoveBlocked) {
                 track = 2;
             }
-            if (field.Flags.IsShootBlocked) {
+            if (field.Flags.ShootBlocked) {
                 track = 1;
             }
         }

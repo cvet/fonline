@@ -293,12 +293,12 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::InSneakMode_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
             set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::SneakCoefficient_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
             set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::AlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
@@ -1537,7 +1537,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (!cr->GetIsControlledByPlayer()) {
+        if (!cr->GetControlledByPlayer()) {
             logcb("Founded critter is not controlled by player");
             return;
         }
@@ -2143,7 +2143,7 @@ void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
     if (prev_cr == cr) {
         throw GenericException("Player critter already selected");
     }
-    if (!cr->GetIsControlledByPlayer()) {
+    if (!cr->GetControlledByPlayer()) {
         throw GenericException("Critter can't be controlled by player");
     }
 
@@ -2689,7 +2689,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             auto* cr = EntityMngr.GetCritter(cr_id);
 
             if (cr != nullptr) {
-                RUNTIME_ASSERT(cr->GetIsControlledByPlayer());
+                RUNTIME_ASSERT(cr->GetControlledByPlayer());
 
                 // Already attached to another player
                 if (cr->GetPlayer() != nullptr) {
@@ -3019,7 +3019,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* item = EntityMngr.GetItem(item_id);
-            entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
+            entity = item != nullptr && !item->GetHidden() ? item : nullptr;
         }
         break;
     case NetProperty::CritterItem:
@@ -3029,7 +3029,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
             auto* cr_ = EntityMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
                 auto* item = cr_->GetInvItem(item_id);
-                entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
+                entity = item != nullptr && !item->GetHidden() ? item : nullptr;
             }
         }
         break;
@@ -3037,7 +3037,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* item = cr->GetInvItem(item_id);
-            entity = item != nullptr && !item->GetIsHidden() ? item : nullptr;
+            entity = item != nullptr && !item->GetHidden() ? item : nullptr;
         }
         break;
     case NetProperty::Map:
@@ -3210,7 +3210,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
@@ -3336,7 +3336,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    // IsHidden, IsAlwaysView, IsTrap, TrapValue
+    // IsHidden, AlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -3354,7 +3354,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
         auto* cr = EntityMngr.GetCritter(item->GetCritterId());
 
         if (cr != nullptr) {
-            if (item->GetIsHidden()) {
+            if (item->GetHidden()) {
                 cr->Send_ChosenRemoveItem(item);
             }
             else {
@@ -3372,7 +3372,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
     UNUSED_VARIABLE(prop);
 
-    // IsNoBlock, IsShootThru, IsGag, IsTrigger
+    // NoBlock, ShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
