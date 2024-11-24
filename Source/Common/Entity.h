@@ -140,13 +140,13 @@ enum class CritterActionAnim : uint16
 enum class CritterFindType : uint8
 {
     Any = 0,
-    Alive = 0x01,
+    NonDead = 0x01,
     Dead = 0x02,
     Players = 0x10,
     Npc = 0x20,
-    AlivePlayers = 0x11,
+    NonDeadPlayers = 0x11,
     DeadPlayers = 0x12,
-    AliveNpc = 0x21,
+    NonDeadNpc = 0x21,
     DeadNpc = 0x22,
 };
 
