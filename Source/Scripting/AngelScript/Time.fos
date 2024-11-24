@@ -1,4 +1,4 @@
-// FOS Server Client Sort -5
+// FOS Common Sort -5
 // Some stuff for work with time.
 
 // GetNearFullSecond
@@ -140,6 +140,7 @@ uint GetDaysInMonth(uint16 year, uint16 month)
 }
 
 #if CLIENT
+
 string GetTimeString(const string format, uint fullSecond)
 {
     uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;
@@ -177,6 +178,7 @@ string GetTimeString(const string format, int year, int month, int day, int dayO
 
     return result;
 }
+
 #endif
 
 // Возвращает представление времени в виде строки в формате dd.mm.yy hh:mm. rifleman17

@@ -190,7 +190,7 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
+    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {

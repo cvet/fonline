@@ -1,4 +1,4 @@
-// FOS Server Client
+// FOS Common
 // Data serialization
 
 class Serializator
