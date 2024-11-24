@@ -3917,6 +3917,7 @@ Screen CreateScreen(int screenIndex)
     }
     else {
         CursorScreen = screen;
+        CursorScreen._ActiveSelf = true;
     }
 
     screen._Init();

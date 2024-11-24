@@ -28,11 +28,11 @@
 // Client screen types
 #define IS_CLIENT_MAIN_SCREEN         #(s)((s) >= CLIENT_MAIN_SCREEN_LOGIN && (s) <= CLIENT_MAIN_SCREEN_WAIT)
 #define CLIENT_SCREEN_NONE            (0)
-#define CLIENT_SCREEN_CURSOR          (-1)
 #define CLIENT_MAIN_SCREEN_LOGIN      (1)
 #define CLIENT_MAIN_SCREEN_GAME       (2)
 #define CLIENT_MAIN_SCREEN_GLOBAL_MAP (3)
 #define CLIENT_MAIN_SCREEN_WAIT       (4)
+#define CLIENT_SCREEN_CURSOR          (5)
 #define CLIENT_SCREEN_DIALOG          (6)
 #define CLIENT_SCREEN_TOWN_VIEW       (9)
 
