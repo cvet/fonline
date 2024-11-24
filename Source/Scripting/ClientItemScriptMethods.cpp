@@ -35,17 +35,12 @@
 
 #include "Client.h"
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self)
 {
     return self->CreateRefClone();
 }
 
-///# ...
-///# param count ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
@@ -92,9 +87,6 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
     }
 }
 
-///# ...
-///# param hx ...
-///# param hy ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, uint16& hx, uint16& hy)
 {
@@ -105,10 +97,6 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
     ItemGetMapPos(self, hx, hy);
 }
 
-///# ...
-///# param animName ...
-///# param looped ...
-///# param reversed ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Item_Animate(ItemView* self, hstring animName, bool looped, bool reversed)
 {
@@ -141,16 +129,12 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
     }
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
     return self->GetInnerItems();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
 {

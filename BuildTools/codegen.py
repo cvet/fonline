@@ -231,15 +231,11 @@ def parseMetaFile(absPath):
                 if line[startPos] != ' ' and line[startPos] != '\t':
                     tagPos = startPos
                     break
-            if tagPos == -1 or lineLen - tagPos < 5 or line[tagPos] != '/' or line[tagPos + 1] != '/' or line[tagPos + 2] != '/':
+            if tagPos == -1 or lineLen - tagPos <= 2 or line[tagPos] != '/' or line[tagPos + 1] != '/':
+                lastComment = []
                 continue
             
-            tagType = line[tagPos + 3]
-            
-            if tagType == '#':
-                lastComment.append(line[tagPos + 4:].strip())
-                
-            elif tagType == '@':
+            if lineLen - tagPos >= 4 and line[tagPos + 2] == '/' and line[tagPos + 3] == '@':
                 tagStr = line[tagPos + 4:].strip()
                 
                 commentPos = tagStr.find('//')
@@ -303,6 +299,9 @@ def parseMetaFile(absPath):
                 
                 tagsMetas[tagName].append((absPath, lineIndex, tagInfo, tagContext, comment))
                 lastComment = []
+                
+            else:
+                lastComment.append(line[tagPos + 2:].strip().lstrip('/'))
                 
         except Exception as ex:
             showError('Invalid tag format', absPath + ' (' + str(lineIndex + 1) + ')', line.strip(), ex)
