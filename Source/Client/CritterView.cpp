@@ -81,27 +81,29 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    vec_add_unique_value(_invItems, item);
-
-    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
-
-    return item;
+    return AddInvItem(item);
 }
 
 auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = AddInvItem(id, proto, slot, nullptr);
+    auto* item = new ItemView(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
+    item->SetCritterSlot(slot);
 
+    return AddInvItem(item);
+}
+
+auto CritterView::AddInvItem(ItemView* item) -> ItemView*
+{
     RUNTIME_ASSERT(!item->GetIsStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
     RUNTIME_ASSERT(item->GetCritterId() == GetId());
-    RUNTIME_ASSERT(item->GetCritterSlot() == slot);
 
-    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    vec_add_unique_value(_invItems, item);
+    std::stable_sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }

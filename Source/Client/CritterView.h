@@ -63,8 +63,9 @@ public:
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
 
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    virtual auto AddInvItem(ItemView* item) -> ItemView*;
     virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllInvItems();
     void SetName(string_view name);

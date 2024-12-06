@@ -392,23 +392,26 @@
     if (!itemPids.empty()) {
         vector<const ProtoItem*> protos;
 
-        for (size_t i = 0; i < itemPids.size(); i++) {
-            const auto* proto = mapper->ProtoMngr.GetProtoItem(itemPids[i]);
-            protos.push_back(proto);
+        for (const auto item_pid : itemPids) {
+            const auto* proto = mapper->ProtoMngr.GetProtoItemSafe(item_pid);
+
+            if (proto != nullptr) {
+                protos.push_back(proto);
+            }
         }
 
-        if (!protos.empty()) {
-            auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.ItemProtos = protos;
-        }
+        auto& stab = mapper->Tabs[tab][string(subTab)];
+        stab.ItemProtos = protos;
     }
     else {
         // Delete sub tab
         const auto it = mapper->Tabs[tab].find(string(subTab));
+
         if (it != mapper->Tabs[tab].end()) {
             if (mapper->TabsActive[tab] == &it->second) {
                 mapper->TabsActive[tab] = nullptr;
             }
+
             mapper->Tabs[tab].erase(it);
         }
     }
@@ -419,9 +422,11 @@
 
     for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
         auto& stab = it->second;
+
         if (&stab == &stab_default) {
             continue;
         }
+
         for (uint i = 0; i < stab.ItemProtos.size(); i++) {
             stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
         }
