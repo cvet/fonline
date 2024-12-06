@@ -235,7 +235,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     return false;
                 }
 
-                cr->AddInvItem(item);
+                cr->AddRawInvItem(item);
             }
             else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
                 auto* cont = GetItem(item->GetContainerId());
@@ -244,7 +244,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     return false;
                 }
 
-                cont->AddInnerItem(item);
+                cont->AddRawInnerItem(item);
             }
             else {
                 return false;

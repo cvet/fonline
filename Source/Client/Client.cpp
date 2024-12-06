@@ -1121,7 +1121,7 @@ void FOClient::Net_OnAddCritter()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        auto* item = cr->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
+        auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
     }
@@ -1661,7 +1661,7 @@ void FOClient::Net_OnCritterMoveItem()
             _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
             const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-            auto* item = cr->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
+            auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
         }
@@ -1952,7 +1952,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-    auto* item = chosen->AddInvItem(item_id, proto, item_slot, _tempPropertiesData);
+    auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
 

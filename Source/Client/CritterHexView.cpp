@@ -99,11 +99,11 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-ItemView* CritterHexView::AddInvItem(ItemView* item)
+ItemView* CritterHexView::AddRawInvItem(ItemView* item)
 {
     STACK_TRACE_ENTRY();
 
-    CritterView::AddInvItem(item);
+    CritterView::AddRawInvItem(item);
 
     if (item->GetCritterSlot() != CritterItemSlot::Inventory && !IsAnim()) {
         AnimateStay();
