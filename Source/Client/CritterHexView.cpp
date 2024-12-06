@@ -532,13 +532,14 @@ void CritterHexView::ChangeLookDirAngle(int dir_angle)
     STACK_TRACE_ENTRY();
 
     const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
+    const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
 
-    if (normalized_dir_angle == GetDirAngle()) {
+    if (normalized_dir_angle == GetDirAngle() && dir == GetDir()) {
         return;
     }
 
     SetDirAngle(normalized_dir_angle);
-    SetDir(GeometryHelper::AngleToDir(normalized_dir_angle));
+    SetDir(dir);
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
