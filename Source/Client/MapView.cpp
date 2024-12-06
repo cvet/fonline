@@ -189,6 +189,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             RUNTIME_ASSERT(_crittersMap.count(id) == 0);
 
             auto props = copy(proto->GetProperties());
+
             if (!props.ApplyFromText(kv)) {
                 return false;
             }
@@ -210,6 +211,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             RUNTIME_ASSERT(_itemsMap.count(id) == 0);
 
             auto props = copy(proto->GetProperties());
+
             if (!props.ApplyFromText(kv)) {
                 return false;
             }
@@ -227,10 +229,22 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 AddItemInternal(item);
             }
             else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-                throw NotImplementedException(LINE_STR);
+                auto* cr = GetCritter(item->GetCritterId());
+
+                if (cr == nullptr) {
+                    return false;
+                }
+
+                cr->AddInvItem(item);
             }
             else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
-                throw NotImplementedException(LINE_STR);
+                auto* cont = GetItem(item->GetContainerId());
+
+                if (cont == nullptr) {
+                    return false;
+                }
+
+                cont->AddInnerItem(item);
             }
             else {
                 return false;
@@ -4775,23 +4789,39 @@ auto MapView::SaveToText() const -> string
         fomap.append("\n");
     };
 
+    const auto fill_critter = [&fill_section](const CritterView* cr) {
+        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
+        kv["$Id"] = strex("{}", cr->GetId());
+        kv["$Proto"] = cr->GetProto()->GetName();
+        fill_section("Critter", kv);
+    };
+
+    const auto fill_item = [&fill_section](const ItemView* item) {
+        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
+        kv["$Id"] = strex("{}", item->GetId());
+        kv["$Proto"] = item->GetProto()->GetName();
+        fill_section("Item", kv);
+    };
+
     // Header
     fill_section("ProtoMap", GetProperties().SaveToText(nullptr));
 
     // Critters
     for (const auto* cr : _critters) {
-        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
-        kv["$Id"] = strex("{}", cr->GetId());
-        kv["$Proto"] = cr->GetProto()->GetName();
-        fill_section("Critter", kv);
+        fill_critter(cr);
+
+        for (auto* inv_item : cr->GetConstInvItems()) {
+            fill_item(inv_item);
+        }
     }
 
     // Items
     for (const auto* item : _allItems) {
-        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
-        kv["$Id"] = strex("{}", item->GetId());
-        kv["$Proto"] = item->GetProto()->GetName();
-        fill_section("Item", kv);
+        fill_item(item);
+
+        for (auto* inner_item : item->GetConstInnerItems()) {
+            fill_item(inner_item);
+        }
     }
 
     return fomap;
