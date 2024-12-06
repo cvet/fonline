@@ -492,12 +492,9 @@ void Critter::ChangeDir(uint8 dir)
     STACK_TRACE_ENTRY();
 
     const auto normalized_dir = static_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
+    const auto dir_angle = GeometryHelper::DirToAngle(normalized_dir);
 
-    if (normalized_dir == GetDir()) {
-        return;
-    }
-
-    SetDirAngle(GeometryHelper::DirToAngle(normalized_dir));
+    SetDirAngle(dir_angle);
     SetDir(normalized_dir);
 }
 
@@ -506,13 +503,10 @@ void Critter::ChangeDirAngle(int dir_angle)
     STACK_TRACE_ENTRY();
 
     const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
-
-    if (normalized_dir_angle == GetDirAngle()) {
-        return;
-    }
+    const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
 
     SetDirAngle(normalized_dir_angle);
-    SetDir(GeometryHelper::AngleToDir(normalized_dir_angle));
+    SetDir(dir);
 }
 
 void Critter::SetItem(Item* item)
