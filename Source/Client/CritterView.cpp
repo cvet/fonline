@@ -91,7 +91,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
     auto* item = new ItemView(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
