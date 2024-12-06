@@ -70,7 +70,7 @@ void CritterView::SetName(string_view name)
     _name = name;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
+auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -81,22 +81,25 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    return AddInvItem(item);
+    return AddRawInvItem(item);
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
+auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = new ItemView(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
+    item->SetIsStatic(false);
+    item->SetOwnership(ItemOwnership::CritterInventory);
+    item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    return AddInvItem(item);
+    return AddRawInvItem(item);
 }
 
-auto CritterView::AddInvItem(ItemView* item) -> ItemView*
+auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
 {
     RUNTIME_ASSERT(!item->GetIsStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);

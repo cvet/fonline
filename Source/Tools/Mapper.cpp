@@ -2404,10 +2404,10 @@ auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> I
 
     if (owner != nullptr) {
         if (auto* cr = dynamic_cast<CritterHexView*>(owner); cr != nullptr) {
-            item = cr->AddInvItem(cr->GetMap()->GetTempEntityId(), proto, CritterItemSlot::Inventory, {});
+            item = cr->AddMapperInvItem(cr->GetMap()->GetTempEntityId(), proto, CritterItemSlot::Inventory, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto, ContainerItemStack::Root, nullptr);
+            item = cont->AddMapperInnerItem(cont->GetMap()->GetTempEntityId(), proto, ContainerItemStack::Root, nullptr);
         }
     }
     else if (proto->GetIsTile()) {
@@ -2439,7 +2439,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         auto* cr_clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetHexX(), cr->GetHexY(), cr->GetDirAngle(), &cr->GetProperties());
 
         for (const auto* inv_item : cr->GetConstInvItems()) {
-            auto* inv_item_clone = cr_clone->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
+            auto* inv_item_clone = cr_clone->AddMapperInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
             CloneInnerItems(inv_item_clone, inv_item);
         }
 
@@ -2462,7 +2462,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
     for (const auto* inner_item : from_item->GetConstInnerItems()) {
-        auto* inner_item_clone = to_item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
+        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
         CloneInnerItems(inner_item_clone, inner_item);
     }
 }
@@ -2561,7 +2561,7 @@ void FOMapper::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
+                auto* inner_item = item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
 
                 add_item_inner_items(child_buf, inner_item);
             }
@@ -2571,7 +2571,7 @@ void FOMapper::BufferPaste()
             auto* cr = CurMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), static_cast<uint16>(hx), static_cast<uint16>(hy), 0, entity_buf.Props);
 
             for (const auto* child_buf : entity_buf.Children) {
-                auto* inv_item = cr->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
+                auto* inv_item = cr->AddMapperInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
 
                 add_item_inner_items(child_buf, inv_item);
             }

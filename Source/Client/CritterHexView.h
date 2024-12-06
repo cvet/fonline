@@ -69,7 +69,7 @@ public:
 #endif
 
     void Init();
-    auto AddInvItem(ItemView* item) -> ItemView* override;
+    auto AddRawInvItem(ItemView* item) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
