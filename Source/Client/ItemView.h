@@ -56,6 +56,7 @@ public:
 
     auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*;
     auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddInnerItem(ItemView* item) -> ItemView*;
     void DestroyInnerItem(ItemView* item);
 
 protected:

@@ -82,27 +82,31 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemSta
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    vec_add_unique_value(_innerItems, item);
-
-    std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
-
-    return item;
+    return AddInnerItem(item);
 }
 
 auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = AddInnerItem(id, proto, stack_id, nullptr);
+    auto* item = new ItemView(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
+    item->SetContainerStack(stack_id);
+
+    return AddInnerItem(item);
+}
+
+auto ItemView::AddInnerItem(ItemView* item) -> ItemView*
+{
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!item->GetIsStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
     RUNTIME_ASSERT(item->GetContainerId() == GetId());
-    RUNTIME_ASSERT(item->GetContainerStack() == stack_id);
 
-    std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    vec_add_unique_value(_innerItems, item);
+    std::stable_sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }

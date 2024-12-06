@@ -99,24 +99,11 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-auto CritterHexView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
+ItemView* CritterHexView::AddInvItem(ItemView* item)
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = CritterView::AddInvItem(id, proto, slot, props);
-
-    if (item->GetCritterSlot() != CritterItemSlot::Inventory && !IsAnim()) {
-        AnimateStay();
-    }
-
-    return item;
-}
-
-auto CritterHexView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
-{
-    STACK_TRACE_ENTRY();
-
-    auto* item = CritterView::AddInvItem(id, proto, slot, props_data);
+    CritterView::AddInvItem(item);
 
     if (item->GetCritterSlot() != CritterItemSlot::Inventory && !IsAnim()) {
         AnimateStay();
