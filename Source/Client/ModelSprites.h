@@ -68,11 +68,13 @@ public:
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
+    void SetSize(int width, int height);
     void DrawToAtlas();
 
 private:
     ModelSpriteFactory* _factory {};
     unique_ptr<ModelInstance> _model {};
+    AtlasType _atlasType {};
     bool _nonConstHelper {};
 };
 

@@ -366,8 +366,9 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-ModelInstance::ModelInstance(ModelManager& model_mngr) :
-    _modelMngr(model_mngr)
+ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
+    _modelMngr(model_mngr),
+    _modelInfo {info}
 {
     STACK_TRACE_ENTRY();
 
@@ -382,6 +383,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) :
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
     _forceDraw = true;
     _lastDrawTime = GetTime();
+    SetupFrame(_modelInfo->_drawWidth, _modelInfo->_drawHeight);
 }
 
 ModelInstance::~ModelInstance()
@@ -400,17 +402,8 @@ ModelInstance::~ModelInstance()
     }
 }
 
-void ModelInstance::SetupFrame()
+void ModelInstance::SetupFrame(int draw_width, int draw_height)
 {
-    STACK_TRACE_ENTRY();
-
-    auto draw_width = _modelInfo->_drawWidth;
-    auto draw_height = _modelInfo->_drawHeight;
-
-    const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
-    draw_width = iround(static_cast<float>(draw_width) * draw_size_scale);
-    draw_height = iround(static_cast<float>(draw_height) * draw_size_scale);
-
     _frameWidth = draw_width * FRAME_SCALE;
     _frameHeight = draw_height * FRAME_SCALE;
 
@@ -898,6 +891,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (_isMoving) {
         const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+
         if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
             action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
@@ -918,6 +912,7 @@ void ModelInstance::RefreshMoveAnimation()
         _isMovingBack = false;
 
         const auto angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+
         if (std::abs(angle_diff) > _modelMngr._settings.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
@@ -935,6 +930,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     float speed = 1.0f;
     const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
+
     if (index == _curMovingAnimIndex) {
         return;
     }
@@ -1061,10 +1057,10 @@ auto ModelInstance::GetViewSize() const noexcept -> tuple<int, int>
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
-
-    const auto view_width = iround(static_cast<float>(_modelInfo->_viewWidth) * draw_size_scale);
-    const auto view_height = iround(static_cast<float>(_modelInfo->_viewHeight) * draw_size_scale);
+    const auto draw_width_scale = static_cast<float>(_frameWidth / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawWidth);
+    const auto draw_height_scale = static_cast<float>(_frameHeight / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawHeight);
+    const auto view_width = iround(static_cast<float>(_modelInfo->_viewWidth) * draw_width_scale);
+    const auto view_height = iround(static_cast<float>(_modelInfo->_viewHeight) * draw_height_scale);
 
     return {view_width, view_height};
 }
@@ -1414,6 +1410,8 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     auto* mesh_data = mesh_instance->Mesh;
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
@@ -2875,9 +2873,7 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     STACK_TRACE_ENTRY();
 
-    auto* model = new ModelInstance(_modelMngr);
-    model->_modelInfo = this;
-    model->SetupFrame();
+    auto* model = new ModelInstance(_modelMngr, this);
 
     if (_animController) {
         model->_bodyAnimController = _animController->Clone();

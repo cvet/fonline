@@ -1157,24 +1157,30 @@
         model->StartMeshGeneration();
     }
 
-    const auto count = static_cast<uint>(position.size());
-    const auto x = (count > 0 ? position[0] : 0.0f);
-    const auto y = (count > 1 ? position[1] : 0.0f);
-    const auto rx = (count > 2 ? position[2] : 0.0f);
-    const auto ry = (count > 3 ? position[3] : 0.0f);
-    const auto rz = (count > 4 ? position[4] : 0.0f);
-    const auto sx = (count > 5 ? position[5] : 1.0f);
-    const auto sy = (count > 6 ? position[6] : 1.0f);
-    const auto sz = (count > 7 ? position[7] : 1.0f);
-    const auto speed = (count > 8 ? position[8] : 1.0f);
-    const auto period = (count > 9 ? position[9] : 0.0f);
-    const auto stl = (count > 10 ? position[10] : 0.0f);
-    const auto stt = (count > 11 ? position[11] : 0.0f);
-    const auto str = (count > 12 ? position[12] : 0.0f);
-    const auto stb = (count > 13 ? position[13] : 0.0f);
+    const auto count = position.size();
+    const auto x = count > 0 ? position[0] : 0.0f;
+    const auto y = count > 1 ? position[1] : 0.0f;
+    const auto rx= count > 2 ? position[2] : 0.0f;
+    const auto ry = count > 3 ? position[3] : 0.0f;
+    const auto rz = count > 4 ? position[4] : 0.0f;
+    const auto sx = count > 5 ? position[5] : 1.0f;
+    const auto sy = count > 6 ? position[6] : 1.0f;
+    const auto sz = count > 7 ? position[7] : 1.0f;
+    const auto speed = count > 8 ? position[8] : 1.0f;
+    const auto period = count > 9 ? position[9] : 0.0f;
+    const auto stl = count > 10 ? position[10] : 0.0f;
+    const auto stt = count > 11 ? position[11] : 0.0f;
+    const auto str = count > 12 ? position[12] : 0.0f;
+    const auto stb = count > 13 ? position[13] : 0.0f;
+
     if (count > 13) {
-        client->SprMngr.PushScissor(static_cast<int>(stl), static_cast<int>(stt), static_cast<int>(str), static_cast<int>(stb));
+        client->SprMngr.PushScissor(iround(stl), iround(stt), iround(str), iround(stb));
     }
+    auto pop_scissor = ScopeCallback([&]() noexcept {
+        if (count > 13) {
+            safe_call([&] { client->SprMngr.PopScissor(); });
+        }
+    });
 
     std::memset(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
@@ -1188,15 +1194,16 @@
     model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
-    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+
+    if (count > 13) {
+        const auto max_height = iround(stb - stt) * 4 / 3;
+        model_spr->SetSize(iround(str - stl), max_height);
+    }
 
     model_spr->DrawToAtlas();
 
-    client->SprMngr.DrawSprite(model_spr.get(), static_cast<int>(x) - model_spr->Width / 2 + model_spr->OffsX, static_cast<int>(y) - model_spr->Height + model_spr->OffsY, color != ucolor::clear ? color : COLOR_SPRITE);
-
-    if (count > 13) {
-        client->SprMngr.PopScissor();
-    }
+    client->SprMngr.DrawSprite(model_spr.get(), iround(x) - model_spr->Width / 2 + model_spr->OffsX, iround(y) - model_spr->Height + model_spr->OffsY, color != ucolor::clear ? color : COLOR_SPRITE);
 
 #else
     UNUSED_VARIABLE(client);

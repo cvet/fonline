@@ -236,7 +236,7 @@ public:
     constexpr static int FRAME_SCALE = 2;
 
     ModelInstance() = delete;
-    explicit ModelInstance(ModelManager& model_mngr);
+    ModelInstance(ModelManager& model_mngr, ModelInformation* info);
     ModelInstance(const ModelInstance&) = default;
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
@@ -261,7 +261,7 @@ public:
     [[nodiscard]] auto GetAnimDuration() const -> time_duration;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
-    void SetupFrame();
+    void SetupFrame(int draw_width, int draw_height);
     void StartMeshGeneration();
     void PrewarmParticles();
     auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;

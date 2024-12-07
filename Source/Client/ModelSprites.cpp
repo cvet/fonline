@@ -127,6 +127,40 @@ auto ModelSprite::Update() -> bool
     return true;
 }
 
+void ModelSprite::SetSize(int width, int height)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(width > 0);
+    RUNTIME_ASSERT(height > 0);
+
+    if (width == Width && height == Height) {
+        return;
+    }
+
+    if (AtlasNode != nullptr) {
+        AtlasNode->Free();
+        AtlasNode = nullptr;
+    }
+
+    _model->SetupFrame(width, height);
+
+    Width = width;
+    Height = height;
+    OffsY = static_cast<int16>(height / 4);
+
+    int x = 0;
+    int y = 0;
+    auto&& [atlas, atlas_node] = _sprMngr.GetAtlasMngr().FindAtlasPlace(_atlasType, width, height, x, y);
+
+    Atlas = atlas;
+    AtlasNode = atlas_node;
+    AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
+    AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
+    AtlasRect.Right = static_cast<float>(x + width) / static_cast<float>(atlas->Width);
+    AtlasRect.Bottom = static_cast<float>(y + height) / static_cast<float>(atlas->Height);
+}
+
 void ModelSprite::DrawToAtlas()
 {
     STACK_TRACE_ENTRY();
@@ -150,31 +184,19 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     STACK_TRACE_ENTRY();
 
     auto&& model = _modelMngr->CreateModel(path);
-    if (model == nullptr) {
+
+    if (!model) {
         return nullptr;
     }
 
-    model->SetupFrame();
-    auto&& [draw_width, draw_height] = model->GetDrawSize();
-
     auto&& model_spr = std::make_shared<ModelSprite>(_sprMngr);
+    auto&& [draw_width, draw_height] = model->GetDrawSize();
 
     model_spr->_factory = this;
     model_spr->_model = std::move(model);
-    model_spr->Width = draw_width;
-    model_spr->Height = draw_height;
-    model_spr->OffsY = static_cast<int16>(draw_height / 4);
+    model_spr->_atlasType = atlas_type;
 
-    int x = 0;
-    int y = 0;
-    auto&& [atlas, atlas_node] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_width, draw_height, x, y);
-
-    model_spr->Atlas = atlas;
-    model_spr->AtlasNode = atlas_node;
-    model_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    model_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    model_spr->AtlasRect.Right = static_cast<float>(x + draw_width) / static_cast<float>(atlas->Width);
-    model_spr->AtlasRect.Bottom = static_cast<float>(y + draw_height) / static_cast<float>(atlas->Height);
+    model_spr->SetSize(draw_width, draw_height);
 
     return model_spr;
 }
@@ -224,12 +246,14 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     const auto frame_height = model_spr->Height * ModelInstance::FRAME_SCALE;
 
     RenderTarget* rt_model = nullptr;
+
     for (auto* rt : _rtIntermediate) {
         if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
             rt_model = rt;
             break;
         }
     }
+
     if (rt_model == nullptr) {
         rt_model = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
         _rtIntermediate.push_back(rt_model);
