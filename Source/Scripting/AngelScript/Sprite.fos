@@ -85,6 +85,10 @@ class Sprite
             y -= height;
         }
 
+        if (color == ZERO_UCOLOR) {
+            color = Color;
+        }
+
         switch (layout != SpriteLayout::None ? layout : Layout) {
         case SpriteLayout::Tile:
             Game.DrawSpritePattern(Id, x, y, width, height, Width, Height, color);
@@ -162,11 +166,12 @@ class Sprite
         }
     }
 
-    uint Id;
+    uint Id = 0;
     SpriteLayout Layout = SpriteLayout::None;
-    int Width;
-    int Height;
-    uint Ticks;
-    bool Hidden;
+    int Width = 0;
+    int Height = 0;
+    uint Ticks = 0;
+    bool Hidden = false;
     hstring LoadedName;
+    ucolor Color = COLOR_NEUTRAL;
 };

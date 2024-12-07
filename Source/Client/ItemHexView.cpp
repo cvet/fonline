@@ -203,7 +203,7 @@ void ItemHexView::RefreshAnim()
         }
     }
     else if (_isEffect && !_isDynamicEffect) {
-        _anim->Play(hstring(), false, false);
+        _anim->Play({}, false, false);
     }
     else {
         _anim->PlayDefault();
