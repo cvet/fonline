@@ -203,8 +203,8 @@ public:
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
 
-    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color);
-    void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color);
+    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
+    void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color) const;
 
     void BeginScene(ucolor clear_color);
     void EndScene();

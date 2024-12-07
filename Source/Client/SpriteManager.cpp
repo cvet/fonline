@@ -751,7 +751,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
     }
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const
 {
     STACK_TRACE_ENTRY();
 
@@ -763,7 +763,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r
     points.push_back({r.Right, r.Bottom, color});
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color) const
 {
     STACK_TRACE_ENTRY();
 
