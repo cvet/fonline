@@ -300,8 +300,10 @@ def parseMetaFile(absPath):
                 tagsMetas[tagName].append((absPath, lineIndex, tagInfo, tagContext, comment))
                 lastComment = []
                 
+            elif lineLen - tagPos >= 3 and line[tagPos + 2] != '/':
+                lastComment.append(line[tagPos + 2:].strip())
             else:
-                lastComment.append(line[tagPos + 2:].strip().lstrip('/'))
+                lastComment = []
                 
         except Exception as ex:
             showError('Invalid tag format', absPath + ' (' + str(lineIndex + 1) + ')', line.strip(), ex)
