@@ -128,9 +128,11 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
+    ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent

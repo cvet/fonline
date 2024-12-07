@@ -1463,6 +1463,8 @@ void MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
             }
         }
     }
+
+    _engine->OnCritterTransit.Fire(cr, prev_map);
 }
 
 void MapManager::AddCritterToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t global_cr_id)

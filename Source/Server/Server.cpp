@@ -2795,8 +2795,9 @@ void FOServer::Process_Move(Player* player)
         next_start_hy = hy;
     }*/
 
-    uint checked_speed = speed;
-    if (!OnPlayerCheckMove.Fire(player, cr, checked_speed)) {
+    uint corrected_speed = speed;
+
+    if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
         BreakIntoDebugger();
         player->Send_Moving(cr);
         return;
@@ -2843,7 +2844,11 @@ void FOServer::Process_Move(Player* player)
     const auto clamped_end_hex_ox = std::clamp(end_hex_ox, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
     const auto clamped_end_hex_oy = std::clamp(end_hex_oy, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
 
-    StartCritterMoving(cr, static_cast<uint16>(checked_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, player);
+    StartCritterMoving(cr, static_cast<uint16>(corrected_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, player);
+
+    if (corrected_speed != speed) {
+        player->Send_MovingSpeed(cr);
+    }
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2882,7 +2887,7 @@ void FOServer::Process_StopMove(Player* player)
     }
 
     uint zero_speed = 0;
-    if (!OnPlayerCheckMove.Fire(player, cr, zero_speed)) {
+    if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
         player->Send_Moving(cr);
         return;
@@ -2913,7 +2918,7 @@ void FOServer::Process_Dir(Player* player)
     }
 
     int16 checked_dir_angle = dir_angle;
-    if (!OnPlayerCheckDir.Fire(player, cr, checked_dir_angle)) {
+    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
         BreakIntoDebugger();
         player->Send_Dir(cr);
         return;
