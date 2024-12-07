@@ -973,9 +973,9 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeMovingSpeed(Critter* self, uint speed)
+[[maybe_unused]] void Server_Critter_ChangeMovingSpeed(Critter* self, int speed)
 {
-    self->GetEngine()->ChangeCritterMovingSpeed(self, static_cast<uint16>(speed));
+    self->GetEngine()->ChangeCritterMovingSpeed(self, numeric_cast<uint16>(speed));
 }
 
 ///@ ExportMethod
