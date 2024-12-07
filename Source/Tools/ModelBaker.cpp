@@ -504,6 +504,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         const ufbx_anim* fbx_anim = fbx_anim_stack->anim;
 
         ufbx_bake_opts fbx_bake_opts = {};
+        fbx_bake_opts.trim_start_time = true;
         ufbx_error fbx_error;
         ufbx_baked_anim* fbx_baked_anim = ufbx_bake_anim(fbx_scene, fbx_anim, &fbx_bake_opts, &fbx_error);
         RUNTIME_ASSERT(fbx_baked_anim);
