@@ -351,7 +351,6 @@ void CritterHexView::AnimateStay()
 
         if (IsMoving()) {
             _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
-
             action_anim = _model->GetMovingAnim2();
         }
         else {
@@ -389,6 +388,7 @@ void CritterHexView::AnimateStay()
         }
 
         const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
+
         if (frames == nullptr) {
             frames = _engine->ResMngr.GetCritterDummyFrames();
         }
@@ -689,10 +689,6 @@ void CritterHexView::Process()
         }
     }
 #endif
-
-    if (!_strTextOnHead.empty() && _engine->GameTime.GameplayTime() - _startTextTime >= _textShowDuration) {
-        _strTextOnHead = "";
-    }
 }
 
 void CritterHexView::ProcessMoving()
@@ -915,17 +911,7 @@ void CritterHexView::RefreshOffs()
     }
 }
 
-void CritterHexView::SetText(string_view str, ucolor color, time_duration text_delay)
-{
-    STACK_TRACE_ENTRY();
-
-    _startTextTime = _engine->GameTime.GameplayTime();
-    _strTextOnHead = str;
-    _textShowDuration = text_delay;
-    _textOnHeadColor = color;
-}
-
-void CritterHexView::GetNameTextPos(int& x, int& y) const
+auto CritterHexView::GetNameTextPos(int& x, int& y) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -935,12 +921,11 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
 
         x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _map->GetSpritesZoom());
         y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
+
+        return true;
     }
-    else {
-        // Offscreen
-        x = -1000;
-        y = -1000;
-    }
+
+    return false;
 }
 
 auto CritterHexView::IsNameVisible() const noexcept -> bool
@@ -963,36 +948,7 @@ auto CritterHexView::IsNameVisible() const noexcept -> bool
     return true;
 }
 
-void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
-{
-    STACK_TRACE_ENTRY();
-
-    name_visible = false;
-
-    string str;
-
-    if (_strTextOnHead.empty()) {
-        name_visible = IsNameVisible();
-
-        str = _name;
-
-        if (GetControlledByPlayer() && GetIsPlayerOffline()) {
-            str += _engine->Settings.PlayerOffAppendix;
-        }
-    }
-    else {
-        str = _strTextOnHead;
-    }
-
-    GetNameTextPos(x, y);
-
-    if (_engine->SprMngr.GetTextInfo(200, 200, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
-        x -= w / 2;
-        y -= h;
-    }
-}
-
-void CritterHexView::DrawTextOnHead()
+void CritterHexView::DrawName()
 {
     STACK_TRACE_ENTRY();
 
@@ -1001,40 +957,19 @@ void CritterHexView::DrawTextOnHead()
     if (!IsSpriteValid()) {
         return;
     }
-
-    string str;
-    ucolor color;
-
-    if (_strTextOnHead.empty()) {
-        if (!IsNameVisible()) {
-            return;
-        }
-
-        str = _name;
-
-        if (GetControlledByPlayer() && GetIsPlayerOffline()) {
-            str += _engine->Settings.PlayerOffAppendix;
-        }
-
-        color = GetNameColor();
-
-        if (color == ucolor::clear) {
-            color = _textOnHeadColor;
-        }
+    if (!IsNameVisible()) {
+        return;
     }
-    else {
-        if (!_engine->Settings.ShowCritterHeadText) {
-            return;
-        }
 
-        str = _strTextOnHead;
-        color = _textOnHeadColor;
-    }
+    ucolor color = GetNameColor();
+    color = color != ucolor::clear ? color : COLOR_TEXT;
+    color = ucolor {color, Alpha};
 
     int x = 0;
     int y = 0;
-    GetNameTextPos(x, y);
-    const auto r = IRect(x - 100, y - 200, x + 100, y);
 
-    _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, ucolor {color, Alpha}, -1);
+    if (GetNameTextPos(x, y)) {
+        const auto r = IRect(x - 100, y - 200, x + 100, y);
+        _engine->SprMngr.DrawStr(r, _name, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
+    }
 }

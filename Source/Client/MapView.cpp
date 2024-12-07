@@ -2838,7 +2838,7 @@ void MapView::DrawMapTexts()
     STACK_TRACE_ENTRY();
 
     for (auto* cr : _critters) {
-        cr->DrawTextOnHead();
+        cr->DrawName();
     }
 
     const auto time = _engine->GameTime.GameplayTime();

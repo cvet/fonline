@@ -1655,20 +1655,6 @@ static constexpr auto CMD_REGENMAP = 25;
 static constexpr auto CMD_SETTIME = 32;
 static constexpr auto CMD_LOG = 37;
 
-// Todo: rework built-in string messages
-#define STR_CRNORM (100)
-#define STR_CRSHOUT (102)
-#define STR_CREMOTE (104)
-#define STR_CRWHISP (106)
-#define STR_CRSOCIAL (108)
-#define STR_MBNORM (120)
-#define STR_MBSHOUT (122)
-#define STR_MBEMOTE (124)
-#define STR_MBWHISP (126)
-#define STR_MBSOCIAL (128)
-#define STR_MBRADIO (130)
-#define STR_MBNET (132)
-
 #define STR_RADIO_CANT_SEND (479)
 #define STR_BARTER_NO_BARTER_NOW (486)
 #define STR_DIALOG_NPC_NOT_LIFE (801)

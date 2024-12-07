@@ -1251,7 +1251,9 @@ void FOClient::Net_OnText()
         Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnText(str, cr_id, how_say);
+    if (!str.empty()) {
+        OnInMessage.Fire(string(str), how_say, cr_id);
+    }
 }
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
@@ -1266,11 +1268,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     const auto how_say = _conn.InBuf.Read<uint8>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
-
-    string lexems;
-    if (with_lexems) {
-        lexems = _conn.InBuf.Read<string>();
-    }
+    const auto lexems = with_lexems ? _conn.InBuf.Read<string>() : string();
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -1278,117 +1276,13 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 
     if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
-        auto str = copy(msg.GetStr(str_num));
+        string str = copy(msg.GetStr(str_num));
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
-        OnText(str, cr_id, how_say);
-    }
-}
 
-void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
-{
-    STACK_TRACE_ENTRY();
-
-    auto fstr = string(str);
-    if (fstr.empty()) {
-        return;
-    }
-
-    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100;
-    const auto sstr = fstr;
-    if (!OnInMessage.Fire(sstr, how_say, cr_id, text_delay)) {
-        return;
-    }
-
-    fstr = sstr;
-    if (fstr.empty()) {
-        return;
-    }
-
-    // Type stream
-    uint fstr_cr = 0;
-    uint fstr_mb = 0;
-
-    switch (how_say) {
-    case SAY_NORM:
-        fstr_mb = STR_MBNORM;
-        fstr_cr = STR_CRNORM;
-        break;
-    case SAY_NORM_ON_HEAD:
-        fstr_cr = STR_CRNORM;
-        break;
-    case SAY_SHOUT:
-        fstr_mb = STR_MBSHOUT;
-        fstr_cr = STR_CRSHOUT;
-        fstr = strex(fstr).upperUtf8();
-        break;
-    case SAY_SHOUT_ON_HEAD:
-        fstr_cr = STR_CRSHOUT;
-        fstr = strex(fstr).upperUtf8();
-        break;
-    case SAY_EMOTE:
-        fstr_mb = STR_MBEMOTE;
-        fstr_cr = STR_CREMOTE;
-        break;
-    case SAY_EMOTE_ON_HEAD:
-        fstr_cr = STR_CREMOTE;
-        break;
-    case SAY_WHISP:
-        fstr_mb = STR_MBWHISP;
-        fstr_cr = STR_CRWHISP;
-        fstr = strex(fstr).lowerUtf8();
-        break;
-    case SAY_WHISP_ON_HEAD:
-        fstr_cr = STR_CRWHISP;
-        fstr = strex(fstr).lowerUtf8();
-        break;
-    case SAY_SOCIAL:
-        fstr_cr = STR_CRSOCIAL;
-        fstr_mb = STR_MBSOCIAL;
-        break;
-    case SAY_RADIO:
-        fstr_mb = STR_MBRADIO;
-        break;
-    case SAY_NETMSG:
-        fstr_mb = STR_MBNET;
-        break;
-    default:
-        break;
-    }
-
-    const auto get_format = [this](uint str_num) -> string {
-        const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
-        return strex(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}");
-    };
-
-    auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
-
-    // Critter text on head
-    if (fstr_cr != 0 && cr != nullptr) {
-        cr->SetText(strex(strex::dynamic_format_tag {}, get_format(fstr_cr), fstr), COLOR_TEXT, std::chrono::milliseconds {text_delay});
-    }
-
-    // Message box text
-    if (fstr_mb != 0) {
-        if (how_say == SAY_NETMSG) {
-            AddMessage(FOMB_GAME, strex(strex::dynamic_format_tag {}, get_format(fstr_mb), fstr));
-        }
-        else if (how_say == SAY_RADIO) {
-            uint16 channel = 0;
-            if (auto* chosen = GetChosen(); chosen != nullptr) {
-                const auto* radio = chosen->GetInvItem(cr_id);
-                if (radio != nullptr) {
-                    channel = radio->GetRadioChannel();
-                }
-            }
-            AddMessage(FOMB_TALK, strex(strex::dynamic_format_tag {}, get_format(fstr_mb), channel, fstr));
-        }
-        else {
-            const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMessage(FOMB_TALK, strex(strex::dynamic_format_tag {}, get_format(fstr_mb), cr_name, fstr));
+        if (!str.empty()) {
+            OnInMessage.Fire(str, how_say, cr_id);
         }
     }
-
-    FlashGameWindow();
 }
 
 void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color)
@@ -2180,6 +2074,7 @@ void FOClient::Net_OnAnimateItem()
     }
 
     auto* item = CurMap->GetItem(item_id);
+
     if (item != nullptr) {
         item->GetAnim()->Play(anim_name, looped, reversed);
     }

@@ -275,25 +275,14 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
+[[maybe_unused]] bool Client_Critter_GetTextPos(CritterView* self, int& x, int& y)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->GetNameTextInfo(nameVisible, x, y, w, h, lines);
-}
-
-///@ ExportMethod
-[[maybe_unused]] void Client_Critter_GetTextPos(CritterView* self, int& x, int& y)
-{
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    hex_cr->GetNameTextPos(x, y);
+    return hex_cr->GetNameTextPos(x, y);
 }
 
 ///@ ExportMethod
