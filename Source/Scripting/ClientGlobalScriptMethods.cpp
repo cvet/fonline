@@ -870,11 +870,17 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, int width, int height, int font, uint flags, int& resultWidth, int& resultHeight, int& resultLines)
 {
-    if (!client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
+    if (!client->SprMngr.GetTextInfo(width, height, text, font, flags, resultWidth, resultHeight, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
     }
+}
+
+///@ ExportMethod
+[[maybe_unused]] int Client_Game_GetTextLines(FOClient* client, int width, int height, int font)
+{
+    return client->SprMngr.GetLinesCount(width, height, "", font);
 }
 
 ///@ ExportMethod
@@ -1027,12 +1033,12 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, ucolor color, int font, int flags)
+[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, ucolor color, int font, uint flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
-    if (text.length() == 0) {
+    if (text.empty()) {
         return;
     }
 
@@ -1153,7 +1159,7 @@
     const auto count = position.size();
     const auto x = count > 0 ? position[0] : 0.0f;
     const auto y = count > 1 ? position[1] : 0.0f;
-    const auto rx= count > 2 ? position[2] : 0.0f;
+    const auto rx = count > 2 ? position[2] : 0.0f;
     const auto ry = count > 3 ? position[3] : 0.0f;
     const auto rz = count > 4 ? position[4] : 0.0f;
     const auto sx = count > 5 ? position[5] : 1.0f;
