@@ -2609,11 +2609,6 @@ class MessageBox : Text
 
     void AddMessage(string text, int type = FOMB_GAME)
     {
-        // Skip error messages
-        if (type == FOMB_GAME && text == "error") {
-            return;
-        }
-
         // Set text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
