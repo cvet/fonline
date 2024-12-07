@@ -38,6 +38,7 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
+#include "NetCommand.h"
 #include "StringUtils.h"
 
 ///@ ExportMethod
@@ -1544,4 +1545,72 @@
 [[maybe_unused]] void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
 {
     client->ChangeLanguage(langName);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_FlashUnfocusedWindow(FOClient* client)
+{
+    if (!client->SprMngr.IsWindowFocused()) {
+        client->SprMngr.BlinkWindow();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Login(FOClient* client, string_view login, string_view password)
+{
+    client->Connect(login, password, INIT_NET_REASON_LOGIN);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Register(FOClient* client, string_view login, string_view password)
+{
+    client->Connect(login, password, INIT_NET_REASON_REG);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Connect(FOClient* client)
+{
+    client->Connect("", "", INIT_NET_REASON_CUSTOM);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Disconnect(FOClient* client)
+{
+    client->Disconnect();
+}
+
+///@ ExportMethod
+[[maybe_unused]] string Client_Game_BuiltInCommand(FOClient* client, string_view command)
+{
+    string result;
+
+    if (!PackNetCommand(
+            command, &client->GetConnection().OutBuf,
+            [&result](string_view s) {
+                result += s;
+                result += "\n";
+            },
+            *client)) {
+        return "Unknown command";
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
+{
+    UNUSED_VARIABLE(client, enabled);
+
+    // Todo: improve SetScreenKeyboard
+    /*if (SDL_HasScreenKeyboardSupport()) {
+        bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
+        bool next = strex(args[1]).toBool();
+        if (cur != next) {
+            if (next)
+                SDL_StartTextInput();
+            else
+                SDL_StopTextInput();
+        }
+    }*/
 }

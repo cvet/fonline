@@ -1622,7 +1622,7 @@ class TextInput : Text
 
     void _Focus() override
     {
-        Game.CustomCall("SetScreenKeyboard true");
+        Game.SetScreenKeyboard(true);
 
         Text::_Focus();
     }
@@ -1630,7 +1630,7 @@ class TextInput : Text
     void _Unfocus() override
     {
         if (CurConsole == null || !CurConsole.Active) {
-            Game.CustomCall("SetScreenKeyboard false");
+            Game.SetScreenKeyboard(false);
         }
 
         Text::_Unfocus();
@@ -2823,7 +2823,7 @@ class Console : TextInput
 
     void _ActiveChanged() override
     {
-        Game.CustomCall("SetScreenKeyboard " + (Active ? "true" : "false"));
+        Game.SetScreenKeyboard(Active);
 
         TextInput::_ActiveChanged();
     }
