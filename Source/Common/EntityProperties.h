@@ -339,7 +339,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, uint, MovingSpeed);
+    ENTITY_PROPERTY(PrivateServer, int, MovingSpeed);
 
     // Todo: exclude critter properties from engine:
     ///@ ExportProperty
