@@ -38,7 +38,7 @@
 
 auto PropertyRawData::GetPtr() noexcept -> void*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_passedPtr != nullptr) {
         return _passedPtr;
@@ -49,7 +49,7 @@ auto PropertyRawData::GetPtr() noexcept -> void*
 
 auto PropertyRawData::Alloc(size_t size) -> uint8*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     _dataSize = size;
     _passedPtr = nullptr;
@@ -67,7 +67,7 @@ auto PropertyRawData::Alloc(size_t size) -> uint8*
 
 void PropertyRawData::Pass(const_span<uint8> value)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     _passedPtr = const_cast<uint8*>(value.data());
     _dataSize = value.size();
@@ -76,7 +76,7 @@ void PropertyRawData::Pass(const_span<uint8> value)
 
 void PropertyRawData::Pass(const void* value, size_t size)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     _passedPtr = static_cast<uint8*>(const_cast<void*>(value));
     _dataSize = size;
@@ -85,7 +85,7 @@ void PropertyRawData::Pass(const void* value, size_t size)
 
 void PropertyRawData::StoreIfPassed()
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_passedPtr != nullptr) {
         PropertyRawData tmp_data;
