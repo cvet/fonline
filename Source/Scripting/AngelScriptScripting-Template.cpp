@@ -155,8 +155,6 @@
 #endif
 
 #if COMPILER_MODE
-DECLARE_EXCEPTION(ScriptCompilerException);
-
 class FOServer;
 class FOClient;
 class FOSingle;
@@ -404,11 +402,12 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         RUNTIME_ASSERT(func);
 
         auto* ctx = RequestContext();
-
         const auto as_result = ctx->Prepare(func);
+
         if (as_result < 0) {
             ReturnContext(ctx);
-            throw ScriptException("Can't prepare context", func->GetName(), as_result);
+
+            throw ScriptCallException("Can't prepare context", func->GetName(), as_result);
         }
 
         return ctx;
@@ -445,7 +444,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
             const auto execution_duration = execution_time.GetDuration();
 
-            if (execution_duration >= std::chrono::milliseconds {GameEngine->Settings.ScriptOverrunReportTime}) {
+            if (execution_duration >= std::chrono::milliseconds {GameEngine->Settings.ScriptOverrunReportTime} && !IsRunInDebugger()) {
 #if !FO_DEBUG
                 WriteLog("Script execution overrun: {} ({}{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended at start" : "");
 #else
@@ -466,7 +465,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptException("Can't yield current routine");
+                throw ScriptCallException("Can't yield current routine");
             }
 
             return false;
@@ -479,19 +478,19 @@ struct SCRIPTING_CLASS::AngelScriptImpl
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptException(ExceptionStackTraceData {ExceptionStackTrace}, ex_string);
+                throw ScriptCallException(ExceptionStackTraceData {ExceptionStackTrace}, ex_string);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
                 ReturnContext(ctx);
 
-                throw ScriptException("Execution of script aborted");
+                throw ScriptCallException("Execution of script aborted");
             }
 
             ctx->Abort();
             ReturnContext(ctx);
 
-            throw ScriptException("Context execution error", exec_result);
+            throw ScriptCallException("Context execution error", exec_result);
         }
 
         return true;

@@ -40,6 +40,8 @@
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
+DECLARE_EXCEPTION(ScriptCallException);
+DECLARE_EXCEPTION(ScriptCompilerException);
 
 // ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8
