@@ -301,6 +301,35 @@
     return critters;
 }
 
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
+{
+    UNUSED_VARIABLE(client);
+
+    vector<CritterView*> sorted_critters = critters;
+
+    std::sort(sorted_critters.begin(), sorted_critters.end(), [](const CritterView* cr1, const CritterView* cr2) {
+        if (cr1->GetHexY() == cr2->GetHexY()) {
+            if (cr1->GetHexX() == cr2->GetHexX()) {
+                const auto* cr1_hex = dynamic_cast<const CritterHexView*>(cr1);
+                const auto* cr2_hex = dynamic_cast<const CritterHexView*>(cr2);
+
+                if (cr1_hex != nullptr && cr2_hex != nullptr && cr1_hex->IsSpriteValid() && cr2_hex->IsSpriteValid()) {
+                    return cr1_hex->GetSprite()->TreeIndex < cr2_hex->GetSprite()->TreeIndex;
+                }
+
+                return cr1 < cr2;
+            }
+
+            return cr1->GetHexX() < cr2->GetHexX();
+        }
+
+        return cr1->GetHexY() < cr2->GetHexY();
+    });
+
+    return sorted_critters;
+}
+
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
 {
@@ -793,6 +822,7 @@
 [[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return 0;
     }
@@ -804,6 +834,7 @@
 [[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return 0;
     }
@@ -819,6 +850,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return false;
     }
@@ -834,6 +866,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -849,6 +882,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -864,6 +898,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -897,6 +932,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -916,6 +952,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -935,6 +972,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -962,6 +1000,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -981,6 +1020,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1000,6 +1040,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1027,6 +1068,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
