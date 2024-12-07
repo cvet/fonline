@@ -249,7 +249,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, ucolor& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, ident_t /*crId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int /*sayType*/, ident_t /*crId*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
@@ -387,7 +387,6 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void OnText(string_view str, ident_t cr_id, int how_say);
     void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
     void ReceiveCustomEntities(Entity* holder);
     auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*;

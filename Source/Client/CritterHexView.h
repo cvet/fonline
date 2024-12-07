@@ -83,10 +83,8 @@ public:
     void ClearAnim();
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
-    void SetText(string_view str, ucolor color, time_duration text_delay);
-    void DrawTextOnHead();
-    void GetNameTextPos(int& x, int& y) const;
-    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
+    void DrawName();
+    auto GetNameTextPos(int& x, int& y) const -> bool;
     void ClearMove();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -144,11 +142,6 @@ private:
     vector<CritterAnim> _animSequence {};
 
     time_point _fidgetTime {};
-
-    string _strTextOnHead {};
-    time_point _startTextTime {};
-    time_duration _textShowDuration {};
-    ucolor _textOnHeadColor {COLOR_TEXT};
 
     int _oxAnim {};
     int _oyAnim {};
