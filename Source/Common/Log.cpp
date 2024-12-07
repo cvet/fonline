@@ -130,6 +130,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 
         const auto now = time_point::clock::now();
         const auto now_desc = time_point_desc(now);
+        result += strex("[{:02}/{:02}/{:02}] ", now_desc.Day, now_desc.Month, now_desc.Year % 100);
         result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
 
         if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {

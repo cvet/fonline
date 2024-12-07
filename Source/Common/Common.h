@@ -440,7 +440,7 @@ inline auto time_point_desc(const time_point& t) -> time_point_desc_t
     const auto unix_time = time_point_to_unix_time(t);
     const auto tm_struct = fmt::localtime(unix_time);
 
-    result.Year = tm_struct.tm_year;
+    result.Year = 1900 + tm_struct.tm_year;
     result.Month = tm_struct.tm_mon;
     result.Day = tm_struct.tm_mday;
     result.Hour = tm_struct.tm_hour;
