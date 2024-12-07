@@ -106,20 +106,20 @@ enum class EffectType : uint
 };
 
 // Screens
-constexpr auto SCREEN_NONE = 0;
-constexpr auto SCREEN_LOGIN = 1; // Primary screens
-constexpr auto SCREEN_GAME = 2;
-constexpr auto SCREEN_GLOBAL_MAP = 3;
-constexpr auto SCREEN_WAIT = 4;
-constexpr auto SCREEN_DIALOG = 6; // Secondary screens
-constexpr auto SCREEN_TOWN_VIEW = 9;
+constexpr int SCREEN_NONE = 0;
+constexpr int SCREEN_LOGIN = 1; // Primary screens
+constexpr int SCREEN_GAME = 2;
+constexpr int SCREEN_GLOBAL_MAP = 3;
+constexpr int SCREEN_WAIT = 4;
+constexpr int SCREEN_DIALOG = 6; // Secondary screens
+constexpr int SCREEN_TOWN_VIEW = 9;
 
 // Connection reason
-constexpr auto INIT_NET_REASON_NONE = 0;
-constexpr auto INIT_NET_REASON_LOGIN = 1;
-constexpr auto INIT_NET_REASON_REG = 2;
-constexpr auto INIT_NET_REASON_LOAD = 3;
-constexpr auto INIT_NET_REASON_CUSTOM = 4;
+constexpr int INIT_NET_REASON_NONE = 0;
+constexpr int INIT_NET_REASON_LOGIN = 1;
+constexpr int INIT_NET_REASON_REG = 2;
+constexpr int INIT_NET_REASON_LOAD = 3;
+constexpr int INIT_NET_REASON_CUSTOM = 4;
 
 class FOClient : SINGLEPLAYER_VIRTUAL public FOEngineBase, public AnimationResolver
 {
@@ -174,6 +174,8 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, any_t> params);
 
+    void Connect(string_view login, string_view password, int reason);
+    void Disconnect();
     void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
@@ -318,7 +320,6 @@ protected:
     };
 
     void TryAutoLogin();
-    void TryExit();
     void FlashGameWindow();
     void WaitDraw();
     void CleanupSpriteCache();

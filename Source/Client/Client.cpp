@@ -2906,28 +2906,6 @@ void FOClient::UnregisterEntity(ClientEntity* entity)
     _allEntities.erase(entity->GetId());
 }
 
-void FOClient::TryExit()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto active = GetActiveScreen(nullptr);
-    if (active != SCREEN_NONE) {
-        HideScreen(SCREEN_NONE);
-    }
-    else {
-        switch (GetMainScreen()) {
-        case SCREEN_LOGIN:
-            App->RequestQuit();
-            break;
-        case SCREEN_WAIT:
-            _conn.Disconnect();
-            break;
-        default:
-            break;
-        }
-    }
-}
-
 void FOClient::FlashGameWindow()
 {
     STACK_TRACE_ENTRY();
@@ -3711,48 +3689,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else {
         args.emplace_back(command);
     }
+
     if (args.empty()) {
         throw ScriptException("Empty custom call command");
     }
 
     // Execute
     const auto cmd = args[0];
-    if (cmd == "Login" && args.size() >= 3) {
-        _loginName = args[1];
-        _loginPassword = args[2];
 
-        if (_conn.IsConnected()) {
-            Net_SendLogIn();
-        }
-        else {
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-            _initNetReason = INIT_NET_REASON_LOGIN;
-        }
-    }
-    else if (cmd == "Register" && args.size() >= 3) {
-        _loginName = args[1];
-        _loginPassword = args[2];
-
-        if (_conn.IsConnected()) {
-            Net_SendCreatePlayer();
-        }
-        else {
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-            _initNetReason = INIT_NET_REASON_REG;
-        }
-    }
-    else if (cmd == "CustomConnect") {
-        if (!_conn.IsConnected()) {
-            _loginName = "";
-            _loginPassword = "";
-
-            RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-
-            _initNetReason = INIT_NET_REASON_CUSTOM;
-        }
-    }
-    else if (cmd == "DumpAtlases") {
+    if (cmd == "DumpAtlases") {
         SprMngr.GetAtlasMngr().DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
@@ -3783,16 +3728,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //    CurMap->RebuildFog();
         // }
     }
-    else if (cmd == "NetDisconnect") {
-        _conn.Disconnect();
-
-        if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
-            ShowMainScreen(SCREEN_LOGIN, {});
-        }
-    }
-    else if (cmd == "TryExit") {
-        TryExit();
-    }
     else if (cmd == "BytesSend") {
         return strex("{}", _conn.GetBytesSend());
     }
@@ -3800,34 +3735,14 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         return strex("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
-        auto w = strex(args[1]).toInt();
-        auto h = strex(args[2]).toInt();
+        const int w = strex(args[1]).toInt();
+        const int h = strex(args[2]).toInt();
 
         SprMngr.SetScreenSize(w, h);
         SprMngr.SetWindowSize(w, h);
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "Command" && args.size() >= 2) {
-        string str;
-        for (size_t i = 1; i < args.size(); i++) {
-            str += args[i] + " ";
-        }
-        str = strex(str).trim();
-
-        string buf;
-        if (!PackNetCommand(
-                str, &_conn.OutBuf,
-                [&buf, &separator](auto s) {
-                    buf += s;
-                    buf += separator;
-                },
-                *this)) {
-            return "UNKNOWN";
-        }
-
-        return buf;
     }
     else if (cmd == "SaveLog" && args.size() == 3) {
         //              if( file_name == "" )
@@ -3861,16 +3776,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        static int zoom;
-        static int x;
-        static int y;
-        static int x2;
-        static int y2;
-        zoom = strex(args[1]).toInt();
-        x = strex(args[2]).toInt();
-        y = strex(args[3]).toInt();
-        x2 = x + strex(args[4]).toInt();
-        y2 = y + strex(args[5]).toInt();
+        const int zoom = strex(args[1]).toInt();
+        const int x = strex(args[2]).toInt();
+        const int y = strex(args[3]).toInt();
+        const int x2 = x + strex(args[4]).toInt();
+        const int y2 = y + strex(args[5]).toInt();
 
         if (zoom != _lmapZoom || x != _lmapWMap[0] || y != _lmapWMap[1] || x2 != _lmapWMap[2] || y2 != _lmapWMap[3]) {
             _lmapZoom = zoom;
@@ -3891,37 +3801,56 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {
-            auto hx = strex(args[1]).toUInt();
-            auto hy = strex(args[2]).toUInt();
+            const auto hx = strex(args[1]).toUInt();
+            const auto hy = strex(args[2]).toUInt();
             CurMap->SetSkipRoof(static_cast<uint16>(hx), static_cast<uint16>(hy));
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
-        auto alpha = strex(args[1]).toInt();
+        const auto alpha = strex(args[1]).toInt();
 
         if (auto* chosen = GetMapChosen(); chosen != nullptr) {
             chosen->Alpha = static_cast<uint8>(alpha);
         }
-    }
-    else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
-        /*if (SDL_HasScreenKeyboardSupport())
-        {
-            bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
-            bool next = strex(args[1]).toBool();
-            if (cur != next)
-            {
-                if (next)
-                    SDL_StartTextInput();
-                else
-                    SDL_StopTextInput();
-            }
-        }*/
     }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());
     }
 
     return "";
+}
+
+void FOClient::Connect(string_view login, string_view password, int reason)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
+
+    _loginName = login;
+    _loginPassword = password;
+
+    if (!_conn.IsConnected()) {
+        _initNetReason = reason;
+    }
+    else {
+        if (reason == INIT_NET_REASON_LOGIN) {
+            Net_SendLogIn();
+        }
+        else if (reason == INIT_NET_REASON_REG) {
+            Net_SendCreatePlayer();
+        }
+    }
+}
+
+void FOClient::Disconnect()
+{
+    STACK_TRACE_ENTRY();
+
+    _conn.Disconnect();
+
+    if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
+        ShowMainScreen(SCREEN_LOGIN, {});
+    }
 }
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed)
