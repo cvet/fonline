@@ -98,14 +98,6 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_Animate(ItemView* self, hstring animName, bool looped, bool reversed)
-{
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->GetAnim()->Play(animName, looped, reversed);
-    }
-}
-
-///@ ExportMethod
 [[maybe_unused]] void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {

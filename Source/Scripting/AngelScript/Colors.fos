@@ -1,6 +1,6 @@
 // FOS Common Sort -6
 
-#define COLOR_IFACE          ucolor(128, 128, 128)
+#define COLOR_NEUTRAL        ucolor(128, 128, 128)
 #define COLOR_TEXT           ucolor(80, 255, 0)    // Default text color
 #define COLOR_TEXT_FOCUSED   ucolor(20, 190, 20)   // Default focused text color
 #define COLOR_CRITTER_NAME   ucolor(193, 193, 205) // Default critter nickname color
