@@ -101,14 +101,12 @@ public:
     [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(uint16 hx, uint16 hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<uint16, uint16>>;
-    [[nodiscard]] auto IsAnyCritter(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, CritterFindType find_type) const -> bool;
     [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
-    [[nodiscard]] auto GetNonDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*;
-    [[nodiscard]] auto GetDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*;
+    [[nodiscard]] auto GetCritter(uint16 hx, uint16 hy, CritterFindType find_type) noexcept -> Critter*;
     [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>&;
     [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>&;
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>&;
@@ -158,8 +156,8 @@ public:
 private:
     struct Field
     {
-        bool HasNonDeadCritter {};
-        bool HasDeadCritter {};
+        bool HasCritter {};
+        bool HasBlockCritter {};
         bool HasGagItem {};
         bool HasTriggerItem {};
         bool HasNoMoveItem {};

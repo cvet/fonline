@@ -54,19 +54,16 @@ class CritterManager;
 
 struct TraceData
 {
-    using HexCallbackFunc = std::function<void(Map*, Critter*, uint16, uint16, uint16, uint16, uint8)>;
-
     // Input
     Map* TraceMap {};
     uint16 BeginHx {};
     uint16 BeginHy {};
     uint16 EndHx {};
     uint16 EndHy {};
-    uint Dist {};
+    uint MaxDist {};
     float Angle {};
     Critter* FindCr {};
     CritterFindType FindType {};
-    HexCallbackFunc HexCallback {};
 
     // Output
     vector<Critter*>* Critters {};

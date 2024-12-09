@@ -164,6 +164,7 @@ public:
     ///@ MigrationRule Property Item IsHiddenInStatic HiddenInStatic
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, HiddenInStatic);
+    ///@ MigrationRule Property Item IsNoBlock NoBlock
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, NoBlock);
     ///@ MigrationRule Property Item IsShootThru ShootThru
