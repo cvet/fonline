@@ -550,10 +550,6 @@ class Object
 
     void _Show(dict<string, any> params)
     {
-        if (!Active) {
-            return;
-        }
-
         OnShow();
         OnShow(params);
         for (uint i = 0; i < _Children.length(); i++) {
@@ -571,10 +567,6 @@ class Object
 
     void _Appear()
     {
-        if (!Active) {
-            return;
-        }
-
         OnAppear();
         for (uint i = 0; i < _Children.length(); i++) {
             _Children[i]._Appear();
@@ -1328,6 +1320,7 @@ class Panel : Object
         }
 
         curImage = null;
+
         if (imageName != EMPTY_HSTRING) {
             Sprite::Sprite spr = Sprite::Sprite();
             if (spr.Load(imageName)) {
@@ -3648,7 +3641,7 @@ void EngineCallback_MouseDown(MouseButton button)
 
             if (nextScreen.IsModal || nextScreen.FindMouseHit() != null) {
                 // Show screen to top and click on it
-                ShowHideScreen(nextScreen, null, true, nextScreen);
+                ShowHideScreen(nextScreen, null, true);
                 EngineCallback_MouseDown(button);
                 return;
             }
@@ -3936,7 +3929,7 @@ void UnregisterScreen(int screenIndex)
     }
 }
 
-void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen appearScreen = null)
+void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
 {
     // Clean hovered/focused/pressed objects
     if (HoveredObject != null) {
@@ -3981,8 +3974,6 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen a
         // Callback
         if (!screen._ActiveSelf) {
             screen.SetActive(true);
-        }
-        if (appearScreen == null) {
             screen._Show(params);
         }
         screen._Appear();
@@ -4005,9 +3996,8 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen a
         }
 
         // Appear active screen
-        if (appearScreen == null) {
-            appearScreen = GetActiveScreen();
-        }
+        Screen appearScreen = GetActiveScreen();
+
         if (appearScreen != null) {
             // Move to top
             if (Screens.last() !is appearScreen) {
