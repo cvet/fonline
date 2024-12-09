@@ -1864,28 +1864,16 @@ void FOClient::Net_OnCritterSetAnims()
 
     if (cr != nullptr) {
         if (cond == CritterCondition::Alive) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetAliveStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetAliveActionAnim(action_anim);
-            }
+            cr->SetAliveStateAnim(state_anim);
+            cr->SetAliveActionAnim(action_anim);
         }
         if (cond == CritterCondition::Knockout) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetKnockoutStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetKnockoutActionAnim(action_anim);
-            }
+            cr->SetKnockoutStateAnim(state_anim);
+            cr->SetKnockoutActionAnim(action_anim);
         }
         if (cond == CritterCondition::Dead) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetDeadStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetDeadActionAnim(action_anim);
-            }
+            cr->SetDeadStateAnim(state_anim);
+            cr->SetDeadActionAnim(action_anim);
         }
     }
 
@@ -2080,16 +2068,17 @@ void FOClient::Net_OnChosenRemoveItem()
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
     auto* chosen = GetChosen();
+
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in erase item");
+        WriteLog("Chosen is not created in remove item");
         BreakIntoDebugger();
         return;
     }
 
     auto* item = chosen->GetInvItem(item_id);
+
     if (item == nullptr) {
-        WriteLog("Item not found, id {}", item_id);
-        BreakIntoDebugger();
+        // Valid case, item may be removed locally
         return;
     }
 

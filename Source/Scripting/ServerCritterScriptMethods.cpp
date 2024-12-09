@@ -726,28 +726,16 @@
 [[maybe_unused]] void Server_Critter_SetConditionAnims(Critter* self, CritterCondition cond, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
     if (cond == CritterCondition::Alive) {
-        if (stateAnim != CritterStateAnim::None) {
-            self->SetAliveStateAnim(stateAnim);
-        }
-        if (actionAnim != CritterActionAnim::None) {
-            self->SetAliveActionAnim(actionAnim);
-        }
+        self->SetAliveStateAnim(stateAnim);
+        self->SetAliveActionAnim(actionAnim);
     }
     else if (cond == CritterCondition::Knockout) {
-        if (stateAnim != CritterStateAnim::None) {
-            self->SetKnockoutStateAnim(stateAnim);
-        }
-        if (actionAnim != CritterActionAnim::None) {
-            self->SetKnockoutActionAnim(actionAnim);
-        }
+        self->SetKnockoutStateAnim(stateAnim);
+        self->SetKnockoutActionAnim(actionAnim);
     }
     else if (cond == CritterCondition::Dead) {
-        if (stateAnim != CritterStateAnim::None) {
-            self->SetDeadStateAnim(stateAnim);
-        }
-        if (actionAnim != CritterActionAnim::None) {
-            self->SetDeadActionAnim(actionAnim);
-        }
+        self->SetDeadStateAnim(stateAnim);
+        self->SetDeadActionAnim(actionAnim);
     }
 
     self->SendAndBroadcast_SetAnims(cond, stateAnim, actionAnim);

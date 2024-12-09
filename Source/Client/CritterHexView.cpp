@@ -431,14 +431,39 @@ auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
     switch (GetCondition()) {
     case CritterCondition::Alive:
 #if FO_ENABLE_3D
-        return GetAliveActionAnim() != CritterActionAnim::None ? GetAliveActionAnim() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.CombatAnimIdle != CritterActionAnim::None ? _engine->Settings.CombatAnimIdle : CritterActionAnim::Idle);
+        if (const auto fixed_anim = GetAliveActionAnim(); fixed_anim == CritterActionAnim::None) {
+            if (_model != nullptr && _model->IsCombatMode() && _engine->Settings.CombatAnimIdle != CritterActionAnim::None) {
+                return _engine->Settings.CombatAnimIdle;
+            }
+            else {
+                return CritterActionAnim::Idle;
+            }
+        }
+        else {
+            return fixed_anim;
+        }
 #else
-        return GetAliveActionAnim() != CritterActionAnim::None ? GetAliveActionAnim() : CritterActionAnim::Idle;
+        if (const auto fixed_anim = GetAliveActionAnim(); fixed_anim == CritterActionAnim::None) {
+            return CritterActionAnim::Idle;
+        }
+        else {
+            return fixed_anim;
+        }
 #endif
     case CritterCondition::Knockout:
-        return GetKnockoutActionAnim() != CritterActionAnim::None ? GetKnockoutActionAnim() : CritterActionAnim::IdleProneFront;
+        if (const auto fixed_anim = GetKnockoutActionAnim(); fixed_anim == CritterActionAnim::None) {
+            return CritterActionAnim::IdleProneFront;
+        }
+        else {
+            return fixed_anim;
+        }
     case CritterCondition::Dead:
-        return GetDeadActionAnim() != CritterActionAnim::None ? GetDeadActionAnim() : CritterActionAnim::DeadFront;
+        if (const auto fixed_anim = GetDeadActionAnim(); fixed_anim == CritterActionAnim::None) {
+            return CritterActionAnim::DeadFront;
+        }
+        else {
+            return fixed_anim;
+        }
     }
 
     return CritterActionAnim::Idle;
