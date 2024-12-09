@@ -322,13 +322,13 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return static_cast<int16>(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy));
+    return static_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy)));
 }
 
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
 {
-    return static_cast<int16>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
+    return static_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY)));
 }
 
 ///@ ExportMethod
@@ -363,6 +363,12 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     }
 
     return static_cast<int16>(rotated);
+}
+
+///@ ExportMethod
+[[maybe_unused]] int16 Common_Game_GetDirAngleDiff([[maybe_unused]] FOEngineBase* engine, int16 dirAngle1, int16 dirAngle2)
+{
+    return static_cast<int16>(iround(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
 }
 
 ///@ ExportMethod
