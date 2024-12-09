@@ -62,7 +62,7 @@ float AbsF(float x)
 
 int Distance(int x1, int y1, int x2, int y2)
 {
-    return int(math::sqrt(Pow2(x1 - x2) + Pow2(y1 - y2)));
+    return RoundToInt(math::sqrt(Pow2(x1 - x2) + Pow2(y1 - y2)));
 }
 
 float DistanceF(float x1, float y1, float x2, float y2)

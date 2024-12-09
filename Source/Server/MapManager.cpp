@@ -717,28 +717,23 @@ void MapManager::TraceBullet(TraceData& trace)
     auto* map = trace.TraceMap;
     const auto maxhx = map->GetWidth();
     const auto maxhy = map->GetHeight();
-    const auto hx = trace.BeginHx;
-    const auto hy = trace.BeginHy;
-    const auto tx = trace.EndHx;
-    const auto ty = trace.EndHy;
+    const auto start_hx = trace.BeginHx;
+    const auto start_hy = trace.BeginHy;
+    const auto end_hx = trace.EndHx;
+    const auto end_hy = trace.EndHy;
+    const auto dist = trace.MaxDist != 0 ? trace.MaxDist : GeometryHelper::DistGame(start_hx, start_hy, end_hx, end_hy);
 
-    auto dist = trace.Dist;
+    auto cur_hx = start_hx;
+    auto cur_hy = start_hy;
+    auto prev_hx = cur_hx;
+    auto prev_hy = cur_hy;
 
-    if (dist == 0) {
-        dist = GeometryHelper::DistGame(hx, hy, tx, ty);
-    }
-
-    auto cx = hx;
-    auto cy = hy;
-    auto old_cx = cx;
-    auto old_cy = cy;
-
-    LineTracer line_tracer(hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
+    LineTracer line_tracer(start_hx, start_hy, end_hx, end_hy, maxhx, maxhy, trace.Angle);
 
     trace.IsFullTrace = false;
     trace.IsCritterFound = false;
     trace.IsHaveLastMovable = false;
-    auto last_passed_ok = false;
+    bool last_passed_ok = false;
 
     for (uint i = 0;; i++) {
         if (i >= dist) {
@@ -746,27 +741,17 @@ void MapManager::TraceBullet(TraceData& trace)
             break;
         }
 
-        uint8 dir;
-
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = line_tracer.GetNextHex(cx, cy);
+            line_tracer.GetNextHex(cur_hx, cur_hy);
         }
         else {
-            line_tracer.GetNextSquare(cx, cy);
-            dir = GeometryHelper::GetNearDir(old_cx, old_cy, cx, cy);
-        }
-
-        if (trace.HexCallback != nullptr) {
-            trace.HexCallback(map, trace.FindCr, old_cx, old_cy, cx, cy, dir);
-            old_cx = cx;
-            old_cy = cy;
-            continue;
+            line_tracer.GetNextSquare(cur_hx, cur_hy);
         }
 
         if (trace.LastMovable != nullptr && !last_passed_ok) {
-            if (map->IsHexMovable(cx, cy)) {
-                trace.LastMovable->first = cx;
-                trace.LastMovable->second = cy;
+            if (map->IsHexMovable(cur_hx, cur_hy)) {
+                trace.LastMovable->first = cur_hx;
+                trace.LastMovable->second = cur_hy;
                 trace.IsHaveLastMovable = true;
             }
             else {
@@ -774,31 +759,36 @@ void MapManager::TraceBullet(TraceData& trace)
             }
         }
 
-        if (!map->IsHexShootable(cx, cy)) {
+        if (!map->IsHexShootable(cur_hx, cur_hy)) {
             break;
         }
 
-        if (trace.Critters != nullptr && map->IsAnyCritter(cx, cy)) {
-            const auto critters = map->GetCritters(cx, cy, 0, trace.FindType);
-            trace.Critters->insert(trace.Critters->end(), critters.begin(), critters.end());
+        if (trace.Critters != nullptr && map->IsCritter(cur_hx, cur_hy, CritterFindType::Any)) {
+            const auto critters = map->GetCritters(cur_hx, cur_hy, trace.FindType);
+
+            for (auto* cr : critters) {
+                if (std::find(trace.Critters->begin(), trace.Critters->end(), cr) == trace.Critters->end()) {
+                    trace.Critters->emplace_back(cr);
+                }
+            }
         }
 
-        if (trace.FindCr != nullptr && map->IsCritter(cx, cy, trace.FindCr)) {
+        if (trace.FindCr != nullptr && map->IsCritter(cur_hx, cur_hy, trace.FindCr)) {
             trace.IsCritterFound = true;
             break;
         }
 
-        old_cx = cx;
-        old_cy = cy;
+        prev_hx = cur_hx;
+        prev_hy = cur_hy;
     }
 
     if (trace.PreBlock != nullptr) {
-        trace.PreBlock->first = old_cx;
-        trace.PreBlock->second = old_cy;
+        trace.PreBlock->first = prev_hx;
+        trace.PreBlock->second = prev_hy;
     }
     if (trace.Block != nullptr) {
-        trace.Block->first = cx;
-        trace.Block->second = cy;
+        trace.Block->first = cur_hx;
+        trace.Block->second = cur_hy;
     }
 }
 
@@ -930,7 +920,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                     gag_coords.emplace_back(nx, ny);
                     grid_cell = static_cast<int16>(numindex | 0x4000);
                 }
-                else if (input.CheckCritter && map->IsNonDeadCritter(nx, ny)) {
+                else if (input.CheckCritter && map->IsCritter(nx, ny, CritterFindType::NonDead)) {
                     cr_coords.emplace_back(nx, ny);
                     grid_cell = static_cast<int16>(numindex | 0x8000);
                 }
@@ -1116,6 +1106,7 @@ label_FindOk:
 
             if (input.CheckGagItems && map->IsItemGag(check_hx, check_hy)) {
                 Item* item = map->GetItemGag(check_hx, check_hy);
+
                 if (item == nullptr) {
                     continue;
                 }
@@ -1127,8 +1118,9 @@ label_FindOk:
                 break;
             }
 
-            if (input.CheckCritter && map->IsNonDeadCritter(check_hx, check_hy)) {
-                Critter* cr = map->GetNonDeadCritter(check_hx, check_hy);
+            if (input.CheckCritter && map->IsCritter(check_hx, check_hy, CritterFindType::NonDead)) {
+                Critter* cr = map->GetCritter(check_hx, check_hy, CritterFindType::NonDead);
+
                 if (cr == nullptr || cr == input.FromCritter) {
                     continue;
                 }

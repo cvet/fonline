@@ -4301,9 +4301,10 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
             trace.BeginHy = cl->GetHexY();
             trace.EndHx = npc->GetHexX();
             trace.EndHy = npc->GetHexY();
-            trace.Dist = talk_distance;
+            trace.MaxDist = talk_distance;
             trace.FindCr = npc;
             MapMngr.TraceBullet(trace);
+
             if (!trace.IsCritterFound) {
                 cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
                 return;

@@ -453,10 +453,12 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    auto* cr = self->GetNonDeadCritter(hx, hy);
+    auto* cr = self->GetCritter(hx, hy, CritterFindType::NonDead);
+
     if (cr == nullptr) {
-        cr = self->GetDeadCritter(hx, hy);
+        cr = self->GetCritter(hx, hy, CritterFindType::Dead);
     }
+
     return cr;
 }
 
@@ -496,7 +498,14 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    auto critters = self->GetCritters(hx, hy, radius, findType);
+    vector<Critter*> critters;
+
+    if (radius == 0) {
+        critters = self->GetCritters(hx, hy, findType);
+    }
+    else {
+        critters = self->GetCritters(hx, hy, radius, findType);
+    }
 
     std::sort(critters.begin(), critters.end(), [hx, hy](const Critter* cr1, const Critter* cr2) {
         const uint dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
@@ -587,7 +596,7 @@
     trace.BeginHy = fromHy;
     trace.EndHx = toHx;
     trace.EndHy = toHy;
-    trace.Dist = dist;
+    trace.MaxDist = dist;
     trace.Angle = angle;
     trace.Critters = &critters;
     trace.FindType = findType;
@@ -609,7 +618,7 @@
     trace.BeginHy = fromHy;
     trace.EndHx = toHx;
     trace.EndHy = toHy;
-    trace.Dist = dist;
+    trace.MaxDist = dist;
     trace.Angle = angle;
     trace.Critters = &critters;
     trace.FindType = findType;
@@ -698,7 +707,7 @@
     trace.BeginHy = fromHy;
     trace.EndHx = toHx;
     trace.EndHy = toHy;
-    trace.Dist = dist;
+    trace.MaxDist = dist;
     trace.Angle = angle;
     trace.PreBlock = &pre_block;
     trace.Block = &block;
@@ -720,7 +729,7 @@
     trace.BeginHy = fromHy;
     trace.EndHx = toHx;
     trace.EndHy = toHy;
-    trace.Dist = dist;
+    trace.MaxDist = dist;
     trace.Angle = angle;
     trace.LastMovable = &last_movable;
 

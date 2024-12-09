@@ -720,7 +720,7 @@ auto Map::IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item)
     }
 
     auto is_critter = false;
-    GeometryHelper::ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, _width, _height, [this, &is_critter](uint16 hx2, uint16 hy2) { is_critter = is_critter || IsAnyCritter(hx2, hy2); });
+    GeometryHelper::ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, _width, _height, [this, &is_critter](uint16 hx2, uint16 hy2) { is_critter = is_critter || IsCritter(hx2, hy2, CritterFindType::Any); });
     return !is_critter;
 }
 
@@ -742,40 +742,21 @@ void Map::RecacheHexFlags(Field& field)
 
     NON_CONST_METHOD_HINT();
 
-    field.HasNonDeadCritter = false;
-    field.HasDeadCritter = false;
+    field.HasCritter = false;
+    field.HasBlockCritter = false;
     field.HasGagItem = false;
     field.HasTriggerItem = false;
     field.HasNoMoveItem = false;
     field.HasNoShootItem = false;
 
-    if (!field.Critters.empty()) {
-        for (const auto* cr : field.Critters) {
-            if (cr->IsDead()) {
-                field.HasDeadCritter = true;
-            }
-            else {
-                field.HasNonDeadCritter = true;
-            }
+    field.HasCritter = !field.Critters.empty() || !field.MultihexCritters.empty();
 
-            if (field.HasDeadCritter && field.HasNonDeadCritter) {
-                break;
-            }
+    if (_engine->Settings.CritterBlockHex && field.HasCritter) {
+        if (!field.Critters.empty()) {
+            field.HasBlockCritter = std::any_of(field.Critters.begin(), field.Critters.end(), [](const Critter* cr) { return !cr->IsDead(); });
         }
-    }
-
-    if (!field.MultihexCritters.empty()) {
-        for (const auto* cr : field.MultihexCritters) {
-            if (cr->IsDead()) {
-                field.HasDeadCritter = true;
-            }
-            else {
-                field.HasNonDeadCritter = true;
-            }
-
-            if (field.HasDeadCritter && field.HasNonDeadCritter) {
-                break;
-            }
+        if (!field.HasBlockCritter && !field.MultihexCritters.empty()) {
+            field.HasBlockCritter = std::any_of(field.MultihexCritters.begin(), field.MultihexCritters.end(), [](const Critter* cr) { return !cr->IsDead(); });
         }
     }
 
@@ -811,10 +792,8 @@ void Map::RecacheHexFlags(Field& field)
         }
     }
 
-    const auto is_critter_block = _engine->Settings.CritterBlockHex && field.HasNonDeadCritter;
-
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
-    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || is_critter_block || field.ManualBlock;
+    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
 }
 
 void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
@@ -829,31 +808,31 @@ void Map::SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full)
     RecacheHexFlags(field);
 }
 
-auto Map::IsAnyCritter(uint16 hx, uint16 hy) const noexcept -> bool
+auto Map::IsCritter(uint16 hx, uint16 hy, CritterFindType find_type) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    return field.HasNonDeadCritter || field.HasDeadCritter;
-}
+    if (field.HasCritter) {
+        if (find_type == CritterFindType::Any) {
+            return true;
+        }
 
-auto Map::IsNonDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
+        for (const auto* cr : field.Critters) {
+            if (cr->CheckFind(find_type)) {
+                return true;
+            }
+        }
 
-    const auto& field = _hexField->GetCellForReading(hx, hy);
+        for (const auto* cr : field.MultihexCritters) {
+            if (cr->CheckFind(find_type)) {
+                return true;
+            }
+        }
+    }
 
-    return field.HasNonDeadCritter;
-}
-
-auto Map::IsDeadCritter(uint16 hx, uint16 hy) const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField->GetCellForReading(hx, hy);
-
-    return field.HasDeadCritter;
+    return false;
 }
 
 auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
@@ -864,13 +843,15 @@ auto Map::IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.HasNonDeadCritter || field.HasDeadCritter) {
+    if (field.HasCritter) {
         const auto it1 = std::find(field.Critters.begin(), field.Critters.end(), cr);
+
         if (it1 != field.Critters.end()) {
             return true;
         }
 
         const auto it2 = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
+
         if (it2 != field.MultihexCritters.end()) {
             return true;
         }
@@ -892,48 +873,23 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
     return nullptr;
 }
 
-auto Map::GetNonDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
+auto Map::GetCritter(uint16 hx, uint16 hy, CritterFindType find_type) noexcept -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hx, hy);
 
-    if (field.HasNonDeadCritter) {
+    if (field.HasCritter) {
         for (auto* cr : field.Critters) {
-            if (!cr->IsDead()) {
+            if (cr->CheckFind(find_type)) {
                 return cr;
             }
         }
 
         for (auto* cr : field.MultihexCritters) {
-            if (!cr->IsDead()) {
-                return cr;
-            }
-        }
-    }
-
-    return nullptr;
-}
-
-auto Map::GetDeadCritter(uint16 hx, uint16 hy) noexcept -> Critter*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto& field = _hexField->GetCellForReading(hx, hy);
-
-    if (field.HasDeadCritter) {
-        for (auto* cr : field.Critters) {
-            if (cr->IsDead()) {
-                return cr;
-            }
-        }
-
-        for (auto* cr : field.MultihexCritters) {
-            if (cr->IsDead()) {
+            if (cr->CheckFind(find_type)) {
                 return cr;
             }
         }
@@ -952,6 +908,34 @@ auto Map::GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_ty
     return vec_filter(_critters, [&](const Critter* cr) -> bool { //
         return cr->CheckFind(find_type) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex());
     });
+}
+
+auto Map::GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<Critter*>
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    vector<Critter*> critters;
+    const auto& field = _hexField->GetCellForReading(hx, hy);
+
+    if (!field.Critters.empty()) {
+        for (auto* cr : field.Critters) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
+            }
+        }
+    }
+
+    if (!field.MultihexCritters.empty()) {
+        for (auto* cr : field.MultihexCritters) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
+            }
+        }
+    }
+
+    return critters;
 }
 
 auto Map::GetCritters() noexcept -> const vector<Critter*>&

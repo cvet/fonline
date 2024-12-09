@@ -3787,8 +3787,8 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                     hy = static_cast<uint16>(hy_);
 
                     if (hex_ox != nullptr && hex_oy != nullptr) {
-                        *hex_ox = iround((xf - x_) * GetSpritesZoom()) - 16;
-                        *hex_oy = iround((yf - y_) * GetSpritesZoom()) - 8;
+                        *hex_ox = iround((xf - x_) * GetSpritesZoom()) - _engine->Settings.MapHexWidth / 2;
+                        *hex_oy = iround((yf - y_) * GetSpritesZoom()) - _engine->Settings.MapHexHeight / 2;
                     }
                     return true;
                 }
@@ -4335,7 +4335,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
     return true;
 }
 
-auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<uint16, uint16>* pre_block, pair<uint16, uint16>* block, vector<pair<uint16, uint16>>* steps, bool check_passed) -> bool
+void MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<uint16, uint16>* pre_block, pair<uint16, uint16>* block, vector<pair<uint16, uint16>>* steps, bool check_shoot_blocks)
 {
     STACK_TRACE_ENTRY();
 
@@ -4343,55 +4343,56 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
         ClearHexTrack();
     }
 
-    if (dist == 0) {
-        dist = GeometryHelper::DistGame(hx, hy, tx, ty);
-    }
-
-    auto cx = hx;
-    auto cy = hy;
-    auto old_cx = cx;
-    auto old_cy = cy;
+    const auto check_dist = dist != 0 ? dist : GeometryHelper::DistGame(hx, hy, tx, ty);
+    auto cur_hx = hx;
+    auto cur_hy = hy;
+    auto prev_hx = cur_hx;
+    auto prev_hy = cur_hy;
 
     LineTracer line_tracer(hx, hy, tx, ty, _width, _height, angle);
 
-    for (uint i = 0; i < dist; i++) {
+    for (uint i = 0; i < check_dist; i++) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            line_tracer.GetNextHex(cx, cy);
+            line_tracer.GetNextHex(cur_hx, cur_hy);
         }
         else {
-            line_tracer.GetNextSquare(cx, cy);
+            line_tracer.GetNextSquare(cur_hx, cur_hy);
         }
 
         if (_isShowTrack) {
-            GetHexTrack(cx, cy) = static_cast<char>(cx == tx && cy == ty ? 1 : 2);
+            GetHexTrack(cur_hx, cur_hy) = static_cast<char>(cur_hx == tx && cur_hy == ty ? 1 : 2);
+        }
+
+        if (check_shoot_blocks && _hexField->GetCellForReading(cur_hx, cur_hy).Flags.ShootBlocked) {
+            break;
         }
 
         if (steps != nullptr) {
-            steps->emplace_back(std::make_pair(cx, cy));
-            continue;
+            steps->emplace_back(cur_hx, cur_hy);
         }
 
-        if (check_passed && _hexField->GetCellForReading(cx, cy).Flags.ShootBlocked) {
-            break;
-        }
         if (critters != nullptr) {
-            auto hex_critters = GetCritters(cx, cy, find_type);
-            critters->insert(critters->end(), hex_critters.begin(), hex_critters.end());
+            const auto hex_critters = GetCritters(cur_hx, cur_hy, find_type);
+
+            for (auto* cr : hex_critters) {
+                if (std::find(critters->begin(), critters->end(), cr) == critters->end()) {
+                    critters->emplace_back(cr);
+                }
+            }
         }
 
-        old_cx = cx;
-        old_cy = cy;
+        prev_hx = cur_hx;
+        prev_hy = cur_hy;
     }
 
     if (pre_block != nullptr) {
-        (*pre_block).first = old_cx;
-        (*pre_block).second = old_cy;
+        pre_block->first = prev_hx;
+        pre_block->second = prev_hy;
     }
     if (block != nullptr) {
-        (*block).first = cx;
-        (*block).second = cy;
+        block->first = cur_hx;
+        block->second = cur_hy;
     }
-    return false;
 }
 
 void MapView::FindSetCenter(int cx, int cy)
