@@ -847,17 +847,13 @@ void ModelInstance::SetMoving(bool enabled, uint speed)
     if (_isMoving) {
         RUNTIME_ASSERT(speed > 0);
 
-        const auto walk_speed = _modelMngr._settings.AnimWalkSpeed;
-        const auto run_speed = _modelMngr._settings.AnimRunSpeed;
-        RUNTIME_ASSERT(run_speed >= walk_speed);
-
-        if (speed < walk_speed + (run_speed - walk_speed) / 2) {
+        if (speed < _modelMngr._settings.RunAnimStartSpeed) {
             _isRunning = false;
-            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(walk_speed);
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(_modelMngr._settings.WalkAnimBaseSpeed);
         }
         else {
             _isRunning = true;
-            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(run_speed);
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(_modelMngr._settings.RunAnimBaseSpeed);
         }
     }
 
