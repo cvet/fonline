@@ -465,3 +465,61 @@
 
     hex_cr->GetMap()->SetCritterContour(self->GetId(), contour);
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, uint itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+{
+    auto* item = self->GetInvItem(itemId);
+    auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+
+    if (item == nullptr) {
+        throw ScriptException("Item not found");
+    }
+    if (swapItemId && swap_item == nullptr) {
+        throw ScriptException("Swap item not found");
+    }
+
+    auto* old_item = item->CreateRefClone();
+    const auto from_slot = item->GetCritterSlot();
+    auto* map_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (toSlot == CritterItemSlot::Outside) {
+        if (map_cr != nullptr) {
+            map_cr->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
+        }
+
+        if (item->GetStackable() && itemCount < item->GetCount()) {
+            item->SetCount(item->GetCount() - itemCount);
+        }
+        else {
+            self->DeleteInvItem(item, true);
+            item = nullptr;
+        }
+    }
+    else {
+        item->SetCritterSlot(toSlot);
+
+        if (swap_item != nullptr) {
+            swap_item->SetCritterSlot(from_slot);
+        }
+
+        if (map_cr != nullptr) {
+            map_cr->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
+
+            if (swap_item != nullptr) {
+                map_cr->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
+            }
+        }
+    }
+
+    // Light
+    if (map_cr != nullptr) {
+        map_cr->GetMap()->RebuildFog();
+        map_cr->GetMap()->UpdateCritterLightSource(map_cr);
+    }
+
+    // Notify scripts about item changing
+    self->GetEngine()->OnItemInvChanged.Fire(item, old_item);
+
+    old_item->Release();
+}
