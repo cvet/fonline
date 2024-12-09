@@ -185,8 +185,8 @@
     }
     else {
         const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
-
-        return dist;
+        const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
     }
 }
 

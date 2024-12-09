@@ -135,7 +135,9 @@
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
 
     if (hex_cr1 != nullptr && hex_cr2 != nullptr) {
-        return GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
+        const auto dist = GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
+        const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
     }
     else if (hex_cr1 == nullptr && hex_cr2 == nullptr) {
         return 0;
