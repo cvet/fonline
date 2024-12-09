@@ -362,11 +362,7 @@ void CritterHexView::AnimateStay()
 #endif
     {
         if (IsMoving()) {
-            const auto walk_speed = _engine->Settings.AnimWalkSpeed;
-            const auto run_speed = _engine->Settings.AnimRunSpeed;
-            RUNTIME_ASSERT(run_speed >= walk_speed);
-
-            if (Moving.Speed < walk_speed + (run_speed - walk_speed) / 2) {
+            if (Moving.Speed < _engine->Settings.RunAnimStartSpeed) {
                 action_anim = CritterActionAnim::Walk;
             }
             else {
