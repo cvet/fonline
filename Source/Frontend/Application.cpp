@@ -483,7 +483,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
             const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
-            Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
+            Settings.ScreenWidth = iround(static_cast<float>(Settings.ScreenHeight) * ratio);
 
             Settings.Fullscreen = true;
         }
