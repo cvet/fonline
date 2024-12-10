@@ -589,7 +589,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         add_compile_definitions(AS_NO_COMPILER)
     endif()
 
-    if(EMSCRIPTEN OR(APPLE AND PLATFORM) OR(ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 8))
+    if(EMSCRIPTEN OR APPLE OR(ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 8))
         target_compile_definitions(Angelscript PRIVATE "AS_MAX_PORTABILITY")
         target_compile_definitions(AngelscriptExt PRIVATE "AS_MAX_PORTABILITY")
         add_compile_definitions(AS_MAX_PORTABILITY)
