@@ -838,15 +838,13 @@ void ModelInstance::MoveModel(int ox, int oy)
     _forceDraw = true;
 }
 
-void ModelInstance::SetMoving(bool enabled, uint speed)
+void ModelInstance::SetMoving(bool enabled, int speed)
 {
     STACK_TRACE_ENTRY();
 
     _isMoving = enabled;
 
     if (_isMoving) {
-        RUNTIME_ASSERT(speed > 0);
-
         if (speed < _modelMngr._settings.RunAnimStartSpeed) {
             _isRunning = false;
             _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(_modelMngr._settings.WalkAnimBaseSpeed);
