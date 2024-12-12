@@ -152,11 +152,7 @@ int main(int argc, char** argv) // Handled by SDL
         App->SetMainLoopCallback(MainEntry);
 
 #elif FO_WEB
-        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
-            true, function(err) {
-                assert(!err);
-                Module.syncfsDone = 1;
-            }););
+        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
 
         emscripten_set_click_callback("#fullscreen", nullptr, 1, [](int event_type, const EmscriptenMouseEvent* mouse_event, void* user_data) -> EM_BOOL {
             UNUSED_VARIABLE(event_type, mouse_event, user_data);
