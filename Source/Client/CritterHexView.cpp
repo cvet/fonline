@@ -337,7 +337,7 @@ void CritterHexView::AnimateStay()
         _model->SetScale(scale, scale, scale);
 
         if (IsMoving()) {
-            _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
+            _model->SetMoving(true, iround(static_cast<float>(Moving.Speed) / scale));
             action_anim = _model->GetMovingAnim2();
         }
         else {

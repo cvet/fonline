@@ -275,7 +275,7 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(int ox, int oy);
-    void SetMoving(bool enabled, uint speed = 0);
+    void SetMoving(bool enabled, int speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
