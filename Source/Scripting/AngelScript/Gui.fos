@@ -2001,7 +2001,7 @@ class Screen : Panel
     }
     bool get_IsMain() final
     {
-        return IS_CLIENT_MAIN_SCREEN(_Index);
+        return _Index >= CLIENT_MAIN_SCREEN_LOGIN && _Index <= CLIENT_MAIN_SCREEN_WAIT;
     }
     bool get_IsModal() final
     {

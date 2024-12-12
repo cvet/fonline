@@ -1,22 +1,5 @@
 // FOS Common Sort -5
-// Some stuff for work with time.
-
-// GetNearFullSecond
-// Result is greather than Game.GetFullSecond() at least on one.
-
-// For client:
-// GetTimeString
-// Tags format:
-//  %YEAR% - year,
-//  %MONTH% - month,
-//  %DAY% - day,
-//  %DOW% - day of week,
-//  %HOUR% - hour,
-//  %MINUTE% - minute;
-//  %SECOND% - second;
-// To show names of values add "-STR" to format tag (%MONTH% -> %MONTH-STR%), supported by month and day of week.
-// Example: GetTimeString("%HOUR%:%MINUTE% %DAY% (%DOW-STR%) %MONTH-STR% %YEAR%",fullSecond) -> "14:05 23 (Sunday) November 2299"/"14:05 23 (Воскресенье) Ноябрь
-// 2299".
+// Some stuff for work with time
 
 uint RealMs(uint value)
 {
@@ -47,74 +30,46 @@ uint RealYear(uint value)
     return value * Game.TimeMultiplier * 31536000;
 }
 
-#define IS_MORNING          #(hour)((hour) >= 7 && (hour) <= 11)  // 5 hours
-#define IS_AFTERNOON        #(hour)((hour) >= 12 && (hour) <= 21) // 10 hours
-#define IS_NIGHT            #(hour)((hour) >= 22 || (hour) <= 6)  // 9 hours
-
-#define SECOND_TICKS        #(x)((x) * 1000)
-#define MINUTE_TICKS        #(x)((x) * 60000)
-#define HOUR_TICKS          #(x)((x) * 3600000)
-#define DAY_TICKS           #(x)((x) * 86400000)
-
-#define GAME_SECOND_TO_TICK #(x)(uint(x) * 1000 / Game.TimeMultiplier)
-#define GAME_MINUTE_TO_TICK #(x)(uint(x) * 60 * 1000 / Game.TimeMultiplier)
-#define GAME_HOUR_TO_TICK   #(x)(uint(x) * 3600 / Game.TimeMultiplier * 1000)
-#define GAME_DAY_TO_TICK    #(x)(uint(x) * 86400 / Game.TimeMultiplier * 1000)
-#define GAME_MONTH_TO_TICK  #(x)(uint(x) * 2592000 / Game.TimeMultiplier * 1000)
-#define GAME_YEAR_TO_TICK   #(x)(uint(x) * 31536000 / Game.TimeMultiplier * 1000)
-
-#define STR_MONTH           #(m)(20 + (m))
-#define STR_DAY_OF_WEEK     #(dow)(33 + (dow))
-
-uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+uint SecondTicks(uint sec)
 {
-    int jump = 0; // 1 - years, 2 - months, 3 - days
-    if (year == 0) {
-        year = Game.Year;
-        jump = 1;
-    }
-    if (month == 0) {
-        month = Game.Month;
-        jump = 2;
-    }
-    if (day == 0) {
-        day = Game.Day;
-        jump = 3;
-    }
+    return sec * 1000;
+}
+uint MinuteTicks(uint min)
+{
+    return min * 60000;
+}
+uint HourTicks(uint hours)
+{
+    return hours * 3600000;
+}
+uint DayTicks(uint days)
+{
+    return days * 86400000;
+}
 
-    uint fullSecond = Game.EvaluateFullSecond(year, month, day, hour, minute, second);
-    while (fullSecond <= Game.GetFullSecond()) {
-        switch (jump) {
-        case 0:
-            return Game.GetFullSecond() + 1; // Time expired, call faster
-        case 1:
-            year++;
-            break;
-        case 2:
-            month++;
-            if (month > 12) {
-                month = 1;
-                year++;
-            }
-            break;
-        case 3:
-            day++;
-            if (day > 28 && day > GetDaysInMonth(year, month)) {
-                day = 1;
-                month++;
-                if (month > 12) {
-                    month = 1;
-                    year++;
-                }
-            }
-            break;
-        default:
-            break;
-        }
-
-        fullSecond = Game.EvaluateFullSecond(year, month, day, hour, minute, second);
-    }
-    return fullSecond;
+uint GameSecondToTick(uint value)
+{
+    return value * 1000 / Game.TimeMultiplier;
+}
+uint GameMinuteToTick(uint value)
+{
+    return value * 60 * 1000 / Game.TimeMultiplier;
+}
+uint GameHourToTick(uint value)
+{
+    return value * 3600 / Game.TimeMultiplier * 1000;
+}
+uint GameDayToTick(uint value)
+{
+    return value * 86400 / Game.TimeMultiplier * 1000;
+}
+uint GameMonthToTick(uint value)
+{
+    return value * 2592000 / Game.TimeMultiplier * 1000;
+}
+uint GameYearToTick(uint value)
+{
+    return value * 31536000 / Game.TimeMultiplier * 1000;
 }
 
 uint GetDaysInMonth(uint16 year, uint16 month)
@@ -136,50 +91,9 @@ uint GetDaysInMonth(uint16 year, uint16 month)
     default: // 30
         return 30;
     }
+
     return 0;
 }
-
-#if CLIENT
-
-string GetTimeString(const string format, uint fullSecond)
-{
-    uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;
-    Game.EvaluateGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
-    return GetTimeString(format, year, month, day, dayOfWeek, hour, minute, second);
-}
-
-string GetTimeString(const string format, int year, int month, int day, int dayOfWeek, int hour, int minute, int second)
-{
-    string result = format;
-
-    if (year != -1) {
-        result = Game.ReplaceText(result, "%YEAR%", year);
-    }
-    if (month != -1) {
-        result = Game.ReplaceText(result, "%MONTH%", month);
-        result = Game.ReplaceText(result, "%MONTH-STR%", Game.GetText(TextPackName::Game, STR_MONTH(month)));
-    }
-    if (day != -1) {
-        result = Game.ReplaceText(result, "%DAY%", day);
-    }
-    if (dayOfWeek != -1) {
-        result = Game.ReplaceText(result, "%DOW%", dayOfWeek);
-        result = Game.ReplaceText(result, "%DOW-STR%", Game.GetText(TextPackName::Game, STR_MONTH(dayOfWeek)));
-    }
-    if (hour != -1) {
-        result = Game.ReplaceText(result, "%HOUR%", hour);
-    }
-    if (minute != -1) {
-        result = Game.ReplaceText(result, "%MINUTE%", minute);
-    }
-    if (second != -1) {
-        result = Game.ReplaceText(result, "%SECOND%", second);
-    }
-
-    return result;
-}
-
-#endif
 
 // Возвращает представление времени в виде строки в формате dd.mm.yy hh:mm. rifleman17
 string DateTimeToString(uint gameTime)
@@ -192,6 +106,12 @@ string DateTimeToString(uint gameTime)
     uint16 minute = 0;
     uint16 second = 0;
     Game.EvaluateGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
+
     return "" + (day > 9 ? ("" + day) : ("0" + day)) + "." + (month > 9 ? ("" + month) : ("0" + month)) + "." + year + " " +
            (hour > 9 ? ("" + hour) : ("0" + hour)) + ":" + (minute > 9 ? ("" + minute) : ("0" + minute));
+}
+
+bool IsTimeoutActive(uint timeout)
+{
+    return timeout > Game.GetFullSecond();
 }
