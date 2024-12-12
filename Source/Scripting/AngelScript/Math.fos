@@ -1,4 +1,5 @@
-// FOS Common
+namespace Math
+{
 
 int Pow2(int x)
 {
@@ -101,4 +102,6 @@ int Fib(int n)
     }
 
     return y;
+}
+
 }

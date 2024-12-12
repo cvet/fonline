@@ -1,10 +1,13 @@
-// FOS Client Mapper
+namespace Sprite
+{
 
 ///@ Enum SpriteLayout None
 ///@ Enum SpriteLayout Tile
 ///@ Enum SpriteLayout Center
 ///@ Enum SpriteLayout Stretch
 ///@ Enum SpriteLayout Zoom
+
+#if CLIENT
 
 class Sprite
 {
@@ -175,3 +178,7 @@ class Sprite
     hstring LoadedName;
     ucolor Color = COLOR_NEUTRAL;
 };
+
+#endif
+
+}

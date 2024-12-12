@@ -1,4 +1,6 @@
-// FOS Common Sort -5
+namespace Time
+{
+
 // Some stuff for work with time
 
 uint RealMs(uint value)
@@ -114,4 +116,6 @@ string DateTimeToString(uint gameTime)
 bool IsTimeoutActive(uint timeout)
 {
     return timeout > Game.GetFullSecond();
+}
+
 }

@@ -1,4 +1,5 @@
-// FOS Client Mapper Sort -9
+namespace ClientCore // Sort -9
+{
 
 // Messages types in message boxes
 #define FOMB_GAME          (0)
@@ -41,3 +42,5 @@
 #define DRAW_PRIMITIVE_LINESTRIP     (2)
 #define DRAW_PRIMITIVE_TRIANGLELIST  (3)
 #define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
+
+}

@@ -4804,30 +4804,10 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
 
         const auto line_sep = script_content.find('\n');
         const auto first_line = script_content.substr(0, line_sep);
-        if (first_line.find("// FOS ") == string::npos) {
-            throw ScriptCompilerException("No FOS header in script file", script_name);
-        }
-
-#if SERVER_SCRIPTING
-        if (first_line.find("Common") == string::npos && first_line.find("Server") == string::npos) {
-            continue;
-        }
-#elif CLIENT_SCRIPTING
-        if (first_line.find("Common") == string::npos && first_line.find("Client") == string::npos) {
-            continue;
-        }
-#elif SINGLE_SCRIPTING
-        if (first_line.find("Common") == string::npos && first_line.find("Single") == string::npos) {
-            continue;
-        }
-#elif MAPPER_SCRIPTING
-        if (first_line.find("Common") == string::npos && first_line.find("Mapper") == string::npos) {
-            continue;
-        }
-#endif
 
         int sort = 0;
         const auto sort_pos = first_line.find("Sort ");
+
         if (sort_pos != string::npos) {
             sort = strex(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
         }
@@ -4836,7 +4816,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
         final_script_files.emplace(script_path, std::move(script_content));
     }
 
-    std::sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
+    std::stable_sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
         if (std::get<0>(a) == std::get<0>(b)) {
             return std::get<1>(a) < std::get<1>(b);
         }
@@ -4849,11 +4829,9 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     root_script.reserve(final_script_files.size() * 128);
 
     for (auto&& [script_order, script_name, script_path] : final_script_files_order) {
-        root_script.append("namespace ");
-        root_script.append(script_name);
-        root_script.append(" {\n#include \"");
+        root_script.append("#include \"");
         root_script.append(script_path);
-        root_script.append("\"\n}\n");
+        root_script.append("\"\n");
     }
 
     Preprocessor::UndefAll();
@@ -4889,16 +4867,19 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     }
 
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+
     if (mod == nullptr) {
         throw ScriptCompilerException("Create root module failed");
     }
 
     int as_result = mod->AddScriptSection("Root", result.String.c_str());
+
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to add script section", as_result);
     }
 
     as_result = mod->Build();
+
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to build module", as_result);
     }
@@ -4906,6 +4887,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     vector<asBYTE> buf;
     BinaryStream binary {buf};
     as_result = mod->SaveByteCode(&binary);
+
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to save byte code", as_result);
     }
@@ -4932,6 +4914,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
 #endif
 
     auto file = DiskFileSystem::OpenFile(script_out_path, true);
+
     if (!file) {
         throw ScriptCompilerException("Can't write binary to file", script_out_path);
     }
