@@ -16,10 +16,6 @@
 #define SAY_APPEND        (13)
 #define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
 
-// Timeouts in real seconds, generic values
-#define MAXIMUM_TIMEOUT (Time::RealHour(5))
-#define IS_TIMEOUT      #(to)((to) > Game.GetFullSecond())
-
 // Combat modes
 #define COMBAT_MODE_ANY        (0)
 #define COMBAT_MODE_REAL_TIME  (1)
@@ -105,19 +101,10 @@
 #define COMMAND_DEV_FUNC              (39)
 #define COMMAND_DEV_GVAR              (40)
 
-// Item uses
-#define USE_PRIMARY   (0)
-#define USE_SECONDARY (1)
-#define USE_THIRD     (2)
-#define USE_RELOAD    (3)
-#define USE_USE       (4)
-#define MAX_USES      (3)
-
 // Client lighting
-#define MAX_LIGHT_VALUE (10000)
-#define MAX_LIGHT_HEX   (200)
-#define MAX_LIGHT_ALPHA (255)
-// Flags
+#define MAX_LIGHT_VALUE   (10000)
+#define MAX_LIGHT_HEX     (200)
+#define MAX_LIGHT_ALPHA   (255)
 #define LIGHT_DISABLE_DIR #(dir)(1 << Math::Clamp(dir, 0, 5))
 #define LIGHT_GLOBAL      (0x40)
 #define LIGHT_INVERSE     (0x80)
