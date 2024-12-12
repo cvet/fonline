@@ -1,4 +1,7 @@
-// FOS Client
+namespace Input
+{
+
+#if CLIENT
 
 funcdef bool KeyDownCallback(KeyCode key, string text);
 funcdef void KeyUpCallback(KeyCode key);
@@ -155,4 +158,8 @@ void OnInputLost() // Engine callback
 
     // Gui:: handler
     Gui::EngineCallback_InputLost();
+}
+
+#endif
+
 }

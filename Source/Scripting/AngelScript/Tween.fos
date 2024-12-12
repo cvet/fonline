@@ -1,4 +1,5 @@
-// FOS Common
+namespace Tween
+{
 
 class Tween
 {
@@ -81,3 +82,5 @@ class Tween
     private
     uint startTick;
 };
+
+}

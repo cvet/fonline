@@ -1,4 +1,6 @@
-// FOS Common
+namespace Serializator
+{
+
 // Data serialization
 
 class Serializator
@@ -756,3 +758,5 @@ class Serializator
         return this;
     }
 };
+
+}

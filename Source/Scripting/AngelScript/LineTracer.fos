@@ -1,4 +1,6 @@
-// FOS Server
+namespace LineTracer
+{
+
 // Author: Atom
 
 // utilities for tracing
@@ -21,6 +23,7 @@ float GetDirectionF(uint16 hx, uint16 hy, uint16 tx, uint16 ty)
 {
     float nx = 3 * (float(tx) - float(hx));
     float ny = SQRT3T2_FLOAT * (float(ty) - float(hy)) - (float(tx % 2) - float(hx % 2)) * SQRT3_FLOAT;
+
     return 180.0f + RAD2DEG * math::atan2(ny, nx); // In degrees, because cvet loves the degrees
 }
 
@@ -34,6 +37,7 @@ uint LineTracerHex(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint dis
 
     float dir = GetDirectionF(hx, hy, tx, ty);
     uint8 dir1, dir2;
+
     if ((30.0f <= dir) && (dir < 90.0f)) {
         dir1 = 5;
         dir2 = 0;
@@ -85,6 +89,7 @@ uint LineTracerHex(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint dis
         t2y = cy;
         map.MoveHexByDir(t1x, t1y, dir1, 1);
         map.MoveHexByDir(t2x, t2y, dir2, 1);
+
         c1x = 3 * float(t1x);
         c1y = SQRT3T2_FLOAT * float(t1y) - (float(t1x % 2)) * SQRT3_FLOAT;
         c2x = 3 * float(t2x);
@@ -93,6 +98,7 @@ uint LineTracerHex(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint dis
         dist2 = dx * (y1 - c2y) - dy * (x1 - c2x);
         dist1 = ((dist1 > 0) ? dist1 : -dist1);
         dist2 = ((dist2 > 0) ? dist2 : -dist2);
+
         if (dist1 <= dist2) {
             cx = t1x;
             cy = t1y;
@@ -128,6 +134,7 @@ uint LineTracerSquare(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint 
     float dir = math::atan2(float(ty - hy), float(tx - hx));
     float dx = math::cos(dir);
     float dy = math::sin(dir);
+
     if (math::abs(dx) > math::abs(dy)) {
         dy /= math::abs(dx);
         dx = (dx > 0 ? 1.0f : -1.0f);
@@ -136,6 +143,7 @@ uint LineTracerSquare(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint 
         dx /= math::abs(dy);
         dy = (dy > 0 ? 1.0f : -1.0f);
     }
+
     float x1 = float(hx) + 0.5f;
     float y1 = float(hy) + 0.5f;
     uint16 maxx = map.Width;
@@ -147,6 +155,7 @@ uint LineTracerSquare(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint 
         y1 += dy;
         cx = uint16(math::floor(x1));
         cy = uint16(math::floor(y1));
+
         if (cx >= maxx || cy >= maxy) {
             dist = i - 1;
             break;
@@ -159,4 +168,6 @@ uint LineTracerSquare(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint 
 
     context.FinishExec(map, dist);
     return dist;
+}
+
 }

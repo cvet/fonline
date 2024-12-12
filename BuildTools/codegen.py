@@ -2678,7 +2678,8 @@ if args.angelscript and args.ascontentoutput:
                 writeFile('    hstring ' + i + ' = hstring("' + i + '");')
             writeFile('}')
             writeFile('')
-        writeFile('// FOS Common')
+        writeFile('namespace Content')
+        writeFile('{')
         writeFile('')
         if '.fodlg' in content:
             writeNames('Dialog', content['.fodlg'])
@@ -2687,6 +2688,7 @@ if args.angelscript and args.ascontentoutput:
         for k in sorted(content.keys()):
             if k.startswith('Proto'):
                 writeNames(k[5:], content[k])
+        writeFile('}')
     
     except Exception as ex:
         showError('Can\'t generate scripts', ex)

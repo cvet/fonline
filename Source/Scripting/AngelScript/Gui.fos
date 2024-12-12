@@ -1,4 +1,7 @@
-// FOS Client
+namespace Gui
+{
+
+#if CLIENT
 
 ///@ Enum CursorType Default = 0
 
@@ -4019,4 +4022,8 @@ uint GetScreenCount(int screenIndex)
         }
     }
     return count;
+}
+
+#endif
+
 }
