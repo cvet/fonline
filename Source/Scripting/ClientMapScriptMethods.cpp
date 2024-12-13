@@ -738,9 +738,9 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled)
+[[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled, uint dist)
 {
-    self->SetShootBorders(enabled);
+    self->SetShootBorders(enabled, dist);
 }
 
 ///@ ExportMethod

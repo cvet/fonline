@@ -214,7 +214,7 @@ public:
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
-    void SetShootBorders(bool enabled);
+    void SetShootBorders(bool enabled, uint dist);
     auto MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(uint16 hx, uint16 hy);
@@ -405,6 +405,7 @@ private:
     bool _rebuildFog {};
     bool _drawLookBorders {true};
     bool _drawShootBorders {};
+    uint _shootBordersDist {};
     vector<PrimitivePoint> _fogLookPoints {};
     vector<PrimitivePoint> _fogShootPoints {};
 
