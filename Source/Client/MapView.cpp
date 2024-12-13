@@ -2928,7 +2928,7 @@ void MapView::PrepareFogToDraw()
             int hx = base_hx;
             int hy = base_hy;
             const int chosen_dir = chosen->GetDir();
-            const auto dist_shoot = chosen->GetAttackDistanceHint();
+            const auto dist_shoot = _shootBordersDist;
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
@@ -4466,12 +4466,13 @@ void MapView::FindSetCenter(int cx, int cy)
     RebuildMap(hx, hy);
 }
 
-void MapView::SetShootBorders(bool enabled)
+void MapView::SetShootBorders(bool enabled, uint dist)
 {
     STACK_TRACE_ENTRY();
 
     if (_drawShootBorders != enabled) {
         _drawShootBorders = enabled;
+        _shootBordersDist = dist;
         RebuildFog();
     }
 }
