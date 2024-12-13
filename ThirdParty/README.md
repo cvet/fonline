@@ -23,7 +23,6 @@
 * libpng - [libpng-1.6.44](https://github.com/pnggroup/libpng)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.24.4](https://github.com/mongodb/mongo-c-driver)
-* mono - [mono-5.16.0.209](https://www.mono-project.com/)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
