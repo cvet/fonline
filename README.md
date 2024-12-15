@@ -36,7 +36,7 @@
 * Flexible scripting system with varies supporting languages:
   + Native C++ coding
   + AngelScript
-  + Mono C# (in progress)
+  + Mono C#
 * Cross-platform with target platforms:
   + Windows
   + Linux
@@ -114,7 +114,7 @@ Other stuff used in build pipeline:
 ### Statically linked packages
 
 These packages included to this repository, will compile and link statically to our binaries.  
-They are located in ThirdParty directory.
+They are located in ThirdParty directory (except Mono, it's downladed by demand).
 
 * AcmDecoder by Abel - ACM sound format reader
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
@@ -135,7 +135,7 @@ They are located in ThirdParty directory.
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
-* [Mono](https://www.mono-project.com/) - c# scripting library
+* [Mono](https://github.com/dotnet/runtime) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [libpng](https://github.com/pnggroup/libpng) - png image loader
 * [LibreSSL](https://www.libressl.org/) - library for network transport security

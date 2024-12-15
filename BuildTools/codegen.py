@@ -2629,7 +2629,15 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         insertCodeGenLines(defineLines, 'Defines')
 
     elif lang == 'Mono':
-        assert False, 'Mono generation not implemented'
+        defineLines = []
+        
+        defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
+        defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
+        defineLines.append('#define SINGLE_SCRIPTING ' + ('1' if target == 'Single' else '0'))
+        defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
+
+        # Modify file content (from bottom to top)
+        insertCodeGenLines(defineLines, 'Defines')
     
     elif lang == 'Native':
         assert False, 'Native generation not implemented'

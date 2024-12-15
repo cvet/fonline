@@ -1,4 +1,4 @@
-echo off
+@echo off
 
 if [%FO_WORKSPACE%] == [] (
     set FO_WORKSPACE=Workspace
