@@ -125,8 +125,6 @@ elif [ "$TARGET" = "web" ]; then
     $CMAKE --build . --config Debug --parallel
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
-    export ANDROID_NDK=$FO_WORKSPACE/android-ndk
-
     if [ "$TARGET" = "android" ]; then
         export ANDROID_ABI=armeabi-v7a
     elif [ "$TARGET" = "android-arm64" ]; then

@@ -609,37 +609,44 @@ if(FO_MONO_SCRIPTING)
     set(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     set(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
 
-    set(FO_MONO_DIR "${CMAKE_CURRENT_BINARY_DIR}/dotnet/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0")
-    include_directories("${FO_MONO_DIR}")
-
-    if(WIN32)
-        set(FO_MONO_SETUP_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd")
+    if(DEFINED ENV{FO_DOTNET_RUNTIME})
+	    set(FO_DOTNET_DIR $ENV{FO_DOTNET_RUNTIME})
     else()
-        set(FO_MONO_SETUP_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh")
+        set(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+        file(MAKE_DIRECTORY ${FO_DOTNET_DIR})
     endif()
 
-    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/dotnet/COPIED_${FO_MONO_TRIPLET}
+    include_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
+    link_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
+
+    if(WIN32)
+        set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
+    else()
+        set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
+    endif()
+
+    add_custom_command(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
         COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dotnet
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
         COMMENT "Setup Mono")
 
     add_custom_target(SetupMono
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/dotnet/COPIED_${FO_MONO_TRIPLET}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
-    list(APPEND FO_COMMANDS_GROUP "SetupMono")
-    list(APPEND FO_GEN_DEPENDENCIES "SetupMono")
+        DEPENDS ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR})
+    list(APPEND FO_COMMANDS_GROUP SetupMono)
+    list(APPEND FO_GEN_DEPENDENCIES SetupMono)
 
-    link_directories("${CMAKE_CURRENT_BINARY_DIR}/dotnet/output/mono/${FO_MONO_TRIPLET}/lib")
     list(APPEND FO_COMMON_SYSTEM_LIBS
-        "monosgen-2.0"
-        "mono-component-debugger-static"
-        "mono-component-diagnostics_tracing-static"
-        "mono-component-hot_reload-static"
-        "mono-component-marshal-ilgen-static"
-        "mono-profiler-aot")
+        monosgen-2.0
+        mono-component-debugger-stub-static
+        mono-component-diagnostics_tracing-stub-static
+        mono-component-hot_reload-stub-static
+        mono-component-marshal-ilgen-stub-static)
 
     if(WIN32)
-        list(APPEND FO_COMMON_SYSTEM_LIBS "bcrypt")
+        list(APPEND FO_COMMON_SYSTEM_LIBS bcrypt)
+    elseif(EMSCRIPTEN)
+        list(APPEND FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
     endif()
 endif()
 
