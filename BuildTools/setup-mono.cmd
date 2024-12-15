@@ -31,13 +31,13 @@ if not exist BUILT_%TRIPLET% (
 
 echo . > BUILT_%TRIPLET%
 
-if not exist COPIED_%TRIPLET% (
+if not exist READY_%TRIPLET% (
     echo Copy runtime
     call :COPY_RUNTIME runtime\artifacts\obj\mono\%TRIPLET%\out output\mono\%TRIPLET%
     if errorlevel 1 exit /b 1
 )
 
-echo . > COPIED_%TRIPLET%
+echo . > READY_%TRIPLET%
 
 echo Runtime %TRIPLET% is ready!
 exit /b

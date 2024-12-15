@@ -1,7 +1,5 @@
 set(SPARK_DIR ${PROJECT_SOURCE_DIR}/spark)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wno-unused-parameter -std=c++11 -Wsuggest-override")
-
 file(GLOB_RECURSE SRC_FILES
 	${SPARK_DIR}/include/Core/*.h
 	${SPARK_DIR}/include/Extensions/*.h

@@ -102,13 +102,17 @@ cd %BUILD_DIR%
 
 if not [%BUILD_TOOLSET%] == [] (
     cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    if errorlevel 1 exit /b 1
 ) else if [%BUILD_CACHE%] == [] (
     cmake -A %BUILD_ARCH% %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    if errorlevel 1 exit /b 1
 ) else (
     cmake -A %BUILD_ARCH% -C "%FO_ENGINE_ROOT%\BuildTool\%BUILD_CACHE%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    if errorlevel 1 exit /b 1
 )
 
 cmake --build . --config Debug --parallel
+if errorlevel 1 exit /b 1
 
 exit /b
 

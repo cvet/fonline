@@ -126,6 +126,17 @@ function setup_toolset()
     cmake -G "Unix Makefiles" -DFO_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFO_BUILD_CLIENT=0 -DFO_BUILD_SERVER=0 -DFO_BUILD_SINGLE=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=1 -DFO_BUILD_BAKER=1 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0 "$FO_PROJECT_ROOT"
 }
 
+function setup_dotnet()
+{
+    echo "Setup dotnet"
+
+    rm -rf dotnet
+    mkdir dotnet
+    cd dotnet
+    git clone https://github.com/dotnet/runtime.git --depth 1 --branch v9.0.0
+    touch CLONED
+}
+
 function verify_workspace_part()
 {
     if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
@@ -170,6 +181,9 @@ if [ ! -z `check_arg web all` ]; then
 fi
 if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
     verify_workspace_part android-ndk $ANDROID_NDK_VERSION setup_android_ndk
+fi
+if [ ! -z `check_arg dotnet all` ]; then
+    verify_workspace_part dotnet 2 setup_dotnet
 fi
 wait_jobs
 
