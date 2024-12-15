@@ -583,7 +583,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS" "FO_${FO_OS_UPPER}")
     DisableLibWarnings(AngelscriptExt)
 
-    if(NOT FO_BUILD_BAKER)
+    if(NOT FO_BUILD_BAKER AND NOT FO_BUILD_ASCOMPILER)
         target_compile_definitions(Angelscript PRIVATE "AS_NO_COMPILER")
         target_compile_definitions(AngelscriptExt PRIVATE "AS_NO_COMPILER")
         add_compile_definitions(AS_NO_COMPILER)
@@ -605,15 +605,42 @@ endif()
 # Mono scripting
 if(FO_MONO_SCRIPTING)
     StatusMessage("+ Mono")
-    set(FO_MONO_DIR "${FO_ENGINE_ROOT}/ThirdParty/mono")
-    add_subdirectory("${FO_MONO_DIR}" EXCLUDE_FROM_ALL)
+
+    set(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
+    set(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+
+    set(FO_MONO_DIR "${CMAKE_CURRENT_BINARY_DIR}/dotnet/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0")
     include_directories("${FO_MONO_DIR}")
-    include_directories("${FO_MONO_DIR}/repo")
-    include_directories("${FO_MONO_DIR}/repo/mono")
-    include_directories("${FO_MONO_DIR}/repo/mono/eglib")
-    list(APPEND FO_COMMON_LIBS "libmono")
-    add_compile_definitions(HAVE_EXTERN_DEFINED_WINAPI_SUPPORT)
-    DisableLibWarnings(libmono)
+
+    if(WIN32)
+        set(FO_MONO_SETUP_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd")
+    else()
+        set(FO_MONO_SETUP_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh")
+    endif()
+
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/dotnet/COPIED_${FO_MONO_TRIPLET}
+        COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dotnet
+        COMMENT "Setup Mono")
+
+    add_custom_target(SetupMono
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/dotnet/COPIED_${FO_MONO_TRIPLET}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    list(APPEND FO_COMMANDS_GROUP "SetupMono")
+    list(APPEND FO_GEN_DEPENDENCIES "SetupMono")
+
+    link_directories("${CMAKE_CURRENT_BINARY_DIR}/dotnet/output/mono/${FO_MONO_TRIPLET}/lib")
+    list(APPEND FO_COMMON_SYSTEM_LIBS
+        "monosgen-2.0"
+        "mono-component-debugger-static"
+        "mono-component-diagnostics_tracing-static"
+        "mono-component-hot_reload-static"
+        "mono-component-marshal-ilgen-static"
+        "mono-profiler-aot")
+
+    if(WIN32)
+        list(APPEND FO_COMMON_SYSTEM_LIBS "bcrypt")
+    endif()
 endif()
 
 # App icon
@@ -1118,6 +1145,7 @@ add_custom_target(CodeGeneration
     DEPENDS ${FO_CODEGEN_OUTPUT}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND FO_COMMANDS_GROUP "CodeGeneration")
+list(APPEND FO_GEN_DEPENDENCIES "CodeGeneration")
 
 add_custom_target(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
@@ -1135,7 +1163,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
-    add_dependencies(AppHeadless CodeGeneration)
+    add_dependencies(AppHeadless ${FO_GEN_DEPENDENCIES})
     list(APPEND FO_CORE_LIBS_GROUP "AppHeadless")
 
     if(NOT FO_HEADLESS_ONLY)
@@ -1147,14 +1175,14 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
-        add_dependencies(AppFrontend CodeGeneration)
+        add_dependencies(AppFrontend ${FO_GEN_DEPENDENCIES})
         target_link_libraries(AppFrontend ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
         list(APPEND FO_CORE_LIBS_GROUP "AppFrontend")
     endif()
 
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
-    add_dependencies(CommonLib CodeGeneration)
+    add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "CommonLib")
 endif()
@@ -1162,7 +1190,7 @@ endif()
 if(NOT FO_SINGLEPLAYER AND(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ ClientLib")
     add_library(ClientLib STATIC EXCLUDE_FROM_ALL ${FO_CLIENT_SOURCE})
-    add_dependencies(ClientLib CodeGeneration)
+    add_dependencies(ClientLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ClientLib CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "ClientLib")
 endif()
@@ -1170,7 +1198,7 @@ endif()
 if(NOT FO_SINGLEPLAYER AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ ServerLib")
     add_library(ServerLib STATIC EXCLUDE_FROM_ALL ${FO_SERVER_SOURCE})
-    add_dependencies(ServerLib CodeGeneration)
+    add_dependencies(ServerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ServerLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "ServerLib")
 endif()
@@ -1178,7 +1206,7 @@ endif()
 if(FO_SINGLEPLAYER AND(FO_BUILD_SINGLE OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ SingleLib")
     add_library(SingleLib STATIC EXCLUDE_FROM_ALL ${FO_SINGLE_SOURCE})
-    add_dependencies(SingleLib CodeGeneration)
+    add_dependencies(SingleLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(SingleLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "SingleLib")
 endif()
@@ -1186,7 +1214,7 @@ endif()
 if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ MapperLib")
     add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
-    add_dependencies(MapperLib CodeGeneration)
+    add_dependencies(MapperLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(MapperLib CommonLib)
     list(APPEND FO_CORE_LIBS_GROUP "MapperLib")
 endif()
@@ -1194,7 +1222,7 @@ endif()
 if(FO_ANGELSCRIPT_SCRIPTING AND(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ ASCompilerLib")
     add_library(ASCompilerLib STATIC EXCLUDE_FROM_ALL ${FO_ASCOMPILER_SOURCE})
-    add_dependencies(ASCompilerLib CodeGeneration)
+    add_dependencies(ASCompilerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ASCompilerLib CommonLib)
     list(APPEND FO_CORE_LIBS_GROUP "ASCompilerLib")
 endif()
@@ -1202,7 +1230,7 @@ endif()
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ BakerLib")
     add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
-    add_dependencies(BakerLib CodeGeneration)
+    add_dependencies(BakerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "BakerLib")
 endif()
@@ -1210,7 +1238,7 @@ endif()
 if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ EditorLib")
     add_library(EditorLib STATIC EXCLUDE_FROM_ALL ${FO_EDITOR_SOURCE})
-    add_dependencies(EditorLib CodeGeneration)
+    add_dependencies(EditorLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(EditorLib CommonLib)
     list(APPEND FO_CORE_LIBS_GROUP "EditorLib")
 endif()
@@ -1293,7 +1321,7 @@ if(FO_SINGLEPLAYER AND FO_BUILD_SINGLE)
         set_target_properties(${FO_DEV_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT})
     endif()
 
-    add_dependencies(${FO_DEV_NAME} CodeGeneration)
+    add_dependencies(${FO_DEV_NAME} ${FO_GEN_DEPENDENCIES})
     set_target_properties(${FO_DEV_NAME} PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}")
     set_target_properties(${FO_DEV_NAME} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
     target_link_libraries(${FO_DEV_NAME} "AppFrontend" "SingleLib")
@@ -1344,7 +1372,7 @@ if(FO_BUILD_ASCOMPILER)
     StatusMessage("+ ${FO_DEV_NAME}_ASCompiler")
     list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ASCompiler")
     add_executable(${FO_DEV_NAME}_ASCompiler "${FO_ENGINE_ROOT}/Source/Applications/ASCompilerApp.cpp")
-    add_dependencies(${FO_DEV_NAME}_ASCompiler CodeGeneration)
+    add_dependencies(${FO_DEV_NAME}_ASCompiler ${FO_GEN_DEPENDENCIES})
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_ASCOMPILER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ASCompiler")
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
@@ -1379,7 +1407,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp")
-        add_dependencies(${target} CodeGeneration)
+        add_dependencies(${target} ${FO_GEN_DEPENDENCIES})
         set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_TESTS_OUTPUT})
         set_target_properties(${target} PROPERTIES OUTPUT_NAME ${target})
         set_target_properties(${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1")

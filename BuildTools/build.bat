@@ -1,4 +1,5 @@
-echo off
+@echo off
+setlocal
 
 if [%FO_PROJECT_ROOT%] == [] (
     set FO_PROJECT_ROOT=.
