@@ -74,9 +74,6 @@ enum class RenderType
 #if FO_HAVE_VULKAN
     Vulkan,
 #endif
-#if FO_HAVE_GNM
-    GNM,
-#endif
 };
 
 enum class EffectUsage
