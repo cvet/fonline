@@ -9,6 +9,8 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/internal-tools.sh
 
+pushd $FO_WORKSPACE
+
 if [ "$2" = "client" ]; then
     BUILD_TARGET="-DFO_BUILD_CLIENT=1 -DFO_BUILD_SERVER=0 -DFO_BUILD_SINGLE=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=0 -DFO_BUILD_BAKER=0 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0"
 elif [ "$2" = "server" ]; then
@@ -47,7 +49,7 @@ BUILD_DIR="build-$1-$2-$CONFIG"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
-rm -rf ready
+rm -rf READY
 
 if [ "$1" = "linux" ]; then
     export CC=/usr/bin/clang
@@ -98,4 +100,5 @@ else
     exit 1
 fi
 
-touch ready
+touch READY
+popd

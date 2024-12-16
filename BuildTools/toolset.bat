@@ -1,21 +1,12 @@
 @echo off
 
-if [%FO_WORKSPACE%] == [] (
-    set FO_WORKSPACE=Workspace
-)
+call %~dp0\setup-env.cmd
 
-echo Setup environment
+pushd %FO_WORKSPACE%
 
-CALL :NORMALIZEPATH %FO_WORKSPACE%
-set FO_WORKSPACE=%RETVAL%
-
-echo FO_WORKSPACE=%FO_WORKSPACE%
-
-cd %FO_WORKSPACE%/build-win64-toolset
+cd build-win64-toolset
 cmake --build . --config Release --target %1 --parallel
+if errorlevel 1 exit /b 1
 
-exit /B
-
-:NORMALIZEPATH
-  set RETVAL=%~f1
-  exit /B
+popd
+exit /b

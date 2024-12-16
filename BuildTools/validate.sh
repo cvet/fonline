@@ -3,6 +3,8 @@
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
+pushd $FO_WORKSPACE
+
 if [ "$1" = "linux-client" ]; then
     TARGET=linux
     BUILD_TARGET="-DFO_BUILD_CLIENT=1 -DFO_BUILD_SERVER=0 -DFO_BUILD_SINGLE=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=0 -DFO_BUILD_BAKER=0 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0 -DCMAKE_BUILD_TYPE=Debug"
@@ -166,3 +168,5 @@ elif [ "$1" = "code-coverage" ]; then
         ./codecov -t $CODECOV_TOKEN --gcov
     fi
 fi
+
+popd
