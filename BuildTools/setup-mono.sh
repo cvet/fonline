@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
+source $CUR_DIR/setup-env.sh
+
 if [ "$#" -ne 3 ]; then
     echo "Usage: setup-mono.sh <os> <arch> <config>"
     exit 1
@@ -14,12 +17,12 @@ if [ ! -f CLONED ]; then
         rm -rf "runtime"
     fi
 
-    if [ -z "$FO_DOTNET_RUNTIME" ]; then
+    if [ -z "$FO_DOTNET_RUNTIME_ROOT" ]; then
         echo "Clone runtime"
-        git clone https://github.com/dotnet/runtime.git --depth 1 --branch v9.0.0
+        git clone https://github.com/dotnet/runtime.git --depth 1 --branch $FO_DOTNET_RUNTIME
     else
         echo "Copy runtime"
-        cp -rf "$FO_DOTNET_RUNTIME/runtime" "runtime"
+        cp -rf "$FO_DOTNET_RUNTIME_ROOT" "runtime"
     fi
 fi
 
