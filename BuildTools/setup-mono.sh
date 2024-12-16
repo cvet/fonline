@@ -14,8 +14,13 @@ if [ ! -f CLONED ]; then
         rm -rf "runtime"
     fi
 
-    echo "Clone runtime"
-    git clone https://github.com/dotnet/runtime.git --depth 1 --branch v9.0.0
+    if [ -z "$FO_DOTNET_RUNTIME" ]; then
+        echo "Clone runtime"
+        git clone https://github.com/dotnet/runtime.git --depth 1 --branch v9.0.0
+    else
+        echo "Copy runtime"
+        cp -rf "$FO_DOTNET_RUNTIME/runtime" "runtime"
+    fi
 fi
 
 touch CLONED
@@ -24,7 +29,7 @@ touch CLONED
 if [ ! -f "BUILT_$TRIPLET" ]; then
     echo "Build runtime"
 
-    cd runtime
+    cd "runtime"
     ./build.sh -os $1 -arch $2 -c $3 -subset mono.runtime
     cd ..
 fi
