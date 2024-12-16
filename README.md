@@ -38,13 +38,12 @@
   + AngelScript
   + Mono C#
 * Cross-platform with target platforms:
-  + Windows
+  + Windows (+UWP)
   + Linux
   + macOS
   + iOS
   + Android
   + Web
-  + UWP *(PC, Mobile, Xbox)*
 * Supporting of following asset file formats:
   + Fallout 1/2
   + Fallout Tactics
@@ -114,7 +113,7 @@ Other stuff used in build pipeline:
 ### Statically linked packages
 
 These packages included to this repository, will compile and link statically to our binaries.  
-They are located in ThirdParty directory (except Mono, it's downladed by demand).
+They are located in ThirdParty directory (except dotnet, it's downladed by demand).
 
 * AcmDecoder by Abel - ACM sound format reader
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
@@ -135,7 +134,6 @@ They are located in ThirdParty directory (except Mono, it's downladed by demand)
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
-* [Mono](https://github.com/dotnet/runtime) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [libpng](https://github.com/pnggroup/libpng) - png image loader
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
@@ -164,7 +162,7 @@ Please follow these instructions to understand how to use this engine by design:
 ### Roadmap
 
 * [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game [done]
-* Code refactoring [90%]
+* Code refactoring [95%]
   + Clean up errors handling (error code based + exception based)
   + Preprocessor defines to constants and enums
   + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
@@ -174,7 +172,7 @@ Please follow these instructions to understand how to use this engine by design:
 * API freezing and continuing development with it's backward compatibility [85%]
 * Native C++ scripting layer [20%]
 * Improve more unit tests and gain code coverage to at least 80% [15%]
-* C#/Mono scripting layer [10%]
+* C#/Mono scripting layer [30%]
 * DirectX rendering [done]
 * Singleplayer mode [70%]
 * Particle system [done]

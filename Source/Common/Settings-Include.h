@@ -173,7 +173,6 @@ VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
-VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 VARIABLE_SETTING(bool, VSync, false);

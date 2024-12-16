@@ -407,12 +407,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
         throw NotImplementedException(LINE_STR);
     }
 #endif
-#if FO_HAVE_GNM
-    else if (Settings.ForceGNM) {
-        ActiveRendererType = RenderType::GNM;
-        throw NotImplementedException(LINE_STR);
-    }
-#endif
 
     // If none of selected then evaluate automatic selection
 #if FO_HAVE_DIRECT_3D
@@ -429,11 +423,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #if FO_HAVE_VULKAN
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Vulkan;
-    }
-#endif
-#if FO_HAVE_GNM
-    if (ActiveRenderer == nullptr) {
-        ActiveRendererType = RenderType::GNM;
     }
 #endif
 #if FO_HAVE_OPENGL
