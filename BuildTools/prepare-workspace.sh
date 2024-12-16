@@ -183,7 +183,7 @@ if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
     verify_workspace_part android-ndk $ANDROID_NDK_VERSION setup_android_ndk
 fi
 if [ ! -z `check_arg dotnet all` ]; then
-    verify_workspace_part dotnet 2 setup_dotnet
+    verify_workspace_part dotnet 3 setup_dotnet
 fi
 wait_jobs
 
