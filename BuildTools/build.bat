@@ -1,34 +1,7 @@
 @echo off
 setlocal
 
-if [%FO_PROJECT_ROOT%] == [] (
-    set FO_PROJECT_ROOT=.
-)
-if [%FO_ENGINE_ROOT%] == [] (
-    set FO_ENGINE_ROOT=%~p0/..
-)
-if [%FO_WORKSPACE%] == [] (
-    set FO_WORKSPACE=Workspace
-)
-if [%FO_OUTPUT%] == [] (
-    set FO_OUTPUT=%FO_WORKSPACE%/output
-)
-
-echo Setup environment
-
-CALL :NORMALIZEPATH %FO_PROJECT_ROOT%
-set FO_PROJECT_ROOT=%RETVAL%
-CALL :NORMALIZEPATH %FO_ENGINE_ROOT%
-set FO_ENGINE_ROOT=%RETVAL%
-CALL :NORMALIZEPATH %FO_WORKSPACE%
-set FO_WORKSPACE=%RETVAL%
-CALL :NORMALIZEPATH %FO_OUTPUT%
-set FO_OUTPUT=%RETVAL%
-
-echo FO_PROJECT_ROOT=%FO_PROJECT_ROOT%
-echo FO_ENGINE_ROOT=%FO_ENGINE_ROOT%
-echo FO_WORKSPACE=%FO_WORKSPACE%
-echo FO_OUTPUT=%FO_OUTPUT%
+call %~dp0\setup-env.cmd
 
 if [%1] == [win32] (
     set BUILD_ARCH=Win32
@@ -101,7 +74,3 @@ cmake --build . --config %CONFIG% --parallel
 if errorlevel 1 exit /b 1
 
 exit /b
-
-:NORMALIZEPATH
-  set RETVAL=%~f1
-  exit /b
