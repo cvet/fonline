@@ -2,15 +2,13 @@
 
 echo "Setup environment"
 
-[[ ! -z "$FO_PROJECT_ROOT" ]] || export FO_PROJECT_ROOT="$(pwd)"
-[[ ! -z "$FO_ENGINE_ROOT" ]] || export FO_ENGINE_ROOT="$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)"
-[[ ! -z "$FO_WORKSPACE" ]] || export FO_WORKSPACE=$PWD/Workspace
-[[ ! -z "$FO_OUTPUT" ]] || export FO_OUTPUT=$FO_WORKSPACE/output
+[[ ! -z $FO_PROJECT_ROOT ]] || export FO_PROJECT_ROOT=$PWD
+[[ ! -z $FO_ENGINE_ROOT ]] || export FO_ENGINE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)
+[[ ! -z $FO_WORKSPACE ]] || export FO_WORKSPACE=$PWD/Workspace
+[[ ! -z $FO_OUTPUT ]] || export FO_OUTPUT=$FO_WORKSPACE/output
 
 export FO_PROJECT_ROOT=$(cd $FO_PROJECT_ROOT; pwd)
 export FO_ENGINE_ROOT=$(cd $FO_ENGINE_ROOT; pwd)
-export FO_WORKSPACE=$(mkdir -p $FO_WORKSPACE; cd $FO_WORKSPACE; pwd)
-export FO_OUTPUT=$(mkdir -p $FO_OUTPUT; cd $FO_OUTPUT; pwd)
 export EMSCRIPTEN_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/emscripten")
 export ANDROID_NDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-ndk")
 export ANDROID_SDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")

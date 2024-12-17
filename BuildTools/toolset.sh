@@ -3,6 +3,7 @@
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
+mkdir -p $FO_WORKSPACE
 pushd $FO_WORKSPACE
 
 if [[ -d "emsdk" ]]; then
