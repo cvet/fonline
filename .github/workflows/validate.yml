@@ -49,7 +49,7 @@ jobs:
         - win64-baker
     steps:
     - uses: actions/checkout@v4
-    - run: BuildTools/validate.bat ${{matrix.app}}
+    - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
     runs-on: ubuntu-20.04
     strategy:
