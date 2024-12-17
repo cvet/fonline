@@ -3,6 +3,10 @@ setlocal
 
 call %~dp0\setup-env.cmd
 
+if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
+if not exist %FO_OUTPUT% mkdir %FO_OUTPUT%
+pushd %FO_WORKSPACE%
+
 if [%1] == [win32] (
     set BUILD_ARCH=Win32
 ) else if [%1] == [win64] (
@@ -52,9 +56,6 @@ if [%3] == [] (
     set CONFIG=%3
 )
 
-if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
-cd %FO_WORKSPACE%
-
 set BUILD_DIR=build-%1-%2-%CONFIG%
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
@@ -73,4 +74,5 @@ if not [%BUILD_TOOLSET%] == [] (
 cmake --build . --config %CONFIG% --parallel
 if errorlevel 1 exit /b 1
 
+popd
 exit /b

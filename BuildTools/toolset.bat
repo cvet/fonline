@@ -2,6 +2,7 @@
 
 call %~dp0\setup-env.cmd
 
+if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 pushd %FO_WORKSPACE%
 
 cd build-win64-toolset

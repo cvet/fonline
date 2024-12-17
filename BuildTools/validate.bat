@@ -3,6 +3,7 @@ setlocal
 
 call %~dp0\setup-env.cmd
 
+if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 pushd %FO_WORKSPACE%
 
 if [%1] == [win32-client] (

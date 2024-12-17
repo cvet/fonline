@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [[ "$1" = "" ]]; then
+if [[ -z $1 ]]; then
     echo "Provide at least one argument"
     exit 1
 fi
@@ -11,6 +11,8 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/internal-tools.sh
 
+mkdir -p $FO_WORKSPACE
+mkdir -p $FO_OUTPUT
 pushd $FO_WORKSPACE
 
 # All packages:
@@ -141,10 +143,10 @@ function setup_dotnet()
 
 function verify_workspace_part()
 {
-    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != "$2" ]]; then
+    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != $2 ]]; then
         if [[ ! -z `check_arg check` ]]; then
             echo "Workspace is not ready"
-            exit 10
+            exit 1
         fi
 
         workspace_job()
