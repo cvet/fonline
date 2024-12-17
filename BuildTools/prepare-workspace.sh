@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [ "$1" = "" ]; then
+if [[ "$1" = "" ]]; then
     echo "Provide at least one argument"
     exit 1
 fi
@@ -141,8 +141,8 @@ function setup_dotnet()
 
 function verify_workspace_part()
 {
-    if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
-        if [ ! -z `check_arg check` ]; then
+    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != "$2" ]]; then
+        if [[ ! -z `check_arg check` ]]; then
             echo "Workspace is not ready"
             exit 10
         fi
@@ -158,33 +158,33 @@ function verify_workspace_part()
     fi
 }
 
-if [ ! -z `check_arg packages all` ]; then
+if [[ ! -z `check_arg packages all` ]]; then
     verify_workspace_part common-packages 7 install_common_packages
     wait_jobs
-    if [ ! -z `check_arg linux all` ]; then
+    if [[ ! -z `check_arg linux all` ]]; then
         verify_workspace_part linux-packages 6 install_linux_packages
         wait_jobs
     fi
-    if [ ! -z `check_arg web all` ]; then
+    if [[ ! -z `check_arg web all` ]]; then
         verify_workspace_part web-packages 2 install_web_packages
         wait_jobs
     fi
-    if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+    if [[ ! -z `check_arg android android-arm64 android-x86 all` ]]; then
         verify_workspace_part android-packages 2 install_android_packages
         wait_jobs
     fi
 fi
 
-if [ ! -z `check_arg toolset all` ]; then
+if [[ ! -z `check_arg toolset all` ]]; then
     verify_workspace_part toolset 5 setup_toolset
 fi
-if [ ! -z `check_arg web all` ]; then
+if [[ ! -z `check_arg web all` ]]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten
 fi
-if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+if [[ ! -z `check_arg android android-arm64 android-x86 all` ]]; then
     verify_workspace_part android-ndk $ANDROID_NDK_VERSION setup_android_ndk
 fi
-if [ ! -z `check_arg dotnet all` ]; then
+if [[ ! -z `check_arg dotnet all` ]]; then
     verify_workspace_part dotnet $FO_DOTNET_RUNTIME setup_dotnet
 fi
 wait_jobs
