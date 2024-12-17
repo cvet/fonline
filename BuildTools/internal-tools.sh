@@ -24,8 +24,8 @@ function wait_jobs()
 
 function verify_workspace_part()
 {
-    if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
-        if [ ! -z `check_arg check` ]; then
+    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != "$2" ]]; then
+        if [[ ! -z `check_arg check` ]]; then
             echo "Workspace is not ready"
             exit 10
         fi
@@ -47,7 +47,7 @@ function check_arg()
 {
     for i in $PROGRAM_ARGS; do
         for j in $@; do
-            if [ "$i" = "$j" ]; then
+            if [[ "$i" = "$j" ]]; then
                 echo "1"
                 return
             fi

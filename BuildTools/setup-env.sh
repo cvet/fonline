@@ -2,10 +2,10 @@
 
 echo "Setup environment"
 
-[ "$FO_PROJECT_ROOT" ] || export FO_PROJECT_ROOT="$(pwd)"
-[ "$FO_ENGINE_ROOT" ] || export FO_ENGINE_ROOT="$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)"
-[ "$FO_WORKSPACE" ] || export FO_WORKSPACE=$PWD/Workspace
-[ "$FO_OUTPUT" ] || export FO_OUTPUT=$FO_WORKSPACE/output
+[[ ! -z "$FO_PROJECT_ROOT" ]] || export FO_PROJECT_ROOT="$(pwd)"
+[[ ! -z "$FO_ENGINE_ROOT" ]] || export FO_ENGINE_ROOT="$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)"
+[[ ! -z "$FO_WORKSPACE" ]] || export FO_WORKSPACE=$PWD/Workspace
+[[ ! -z "$FO_OUTPUT" ]] || export FO_OUTPUT=$FO_WORKSPACE/output
 
 export FO_PROJECT_ROOT=$(cd $FO_PROJECT_ROOT; pwd)
 export FO_ENGINE_ROOT=$(cd $FO_ENGINE_ROOT; pwd)
@@ -17,14 +17,14 @@ export ANDROID_SDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")
 export ANDROID_NATIVE_API_LEVEL_NUMBER=23
 export FO_DOTNET_RUNTIME=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/dotnet-runtime")
 
-if test -d "/usr/lib/android-sdk"; then
+if [[ -d "/usr/lib/android-sdk" ]]; then
     export ANDROID_HOME="/usr/lib/android-sdk"
     export ANDROID_SDK_ROOT="/usr/lib/android-sdk"
 fi
-if test -d "$FO_WORKSPACE/android-ndk"; then
+if [[ -d "$FO_WORKSPACE/android-ndk" ]]; then
     export ANDROID_NDK_ROOT="$FO_WORKSPACE/android-ndk"
 fi
-if test -d "$FO_WORKSPACE/dotnet/runtime"; then
+if [[ -d "$FO_WORKSPACE/dotnet/runtime" ]]; then
     export FO_DOTNET_RUNTIME_ROOT="$FO_WORKSPACE/dotnet/runtime"
 fi
 
