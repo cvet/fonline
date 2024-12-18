@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,7 +102,7 @@ struct ModelBone
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
     void FixAfterLoad(ModelBone* root_bone);
-    auto Find(hstring bone_name) -> ModelBone*;
+    auto Find(hstring bone_name) noexcept -> ModelBone*;
 
     hstring Name {};
     mat44 TransformationMatrix {};
@@ -236,32 +236,32 @@ public:
     constexpr static int FRAME_SCALE = 2;
 
     ModelInstance() = delete;
-    explicit ModelInstance(ModelManager& model_mngr);
+    ModelInstance(ModelManager& model_mngr, ModelInformation* info);
     ModelInstance(const ModelInstance&) = default;
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
-    [[nodiscard]] auto Convert2dTo3d(ipos pos) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos;
-    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
-    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
-    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
-    [[nodiscard]] auto GetMovingAnim2() const -> CritterActionAnim;
+    [[nodiscard]] auto Convert2dTo3d(ipos pos) const noexcept -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> ipos;
+    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
+    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
+    [[nodiscard]] auto GetMovingAnim2() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
-    [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
+    [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const -> isize;
-    [[nodiscard]] auto GetViewSize() const -> isize;
-    [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
+    [[nodiscard]] auto GetDrawSize() const noexcept -> isize;
+    [[nodiscard]] auto GetViewSize() const noexcept -> isize;
+    [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
     [[nodiscard]] auto GetAnimDuration() const -> time_duration;
-    [[nodiscard]] auto IsCombatMode() const -> bool;
+    [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
-    void SetupFrame();
+    void SetupFrame(isize draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
     auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
@@ -275,7 +275,7 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(ipos offset);
-    void SetMoving(bool enabled, uint speed = 0);
+    void SetMoving(bool enabled, int speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
@@ -316,8 +316,7 @@ private:
     void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
-    int _frameWidth {};
-    int _frameHeight {};
+    isize _frameSize {};
     mat44 _frameProj {};
     mat44 _frameProjColMaj {};
     CritterStateAnim _curStateAnim {};
@@ -423,10 +422,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    int _drawWidth {};
-    int _drawHeight {};
-    int _viewWidth {};
-    int _viewHeight {};
+    isize _drawSize {};
+    isize _viewSize {};
     hstring _rotationBone {};
 };
 

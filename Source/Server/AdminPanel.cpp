@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -251,7 +251,7 @@ static void AdminWork(FOServer* server, Session* session)
         }
 
         cmd_raw[len] = 0;
-        string cmd = _str(cmd_raw).trim();
+        string cmd = strex(cmd_raw).trim();
 
         // Authorization
         if (!session->Authorized) {
@@ -264,7 +264,7 @@ static void AdminWork(FOServer* server, Session* session)
             }
 
             if (pos != -1) {
-                admin_name = _str("{}", pos);
+                admin_name = strex("{}", pos);
 
                 session->Authorized = true;
                 WriteLog("Admin panel ({}): Authorized for admin '{}', IP '{}'", admin_name, admin_name, inet_ntoa(session->From.sin_addr));

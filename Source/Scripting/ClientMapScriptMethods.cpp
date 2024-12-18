@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,6 @@
 #include "Client.h"
 #include "MapSprite.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_DrawMap(MapView* self)
 {
@@ -49,7 +46,6 @@
     self->DrawMap();
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_DrawMapTexts(MapView* self)
 {
@@ -60,21 +56,12 @@
     self->DrawMapTexts();
 }
 
-///# ...
-///# param text ...
-///# param hex ...
-///# param showTime ...
-///# param color ...
-///# param fade ...
-///# param endOffset ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, mpos hex, tick_t showTime, ucolor color, bool fade, ipos endOffset)
 {
     self->AddMapText(text, hex, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOffset);
 }
 
-///# ...
-///# param mapSpr ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr)
 {
@@ -104,20 +91,16 @@
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
-        const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        if (proto_item == nullptr) {
-            return;
-        }
-
-        color = proto_item->GetIsColorize() ? proto_item->GetLightColor() : ucolor::clear;
-        is_flat = proto_item->GetIsFlat();
-        const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
+        const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        color = proto->GetColorize() ? proto->GetLightColor() : ucolor::clear;
+        is_flat = proto->GetDrawFlatten();
+        const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;
         draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
-        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto_item->GetDrawOrderOffsetHexY()));
-        corner = proto_item->GetCorner();
-        disable_egg = proto_item->GetDisableEgg();
-        contour_color = proto_item->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
+        draw_order_hy_offset = static_cast<int>(proto->GetDrawOrderOffsetHexY());
+        corner = proto->GetCorner();
+        disable_egg = proto->GetDisableEgg();
+        contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     const auto& field = self->GetField(mapSpr->Hex);
@@ -164,16 +147,12 @@
     }
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_RebuildFog(MapView* self)
 {
     self->RebuildFog();
 }
 
-///# ...
-///# param itemId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
@@ -204,8 +183,6 @@
     return item;
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 {
@@ -223,9 +200,6 @@
     return items;
 }
 
-///# ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, mpos hex)
 {
@@ -243,9 +217,6 @@
     return items;
 }
 
-///# ...
-///# param critterId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
@@ -261,9 +232,12 @@
     return cr;
 }
 
-///# ...
-///# param findType ...
-///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self)
+{
+    return vec_static_cast<CritterView*>(self->GetCritters());
+}
+
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
 {
@@ -278,10 +252,6 @@
     return critters;
 }
 
-///# ...
-///# param pid ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring pid, CritterFindType findType)
 {
@@ -305,11 +275,6 @@
     return critters;
 }
 
-///# ...
-///# param hex ...
-///# param radius ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, uint radius, CritterFindType findType)
 {
@@ -334,13 +299,6 @@
     return critters;
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param angle ...
-///# param dist ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType)
 {
@@ -355,18 +313,9 @@
 
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
 
-    return vec_cast<CritterView*>(critters);
+    return vec_static_cast<CritterView*>(critters);
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param angle ...
-///# param dist ...
-///# param findType ...
-///# param preBlockHex ...
-///# param blockHex ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
@@ -381,14 +330,9 @@
 
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
 
-    return vec_cast<CritterView*>(critters);
+    return vec_static_cast<CritterView*>(critters);
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param angle ...
-///# param dist ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint dist)
 {
@@ -406,11 +350,6 @@
     toHex = pre_block;
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param cut ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
@@ -447,11 +386,6 @@
     return result->DirSteps;
 }
 
-///# ...
-///# param cr ...
-///# param toHex ...
-///# param cut ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
@@ -490,11 +424,6 @@
     return result->DirSteps;
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param cut ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
@@ -528,11 +457,6 @@
     return static_cast<uint>(result->DirSteps.size());
 }
 
-///# ...
-///# param cr ...
-///# param toHex ...
-///# param cut ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
@@ -568,10 +492,6 @@
     return static_cast<uint>(result->DirSteps.size());
 }
 
-///# ...
-///# param hex ...
-///# param speed ...
-///# param canStop ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint speed, bool canStop)
 {
@@ -587,20 +507,12 @@
     }
 }
 
-///# ...
-///# param offset ...
-///# param speed ...
-///# param canStop ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint speed, bool canStop)
 {
     self->ScrollOffset(offset, static_cast<float>(speed) / 1000.0f, canStop);
 }
 
-///# ...
-///# param cr ...
-///# param softLock ...
-///# param unlockIfSame ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, bool softLock, bool unlockIfSame)
 {
@@ -625,11 +537,6 @@
     }
 }
 
-///# ...
-///# param hex ...
-///# param dir ...
-///# param steps ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, uint steps)
 {
@@ -654,10 +561,6 @@
     return result;
 }
 
-///# ...
-///# param hex ...
-///# param roof ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof)
 {
@@ -668,11 +571,6 @@
     return self->GetTile(hex, roof, -1);
 }
 
-///# ...
-///# param hex ...
-///# param roof ...
-///# param layer ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof, uint8 layer)
 {
@@ -683,10 +581,6 @@
     return self->GetTile(hex, roof, layer);
 }
 
-///# ...
-///# param hex ...
-///# param roof ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, bool roof)
 {
@@ -694,18 +588,15 @@
         throw ScriptException("Invalid hex arg");
     }
 
-    return vec_cast<ItemView*>(self->GetTiles(hex, roof));
+    return vec_static_cast<ItemView*>(self->GetTiles(hex, roof));
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_RedrawMap(MapView* self)
 {
     self->RefreshMap();
 }
 
-///# ...
-///# param targetZoom ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_ChangeZoom(MapView* self, float targetZoom)
 {
@@ -746,10 +637,6 @@
     }
 }
 
-///# ...
-///# param hex ...
-///# param hexOffset ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& hexOffset)
 {
@@ -769,31 +656,18 @@
     return false;
 }
 
-///# ...
-///# param pos ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex)
 {
     return self->GetHexAtScreenPos(pos, hex, nullptr);
 }
 
-///# ...
-///# param pos ...
-///# param hex ...
-///# param hexOffset ...
-///# param oy ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex, ipos& hexOffset)
 {
     return self->GetHexAtScreenPos(pos, hex, &hexOffset);
 }
 
-///# ...
-///# param pos ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos pos)
 {
@@ -801,19 +675,12 @@
     return self->GetItemAtScreenPos(pos, item_egg, 0, true);
 }
 
-///# ...
-///# param pos ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos)
 {
     return self->GetCritterAtScreenPos(pos, false, 0, true);
 }
 
-///# ...
-///# param pos ...
-///# param extraRange
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos, int extraRange)
 {
@@ -826,18 +693,12 @@
     return cr;
 }
 
-///# ...
-///# param pos ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos pos)
 {
     return self->GetEntityAtScreenPos(pos, 0, true);
 }
 
-///# ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 {
@@ -845,12 +706,9 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hex).Flags.IsMoveBlocked;
+    return !self->GetField(hex).Flags.MoveBlocked;
 }
 
-///# ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 {
@@ -858,18 +716,15 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hex).Flags.IsShootBlocked;
+    return !self->GetField(hex).Flags.ShootBlocked;
 }
 
-///# ...
-///# param enabled ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled)
+[[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled, uint dist)
 {
-    self->SetShootBorders(enabled);
+    self->SetShootBorders(enabled, dist);
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, uint spriteCount)
 {
@@ -889,4 +744,16 @@
     }
 
     self->SetCursorPos(hex_cr, mousePos, showSteps, forceRefresh);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_SetCrittersContour(MapView* self, ContourType contour)
+{
+    self->SetCrittersContour(contour);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_ResetCritterContour(MapView* self)
+{
+    self->SetCritterContour(ident_t {}, ContourType::None);
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,9 +56,9 @@ public:
 
     void SetString(string_view entry_name, string_view str);
     void SetData(string_view entry_name, const_span<uint8> data);
-    void EraseEntry(string_view entry_name);
+    void RemoveEntry(string_view entry_name);
 
 private:
-    unique_ptr<CacheStorageImpl> _impl {};
+    unique_ptr<CacheStorageImpl> _impl;
     bool _nonConstHelper {};
 };

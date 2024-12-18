@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,25 +56,22 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
-    [[nodiscard]] auto IsNeedReset() const -> bool;
-    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
+    [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
-    [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
-    [[nodiscard]] auto GetAttackDist() -> uint;
-    [[nodiscard]] auto IsNameVisible() const -> bool;
+    [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
     [[nodiscard]] auto GetNameTextPos() const -> ipos;
     [[nodiscard]] auto GetNameTextInfo(bool& name_visible, int& lines) const -> irect;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+    [[nodiscard]] auto IsModel() const noexcept -> bool { return _model != nullptr; }
+    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
 #endif
 
     void Init();
-    void MarkAsDestroyed() override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView* override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
+    auto AddRawInvItem(ItemView* item) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
@@ -88,8 +85,8 @@ public:
     void ClearAnim();
     void AddExtraOffs(ipos offset);
     void RefreshOffs();
-    void SetText(string_view str, ucolor color, time_duration text_delay);
-    void DrawTextOnHead();
+    void DrawName();
+    auto GetNameTextPos(ipos& pos) const -> bool;
     void ClearMove();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -128,6 +125,7 @@ private:
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
+    void OnDestroySelf() override;
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
@@ -142,11 +140,6 @@ private:
     vector<CritterAnim> _animSequence {};
 
     time_point _fidgetTime {};
-
-    string _strTextOnHead {};
-    time_point _startTextTime {};
-    time_duration _textShowDuration {};
-    ucolor _textOnHeadColor {COLOR_TEXT};
 
     ipos _offsAnim {};
     fpos _offsExt {};

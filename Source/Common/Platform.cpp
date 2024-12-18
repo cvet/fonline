@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,8 @@
 template<typename T>
 static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 {
+    STACK_TRACE_ENTRY();
+
     if (auto* hmod = ::GetModuleHandleA(mod); hmod != nullptr) {
         return reinterpret_cast<T>(::GetProcAddress(hmod, name)); // NOLINT(clang-diagnostic-cast-function-type-strict)
     }
@@ -70,8 +72,10 @@ static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 
 void Platform::InfoLog(const string& str)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
-    ::OutputDebugStringW(_str(str).toWideChar().c_str());
+    ::OutputDebugStringW(strex(str).toWideChar().c_str());
 #elif FO_ANDROID
     __android_log_write(ANDROID_LOG_INFO, FO_DEV_NAME, str.c_str());
 #endif
@@ -79,12 +83,14 @@ void Platform::InfoLog(const string& str)
 
 void Platform::SetThreadName(const string& str)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
     using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
 
     if (set_thread_description != nullptr) {
-        set_thread_description(::GetCurrentThread(), _str(str).toWideChar().c_str());
+        set_thread_description(::GetCurrentThread(), strex(str).toWideChar().c_str());
     }
 #endif
 }
@@ -112,7 +118,7 @@ auto Platform::GetExePath() -> optional<string>
         }
     }
 
-    return _str().parseWideChar(path.data()).str();
+    return strex().parseWideChar(path.data());
 
 #elif FO_LINUX
     char path[FILENAME_MAX];

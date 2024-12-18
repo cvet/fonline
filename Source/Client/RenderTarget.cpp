@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -210,13 +210,13 @@ void RenderTargetManager::DumpTextures() const
     }
 
     const auto date = Timer::GetCurrentDateTime();
-    const string dir = _str("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
     const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
         if (rt != nullptr) {
-            const string fname = _str("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Size.width, rt->MainTex->Size.height);
+            const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Size.width, rt->MainTex->Size.height);
             auto tex_data = rt->MainTex->GetTextureRegion({0, 0}, rt->MainTex->Size);
             GenericUtils::WriteSimpleTga(fname, rt->MainTex->Size, std::move(tex_data));
         }
@@ -224,7 +224,7 @@ void RenderTargetManager::DumpTextures() const
 
     int cnt = 1;
     for (auto&& rt : _rtAll) {
-        write_rt(_str("All_{}", cnt), rt.get());
+        write_rt(strex("All_{}", cnt), rt.get());
         cnt++;
     }
 }

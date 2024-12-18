@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,12 @@
 
 DECLARE_EXCEPTION(DataRegistrationException);
 
+#if FO_SINGLEPLAYER
+#define SINGLEPLAYER_VIRTUAL virtual
+#else
+#define SINGLEPLAYER_VIRTUAL
+#endif
+
 class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
 {
 public:
@@ -54,10 +60,12 @@ public:
     auto operator=(const FOEngineBase&) = delete;
     auto operator=(FOEngineBase&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
-    [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
-    [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
-    [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
+    [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
+    [[nodiscard]] auto GetPropertiesRelation() const noexcept -> PropertiesRelationType { return _propsRelation; }
+    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
     [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
     [[nodiscard]] auto GetEnumInfo(const string& enum_name, size_t& size) const -> bool override;
     [[nodiscard]] auto GetAggregatedTypeInfo(const string& type_name, size_t& size, const vector<BaseTypeInfo>** layout) const -> bool override;
@@ -65,14 +73,17 @@ public:
     [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
     [[nodiscard]] auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int override;
-    [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
-    [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
-    [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring> override;
+    [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
+    [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
+    [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
+    [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
+    [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
 
-    auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    void AddEnumGroup(const string& name, size_t size, unordered_map<string, int>&& key_values);
-    void AddAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout);
-    void SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
+    auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
+    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
+    void RegisterEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values);
+    void RegisterAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout);
+    void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
     GlobalSettings& Settings;
@@ -90,11 +101,12 @@ protected:
 private:
     const PropertiesRelationType _propsRelation;
     bool _registrationFinalized {};
-    unordered_map<string, const PropertyRegistrator*> _registrators {};
+    unordered_map<hstring, EntityTypeInfo> _entityTypesInfo {};
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, size_t> _enumSizes {};
+    unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, tuple<size_t, vector<BaseTypeInfo>>> _aggregatedTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};

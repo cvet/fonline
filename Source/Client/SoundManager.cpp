@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,8 +65,7 @@ static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> ui
 
 SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     _settings {settings},
-    _resources {resources},
-    _playingSounds {}
+    _resources {resources}
 {
     STACK_TRACE_ENTRY();
 
@@ -112,6 +111,7 @@ void SoundManager::ProcessSounds(uint8* output)
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
         auto&& sound = *it;
+
         if (ProcessSound(sound.get(), _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
             App->Audio.MixAudio(output, _outputBuf.data(), static_cast<int>(volume));
@@ -139,6 +139,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
             // Stream new parts
             while (offset < whole && sound->OggStream && StreamOgg(sound)) {
                 auto write = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
+
                 if (offset + write > whole) {
                     write = whole - offset;
                 }
@@ -176,6 +177,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
         if (Timer::CurTime() >= sound->NextPlayTime) {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;
+
             if (sound->OggStream) {
                 ov_raw_seek(sound->OggStream.get(), 0);
             }
@@ -194,6 +196,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
 
     // Give silent
     std::memset(output, App->Audio.GetSilence(), whole);
+
     return false;
 }
 
@@ -202,7 +205,7 @@ auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_t
     STACK_TRACE_ENTRY();
 
     auto fixed_fname = string(fname);
-    string ext = _str(fname).getFileExtension();
+    string ext = strex(fname).getFileExtension();
 
     // Default ext
     if (ext.empty()) {
@@ -239,11 +242,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     NON_CONST_METHOD_HINT();
 
     auto file = _resources.ReadFile(fname);
+
     if (!file) {
         return false;
     }
 
     auto dw_buf = file.GetLEUInt();
+
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
         return false;
@@ -252,19 +257,22 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     file.GoForward(4);
 
     dw_buf = file.GetLEUInt();
+
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
         WriteLog("'WAVE' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
+
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
         WriteLog("'fmt ' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
-    if (dw_buf == 0u) {
+
+    if (dw_buf == 0) {
         WriteLog("Unknown format");
         return false;
     }
@@ -290,6 +298,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     file.GoForward(dw_buf - 16);
 
     dw_buf = file.GetLEUInt();
+
     if (dw_buf == MAKEUINT('f', 'a', 'c', 't')) {
         dw_buf = file.GetLEUInt();
         file.GoForward(dw_buf);
@@ -306,8 +315,9 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     sound->BaseBufLen = dw_buf;
 
     // Check format
-    sound->OriginalChannels = waveformatex.NChannels;
-    sound->OriginalRate = waveformatex.NSamplesPerSec;
+    sound->OriginalChannels = static_cast<int>(waveformatex.NChannels);
+    sound->OriginalRate = static_cast<int>(waveformatex.NSamplesPerSec);
+
     switch (waveformatex.WBitsPerSample) {
     case 8:
         sound->OriginalFormat = AppAudio::AUDIO_FORMAT_U8;
@@ -333,6 +343,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     NON_CONST_METHOD_HINT();
 
     const auto file = _resources.ReadFile(fname);
+
     if (!file) {
         return false;
     }
@@ -351,6 +362,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
     auto* buf = reinterpret_cast<uint16*>(sound->BaseBuf.data());
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
+
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");
         return false;
@@ -364,21 +376,27 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     STACK_TRACE_ENTRY();
 
     auto file = _resources.ReadFile(fname);
+
     if (!file) {
         return false;
     }
 
     ov_callbacks callbacks;
+
     callbacks.read_func = [](void* ptr, size_t size, size_t count, void* datasource) -> size_t {
         auto* file2 = static_cast<File*>(datasource);
         const auto bytes_read = std::min(file2->GetSize() - file2->GetCurPos(), size * count);
+
         if (bytes_read > 0) {
             file2->CopyData(ptr, bytes_read);
         }
+
         return bytes_read;
     };
+
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
         auto* file2 = static_cast<File*>(datasource);
+
         switch (whence) {
         case SEEK_SET:
             file2->SetCurPos(static_cast<uint>(offset));
@@ -397,15 +415,20 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         default:
             return -1;
         }
+
         return 0;
     };
+
     callbacks.close_func = [](void* datasource) -> int {
         const auto* file2 = static_cast<File*>(datasource);
         delete file2;
+
         return 0;
     };
+
     callbacks.tell_func = [](void* datasource) -> long {
         const auto* file2 = static_cast<File*>(datasource);
+
         return static_cast<long>(file2->GetCurPos());
     };
 
@@ -415,6 +438,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     });
 
     const auto error = ov_open_callbacks(new File {std::move(file)}, sound->OggStream.get(), nullptr, 0, callbacks);
+
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);
         switch (error) {
@@ -450,16 +474,18 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     sound->BaseBufLen = _streamingPortion;
 
     int result;
-    auto decoded = 0u;
+    uint decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
         result = static_cast<int>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr));
+
         if (result <= 0) {
             break;
         }
 
         decoded += result;
+
         if (decoded >= _streamingPortion) {
             break;
         }
@@ -486,26 +512,29 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
     NON_CONST_METHOD_HINT();
 
     long result;
-    auto decoded = 0u;
+    uint decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
         result = ov_read(sound->OggStream.get(), buf, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr);
+
         if (result <= 0) {
             break;
         }
 
         decoded += result;
+
         if (decoded >= _streamingPortion) {
             break;
         }
     }
 
-    if (result < 0 || decoded == 0u) {
+    if (result < 0 || decoded == 0) {
         return false;
     }
 
     sound->BaseBufLen = decoded;
+
     return ConvertData(sound);
 }
 
@@ -521,6 +550,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
     }
 
     sound->ConvertedBufCur = 0;
+
     return true;
 }
 
@@ -533,22 +563,24 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Make 'NAME'
-    const string sound_name = _str(name).eraseFileExtension().lower();
+    const string sound_name = strex(name).eraseFileExtension().lower();
 
     // Find base
     const auto it = sound_names.find(sound_name);
+
     if (it != sound_names.end()) {
         return Load(it->second, false, time_duration {});
     }
 
     // Check random pattern 'NAME_X'
     uint count = 0;
-    while (sound_names.find(_str("{}_{}", sound_name, count + 1)) != sound_names.end()) {
+
+    while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
         count++;
     }
 
     if (count != 0u) {
-        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, time_duration {});
+        return Load(sound_names.find(strex("{}_{}", sound_name, GenericUtils::Random(1u, count)).str())->second, false, time_duration {});
     }
 
     return false;

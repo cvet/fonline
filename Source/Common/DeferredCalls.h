@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,7 +65,7 @@ public:
     auto operator=(DeferredCallManager&&) noexcept = delete;
     virtual ~DeferredCallManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
+    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const noexcept -> bool;
 
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void> func) -> ident_t;
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t;

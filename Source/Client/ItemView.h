@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,15 +50,17 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto GetInnerItems() -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetInnerItems() noexcept -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInnerItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
-    void MarkAsDestroyed() override;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
-    void DeleteInnerItem(ItemView* item);
+    auto AddMapperInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*;
+    auto AddReceivedInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddRawInnerItem(ItemView* item) -> ItemView*;
+    void DestroyInnerItem(ItemView* item);
 
 protected:
+    void OnDestroySelf() override;
+
     vector<ItemView*> _innerItems {};
 };

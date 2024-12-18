@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@
 
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode) :
 #if !FO_SINGLEPLAYER
-    FOEngineBase(settings, PropertiesRelationType::ClientRelative),
+    FOEngineBase(settings, mapper_mode ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative),
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
@@ -54,27 +54,27 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
-    Cache(_str(Settings.ResourcesDir).combinePath("Cache.fobin")),
+    Cache(strex(Settings.ResourcesDir).combinePath("Cache.fobin")),
     ClientDeferredCalls(this),
     _conn(Settings),
-    _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+    _globalMapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     STACK_TRACE_ENTRY();
 
     Resources.AddDataSource(Settings.EmbeddedResources);
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("StaticMaps"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientProtos"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("EngineData"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Core"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Texts"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("StaticMaps"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientProtos"));
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientAngelScript"));
+        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientAngelScript"));
     }
 
     for (const auto& entry : Settings.ClientResourceEntries) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath(entry));
     }
 
 #if FO_IOS
@@ -154,13 +154,13 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_PLACE_TO_GAME_COMPLETE, [this] { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
-    _conn.AddMessageHandler(NETMSG_SOME_ITEM, [this] { Net_OnSomeItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, [this] { Net_OnCritterAction(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_SPEED, [this] { Net_OnCritterMoveSpeed(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
@@ -183,26 +183,26 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_MAP_TEXT, [this] { Net_OnMapText(); });
     _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, [this] { Net_OnMapTextMsg(); });
     _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, [this] { Net_OnMapTextMsgLex(); });
-    _conn.AddMessageHandler(NETMSG_ALL_PROPERTIES, [this] { Net_OnAllProperties(); });
-    _conn.AddMessageHandler(NETMSG_CLEAR_ITEMS, [this] { Net_OnChosenClearItems(); });
-    _conn.AddMessageHandler(NETMSG_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
-    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, [this] { Net_OnChosenEraseItem(); });
-    _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, [this] { Net_OnAllItemsSend(); });
+    _conn.AddMessageHandler(NETMSG_CHOSEN_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
+    _conn.AddMessageHandler(NETMSG_CHOSEN_REMOVE_ITEM, [this] { Net_OnChosenRemoveItem(); });
     _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
     _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
-    _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, [this] { Net_OnAutomapsInfo(); });
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
-    _conn.AddMessageHandler(NETMSG_LOADMAP, [this] { Net_OnLoadMap(); });
+    _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
+    _conn.AddMessageHandler(NETMSG_GLOBAL_LOCATION, [this] { Net_OnGlobalLocation(); });
+    _conn.AddMessageHandler(NETMSG_GLOBAL_FOG, [this] { Net_OnGlobalFog(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
-    _conn.AddMessageHandler(NETMSG_RPC, [this] { Net_OnRemoteCall(); });
+    _conn.AddMessageHandler(NETMSG_REMOTE_CALL, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
-    _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, [this] { Net_OnEraseItemFromMap(); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM_FROM_MAP, [this] { Net_OnRemoveItemFromMap(); });
     _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
     _conn.AddMessageHandler(NETMSG_EFFECT, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NETMSG_PLAY_SOUND, [this] { Net_OnPlaySound(); });
     _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NETMSG_ADD_CUSTOM_ENTITY, [this] { Net_OnAddCustomEntity(); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_CUSTOM_ENTITY, [this] { Net_OnRemoveCustomEntity(); });
 
     // Properties that sending to clients
     {
@@ -225,12 +225,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
     }
 
     // Properties with custom behaviours
@@ -240,23 +240,24 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::DrawOffset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLookDistance(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::DrawOffset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
@@ -271,19 +272,8 @@ FOClient::~FOClient()
 {
     STACK_TRACE_ENTRY();
 
-    if (_chosen != nullptr || CurMap != nullptr || _curPlayer != nullptr || _curLocation != nullptr) {
-        BreakIntoDebugger();
-    }
-
-    delete ScriptSys;
-}
-
-void FOClient::Shutdown()
-{
-    STACK_TRACE_ENTRY();
-
-    App->Render.SetRenderTarget(nullptr);
-    _conn.Disconnect();
+    safe_call([] { App->Render.SetRenderTarget(nullptr); });
+    safe_call([this] { _conn.Disconnect(); });
 
     if (_chosen != nullptr) {
         _chosen->Release();
@@ -291,22 +281,24 @@ void FOClient::Shutdown()
     }
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        safe_call([this] { CurMap->DestroySelf(); });
         CurMap = nullptr;
     }
 
     if (_curPlayer != nullptr) {
-        _curPlayer->MarkAsDestroyed();
-        _curPlayer->Release();
+        safe_call([this] { _curPlayer->DestroySelf(); });
         _curPlayer = nullptr;
     }
 
     if (_curLocation != nullptr) {
-        _curLocation->MarkAsDestroyed();
-        _curLocation->Release();
+        safe_call([this] { _curLocation->DestroySelf(); });
         _curLocation = nullptr;
     }
+
+    safe_call([this] { DestroyInnerEntities(); });
+
+    delete ScriptSys;
+    ScriptSys = nullptr;
 }
 
 auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool
@@ -323,28 +315,28 @@ auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, Critte
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool
+auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, state_anim_ex, action_anim_ex, flags);
+    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
 }
 
-auto FOClient::IsConnecting() const -> bool
+auto FOClient::IsConnecting() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnecting();
 }
 
-auto FOClient::IsConnected() const -> bool
+auto FOClient::IsConnected() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnected();
 }
 
-auto FOClient::GetChosen() -> CritterView*
+auto FOClient::GetChosen() noexcept -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
@@ -358,19 +350,19 @@ auto FOClient::GetChosen() -> CritterView*
     return _chosen;
 }
 
-auto FOClient::GetMapChosen() -> CritterHexView*
+auto FOClient::GetMapChosen() noexcept -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
-auto FOClient::GetWorldmapCritter(ident_t cr_id) -> CritterView*
+auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
-    return it != _worldmapCritters.end() ? *it : nullptr;
+    const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+    return it != _globalMapCritters.end() ? *it : nullptr;
 }
 
 void FOClient::TryAutoLogin()
@@ -405,7 +397,7 @@ void FOClient::TryAutoLogin()
         return;
     }
 
-    const auto auto_login_args = _str(auto_login).split(' ');
+    const auto auto_login_args = strex(auto_login).split(' ');
     if (auto_login_args.size() != 2) {
         return;
     }
@@ -489,7 +481,7 @@ void FOClient::MainLoop()
 
     {
         SprMngr.BeginScene({0, 0, 0});
-        auto end_scene = ScopeCallback([this] { SprMngr.EndScene(); });
+        auto end_scene = ScopeCallback([this]() noexcept { safe_call([this] { SprMngr.EndScene(); }); });
 
         // Quake effect
         ProcessScreenEffectQuake();
@@ -735,18 +727,18 @@ void FOClient::Net_OnDisconnect()
     STACK_TRACE_ENTRY();
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        CurMap->DestroySelf();
         CurMap = nullptr;
 
         CleanupSpriteCache();
     }
 
     if (_curPlayer != nullptr) {
-        _curPlayer->MarkAsDestroyed();
-        _curPlayer->Release();
+        _curPlayer->DestroySelf();
         _curPlayer = nullptr;
     }
+
+    DestroyInnerEntities();
 
     TryAutoLogin();
 }
@@ -856,12 +848,15 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(entity);
 
-    auto* client_entity = dynamic_cast<ClientEntity*>(entity);
-    if (client_entity == nullptr) {
-        return;
-    }
+    const auto& props = entity->GetProperties();
+
+    props.ValidateForRawData(prop);
+
+    const auto prop_raw_data = props.GetRawData(prop);
+    const auto is_pod = prop->IsPlainData();
 
     uint additional_args = 0;
+
     switch (type) {
     case NetProperty::Critter:
         additional_args = 1;
@@ -879,12 +874,8 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         break;
     }
 
-    uint data_size = 0;
-    const void* data = client_entity->GetProperties().GetRawData(prop, data_size);
-
-    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
-        _conn.OutBuf.StartMsg(NETMSG_SEND_POD_PROPERTY(data_size, additional_args));
+        _conn.OutBuf.StartMsg(NETMSG_SEND_POD_PROPERTY(prop_raw_data.size(), additional_args));
     }
     else {
         _conn.OutBuf.StartMsg(NETMSG_SEND_COMPLEX_PROPERTY);
@@ -893,34 +884,33 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     _conn.OutBuf.Write(static_cast<char>(type));
 
     switch (type) {
-    case NetProperty::CritterItem:
+    case NetProperty::CritterItem: {
+        auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(dynamic_cast<ItemView*>(client_entity)->GetCritterId());
         _conn.OutBuf.Write(client_entity->GetId());
-        break;
-    case NetProperty::Critter:
+    } break;
+    case NetProperty::Critter: {
+        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
-        break;
-    case NetProperty::MapItem:
+    } break;
+    case NetProperty::MapItem: {
+        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
-        break;
-    case NetProperty::ChosenItem:
+    } break;
+    case NetProperty::ChosenItem: {
+        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
-        break;
+    } break;
     default:
         break;
     }
 
-    if (is_pod) {
-        _conn.OutBuf.Write(prop->GetRegIndex());
-        _conn.OutBuf.Push(data, data_size);
-    }
-    else {
-        _conn.OutBuf.Write(prop->GetRegIndex());
-        if (data_size != 0) {
-            _conn.OutBuf.Push(data, data_size);
-        }
-    }
-
+    _conn.OutBuf.Write(prop->GetRegIndex());
+    _conn.OutBuf.Push(prop_raw_data);
     _conn.OutBuf.EndMsg();
 }
 
@@ -937,17 +927,6 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_SendPing(uint8 ping)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NETMSG_PING);
-    _conn.OutBuf.Write(ping);
-    _conn.OutBuf.EndMsg();
-}
-
 void FOClient::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
@@ -956,17 +935,13 @@ void FOClient::Net_OnUpdateFilesResponse()
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
-        NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (outdated) {
         throw ResourcesOutdatedException("Binary outdated");
@@ -1035,20 +1010,20 @@ void FOClient::Net_OnLoginSuccess()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto encrypt_key = _conn.InBuf.Read<uint>();
     const auto player_id = _conn.InBuf.Read<ident_t>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
-    NET_READ_PROPERTIES(_conn.InBuf, _playerPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    _conn.InBuf.SetEncryptKey(encrypt_key);
+    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+    _conn.InBuf.ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
 
     RUNTIME_ASSERT(_curPlayer);
     RUNTIME_ASSERT(!_curPlayer->GetId());
-    _curPlayer->SetId(player_id);
+    _curPlayer->SetId(player_id, true);
     _curPlayer->RestoreData(_playerPropertiesData);
+
+    RUNTIME_ASSERT(!HasInnerEntities());
+    ReceiveCustomEntities(this);
+
+    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     OnLoginSuccess.Fire();
 }
@@ -1074,10 +1049,7 @@ void FOClient::Net_OnAddCritter()
     const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     CritterView* cr;
     CritterHexView* hex_cr;
@@ -1094,14 +1066,23 @@ void FOClient::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
-        RUNTIME_ASSERT(proto);
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
+
+        if (it != _globalMapCritters.end()) {
+            BreakIntoDebugger();
+            (*it)->MarkAsDestroyed();
+            (*it)->Release();
+            _globalMapCritters.erase(it);
+        }
 
         cr = new CritterView(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
-        _worldmapCritters.emplace_back(cr);
+        _globalMapCritters.emplace_back(cr);
 
         hex_cr = nullptr;
     }
+
+    ReceiveCustomEntities(cr);
 
     cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
@@ -1111,23 +1092,83 @@ void FOClient::Net_OnAddCritter()
     cr->SetAliveActionAnim(alive_action_anim);
     cr->SetKnockoutActionAnim(knockout_action_anim);
     cr->SetDeadActionAnim(dead_action_anim);
-    cr->SetIsControlledByPlayer(is_controlled_by_player);
+    cr->SetControlledByPlayer(is_controlled_by_player);
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
+
+    // Initial items
+    const auto items_count = _conn.InBuf.Read<uint>();
+
+    for (uint i = 0; i < items_count; i++) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
+
+        ReceiveCustomEntities(item);
+    }
+
+    // Initial attachment
+    const auto is_attached = _conn.InBuf.Read<bool>();
+
+    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    vector<ident_t> attached_critters;
+    attached_critters.resize(attached_critters_count);
+    for (uint16 i = 0; i < attached_critters_count; i++) {
+        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+    }
+
+    cr->SetIsAttached(is_attached);
+    cr->AttachedCritters = std::move(attached_critters);
+
+    if (CurMap != nullptr) {
+        if (is_attached) {
+            for (auto* map_cr : CurMap->GetCritters()) {
+                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                    map_cr->MoveAttachedCritters();
+                    break;
+                }
+            }
+        }
+
+        if (!hex_cr->AttachedCritters.empty()) {
+            hex_cr->MoveAttachedCritters();
+        }
+    }
 
     if (hex_offset != ipos16 {} && hex_cr != nullptr) {
         hex_cr->RefreshOffs();
     }
 
-    if (cr->GetIsChosen()) {
+    if (is_chosen) {
         _chosen = cr;
         _chosen->AddRef();
     }
 
     OnCritterIn.Fire(cr);
 
-    if (CurMap != nullptr && cr->GetIsChosen()) {
-        CurMap->RebuildFog();
+    if (hex_cr != nullptr) {
+#if FO_ENABLE_3D
+        if (hex_cr->IsModel()) {
+            hex_cr->GetModel()->PrewarmParticles();
+            hex_cr->GetModel()->StartMeshGeneration();
+        }
+#endif
+
+        if (items_count != 0) {
+            CurMap->UpdateCritterLightSource(hex_cr);
+        }
+
+        if (is_chosen) {
+            CurMap->RebuildFog();
+        }
+
+        if (!hex_cr->IsAnim()) {
+            hex_cr->AnimateStay();
+        }
     }
 }
 
@@ -1136,8 +1177,6 @@ void FOClient::Net_OnRemoveCritter()
     STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap != nullptr) {
         auto* cr = CurMap->GetCritter(cr_id);
@@ -1156,8 +1195,8 @@ void FOClient::Net_OnRemoveCritter()
         }
     }
     else {
-        const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
-        if (it == _worldmapCritters.end()) {
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+        if (it == _globalMapCritters.end()) {
             BreakIntoDebugger();
             return;
         }
@@ -1165,15 +1204,14 @@ void FOClient::Net_OnRemoveCritter()
         auto* cr = *it;
 
         OnCritterOut.Fire(cr);
-        _worldmapCritters.erase(it);
+        _globalMapCritters.erase(it);
 
         if (cr == _chosen) {
             _chosen->Release();
             _chosen = nullptr;
         }
 
-        cr->MarkAsDestroyed();
-        cr->Release();
+        cr->DestroySelf();
     }
 }
 
@@ -1187,8 +1225,6 @@ void FOClient::Net_OnText()
     const auto text = _conn.InBuf.Read<string>();
     const auto unsafe_text = _conn.InBuf.Read<bool>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
         return;
@@ -1197,10 +1233,12 @@ void FOClient::Net_OnText()
     string str = text;
 
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
+        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnText(str, cr_id, how_say);
+    if (!str.empty()) {
+        OnInMessage.Fire(string(str), how_say, cr_id);
+    }
 }
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
@@ -1215,13 +1253,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     const auto how_say = _conn.InBuf.Read<uint8>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
-
-    string lexems;
-    if (with_lexems) {
-        lexems = _conn.InBuf.Read<string>();
-    }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto lexems = with_lexems ? _conn.InBuf.Read<string>() : string();
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -1229,117 +1261,13 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 
     if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
-        auto str = copy(msg.GetStr(str_num));
+        string str = copy(msg.GetStr(str_num));
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
-        OnText(str, cr_id, how_say);
-    }
-}
 
-void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
-{
-    STACK_TRACE_ENTRY();
-
-    auto fstr = string(str);
-    if (fstr.empty()) {
-        return;
-    }
-
-    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100;
-    const auto sstr = fstr;
-    if (!OnInMessage.Fire(sstr, how_say, cr_id, text_delay)) {
-        return;
-    }
-
-    fstr = sstr;
-    if (fstr.empty()) {
-        return;
-    }
-
-    // Type stream
-    uint fstr_cr = 0;
-    uint fstr_mb = 0;
-
-    switch (how_say) {
-    case SAY_NORM:
-        fstr_mb = STR_MBNORM;
-        fstr_cr = STR_CRNORM;
-        break;
-    case SAY_NORM_ON_HEAD:
-        fstr_cr = STR_CRNORM;
-        break;
-    case SAY_SHOUT:
-        fstr_mb = STR_MBSHOUT;
-        fstr_cr = STR_CRSHOUT;
-        fstr = _str(fstr).upperUtf8();
-        break;
-    case SAY_SHOUT_ON_HEAD:
-        fstr_cr = STR_CRSHOUT;
-        fstr = _str(fstr).upperUtf8();
-        break;
-    case SAY_EMOTE:
-        fstr_mb = STR_MBEMOTE;
-        fstr_cr = STR_CREMOTE;
-        break;
-    case SAY_EMOTE_ON_HEAD:
-        fstr_cr = STR_CREMOTE;
-        break;
-    case SAY_WHISP:
-        fstr_mb = STR_MBWHISP;
-        fstr_cr = STR_CRWHISP;
-        fstr = _str(fstr).lowerUtf8();
-        break;
-    case SAY_WHISP_ON_HEAD:
-        fstr_cr = STR_CRWHISP;
-        fstr = _str(fstr).lowerUtf8();
-        break;
-    case SAY_SOCIAL:
-        fstr_cr = STR_CRSOCIAL;
-        fstr_mb = STR_MBSOCIAL;
-        break;
-    case SAY_RADIO:
-        fstr_mb = STR_MBRADIO;
-        break;
-    case SAY_NETMSG:
-        fstr_mb = STR_MBNET;
-        break;
-    default:
-        break;
-    }
-
-    const auto get_format = [this](uint str_num) -> string {
-        const auto& format_str = _curLang.GetTextPack(TextPackName::Game).GetStr(str_num);
-        return _str(format_str).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str();
-    };
-
-    auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
-
-    // Critter text on head
-    if (fstr_cr != 0 && cr != nullptr) {
-        cr->SetText(_str(get_format(fstr_cr), fstr), COLOR_TEXT, std::chrono::milliseconds {text_delay});
-    }
-
-    // Message box text
-    if (fstr_mb != 0) {
-        if (how_say == SAY_NETMSG) {
-            AddMessage(FOMB_GAME, _str(get_format(fstr_mb), fstr));
-        }
-        else if (how_say == SAY_RADIO) {
-            uint16 channel = 0;
-            if (auto* chosen = GetChosen(); chosen != nullptr) {
-                const auto* radio = chosen->GetInvItem(cr_id);
-                if (radio != nullptr) {
-                    channel = radio->GetRadioChannel();
-                }
-            }
-            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), channel, fstr));
-        }
-        else {
-            const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), cr_name, fstr));
+        if (!str.empty()) {
+            OnInMessage.Fire(str, how_say, cr_id);
         }
     }
-
-    FlashGameWindow();
 }
 
 void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
@@ -1351,10 +1279,8 @@ void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
         return;
     }
 
-    RUNTIME_ASSERT(CurMap->GetSize().IsValidPos(hex));
-
-    auto processed_str = _str(str).str();
     uint show_time = 0;
+    auto processed_str = strex(str).str();
 
     OnMapMessage.Fire(processed_str, hex, color, show_time);
 
@@ -1373,12 +1299,10 @@ void FOClient::Net_OnMapText()
     const auto text = _conn.InBuf.Read<string>();
     const auto unsafe_text = _conn.InBuf.Read<bool>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     string str = text;
 
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
+        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
     OnMapText(str, hex, color);
@@ -1392,8 +1316,6 @@ void FOClient::Net_OnMapTextMsg()
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
 
@@ -1412,8 +1334,6 @@ void FOClient::Net_OnMapTextMsgLex()
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
     const auto lexems = _conn.InBuf.Read<string>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
 
     FormatTags(str, GetChosen(), nullptr, lexems);
@@ -1424,10 +1344,10 @@ void FOClient::Net_OnCritterDir()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1443,6 +1363,8 @@ void FOClient::Net_OnCritterDir()
 void FOClient::Net_OnCritterMove()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
@@ -1466,8 +1388,6 @@ void FOClient::Net_OnCritterMove()
     }
 
     const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1548,40 +1468,14 @@ void FOClient::Net_OnCritterMove()
     cr->AnimateStay();
 }
 
-void FOClient::Net_OnSomeItem()
+void FOClient::Net_OnCritterMoveSpeed()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (_someItem != nullptr) {
-        _someItem->Release();
-        _someItem = nullptr;
-    }
-
-    const auto* proto = ProtoMngr.GetProtoItem(pid);
-    RUNTIME_ASSERT(proto);
-
-    _someItem = new ItemView(this, item_id, proto);
-    _someItem->RestoreData(_tempPropertiesData);
-}
-
-void FOClient::Net_OnCritterAction()
-{
-    STACK_TRACE_ENTRY();
+    NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto action = _conn.InBuf.Read<CritterAction>();
-    const auto action_ext = _conn.InBuf.Read<int>();
-    const auto is_context_item = _conn.InBuf.Read<bool>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto speed = _conn.InBuf.Read<uint16>();
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1589,11 +1483,73 @@ void FOClient::Net_OnCritterAction()
     }
 
     auto* cr = CurMap->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
+    if (!cr->IsMoving()) {
+        return;
+    }
+    if (speed == cr->Moving.Speed) {
+        return;
+    }
 
-    cr->Action(action, action_ext, is_context_item ? _someItem : nullptr, false);
+    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto elapsed_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime);
+
+    cr->Moving.WholeTime /= diff;
+    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.Speed = speed;
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
+}
+
+void FOClient::Net_OnCritterAction()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto action = _conn.InBuf.Read<CritterAction>();
+    const auto action_ext = _conn.InBuf.Read<int>();
+    const auto is_context_item = _conn.InBuf.Read<bool>();
+
+    ItemView* context_item = nullptr;
+
+    auto context_item_release = ScopeCallback([&context_item]() noexcept {
+        if (context_item != nullptr) {
+            context_item->Release();
+        }
+    });
+
+    if (is_context_item) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        context_item = new ItemView(this, item_id, proto);
+        context_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(context_item);
+    }
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    auto* cr = CurMap->GetCritter(cr_id);
+
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    cr->Action(action, action_ext, context_item, false);
 }
 
 void FOClient::Net_OnCritterMoveItem()
@@ -1604,26 +1560,28 @@ void FOClient::Net_OnCritterMoveItem()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
     const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto is_item = _conn.InBuf.Read<bool>();
     const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto slots_data_count = _conn.InBuf.Read<uint16>();
+    const auto is_moved_item = _conn.InBuf.Read<bool>();
 
-    vector<CritterItemSlot> slots_data_slot;
-    vector<ident_t> slots_data_id;
-    vector<hstring> slots_data_pid;
-    vector<vector<vector<uint8>>> slots_data_data;
-    for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
-        const auto slot = _conn.InBuf.Read<CritterItemSlot>();
+    ItemView* moved_item = nullptr;
+
+    auto moved_item_release = ScopeCallback([&moved_item]() noexcept {
+        if (moved_item != nullptr) {
+            moved_item->Release();
+        }
+    });
+
+    if (is_moved_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-        slots_data_slot.push_back(slot);
-        slots_data_id.push_back(item_id);
-        slots_data_pid.push_back(pid);
-        slots_data_data.push_back(_tempPropertiesData);
-    }
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        moved_item = new ItemView(this, item_id, proto);
+        moved_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(moved_item);
+    }
 
     CritterView* cr;
 
@@ -1631,33 +1589,57 @@ void FOClient::Net_OnCritterMoveItem()
         cr = CurMap->GetCritter(cr_id);
     }
     else {
-        cr = GetWorldmapCritter(cr_id);
+        cr = GetGlobalMapCritter(cr_id);
     }
 
     if (cr == nullptr) {
         BreakIntoDebugger();
+
+        // Skip rest data
+        const auto items_count = _conn.InBuf.Read<uint>();
+
+        for (uint i = 0; i < items_count; i++) {
+            (void)_conn.InBuf.Read<ident_t>();
+            (void)_conn.InBuf.Read<hstring>(*this);
+            (void)_conn.InBuf.Read<CritterItemSlot>();
+            _conn.InBuf.ReadPropsData(_tempPropertiesData);
+            ReceiveCustomEntities(nullptr);
+        }
+
         return;
     }
 
-    if (!cr->GetIsChosen()) {
+    // Todo: rework critters inventory updating
+    const auto items_count = _conn.InBuf.Read<uint>();
+
+    if (items_count != 0) {
+        RUNTIME_ASSERT(!cr->GetIsChosen());
+
         cr->DeleteAllInvItems();
 
-        for (uint16 i = 0; i < slots_data_count; i++) {
-            const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
-            RUNTIME_ASSERT(proto_item != nullptr);
-            cr->AddInvItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
+        for (uint i = 0; i < items_count; i++) {
+            const auto item_id = _conn.InBuf.Read<ident_t>();
+            const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+            const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
+            _conn.InBuf.ReadPropsData(_tempPropertiesData);
+
+            const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+            auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
+
+            ReceiveCustomEntities(item);
         }
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, static_cast<int>(prev_slot), is_item ? _someItem : nullptr, false);
+        hex_cr->Action(action, static_cast<int>(prev_slot), moved_item, false);
     }
 
-    if (is_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto* item = cr->GetInvItem(_someItem->GetId()); item != nullptr) {
+    if (moved_item != nullptr && cur_slot != prev_slot && cr->GetIsChosen()) {
+        if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
-            _someItem->SetCritterSlot(prev_slot);
-            OnItemInvChanged.Fire(item, _someItem);
+            moved_item->SetCritterSlot(prev_slot);
+
+            OnItemInvChanged.Fire(item, moved_item);
         }
     }
 
@@ -1670,14 +1652,33 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
     const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto is_context_item = _conn.InBuf.Read<bool>();
     const auto clear_sequence = _conn.InBuf.Read<bool>();
     const auto delay_play = _conn.InBuf.Read<bool>();
+    const auto is_context_item = _conn.InBuf.Read<bool>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    ItemView* context_item = nullptr;
+
+    auto context_item_release = ScopeCallback([&context_item]() noexcept {
+        if (context_item != nullptr) {
+            context_item->Release();
+        }
+    });
+
+    if (is_context_item) {
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+
+        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        context_item = new ItemView(this, item_id, proto);
+        context_item->RestoreData(_tempPropertiesData);
+
+        ReceiveCustomEntities(context_item);
+    }
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1693,7 +1694,7 @@ void FOClient::Net_OnCritterAnimate()
         cr->ClearAnim();
     }
     if (delay_play || !cr->IsAnim()) {
-        cr->Animate(state_anim, action_anim, is_context_item ? _someItem : nullptr);
+        cr->Animate(state_anim, action_anim, context_item);
     }
 }
 
@@ -1706,8 +1707,6 @@ void FOClient::Net_OnCritterSetAnims()
     const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
     const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     CritterView* cr;
     CritterHexView* hex_cr;
 
@@ -1716,34 +1715,22 @@ void FOClient::Net_OnCritterSetAnims()
         cr = hex_cr;
     }
     else {
-        cr = GetWorldmapCritter(cr_id);
+        cr = GetGlobalMapCritter(cr_id);
         hex_cr = nullptr;
     }
 
     if (cr != nullptr) {
         if (cond == CritterCondition::Alive) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetAliveStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetAliveActionAnim(action_anim);
-            }
+            cr->SetAliveStateAnim(state_anim);
+            cr->SetAliveActionAnim(action_anim);
         }
         if (cond == CritterCondition::Knockout) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetKnockoutStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetKnockoutActionAnim(action_anim);
-            }
+            cr->SetKnockoutStateAnim(state_anim);
+            cr->SetKnockoutActionAnim(action_anim);
         }
         if (cond == CritterCondition::Dead) {
-            if (state_anim != CritterStateAnim::None) {
-                cr->SetDeadStateAnim(state_anim);
-            }
-            if (action_anim != CritterActionAnim::None) {
-                cr->SetDeadActionAnim(action_anim);
-            }
+            cr->SetDeadStateAnim(state_anim);
+            cr->SetDeadActionAnim(action_anim);
         }
     }
 
@@ -1756,10 +1743,10 @@ void FOClient::Net_OnCritterTeleport()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto to_hex = _conn.InBuf.Read<mpos>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1779,9 +1766,6 @@ void FOClient::Net_OnCritterTeleport()
         }
 
         CurMap->ScrollToHex(cr->GetHex(), 0.1f, false);
-
-        // Maybe changed some parameter influencing on look borders
-        CurMap->RebuildFog();
     }
 }
 
@@ -1789,12 +1773,12 @@ void FOClient::Net_OnCritterPos()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1846,11 +1830,10 @@ void FOClient::Net_OnCritterAttachments()
         attached_critters[i] = _conn.InBuf.Read<ident_t>();
     }
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     if (CurMap != nullptr) {
         auto* cr = CurMap->GetCritter(cr_id);
         if (cr == nullptr) {
+            BreakIntoDebugger();
             return;
         }
 
@@ -1876,65 +1859,15 @@ void FOClient::Net_OnCritterAttachments()
         }
     }
     else {
-        auto* cr = GetWorldmapCritter(cr_id);
+        auto* cr = GetGlobalMapCritter(cr_id);
         if (cr == nullptr) {
+            BreakIntoDebugger();
             return;
         }
 
         cr->SetIsAttached(is_attached);
+        cr->SetAttachMaster(attach_master);
         cr->AttachedCritters = std::move(attached_critters);
-    }
-}
-
-void FOClient::Net_OnAllProperties()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Chosen properties");
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen not created, skip");
-        BreakIntoDebugger();
-        return;
-    }
-
-    chosen->RestoreData(_tempPropertiesData);
-
-    // Animate
-    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && !hex_chosen->IsAnim()) {
-        hex_chosen->AnimateStay();
-    }
-
-    // Refresh borders
-    CurMap->RebuildFog();
-}
-
-void FOClient::Net_OnChosenClearItems()
-{
-    STACK_TRACE_ENTRY();
-
-    _initialItemsSend = true;
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen is not created in clear items");
-        BreakIntoDebugger();
-        return;
-    }
-
-    chosen->DeleteAllInvItems();
-
-    if (CurMap != nullptr) {
-        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
-            CurMap->UpdateCritterLightSource(hex_chosen);
-        }
     }
 }
 
@@ -1944,17 +1877,19 @@ void FOClient::Net_OnChosenAddItem()
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
-    const auto slot = _conn.InBuf.Read<CritterItemSlot>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     auto* chosen = GetChosen();
+
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in add item");
+        WriteLog("Chosen is not created on add item");
         BreakIntoDebugger();
+
+        // Skip rest data
+        ReceiveCustomEntities(nullptr);
+
         return;
     }
 
@@ -1962,10 +1897,10 @@ void FOClient::Net_OnChosenAddItem()
         chosen->DeleteInvItem(prev_item, false);
     }
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
-    RUNTIME_ASSERT(proto_item);
+    const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+    auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
-    auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
+    ReceiveCustomEntities(item);
 
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
@@ -1975,35 +1910,32 @@ void FOClient::Net_OnChosenAddItem()
         }
     }
 
-    if (!_initialItemsSend) {
-        OnItemInvIn.Fire(item);
-    }
+    OnItemInvIn.Fire(item);
 }
 
-void FOClient::Net_OnChosenEraseItem()
+void FOClient::Net_OnChosenRemoveItem()
 {
     STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     auto* chosen = GetChosen();
+
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in erase item");
+        WriteLog("Chosen is not created in remove item");
         BreakIntoDebugger();
         return;
     }
 
     auto* item = chosen->GetInvItem(item_id);
+
     if (item == nullptr) {
-        WriteLog("Item not found, id {}", item_id);
-        BreakIntoDebugger();
+        // Valid case, item may be removed locally
         return;
     }
 
     auto* item_clone = item->CreateRefClone();
-    auto item_clone_release = ScopeCallback([item_clone] { item_clone->Release(); });
+    auto item_clone_release = ScopeCallback([item_clone]() noexcept { item_clone->Release(); });
 
     chosen->DeleteInvItem(item, true);
 
@@ -2016,65 +1948,42 @@ void FOClient::Net_OnChosenEraseItem()
     }
 }
 
-void FOClient::Net_OnAllItemsSend()
-{
-    STACK_TRACE_ENTRY();
-
-    _initialItemsSend = false;
-
-    auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        WriteLog("Chosen is not created in all items send");
-        BreakIntoDebugger();
-        return;
-    }
-
-#if FO_ENABLE_3D
-    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsModel()) {
-        hex_chosen->GetModel()->PrewarmParticles();
-        hex_chosen->GetModel()->StartMeshGeneration();
-    }
-#endif
-
-    OnItemInvAllIn.Fire();
-}
-
 void FOClient::Net_OnAddItemOnMap()
 {
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
     const auto hex = _conn.InBuf.Read<mpos>();
-
-    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+    _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
+
+        // Skip rest data
+        ReceiveCustomEntities(nullptr);
+
         return;
     }
 
-    auto* item = CurMap->AddReceivedItem(item_id, pid, hex, _tempPropertiesData);
+    auto* item = CurMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
+    RUNTIME_ASSERT(item);
 
-    if (item != nullptr) {
-        if (_screenModeMain != SCREEN_WAIT) {
-            item->FadeUp();
-        }
+    ReceiveCustomEntities(item);
 
-        OnItemMapIn.Fire(item);
+    if (_screenModeMain != SCREEN_WAIT) {
+        item->FadeUp();
     }
+
+    OnItemMapIn.Fire(item);
 }
 
-void FOClient::Net_OnEraseItemFromMap()
+void FOClient::Net_OnRemoveItemFromMap()
 {
     STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2086,7 +1995,7 @@ void FOClient::Net_OnEraseItemFromMap()
         OnItemMapOut.Fire(item);
 
         // Refresh borders
-        if (!item->GetIsShootThru()) {
+        if (!item->GetShootThru()) {
             CurMap->RebuildFog();
         }
 
@@ -2098,12 +2007,12 @@ void FOClient::Net_OnAnimateItem()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto anim_name = _conn.InBuf.Read<hstring>(*this);
     const auto looped = _conn.InBuf.Read<bool>();
     const auto reversed = _conn.InBuf.Read<bool>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2111,6 +2020,7 @@ void FOClient::Net_OnAnimateItem()
     }
 
     auto* item = CurMap->GetItem(item_id);
+
     if (item != nullptr) {
         item->GetAnim()->Play(anim_name, looped, reversed);
     }
@@ -2120,12 +2030,12 @@ void FOClient::Net_OnEffect()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto radius = _conn.InBuf.Read<uint16>();
     RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2151,14 +2061,14 @@ void FOClient::Net_OnFlyEffect()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
     const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
     const auto eff_cr2_id = _conn.InBuf.Read<ident_t>();
 
     auto eff_cr1_hex = _conn.InBuf.Read<mpos>();
     auto eff_cr2_hex = _conn.InBuf.Read<mpos>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2186,8 +2096,6 @@ void FOClient::Net_OnPlaySound()
     // Todo: synchronize effects showing (for example shot and kill)
     [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<uint>();
     const auto sound_name = _conn.InBuf.Read<string>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
 }
@@ -2233,6 +2141,7 @@ void FOClient::Net_OnProperty(uint data_size)
     STACK_TRACE_ENTRY();
 
     uint msg_len;
+
     if (data_size == 0) {
         msg_len = _conn.InBuf.Read<uint>();
     }
@@ -2244,8 +2153,10 @@ void FOClient::Net_OnProperty(uint data_size)
 
     ident_t cr_id;
     ident_t item_id;
+    ident_t entity_id;
 
     uint additional_args = 0;
+
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
@@ -2264,6 +2175,10 @@ void FOClient::Net_OnProperty(uint data_size)
         additional_args = 1;
         item_id = _conn.InBuf.Read<ident_t>();
         break;
+    case NetProperty::CustomEntity:
+        additional_args = 1;
+        entity_id = _conn.InBuf.Read<ident_t>();
+        break;
     default:
         break;
     }
@@ -2277,14 +2192,14 @@ void FOClient::Net_OnProperty(uint data_size)
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
+
         if (len != 0) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     Entity* entity = nullptr;
+
     switch (type) {
     case NetProperty::Game:
         entity = this;
@@ -2319,15 +2234,22 @@ void FOClient::Net_OnProperty(uint data_size)
     case NetProperty::Location:
         entity = _curLocation;
         break;
+    case NetProperty::CustomEntity:
+        entity = GetEntity(entity_id);
+        break;
     default:
         throw UnreachablePlaceException(LINE_STR);
     }
+
     if (entity == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(property_index);
+
     if (prop == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2347,7 +2269,9 @@ void FOClient::Net_OnProperty(uint data_size)
     }
 
     if (type == NetProperty::MapItem) {
-        OnItemMapChanged.Fire(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
+        auto* item = dynamic_cast<ItemView*>(entity);
+
+        OnItemMapChanged.Fire(item, item);
     }
 
     if (type == NetProperty::ChosenItem) {
@@ -2367,8 +2291,6 @@ void FOClient::Net_OnChosenTalk()
     const auto talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
     const auto count_answ = _conn.InBuf.Read<uint8>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     if (count_answ == 0) {
         if (IsScreenPresent(SCREEN_DIALOG)) {
             HideScreen(SCREEN_DIALOG);
@@ -2378,8 +2300,6 @@ void FOClient::Net_OnChosenTalk()
     }
 
     const auto lexems = _conn.InBuf.Read<string>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2396,8 +2316,6 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back(answ_text_id);
     }
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     auto str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
 
     FormatTags(str, GetChosen(), npc, lexems);
@@ -2413,14 +2331,12 @@ void FOClient::Net_OnChosenTalk()
 
     const auto talk_time = _conn.InBuf.Read<uint>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     map<string, any_t> params;
-    params["TalkerIsNpc"] = any_t {_str("{}", is_npc ? 1 : 0).str()};
-    params["TalkerId"] = any_t {_str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint()).str()};
-    params["Text"] = any_t {_str("{}", text_to_script).str()};
-    params["Answers"] = any_t {_str("{}", answers_to_script).str()};
-    params["TalkTime"] = any_t {_str("{}", talk_time).str()};
+    params["TalkerIsNpc"] = any_t {strex("{}", is_npc ? 1 : 0)};
+    params["TalkerId"] = any_t {strex("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint())};
+    params["Text"] = any_t {strex("{}", text_to_script)};
+    params["Answers"] = any_t {strex("{}", answers_to_script)};
+    params["TalkTime"] = any_t {strex("{}", talk_time)};
     ShowScreen(SCREEN_DIALOG, params);
 }
 
@@ -2435,8 +2351,6 @@ void FOClient::Net_OnTimeSync()
     const auto minute = _conn.InBuf.Read<uint16>();
     const auto second = _conn.InBuf.Read<uint16>();
     const auto multiplier = _conn.InBuf.Read<uint16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
@@ -2463,25 +2377,21 @@ void FOClient::Net_OnLoadMap()
     const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
     if (map_pid) {
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataExt);
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        _conn.InBuf.ReadPropsData(_tempPropertiesDataExt);
     }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     OnMapUnload.Fire();
 
     if (CurMap != nullptr) {
-        CurMap->MarkAsDestroyed();
-        CurMap->Release();
+        CurMap->DestroySelf();
         CurMap = nullptr;
 
         CleanupSpriteCache();
     }
 
     if (_curLocation != nullptr) {
-        _curLocation->MarkAsDestroyed();
-        _curLocation->Release();
+        _curLocation->DestroySelf();
         _curLocation = nullptr;
     }
 
@@ -2492,12 +2402,17 @@ void FOClient::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
+        const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
+        _curLocation = new LocationView(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
+        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
+        CurMap = new MapView(this, map_id, map_proto);
         CurMap->RestoreData(_tempPropertiesData);
         CurMap->LoadStaticData();
+
+        ReceiveCustomEntities(_curLocation);
+        ReceiveCustomEntities(CurMap);
 
         WriteLog("Local map loaded");
     }
@@ -2515,33 +2430,12 @@ void FOClient::Net_OnGlobalInfo()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto info_flags = _conn.InBuf.Read<uint8>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    _globalMapLocs.clear();
 
-    if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
-        _worldmapLoc.clear();
+    const auto count_loc = _conn.InBuf.Read<uint16>();
 
-        const auto count_loc = _conn.InBuf.Read<uint16>();
-
-        for (auto i = 0; i < count_loc; i++) {
-            GmapLocation loc;
-            loc.LocId = _conn.InBuf.Read<ident_t>();
-            loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-            loc.LocPos = _conn.InBuf.Read<upos16>();
-            loc.Radius = _conn.InBuf.Read<uint16>();
-            loc.Color = _conn.InBuf.Read<ucolor>();
-            loc.Entrances = _conn.InBuf.Read<uint8>();
-
-            if (loc.LocId) {
-                _worldmapLoc.push_back(loc);
-            }
-        }
-    }
-
-    if (IsBitSet(info_flags, GM_INFO_LOCATION)) {
-        const auto add = _conn.InBuf.Read<bool>();
-
+    for (auto i = 0; i < count_loc; i++) {
         GmapLocation loc;
         loc.LocId = _conn.InBuf.Read<ident_t>();
         loc.LocPid = _conn.InBuf.Read<hstring>(*this);
@@ -2549,45 +2443,56 @@ void FOClient::Net_OnGlobalInfo()
         loc.Radius = _conn.InBuf.Read<uint16>();
         loc.Color = _conn.InBuf.Read<ucolor>();
         loc.Entrances = _conn.InBuf.Read<uint8>();
+        _globalMapLocs.push_back(loc);
+    }
 
-        const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
-        if (add) {
-            if (it != _worldmapLoc.end()) {
-                *it = loc;
-            }
-            else {
-                _worldmapLoc.push_back(loc);
-            }
+    auto* fog_data = _globalMapFog.GetData();
+    _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
+}
+
+void FOClient::Net_OnGlobalLocation()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+
+    const auto add = _conn.InBuf.Read<bool>();
+
+    GmapLocation loc;
+    loc.LocId = _conn.InBuf.Read<ident_t>();
+    loc.LocPid = _conn.InBuf.Read<hstring>(*this);
+    loc.LocPos = _conn.InBuf.Read<upos16>();
+    loc.Radius = _conn.InBuf.Read<uint16>();
+    loc.Color = _conn.InBuf.Read<ucolor>();
+    loc.Entrances = _conn.InBuf.Read<uint8>();
+
+    const auto it = std::find_if(_globalMapLocs.begin(), _globalMapLocs.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
+    if (add) {
+        if (it != _globalMapLocs.end()) {
+            *it = loc;
         }
         else {
-            if (it != _worldmapLoc.end()) {
-                _worldmapLoc.erase(it);
-            }
+            _globalMapLocs.push_back(loc);
         }
     }
-
-    if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
-        auto* fog_data = _worldmapFog.GetData();
-        _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
-    }
-
-    if (IsBitSet(info_flags, GM_INFO_FOG)) {
-        const auto zx = _conn.InBuf.Read<uint16>();
-        const auto zy = _conn.InBuf.Read<uint16>();
-        const auto fog = _conn.InBuf.Read<uint8>();
-
-        _worldmapFog.Set2Bit(zx, zy, fog);
-    }
-
-    if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
-        for (auto* cr : _worldmapCritters) {
-            cr->MarkAsDestroyed();
-            cr->Release();
+    else {
+        if (it != _globalMapLocs.end()) {
+            _globalMapLocs.erase(it);
         }
-        _worldmapCritters.clear();
     }
+}
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+void FOClient::Net_OnGlobalFog()
+{
+    STACK_TRACE_ENTRY();
+
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+
+    const auto zx = _conn.InBuf.Read<uint16>();
+    const auto zy = _conn.InBuf.Read<uint16>();
+    const auto fog = _conn.InBuf.Read<uint8>();
+
+    _globalMapFog.Set2Bit(zx, zy, fog);
 }
 
 void FOClient::Net_OnSomeItems()
@@ -2595,85 +2500,32 @@ void FOClient::Net_OnSomeItems()
     STACK_TRACE_ENTRY();
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto param = _conn.InBuf.Read<int>();
-    [[maybe_unused]] const auto is_null = _conn.InBuf.Read<bool>();
-    const auto count = _conn.InBuf.Read<uint>();
+    const auto context_param = any_t {_conn.InBuf.Read<string>()};
+    const auto items_count = _conn.InBuf.Read<uint>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    vector<ItemView*> items;
+    items.reserve(items_count);
 
-    vector<ItemView*> item_container;
-
-    for (uint i = 0; i < count; i++) {
+    for (uint i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(*this);
-        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
-
+        _conn.InBuf.ReadPropsData(_tempPropertiesData);
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
-        RUNTIME_ASSERT(proto);
-
         auto* item = new ItemView(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
-        item_container.push_back(item);
+
+        ReceiveCustomEntities(item);
+
+        items.emplace_back(item);
     }
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    OnReceiveItems.Fire(items, context_param);
 
-    OnReceiveItems.Fire(item_container, param);
-}
-
-void FOClient::Net_OnAutomapsInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    const auto clear = _conn.InBuf.Read<bool>();
-
-    if (clear) {
-        _automaps.clear();
+    for (const auto* item : items) {
+        item->Release();
     }
-
-    const auto locs_count = _conn.InBuf.Read<uint16>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    for (uint16 i = 0; i < locs_count; i++) {
-        const auto loc_id = _conn.InBuf.Read<ident_t>();
-        const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
-        const auto maps_count = _conn.InBuf.Read<uint16>();
-
-        auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
-
-        if (maps_count == 0) {
-            if (it != _automaps.end()) {
-                _automaps.erase(it);
-            }
-        }
-        else {
-            Automap amap;
-            amap.LocId = loc_id;
-            amap.LocPid = loc_pid;
-
-            for (uint16 j = 0; j < maps_count; j++) {
-                const auto map_pid = _conn.InBuf.Read<hstring>(*this);
-                const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
-
-                UNUSED_VARIABLE(map_index_in_loc);
-
-                amap.MapPids.push_back(map_pid);
-            }
-
-            if (it != _automaps.end()) {
-                *it = amap;
-            }
-            else {
-                _automaps.push_back(amap);
-            }
-        }
-    }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 }
 
 void FOClient::Net_OnViewMap()
@@ -2683,8 +2535,6 @@ void FOClient::Net_OnViewMap()
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto loc_id = _conn.InBuf.Read<ident_t>();
     const auto loc_ent = _conn.InBuf.Read<uint>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -2696,8 +2546,8 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
 
     map<string, any_t> params;
-    params["LocationId"] = any_t {_str("{}", loc_id).str()};
-    params["LocationEntrance"] = any_t {_str("{}", loc_ent).str()};
+    params["LocationId"] = any_t {strex("{}", loc_id)};
+    params["LocationEntrance"] = any_t {strex("{}", loc_ent)};
     ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
@@ -2705,34 +2555,190 @@ void FOClient::Net_OnRemoteCall()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto rpc_num = _conn.InBuf.Read<uint>();
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
 }
 
-void FOClient::TryExit()
+void FOClient::Net_OnAddCustomEntity()
 {
     STACK_TRACE_ENTRY();
 
-    const auto active = GetActiveScreen(nullptr);
-    if (active != SCREEN_NONE) {
-        HideScreen(SCREEN_NONE);
-    }
-    else {
-        switch (GetMainScreen()) {
-        case SCREEN_LOGIN:
-            App->RequestQuit();
-            break;
-        case SCREEN_WAIT:
-            _conn.Disconnect();
-            break;
-        default:
-            break;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto holder_id = _conn.InBuf.Read<ident_t>();
+    const auto holder_entry = _conn.InBuf.Read<hstring>(*this);
+    const auto id = _conn.InBuf.Read<ident_t>();
+    const auto pid = _conn.InBuf.Read<hstring>(*this);
+    _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
+
+    Entity* holder;
+
+    if (holder_id) {
+        holder = GetEntity(holder_id);
+
+        if (holder == nullptr) {
+            BreakIntoDebugger();
+            return;
         }
     }
+    else {
+        holder = this;
+    }
+
+    auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
+
+    OnCustomEntityIn.Fire(entity);
+}
+
+void FOClient::Net_OnRemoveCustomEntity()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto id = _conn.InBuf.Read<ident_t>();
+
+    auto* entity = GetEntity(id);
+
+    if (entity == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+
+    if (custom_entity == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    OnCustomEntityOut.Fire(custom_entity);
+
+    Entity* holder;
+
+    if (custom_entity->GetCustomHolderId()) {
+        holder = GetEntity(custom_entity->GetCustomHolderId());
+    }
+    else {
+        holder = this;
+    }
+
+    if (holder != nullptr) {
+        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+    }
+    else {
+        BreakIntoDebugger();
+    }
+
+    custom_entity->DestroySelf();
+}
+
+void FOClient::ReceiveCustomEntities(Entity* holder)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto entries_count = _conn.InBuf.Read<uint16>();
+
+    if (entries_count == 0) {
+        return;
+    }
+
+    for (uint16 i = 0; i < entries_count; i++) {
+        const auto entry = _conn.InBuf.Read<hstring>(*this);
+        const auto entities_count = _conn.InBuf.Read<uint>();
+
+        for (uint j = 0; j < entities_count; j++) {
+            const auto id = _conn.InBuf.Read<ident_t>();
+            const auto pid = _conn.InBuf.Read<hstring>(*this);
+            _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
+
+            if (holder != nullptr) {
+                auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
+
+                ReceiveCustomEntities(entity);
+            }
+            else {
+                ReceiveCustomEntities(nullptr);
+            }
+        }
+    }
+}
+
+auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto type_name = std::get<0>(GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
+
+    RUNTIME_ASSERT(IsValidEntityType(type_name));
+
+    const bool has_protos = GetEntityTypeInfo(type_name).HasProtos;
+    const ProtoEntity* proto = nullptr;
+
+    if (pid) {
+        RUNTIME_ASSERT(has_protos);
+        proto = ProtoMngr.GetProtoEntity(type_name, pid);
+        RUNTIME_ASSERT(proto);
+    }
+    else {
+        RUNTIME_ASSERT(!has_protos);
+    }
+
+    const auto* registrator = GetPropertyRegistrator(type_name);
+
+    CustomEntityView* entity;
+
+    if (proto != nullptr) {
+        entity = new CustomEntityWithProtoView(this, id, registrator, nullptr, proto);
+    }
+    else {
+        entity = new CustomEntityView(this, id, registrator, nullptr);
+    }
+
+    entity->RestoreData(data);
+
+    if (const auto* holder_with_id = dynamic_cast<ClientEntity*>(holder); holder_with_id != nullptr) {
+        entity->SetCustomHolderId(holder_with_id->GetId());
+    }
+    else {
+        RUNTIME_ASSERT(holder == this);
+    }
+
+    entity->SetCustomHolderEntry(entry);
+
+    holder->AddInnerEntity(entry, entity);
+
+    return entity;
+}
+
+auto FOClient::GetEntity(ident_t id) -> ClientEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _allEntities.find(id);
+
+    return it != _allEntities.end() ? it->second : nullptr;
+}
+
+void FOClient::RegisterEntity(ClientEntity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(entity);
+    RUNTIME_ASSERT(entity->GetId());
+
+    _allEntities[entity->GetId()] = entity;
+}
+
+void FOClient::UnregisterEntity(ClientEntity* entity)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(entity);
+    RUNTIME_ASSERT(entity->GetId());
+
+    _allEntities.erase(entity->GetId());
 }
 
 void FOClient::FlashGameWindow()
@@ -2868,7 +2874,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
+    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->GetIsChosen()) {
@@ -2931,16 +2937,37 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
+void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    UNUSED_VARIABLE(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
+        cr->GetMap()->RefreshMap();
+        cr->GetMap()->RebuildFog();
+    }
+}
+
 void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
 #if FO_ENABLE_3D
         cr->RefreshModel();
+
+        if (cr->IsModel()) {
+            cr->GetModel()->StartMeshGeneration();
+        }
 #endif
+
         cr->Action(CritterAction::Refresh, 0, nullptr, false);
     }
 }
@@ -2948,6 +2975,8 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -2959,6 +2988,8 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -2973,26 +3004,26 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
     NON_CONST_METHOD_HINT();
 
-    // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
+    // Colorize, BadItem, ShootThru, LightThru, NoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
 
-        if (prop == item->GetPropertyIsColorize()) {
+        if (prop == item->GetPropertyColorize()) {
             item->RefreshAlpha();
         }
-        else if (prop == item->GetPropertyIsBadItem()) {
+        else if (prop == item->GetPropertyBadItem()) {
             item->RefreshSprite();
         }
-        else if (prop == item->GetPropertyIsShootThru()) {
+        else if (prop == item->GetPropertyShootThru()) {
             CurMap->RebuildFog();
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyIsLightThru()) {
+        else if (prop == item->GetPropertyLightThru()) {
             item->GetMap()->UpdateHexLightSources(item->GetHex());
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyIsNoBlock()) {
+        else if (prop == item->GetPropertyNoBlock()) {
             rebuild_cache = true;
         }
 
@@ -3005,6 +3036,8 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
@@ -3020,6 +3053,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -3031,7 +3066,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    // DrawOffset
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -3045,10 +3080,12 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        if (item->GetIsCanOpen()) {
+        if (item->GetCanOpen()) {
             if (item->GetOpened()) {
                 item->GetAnim()->Play({}, false, false);
             }
@@ -3062,6 +3099,8 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(prop);
 
@@ -3125,7 +3164,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
         } break;
         case '|': {
             if (sex_tags) {
-                tag = _str(text.substr(i + 1)).substringUntil('|');
+                tag = strex(text.substr(i + 1)).substringUntil('|');
                 text.erase(i, tag.length() + 2);
 
                 if (sex != 0) {
@@ -3145,31 +3184,31 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 continue;
             }
 
-            tag = _str(text.substr(i + 1)).substringUntil('@');
+            tag = strex(text.substr(i + 1)).substringUntil('@');
             text.erase(i, tag.length() + 2);
             if (tag.empty()) {
                 break;
             }
 
             // Player name
-            if (_str(tag).compareIgnoreCase("pname")) {
+            if (strex(tag).compareIgnoreCase("pname")) {
                 tag = (cr != nullptr ? cr->GetName() : "");
             }
             // Npc name
-            else if (_str(tag).compareIgnoreCase("nname")) {
+            else if (strex(tag).compareIgnoreCase("nname")) {
                 tag = (npc != nullptr ? npc->GetName() : "");
             }
             // Sex
-            else if (_str(tag).compareIgnoreCase("sex")) {
-                sex = (cr != nullptr && cr->GetIsSexTagFemale() ? 2 : 1);
+            else if (strex(tag).compareIgnoreCase("sex")) {
+                sex = (cr != nullptr && cr->GetSexTagFemale() ? 2 : 1);
                 sex_tags = true;
                 continue;
             }
             // Random
-            else if (_str(tag).compareIgnoreCase("rnd")) {
+            else if (strex(tag).compareIgnoreCase("rnd")) {
                 auto first = text.find_first_of('|', i);
                 auto last = text.find_last_of('|', i);
-                auto rnd = _str(text.substr(first, last - first + 1)).split('|');
+                auto rnd = strex(text.substr(first, last - first + 1)).split('|');
                 text.erase(first, last - first + 1);
                 if (!rnd.empty()) {
                     text.insert(first, rnd[GenericUtils::Random(0, static_cast<int>(rnd.size()) - 1)]);
@@ -3181,7 +3220,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 auto pos = lexems.find(lex);
                 if (pos != string::npos) {
                     pos += lex.length();
-                    tag = _str(lexems.substr(pos)).substringUntil('$').trim();
+                    tag = strex(lexems.substr(pos)).substringUntil('$').trim();
                 }
                 else {
                     tag = "<lexem not found>";
@@ -3190,7 +3229,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             // Text pack
             else if (tag.length() > 5 && tag[0] == 't' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == 't' && tag[4] == ' ') {
                 tag = tag.substr(5);
-                tag = _str(tag).erase('(').erase(')');
+                tag = strex(tag).erase('(').erase(')');
 
                 istringstream itag(tag);
                 string pack_name_str;
@@ -3205,7 +3244,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                         tag = "<text tag, invalid pack name>";
                     }
                     else if (text_pack.GetStrCount(str_num) == 0) {
-                        tag = _str("<text tag, string {} not found>", str_num);
+                        tag = strex("<text tag, string {} not found>", str_num);
                     }
                     else {
                         tag = text_pack.GetStr(str_num);
@@ -3217,7 +3256,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             }
             // Script
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
-                string func_name = _str(tag.substr(7)).substringUntil('$');
+                string func_name = strex(tag.substr(7)).substringUntil('$');
                 if (!ScriptSys->CallFunc<string, string>(ToHashedString(func_name), string(lexems), tag)) {
                     tag = "<script function not found>";
                 }
@@ -3241,7 +3280,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, map<string, any_t> params)
+void FOClient::ShowMainScreen(int new_screen, const map<string, any_t>& params)
 {
     STACK_TRACE_ENTRY();
 
@@ -3262,7 +3301,7 @@ void FOClient::ShowMainScreen(int new_screen, map<string, any_t> params)
     }
 
     _screenModeMain = new_screen;
-    RunScreenScript(true, new_screen, std::move(params));
+    RunScreenScript(true, new_screen, params);
 
     switch (GetMainScreen()) {
     case SCREEN_LOGIN:
@@ -3310,11 +3349,11 @@ auto FOClient::IsScreenPresent(int screen) -> bool
     return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
 }
 
-void FOClient::ShowScreen(int screen, map<string, any_t> params)
+void FOClient::ShowScreen(int screen, const map<string, any_t>& params)
 {
     STACK_TRACE_ENTRY();
 
-    RunScreenScript(true, screen, std::move(params));
+    RunScreenScript(true, screen, params);
 }
 
 void FOClient::HideScreen(int screen)
@@ -3331,11 +3370,11 @@ void FOClient::HideScreen(int screen)
     RunScreenScript(false, screen, {});
 }
 
-void FOClient::RunScreenScript(bool show, int screen, map<string, any_t> params)
+void FOClient::RunScreenScript(bool show, int screen, const map<string, any_t>& params)
 {
     STACK_TRACE_ENTRY();
 
-    OnScreenChange.Fire(show, screen, std::move(params));
+    OnScreenChange.Fire(show, screen, params);
 }
 
 void FOClient::LmapPrepareMap()
@@ -3387,14 +3426,14 @@ void FOClient::LmapPrepareMap()
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
-            else if (field.Flags.IsWall || field.Flags.IsScen) {
+            else if (field.Flags.HasWall || field.Flags.HasScenery) {
                 if (field.Flags.ScrollBlock) {
                     continue;
                 }
-                if (!_lmapSwitchHi && !field.Flags.IsWall) {
+                if (!_lmapSwitchHi && !field.Flags.HasWall) {
                     continue;
                 }
-                cur_color = ucolor {(field.Flags.IsWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
+                cur_color = ucolor {(field.Flags.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
             }
             else {
                 continue;
@@ -3419,14 +3458,14 @@ void FOClient::GmapNullParams()
 {
     STACK_TRACE_ENTRY();
 
-    _worldmapLoc.clear();
-    _worldmapFog.Fill(0);
+    _globalMapLocs.clear();
+    _globalMapFog.Fill(0);
 
-    for (auto* cr : _worldmapCritters) {
-        cr->MarkAsDestroyed();
-        cr->Release();
+    for (auto* cr : _globalMapCritters) {
+        cr->DestroySelf();
     }
-    _worldmapCritters.clear();
+
+    _globalMapCritters.clear();
 }
 
 void FOClient::WaitDraw()
@@ -3447,6 +3486,24 @@ void FOClient::CleanupSpriteCache()
     SprMngr.CleanupSpriteCache();
 }
 
+void FOClient::DestroyInnerEntities()
+{
+    STACK_TRACE_ENTRY();
+
+    if (HasInnerEntities()) {
+        for (auto&& [entry, entities] : GetRawInnerEntities()) {
+            for (auto* entity : entities) {
+                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+                RUNTIME_ASSERT(custom_entity);
+
+                custom_entity->DestroySelf();
+            }
+        }
+
+        ClearInnerEntities();
+    }
+}
+
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
 {
     STACK_TRACE_ENTRY();
@@ -3454,7 +3511,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     // Parse command
     vector<string> args;
     const auto command_str = string(command);
-    std::stringstream ss(command_str);
+    std::istringstream ss(command_str);
+
     if (separator.length() > 0) {
         string arg;
         const auto sep = *separator.data();
@@ -3465,48 +3523,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else {
         args.emplace_back(command);
     }
+
     if (args.empty()) {
         throw ScriptException("Empty custom call command");
     }
 
     // Execute
     const auto cmd = args[0];
-    if (cmd == "Login" && args.size() >= 3) {
-        _loginName = args[1];
-        _loginPassword = args[2];
 
-        if (_conn.IsConnected()) {
-            Net_SendLogIn();
-        }
-        else {
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-            _initNetReason = INIT_NET_REASON_LOGIN;
-        }
-    }
-    else if (cmd == "Register" && args.size() >= 3) {
-        _loginName = args[1];
-        _loginPassword = args[2];
-
-        if (_conn.IsConnected()) {
-            Net_SendCreatePlayer();
-        }
-        else {
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-            _initNetReason = INIT_NET_REASON_REG;
-        }
-    }
-    else if (cmd == "CustomConnect") {
-        if (!_conn.IsConnected()) {
-            _loginName = "";
-            _loginPassword = "";
-
-            RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
-            RUNTIME_ASSERT(!_conn.IsConnecting());
-
-            _initNetReason = INIT_NET_REASON_CUSTOM;
-        }
-    }
-    else if (cmd == "DumpAtlases") {
+    if (cmd == "DumpAtlases") {
         SprMngr.GetAtlasMngr().DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
@@ -3537,51 +3562,21 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //    CurMap->RebuildFog();
         // }
     }
-    else if (cmd == "NetDisconnect") {
-        _conn.Disconnect();
-
-        if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
-            ShowMainScreen(SCREEN_LOGIN, {});
-        }
-    }
-    else if (cmd == "TryExit") {
-        TryExit();
-    }
     else if (cmd == "BytesSend") {
-        return _str("{}", _conn.GetBytesSend()).str();
+        return strex("{}", _conn.GetBytesSend());
     }
     else if (cmd == "BytesReceive") {
-        return _str("{}", _conn.GetBytesReceived()).str();
+        return strex("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
-        auto w = _str(args[1]).toInt();
-        auto h = _str(args[2]).toInt();
+        const int w = strex(args[1]).toInt();
+        const int h = strex(args[2]).toInt();
 
         SprMngr.SetScreenSize({w, h});
         SprMngr.SetWindowSize({w, h});
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "Command" && args.size() >= 2) {
-        string str;
-        for (size_t i = 1; i < args.size(); i++) {
-            str += args[i] + " ";
-        }
-        str = _str(str).trim();
-
-        string buf;
-        if (!PackNetCommand(
-                str, &_conn.OutBuf,
-                [&buf, &separator](auto s) {
-                    buf += s;
-                    buf += separator;
-                },
-                *this)) {
-            return "UNKNOWN";
-        }
-
-        return buf;
     }
     else if (cmd == "SaveLog" && args.size() == 3) {
         //              if( file_name == "" )
@@ -3607,24 +3602,19 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //              }
     }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
-        const auto is_cr = _str(args[1]).toBool();
-        const auto cr_id = is_cr ? ident_t {_str(args[2]).toUInt()} : ident_t {};
-        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(_str(args[2]).toUInt());
-        const auto answer_index = static_cast<uint8>(_str(args[3]).toUInt());
+        const auto is_cr = strex(args[1]).toBool();
+        const auto cr_id = is_cr ? ident_t {strex(args[2]).toUInt()} : ident_t {};
+        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(strex(args[2]).toUInt());
+        const auto answer_index = static_cast<uint8>(strex(args[3]).toUInt());
 
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        static int zoom;
-        static int x;
-        static int y;
-        static int x2;
-        static int y2;
-        zoom = _str(args[1]).toInt();
-        x = _str(args[2]).toInt();
-        y = _str(args[3]).toInt();
-        x2 = x + _str(args[4]).toInt();
-        y2 = y + _str(args[5]).toInt();
+        const int zoom = strex(args[1]).toInt();
+        const int x = strex(args[2]).toInt();
+        const int y = strex(args[3]).toInt();
+        const int x2 = x + strex(args[4]).toInt();
+        const int y2 = y + strex(args[5]).toInt();
 
         if (zoom != _lmapZoom || x != _lmapWMap[0] || y != _lmapWMap[1] || x2 != _lmapWMap[2] || y2 != _lmapWMap[3]) {
             _lmapZoom = zoom;
@@ -3640,55 +3630,61 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
-    else if (cmd == "SetCrittersContour" && args.size() == 2) {
-        if (CurMap != nullptr) {
-            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            CurMap->SetCrittersContour(countour_type);
-        }
-    }
-    else if (cmd == "SetCritterContour" && args.size() == 3) {
-        if (CurMap != nullptr) {
-            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            const auto cr_id = ident_t {_str(args[2]).toUInt()};
-            CurMap->SetCritterContour(cr_id, countour_type);
-        }
-    }
     else if (cmd == "DrawWait") {
         WaitDraw();
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {
-            auto hx = _str(args[1]).toUInt();
-            auto hy = _str(args[2]).toUInt();
+            const auto hx = strex(args[1]).toUInt();
+            const auto hy = strex(args[2]).toUInt();
             CurMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
-        auto alpha = _str(args[1]).toInt();
+        const auto alpha = strex(args[1]).toInt();
 
         if (auto* chosen = GetMapChosen(); chosen != nullptr) {
             chosen->Alpha = static_cast<uint8>(alpha);
         }
-    }
-    else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
-        /*if (SDL_HasScreenKeyboardSupport())
-        {
-            bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
-            bool next = _str(args[1]).toBool();
-            if (cur != next)
-            {
-                if (next)
-                    SDL_StartTextInput();
-                else
-                    SDL_StopTextInput();
-            }
-        }*/
     }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());
     }
 
     return "";
+}
+
+void FOClient::Connect(string_view login, string_view password, int reason)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
+
+    _loginName = login;
+    _loginPassword = password;
+
+    if (!_conn.IsConnected()) {
+        _initNetReason = reason;
+    }
+    else {
+        if (reason == INIT_NET_REASON_LOGIN) {
+            Net_SendLogIn();
+        }
+        else if (reason == INIT_NET_REASON_REG) {
+            Net_SendCreatePlayer();
+        }
+    }
+}
+
+void FOClient::Disconnect()
+{
+    STACK_TRACE_ENTRY();
+
+    _conn.Disconnect();
+
+    if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
+        ShowMainScreen(SCREEN_LOGIN, {});
+    }
 }
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
@@ -3847,7 +3843,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         return;
     }
 
-    const auto names = _str(video_name).split('|');
+    const auto names = strex(video_name).split('|');
 
     const auto file = Resources.ReadFile(names[0]);
     if (!file) {

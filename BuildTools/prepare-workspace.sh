@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [ "$1" = "" ]; then
+if [[ -z $1 ]]; then
     echo "Provide at least one argument"
     exit 1
 fi
@@ -9,7 +9,11 @@ echo "Prepare workspace"
 
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
-source $CUR_DIR/tools.sh
+source $CUR_DIR/internal-tools.sh
+
+mkdir -p $FO_WORKSPACE
+mkdir -p $FO_OUTPUT
+pushd $FO_WORKSPACE
 
 # All packages:
 # clang clang-format build-essential git cmake python3 wget unzip binutils-dev libc++-dev libc++abi-dev libx11-dev freeglut3-dev libssl-dev libevent-dev libxi-dev nodejs default-jre android-sdk openjdk-8-jdk ant
@@ -126,12 +130,23 @@ function setup_toolset()
     cmake -G "Unix Makefiles" -DFO_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFO_BUILD_CLIENT=0 -DFO_BUILD_SERVER=0 -DFO_BUILD_SINGLE=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=1 -DFO_BUILD_BAKER=1 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0 "$FO_PROJECT_ROOT"
 }
 
+function setup_dotnet()
+{
+    echo "Setup dotnet"
+
+    rm -rf dotnet
+    mkdir dotnet
+    cd dotnet
+    git clone https://github.com/dotnet/runtime.git --depth 1 --branch $FO_DOTNET_RUNTIME
+    touch CLONED
+}
+
 function verify_workspace_part()
 {
-    if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
-        if [ ! -z `check_arg check` ]; then
+    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != $2 ]]; then
+        if [[ ! -z `check_arg check` ]]; then
             echo "Workspace is not ready"
-            exit 10
+            exit 1
         fi
 
         workspace_job()
@@ -145,32 +160,36 @@ function verify_workspace_part()
     fi
 }
 
-if [ ! -z `check_arg packages all` ]; then
+if [[ ! -z `check_arg packages all` ]]; then
     verify_workspace_part common-packages 7 install_common_packages
     wait_jobs
-    if [ ! -z `check_arg linux all` ]; then
+    if [[ ! -z `check_arg linux all` ]]; then
         verify_workspace_part linux-packages 6 install_linux_packages
         wait_jobs
     fi
-    if [ ! -z `check_arg web all` ]; then
+    if [[ ! -z `check_arg web all` ]]; then
         verify_workspace_part web-packages 2 install_web_packages
         wait_jobs
     fi
-    if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+    if [[ ! -z `check_arg android android-arm64 android-x86 all` ]]; then
         verify_workspace_part android-packages 2 install_android_packages
         wait_jobs
     fi
 fi
 
-if [ ! -z `check_arg toolset all` ]; then
+if [[ ! -z `check_arg toolset all` ]]; then
     verify_workspace_part toolset 5 setup_toolset
 fi
-if [ ! -z `check_arg web all` ]; then
+if [[ ! -z `check_arg web all` ]]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten
 fi
-if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+if [[ ! -z `check_arg android android-arm64 android-x86 all` ]]; then
     verify_workspace_part android-ndk $ANDROID_NDK_VERSION setup_android_ndk
+fi
+if [[ ! -z `check_arg dotnet all` ]]; then
+    verify_workspace_part dotnet $FO_DOTNET_RUNTIME setup_dotnet
 fi
 wait_jobs
 
 echo "Workspace is ready!"
+popd

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,58 +37,42 @@
 #include "CritterHexView.h"
 #include "CritterView.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# param name ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_SetName(CritterView* self, string_view name)
 {
     self->SetName(name);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
-    return self->GetIsControlledByPlayer() && self->GetIsPlayerOffline();
+    return self->GetControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsAlive(CritterView* self)
 {
     return self->IsAlive();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsKnockout(CritterView* self)
 {
     return self->IsKnockout();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsDead(CritterView* self)
 {
     return self->IsDead();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsOnMap(CritterView* self)
 {
     return dynamic_cast<CritterHexView*>(self) != nullptr;
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsMoving(CritterView* self)
 {
@@ -100,8 +84,6 @@
     return hex_cr->IsMoving();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsModel(CritterView* self)
 {
@@ -117,10 +99,6 @@
 #endif
 }
 
-///# ...
-///# param stateAnim ...
-///# param actionAnim ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
@@ -132,8 +110,6 @@
     return hex_cr->IsAnimAvailable(stateAnim, actionAnim);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsAnimPlaying(CritterView* self)
 {
@@ -145,17 +121,12 @@
     return hex_cr->IsAnim();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterStateAnim Client_Critter_GetStateAnim(CritterView* self)
 {
     return self->GetStateAnim();
 }
 
-///# ...
-///# param stateAnim ...
-///# param actionAnim ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
@@ -167,10 +138,6 @@
     hex_cr->Animate(stateAnim, actionAnim, nullptr);
 }
 
-///# ...
-///# param stateAnim ...
-///# param actionAnim ...
-///# param contextItem ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem)
 {
@@ -182,7 +149,6 @@
     hex_cr->Animate(stateAnim, actionAnim, contextItem);
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_StopAnim(CritterView* self)
 {
@@ -194,9 +160,6 @@
     hex_cr->ClearAnim();
 }
 
-///# ...
-///# param protoId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
@@ -210,27 +173,18 @@
     return result;
 }
 
-///# ...
-///# param itemId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
     return self->GetInvItem(itemId);
 }
 
-///# ...
-///# param protoId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
-    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
-    if (proto_item == nullptr) {
-        throw ScriptException("Invalid proto id", protoId);
-    }
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
 
-    if (proto_item->GetStackable()) {
+    if (proto->GetStackable()) {
         for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 return item;
@@ -239,23 +193,23 @@
     }
     else {
         ItemView* another_slot = nullptr;
+
         for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
                 }
+
                 another_slot = item;
             }
         }
+
         return another_slot;
     }
 
     return nullptr;
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
 {
@@ -268,10 +222,6 @@
     return nullptr;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
 {
@@ -286,17 +236,12 @@
     return nullptr;
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
     return self->GetInvItems();
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
 {
@@ -312,10 +257,6 @@
     return items;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
 {
@@ -333,38 +274,17 @@
     return items;
 }
 
-///# ...
-///# param nameVisible ...
-///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] irect Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& lines)
+[[maybe_unused]] bool Client_Critter_GetTextPos(CritterView* self, ipos& pos)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    return hex_cr->GetNameTextInfo(nameVisible, lines);
+    return hex_cr->GetNameTextPos(pos);
 }
 
-///# ...
-///@ ExportMethod
-[[maybe_unused]] ipos Client_Critter_GetTextPos(CritterView* self)
-{
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    return hex_cr->GetNameTextPos();
-}
-
-///# ...
-///# param particleName ...
-///# param boneName ...
-///# param moveX ...
-///# param moveY ...
-///# param moveZ ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float moveX, float moveY, float moveZ)
 {
@@ -389,11 +309,6 @@
     }
 }
 
-///# ...
-///# param stateAnim ...
-///# param actionAnim ...
-///# param normalizedTime ...
-///# param animCallback ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
@@ -423,10 +338,6 @@
     }
 }
 
-///# ...
-///# param boneName ...
-///# param boneOffset ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, ipos& boneOffset)
 {
@@ -516,11 +427,78 @@
     self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Client_Critter_GetAlpha(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetContour(CritterView* self, ContourType contour)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->GetMap()->SetCritterContour(self->GetId(), contour);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, uint itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+{
+    auto* item = self->GetInvItem(itemId);
+    auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+
+    if (item == nullptr) {
+        throw ScriptException("Item not found");
+    }
+    if (swapItemId && swap_item == nullptr) {
+        throw ScriptException("Swap item not found");
+    }
+
+    auto* old_item = item->CreateRefClone();
+    const auto from_slot = item->GetCritterSlot();
+    auto* map_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (toSlot == CritterItemSlot::Outside) {
+        if (map_cr != nullptr) {
+            map_cr->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
+        }
+
+        if (item->GetStackable() && itemCount < item->GetCount()) {
+            item->SetCount(item->GetCount() - itemCount);
+        }
+        else {
+            self->DeleteInvItem(item, true);
+            item = nullptr;
+        }
+    }
+    else {
+        item->SetCritterSlot(toSlot);
+
+        if (swap_item != nullptr) {
+            swap_item->SetCritterSlot(from_slot);
+        }
+
+        if (map_cr != nullptr) {
+            map_cr->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
+
+            if (swap_item != nullptr) {
+                map_cr->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
+            }
+        }
+    }
+
+    // Light
+    if (map_cr != nullptr) {
+        map_cr->GetMap()->RebuildFog();
+        map_cr->GetMap()->UpdateCritterLightSource(map_cr);
+    }
+
+    // Notify scripts about item changing
+    self->GetEngine()->OnItemInvChanged.Fire(item, old_item);
+
+    old_item->Release();
 }

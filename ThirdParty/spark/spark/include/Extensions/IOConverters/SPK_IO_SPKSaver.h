@@ -39,7 +39,7 @@ namespace IO
 		static const size_t DATA_LENGTH_OFFSET;
 		static const size_t HEADER_LENGTH;
 
-        virtual bool innerSave(std::ostream& os,Graph& graph,const std::string &filepath=0) const override;
+        virtual bool innerSave(std::ostream& os,Graph& graph,const std::string &filepath) const override;
 
 		bool writeObject(IOBuffer& buffer,const Descriptor& desc,Graph& graph) const;
 		bool writeAttribute(IOBuffer& buffer,const Attribute& attrib,Graph& graph) const;

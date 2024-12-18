@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,14 +40,13 @@
 #include "StringUtils.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOEngineBase(settings, PropertiesRelationType::BothRelative),
     FOClient(settings, window, true)
 {
     STACK_TRACE_ENTRY();
 
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("FullProtos"));
+    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("FullProtos"));
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("MapperAngelScript"));
+        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("MapperAngelScript"));
     }
 
     for (const auto& dir : settings.BakeContentEntries) {
@@ -161,7 +160,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         ConsoleHistory.push_back(history_part);
         prev = pos + 1;
     }
-    ConsoleHistory = _str(history_str).normalizeLineEndings().split('\n');
+    ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
     while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
@@ -925,13 +924,8 @@ void FOMapper::IntDraw()
 
         if (GetTabIndex() < static_cast<uint>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find_if(proto_item->Texts.begin(), proto_item->Texts.end(), [this](auto&& pack_pair) { return pack_pair.first == _curLang.GetName(); });
-            if (it != proto_item->Texts.end()) {
-                auto info = it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
-                info += " - ";
-                info += it->second.GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
-                DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
-            }
+
+            SprMngr.DrawText(irect(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IsCritMode()) {
@@ -990,9 +984,10 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize(spr, {x, y}, {w, h}, false, true, col);
 
-            DrawStr(IRect(x, y + h - 15, x + w, y + h), _str("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            SprMngr.DrawText(irect(x, y + h - 15, w, h), strex("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+
             if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && inner_item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                DrawStr(IRect(x, y, x + w, y + h), _str("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                SprMngr.DrawText(irect(x, y, w, h), strex("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
         }
     }
@@ -1002,7 +997,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i];
-            DrawStr(IRect(x, y, x + w, y + h), _str(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawText(irect(x, y, w, h), strex(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 
@@ -1038,7 +1033,7 @@ void FOMapper::IntDraw()
             if (count == 0u) {
                 count = static_cast<uint>(stab.ItemProtos.size());
             }
-            name += _str(" ({})", count);
+            name += strex(" ({})", count);
             DrawStr(r, name, 0, color, FONT_DEFAULT);
 
             posy -= line_height;
@@ -1060,12 +1055,12 @@ void FOMapper::IntDraw()
         auto day_time = CurMap->GetGlobalDayTime();
 
         DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
-            _str("Map '{}'\n"
-                 "Hex {}\n"
-                 "Time {} : {}\n"
-                 "Fps {}\n"
-                 "Tile layer {}\n"
-                 "{}",
+            strex("Map '{}'\n"
+                  "Hex {}\n"
+                  "Time {} : {}\n"
+                  "Fps {}\n"
+                  "Tile layer {}\n"
+                  "{}",
                 CurMap->GetName(), hex_thru ? hex : mpos {}, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
     }
@@ -1112,15 +1107,15 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine("Id", "", _str("{}", entity->GetId()), true, r);
+    DrawLine("Id", "", strex("{}", entity->GetId()), true, r);
     DrawLine("ProtoName", "", entity->GetName(), true, r);
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
     }
-    else if (item != nullptr && !item->GetIsStatic()) {
+    else if (item != nullptr && !item->GetStatic()) {
         DrawLine("Type", "", "Dynamic Item", true, r);
     }
-    else if (item != nullptr && item->GetIsStatic()) {
+    else if (item != nullptr && item->GetStatic()) {
         DrawLine("Type", "", "Static Item", true, r);
     }
     else {
@@ -1162,7 +1157,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
         }
     }
 
-    string str = _str("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
+    string str = strex("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
     str += "........................................................................................................";
     DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, FONT_DEFAULT);
     DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, FONT_DEFAULT);
@@ -1492,7 +1487,7 @@ void FOMapper::IntLMouseDown()
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = CurMap->GetItem(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
-                        owner->DeleteInnerItem(InContItem);
+                        owner->DestroyInnerItem(InContItem);
                     }
                     else {
                         throw UnreachablePlaceException(LINE_STR);
@@ -1509,7 +1504,7 @@ void FOMapper::IntLMouseDown()
                     if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
                         auto to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
 
-                        while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
+                        while (static_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                             to_slot++;
                         }
 
@@ -1757,12 +1752,13 @@ void FOMapper::IntLMouseUp()
                 }
 
                 vector<ItemHexView*> items;
-                vector<CritterView*> critters;
+                vector<CritterHexView*> critters;
                 for (const auto hex : hexes) {
                     // Items, critters
                     auto&& hex_items = CurMap->GetItems(hex);
                     items.insert(items.end(), hex_items.begin(), hex_items.end());
-                    auto hex_critters = CurMap->GetCritters(hex, CritterFindType::Any);
+
+                    auto&& hex_critters = CurMap->GetCritters(hex, CritterFindType::Any);
                     critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
 
                     // Tile, roof
@@ -2360,12 +2356,6 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     RUNTIME_ASSERT(CurMap);
 
-    const auto* proto = ProtoMngr.GetProtoCritter(pid);
-
-    if (proto == nullptr) {
-        return nullptr;
-    }
-
     if (!CurMap->GetSize().IsValidPos(hex)) {
         return nullptr;
     }
@@ -2395,10 +2385,6 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     // Checks
     const auto* proto = ProtoMngr.GetProtoItem(pid);
 
-    if (proto == nullptr) {
-        return nullptr;
-    }
-
     mpos corrected_hex = hex;
 
     if (proto->GetIsTile()) {
@@ -2418,10 +2404,10 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
     if (owner != nullptr) {
         if (auto* cr = dynamic_cast<CritterHexView*>(owner); cr != nullptr) {
-            item = cr->AddInvItem(cr->GetMap()->GetTempEntityId(), proto, CritterItemSlot::Inventory, {});
+            item = cr->AddMapperInvItem(cr->GetMap()->GetTempEntityId(), proto, CritterItemSlot::Inventory, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto, ContainerItemStack::Root, nullptr);
+            item = cont->AddMapperInnerItem(cont->GetMap()->GetTempEntityId(), proto, ContainerItemStack::Root, nullptr);
         }
     }
     else if (proto->GetIsTile()) {
@@ -2453,7 +2439,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         auto* cr_clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
 
         for (const auto* inv_item : cr->GetConstInvItems()) {
-            auto* inv_item_clone = cr_clone->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
+            auto* inv_item_clone = cr_clone->AddMapperInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
             CloneInnerItems(inv_item_clone, inv_item);
         }
 
@@ -2476,7 +2462,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
     for (const auto* inner_item : from_item->GetConstInnerItems()) {
-        auto* inner_item_clone = to_item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
+        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
         CloneInnerItems(inner_item_clone, inner_item);
     }
 }
@@ -2574,7 +2560,7 @@ void FOMapper::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
+                auto* inner_item = item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
 
                 add_item_inner_items(child_buf, inner_item);
             }
@@ -2584,7 +2570,7 @@ void FOMapper::BufferPaste()
             auto* cr = CurMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, 0, entity_buf.Props);
 
             for (const auto* child_buf : entity_buf.Children) {
-                auto* inv_item = cr->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
+                auto* inv_item = cr->AddMapperInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
 
                 add_item_inner_items(child_buf, inv_item);
             }
@@ -2913,7 +2899,7 @@ void FOMapper::ParseCommand(string_view command)
 
     // Load map
     if (command[0] == '~') {
-        string map_name = _str(command.substr(1)).trim();
+        string map_name = strex(command.substr(1)).trim();
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2929,7 +2915,7 @@ void FOMapper::ParseCommand(string_view command)
     }
     // Save map
     else if (command[0] == '^') {
-        string map_name = _str(command.substr(1)).trim();
+        string map_name = strex(command.substr(1)).trim();
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2960,13 +2946,13 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        string str = _str(command).substringAfter(' ').trim();
+        string str = strex(command).substringAfter(' ').trim();
         if (!func(str)) {
             AddMess("Script execution fail");
             return;
         }
 
-        AddMess(_str("Result: {}", func.GetResult()));
+        AddMess(strex("Result: {}", func.GetResult()));
     }
     // Critter animations
     else if (command[0] == '@') {
@@ -2977,7 +2963,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        vector<int> anims = _str(command.substr(1)).splitToInt(' ');
+        vector<int> anims = strex(command.substr(1)).splitToInt(' ');
         if (anims.empty()) {
             return;
         }
@@ -3011,7 +2997,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
 
             pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
 
@@ -3085,25 +3071,26 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
     const auto map_file_str = map_file.GetStr();
 
-    auto map_data = ConfigFile(_str("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
+    auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     if (!pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"))) {
         throw MapLoaderException("Invalid map header", map_name);
     }
 
     auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
+
     new_map->EnableMapperMode();
 
     try {
         new_map->LoadFromFile(map_name, map_file.GetStr());
     }
     catch (const MapLoaderException& ex) {
-        AddMess(_str("Map truncated: {}", ex.what()));
+        AddMess(strex("Map truncated: {}", ex.what()));
         return nullptr;
     }
 
@@ -3176,13 +3163,13 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
             fomap_path = fomap_file.GetFullPath();
         }
         else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-            fomap_path = _str(fomap_file2.GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_file2.GetFullPath()).changeFileName(fomap_name);
         }
         else if (fomap_files.MoveNext()) {
-            fomap_path = _str(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
         }
         else {
-            fomap_path = _str("{}.fomap", fomap_path).formatPath();
+            fomap_path = strex("{}.fomap", fomap_path).formatPath();
         }
     }
 
@@ -3240,10 +3227,10 @@ void FOMapper::AddMess(string_view message_text)
 {
     STACK_TRACE_ENTRY();
 
-    const string str = _str("|{} - {}\n", COLOR_TEXT, message_text);
+    const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
 
     const auto dt = Timer::GetCurrentDateTime();
-    const string mess_time = _str("{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second);
+    const string mess_time = strex("{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second);
 
     MessBox.push_back({0, str, mess_time});
     MessBoxScroll = 0;
@@ -3298,7 +3285,7 @@ void FOMapper::DrawIfaceLayer(uint layer)
     SpritesCanDraw = false;
 }
 
-auto FOMapper::GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>
+auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>
 {
     STACK_TRACE_ENTRY();
 
@@ -3308,5 +3295,6 @@ auto FOMapper::GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
         return item->GetInnerItems();
     }
+
     return {};
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,11 +43,11 @@
 
 #include "png.h"
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*;
-static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*;
+[[nodiscard]] static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>;
+[[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>;
 
-ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
+ImageBaker::ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+    BaseBaker(settings, std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
 
@@ -59,69 +59,104 @@ ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeChecke
             std::swap(FoPalette[i], FoPalette[i + 2]);
         }
     });
+
+    // Fill default loaders
+    AddLoader(std::bind(&ImageBaker::LoadFofrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"fofrm"});
+    AddLoader(std::bind(&ImageBaker::LoadFrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"frm"});
+    AddLoader(std::bind(&ImageBaker::LoadFrX, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"fr0"});
+    AddLoader(std::bind(&ImageBaker::LoadRix, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"rix"});
+    AddLoader(std::bind(&ImageBaker::LoadArt, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"art"});
+    AddLoader(std::bind(&ImageBaker::LoadSpr, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"spr"});
+    AddLoader(std::bind(&ImageBaker::LoadZar, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"zar"});
+    AddLoader(std::bind(&ImageBaker::LoadTil, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"til"});
+    AddLoader(std::bind(&ImageBaker::LoadMos, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"mos"});
+    AddLoader(std::bind(&ImageBaker::LoadBam, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"bam"});
+    AddLoader(std::bind(&ImageBaker::LoadPng, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"png"});
+    AddLoader(std::bind(&ImageBaker::LoadTga, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"tga"});
 }
 
-auto ImageBaker::IsImageExt(string_view ext) -> bool
+auto ImageBaker::IsExtSupported(string_view ext) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return ext == "fofrm" || ext == "frm" || ext == "fr0" || ext == "rix" || ext == "art" || ext == "zar" || ext == "til" || ext == "mos" || ext == "bam" || ext == "png" || ext == "tga";
-}
+    auto locker = std::unique_lock {_filesLocker};
 
-void ImageBaker::AutoBake()
-{
-    STACK_TRACE_ENTRY();
-
-    _errors = 0;
-
-    ProcessImages("fofrm", [this](string_view fname, string_view opt, File& file) { return LoadFofrm(fname, opt, file); });
-    ProcessImages("frm", [this](string_view fname, string_view opt, File& file) { return LoadFrm(fname, opt, file); });
-    ProcessImages("fr0", [this](string_view fname, string_view opt, File& file) { return LoadFrX(fname, opt, file); });
-    ProcessImages("rix", [this](string_view fname, string_view opt, File& file) { return LoadRix(fname, opt, file); });
-    ProcessImages("art", [this](string_view fname, string_view opt, File& file) { return LoadArt(fname, opt, file); });
-    ProcessImages("zar", [this](string_view fname, string_view opt, File& file) { return LoadZar(fname, opt, file); });
-    ProcessImages("til", [this](string_view fname, string_view opt, File& file) { return LoadTil(fname, opt, file); });
-    ProcessImages("mos", [this](string_view fname, string_view opt, File& file) { return LoadMos(fname, opt, file); });
-    ProcessImages("bam", [this](string_view fname, string_view opt, File& file) { return LoadBam(fname, opt, file); });
-    ProcessImages("png", [this](string_view fname, string_view opt, File& file) { return LoadPng(fname, opt, file); });
-    ProcessImages("tga", [this](string_view fname, string_view opt, File& file) { return LoadTga(fname, opt, file); });
-
-    if (_errors > 0) {
-        throw ImageBakerException("Errors during images bakering", _errors);
+    if (const auto it = _fileLoaders.find(string(ext)); it != _fileLoaders.end() && it->second) {
+        return true;
+    }
+    else {
+        return false;
     }
 }
 
-void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
+void ImageBaker::AddLoader(LoadFunc loader, const vector<string_view>& file_extensions)
 {
     STACK_TRACE_ENTRY();
 
-    _files.ResetCounter();
-    while (_files.MoveNext()) {
-        auto file_header = _files.GetCurFileHeader();
+    auto locker = std::unique_lock {_filesLocker};
 
-        string ext = _str(file_header.GetPath()).getFileExtension();
-        if (target_ext != ext) {
-            continue;
+    for (const auto& ext : file_extensions) {
+        _fileLoaders[string(ext)] = loader;
+    }
+}
+
+void ImageBaker::BakeFiles(FileCollection&& files)
+{
+    STACK_TRACE_ENTRY();
+
+    vector<pair<File, LoadFunc>> files_to_bake;
+    files_to_bake.reserve(files.GetFilesCount());
+
+    {
+        auto locker = std::unique_lock {_filesLocker};
+
+        _files = std::move(files);
+
+        for (auto&& [ext, loader] : _fileLoaders) {
+            for (_files.ResetCounter(); _files.MoveNext();) {
+                auto file_header = _files.GetCurFileHeader();
+                string file_ext = strex(file_header.GetPath()).getFileExtension();
+
+                if (file_ext != ext) {
+                    continue;
+                }
+
+                if (_bakeChecker && !_bakeChecker(file_header)) {
+                    continue;
+                }
+
+                files_to_bake.emplace_back(_files.GetCurFile(), loader);
+            }
         }
+    }
 
-        if (_bakeChecker && !_bakeChecker(file_header)) {
-            continue;
-        }
+    vector<std::future<void>> file_bakings;
 
-        auto file = _files.GetCurFile();
+    for (auto& file_to_bake : files_to_bake) {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &file_to_bake] {
+            const auto path = file_to_bake.first.GetPath();
+            const auto collection = file_to_bake.second(path, "", file_to_bake.first);
+            BakeCollection(path, collection);
+        }));
+    }
 
+    int errors = 0;
+
+    for (auto&& file_baking : file_bakings) {
         try {
-            auto collection = loader(file_header.GetPath(), "", file);
-            BakeCollection(file_header.GetPath(), collection);
+            file_baking.get();
         }
-        catch (const ImageBakerException& ex) {
+        catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-            _errors++;
+            errors++;
         }
-        catch (const FileSystemExeption& ex) {
-            ReportExceptionAndContinue(ex);
-            _errors++;
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
+    }
+
+    if (errors != 0) {
+        throw ImageBakerException("Errors during images baking", errors);
     }
 }
 
@@ -167,7 +202,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<uint8>(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _writeData(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), data);
+        _writeData(strex("{}.{}", strex(fname).eraseFileExtension(), collection.NewExtension), data);
     }
     else {
         _writeData(fname, data);
@@ -178,14 +213,17 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = _str(fname_with_opt).getFileExtension();
-    const string dir = _str(fname_with_opt).extractDir();
-    const string name = _str(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
-    const string fname = _str("{}/{}.{}", dir, name, ext);
-    const string opt = _str(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
+    const string ext = strex(fname_with_opt).getFileExtension();
+    const string dir = strex(fname_with_opt).extractDir();
+    const string name = strex(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
+    const string fname = strex("{}/{}.{}", dir, name, ext);
+    const string opt = strex(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
 
     File temp_storage;
+
     auto find_file = [this, &fname, &ext, &temp_storage]() -> File& {
+        auto locker = std::unique_lock {_filesLocker};
+
         const auto it = _cachedFiles.find(fname);
         if (it != _cachedFiles.end()) {
             return it->second;
@@ -194,6 +232,7 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
         temp_storage = _files.FindFileByPath(fname);
 
         const auto need_cache = temp_storage && ext == "spr";
+
         if (need_cache) {
             return _cachedFiles.emplace(fname, std::move(temp_storage)).first->second;
         }
@@ -202,50 +241,19 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
     };
 
     auto& file = find_file();
+
     if (!file) {
         throw ImageBakerException("Image file not found", fname, fname_with_opt, dir, name, ext);
     }
 
     file.SetCurPos(0);
 
-    if (ext == "fofrm") {
-        return LoadFofrm(fname, opt, file);
+    if (const auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
+        return it->second(fname, opt, file);
     }
-    if (ext == "frm") {
-        return LoadFrm(fname, opt, file);
+    else {
+        throw ImageBakerException("Invalid image file extension", fname);
     }
-    if (ext == "fr0") {
-        return LoadFrX(fname, opt, file);
-    }
-    if (ext == "rix") {
-        return LoadRix(fname, opt, file);
-    }
-    if (ext == "art") {
-        return LoadArt(fname, opt, file);
-    }
-    if (ext == "spr") {
-        return LoadSpr(fname, opt, file);
-    }
-    if (ext == "zar") {
-        return LoadZar(fname, opt, file);
-    }
-    if (ext == "til") {
-        return LoadTil(fname, opt, file);
-    }
-    if (ext == "mos") {
-        return LoadMos(fname, opt, file);
-    }
-    if (ext == "bam") {
-        return LoadBam(fname, opt, file);
-    }
-    if (ext == "png") {
-        return LoadPng(fname, opt, file);
-    }
-    if (ext == "tga") {
-        return LoadTga(fname, opt, file);
-    }
-
-    throw ImageBakerException("Invalid image file extension", fname);
 }
 
 auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> FrameCollection
@@ -278,7 +286,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         vector<tuple<FrameCollection, int, int>> sub_collections;
         sub_collections.reserve(10);
 
-        string dir_str = _str("dir_{}", dir);
+        string dir_str = strex("dir_{}", dir);
         if (!fofrm.HasSection(dir_str)) {
             dir_str = "";
         }
@@ -297,23 +305,23 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
             oy = fofrm.GetInt(dir_str, "offs_y", oy);
         }
 
-        string frm_dir = _str(fname).extractDir();
+        string frm_dir = strex(fname).extractDir();
 
         uint frames = 0;
         auto no_info = false;
         auto load_fail = false;
         for (auto frm = 0; frm < frm_num; frm++) {
             string frm_name;
-            if ((frm_name = fofrm.GetStr(dir_str, _str("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
+            if ((frm_name = fofrm.GetStr(dir_str, strex("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
                 no_info = true;
                 break;
             }
 
-            auto sub_collection = LoadAny(_str("{}/{}", frm_dir, frm_name));
+            auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name));
             frames += sub_collection.SequenceSize;
 
-            auto next_x = fofrm.GetInt(dir_str, _str("next_x_{}", frm), 0);
-            auto next_y = fofrm.GetInt(dir_str, _str("next_y_{}", frm), 0);
+            auto next_x = fofrm.GetInt(dir_str, strex("next_x_{}", frm), 0);
+            auto next_y = fofrm.GetInt(dir_str, strex("next_y_{}", frm), 0);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
@@ -419,12 +427,18 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
-        if (fm_palette) {
+        File palette_file;
+
+        {
+            auto locker = std::unique_lock {_filesLocker};
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        }
+
+        if (palette_file) {
             for (auto& i : palette_entry) {
-                uint8 r = fm_palette.GetUChar() * 4;
-                uint8 g = fm_palette.GetUChar() * 4;
-                uint8 b = fm_palette.GetUChar() * 4;
+                uint8 r = palette_file.GetUChar() * 4;
+                uint8 g = palette_file.GetUChar() * 4;
+                uint8 b = palette_file.GetUChar() * 4;
                 i = ucolor {r, g, b};
             }
             palette = palette_entry;
@@ -640,8 +654,13 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         }
 
         if (dir_frm != 0) {
-            string next_fname = _str("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
-            file = _files.FindFileByPath(next_fname);
+            string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
+
+            {
+                auto locker = std::unique_lock {_filesLocker};
+                file = _files.FindFileByPath(next_fname);
+            }
+
             if (!file) {
                 if (dir > 1) {
                     throw ImageBakerException("FRX file not found", next_fname);
@@ -665,12 +684,18 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor palette_entry[256];
-        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
-        if (fm_palette) {
+        File palette_file;
+
+        {
+            auto locker = std::unique_lock {_filesLocker};
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        }
+
+        if (palette_file) {
             for (auto& i : palette_entry) {
-                uint8 r = fm_palette.GetUChar() * 4;
-                uint8 g = fm_palette.GetUChar() * 4;
-                uint8 b = fm_palette.GetUChar() * 4;
+                uint8 r = palette_file.GetUChar() * 4;
+                uint8 g = palette_file.GetUChar() * 4;
+                uint8 b = palette_file.GetUChar() * 4;
                 i = ucolor {r, g, b};
             }
             palette = palette_entry;
@@ -875,9 +900,9 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> Fram
 
     for (auto i = 0, j = w * h; i < j; i++) {
         const auto index = static_cast<uint>(file.GetUChar()) * 3;
-        const uint8 r = static_cast<uint8>(*(palette + index + 2) * 4);
-        const uint8 g = static_cast<uint8>(*(palette + index + 1) * 4);
-        const uint8 b = static_cast<uint8>(*(palette + index + 0) * 4);
+        const auto r = static_cast<uint8>(*(palette + index + 2) * 4);
+        const auto g = static_cast<uint8>(*(palette + index + 1) * 4);
+        const auto b = static_cast<uint8>(*(palette + index + 0) * 4);
         *(ptr + i) = ucolor {r, g, b};
     }
 
@@ -1274,7 +1299,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
             file.GoForward(name_len);
             auto index = file.GetLEUShort();
 
-            if (seq_name.empty() || _str(seq_name).compareIgnoreCase(name)) {
+            if (seq_name.empty() || strex(seq_name).compareIgnoreCase(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1807,7 +1832,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!_str(head).startsWith("MOS")) {
+    if (!strex(head).startsWith("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1827,7 +1852,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!_str(head).startsWith("MOS")) {
+        if (!strex(head).startsWith("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -1926,7 +1951,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Read signature
     char head[8];
     file.CopyData(head, 8);
-    if (!_str(head).startsWith("BAM")) {
+    if (!strex(head).startsWith("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -1946,7 +1971,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
 
         file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
-        if (!_str(head).startsWith("BAM")) {
+        if (!strex(head).startsWith("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }
@@ -2055,17 +2080,12 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(fname);
     UNUSED_VARIABLE(opt);
 
     uint w = 0;
     uint h = 0;
-    const auto* png_data = PngLoad(file.GetBuf(), w, h);
-    if (png_data == nullptr) {
-        throw ImageBakerException("Can't read PNG", fname);
-    }
-
-    vector<uint8> data(static_cast<size_t>(w) * h * 4);
-    std::memcpy(data.data(), png_data, static_cast<size_t>(w) * h * 4);
+    auto data = PngLoad(file.GetBuf(), w, h);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2073,6 +2093,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
     collection.Main.Frames[0].Width = static_cast<uint16>(w);
     collection.Main.Frames[0].Height = static_cast<uint16>(h);
     collection.Main.Frames[0].Data = std::move(data);
+
     return collection;
 }
 
@@ -2082,17 +2103,12 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(fname);
     UNUSED_VARIABLE(opt);
 
     uint w = 0;
     uint h = 0;
-    const auto* tga_data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
-    if (tga_data == nullptr) {
-        throw ImageBakerException("Can't read TGA", fname);
-    }
-
-    vector<uint8> data(static_cast<size_t>(w) * h * 4);
-    std::memcpy(data.data(), tga_data, static_cast<size_t>(w) * h * 4);
+    auto data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
@@ -2100,129 +2116,118 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     collection.Main.Frames[0].Width = static_cast<uint16>(w);
     collection.Main.Frames[0].Height = static_cast<uint16>(h);
     collection.Main.Frames[0].Data = std::move(data);
+
     return collection;
 }
 
-static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> uint8*
+static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    struct PngMessage
-    {
-        static void Error(png_structp png_ptr, png_const_charp error_msg)
-        {
-            UNUSED_VARIABLE(png_ptr);
-            WriteLog("PNG error '{}'", error_msg);
-        }
-        static void Warning(png_structp png_ptr, png_const_charp /*error_msg*/)
-        {
-            UNUSED_VARIABLE(png_ptr);
-            // WriteLog( "PNG warning '{}'", error_msg );
-        }
-    };
-
-    // Setup PNG reader
     auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if (png_ptr == nullptr) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(png_ptr);
 
-    png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
-
-    auto* info_ptr = png_create_info_struct(png_ptr);
-    if (info_ptr == nullptr) {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-        return nullptr;
-    }
-
-    // Todo: move png lib setjmp to exceptions
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
-    }
-
-    struct PngReader
-    {
-        static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
+    try {
+        struct PngMessage
         {
-            auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
-            std::memcpy(png_data, *io_ptr, length);
-            *io_ptr += length;
+            static void Error(png_structp png_ptr, png_const_charp error_msg)
+            {
+                UNUSED_VARIABLE(png_ptr);
+                throw ImageBakerException("PNG loading error", error_msg);
+            }
+
+            static void Warning(png_structp png_ptr, png_const_charp error_msg)
+            {
+                UNUSED_VARIABLE(png_ptr);
+                UNUSED_VARIABLE(error_msg);
+                // WriteLog("PNG loading warning: {}", error_msg);
+            }
+        };
+
+        png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
+
+        auto* info_ptr = png_create_info_struct(png_ptr);
+        RUNTIME_ASSERT(info_ptr);
+
+        struct PngReader
+        {
+            static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
+            {
+                auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
+                std::memcpy(png_data, *io_ptr, length);
+                *io_ptr += length;
+            }
+        };
+
+        // Get info
+        png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
+        png_read_info(png_ptr, info_ptr);
+
+        png_uint_32 width = 0;
+        png_uint_32 height = 0;
+        auto bit_depth = 0;
+        auto color_type = 0;
+        png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
+
+        // Settings
+        png_set_strip_16(png_ptr);
+        png_set_packing(png_ptr);
+
+        if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
+            png_set_expand(png_ptr);
         }
-    };
-    png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
-    png_read_info(png_ptr, info_ptr);
+        if (color_type == PNG_COLOR_TYPE_PALETTE) {
+            png_set_expand(png_ptr);
+        }
+        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) != 0u) {
+            png_set_expand(png_ptr);
+        }
 
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
+        png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
+        png_read_update_info(png_ptr, info_ptr);
+
+        // Read
+        vector<png_bytep> row_pointers;
+        row_pointers.resize(height);
+
+        vector<uint8> result;
+        result.resize(static_cast<size_t>(width) * height * 4);
+
+        for (uint i = 0; i < height; i++) {
+            row_pointers[i] = result.data() + static_cast<size_t>(i) * width * 4;
+        }
+
+        png_read_image(png_ptr, row_pointers.data());
+        png_read_end(png_ptr, info_ptr);
+        png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
+
+        result_width = width;
+        result_height = height;
+
+        return result;
     }
+    catch (...) {
+        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
 
-    // Get information
-    png_uint_32 width = 0;
-    png_uint_32 height = 0;
-    auto bit_depth = 0;
-    auto color_type = 0;
-    png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
-
-    // Settings
-    png_set_strip_16(png_ptr);
-    png_set_packing(png_ptr);
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
-        png_set_expand(png_ptr);
+        throw;
     }
-    if (color_type == PNG_COLOR_TYPE_PALETTE) {
-        png_set_expand(png_ptr);
-    }
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) != 0u) {
-        png_set_expand(png_ptr);
-    }
-    png_set_filler(png_ptr, 0x000000ff, PNG_FILLER_AFTER);
-    png_read_update_info(png_ptr, info_ptr);
-
-    // Allocate row pointers
-    auto* row_pointers = static_cast<png_bytepp>(malloc(height * sizeof(png_bytep)));
-    if (row_pointers == nullptr) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        return nullptr;
-    }
-
-    // Set the individual row_pointers to point at the correct offsets
-    auto* result = new uint8[static_cast<size_t>(width) * height * 4];
-    for (uint i = 0; i < height; i++) {
-        row_pointers[i] = result + static_cast<size_t>(i) * width * 4;
-    }
-
-    // Read image
-    png_read_image(png_ptr, row_pointers);
-
-    // Clean up
-    png_read_end(png_ptr, info_ptr);
-    png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
-    free(row_pointers);
-
-    // Return
-    result_width = width;
-    result_height = height;
-    return result;
 }
 
-static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> uint8*
+static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    // Reading macros
-    auto read_error = false;
-    uint cur_pos = 0;
-#define READ_TGA(x, len) \
-    if (!read_error && cur_pos + (len) <= data_size) { \
-        std::memcpy(x, data + cur_pos, len); \
-        cur_pos += (len); \
-    } \
-    else { \
-        std::memset(x, 0, len); \
-        read_error = true; \
-    }
+    size_t cur_pos = 0;
+
+    const auto read_tga = [&](void* ptr, size_t len) {
+        if (cur_pos + len <= data_size) {
+            std::memcpy(ptr, data + cur_pos, len);
+            cur_pos += (len);
+        }
+        else {
+            throw ImageBakerException("TGA reading error");
+        }
+    };
 
     // Load header
     uint8 type = 0;
@@ -2231,95 +2236,89 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
     int16 height = 0;
     uint8 unused_char = 0;
     int16 unused_short = 0;
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&type, 1)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_char, 1)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&unused_short, 2)
-    READ_TGA(&width, 2)
-    READ_TGA(&height, 2)
-    READ_TGA(&pixel_depth, 1)
-    READ_TGA(&unused_char, 1)
-
-    // Check for errors when loading the header
-    if (read_error) {
-        return nullptr;
-    }
+    read_tga(&unused_char, 1);
+    read_tga(&unused_char, 1);
+    read_tga(&type, 1);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_char, 1);
+    read_tga(&unused_short, 2);
+    read_tga(&unused_short, 2);
+    read_tga(&width, 2);
+    read_tga(&height, 2);
+    read_tga(&pixel_depth, 1);
+    read_tga(&unused_char, 1);
 
     // Check if the image is color indexed
     if (type == 1) {
-        return nullptr;
+        throw ImageBakerException("Indexed TGA is not supported");
     }
 
     // Check for TrueColor
     if (type != 2 && type != 10) {
-        return nullptr;
+        throw ImageBakerException("TGA TrueColor is not supported");
     }
 
     // Check for RGB(A)
     if (pixel_depth != 24 && pixel_depth != 32) {
-        return nullptr;
+        throw ImageBakerException("TGA support only 24 and 32 bpp");
     }
 
     // Read
     const auto bpp = pixel_depth / 8;
     const uint read_size = height * width * bpp;
-    auto* read_data = new uint8[read_size];
+    vector<uint8> read_data;
+    read_data.resize(read_size);
+
     if (type == 2) {
-        READ_TGA(read_data, read_size)
+        read_tga(read_data.data(), read_size);
     }
     else {
         uint bytes_read = 0;
         uint8 header = 0;
         uint8 color[4];
+
         while (bytes_read < read_size) {
-            READ_TGA(&header, 1)
+            read_tga(&header, 1);
+
             if ((header & 0x00000080) != 0) {
                 header &= ~0x00000080;
-                READ_TGA(color, bpp)
-                if (read_error) {
-                    delete[] read_data;
-                    return nullptr;
-                }
+                read_tga(color, bpp);
                 const uint run_len = (header + 1) * bpp;
+
                 for (uint i = 0; i < run_len; i += bpp) {
                     for (auto c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
                         read_data[bytes_read + i + c] = color[c];
                     }
                 }
+
                 bytes_read += run_len;
             }
             else {
                 const uint run_len = (header + 1) * bpp;
                 uint to_read;
+
                 if (bytes_read + run_len > read_size) {
                     to_read = read_size - bytes_read;
                 }
                 else {
                     to_read = run_len;
                 }
-                READ_TGA(read_data + bytes_read, to_read)
-                if (read_error) {
-                    delete[] read_data;
-                    return nullptr;
-                }
+
+                read_tga(read_data.data() + bytes_read, to_read);
                 bytes_read += run_len;
+
                 if (bytes_read + run_len > read_size) {
                     cur_pos += run_len - to_read;
                 }
             }
         }
     }
-    if (read_error) {
-        delete[] read_data;
-        return nullptr;
-    }
 
     // Copy data
-    auto* result = new uint8[static_cast<size_t>(width) * height * 4];
+    vector<uint8> result;
+    result.resize(static_cast<size_t>(width) * height * 4);
+
     for (int16 y = 0; y < height; y++) {
         for (int16 x = 0; x < width; x++) {
             const auto i = (height - y - 1) * width + x;
@@ -2330,12 +2329,10 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
             result[i * 4 + 3] = bpp == 4 ? read_data[j * bpp + 3] : 0xFF;
         }
     }
-    delete[] read_data;
 
     // Return data
     result_width = width;
     result_height = height;
-    return result;
 
-#undef READ_TGA
+    return result;
 }

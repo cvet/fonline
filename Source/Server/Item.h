@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,6 @@ using StaticItem = Item;
 class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
-    friend class ItemManager;
 
 public:
     Item() = delete;
@@ -58,16 +57,20 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
-    [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
-    [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
-    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
-    [[nodiscard]] auto GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*;
-    [[nodiscard]] auto GetAllInnerItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*;
+    [[nodiscard]] auto RadioIsSendActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
+    [[nodiscard]] auto RadioIsRecvActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
+    [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
+    [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
-    [[nodiscard]] auto IsInnerItems() const -> bool;
+    [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
+    [[nodiscard]] auto GetAllInnerItems() -> const vector<Item*>&;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
+    [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
 
+    auto AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*;
+    void RemoveItemFromContainer(Item* item);
+    void SetItemToContainer(Item* item);
     void EvaluateSortValue(const vector<Item*>& items);
 
     ///@ ExportEvent
@@ -75,7 +78,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
 
-    ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, Item*, any_t> StaticScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uint8> TriggerScriptFunc {};
 
 private:

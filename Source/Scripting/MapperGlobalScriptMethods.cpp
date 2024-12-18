@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,12 +39,6 @@
 #include "Mapper.h"
 #include "StringUtils.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# param pid ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, mpos hex)
 {
@@ -52,18 +46,9 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid item prototype");
-    }
-
     return mapper->CreateItem(pid, hex, nullptr);
 }
 
-///# ...
-///# param pid ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, mpos hex)
 {
@@ -71,26 +56,15 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
-    if (proto == nullptr) {
-        throw ScriptException("Invalid critter prototype");
-    }
-
     return mapper->CreateCritter(pid, hex);
 }
 
-///# ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 {
     return mapper->CurMap->GetItem(hex, hstring());
 }
 
-///# ...
-///# param hex ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
@@ -106,10 +80,6 @@
     return items;
 }
 
-///# ...
-///# param hex ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
@@ -117,19 +87,12 @@
     return !critters.empty() ? critters.front() : nullptr;
 }
 
-///# ...
-///# param hex ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    return vec_cast<CritterView*>(mapper->CurMap->GetCritters(hex, findType));
+    return vec_static_cast<CritterView*>(mapper->CurMap->GetCritters(hex, findType));
 }
 
-///# ...
-///# param entity ...
-///# param hex ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, mpos hex)
 {
@@ -140,16 +103,12 @@
     mapper->MoveEntity(entity, hex);
 }
 
-///# ...
-///# param entity ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_DeleteEntity(FOMapper* mapper, ClientEntity* entity)
 {
     mapper->DeleteEntity(entity);
 }
 
-///# ...
-///# param entities ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
 {
@@ -160,9 +119,6 @@
     }
 }
 
-///# ...
-///# param entity ...
-///# param set ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_SelectEntity(FOMapper* mapper, ClientEntity* entity, bool set)
 {
@@ -178,9 +134,6 @@
     }
 }
 
-///# ...
-///# param entities ...
-///# param set ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<ClientEntity*>& entities, bool set)
 {
@@ -196,16 +149,12 @@
     }
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ClientEntity* Mapper_Game_GetSelectedEntity(FOMapper* mapper)
 {
     return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0] : nullptr;
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ClientEntity*> Mapper_Game_GetSelectedEntities(FOMapper* mapper)
 {
@@ -219,12 +168,6 @@
     return entities;
 }
 
-///# ...
-///# param hex ...
-///# param pid ...
-///# param layer ...
-///# param roof ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, mpos hex, int layer, bool roof)
 {
@@ -240,43 +183,30 @@
     return mapper->CurMap->AddMapperTile(pid, hex, static_cast<uint8>(corrected_layer), roof);
 }
 
-///# ...
-///# param fileName ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
     return mapper->LoadMap(fileName);
 }
 
-///# ...
-///# param map ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_UnloadMap(FOMapper* mapper, MapView* map)
 {
     mapper->UnloadMap(map);
 }
 
-///# ...
-///# param map ...
-///# param customName ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
 {
     mapper->SaveMap(map, customName);
 }
 
-///# ...
-///# param map ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
 {
     mapper->ShowMap(map);
 }
 
-///# ...
-///# param index ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& index)
 {
@@ -292,9 +222,6 @@
     return mapper->LoadedMaps;
 }
 
-///# ...
-///# param dir ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, string_view dir)
 {
@@ -309,9 +236,6 @@
     return names;
 }
 
-///# ...
-///# param width ...
-///# param height ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, uint16 width, uint16 height)
 {
@@ -322,10 +246,6 @@
     mapper->ResizeMap(mapper->CurMap, width, height);
 }
 
-///# ...
-///# param tab ...
-///# param subTab ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<hstring> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
 {
@@ -344,10 +264,6 @@
     return pids;
 }
 
-///# ...
-///# param tab ...
-///# param subTab ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
 {
@@ -366,10 +282,6 @@
     return pids;
 }
 
-///# ...
-///# param tab ...
-///# param subTab ...
-///# param itemPids ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& itemPids)
 {
@@ -383,27 +295,28 @@
 
     // Add protos to sub tab
     if (!itemPids.empty()) {
-        vector<const ProtoItem*> proto_items;
+        vector<const ProtoItem*> protos;
 
-        for (size_t i = 0; i < itemPids.size(); i++) {
-            const auto* proto_item = mapper->ProtoMngr.GetProtoItem(itemPids[i]);
-            if (proto_item != nullptr) {
-                proto_items.push_back(proto_item);
+        for (const auto item_pid : itemPids) {
+            const auto* proto = mapper->ProtoMngr.GetProtoItemSafe(item_pid);
+
+            if (proto != nullptr) {
+                protos.push_back(proto);
             }
         }
 
-        if (!proto_items.empty()) {
-            auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.ItemProtos = proto_items;
-        }
+        auto& stab = mapper->Tabs[tab][string(subTab)];
+        stab.ItemProtos = protos;
     }
     else {
         // Delete sub tab
         const auto it = mapper->Tabs[tab].find(string(subTab));
+
         if (it != mapper->Tabs[tab].end()) {
             if (mapper->TabsActive[tab] == &it->second) {
                 mapper->TabsActive[tab] = nullptr;
             }
+
             mapper->Tabs[tab].erase(it);
         }
     }
@@ -414,9 +327,11 @@
 
     for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
         auto& stab = it->second;
+
         if (&stab == &stab_default) {
             continue;
         }
+
         for (uint i = 0; i < stab.ItemProtos.size(); i++) {
             stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
         }
@@ -429,10 +344,6 @@
     mapper->RefreshCurProtos();
 }
 
-///# ...
-///# param tab ...
-///# param subTab ...
-///# param critterPids ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& critterPids)
 {
@@ -446,18 +357,16 @@
 
     // Add protos to sub tab
     if (!critterPids.empty()) {
-        vector<const ProtoCritter*> cr_protos;
+        vector<const ProtoCritter*> protos;
 
         for (size_t i = 0; i < critterPids.size(); i++) {
-            const auto* cr_proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
-            if (cr_proto != nullptr) {
-                cr_protos.push_back(cr_proto);
-            }
+            const auto* proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
+            protos.push_back(proto);
         }
 
-        if (!cr_protos.empty()) {
+        if (!protos.empty()) {
             auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.NpcProtos = cr_protos;
+            stab.NpcProtos = protos;
         }
     }
     else {
@@ -493,8 +402,6 @@
     mapper->RefreshCurProtos();
 }
 
-///# ...
-///# param tab ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_TabDelete(FOMapper* mapper, int tab)
 {
@@ -507,10 +414,6 @@
     mapper->TabsActive[tab] = &stab_default;
 }
 
-///# ...
-///# param tab ...
-///# param subTab ...
-///# param show ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_TabSelect(FOMapper* mapper, int tab, string_view subTab, bool show)
 {
@@ -532,9 +435,6 @@
     }
 }
 
-///# ...
-///# param tab ...
-///# param tabName ...
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_TabSetName(FOMapper* mapper, int tab, string_view tabName)
 {
@@ -545,9 +445,6 @@
     mapper->TabsName[tab] = tabName;
 }
 
-///# ...
-///# param key ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
 {

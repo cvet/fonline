@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,19 +35,12 @@
 
 #include "Client.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self)
 {
     return self->CreateRefClone();
 }
 
-///# ...
-///# param count ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
@@ -92,8 +85,6 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
     }
 }
 
-///# ...
-///# param hex ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
@@ -104,28 +95,36 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
     ItemGetMapPos(self, hex);
 }
 
-///# ...
-///# param animName ...
-///# param looped ...
-///# param reversed ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_Animate(ItemView* self, hstring animName, bool looped, bool reversed)
+[[maybe_unused]] void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->Play(animName, looped, reversed);
     }
 }
 
-///# ...
-///# return ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_StopAnim(ItemView* self)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->GetAnim()->Stop();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->GetAnim()->SetTime(normalizedTime);
+    }
+}
+
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
     return self->GetInnerItems();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
 {

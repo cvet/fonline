@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,334 +37,247 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 
-template<class T>
-static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring, const T*>& protos)
+ProtoManager::ProtoManager(FOEngineBase* engine) :
+    _engine {engine},
+    _migrationRuleName {_engine->ToHashedString("Proto")},
+    _itemTypeName {_engine->ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
+    _crTypeName {_engine->ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
+    _mapTypeName {_engine->ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
+    _locTypeName {_engine->ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
 {
     STACK_TRACE_ENTRY();
-
-    vector<uint8> protos_data;
-    auto writer = DataWriter(protos_data);
-
-    set<hstring> str_hashes;
-    vector<uint8> props_data;
-
-    for (auto& kv : protos) {
-        auto* proto_item = kv.second;
-
-        const auto proto_name = proto_item->GetName();
-        writer.Write<uint16>(static_cast<uint16>(proto_name.length()));
-        writer.WritePtr(proto_name.data(), proto_name.length());
-
-        writer.Write<uint16>(static_cast<uint16>(proto_item->GetComponents().size()));
-        for (const auto& component : proto_item->GetComponents()) {
-            auto&& component_str = component.as_str();
-            writer.Write<uint16>(static_cast<uint16>(component_str.length()));
-            writer.WritePtr(component_str.data(), component_str.length());
-        }
-
-        proto_item->GetProperties().StoreAllData(props_data, str_hashes);
-        writer.Write<uint>(static_cast<uint>(props_data.size()));
-        writer.WritePtr(props_data.data(), props_data.size());
-    }
-
-    auto final_writer = DataWriter(data);
-    final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
-    for (const auto& hstr : str_hashes) {
-        const auto& str = hstr.as_str();
-        final_writer.Write<uint>(static_cast<uint>(str.length()));
-        final_writer.WritePtr(str.c_str(), str.length());
-    }
-    final_writer.Write<uint>(static_cast<uint>(protos.size()));
-    final_writer.WritePtr(protos_data.data(), protos_data.size());
 }
 
-template<class T>
-static void ReadProtosFromBinary(HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
+void ProtoManager::ParseProtos(const FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    const auto hashes_count = reader.Read<uint>();
-
-    string str;
-    for (uint i = 0; i < hashes_count; i++) {
-        const auto str_len = reader.Read<uint>();
-        str.resize(str_len);
-        reader.ReadPtr(str.data(), str.length());
-        const auto hstr = hash_resolver.ToHashedString(str);
-        UNUSED_VARIABLE(hstr);
-    }
-
-    vector<uint8> props_data;
-
-    const auto protos_count = reader.Read<uint>();
-    for (uint i = 0; i < protos_count; i++) {
-        const auto proto_name_len = reader.Read<uint16>();
-        const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
-        const auto proto_id = hash_resolver.ToHashedString(proto_name);
-
-        auto* proto = new T(proto_id, property_registrator);
-
-        const auto components_count = reader.Read<uint16>();
-        for (uint16 j = 0; j < components_count; j++) {
-            const auto component_name_len = reader.Read<uint16>();
-            const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
-            const auto component_name_hashed = hash_resolver.ToHashedString(component_name);
-            RUNTIME_ASSERT(property_registrator->IsComponentRegistered(component_name_hashed));
-            proto->EnableComponent(component_name_hashed);
-        }
-
-        const uint data_size = reader.Read<uint>();
-        props_data.resize(data_size);
-        reader.ReadPtr<uint8>(props_data.data(), data_size);
-        proto->GetPropertiesForEdit().RestoreAllData(props_data);
-
-        RUNTIME_ASSERT(!protos.count(proto_id));
-        protos.emplace(proto_id, proto);
-    }
-}
-
-static void InsertMapValues(const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite)
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [key, value] : from_kv) {
-        RUNTIME_ASSERT(!key.empty());
-
-        if (key[0] != '$') {
-            if (overwrite) {
-                to_kv[key] = value;
-            }
-            else {
-                to_kv.emplace(key, value);
-            }
-        }
-        else if (key == "$Components" && !value.empty()) {
-            if (to_kv.count("$Components") == 0) {
-                to_kv["$Components"] = value;
-            }
-            else {
-                to_kv["$Components"] += " " + value;
-            }
-        }
-    }
-}
-
-template<class T>
-static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
-{
-    STACK_TRACE_ENTRY();
+    const auto proto_rule_name = _engine->ToHashedString("Proto");
+    const auto component_rule_name = _engine->ToHashedString("Component");
 
     // Collect data
-    auto files = resources.FilterFiles(ext);
+    unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
-    map<hstring, map<string, string>> files_protos;
-    map<hstring, map<string, map<string, string>>> files_texts;
+    for (const auto* ext : {"fopro", "fomap", "foitem", "focr", "foloc"}) {
+        const bool is_fomap = string_view(ext) == "fomap";
+        auto files = resources.FilterFiles(ext);
 
-    const auto rule_name = hash_resolver.ToHashedString("Proto");
-    const auto type_name = hash_resolver.ToHashedString(T::ENTITY_CLASS_NAME);
+        while (files.MoveNext()) {
+            auto file = files.GetCurFile();
 
-    while (files.MoveNext()) {
-        auto file = files.GetCurFile();
+            auto fopro_options = ConfigFileOption::None;
 
-        auto fopro_options = ConfigFileOption::None;
-
-        if constexpr (std::is_same_v<T, ProtoMap>) {
-            fopro_options = ConfigFileOption::ReadFirstSection;
-        }
-
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &hash_resolver, fopro_options);
-
-        auto protos_data = fopro.GetSections(section_name);
-
-        if constexpr (std::is_same_v<T, ProtoMap>) {
-            if (protos_data.empty()) {
-                protos_data = fopro.GetSections("Header");
-            }
-        }
-
-        for (auto& pkv : protos_data) {
-            auto& kv = *pkv;
-            const auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
-            auto pid = hash_resolver.ToHashedString(name);
-
-            pid = name_resolver.CheckMigrationRule(rule_name, type_name, pid).value_or(pid);
-
-            if (files_protos.count(pid) != 0) {
-                throw ProtoManagerException("Proto already loaded", pid);
+            if (is_fomap) {
+                fopro_options = ConfigFileOption::ReadFirstSection;
             }
 
-            files_protos.emplace(pid, kv);
+            auto fopro = ConfigFile(file.GetPath(), file.GetStr(), _engine, fopro_options);
 
-            for (const auto& section : fopro.GetSectionNames()) {
-                if (section.size() == "Text_xxxx"_len && _str(section).startsWith("Text_")) {
-                    if (!files_texts.count(pid)) {
-                        map<string, map<string, string>> texts;
-                        files_texts.emplace(pid, texts);
-                    }
-                    files_texts[pid].emplace(section, fopro.GetSection(section));
+            for (auto& section : fopro.GetSections()) {
+                const auto& section_name = section.first;
+                auto& section_kv = section.second;
+
+                // Skip default section
+                if (section_name.empty()) {
+                    continue;
                 }
-            }
-        }
 
-        if (protos_data.empty()) {
-            throw ProtoManagerException("File does not contain any proto", file.GetName());
+                hstring type_name;
+
+                if (is_fomap && section_name == "Header") {
+                    type_name = _engine->ToHashedString("Map");
+                }
+                else if (strex(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
+                    type_name = _engine->ToHashedString(section_name.substr("Proto"_len));
+                }
+                else {
+                    throw ProtoManagerException("Invalid proto section name", section_name, file.GetName());
+                }
+
+                if (!_engine->IsValidEntityType(type_name) || !_engine->GetEntityTypeInfo(type_name).HasProtos) {
+                    throw ProtoManagerException("Invalid proto type", section_name, file.GetName());
+                }
+
+                const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetName();
+                auto pid = _engine->ToHashedString(name);
+
+                pid = _engine->CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
+
+                auto& file_protos = all_file_protos[type_name];
+
+                if (file_protos.count(pid) != 0) {
+                    throw ProtoManagerException("Proto already loaded", type_name, pid, file.GetName());
+                }
+
+                file_protos.emplace(pid, section_kv);
+            }
         }
     }
 
-    // Injection
-    auto injection = [&](const string& key_name, bool overwrite) {
-        for (auto&& [pid, kv] : files_protos) {
-            if (kv.count(key_name)) {
-                for (const auto& inject_name : _str(kv[key_name]).split(' ')) {
-                    if (inject_name == "All") {
-                        for (auto&& [other_pid, other_kv] : files_protos) {
-                            if (other_pid != pid) {
-                                InsertMapValues(kv, other_kv, overwrite);
-                            }
-                        }
-                    }
-                    else {
-                        auto inject_pid = hash_resolver.ToHashedString(inject_name);
+    // Processing
+    const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite) {
+        for (auto&& [key, value] : from_kv) {
+            RUNTIME_ASSERT(!key.empty());
 
-                        inject_pid = name_resolver.CheckMigrationRule(rule_name, type_name, inject_pid).value_or(inject_pid);
-
-                        if (!files_protos.count(inject_pid)) {
-                            throw ProtoManagerException("Proto not found for injection from another proto", inject_name, pid);
-                        }
-
-                        InsertMapValues(kv, files_protos[inject_pid], overwrite);
-                    }
+            if (key[0] != '$' || strex(key).startsWith("$Text")) {
+                if (overwrite) {
+                    to_kv[key] = value;
+                }
+                else {
+                    to_kv.emplace(key, value);
                 }
             }
         }
     };
 
-    injection("$Inject", false);
+    for (auto&& file_protos : all_file_protos) {
+        const auto& type_name = file_protos.first;
+        auto& file_proto_pids = file_protos.second;
 
-    // Protos
-    for (auto&& [pid, kv] : files_protos) {
-        auto base_name = pid.as_str();
-        RUNTIME_ASSERT(protos.count(pid) == 0);
+        // Injection
+        auto injection = [&](const string& key_name, bool overwrite) {
+            for (auto&& [pid, kv] : file_proto_pids) {
+                if (kv.count(key_name) != 0) {
+                    for (const auto& inject_name : strex(kv[key_name]).split(' ')) {
+                        if (inject_name == "All") {
+                            for (auto&& [other_pid, other_kv] : file_proto_pids) {
+                                if (other_pid != pid) {
+                                    insert_map_values(kv, other_kv, overwrite);
+                                }
+                            }
+                        }
+                        else {
+                            auto inject_pid = _engine->ToHashedString(inject_name);
 
-        // Fill content from parents
-        map<string, string> final_kv;
-        std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
-            const auto parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"] : string();
+                            inject_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, inject_pid).value_or(inject_pid);
 
-            for (auto& parent_name : _str(parent_name_line).split(' ')) {
-                auto parent_pid = hash_resolver.ToHashedString(parent_name);
+                            if (file_proto_pids.count(inject_pid) == 0) {
+                                throw ProtoManagerException("Proto not found for injection from another proto", inject_name, pid);
+                            }
 
-                parent_pid = name_resolver.CheckMigrationRule(rule_name, type_name, parent_pid).value_or(parent_pid);
-
-                auto it_parent = files_protos.find(parent_pid);
-
-                if (it_parent == files_protos.end()) {
-                    if (base_name == name) {
-                        throw ProtoManagerException("Proto fail to load parent", base_name, parent_name);
+                            insert_map_values(kv, file_proto_pids[inject_pid], overwrite);
+                        }
                     }
-
-                    throw ProtoManagerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                 }
-
-                fill_parent(parent_name, it_parent->second);
-                InsertMapValues(it_parent->second, final_kv, true);
             }
         };
 
-        fill_parent(base_name, kv);
+        injection("$Inject", false);
 
-        // Actual content
-        InsertMapValues(kv, final_kv, true);
+        // Protos
+        for (auto&& [pid, file_kv] : file_proto_pids) {
+            const auto base_name = pid.as_str();
+            RUNTIME_ASSERT(_protos[type_name].count(pid) == 0);
 
-        // Final injection
-        injection("$InjectOverride", true);
+            // Fill content from parents
+            map<string, string> final_kv;
 
-        // Create proto
-        auto props = Properties(property_registrator);
+            std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
+                const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv["$Parent"] : string();
 
-        if (!props.ApplyFromText(final_kv)) {
-            throw ProtoManagerException("Proto item fail to load properties", base_name);
-        }
+                for (auto& parent_name : strex(parent_name_line).split(' ')) {
+                    auto parent_pid = _engine->ToHashedString(parent_name);
 
-        auto* proto = new T(pid, property_registrator, &props);
+                    parent_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
 
-        // Components
-        if (final_kv.count("$Components")) {
-            for (const auto& component_name : _str(final_kv["$Components"]).split(' ')) {
-                const auto component_name_hashed = hash_resolver.ToHashedString(component_name);
+                    auto it_parent = file_proto_pids.find(parent_pid);
 
-                if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
+                    if (it_parent == file_proto_pids.end()) {
+                        if (base_name == name) {
+                            throw ProtoManagerException("Proto fail to load parent", base_name, parent_name);
+                        }
+
+                        throw ProtoManagerException("Proto fail to load parent for another proto", base_name, parent_name, name);
+                    }
+
+                    fill_parent(parent_name, it_parent->second);
+                    insert_map_values(it_parent->second, final_kv, true);
+                }
+            };
+
+            fill_parent(base_name, file_kv);
+
+            // Actual content
+            insert_map_values(file_kv, final_kv, true);
+
+            // Final injection
+            injection("$InjectOverride", true);
+
+            // Create proto
+            const auto* property_registrator = _engine->GetPropertyRegistrator(type_name);
+            auto props = Properties(property_registrator);
+
+            if (!props.ApplyFromText(final_kv)) {
+                throw ProtoManagerException("Proto item fail to load properties", base_name);
+            }
+
+            auto* proto = CreateProto(type_name, pid, &props);
+
+            // Components
+            for (auto&& [key, value] : final_kv) {
+                if (key.front() == '$') {
+                    continue;
+                }
+
+                bool is_component;
+                const auto* prop = property_registrator->Find(key, &is_component);
+                UNUSED_VARIABLE(prop);
+
+                if (!is_component) {
+                    continue;
+                }
+
+                if (value != "Enabled" && value != "Disabled") {
+                    throw ProtoManagerException("Proto item has invalid component value (expected Enabled or Disabled)", base_name, key, value);
+                }
+
+                auto component_name = _engine->ToHashedString(key);
+                component_name = _engine->CheckMigrationRule(component_rule_name, type_name, component_name).value_or(component_name);
+
+                if (!property_registrator->IsComponentRegistered(component_name)) {
                     throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 }
 
-                proto->EnableComponent(component_name_hashed);
-            }
-        }
-
-        // Add to collection
-        protos.emplace(pid, proto);
-    }
-
-    // Texts
-    for (auto&& [pid, file_text] : files_texts) {
-        auto* proto = const_cast<T*>(protos[pid]);
-        RUNTIME_ASSERT(proto);
-
-        for (auto&& [lang, pairs] : file_text) {
-            TextPack temp_text_pack;
-            temp_text_pack.LoadFromMap(pairs);
-
-            TextPack text_pack;
-            uint str_num = 0;
-
-            while ((str_num = temp_text_pack.GetStrNumUpper(str_num)) != 0) {
-                const size_t count = temp_text_pack.GetStrCount(str_num);
-                uint new_str_num = str_num;
-
-                if constexpr (std::is_same_v<T, ProtoItem>) {
-                    new_str_num = ITEM_STR_ID(proto->GetProtoId().as_uint(), str_num);
-                }
-                else if constexpr (std::is_same_v<T, ProtoCritter>) {
-                    new_str_num = CR_STR_ID(proto->GetProtoId().as_uint(), str_num);
-                }
-                else if constexpr (std::is_same_v<T, ProtoLocation>) {
-                    new_str_num = LOC_STR_ID(proto->GetProtoId().as_uint(), str_num);
-                }
-
-                for (const auto n : xrange(count)) {
-                    text_pack.AddStr(new_str_num, temp_text_pack.GetStr(str_num, n));
+                if (value == "Enabled") {
+                    proto->EnableComponent(component_name);
                 }
             }
 
-            proto->Texts.emplace_back(lang.substr("Text_"_len), std::move(text_pack));
+            // Texts
+            const string default_lang = !_engine->Settings.Languages.empty() ? _engine->Settings.Languages.front() : "";
+
+            _parsedTexts[type_name][pid] = {};
+
+            for (auto& kv : final_kv) {
+                if (strex(kv.first).startsWith("$Text")) {
+                    const auto key_tok = strex(kv.first).split(' ');
+                    const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
+
+                    TextPackKey text_key = pid.as_uint();
+
+                    for (size_t i = 2; i < key_tok.size(); i++) {
+                        const string& num = key_tok[i];
+
+                        if (!num.empty()) {
+                            if (strex(num).isNumber()) {
+                                text_key += strex(num).toUInt();
+                            }
+                            else {
+                                text_key += _engine->ToHashedString(num).as_uint();
+                            }
+                        }
+                    }
+
+                    _parsedTexts[type_name][pid][lang].AddStr(text_key, kv.second);
+                }
+            }
         }
     }
-}
-
-ProtoManager::ProtoManager(FOEngineBase* engine) :
-    _engine {engine},
-    _migrationRuleName {_engine->ToHashedString("Proto")},
-    _itemClassName {_engine->ToHashedString(ProtoItem::ENTITY_CLASS_NAME)},
-    _crClassName {_engine->ToHashedString(ProtoCritter::ENTITY_CLASS_NAME)},
-    _mapClassName {_engine->ToHashedString(ProtoMap::ENTITY_CLASS_NAME)},
-    _locClassName {_engine->ToHashedString(ProtoLocation::ENTITY_CLASS_NAME)}
-{
-    STACK_TRACE_ENTRY();
-}
-
-void ProtoManager::ParseProtos(FileSystem& resources)
-{
-    STACK_TRACE_ENTRY();
-
-    ParseProtosExt<ProtoItem>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtosExt<ProtoCritter>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtosExt<ProtoMap>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtosExt<ProtoLocation>(resources, *_engine, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto&& [pid, proto] : _itemProtos) {
         if (!proto->GetComponents().empty()) {
-            const_cast<ProtoItem*>(proto)->CollectionName = _str(*proto->GetComponents().begin()).lower();
+            const_cast<ProtoItem*>(proto)->CollectionName = strex(*proto->GetComponents().begin()).lower();
         }
         else {
             const_cast<ProtoItem*>(proto)->CollectionName = "other";
@@ -374,6 +287,51 @@ void ProtoManager::ParseProtos(FileSystem& resources)
     for (auto&& [pid, proto] : _crProtos) {
         const_cast<ProtoCritter*>(proto)->CollectionName = "all";
     }
+}
+
+auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto create_proto = [&]() -> ProtoEntity* {
+        const auto* registrator = _engine->GetPropertyRegistrator(type_name);
+        RUNTIME_ASSERT(registrator);
+
+        if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
+            auto* proto = new ProtoLocation(pid, registrator, props);
+            _locProtos.emplace(pid, proto);
+
+            return proto;
+        }
+        else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
+            auto* proto = new ProtoMap(pid, registrator, props);
+            _mapProtos.emplace(pid, proto);
+
+            return proto;
+        }
+        else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
+            auto* proto = new ProtoCritter(pid, registrator, props);
+            _crProtos.emplace(pid, proto);
+
+            return proto;
+        }
+        else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
+            auto* proto = new ProtoItem(pid, registrator, props);
+            _itemProtos.emplace(pid, proto);
+
+            return proto;
+        }
+        else {
+            return new ProtoCustomEntity(pid, registrator, props);
+        }
+    };
+
+    ProtoEntity* proto = create_proto();
+
+    const auto inserted = _protos[type_name].emplace(pid, proto).second;
+    RUNTIME_ASSERT(inserted);
+
+    return proto;
 }
 
 void ProtoManager::LoadFromResources()
@@ -397,15 +355,68 @@ void ProtoManager::LoadFromResources()
 #endif
 
     const auto protos_file = _engine->Resources.ReadFile(protos_fname);
+
     if (!protos_file) {
         throw ProtoManagerException("Protos binary file not found", protos_fname);
     }
 
     auto reader = DataReader({protos_file.GetBuf(), protos_file.GetSize()});
-    ReadProtosFromBinary<ProtoItem>(*_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
-    ReadProtosFromBinary<ProtoCritter>(*_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
-    ReadProtosFromBinary<ProtoMap>(*_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
-    ReadProtosFromBinary<ProtoLocation>(*_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
+
+    // Hashes
+    {
+        const auto hashes_count = reader.Read<uint>();
+
+        string str;
+
+        for (uint i = 0; i < hashes_count; i++) {
+            const auto str_len = reader.Read<uint>();
+            str.resize(str_len);
+            reader.ReadPtr(str.data(), str.length());
+            const auto hstr = _engine->ToHashedString(str);
+            UNUSED_VARIABLE(hstr);
+        }
+    }
+
+    // Protos
+    {
+        vector<uint8> props_data;
+
+        const auto types_count = reader.Read<uint>();
+
+        for (uint i = 0; i < types_count; i++) {
+            const auto protos_count = reader.Read<uint>();
+
+            const auto type_name_len = reader.Read<uint16>();
+            const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
+            const auto type_name = _engine->ToHashedString(type_name_str);
+
+            RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
+
+            for (uint j = 0; j < protos_count; j++) {
+                const auto proto_name_len = reader.Read<uint16>();
+                const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
+                const auto proto_id = _engine->ToHashedString(proto_name);
+
+                auto* proto = CreateProto(type_name, proto_id, nullptr);
+
+                const auto components_count = reader.Read<uint16>();
+
+                for (uint16 k = 0; k < components_count; k++) {
+                    const auto component_name_len = reader.Read<uint16>();
+                    const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
+                    const auto component_name_hashed = _engine->ToHashedString(component_name);
+
+                    proto->EnableComponent(component_name_hashed);
+                }
+
+                const uint data_size = reader.Read<uint>();
+                props_data.resize(data_size);
+                reader.ReadPtr<uint8>(props_data.data(), data_size);
+                proto->GetPropertiesForEdit().RestoreAllData(props_data);
+            }
+        }
+    }
+
     reader.VerifyEnd();
 }
 
@@ -413,105 +424,212 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
+    vector<uint8> protos_data;
+    set<hstring> str_hashes;
+
+    {
+        auto writer = DataWriter(protos_data);
+
+        vector<uint8> props_data;
+
+        writer.Write<uint>(static_cast<uint>(_protos.size()));
+
+        for (auto&& [type_name, protos] : _protos) {
+            writer.Write<uint>(static_cast<uint>(protos.size()));
+
+            writer.Write<uint16>(static_cast<uint16>(type_name.as_str().length()));
+            writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+
+            for (auto&& [pid, proto] : protos) {
+                const auto proto_name = proto->GetName();
+                writer.Write<uint16>(static_cast<uint16>(proto_name.length()));
+                writer.WritePtr(proto_name.data(), proto_name.length());
+
+                writer.Write<uint16>(static_cast<uint16>(proto->GetComponents().size()));
+
+                for (const auto& component : proto->GetComponents()) {
+                    const auto& component_str = component.as_str();
+                    writer.Write<uint16>(static_cast<uint16>(component_str.length()));
+                    writer.WritePtr(component_str.data(), component_str.length());
+                }
+
+                proto->GetProperties().StoreAllData(props_data, str_hashes);
+                writer.Write<uint>(static_cast<uint>(props_data.size()));
+                writer.WritePtr(props_data.data(), props_data.size());
+            }
+        }
+    }
+
     vector<uint8> data;
-    WriteProtosToBinary<ProtoItem>(data, _itemProtos);
-    WriteProtosToBinary<ProtoCritter>(data, _crProtos);
-    WriteProtosToBinary<ProtoMap>(data, _mapProtos);
-    WriteProtosToBinary<ProtoLocation>(data, _locProtos);
+
+    {
+        auto final_writer = DataWriter(data);
+
+        final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+
+        for (const auto& hstr : str_hashes) {
+            const auto& str = hstr.as_str();
+            final_writer.Write<uint>(static_cast<uint>(str.length()));
+            final_writer.WritePtr(str.c_str(), str.length());
+        }
+
+        final_writer.WritePtr(protos_data.data(), protos_data.size());
+    }
+
     return data;
 }
 
-auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
+auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept(false) -> const ProtoItem*
 {
     STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemClassName, proto_id).value_or(proto_id);
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
-    const auto it = _itemProtos.find(proto_id);
-
-    return it != _itemProtos.end() ? it->second : nullptr;
-}
-
-auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
-{
-    STACK_TRACE_ENTRY();
-
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crClassName, proto_id).value_or(proto_id);
-
-    const auto it = _crProtos.find(proto_id);
-
-    return it != _crProtos.end() ? it->second : nullptr;
-}
-
-auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
-{
-    STACK_TRACE_ENTRY();
-
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapClassName, proto_id).value_or(proto_id);
-
-    const auto it = _mapProtos.find(proto_id);
-
-    return it != _mapProtos.end() ? it->second : nullptr;
-}
-
-auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
-{
-    STACK_TRACE_ENTRY();
-
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locClassName, proto_id).value_or(proto_id);
-
-    const auto it = _locProtos.find(proto_id);
-
-    return it != _locProtos.end() ? it->second : nullptr;
-}
-
-auto ProtoManager::GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _itemProtos;
-}
-
-auto ProtoManager::GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _crProtos;
-}
-
-auto ProtoManager::GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _mapProtos;
-}
-
-auto ProtoManager::GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _locProtos;
-}
-
-auto ProtoManager::GetAllProtos() const -> vector<const ProtoEntity*>
-{
-    STACK_TRACE_ENTRY();
-
-    vector<const ProtoEntity*> protos;
-    protos.reserve(_itemProtos.size() + _crProtos.size() + _mapProtos.size() + _locProtos.size());
-
-    for (auto&& [id, proto] : _itemProtos) {
-        protos.push_back(proto);
-    }
-    for (auto&& [id, proto] : _crProtos) {
-        protos.push_back(proto);
-    }
-    for (auto&& [id, proto] : _mapProtos) {
-        protos.push_back(proto);
-    }
-    for (auto&& [id, proto] : _locProtos) {
-        protos.push_back(proto);
+    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
+        return it->second;
     }
 
-    return protos;
+    throw ProtoManagerException("Item proto not exists", proto_id);
+}
+
+auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept(false) -> const ProtoCritter*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
+        return it->second;
+    }
+
+    throw ProtoManagerException("Critter proto not exists", proto_id);
+}
+
+auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept(false) -> const ProtoMap*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
+        return it->second;
+    }
+
+    throw ProtoManagerException("Map proto not exists", proto_id);
+}
+
+auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept(false) -> const ProtoLocation*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
+        return it->second;
+    }
+
+    throw ProtoManagerException("Location proto not exists", proto_id);
+}
+
+auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> const ProtoEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
+
+    const auto it_type = _protos.find(type_name);
+
+    if (it_type == _protos.end()) {
+        throw ProtoManagerException("Entity type protos not exist", type_name);
+    }
+
+    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
+        return it->second;
+    }
+
+    throw ProtoManagerException("Entity proto not exists", type_name, proto_id);
+}
+
+auto ProtoManager::GetProtoItemSafe(hstring proto_id) const noexcept -> const ProtoItem*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoCritterSafe(hstring proto_id) const noexcept -> const ProtoCritter*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoMapSafe(hstring proto_id) const noexcept -> const ProtoMap*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoLocationSafe(hstring proto_id) const noexcept -> const ProtoLocation*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
+
+    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
+{
+    STACK_TRACE_ENTRY();
+
+    proto_id = _engine->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
+
+    const auto it_type = _protos.find(type_name);
+
+    if (it_type == _protos.end()) {
+        return nullptr;
+    }
+
+    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it_type = _protos.find(type_name);
+
+    if (it_type == _protos.end()) {
+        return _emptyProtos;
+    }
+
+    return it_type->second;
 }

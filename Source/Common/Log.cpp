@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "Platform.h"
-#include "StringUtils.h"
 
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -46,40 +45,41 @@ struct LogData
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     LogData()
     {
+        NO_STACK_TRACE_ENTRY();
+
         const auto result = std::at_quick_exit(FlushLogAtExit);
         UNUSED_VARIABLE(result);
+
+        MainThreadId = std::this_thread::get_id();
     }
 #endif
 
     std::mutex LogLocker {};
-    bool LogDisableTimestamp {};
     unique_ptr<DiskFile> LogFileHandle {};
     map<string, LogFunc> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
+    std::thread::id MainThreadId {};
 };
 GLOBAL_DATA(LogData, Data);
 
 static void FlushLogAtExit()
 {
-    if (Data != nullptr && Data->LogFileHandle) {
-        Data->LogFileHandle.reset();
+    NO_STACK_TRACE_ENTRY();
+
+    if (Data != nullptr && Data->LogLocker.try_lock()) {
+        std::scoped_lock locker(std::adopt_lock, Data->LogLocker);
+
+        if (Data->LogFileHandle) {
+            Data->LogFileHandle.reset();
+        }
     }
-}
-
-void LogWithoutTimestamp()
-{
-    STACK_TRACE_ENTRY();
-
-    std::lock_guard locker(Data->LogLocker);
-
-    Data->LogDisableTimestamp = true;
 }
 
 void LogToFile(string_view fname)
 {
     STACK_TRACE_ENTRY();
 
-    std::lock_guard locker(Data->LogLocker);
+    std::scoped_lock locker(Data->LogLocker);
 
     auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
 
@@ -87,7 +87,7 @@ void LogToFile(string_view fname)
         Data->LogFileHandle = std::make_unique<DiskFile>(std::move(log_file));
     }
     else {
-        string log_err_msg = _str("Can't create log file '{}'", fname).str();
+        const string log_err_msg = strex("Can't create log file '{}'", fname).str();
 
         Platform::InfoLog(log_err_msg);
 
@@ -100,7 +100,7 @@ void SetLogCallback(string_view key, LogFunc callback)
 {
     STACK_TRACE_ENTRY();
 
-    std::lock_guard locker(Data->LogLocker);
+    std::scoped_lock locker(Data->LogLocker);
 
     if (!key.empty()) {
         if (callback) {
@@ -126,18 +126,21 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             return;
         }
 
-        std::lock_guard locker(Data->LogLocker);
+        std::scoped_lock locker(Data->LogLocker);
 
         // Make message
         string result;
+        result.reserve(message.length() + 64);
 
-        if (!Data->LogDisableTimestamp) {
-            const auto now = time_point::clock::now();
-            const auto now_desc = time_point_desc(now);
-            result += _str("[{:02}:{:02}:{:02}] ", now_desc.tm_hour, now_desc.tm_min, now_desc.tm_sec);
+        const auto now = time_point::clock::now();
+        const auto now_desc = time_point_desc(now);
+        result += strex("[{:02}/{:02}/{:02}] ", now_desc.Day, now_desc.Month, now_desc.Year % 100);
+        result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
+
+        if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
+            result += strex("[{}] ", GetThisThreadName());
         }
 
-        result.reserve(result.size() + message.length() + 1u);
         result += message;
         result += '\n';
 
@@ -188,5 +191,25 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         std::cout.flush();
     }
     catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+extern void WriteLogFatalMessage(string_view message) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::scoped_lock locker(Data->LogLocker);
+
+        if (Data->LogFileHandle) {
+            Data->LogFileHandle->Write(message);
+        }
+
+        std::cout << message;
+        std::cout.flush();
+    }
+    catch (...) {
+        BreakIntoDebugger();
     }
 }

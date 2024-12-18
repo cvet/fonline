@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,6 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# param initFunc ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
@@ -50,8 +46,6 @@
     self->SetInitScript(initFunc);
 }
 
-///# ...
-///# param initFunc ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 {
@@ -62,18 +56,9 @@
     self->SetInitScript(initFunc);
 }
 
-///# ...
-///# param pid ...
-///# param count ...
-///# param stackId ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
-    if (!pid || self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
-        throw ScriptException("Invalid proto '{}' arg.", pid);
-    }
-
     if (count == 0) {
         return nullptr;
     }
@@ -81,18 +66,58 @@
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
 }
 
-///# ...
-///# param stackId ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
 {
     return self->GetInnerItems(stackId);
 }
 
-///# ...
-///# param hex ...
-///# return ...
+///@ ExportMethod
+[[maybe_unused]] Map* Server_Item_GetMap(Item* self)
+{
+    Map* map;
+
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+        if (cr == nullptr) {
+            throw ScriptException("Critter ownership, critter not found");
+        }
+
+        if (cr->GetMapId() == ident_t {}) {
+            return nullptr;
+        }
+
+        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+        if (map == nullptr) {
+            throw ScriptException("Critter ownership, map not found");
+        }
+    } break;
+    case ItemOwnership::MapHex: {
+        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        if (map == nullptr) {
+            throw ScriptException("Hex ownership, map not found");
+        }
+    } break;
+    case ItemOwnership::ItemContainer: {
+        if (self->GetId() == self->GetContainerId()) {
+            throw ScriptException("Container ownership, crosslink");
+        }
+
+        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+        if (cont == nullptr) {
+            throw ScriptException("Container ownership, container not found");
+        }
+
+        map = Server_Item_GetMap(cont);
+    } break;
+    default:
+        throw ScriptException("Unknown ownership");
+    }
+
+    return map;
+}
+
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
@@ -100,7 +125,7 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
+        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
         if (cr == nullptr) {
             throw ScriptException("Critter ownership, critter not found");
         }
@@ -110,7 +135,7 @@
             return nullptr;
         }
 
-        map = self->GetEngine()->MapMngr.GetMap(cr->GetMapId());
+        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
         if (map == nullptr) {
             throw ScriptException("Critter ownership, map not found");
         }
@@ -118,7 +143,7 @@
         hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
+        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
         if (map == nullptr) {
             throw ScriptException("Hex ownership, map not found");
         }
@@ -130,7 +155,7 @@
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
+        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
         if (cont == nullptr) {
             throw ScriptException("Container ownership, container not found");
         }
@@ -144,64 +169,17 @@
     return map;
 }
 
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] upos16 Server_Item_GetWorldPosition(Item* self)
-{
-    upos16 wpos;
-
-    switch (self->GetOwnership()) {
-    case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
-
-        wpos = cr->GetWorldPos();
-    } break;
-    case ItemOwnership::MapHex: {
-        Map* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-        if (map == nullptr) {
-            throw ScriptException("Hex ownership, map not found");
-        }
-
-        wpos = map->GetLocation()->GetWorldPos();
-    } break;
-    case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
-            throw ScriptException("Container ownership, crosslink");
-        }
-
-        auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
-        if (cont == nullptr) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        wpos = Server_Item_GetWorldPosition(cont);
-    } break;
-    default:
-        throw ScriptException("Unknown ownership");
-    }
-
-    return wpos;
-}
-
-///# ...
-///# param animName ...
-///# param looped ...
-///# param reversed ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
+        if (auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
             cr->Send_AnimateItem(self, animName, looped, reversed);
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId()); map != nullptr) {
+        if (auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId()); map != nullptr) {
             map->AnimateItem(self, animName, looped, reversed);
         }
     } break;

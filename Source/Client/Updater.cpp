@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
 
     if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddDataSource(_str(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+        _resources.AddDataSource(strex(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -116,7 +116,7 @@ void Updater::Net_OnDisconnect()
     STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(STR_CONNECTION_FAILTURE, "Connection failture!");
+        Abort(STR_CONNECTION_FAILURE, "Connection failure!");
     }
 }
 
@@ -152,9 +152,9 @@ auto Updater::Process() -> bool
 
             const auto cur = static_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
             const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = _str(update_file.Name).formatPath();
+            const string name = strex(update_file.Name).formatPath();
 
-            update_text += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
+            update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
 
         update_text += "\n";
@@ -195,7 +195,7 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(_settings.ResourcesDir).combinePath(fname).str();
+    return strex(_settings.ResourcesDir).combinePath(fname);
 }
 
 void Updater::AddText(uint str_num, string_view num_str_str)
@@ -229,17 +229,13 @@ void Updater::Net_OnUpdateFilesResponse()
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
-        NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (outdated) {
         Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
@@ -270,12 +266,12 @@ void Updater::Net_OnUpdateFilesResponse()
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
                 // Todo: add update file files checking by hashes
-                /*const auto file_hash = resources.ReadFileText(_str("{}.hash", fname));
+                /*const auto file_hash = resources.ReadFileText(strex("{}.hash", fname));
                 if (file_hash.empty()) {
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }
 
-                if (_str(file_hash).toUInt() == hash) {
+                if (strex(file_hash).toUInt() == hash) {
                     continue;
                 }*/
 
@@ -311,8 +307,6 @@ void Updater::Net_OnUpdateFileData()
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
 
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
     auto& update_file = _filesToUpdate.front();
 
     // Write data to temp file
@@ -347,7 +341,7 @@ void Updater::GetNextFile()
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
-        if (!DiskFileSystem::RenameFile(MakeWritePath(_str("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
+        if (!DiskFileSystem::RenameFile(MakeWritePath(strex("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
@@ -362,8 +356,8 @@ void Updater::GetNextFile()
         _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 
-        DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));
-        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(_str("~{}", next_update_file.Name)), true));
+        DiskFileSystem::DeleteFile(MakeWritePath(strex("~{}", next_update_file.Name)));
+        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(strex("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");

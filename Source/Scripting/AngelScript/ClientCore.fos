@@ -1,4 +1,5 @@
-// FOS Client Mapper Sort -9
+namespace ClientCore // Sort -9
+{
 
 // Messages types in message boxes
 #define FOMB_GAME          (0)
@@ -22,17 +23,16 @@
 #define FT_NO_COLORIZE   (0x0080)
 #define FT_ALIGN         (0x0100)
 #define FT_BORDERED      (0x0200)
-#define FT_SKIPLINES     #(l)(0x0400 |((l) << 16))
-#define FT_SKIPLINES_END #(l)(0x0800 |((l) << 16))
+#define FT_SKIPLINES     #(l)(0x0400 | ((l) << 16))
+#define FT_SKIPLINES_END #(l)(0x0800 | ((l) << 16))
 
 // Client screen types
-#define IS_CLIENT_MAIN_SCREEN         #(s)((s) >= CLIENT_MAIN_SCREEN_LOGIN &&(s) <= CLIENT_MAIN_SCREEN_WAIT)
 #define CLIENT_SCREEN_NONE            (0)
-#define CLIENT_SCREEN_CURSOR          (-1)
 #define CLIENT_MAIN_SCREEN_LOGIN      (1)
 #define CLIENT_MAIN_SCREEN_GAME       (2)
 #define CLIENT_MAIN_SCREEN_GLOBAL_MAP (3)
 #define CLIENT_MAIN_SCREEN_WAIT       (4)
+#define CLIENT_SCREEN_CURSOR          (5)
 #define CLIENT_SCREEN_DIALOG          (6)
 #define CLIENT_SCREEN_TOWN_VIEW       (9)
 
@@ -42,3 +42,5 @@
 #define DRAW_PRIMITIVE_LINESTRIP     (2)
 #define DRAW_PRIMITIVE_TRIANGLELIST  (3)
 #define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
+
+}

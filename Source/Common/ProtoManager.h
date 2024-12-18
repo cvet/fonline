@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,28 +53,44 @@ public:
     ~ProtoManager() = default;
 
     [[nodiscard]] auto GetProtosBinaryData() const -> vector<uint8>;
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&;
-    [[nodiscard]] auto GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&;
-    [[nodiscard]] auto GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&;
-    [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
-    [[nodiscard]] auto GetAllProtos() const -> vector<const ProtoEntity*>;
+    [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
+    [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
 
-    void ParseProtos(FileSystem& resources);
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> NON_NULL const ProtoEntity*;
+
+    [[nodiscard]] auto GetProtoItemSafe(hstring proto_id) const noexcept -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritterSafe(hstring proto_id) const noexcept -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMapSafe(hstring proto_id) const noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocationSafe(hstring proto_id) const noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntitySafe(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*;
+
+    [[nodiscard]] auto GetProtoItems() const noexcept -> const unordered_map<hstring, const ProtoItem*>& { return _itemProtos; }
+    [[nodiscard]] auto GetProtoCritters() const noexcept -> const unordered_map<hstring, const ProtoCritter*>& { return _crProtos; }
+    [[nodiscard]] auto GetProtoMaps() const noexcept -> const unordered_map<hstring, const ProtoMap*>& { return _mapProtos; }
+    [[nodiscard]] auto GetProtoLocations() const noexcept -> const unordered_map<hstring, const ProtoLocation*>& { return _locProtos; }
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&;
+
+    void ParseProtos(const FileSystem& resources);
     void LoadFromResources();
 
 private:
+    auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;
+
     FOEngineBase* _engine;
     const hstring _migrationRuleName;
-    const hstring _itemClassName;
-    const hstring _crClassName;
-    const hstring _mapClassName;
-    const hstring _locClassName;
+    const hstring _itemTypeName;
+    const hstring _crTypeName;
+    const hstring _mapTypeName;
+    const hstring _locTypeName;
     unordered_map<hstring, const ProtoItem*> _itemProtos {};
     unordered_map<hstring, const ProtoCritter*> _crProtos {};
     unordered_map<hstring, const ProtoMap*> _mapProtos {};
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
+    unordered_map<hstring, unordered_map<hstring, const ProtoEntity*>> _protos {};
+    const unordered_map<hstring, const ProtoEntity*> _emptyProtos {};
+    unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };

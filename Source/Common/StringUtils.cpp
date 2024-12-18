@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,24 +38,81 @@
 
 // ReSharper disable CppInconsistentNaming
 
-auto _str::length() const noexcept -> size_t
+strex::operator string&&()
 {
-    return _s.length();
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
+    _sv = {};
+
+    return std::move(_s);
 }
 
-auto _str::empty() const noexcept -> bool
+auto strex::str() -> string&&
 {
-    return _s.empty();
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
+    _sv = {};
+
+    return std::move(_s);
 }
 
-auto _str::compareIgnoreCase(string_view r) const noexcept -> bool
+auto strex::c_str() -> const char*
 {
-    if (_s.length() != r.length()) {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
+    return _s.c_str();
+}
+
+void strex::ownStorage()
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.data() < _s.data() || _sv.data() >= _s.data() + _s.size()) {
+        _s = _sv;
+    }
+    else {
+        if (_s.data() != _sv.data()) {
+            _s.erase(0, static_cast<size_t>(_sv.data() - _s.data()));
+        }
+
+        if (_s.length() != _sv.length()) {
+            _s.resize(_sv.length());
+        }
+    }
+
+    _sv = _s;
+}
+
+auto strex::length() const noexcept -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length();
+}
+
+auto strex::empty() const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.empty();
+}
+
+auto strex::compareIgnoreCase(string_view other) const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.length() != other.length()) {
         return false;
     }
 
-    for (size_t i = 0; i < _s.length(); i++) {
-        if (tolower(_s[i]) != tolower(r[i])) {
+    for (size_t i = 0; i < _sv.length(); i++) {
+        if (std::tolower(_sv[i]) != std::tolower(other[i])) {
             return false;
         }
     }
@@ -63,144 +120,183 @@ auto _str::compareIgnoreCase(string_view r) const noexcept -> bool
     return true;
 }
 
-auto _str::compareIgnoreCaseUtf8(string_view r) const noexcept -> bool
+auto strex::compareIgnoreCaseUtf8(string_view other) const -> bool
 {
-    if (_s.length() != r.length()) {
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.length() != other.length()) {
         return false;
     }
 
-    return _str(_s).lowerUtf8() == _str(r).lowerUtf8();
+    return strex(_sv).lowerUtf8() == strex(other).lowerUtf8();
 }
 
-auto _str::startsWith(char r) const noexcept -> bool
+auto strex::startsWith(char r) const noexcept -> bool
 {
-    return _s.length() >= 1 && _s.front() == r;
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length() >= 1 && _sv.front() == r;
 }
 
-auto _str::startsWith(string_view r) const noexcept -> bool
+auto strex::startsWith(string_view r) const noexcept -> bool
 {
-    return _s.length() >= r.length() && _s.compare(0, r.length(), r) == 0;
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length() >= r.length() && std::memcmp(_sv.data(), r.data(), r.length()) == 0;
 }
 
-auto _str::endsWith(char r) const noexcept -> bool
+auto strex::endsWith(char r) const noexcept -> bool
 {
-    return _s.length() >= 1 && _s.back() == r;
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length() >= 1 && _sv.back() == r;
 }
 
-auto _str::endsWith(string_view r) const noexcept -> bool
+auto strex::endsWith(string_view r) const noexcept -> bool
 {
-    return _s.length() >= r.length() && _s.compare(_s.length() - r.length(), r.length(), r) == 0;
+    NO_STACK_TRACE_ENTRY();
+
+    return _sv.length() >= r.length() && _sv.compare(_sv.length() - r.length(), r.length(), r) == 0;
 }
 
-auto _str::isValidUtf8() const -> bool
+auto strex::isValidUtf8() const noexcept -> bool
 {
-    for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        const auto ucs = utf8::Decode(_s.c_str() + i, &length);
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.empty()) {
+        return true;
+    }
+
+    for (size_t i = 0; i < _sv.length();) {
+        size_t length = _sv.length() - i;
+        const auto ucs = utf8::Decode(_sv.data() + i, length);
+
         if (!utf8::IsValid(ucs)) {
             return false;
         }
+
         i += length;
     }
 
     return true;
 }
 
-auto _str::lengthUtf8() const -> size_t
+auto strex::lengthUtf8() const noexcept -> size_t
 {
-    size_t length = 0;
-    const auto* str = _s.c_str();
+    NO_STACK_TRACE_ENTRY();
 
-    while (*str != 0) {
-        length += static_cast<uint>((*str++ & 0xC0) != 0x80);
+    size_t length = 0;
+
+    for (size_t i = 0; i < _sv.length(); i++) {
+        length += static_cast<uint>((_sv[i] & 0xC0) != 0x80);
     }
 
     return length;
 }
 
-auto _str::substringUntil(char separator) -> _str&
+auto strex::substringUntil(char separator) noexcept -> strex&
 {
-    const auto pos = _s.find(separator);
+    NO_STACK_TRACE_ENTRY();
+
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::substringUntil(string_view separator) -> _str&
+auto strex::substringUntil(string_view separator) noexcept -> strex&
 {
-    const auto pos = _s.find(separator);
+    NO_STACK_TRACE_ENTRY();
+
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::substringAfter(char separator) -> _str&
+auto strex::substringAfter(char separator) noexcept -> strex&
 {
-    const auto pos = _s.find(separator);
+    NO_STACK_TRACE_ENTRY();
+
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _sv = _sv.substr(pos + 1);
     }
     else {
-        _s.erase();
+        _sv = {};
     }
 
     return *this;
 }
 
-auto _str::substringAfter(string_view separator) -> _str&
+auto strex::substringAfter(string_view separator) noexcept -> strex&
 {
-    const auto pos = _s.find(separator);
+    NO_STACK_TRACE_ENTRY();
+
+    const auto pos = _sv.find(separator);
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + separator.length());
+        _sv = _sv.substr(pos + separator.length());
     }
     else {
-        _s.erase();
+        _sv = {};
     }
 
     return *this;
 }
 
-auto _str::trim() -> _str&
+auto strex::trim() noexcept -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     // Left trim
-    const auto l = _s.find_first_not_of(" \n\r\t");
+    const auto l = _sv.find_first_not_of(" \n\r\t");
 
     if (l == string::npos) {
-        _s.erase();
+        _sv = {};
     }
     else {
         if (l > 0) {
-            _s.erase(0, l);
+            _sv = _sv.substr(l);
         }
 
         // Right trim
-        const auto r = _s.find_last_not_of(" \n\r\t");
+        const auto r = _sv.find_last_not_of(" \n\r\t");
 
-        if (r < _s.length() - 1) {
-            _s.erase(r + 1);
+        if (r < _sv.length() - 1) {
+            _sv = _sv.substr(0, r + 1);
         }
     }
 
     return *this;
 }
 
-auto _str::erase(char what) -> _str&
+auto strex::erase(char what) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     _s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
+
+    _sv = _s;
 
     return *this;
 }
 
-auto _str::erase(char begin, char end) -> _str&
+auto strex::erase(char begin, char end) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     while (true) {
         const auto begin_pos = _s.find(begin);
 
@@ -217,25 +313,40 @@ auto _str::erase(char begin, char end) -> _str&
         _s.erase(begin_pos, end_pos - begin_pos + 1);
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::replace(char from, char to) -> _str&
+auto strex::replace(char from, char to) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     std::replace(_s.begin(), _s.end(), from, to);
 
     return *this;
 }
 
-auto _str::replace(char from1, char from2, char to) -> _str&
+auto strex::replace(char from1, char from2, char to) -> strex&
 {
-    replace(string({from1, from2}), string({to}));
+    NO_STACK_TRACE_ENTRY();
+
+    const char from_buf[3] = {from1, from2, 0};
+    const char to_buf[2] = {to, 0};
+
+    replace(from_buf, to_buf);
 
     return *this;
 }
 
-auto _str::replace(string_view from, string_view to) -> _str&
+auto strex::replace(string_view from, string_view to) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     size_t pos = 0;
 
     while ((pos = _s.find(from, pos)) != std::string::npos) {
@@ -243,28 +354,42 @@ auto _str::replace(string_view from, string_view to) -> _str&
         pos += to.length();
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::lower() -> _str&
+auto strex::lower() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     std::transform(_s.begin(), _s.end(), _s.begin(), tolower);
 
     return *this;
 }
 
-auto _str::upper() -> _str&
+auto strex::upper() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     std::transform(_s.begin(), _s.end(), _s.begin(), toupper);
 
     return *this;
 }
 
-auto _str::lowerUtf8() -> _str&
+auto strex::lowerUtf8() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        auto ucs = utf8::Decode(_s.c_str() + i, &length);
+        size_t length = _s.length() - i;
+        auto ucs = utf8::Decode(_s.c_str() + i, length);
 
         ucs = utf8::Lower(ucs);
 
@@ -276,14 +401,20 @@ auto _str::lowerUtf8() -> _str&
         i += new_length;
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::upperUtf8() -> _str&
+auto strex::upperUtf8() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     for (size_t i = 0; i < _s.length();) {
-        uint length = 0;
-        auto ucs = utf8::Decode(_s.c_str() + i, &length);
+        size_t length = _s.length() - i;
+        auto ucs = utf8::Decode(_s.c_str() + i, length);
 
         ucs = utf8::Upper(ucs);
 
@@ -295,132 +426,349 @@ auto _str::upperUtf8() -> _str&
         i += new_length;
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::split(char divider) const -> vector<string>
+auto strex::split(char delimiter) const -> vector<string>
 {
+    NO_STACK_TRACE_ENTRY();
+
     vector<string> result;
-    std::stringstream ss(_s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = _str(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.push_back(entry);
+            entry = strex(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(entry);
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
     return result;
 }
 
-auto _str::splitToInt(char divider) const -> vector<int>
+auto strex::splitToInt(char delimiter) const -> vector<int>
 {
+    NO_STACK_TRACE_ENTRY();
+
     vector<int> result;
-    std::stringstream ss(_s);
-    string entry;
 
-    while (std::getline(ss, entry, divider)) {
-        entry = _str(entry).trim();
+    for (size_t pos = 0;;) {
+        const size_t end_pos = _sv.find(delimiter, pos);
+        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
 
         if (!entry.empty()) {
-            result.push_back(_str(entry).toInt());
+            entry = strex(entry).trim().strv();
+
+            if (!entry.empty()) {
+                result.emplace_back(strex(entry).toInt());
+            }
+        }
+
+        if (end_pos != string::npos) {
+            pos = end_pos + 1;
+        }
+        else {
+            break;
         }
     }
 
     return result;
 }
 
-auto _str::isNumber() const -> bool
-{
-    return isInt() || isFloat();
-}
+#if defined(_MSC_VER) && _MSC_VER >= 1924
+#define USE_FROM_CHARS 1
+#else
+#define USE_FROM_CHARS 0
+#endif
 
-auto _str::isInt() const -> bool
+template<typename T>
+static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
-    if (_s.empty()) {
+    NO_STACK_TRACE_ENTRY();
+
+    const size_t len = sv.length();
+
+    if (len == 0) {
+        return false;
+    }
+    if (len > strex::MAX_NUMBER_STRING_LENGTH) {
         return false;
     }
 
-    char* str_end = nullptr;
-    const auto v = std::strtoul(_s.c_str(), &str_end, 10);
-    UNUSED_VARIABLE(v);
+    if constexpr (std::is_integral_v<T>) {
+        static_assert(std::is_signed_v<T>);
 
-    return str_end != _s.c_str();
+        const char* ptr = sv.data();
+        const char* end_ptr = ptr + len;
+        int base = 10;
+        bool negative = false;
+
+        if (sv[0] == '-') {
+            if (len >= 2 && sv[1] == '-') {
+                return false;
+            }
+
+            ptr += 1;
+            negative = true;
+
+            if (len >= 3 && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')) {
+                ptr += 2;
+                base = 16;
+            }
+        }
+        else {
+            if (len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) {
+                ptr += 2;
+                base = 16;
+            }
+        }
+
+        if (ptr == end_ptr) {
+            return false;
+        }
+
+        std::make_unsigned_t<T> uvalue;
+        bool success;
+        bool out_of_range;
+
+        if constexpr (USE_FROM_CHARS) {
+            const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
+            success = result.ec == std::errc() && result.ptr == end_ptr;
+            out_of_range = result.ec == std::errc::result_out_of_range;
+        }
+        else {
+            // Assume all our strings are null terminated
+            if (*end_ptr != 0) {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                std::memcpy(str_nt.data(), ptr, count);
+                str_nt[count] = 0;
+
+                char* result_end_ptr;
+                uvalue = std::strtoull(str_nt.data(), &result_end_ptr, base);
+                success = result_end_ptr == str_nt.data() + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+            else {
+                const auto count = static_cast<size_t>(end_ptr - ptr);
+                char* result_end_ptr;
+                uvalue = std::strtoull(ptr, &result_end_ptr, base);
+                success = result_end_ptr == ptr + count;
+                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
+            }
+        }
+
+        if (success) {
+            if (negative) {
+                if (uvalue > static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min())) {
+                    value = std::numeric_limits<T>::min();
+                }
+                else {
+                    value = -static_cast<T>(uvalue);
+                }
+            }
+            else {
+                value = static_cast<T>(uvalue);
+            }
+
+            return true;
+        }
+        else {
+            // Out of range
+            if (out_of_range) {
+                if (negative) {
+                    value = std::numeric_limits<T>::min();
+                }
+                else {
+                    value = static_cast<T>(std::numeric_limits<std::make_unsigned_t<T>>::max());
+                }
+
+                return true;
+            }
+
+            // Try read as float
+            if (base == 10) {
+                if (double fvalue; ConvertToNumber(sv, fvalue)) {
+                    value = static_cast<T>(std::clamp(fvalue, static_cast<double>(std::numeric_limits<T>::min()), static_cast<double>(std::numeric_limits<T>::max())));
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+    else {
+        if (((len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) || (len >= 3 && sv[0] == '-' && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')))) {
+            // Try read as hex integer
+            if (int64 ivalue; ConvertToNumber(sv, ivalue)) {
+                value = static_cast<T>(ivalue);
+
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            const char* ptr = sv.data();
+            const char* end_ptr = ptr + len;
+
+            if (sv.back() == 'f') {
+                end_ptr -= 1;
+            }
+
+            if (ptr == end_ptr) {
+                return false;
+            }
+
+            if constexpr (USE_FROM_CHARS) {
+                const auto result = std::from_chars(ptr, end_ptr, value);
+
+                return result.ec == std::errc() && result.ptr == end_ptr;
+            }
+            else {
+                // Assume all our strings are null terminated
+                if (*end_ptr != 0) {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
+                    std::memcpy(str_nt.data(), ptr, count);
+                    str_nt[count] = 0;
+
+                    char* result_end_ptr;
+                    value = std::strtod(str_nt.data(), &result_end_ptr);
+
+                    return result_end_ptr == str_nt.data() + count;
+                }
+                else {
+                    const auto count = static_cast<size_t>(end_ptr - ptr);
+                    char* result_end_ptr;
+                    value = std::strtod(ptr, &result_end_ptr);
+
+                    return result_end_ptr == ptr + count;
+                }
+            }
+        }
+    }
 }
 
-auto _str::isFloat() const -> bool
+#undef USE_FROM_CHARS
+
+auto strex::isNumber() const noexcept -> bool
 {
-    if (_s.empty()) {
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.empty()) {
         return false;
     }
 
-    char* str_end = nullptr;
-    const auto v = std::strtod(_s.c_str(), &str_end);
-    UNUSED_VARIABLE(v);
+    double value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+    UNUSED_VARIABLE(value);
 
-    return str_end != _s.c_str();
+    return success;
 }
 
-auto _str::isExplicitBool() const -> bool
+auto strex::isExplicitBool() const noexcept -> bool
 {
-    if (compareIgnoreCase("true")) {
+    NO_STACK_TRACE_ENTRY();
+
+    if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (strex(_sv).trim().compareIgnoreCase("false")) {
         return true;
     }
 
     return false;
 }
 
-auto _str::toInt() const -> int
+auto strex::toInt() const noexcept -> int
 {
-    return static_cast<int>(std::strtoll(_s.c_str(), nullptr, 0));
+    NO_STACK_TRACE_ENTRY();
+
+    int64 value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+
+    return success ? clamp_to<int>(value) : 0;
 }
 
-auto _str::toUInt() const -> uint
+auto strex::toUInt() const noexcept -> uint
 {
-    return static_cast<uint>(std::strtoull(_s.c_str(), nullptr, 0));
+    NO_STACK_TRACE_ENTRY();
+
+    int64 value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+
+    return success ? clamp_to<uint>(value) : 0;
 }
 
-auto _str::toInt64() const -> int64
+auto strex::toInt64() const noexcept -> int64
 {
-    return static_cast<int64>(std::strtoll(_s.c_str(), nullptr, 0));
+    NO_STACK_TRACE_ENTRY();
+
+    int64 value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+
+    return success ? value : 0;
 }
 
-auto _str::toUInt64() const -> uint64
+auto strex::toFloat() const noexcept -> float
 {
-    return static_cast<uint64>(std::strtoull(_s.c_str(), nullptr, 0));
+    NO_STACK_TRACE_ENTRY();
+
+    double value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+
+    return success ? static_cast<float>(value) : 0.0f;
 }
 
-auto _str::toFloat() const -> float
+auto strex::toDouble() const noexcept -> double
 {
-    return static_cast<float>(std::strtod(_s.c_str(), nullptr));
+    NO_STACK_TRACE_ENTRY();
+
+    double value;
+    const auto success = ConvertToNumber(strex(_sv).trim(), value);
+
+    return success ? value : 0.0;
 }
 
-auto _str::toDouble() const -> double
+auto strex::toBool() const noexcept -> bool
 {
-    return std::strtod(_s.c_str(), nullptr);
-}
+    NO_STACK_TRACE_ENTRY();
 
-auto _str::toBool() const -> bool
-{
-    if (compareIgnoreCase("true")) {
+    if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
     }
-    if (compareIgnoreCase("false")) {
+    if (strex(_sv).trim().compareIgnoreCase("false")) {
         return false;
     }
 
     return toInt() != 0;
 }
 
-auto _str::formatPath() -> _str&
+auto strex::formatPath() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     trim();
     normalizePathSlashes();
+
+    ownStorage();
 
     // Erase first './'
     while (_s[0] == '.' && _s[1] == '/') {
@@ -429,6 +777,7 @@ auto _str::formatPath() -> _str&
 
     // Skip first '../'
     uint back_count = 0;
+
     while (_s.length() >= 3 && _s[0] == '.' && _s[1] == '.' && _s[2] == '/') {
         back_count++;
         _s.erase(0, 3);
@@ -456,10 +805,11 @@ auto _str::formatPath() -> _str&
         const auto pos2 = _s.rfind('/', pos - 1);
 
         if (pos2 == string::npos) {
-            break;
+            _s.erase(0, pos + 4);
         }
-
-        _s.erase(pos2 + 1, pos - pos2 - 1 + 3);
+        else {
+            _s.erase(pos2 + 1, pos - pos2 + 3);
+        }
     }
 
     // Apply skipped '../'
@@ -467,94 +817,125 @@ auto _str::formatPath() -> _str&
         _s.insert(0, "../");
     }
 
+    _sv = _s;
+
     return *this;
 }
 
-auto _str::extractDir() -> _str&
+auto strex::extractDir() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     formatPath();
 
-    const auto pos = _s.find_last_of('/');
+    const auto pos = _sv.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos);
+        _sv = _sv.substr(0, pos);
     }
 
     return *this;
 }
 
-auto _str::extractFileName() -> _str&
+auto strex::extractFileName() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     formatPath();
 
-    const auto pos = _s.find_last_of('/');
+    const auto pos = _sv.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _sv = _sv.substr(pos + 1);
     }
 
     return *this;
 }
 
-auto _str::getFileExtension() -> _str&
+auto strex::getFileExtension() -> strex&
 {
-    const auto dot = _s.find_last_of('.');
+    NO_STACK_TRACE_ENTRY();
 
-    _s = dot != string::npos ? _s.substr(dot + 1) : "";
+    const auto dot = _sv.find_last_of('.');
+    lower();
+
+    _sv = dot != string::npos ? _sv.substr(dot + 1) : "";
+
     lower();
 
     return *this;
 }
 
-auto _str::eraseFileExtension() -> _str&
+auto strex::eraseFileExtension() noexcept -> strex&
 {
-    const auto dot = _s.find_last_of('.');
+    NO_STACK_TRACE_ENTRY();
+
+    const auto dot = _sv.find_last_of('.');
 
     if (dot != string::npos) {
-        _s = _s.substr(0, dot);
+        _sv = _sv.substr(0, dot);
     }
 
     return *this;
 }
 
-auto _str::changeFileName(string_view new_name) -> _str&
+auto strex::changeFileName(string_view new_name) -> strex&
 {
-    const auto ext = _str(_s).getFileExtension();
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
+    const auto ext = strex(_s).getFileExtension().str();
 
     if (!ext.empty()) {
-        const auto new_name_with_ext = _str("{}.{}", new_name, ext);
-        _s = _str(_s).extractDir().combinePath(new_name_with_ext);
+        const auto new_name_with_ext = strex("{}.{}", new_name, ext);
+        _s = strex(_s).extractDir().combinePath(new_name_with_ext);
     }
     else {
-        _s = _str(_s).extractDir().combinePath(new_name);
+        _s = strex(_s).extractDir().combinePath(new_name);
     }
+
+    _sv = _s;
 
     return *this;
 }
 
-auto _str::combinePath(string_view path) -> _str&
+auto strex::combinePath(string_view path) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (!path.empty()) {
+        ownStorage();
+
         if (!_s.empty() && _s.back() != '/' && path.front() != '/') {
             _s += "/";
         }
 
         _s += path;
+
+        _sv = _s;
+
         formatPath();
     }
 
     return *this;
 }
 
-auto _str::normalizePathSlashes() -> _str&
+auto strex::normalizePathSlashes() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     std::replace(_s.begin(), _s.end(), '\\', '/');
 
     return *this;
 }
 
-auto _str::normalizeLineEndings() -> _str&
+auto strex::normalizeLineEndings() -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
     replace('\r', '\n', '\n');
     replace('\r', '\n');
 
@@ -562,8 +943,12 @@ auto _str::normalizeLineEndings() -> _str&
 }
 
 #if FO_WINDOWS
-auto _str::parseWideChar(const wchar_t* str) -> _str&
+auto strex::parseWideChar(const wchar_t* str) -> strex&
 {
+    NO_STACK_TRACE_ENTRY();
+
+    ownStorage();
+
     const auto len = static_cast<int>(::wcslen(str));
 
     if (len != 0) {
@@ -571,22 +956,28 @@ auto _str::parseWideChar(const wchar_t* str) -> _str&
         const auto r = ::WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += buf != nullptr ? string(buf, r) : string();
+
         _freea(buf);
     }
+
+    _sv = _s;
 
     return *this;
 }
 
-auto _str::toWideChar() const -> std::wstring
+auto strex::toWideChar() const -> std::wstring
 {
-    if (_s.empty()) {
+    NO_STACK_TRACE_ENTRY();
+
+    if (_sv.empty()) {
         return L"";
     }
 
-    auto* buf = static_cast<wchar_t*>(_malloca(_s.length() * sizeof(wchar_t) * 2));
-    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _s.c_str(), static_cast<int>(_s.length()), buf, static_cast<int>(_s.length()));
+    auto* buf = static_cast<wchar_t*>(_malloca(_sv.length() * sizeof(wchar_t) * 2));
 
+    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), static_cast<int>(_sv.length()), buf, static_cast<int>(_sv.length()));
     auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
+
     _freea(buf);
 
     return result;
@@ -595,111 +986,149 @@ auto _str::toWideChar() const -> std::wstring
 
 // ReSharper restore CppInconsistentNaming
 
-auto utf8::IsValid(uint ucs) -> bool
+// 0xFFFD - Unicode REPLACEMENT CHARACTER
+static constexpr uint UNICODE_BAD_CHAR = 0xFFFD;
+
+auto utf8::IsValid(uint ucs) noexcept -> bool
 {
-    // 0xFFFD - Unicode REPLACEMENT CHARACTER
-    return ucs != 0xFFFD && ucs <= 0x10FFFF;
+    NO_STACK_TRACE_ENTRY();
+
+    return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
 }
 
-auto utf8::Decode(string_view str, uint* length) -> uint
+auto utf8::DecodeStrNtLen(const char* str) noexcept -> size_t
 {
-#define DECODE_FAIL() \
-    do { \
-        if (length) { \
-            *length = 1; \
-        } \
-        return 0xFFFD; \
-    } while (0)
+    NO_STACK_TRACE_ENTRY();
 
-    const auto c = *reinterpret_cast<const uint8*>(str.data());
-    if (c < 0x80) {
-        if (length != nullptr) {
-            *length = 1;
+    size_t length = 0;
+
+    if (str[0] != 0) {
+        length++;
+
+        if (str[1] != 0) {
+            length++;
+
+            if (str[2] != 0) {
+                length++;
+
+                if (str[3] != 0) {
+                    length++;
+                }
+            }
         }
-        return c;
+    }
+
+    return length;
+}
+
+auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (length == 0) {
+        return UNICODE_BAD_CHAR;
+    }
+
+    const auto make_result = [&length](uint ch, size_t ch_lenght) -> uint {
+        STRONG_ASSERT(ch_lenght <= length);
+        length = ch_lenght;
+        return ch;
+    };
+
+    const auto make_error = [&length]() -> uint {
+        length = 1;
+        return UNICODE_BAD_CHAR;
+    };
+
+    const auto c = *reinterpret_cast<const uint8*>(str);
+
+    if (c < 0x80) {
+        return make_result(c, 1);
     }
 
     if (c < 0xc2) {
-        DECODE_FAIL();
+        return make_error();
     }
+
+    if (length < 2) {
+        return make_error();
+    }
+
     if ((str[1] & 0xc0) != 0x80) {
-        DECODE_FAIL();
+        return make_error();
     }
 
     if (c < 0xe0) {
-        if (length != nullptr) {
-            *length = 2;
-        }
-        return ((str[0] & 0x1f) << 6) + (str[1] & 0x3f);
+        return make_result(((str[0] & 0x1f) << 6) + (str[1] & 0x3f), 2);
+    }
+
+    if (length < 3) {
+        return make_error();
     }
 
     if (c == 0xe0) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] < 0xa0) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] < 0xa0) {
+            return make_error();
         }
 
         if ((str[2] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
-        if (length != nullptr) {
-            *length = 3;
-        }
-        return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
+
+        return make_result(((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f), 3);
     }
 
     if (c < 0xf0) {
         if ((str[2] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
-        if (length != nullptr) {
-            *length = 3;
-        }
-        return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
+
+        return make_result(((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f), 3);
+    }
+
+    if (length < 4) {
+        return make_error();
     }
 
     if (c == 0xf0) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] < 0x90) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] < 0x90) {
+            return make_error();
         }
+
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
-        if (length != nullptr) {
-            *length = 4;
-        }
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
     if (c < 0xf4) {
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
-        if (length != nullptr) {
-            *length = 4;
-        }
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
     if (c == 0xf4) {
-        if (reinterpret_cast<const uint8*>(str.data())[1] > 0x8f) {
-            DECODE_FAIL();
+        if (reinterpret_cast<const uint8*>(str)[1] > 0x8f) {
+            return make_error();
         }
+
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            DECODE_FAIL();
+            return make_error();
         }
-        if (length != nullptr) {
-            *length = 4;
-        }
-        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+
+        return make_result(((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f), 4);
     }
 
-    DECODE_FAIL();
-
-#undef DECODE_FAIL
+    return make_error();
 }
 
-auto utf8::Encode(uint ucs, char (&buf)[4]) -> uint
+auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (ucs < 0x000080u) {
         buf[0] = static_cast<char>(ucs);
         return 1;
@@ -734,9 +1163,12 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) -> uint
     return 3;
 }
 
-auto utf8::Lower(uint ucs) -> uint
+auto utf8::Lower(uint ucs) noexcept -> uint
 {
+    NO_STACK_TRACE_ENTRY();
+
     uint ret;
+
     if (ucs <= 0x02B6) {
         if (ucs >= 0x0041) {
             ret = UCS_TABLE_0041[ucs - 0x0041];
@@ -744,6 +1176,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -754,6 +1187,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -764,6 +1198,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -774,6 +1209,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -784,6 +1220,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -794,6 +1231,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -804,6 +1242,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -814,6 +1253,7 @@ auto utf8::Lower(uint ucs) -> uint
                 return ret;
             }
         }
+
         return ucs;
     }
 
@@ -824,6 +1264,8 @@ struct Utf8Data
 {
     Utf8Data()
     {
+        STACK_TRACE_ENTRY();
+
         UpperTable.resize(0x10000);
 
         for (uint i = 0; i < 0x10000; i++) {
@@ -832,6 +1274,7 @@ struct Utf8Data
 
         for (uint i = 0; i < 0x10000; i++) {
             const auto l = utf8::Lower(i);
+
             if (l != i) {
                 UpperTable[l] = static_cast<uint16>(i);
             }
@@ -842,8 +1285,10 @@ struct Utf8Data
 };
 GLOBAL_DATA(Utf8Data, Data);
 
-auto utf8::Upper(uint ucs) -> uint
+auto utf8::Upper(uint ucs) noexcept -> uint
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (ucs >= 0x10000) {
         return ucs;
     }

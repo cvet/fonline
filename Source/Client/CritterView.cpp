@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,13 +36,13 @@
 #include "ItemView.h"
 
 CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = strex("{}_{}", proto->GetName(), id);
 
 #if FO_ENABLE_3D
     if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {
@@ -52,18 +52,15 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
 #endif
 }
 
-void CritterView::MarkAsDestroyed()
+void CritterView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
     for (auto* item : _invItems) {
-        item->MarkAsDestroyed();
-        item->Release();
+        item->DestroySelf();
     }
-    _invItems.clear();
 
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
+    _invItems.clear();
 }
 
 void CritterView::SetName(string_view name)
@@ -73,38 +70,43 @@ void CritterView::SetName(string_view name)
     _name = name;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
+auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = new ItemView(_engine, id, proto, props);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    _invItems.push_back(item);
-
-    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
-
-    return item;
+    return AddRawInvItem(item);
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
+auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = AddInvItem(id, proto, slot, nullptr);
+    auto* item = new ItemView(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
+    item->SetStatic(false);
+    item->SetOwnership(ItemOwnership::CritterInventory);
+    item->SetCritterId(GetId());
+    item->SetCritterSlot(slot);
 
-    RUNTIME_ASSERT(!item->GetIsStatic());
+    return AddRawInvItem(item);
+}
+
+auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
+{
+    RUNTIME_ASSERT(!item->GetStatic());
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
     RUNTIME_ASSERT(item->GetCritterId() == GetId());
-    RUNTIME_ASSERT(item->GetCritterSlot() == slot);
 
-    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    vec_add_unique_value(_invItems, item);
+    std::stable_sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }
@@ -115,16 +117,9 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 
     UNUSED_VARIABLE(animate);
 
-    const auto it = std::find(_invItems.begin(), _invItems.end(), item);
-    RUNTIME_ASSERT(it != _invItems.end());
-    _invItems.erase(it);
+    vec_remove_unique_value(_invItems, item);
 
-    item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetCritterId(ident_t {});
-    item->SetCritterSlot(CritterItemSlot::Inventory);
-
-    item->MarkAsDestroyed();
-    item->Release();
+    item->DestroySelf();
 }
 
 void CritterView::DeleteAllInvItems()
@@ -136,7 +131,7 @@ void CritterView::DeleteAllInvItems()
     }
 }
 
-auto CritterView::GetInvItem(ident_t item_id) -> ItemView*
+auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -147,10 +142,11 @@ auto CritterView::GetInvItem(ident_t item_id) -> ItemView*
             return item;
         }
     }
+
     return nullptr;
 }
 
-auto CritterView::GetInvItemByPid(hstring item_pid) -> ItemView*
+auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -161,12 +157,13 @@ auto CritterView::GetInvItemByPid(hstring item_pid) -> ItemView*
             return item;
         }
     }
+
     return nullptr;
 }
 
-auto CritterView::GetInvItems() -> const vector<ItemView*>&
+auto CritterView::GetInvItems() noexcept -> const vector<ItemView*>&
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -177,34 +174,35 @@ auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
 {
     STACK_TRACE_ENTRY();
 
-    return vec_cast<const ItemView*>(_invItems);
+    return vec_static_cast<const ItemView*>(_invItems);
 }
 
-auto CritterView::CheckFind(CritterFindType find_type) const -> bool
+auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetIsControlledByPlayer()) {
+    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
+    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
     if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
+
     return true;
 }
 
-auto CritterView::GetStateAnim() const -> CritterStateAnim
+auto CritterView::GetStateAnim() const noexcept -> CritterStateAnim
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     switch (GetCondition()) {
     case CritterCondition::Alive:

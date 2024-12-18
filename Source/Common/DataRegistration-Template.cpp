@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -110,33 +110,33 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
 
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
-        const auto tokens = _str(info).split(' ');
+        const auto tokens = strex(info).split(' ');
         const auto& enum_name = tokens[0];
-        const auto enum_size = _str(tokens[1]).toInt();
+        const auto enum_size = strex(tokens[1]).toInt();
 
         unordered_map<string, int> key_values;
         for (size_t i = 2; i < tokens.size(); i++) {
-            const auto kv = _str(tokens[i]).split('=');
+            const auto kv = strex(tokens[i]).split('=');
             RUNTIME_ASSERT(kv.size() == 2);
             const auto key = kv[0];
-            const auto value = _str(kv[1]).toInt();
+            const auto value = strex(kv[1]).toInt();
             key_values.emplace(key, value);
         }
 
-        engine->AddEnumGroup(enum_name, enum_size, std::move(key_values));
+        engine->RegisterEnumGroup(enum_name, enum_size, std::move(key_values));
     }
 
     // Restore property components
     for (const auto& info : restoreInfo["PropertyComponents"]) {
-        const auto tokens = _str(info).split(' ');
-        auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
+        const auto tokens = strex(info).split(' ');
+        auto* prop_registrator = engine->GetPropertyRegistratorForEdit(tokens[0]);
         prop_registrator->RegisterComponent(tokens[1]);
     }
 
     // Restore properties
     for (const auto& info : restoreInfo["Properties"]) {
-        auto tokens = _str(info).split(' ');
-        auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
+        auto tokens = strex(info).split(' ');
+        auto* prop_registrator = engine->GetPropertyRegistratorForEdit(tokens[0]);
 
         vector<string_view> flags;
         flags.reserve(tokens.size() - 1);

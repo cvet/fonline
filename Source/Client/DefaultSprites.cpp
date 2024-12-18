@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +70,7 @@ AtlasSprite::~AtlasSprite()
 
 auto AtlasSprite::IsHitTest(ipos pos) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (!Size.IsValidPos(pos)) {
         return false;
@@ -164,26 +164,31 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
 
 auto SpriteSheet::IsHitTest(ipos pos) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return GetCurSpr()->IsHitTest(pos);
 }
 
 auto SpriteSheet::GetBatchTex() const -> RenderTexture*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return GetCurSpr()->GetBatchTex();
 }
 
 auto SpriteSheet::GetCurSpr() const -> const Sprite*
 {
+    NO_STACK_TRACE_ENTRY();
+
     return const_cast<SpriteSheet*>(this)->GetCurSpr();
 }
 
 auto SpriteSheet::GetCurSpr() -> Sprite*
 {
+    NO_STACK_TRACE_ENTRY();
+
     const auto* dir_sheet = _curDir == 0 || !Dirs[_curDir - 1] ? this : Dirs[_curDir - 1].get();
+
     return dir_sheet->Spr[_curIndex].get();
 }
 
@@ -331,28 +336,28 @@ void SpriteSheet::RefreshParams()
 
 auto SpriteSheet::GetSpr(uint num_frm) const -> const Sprite*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
 auto SpriteSheet::GetSpr(uint num_frm) -> Sprite*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
 auto SpriteSheet::GetDir(uint dir) const -> const SpriteSheet*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
 }
 
 auto SpriteSheet::GetDir(uint dir) -> SpriteSheet*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
 }
@@ -371,7 +376,6 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     auto file = _sprMngr.GetResources().ReadFile(path);
     if (!file) {
-        BreakIntoDebugger();
         return nullptr;
     }
 

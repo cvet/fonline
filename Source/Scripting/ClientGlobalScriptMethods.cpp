@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,42 +38,33 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
+#include "NetCommand.h"
 #include "StringUtils.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsFullscreen(FOClient* client)
 {
     return client->SprMngr.IsFullscreen();
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ToggleFullscreen(FOClient* client)
 {
     client->SprMngr.ToggleFullscreen();
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_MinimizeWindow(FOClient* client)
 {
     client->SprMngr.MinimizeWindow();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsConnecting(FOClient* client)
 {
     return client->IsConnecting();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsConnected(FOClient* client)
 {
@@ -128,10 +119,6 @@
     return client->ClientDeferredCalls.CancelDeferredCall(id);
 }
 
-///# ...
-///# param cr1 ...
-///# param cr2 ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
@@ -145,61 +132,45 @@
     }
 
     const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
-    if (hex_cr1 == nullptr) {
-        throw ScriptException("Critter 1 is not on map");
-    }
-
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
-    if (hex_cr2 == nullptr) {
-        throw ScriptException("Critter 2 is not on map");
-    }
 
-    if (hex_cr1->GetMap()->GetId() != hex_cr2->GetMap()->GetId()) {
-        throw ScriptException("Critters different maps");
+    if (hex_cr1 != nullptr && hex_cr2 != nullptr) {
+        const auto dist = GeometryHelper::DistGame(hex_cr1->GetHex(), hex_cr2->GetHex());
+        const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
     }
-
-    return GeometryHelper::DistGame(hex_cr1->GetHex(), hex_cr2->GetHex());
+    else if (hex_cr1 == nullptr && hex_cr2 == nullptr) {
+        return 0;
+    }
+    else {
+        throw ScriptException("Critters unknown positions");
+    }
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetTick(FOClient* client)
 {
     return time_duration_to_ms<uint>(client->GameTime.FrameTime().time_since_epoch());
 }
 
-///# ...
-///# param command ...
-///# param separator ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command)
 {
     return client->CustomCall(command, " ");
 }
 
-///# ...
-///# param command ...
-///# param separator ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command, string_view separator)
 {
     return client->CustomCall(command, separator);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetChosen(FOClient* client)
 {
     return client->GetChosen();
 }
 
-///# ...
-///# param itemId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
 {
@@ -234,7 +205,7 @@
     }
     else {
         if (item == nullptr) {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (!cr->GetIsChosen()) {
                     item = cr->GetInvItem(itemId);
 
@@ -249,18 +220,15 @@
     return item != nullptr && !item->IsDestroyed() ? item : nullptr;
 }
 
-///# ...
-///# param critterId ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t critterId)
+[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId)
 {
-    if (!critterId) {
+    if (!crId) {
         return nullptr;
     }
 
     if (client->CurMap != nullptr) {
-        auto* cr = client->CurMap->GetCritter(critterId);
+        auto* cr = client->CurMap->GetCritter(crId);
         if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
             return nullptr;
         }
@@ -268,36 +236,32 @@
         return cr;
     }
     else {
-        return client->GetWorldmapCritter(critterId);
+        return client->GetGlobalMapCritter(crId);
     }
 }
 
-///# ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, CritterFindType findType)
 {
     vector<CritterView*> critters;
 
     if (client->CurMap != nullptr) {
-        for (auto* cr : client->CurMap->GetCritters()) {
+        auto&& map_critters = client->CurMap->GetCritters();
+        critters.reserve(map_critters.size());
+
+        for (auto* cr : map_critters) {
             if (cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }
     }
     else {
-        critters = client->GetWorldmapCritters();
+        critters = client->GetGlobalMapCritters();
     }
 
     return critters;
 }
 
-///# ...
-///# param pid ...
-///# param findType ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, hstring pid, CritterFindType findType)
 {
@@ -321,14 +285,14 @@
     }
     else {
         if (!pid) {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
             }
         }
         else {
-            for (auto* cr : client->GetWorldmapCritters()) {
+            for (auto* cr : client->GetGlobalMapCritters()) {
                 if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
@@ -339,38 +303,56 @@
     return critters;
 }
 
-///# ...
-///# param fromColor ...
-///# param toColor ...
-///# param duration ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
+{
+    UNUSED_VARIABLE(client);
+
+    vector<CritterView*> sorted_critters = critters;
+
+    std::sort(sorted_critters.begin(), sorted_critters.end(), [](const CritterView* cr1, const CritterView* cr2) {
+        const auto cr1_pos = cr1->GetHex();
+        const auto cr2_pos = cr2->GetHex();
+
+        if (cr1_pos.y == cr2_pos.y) {
+            if (cr1_pos.x == cr2_pos.x) {
+                const auto* cr1_hex = dynamic_cast<const CritterHexView*>(cr1);
+                const auto* cr2_hex = dynamic_cast<const CritterHexView*>(cr2);
+
+                if (cr1_hex != nullptr && cr2_hex != nullptr && cr1_hex->IsSpriteValid() && cr2_hex->IsSpriteValid()) {
+                    return cr1_hex->GetSprite()->TreeIndex < cr2_hex->GetSprite()->TreeIndex;
+                }
+
+                return cr1 < cr2;
+            }
+
+            return cr1_pos.x < cr2_pos.x;
+        }
+
+        return cr1_pos.y < cr2_pos.y;
+    });
+
+    return sorted_critters;
+}
+
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
 {
     client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
 }
 
-///# ...
-///# param noise ...
-///# param ms ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
 {
     client->ScreenQuake(noise, std::chrono::milliseconds {duration.underlying_value()});
 }
 
-///# ...
-///# param soundName ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_PlaySound(FOClient* client, string_view soundName)
 {
     return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
 }
 
-///# ...
-///# param musicName ...
-///# param repeatTime ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
 {
@@ -382,28 +364,18 @@
     return client->SndMngr.PlayMusic(musicName, std::chrono::milliseconds {repeatTime.underlying_value()});
 }
 
-///# ...
-///# param videoName ...
-///# param canInterrupt ...
-///# param enqueue
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canInterrupt, bool enqueue)
 {
     client->PlayVideo(videoName, canInterrupt, enqueue);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsVideoPlaying(FOClient* client)
 {
     return client->IsVideoPlaying();
 }
 
-///# ...
-///# param videoName ...
-///# param looped ...
-///# return ...
 ///@ ExportMethod PassOwnership
 [[maybe_unused]] VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, string_view videoName, bool looped)
 {
@@ -424,10 +396,6 @@
     return video;
 }
 
-///# ...
-///# param video ...
-///# param pos ...
-///# param size ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos pos, isize size)
 {
@@ -453,116 +421,72 @@
     }
 }
 
-///# ...
-///# param msg ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ConsoleMessage(FOClient* client, string_view msg)
 {
     client->ConsoleMessage(msg);
 }
 
-///# ...
-///# param msg ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
     client->AddMessage(FOMB_GAME, msg);
 }
 
-///# ...
-///# param type ...
-///# param msg ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
     client->AddMessage(type, msg);
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
 {
     client->AddMessage(FOMB_GAME, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
-///# ...
-///# param type ...
-///# param textPack ...
-///# param strNum ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
 {
     client->AddMessage(type, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# param skipCount ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
 {
     return static_cast<uint>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
-///# ...
-///# param textPack ...
-///# param strNum ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
 
-///# ...
-///# param text ...
-///# param replace ...
-///# param str ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_ReplaceText(FOClient* client, string_view text, string_view replace, ObjInfo<1> obj1)
 {
@@ -576,10 +500,6 @@
     return string(text).replace(pos, replace.length(), obj1);
 }
 
-///# ...
-///# param text ...
-///# param lexems ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_FormatTags(FOClient* client, string_view text, string_view lexems)
 {
@@ -588,10 +508,6 @@
     return text_copy;
 }
 
-///# ...
-///# param zoneX ...
-///# param zoneY ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zoneY)
 {
@@ -599,25 +515,15 @@
         throw ScriptException("Invalid world map pos arg");
     }
 
-    return client->GetWorldmapFog().Get2Bit(zoneX, zoneY);
+    return client->GetGlobalMapFog().Get2Bit(zoneX, zoneY);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] tick_t Client_Game_GetFullSecond(FOClient* client)
 {
     return client->GameTime.GetFullSecond();
 }
 
-///# ...
-///# param year ...
-///# param month ...
-///# param day ...
-///# param hour ...
-///# param minute ...
-///# param second ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
@@ -669,15 +575,6 @@
     return client->GameTime.EvaluateFullSecond(year_, month_, day_, hour, minute, second);
 }
 
-///# ...
-///# param fullSecond ...
-///# param year ...
-///# param month ...
-///# param day ...
-///# param dayOfWeek ...
-///# param hour ...
-///# param minute ...
-///# param second ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Game_EvaluateGameTime(FOClient* client, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
@@ -691,8 +588,6 @@
     second = dt.Second;
 }
 
-///# ...
-///# param fnames ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
@@ -701,10 +596,6 @@
     }
 }
 
-///# ...
-///# param fontIndex ...
-///# param fontFname ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
 {
@@ -722,19 +613,12 @@
     }
 }
 
-///# ...
-///# param font ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetDefaultFont(FOClient* client, int font)
 {
     client->SprMngr.SetDefaultFont(font);
 }
 
-///# ...
-///# param effectType ...
-///# param effectSubtype ...
-///# param effectPath ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int64 effectSubtype, string_view effectPath)
 {
@@ -840,9 +724,6 @@
     }
 }
 
-///# ...
-///# param pos ...
-///# param button ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, MouseButton button)
 {
@@ -874,11 +755,6 @@
     client->Settings.LastMouseY = last_prev_y;*/
 }
 
-///# ...
-///# param key1 ...
-///# param key2 ...
-///# param key1Text ...
-///# param key2Text ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
@@ -900,15 +776,6 @@
     }
 }
 
-///# ...
-///# param year ...
-///# param month ...
-///# param day ...
-///# param dayOfWeek ...
-///# param hour ...
-///# param minute ...
-///# param second ...
-///# param milliseconds ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
@@ -925,57 +792,41 @@
     milliseconds = cur_time.Milliseconds;
 }
 
-///# ...
-///# param sprName ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
-///# ...
-///# param nameHash ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::IfaceSprites);
 }
 
-///# ...
-///# param sprName ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->ToHashedString(sprName), AtlasType::MapSprites);
 }
 
-///# ...
-///# param nameHash ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::MapSprites);
 }
 
-///# ...
-///# param sprId ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_FreeSprite(FOClient* client, uint sprId)
 {
     client->AnimFree(sprId);
 }
 
-///# ...
-///# param sprId ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return {};
     }
@@ -983,26 +834,18 @@
     return spr->Size;
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos pos)
 {
-    if (sprId == 0) {
-        return false;
-    }
-
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
-        return false;
+        return 0;
     }
 
     return client->SprMngr.SpriteHitTest(spr, pos, false);
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_StopSprite(FOClient* client, uint sprId)
 {
@@ -1011,6 +854,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1018,7 +862,6 @@
     spr->Stop();
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
 {
@@ -1027,6 +870,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1034,7 +878,6 @@
     spr->SetTime(normalizedTime);
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
 {
@@ -1043,6 +886,7 @@
     }
 
     auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1050,24 +894,20 @@
     spr->Play(animName, looped, reversed);
 }
 
-///# ...
-///# param text ...
-///# param size ...
-///# param font ...
-///# param flags ...
-///# param resultSize ...
-///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, int flags, isize& resultSize, int& lines)
+[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint flags, isize& resultSize, int& resultLines)
 {
-    if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, lines)) {
+    if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
     }
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
+///@ ExportMethod
+[[maybe_unused]] int Client_Game_GetTextLines(FOClient* client, isize size, int font)
+{
+    return client->SprMngr.GetLinesCount(size, "", font);
+}
+
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos)
 {
@@ -1080,6 +920,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1087,10 +928,6 @@
     client->SprMngr.DrawSprite(spr, pos, COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param color ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color)
 {
@@ -1103,6 +940,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1110,11 +948,6 @@
     client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param color ...
-///# param offs ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color, bool offs)
 {
@@ -1127,6 +960,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1142,10 +976,6 @@
     client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param size ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size)
 {
@@ -1158,6 +988,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1165,11 +996,6 @@
     client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param size ...
-///# param color ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color)
 {
@@ -1182,6 +1008,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1189,13 +1016,6 @@
     client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param size ...
-///# param color ...
-///# param zoom ...
-///# param offs ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool zoom, bool offs)
 {
@@ -1208,6 +1028,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1223,13 +1044,6 @@
     client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, size, zoom, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
-///# ...
-///# param sprId ...
-///# param pos ...
-///# param size ...
-///# param sprWidth ...
-///# param sprHeight ...
-///# param color ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, ipos pos, isize size, int sprWidth, int sprHeight, ucolor color)
 {
@@ -1242,6 +1056,7 @@
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
+
     if (spr == nullptr) {
         return;
     }
@@ -1249,20 +1064,13 @@
     client->SprMngr.DrawSpritePattern(spr, pos, size, sprWidth, sprHeight, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
-///# ...
-///# param text ...
-///# param pos ...
-///# param size ...
-///# param color ...
-///# param font ...
-///# param flags ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, int flags)
+[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
-    if (text.length() == 0) {
+    if (text.empty()) {
         return;
     }
 
@@ -1283,9 +1091,6 @@
     client->SprMngr.DrawText({x, y, width, height}, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
 }
 
-///# ...
-///# param primitiveType ...
-///# param data ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
 {
@@ -1333,18 +1138,6 @@
     client->SprMngr.DrawPoints(points, prim);
 }
 
-///# ...
-///# param modelName ...
-///# param stateAnim ...
-///# param actionAnim ...
-///# param dir ...
-///# param l ...
-///# param t ...
-///# param r ...
-///# param b ...
-///# param scratch ...
-///# param center ...
-///# param color ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
 {
@@ -1355,14 +1148,6 @@
     }
 }
 
-///# ...
-///# param instance ...
-///# param modelName ...
-///# param stateAnim ...
-///# param actionAnim ...
-///# param layers ...
-///# param position ...
-///# param color ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
 {
@@ -1402,25 +1187,30 @@
         model->StartMeshGeneration();
     }
 
-    const auto count = static_cast<uint>(position.size());
-    const auto x = (count > 0 ? position[0] : 0.0f);
-    const auto y = (count > 1 ? position[1] : 0.0f);
-    const auto rx = (count > 2 ? position[2] : 0.0f);
-    const auto ry = (count > 3 ? position[3] : 0.0f);
-    const auto rz = (count > 4 ? position[4] : 0.0f);
-    const auto sx = (count > 5 ? position[5] : 1.0f);
-    const auto sy = (count > 6 ? position[6] : 1.0f);
-    const auto sz = (count > 7 ? position[7] : 1.0f);
-    const auto speed = (count > 8 ? position[8] : 1.0f);
-    const auto period = (count > 9 ? position[9] : 0.0f);
-    const auto stl = (count > 10 ? position[10] : 0.0f);
-    const auto stt = (count > 11 ? position[11] : 0.0f);
-    const auto str = (count > 12 ? position[12] : 0.0f);
-    const auto stb = (count > 13 ? position[13] : 0.0f);
+    const auto count = position.size();
+    const auto x = count > 0 ? position[0] : 0.0f;
+    const auto y = count > 1 ? position[1] : 0.0f;
+    const auto rx = count > 2 ? position[2] : 0.0f;
+    const auto ry = count > 3 ? position[3] : 0.0f;
+    const auto rz = count > 4 ? position[4] : 0.0f;
+    const auto sx = count > 5 ? position[5] : 1.0f;
+    const auto sy = count > 6 ? position[6] : 1.0f;
+    const auto sz = count > 7 ? position[7] : 1.0f;
+    const auto speed = count > 8 ? position[8] : 1.0f;
+    const auto period = count > 9 ? position[9] : 0.0f;
+    const auto stl = count > 10 ? position[10] : 0.0f;
+    const auto stt = count > 11 ? position[11] : 0.0f;
+    const auto str = count > 12 ? position[12] : 0.0f;
+    const auto stb = count > 13 ? position[13] : 0.0f;
 
     if (count > 13) {
-        client->SprMngr.PushScissor(static_cast<int>(stl), static_cast<int>(stt), static_cast<int>(str), static_cast<int>(stb));
+        client->SprMngr.PushScissor(iround(stl), iround(stt), iround(str), iround(stb));
     }
+    auto pop_scissor = ScopeCallback([&]() noexcept {
+        if (count > 13) {
+            safe_call([&] { client->SprMngr.PopScissor(); });
+        }
+    });
 
     std::memset(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
@@ -1434,18 +1224,19 @@
     model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
-    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+
+    if (count > 13) {
+        const auto max_height = iround(stb - stt) * 4 / 3;
+        model_spr->SetSize({iround(str - stl), max_height});
+    }
 
     model_spr->DrawToAtlas();
 
-    const auto result_x = static_cast<int>(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
-    const auto result_y = static_cast<int>(y) - model_spr->Size.height + model_spr->Offset.y;
+    const auto result_x = iround(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
+    const auto result_y = iround(y) - model_spr->Size.height + model_spr->Offset.y;
 
     client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
-
-    if (count > 13) {
-        client->SprMngr.PopScissor();
-    }
 
 #else
     UNUSED_VARIABLE(client);
@@ -1461,24 +1252,18 @@
 #endif
 }
 
-///# ...
-///# param pos ...
-///# param size ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
 {
     client->SprMngr.PushScissor(pos.x, pos.y, pos.x + size.width, pos.y + size.height);
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PopDrawScissor(FOClient* client)
 {
     client->SprMngr.PopScissor();
 }
 
-///# ...
-///# param forceClear ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ActivateOffscreenSurface(FOClient* client, bool forceClear)
 {
@@ -1515,8 +1300,6 @@
     }
 }
 
-///# ...
-///# param effectSubtype ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype)
 {
@@ -1542,10 +1325,6 @@
     client->SprMngr.DrawRenderTarget(rt, true);
 }
 
-///# ...
-///# param effectSubtype ...
-///# param pos ...
-///# param size ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, ipos pos, isize size)
 {
@@ -1578,16 +1357,6 @@
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
-///# ...
-///# param effectSubtype ...
-///# param fromX ...
-///# param fromY ...
-///# param fromW ...
-///# param fromH ...
-///# param toX ...
-///# param toY ...
-///# param toW ...
-///# param toH ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
 {
@@ -1615,9 +1384,6 @@
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
-///# ...
-///# param screen ...
-///# param data ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen)
 {
@@ -1632,9 +1398,6 @@
     }
 }
 
-///# ...
-///# param screen ...
-///# param data ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, any_t>& data)
 {
@@ -1649,23 +1412,18 @@
     }
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_HideScreen(FOClient* client)
 {
     client->HideScreen(SCREEN_NONE);
 }
 
-///# ...
-///# param screen ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_HideScreen(FOClient* client, int screen)
 {
     client->HideScreen(screen);
 }
 
-///# ...
-///# param filePath ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
 {
@@ -1674,19 +1432,15 @@
 
     throw NotImplementedException(LINE_STR);
 
-    // client->SprMngr.SaveTexture(nullptr, _str(filePath).formatPath(), true);
+    // client->SprMngr.SaveTexture(nullptr, strex(filePath).formatPath(), true);
 }
 
-///# ...
-///# param filePath ...
-///# param text ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
     UNUSED_VARIABLE(client);
 
-    auto file = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
+    auto file = DiskFileSystem::OpenFile(strex(filePath).formatPath(), true);
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }
@@ -1696,19 +1450,12 @@
     }
 }
 
-///# ...
-///# param name ...
-///# param data ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data)
 {
     client->Cache.SetData(name, data);
 }
 
-///# ...
-///# param name ...
-///# param data ...
-///# param dataSize ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint dataSize)
 {
@@ -1717,146 +1464,136 @@
     client->Cache.SetData(name, data_copy);
 }
 
-///# ...
-///# param name ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<uint8> Client_Game_GetCacheData(FOClient* client, string_view name)
 {
     return client->Cache.GetData(name);
 }
 
-///# ...
-///# param name ...
-///# param str ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetCacheText(FOClient* client, string_view name, string_view str)
 {
     client->Cache.SetString(name, str);
 }
 
-///# ...
-///# param name ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_GetCacheText(FOClient* client, string_view name)
 {
     return client->Cache.GetString(name);
 }
 
-///# ...
-///# param name ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsCacheEntry(FOClient* client, string_view name)
 {
     return client->Cache.HasEntry(name);
 }
 
-///# ...
-///# param name ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_RemoveCacheEntry(FOClient* client, string_view name)
 {
-    client->Cache.EraseEntry(name);
+    client->Cache.RemoveEntry(name);
 }
 
-///# ...
-///# param keyValues ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
 {
     string cfg_user;
+
     for (const auto& [key, value] : keyValues) {
-        cfg_user += _str("{} = {}\n", key, value).str();
+        cfg_user += strex("{} = {}\n", key, value);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
-///# ...
-///# param keyValues ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const vector<string>& keyValues)
 {
     string cfg_user;
+
     for (size_t i = 0; i + 1 < keyValues.size(); i += 2) {
-        cfg_user += _str("{} = {}\n", keyValues[i], keyValues[i + 1]).str();
+        cfg_user += strex("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
-///# ...
-///# param pos ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, ipos pos)
 {
     client->SprMngr.SetMousePosition(pos);
 }
 
-///# ...
-///# param itemCount ...
-///# param itemId ...
-///# param swapItemId ...
-///# param toSlot ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Game_MoveItemLocally(FOClient* client, uint itemCount, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
-{
-    auto* chosen = client->GetChosen();
-    if (chosen == nullptr) {
-        return;
-    }
-
-    auto* item = chosen->GetInvItem(itemId);
-    auto* swap_item = swapItemId ? chosen->GetInvItem(swapItemId) : nullptr;
-
-    auto* old_item = item->CreateRefClone();
-    const auto from_slot = item->GetCritterSlot();
-    auto* map_chosen = client->GetMapChosen();
-
-    if (toSlot == CritterItemSlot::Outside) {
-        if (map_chosen != nullptr) {
-            map_chosen->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
-        }
-
-        if (item->GetStackable() && itemCount < item->GetCount()) {
-            item->SetCount(item->GetCount() - itemCount);
-        }
-        else {
-            chosen->DeleteInvItem(item, true);
-            item = nullptr;
-        }
-    }
-    else {
-        item->SetCritterSlot(toSlot);
-        if (swap_item != nullptr) {
-            swap_item->SetCritterSlot(from_slot);
-        }
-
-        if (map_chosen != nullptr) {
-            map_chosen->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
-            if (swap_item != nullptr) {
-                map_chosen->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
-            }
-        }
-    }
-
-    // Light
-    if (client->CurMap != nullptr) {
-        client->CurMap->RebuildFog();
-        client->CurMap->UpdateCritterLightSource(map_chosen);
-    }
-
-    // Notify scripts about item changing
-    client->OnItemInvChanged.Fire(item, old_item);
-
-    old_item->Release();
-}
-
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
 {
     client->ChangeLanguage(langName);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_FlashUnfocusedWindow(FOClient* client)
+{
+    if (!client->SprMngr.IsWindowFocused()) {
+        client->SprMngr.BlinkWindow();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Login(FOClient* client, string_view login, string_view password)
+{
+    client->Connect(login, password, INIT_NET_REASON_LOGIN);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Register(FOClient* client, string_view login, string_view password)
+{
+    client->Connect(login, password, INIT_NET_REASON_REG);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Connect(FOClient* client)
+{
+    client->Connect("", "", INIT_NET_REASON_CUSTOM);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_Disconnect(FOClient* client)
+{
+    client->Disconnect();
+}
+
+///@ ExportMethod
+[[maybe_unused]] string Client_Game_BuiltInCommand(FOClient* client, string_view command)
+{
+    string result;
+
+    if (!PackNetCommand(
+            command, &client->GetConnection().OutBuf,
+            [&result](string_view s) {
+                result += s;
+                result += "\n";
+            },
+            *client)) {
+        return "Unknown command";
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
+{
+    UNUSED_VARIABLE(client, enabled);
+
+    // Todo: improve SetScreenKeyboard
+    /*if (SDL_HasScreenKeyboardSupport()) {
+        bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
+        bool next = strex(args[1]).toBool();
+        if (cur != next) {
+            if (next)
+                SDL_StartTextInput();
+            else
+                SDL_StopTextInput();
+        }
+    }*/
 }

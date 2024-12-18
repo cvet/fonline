@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,7 @@ void ResourceManager::IndexFiles()
         auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
-            _soundNames.emplace(_str(file_header.GetPath()).eraseFileExtension().lower().str(), file_header.GetPath());
+            _soundNames.emplace(strex(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
         }
     }
 
@@ -107,11 +107,19 @@ void ResourceManager::CleanupCritterFrames()
     _critterFrames.clear();
 }
 
-static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, bool is_fallout) -> uint
+static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), is_fallout ? static_cast<uint>(-1) : 1};
+    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), 1};
+    return Hashing::MurmurHash2(dw, sizeof(dw));
+}
+
+static auto FalloutAnimMapId(hstring model_name, uint state_anim, uint action_anim) -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), static_cast<uint>(-1)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -120,7 +128,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     STACK_TRACE_ENTRY();
 
     // Check already loaded
-    const auto id = AnimMapId(model_name, state_anim, action_anim, false);
+    const auto id = AnimMapId(model_name, state_anim, action_anim);
 
     if (const auto it = _critterFrames.find(id); it != _critterFrames.end()) {
         auto* anim_ = it->second.get();
@@ -143,7 +151,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
     while (true) {
         // Load
-        if (!!model_name && _str(model_name).startsWith("art/critters/")) {
+        if (!!model_name && strex(model_name).startsWith("art/critters/")) {
             // Hardcoded
             anim = LoadFalloutAnimFrames(model_name, state_anim, action_anim);
         }
@@ -263,20 +271,22 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
     STACK_TRACE_ENTRY();
 
     // Convert from common to fallout specific
-    auto state_anim_ex = CritterStateAnim::None;
-    auto action_anim_ex = CritterActionAnim::None;
+    uint f_state_anim = 0;
+    uint f_action_anim = 0;
+    uint f_state_anim_ex = 0;
+    uint f_action_anim_ex = 0;
     uint flags = 0;
 
-    if (_animNameResolver.ResolveCritterAnimationFallout(model_name, state_anim, action_anim, state_anim_ex, action_anim_ex, flags)) {
+    if (_animNameResolver.ResolveCritterAnimationFallout(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags)) {
         // Load
-        const auto* anim = LoadFalloutAnimSubFrames(model_name, state_anim, action_anim);
+        const auto* anim = LoadFalloutAnimSubFrames(model_name, f_state_anim, f_action_anim);
         if (anim == nullptr) {
             return nullptr;
         }
 
         // Merge
-        if (state_anim_ex != CritterStateAnim::None && action_anim_ex != CritterActionAnim::None) {
-            const auto* animex = LoadFalloutAnimSubFrames(model_name, state_anim_ex, action_anim_ex);
+        if (f_state_anim_ex != 0 && f_action_anim_ex != 0) {
+            const auto* animex = LoadFalloutAnimSubFrames(model_name, f_state_anim_ex, f_action_anim_ex);
             if (animex == nullptr) {
                 return nullptr;
             }
@@ -403,7 +413,7 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
     }
 }
 
-auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> const SpriteSheet*
+auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_anim, uint action_anim) -> const SpriteSheet*
 {
     STACK_TRACE_ENTRY();
 
@@ -411,31 +421,32 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, CritterStateA
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
 
     // Fallout animations
-    static constexpr auto ANIM1_FALLOUT_UNARMED = static_cast<CritterStateAnim>(1);
-    static constexpr auto ANIM1_FALLOUT_DEAD = static_cast<CritterStateAnim>(2);
-    static constexpr auto ANIM1_FALLOUT_KNOCKOUT = static_cast<CritterStateAnim>(3);
-    static constexpr auto ANIM1_FALLOUT_KNIFE = static_cast<CritterStateAnim>(4);
-    static constexpr auto ANIM1_FALLOUT_MINIGUN = static_cast<CritterStateAnim>(12);
-    static constexpr auto ANIM1_FALLOUT_ROCKET_LAUNCHER = static_cast<CritterStateAnim>(13);
-    static constexpr auto ANIM1_FALLOUT_AIM = static_cast<CritterStateAnim>(14);
-    static constexpr auto ANIM2_FALLOUT_STAY = static_cast<CritterActionAnim>(1);
-    static constexpr auto ANIM2_FALLOUT_WALK = static_cast<CritterActionAnim>(2);
-    static constexpr auto ANIM2_FALLOUT_SHOW = static_cast<CritterActionAnim>(3);
-    static constexpr auto ANIM2_FALLOUT_PREPARE_WEAPON = static_cast<CritterActionAnim>(8);
-    static constexpr auto ANIM2_FALLOUT_TURNOFF_WEAPON = static_cast<CritterActionAnim>(9);
-    static constexpr auto ANIM2_FALLOUT_SHOOT = static_cast<CritterActionAnim>(10);
-    static constexpr auto ANIM2_FALLOUT_BURST = static_cast<CritterActionAnim>(11);
-    static constexpr auto ANIM2_FALLOUT_FLAME = static_cast<CritterActionAnim>(12);
-    static constexpr auto ANIM2_FALLOUT_KNOCK_FRONT = static_cast<CritterActionAnim>(1); // Only with ANIM1_FALLOUT_DEAD
-    static constexpr auto ANIM2_FALLOUT_KNOCK_BACK = static_cast<CritterActionAnim>(2);
-    static constexpr auto ANIM2_FALLOUT_STANDUP_BACK = static_cast<CritterActionAnim>(8); // Only with ANIM1_FALLOUT_KNOCKOUT
-    static constexpr auto ANIM2_FALLOUT_RUN = static_cast<CritterActionAnim>(20);
-    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT = static_cast<CritterActionAnim>(1); // Only with ANIM1_FALLOUT_DEAD
-    static constexpr auto ANIM2_FALLOUT_DEAD_BACK = static_cast<CritterActionAnim>(2);
-    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT2 = static_cast<CritterActionAnim>(15);
-    static constexpr auto ANIM2_FALLOUT_DEAD_BACK2 = static_cast<CritterActionAnim>(16);
+    static constexpr uint ANIM1_FALLOUT_UNARMED = 1;
+    static constexpr uint ANIM1_FALLOUT_DEAD = 2;
+    static constexpr uint ANIM1_FALLOUT_KNOCKOUT = 3;
+    static constexpr uint ANIM1_FALLOUT_KNIFE = 4;
+    static constexpr uint ANIM1_FALLOUT_MINIGUN = 12;
+    static constexpr uint ANIM1_FALLOUT_ROCKET_LAUNCHER = 13;
+    static constexpr uint ANIM1_FALLOUT_AIM = 14;
 
-    const auto it = _critterFrames.find(AnimMapId(model_name, state_anim, action_anim, true));
+    static constexpr uint ANIM2_FALLOUT_STAY = 1;
+    static constexpr uint ANIM2_FALLOUT_WALK = 2;
+    static constexpr uint ANIM2_FALLOUT_SHOW = 3;
+    static constexpr uint ANIM2_FALLOUT_PREPARE_WEAPON = 8;
+    static constexpr uint ANIM2_FALLOUT_TURNOFF_WEAPON = 9;
+    static constexpr uint ANIM2_FALLOUT_SHOOT = 10;
+    static constexpr uint ANIM2_FALLOUT_BURST = 11;
+    static constexpr uint ANIM2_FALLOUT_FLAME = 12;
+    static constexpr uint ANIM2_FALLOUT_KNOCK_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
+    static constexpr uint ANIM2_FALLOUT_KNOCK_BACK = 2;
+    static constexpr uint ANIM2_FALLOUT_STANDUP_BACK = 8; // Only with ANIM1_FALLOUT_KNOCKOUT
+    static constexpr uint ANIM2_FALLOUT_RUN = 20;
+    static constexpr uint ANIM2_FALLOUT_DEAD_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
+    static constexpr uint ANIM2_FALLOUT_DEAD_BACK = 2;
+    static constexpr uint ANIM2_FALLOUT_DEAD_FRONT2 = 15;
+    static constexpr uint ANIM2_FALLOUT_DEAD_BACK2 = 16;
+
+    const auto it = _critterFrames.find(FalloutAnimMapId(model_name, state_anim, action_anim));
     if (it != _critterFrames.end()) {
         return it->second.get();
     }
@@ -447,19 +458,22 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, CritterStateA
 
     shared_ptr<SpriteSheet> anim;
 
+    string shorten_model_name = strex(model_name).eraseFileExtension();
+    shorten_model_name = shorten_model_name.substr(0, shorten_model_name.length() - 2);
+
     // Try load from fofrm
     {
-        const string spr_name = _str("{}{}{}.fofrm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = _str("{}{}{}.frm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
-    auto* anim_ = _critterFrames.emplace(AnimMapId(model_name, state_anim, action_anim, true), std::move(anim)).first->second.get();
+    auto* anim_ = _critterFrames.emplace(FalloutAnimMapId(model_name, state_anim, action_anim), std::move(anim)).first->second.get();
 
     if (anim_ == nullptr) {
         return nullptr;
@@ -543,7 +557,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 {
     STACK_TRACE_ENTRY();
 
-    const string ext = _str(model_name).getFileExtension();
+    const string ext = strex(model_name).getFileExtension();
     if (ext != "fo3d") {
         const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
         return frames != nullptr ? frames : _critterDummyAnimFrames.get();

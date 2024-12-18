@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@
 // ReSharper disable once CppUnusedIncludeDirective
 #include "NetProtocol-Include.h"
 
+DECLARE_EXCEPTION(NetBufferException);
+
 class NetBuffer
 {
 public:
@@ -52,21 +54,18 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto IsError() const -> bool;
-    [[nodiscard]] auto GetData() -> uint8*;
-    [[nodiscard]] auto GetEndPos() const -> size_t;
+    [[nodiscard]] auto GetData() noexcept -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return _bufData.get(); }
+    [[nodiscard]] auto GetEndPos() const noexcept -> size_t { return _bufEndPos; }
 
-    void SetError(bool value);
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
-    virtual void ResetBuf();
+    virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int move) -> uint8;
+    auto EncryptKey(int move) noexcept -> uint8;
     void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
 
-    bool _isError {};
     unique_ptr<uint8[]> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufLen {};
@@ -90,21 +89,16 @@ public:
     auto operator=(NetOutBuffer&&) noexcept -> NetOutBuffer& = default;
     ~NetOutBuffer() override = default;
 
-    [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0; }
+    [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
 
+    void Push(const_span<uint8> buf);
     void Push(const void* buf, size_t len);
-    void Cut(size_t len);
+    void DiscardWriteBuf(size_t len);
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
     void Write(T value)
     {
         Push(&value, sizeof(T));
-    }
-
-    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
-    void Write(T value)
-    {
-        Push(&value.underlying_value(), sizeof(typename T::underlying_type));
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
@@ -123,11 +117,7 @@ public:
         Push(&hash, sizeof(hash));
     }
 
-    template<typename T, std::enable_if_t<is_valid_pod_type_v<T>, int> = 0>
-    void Write(const T& value)
-    {
-        Push(&value, sizeof(value));
-    }
+    void WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes);
 
     void StartMsg(uint msg);
     void EndMsg();
@@ -151,8 +141,8 @@ public:
     auto operator=(NetInBuffer&&) noexcept -> NetInBuffer& = default;
     ~NetInBuffer() override = default;
 
-    [[nodiscard]] auto GetReadPos() const -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const -> size_t { return _bufLen - _bufEndPos; }
+    [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
+    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufLen - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void AddData(const void* buf, size_t len);
@@ -160,21 +150,13 @@ public:
     void SkipMsg(uint msg);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
-    void ResetBuf() override;
+    void ResetBuf() noexcept override;
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto Read() -> T
     {
         T result = {};
         Pop(&result, sizeof(T));
-        return result;
-    }
-
-    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
-    [[nodiscard]] auto Read() -> T
-    {
-        T result = {};
-        Pop(&result.underlying_value(), sizeof(typename T::underlying_type));
         return result;
     }
 
@@ -195,13 +177,7 @@ public:
         return ReadHashedString(hash_resolver);
     }
 
-    template<typename T, std::enable_if_t<is_valid_pod_type_v<T>, int> = 0>
-    [[nodiscard]] auto Read() -> T
-    {
-        T result = {};
-        Pop(&result, sizeof(T));
-        return result;
-    }
+    void ReadPropsData(vector<vector<uint8>>& props_data);
 
 private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;

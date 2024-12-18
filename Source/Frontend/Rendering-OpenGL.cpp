@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -73,7 +73,7 @@
         expr; \
         if (RenderDebug) { \
             GLenum err__ = glGetError(); \
-            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {}", ErrCodeToString(err__))); \
+            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, strex(#expr " error {}", ErrCodeToString(err__))); \
         } \
     } while (0)
 
@@ -96,7 +96,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
         ERR_CODE_CASE(GL_STACK_UNDERFLOW);
 #endif
     default:
-        return _str("{:#X}", err_code).str();
+        return strex("{:#X}", err_code);
     }
 
 #undef ERR_CODE_CASE
@@ -202,10 +202,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Create context
 #if !FO_WEB
     GlContext = SDL_GL_CreateContext(SdlWindow);
-    RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
+    RUNTIME_ASSERT_STR(GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
 
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
-    RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
+    RUNTIME_ASSERT_STR(make_current >= 0, strex("Can't set current context, error '{}'", SDL_GetError()));
 
     if (settings.ClientMode && settings.VSync) {
         if (SDL_GL_SetSwapInterval(-1) == -1) {
@@ -234,10 +234,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
-    RUNTIME_ASSERT_STR(gl_context > 0, _str("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
+    RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
-    RUNTIME_ASSERT_STR(r >= 0, _str("Can't set current context, error {}", r));
+    RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
 
     GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
 #endif
@@ -246,7 +246,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Todo: remove GLEW and bind OpenGL functions manually
 #if !FO_OPENGL_ES
     const auto glew_result = glewInit();
-    RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
+    RUNTIME_ASSERT_STR(glew_result == GLEW_OK, strex("GLEW not initialized, result {}", glew_result));
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
     OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0; // >= 2.0
     OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0; // >= 3.0
@@ -336,8 +336,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     auto atlas_h = atlas_w;
     atlas_w = std::min(max_viewport_size[0], atlas_w);
     atlas_h = std::min(max_viewport_size[1], atlas_h);
-    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
     const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
@@ -409,7 +409,7 @@ auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_
 
     GLenum status;
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, _str("Framebuffer not created, status {:#X}", status));
+    RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, strex("Framebuffer not created, status {:#X}", status));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
 
@@ -440,10 +440,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl-es";
         }
 
-        const string vert_fname = _str("{}.{}.vert.{}", _str(name).eraseFileExtension(), pass + 1, ext);
+        const string vert_fname = strex("{}.{}.vert.{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = _str("{}.{}.frag.{}", _str(name).eraseFileExtension(), pass + 1, ext);
+        const string frag_fname = strex("{}.{}.frag.{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         RUNTIME_ASSERT(!frag_content.empty());
 

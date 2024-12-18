@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +70,7 @@ private:
     DiskFile(string_view fname, bool write, bool write_through);
 
     struct Impl;
-    unique_ptr<Impl> _pImpl {};
+    unique_ptr<Impl> _impl;
     bool _openedForWriting {};
     bool _nonConstHelper {};
 };
@@ -98,7 +98,7 @@ private:
     DiskFind(string_view path, string_view ext);
 
     struct Impl;
-    unique_ptr<Impl> _pImpl {};
+    unique_ptr<Impl> _impl;
     bool _findDataValid {};
 };
 

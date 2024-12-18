@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -254,6 +254,9 @@ MapSpriteList::~MapSpriteList()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 
     for (const auto* spr : _invalidatedSprites) {
         delete spr;
@@ -276,9 +279,9 @@ void MapSpriteList::GrowPool()
     }
 }
 
-auto MapSpriteList::RootSprite() -> MapSprite*
+auto MapSpriteList::RootSprite() noexcept -> MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 

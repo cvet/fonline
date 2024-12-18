@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "StringUtils.h"
+
 using LogFunc = std::function<void(string_view)>;
 
 enum class LogType
@@ -47,20 +49,20 @@ enum class LogType
 
 // Write formatted text
 extern void WriteLogMessage(LogType type, string_view message) noexcept;
+extern void WriteLogFatalMessage(string_view message) noexcept;
 
 template<typename... Args>
-void WriteLog(string_view message, Args... args) noexcept
+void WriteLog(FMTNS::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(LogType::Info, fmt::format(message, std::forward<Args>(args)...));
+    WriteLogMessage(LogType::Info, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
 }
 
 template<typename... Args>
-void WriteLog(LogType type, string_view message, Args... args) noexcept
+void WriteLog(LogType type, FMTNS::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(type, fmt::format(message, std::forward<Args>(args)...));
+    WriteLogMessage(type, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
 }
 
 // Control
-extern void LogWithoutTimestamp();
 extern void LogToFile(string_view fname);
 extern void SetLogCallback(string_view key, LogFunc callback);

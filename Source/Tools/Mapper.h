@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@
 
 DECLARE_EXCEPTION(MapperException);
 
-class FOMapper final : virtual public FOEngineBase, public FOClient
+class FOMapper final : public FOClient
 {
     friend class MapperScriptSystem;
 
@@ -217,7 +217,7 @@ public:
 
     void DrawIfaceLayer(uint layer);
 
-    auto GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>;
+    auto GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>;
 
     ///@ ExportEvent
     ENTITY_EVENT(OnConsoleMessage, string& /*text*/);

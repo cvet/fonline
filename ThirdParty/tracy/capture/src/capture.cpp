@@ -21,6 +21,7 @@
 #include "../../server/TracyFileWrite.hpp"
 #include "../../server/TracyMemory.hpp"
 #include "../../server/TracyPrint.hpp"
+#include "../../server/TracySysUtil.hpp"
 #include "../../server/TracyWorker.hpp"
 
 #ifdef _WIN32
@@ -61,6 +62,7 @@ bool IsStdoutATerminal() { return s_isStdoutATerminal; }
 #define ANSI_RED "\033[31m"
 #define ANSI_GREEN "\033[32m"
 #define ANSI_YELLOW "\033[33m"
+#define ANSI_BLUE "\033[34m"
 #define ANSI_MAGENTA "\033[35m"
 #define ANSI_CYAN "\033[36m"
 #define ANSI_ERASE_LINE "\033[2K"
@@ -90,7 +92,7 @@ void AnsiPrintf( const char* ansiEscape, const char* format, ... ) {
 
 [[noreturn]] void Usage()
 {
-    printf( "Usage: capture -o output.tracy [-a address] [-p port] [-f] [-s seconds]\n" );
+    printf( "Usage: capture -o output.tracy [-a address] [-p port] [-f] [-s seconds] [-m memlimit]\n" );
     exit( 1 );
 }
 
@@ -111,9 +113,10 @@ int main( int argc, char** argv )
     const char* output = nullptr;
     int port = 8086;
     int seconds = -1;
+    int64_t memoryLimit = -1;
 
     int c;
-    while( ( c = getopt( argc, argv, "a:o:p:fs:" ) ) != -1 )
+    while( ( c = getopt( argc, argv, "a:o:p:fs:m:" ) ) != -1 )
     {
         switch( c )
         {
@@ -130,7 +133,10 @@ int main( int argc, char** argv )
             overwrite = true;
             break;
         case 's':
-            seconds = atoi (optarg);
+            seconds = atoi(optarg);
+            break;
+        case 'm':
+            memoryLimit = std::clamp( atoll( optarg ), 1ll, 999ll ) * tracy::GetPhysicalMemorySize() / 100;
             break;
         default:
             Usage();
@@ -158,7 +164,7 @@ int main( int argc, char** argv )
 
     printf( "Connecting to %s:%i...", address, port );
     fflush( stdout );
-    tracy::Worker worker( address, port );
+    tracy::Worker worker( address, port, memoryLimit );
     while( !worker.HasData() )
     {
         const auto handshake = worker.GetHandshakeStatus();
@@ -232,9 +238,14 @@ int main( int argc, char** argv )
             AnsiPrintf( ANSI_YELLOW ANSI_BOLD, "%7.2f Mbps", mbps / compRatio );
             printf( " | ");
             AnsiPrintf( ANSI_YELLOW, "Tx: ");
-            AnsiPrintf( ANSI_GREEN, "%s",  tracy::MemSizeToString( netTotal ) );
+            AnsiPrintf( ANSI_GREEN, "%s", tracy::MemSizeToString( netTotal ) );
             printf( " | ");
-            AnsiPrintf( ANSI_RED ANSI_BOLD, "%s", tracy::MemSizeToString( tracy::memUsage ) );
+            AnsiPrintf( ANSI_RED ANSI_BOLD, "%s", tracy::MemSizeToString( tracy::memUsage.load( std::memory_order_relaxed ) ) );
+            if( memoryLimit > 0 )
+            {
+                printf( " / " );
+                AnsiPrintf( ANSI_BLUE ANSI_BOLD, "%s", tracy::MemSizeToString( memoryLimit ) );
+            }
             printf( " | ");
             AnsiPrintf( ANSI_RED, "%s", tracy::TimeToString( worker.GetLastTime() - firstTime ) );
             fflush( stdout );
@@ -265,7 +276,7 @@ int main( int argc, char** argv )
         }
         if( fd.callstack != 0 )
         {
-            AnsiPrintf( ANSI_BOLD, "\n%sFailure callstack:%s\n" );
+            AnsiPrintf( ANSI_BOLD, "\nFailure callstack:\n" );
             auto& cs = worker.GetCallstack( fd.callstack );
             int fidx = 0;
             for( auto& entry : cs )
@@ -335,7 +346,7 @@ int main( int argc, char** argv )
         worker.GetFrameCount( *worker.GetFramesBase() ), tracy::TimeToString( worker.GetLastTime() - firstTime ), tracy::RealToString( worker.GetZoneCount() ),
         tracy::TimeToString( std::chrono::duration_cast<std::chrono::nanoseconds>( t1 - t0 ).count() ) );
     fflush( stdout );
-    auto f = std::unique_ptr<tracy::FileWrite>( tracy::FileWrite::Open( output ) );
+    auto f = std::unique_ptr<tracy::FileWrite>( tracy::FileWrite::Open( output, tracy::FileCompression::Zstd, 3, 4 ) );
     if( f )
     {
         worker.Write( *f, false );

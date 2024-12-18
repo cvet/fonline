@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,6 +80,47 @@ struct StackTraceData
 
 static thread_local StackTraceData StackTrace;
 
+class BackwardOStreamBuffer : public std::streambuf
+{
+public:
+    BackwardOStreamBuffer() = default;
+    BackwardOStreamBuffer(const BackwardOStreamBuffer&) = delete;
+    BackwardOStreamBuffer(BackwardOStreamBuffer&&) noexcept = delete;
+    auto operator=(const BackwardOStreamBuffer&) = delete;
+    auto operator=(BackwardOStreamBuffer&&) noexcept -> BackwardOStreamBuffer& = delete;
+    ~BackwardOStreamBuffer() override = default;
+
+    auto underflow() -> int_type override
+    {
+        //
+        return traits_type::eof();
+    }
+
+    auto overflow(int_type ch) -> int_type override
+    {
+        const char s[] = {static_cast<char>(ch)};
+        WriteLogFatalMessage(string_view {s, 1});
+        return ch;
+    }
+
+    auto xsputn(const char_type* s, std::streamsize count) -> std::streamsize override
+    {
+        if (_firstCall) {
+            WriteLogFatalMessage("\nFATAL ERROR!\n\n");
+            _firstCall = false;
+        }
+
+        WriteLogFatalMessage(string_view {s, static_cast<string_view::size_type>(count)});
+        return count;
+    }
+
+private:
+    bool _firstCall = true;
+};
+
+static BackwardOStreamBuffer BackwardOStreamBuf;
+std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
+
 void CreateGlobalData()
 {
     STACK_TRACE_ENTRY();
@@ -126,10 +167,10 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
     NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
 
-        if (ex_info != nullptr) {
-            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        if (base_engine_ex != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()));
         }
         else {
             WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
@@ -141,11 +182,11 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
 
         CreateDumpMessage("FatalException", ex.what());
 
-        if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), true);
+        if (base_engine_ex != nullptr) {
+            MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), true);
         }
         else {
-            MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), true);
+            MessageBox::ShowErrorMessage(ex.what(), strex("Catched at: {}", GetStackTrace()), true);
         }
     }
     catch (...) {
@@ -160,10 +201,10 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
     NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
 
-        if (ex_info != nullptr) {
-            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        if (base_engine_ex != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()));
         }
         else {
             WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
@@ -174,11 +215,11 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
         }
 
         if (ExceptionMessageBox) {
-            if (ex_info != nullptr) {
-                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(ex_info->StackTrace()), false);
+            if (base_engine_ex != nullptr) {
+                MessageBox::ShowErrorMessage(ex.what(), InsertCatchedMark(base_engine_ex->StackTrace()), false);
             }
             else {
-                MessageBox::ShowErrorMessage(ex.what(), _str("Catched at: {}", GetStackTrace()), false);
+                MessageBox::ShowErrorMessage(ex.what(), strex("Catched at: {}", GetStackTrace()), false);
             }
         }
     }
@@ -187,11 +228,35 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
     }
 }
 
-void ShowExceptionMessageBox(bool enabled)
+void ShowExceptionMessageBox(bool enabled) noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ExceptionMessageBox = enabled;
+}
+
+void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        throw StrongAssertationException(message, file, line);
+    }
+    catch (StrongAssertationException& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}
+
+void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        throw VerifyFailedException(message, file, line);
+    }
+    catch (VerifyFailedException& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 void PushStackTrace(const SourceLocationData& loc) noexcept
@@ -227,7 +292,7 @@ auto GetStackTrace() -> string
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    std::stringstream ss;
+    std::ostringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
@@ -236,7 +301,7 @@ auto GetStackTrace() -> string
     for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st.CallTree[i];
 
-        ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().str() << " line " << entry->line << ")\n";
+        ss << "- " << entry->function << " (" << strex(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
@@ -257,7 +322,7 @@ auto GetStackTrace() -> string
 #endif
 }
 
-auto GetStackTraceEntry(size_t deep) -> const SourceLocationData*
+auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -291,25 +356,27 @@ auto GetRealStackTrace() -> string
     st.load_here(42);
     st.skip_n_firsts(2);
 
-    std::stringstream ss;
+    std::ostringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
     for (size_t i = 0; i < st.size(); ++i) {
         backward::ResolvedTrace trace = resolver.resolve(st[i]);
 
-        auto obj_func = trace.object_function;
+        string obj_func = trace.object_function;
+
         if (obj_func.length() > 100) {
             obj_func.resize(97);
             obj_func.append("...");
         }
 
-        auto file_name = _str(trace.source.filename).extractFileName().str();
+        string file_name = strex(trace.source.filename).extractFileName();
+
         if (!file_name.empty()) {
             file_name.append(" ");
         }
 
-        file_name += _str("{}", trace.source.line).str();
+        file_name += strex("{}", trace.source.line);
 
         ss << "- " << obj_func << " (" << file_name << ")\n";
     }
@@ -377,15 +444,19 @@ auto IsRunInDebugger() noexcept -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
         ::DebugBreak();
         return true;
 #elif FO_LINUX
+#ifdef __has_builtin
 #if __has_builtin(__builtin_debugtrap)
         __builtin_debugtrap();
+#else
+        ::raise(SIGTRAP);
+#endif
 #else
         ::raise(SIGTRAP);
 #endif
@@ -405,30 +476,20 @@ void CreateDumpMessage(string_view appendix, string_view message)
 
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
-    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const string fname = strex("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
-        file.Write(_str("{}\n", appendix));
-        file.Write(_str("{}\n", message));
-        file.Write(_str("\n"));
-        file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", FO_DEV_NAME));
-        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
-        file.Write(_str("\tOS          Windows\n"));
-        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
-        file.Write(_str("\n"));
+        file.Write(strex("{}\n", appendix));
+        file.Write(strex("{}\n", message));
+        file.Write(strex("\n"));
+        file.Write(strex("Application\n"));
+        file.Write(strex("\tName        {}\n", FO_DEV_NAME));
+        file.Write(strex("\tVersion     {}\n", FO_GAME_VERSION));
+        file.Write(strex("\tOS          Windows\n"));
+        file.Write(strex("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
+        file.Write(strex("\n"));
         file.Write(traceback);
-        file.Write(_str("\n"));
-    }
-}
-
-RefCounter::~RefCounter()
-{
-    try {
-        throw GenericException("Some of pointers still alive", _ptrCounter.load());
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        file.Write(strex("\n"));
     }
 }
 
@@ -525,6 +586,9 @@ WorkThread::~WorkThread()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 auto WorkThread::GetJobsCount() const -> size_t
@@ -619,11 +683,7 @@ void WorkThread::ThreadEntry() noexcept
     STACK_TRACE_ENTRY();
 
     try {
-        Platform::SetThreadName(_name);
-
-#if FO_TRACY
-        tracy::SetThreadName(_name.c_str());
-#endif
+        SetThisThreadName(_name);
 
         while (true) {
             Job job;
@@ -706,12 +766,47 @@ void WorkThread::ThreadEntry() noexcept
                         ReportExceptionAndContinue(ex2);
                     }
                 }
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
         }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
+}
+
+static thread_local string ThreadName;
+
+void SetThisThreadName(const string& name)
+{
+    STACK_TRACE_ENTRY();
+
+    ThreadName = name;
+
+    Platform::SetThreadName(ThreadName);
+
+#if FO_TRACY
+    tracy::SetThreadName(ThreadName.c_str());
+#endif
+}
+
+auto GetThisThreadName() -> const string&
+{
+    STACK_TRACE_ENTRY();
+
+    if (ThreadName.empty()) {
+        static size_t thread_counter = 0;
+        thread_local size_t thread_num = ++thread_counter;
+
+        ThreadName = strex("{}", thread_num);
+    }
+
+    return ThreadName;
 }
 
 // Dummy symbols for web build to avoid linker errors
@@ -748,7 +843,11 @@ void emscripten_sleep(unsigned int ms)
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
 
+#if FO_TRACY
+#include "client/tracy_rpmalloc.hpp"
+#else
 #include "rpmalloc.h"
+#endif
 
 #include <new>
 
@@ -762,42 +861,61 @@ extern void CRTDECL operator delete(void* p) noexcept
 {
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void CRTDECL operator delete[](void* p) noexcept
 {
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 {
-    auto* p = rpmalloc(size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpmalloc(size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpmalloc(size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
 extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
 {
-    auto* p = rpmalloc(size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpmalloc(size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpmalloc(size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
 extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
-    auto* p = rpmalloc(size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpmalloc(size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpmalloc(size);
 #endif
     return p;
 }
@@ -805,21 +923,25 @@ extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) n
 extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
-    auto* p = rpmalloc(size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpmalloc(size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpmalloc(size);
 #endif
     return p;
 }
 
-#if (__cplusplus >= 201402L || _MSC_VER >= 1916)
 extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
 {
     UNUSED_VARIABLE(size);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
@@ -827,19 +949,21 @@ extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
     UNUSED_VARIABLE(size);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
-}
 #endif
+}
 
-#if (__cplusplus > 201402L || defined(__cpp_aligned_new))
 extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(align);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
@@ -847,8 +971,10 @@ extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
     UNUSED_VARIABLE(align);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
@@ -857,8 +983,10 @@ extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t 
     UNUSED_VARIABLE(align);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
@@ -867,34 +995,51 @@ extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_
     UNUSED_VARIABLE(align);
 #if FO_TRACY
     TracyFree(p);
-#endif
+    tracy::rpfree(p);
+#else
     rpfree(p);
+#endif
 }
 
 extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
 {
-    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
 extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
 {
-    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
+    if (p == nullptr) {
+        throw std::bad_alloc();
+    }
     return p;
 }
 
 extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
-    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
     return p;
 }
@@ -902,13 +1047,15 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, cons
 extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
-    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
+    tracy::InitRpmalloc();
+    auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
     TracyAlloc(p, size);
+#else
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
     return p;
 }
-#endif
 
 #undef CRTDECL
 

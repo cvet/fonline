@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,21 +49,20 @@ class EffectBaker final : public BaseBaker
 {
 public:
     EffectBaker() = delete;
-    EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = default;
+    EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
 
-    void AutoBake() override;
+    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fofx"; }
+
+    void BakeFiles(FileCollection&& files) override;
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
 
-    int _errors {};
-#if FO_ASYNC_BAKE
-    std::mutex _bakedFilesLocker;
-#endif
+    bool _nonConstHelper {};
 };

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -68,7 +68,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 {
     STACK_TRACE_ENTRY();
 
-    string args = _str(str).trim();
+    string args = strex(str).trim();
     auto cmd_str = args;
     auto space = cmd_str.find(' ');
     if (space != string::npos) {
@@ -79,7 +79,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
     uint8 cmd = 0;
     for (const auto& cur_cmd : CMD_LIST) {
-        if (_str(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
+        if (strex(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
         }
     }
@@ -182,8 +182,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
             logcb("Invalid arguments. Example: getaccess name password");
             break;
         }
-        name_access = _str(name_access).replace('*', ' ');
-        pasw_access = _str(pasw_access).replace('*', ' ');
+        name_access = strex(name_access).replace('*', ' ');
+        pasw_access = strex(pasw_access).replace('*', ' ');
 
         buf.StartMsg(msg);
         buf.Write(cmd);

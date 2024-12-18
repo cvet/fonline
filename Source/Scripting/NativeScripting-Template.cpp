@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -322,16 +322,10 @@ public:
 #define PLAYER_CLASS PlayerView
 #endif
 #define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
-    type Get##name() \
-    { \
-        return MarshalBack(((PLAYER_CLASS*)_thisPtr)->Get##name()); \
-    }
+    type Get##name() { return MarshalBack(((PLAYER_CLASS*)_thisPtr)->Get##name()); }
 #define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
     FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    void Set##name(type value) \
-    { \
-        ((PLAYER_CLASS*)_thisPtr)->Set##name(value); \
-    }
+    void Set##name(type value) { ((PLAYER_CLASS*)_thisPtr)->Set##name(value); }
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef PLAYER_CLASS
@@ -354,16 +348,10 @@ public:
 #define ITEM_CLASS ItemView
 #endif
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
-    type Get##name() \
-    { \
-        return MarshalBack(((ITEM_CLASS*)_thisPtr)->Get##name()); \
-    }
+    type Get##name() { return MarshalBack(((ITEM_CLASS*)_thisPtr)->Get##name()); }
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
     FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    void Set##name(type value) \
-    { \
-        ((ITEM_CLASS*)_thisPtr)->Set##name(value); \
-    }
+    void Set##name(type value) { ((ITEM_CLASS*)_thisPtr)->Set##name(value); }
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef ITEM_CLASS
@@ -386,16 +374,10 @@ public:
 #define CRITTER_CLASS CritterView
 #endif
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
-    type Get##name() \
-    { \
-        return MarshalBack(((CRITTER_CLASS*)_thisPtr)->Get##name()); \
-    }
+    type Get##name() { return MarshalBack(((CRITTER_CLASS*)_thisPtr)->Get##name()); }
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
     FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    void Set##name(type value) \
-    { \
-        ((CRITTER_CLASS*)_thisPtr)->Set##name(value); \
-    }
+    void Set##name(type value) { ((CRITTER_CLASS*)_thisPtr)->Set##name(value); }
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef CRITTER_CLASS
@@ -418,16 +400,10 @@ public:
 #define MAP_CLASS MapView
 #endif
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
-    type Get##name() \
-    { \
-        return MarshalBack(((MAP_CLASS*)_thisPtr)->Get##name()); \
-    }
+    type Get##name() { return MarshalBack(((MAP_CLASS*)_thisPtr)->Get##name()); }
 #define FO_API_MAP_PROPERTY(access, type, name, ...) \
     FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    void Set##name(type value) \
-    { \
-        ((MAP_CLASS*)_thisPtr)->Set##name(value); \
-    }
+    void Set##name(type value) { ((MAP_CLASS*)_thisPtr)->Set##name(value); }
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef MAP_CLASS
@@ -450,16 +426,10 @@ public:
 #define LOCATION_CLASS LocationView
 #endif
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
-    type Get##name() \
-    { \
-        return MarshalBack(((LOCATION_CLASS*)_thisPtr)->Get##name()); \
-    }
+    type Get##name() { return MarshalBack(((LOCATION_CLASS*)_thisPtr)->Get##name()); }
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
     FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    void Set##name(type value) \
-    { \
-        ((LOCATION_CLASS*)_thisPtr)->Set##name(value); \
-    }
+    void Set##name(type value) { ((LOCATION_CLASS*)_thisPtr)->Set##name(value); }
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef LOCATION_CLASS

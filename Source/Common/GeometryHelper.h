@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -74,10 +74,10 @@ public:
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, uint dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
 
-    static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
-    static auto MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool;
-    static void MoveHexByDirUnsafe(ipos& hex, uint8 dir);
-    static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const std::function<void(mpos)>& callback);
+    static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) noexcept -> bool;
+    static auto MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) noexcept -> bool;
+    static void MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept;
+    static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const std::function<void(mpos)>& work);
 
 private:
     void InitializeHexOffsets() const;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,10 @@
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
+DECLARE_EXCEPTION(ScriptCallException);
+DECLARE_EXCEPTION(ScriptCompilerException);
 
+// ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8
 {
 };
@@ -53,6 +56,7 @@ enum class ScriptEnum_int : int
 enum class ScriptEnum_uint : uint
 {
 };
+// ReSharper restore CppInconsistentNaming
 
 using GameComponent = ScriptEnum_int;
 using PlayerComponent = ScriptEnum_int;
@@ -87,12 +91,16 @@ class ProtoLocation;
 
 using AbstractItem = Entity;
 
+struct UnsupportedScriptFuncType
+{
+};
+
 struct ScriptFuncDesc
 {
     hstring Name {};
     string Declaration {};
-    const type_info* RetType {};
-    vector<const type_info*> ArgsType {};
+    std::type_index RetType {typeid(UnsupportedScriptFuncType)};
+    vector<std::type_index> ArgsType {};
     bool CallSupported {};
     std::function<bool(initializer_list<void*>, void*)> Call {};
     bool Delegate {};
@@ -112,7 +120,7 @@ public:
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
     [[nodiscard]] auto GetResult() -> TRet { return _ret; }
 
-    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, &_ret) : false; }
+    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, &_ret) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -132,7 +140,7 @@ public:
     [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
 
-    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, nullptr) : false; }
+    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, nullptr) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -158,15 +166,27 @@ public:
     {
         const auto range = _funcMap.equal_range(func_name);
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
+            if (ValidateArgs(it->second, {std::type_index(typeid(Args))...}, std::type_index(typeid(TRet)))) {
                 return ScriptFunc<TRet, Args...>(&it->second);
             }
         }
         return {};
     }
 
+    template<typename TRet, typename... Args>
+    [[nodiscard]] auto CheckFunc(hstring func_name) const -> bool
+    {
+        const auto range = _funcMap.equal_range(func_name);
+        for (auto it = range.first; it != range.second; ++it) {
+            if (ValidateArgs(it->second, {std::type_index(typeid(Args))...}, std::type_index(typeid(TRet)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, Args... args, TRet& ret) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
         if (func && func(args...)) {
@@ -177,14 +197,14 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, Args... args) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
     }
 
 protected:
-    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const -> bool;
 
     vector<std::function<void()>> _loopCallbacks {};
     std::unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
@@ -201,10 +221,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_CLASS_NAME, static_cast<int>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool

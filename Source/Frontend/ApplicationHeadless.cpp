@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -83,6 +83,8 @@ void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
+    SetThisThreadName("Main");
+
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -119,10 +121,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
     }
     else {
-        LogToFile(_str("{}.log", FO_DEV_NAME));
+        LogToFile(strex("{}.log", FO_DEV_NAME));
     }
 #endif
 
@@ -131,14 +133,8 @@ void InitApp(int argc, char** argv, bool client_mode)
     App = new Application(argc, argv, client_mode);
 
 #if FO_LINUX || FO_MAC
-    const auto set_signal = [](int sig) {
-        void (*ohandler)(int) = signal(sig, SignalHandler);
-        if (ohandler != SIG_DFL) {
-            signal(sig, ohandler);
-        }
-    };
-    set_signal(SIGINT);
-    set_signal(SIGTERM);
+    signal(SIGINT, SignalHandler);
+    signal(SIGTERM, SignalHandler);
 #endif
 }
 
@@ -190,6 +186,8 @@ void Application::OpenLink(string_view link)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(link);
 }
 
@@ -197,12 +195,16 @@ void Application::SetImGuiEffect(RenderEffect* effect)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(effect);
 }
 
 auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(size);
 
@@ -212,6 +214,8 @@ auto Application::CreateChildWindow(isize size) -> AppWindow*
 auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(size);
 
@@ -243,14 +247,15 @@ void Application::EndFrame()
 #endif
 }
 
-void Application::RequestQuit()
+void Application::RequestQuit() noexcept
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Quit requested");
+    if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
+        WriteLog("Quit requested");
 
-    _quit = true;
-    _quitEvent.notify_all();
+        _quitEvent.notify_all();
+    }
 }
 
 void Application::WaitForRequestedQuit()
@@ -278,6 +283,8 @@ void AppWindow::SetSize(isize size)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(size);
 }
 
@@ -291,6 +298,8 @@ auto AppWindow::GetScreenSize() const -> isize
 void AppWindow::SetScreenSize(isize size)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(size);
 }
@@ -309,6 +318,8 @@ void AppWindow::SetPosition(ipos pos)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(pos);
 }
 
@@ -322,6 +333,8 @@ auto AppWindow::IsFocused() const -> bool
 void AppWindow::Minimize()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 }
 
 auto AppWindow::IsFullscreen() const -> bool
@@ -345,11 +358,15 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 void AppWindow::Blink()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(enable);
 }
@@ -358,17 +375,23 @@ void AppWindow::GrabInput(bool enable)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(enable);
 }
 
 void AppWindow::Destroy()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 }
 
 auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(linear_filtered);
@@ -381,6 +404,8 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(tex);
 }
 
@@ -388,12 +413,16 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return nullptr;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(color);
     UNUSED_VARIABLE(depth);
@@ -404,6 +433,8 @@ void AppRender::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(pos);
     UNUSED_VARIABLE(size);
 }
@@ -411,11 +442,15 @@ void AppRender::EnableScissor(ipos pos, isize size)
 void AppRender::DisableScissor()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(is_static);
 
@@ -425,6 +460,8 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(usage);
     UNUSED_VARIABLE(name);
@@ -436,6 +473,8 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(left);
     UNUSED_VARIABLE(right);
@@ -450,6 +489,8 @@ auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float t
 auto AppRender::IsRenderTargetFlipped() -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     return false;
 }
@@ -468,6 +509,8 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(pos);
     UNUSED_VARIABLE(relative_to);
 }
@@ -475,6 +518,8 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(ev);
 
@@ -484,11 +529,15 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 void AppInput::ClearEvents()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(ev);
     UNUSED_VARIABLE(push_to_this_frame);
@@ -497,6 +546,8 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 void AppInput::SetClipboardText(string_view text)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(text);
 }
@@ -508,14 +559,14 @@ auto AppInput::GetClipboardText() -> const string&
     return _clipboardTextStorage;
 }
 
-auto AppAudio::IsEnabled() -> bool
+auto AppAudio::IsEnabled() const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return false;
 }
 
-auto AppAudio::GetStreamSize() -> uint
+auto AppAudio::GetStreamSize() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -524,7 +575,7 @@ auto AppAudio::GetStreamSize() -> uint
     return 0;
 }
 
-auto AppAudio::GetSilence() -> uint8
+auto AppAudio::GetSilence() const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -537,6 +588,8 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     [[maybe_unused]] auto unused = std::move(stream_callback);
 
     RUNTIME_ASSERT(IsEnabled());
@@ -545,6 +598,8 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(format);
     UNUSED_VARIABLE(channels);
@@ -560,6 +615,8 @@ void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(output);
     UNUSED_VARIABLE(buf);
     UNUSED_VARIABLE(volume);
@@ -571,12 +628,16 @@ void AppAudio::LockDevice()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(IsEnabled());
 }
 
 void AppAudio::UnlockDevice()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(IsEnabled());
 }

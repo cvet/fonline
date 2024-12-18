@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,9 @@
 #include "Application.h"
 #include "Client.h"
 #include "DiskFileSystem.h"
+#include "ImGuiStuff.h"
 #include "Server.h"
 #include "Settings.h"
-
-#include "imgui.h"
 
 #if !FO_TESTING_APP
 #include "SDL_main.h"
@@ -55,7 +54,7 @@ struct ServerAppData
 GLOBAL_DATA(ServerAppData, Data);
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif
@@ -68,7 +67,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         list<vector<string>> log_buffer;
         std::mutex log_buffer_locker;
         SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
-            if (auto&& lines = _str(str).split('\n'); !lines.empty()) {
+            if (auto&& lines = strex(str).split('\n'); !lines.empty()) {
                 auto locker = std::unique_lock {log_buffer_locker};
                 log_buffer.emplace_back(std::move(lines));
             }
@@ -127,6 +126,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         ShowExceptionMessageBox(true);
+                        auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
+
                         try {
                             auto&& client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(std::move(client));
@@ -135,7 +136,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         catch (const std::exception& ex) {
                             ReportExceptionAndContinue(ex);
                         }
-                        ShowExceptionMessageBox(false);
+                        catch (...) {
+                            UNKNOWN_EXCEPTION();
+                        }
                     }
 
                     if (ImGui::Button("Create dump", control_btn_size)) {
@@ -155,7 +158,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         }
 
                         const auto dt = Timer::GetCurrentDateTime();
-                        const string log_name = _str("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                        const string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
                         DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
                     }
 
@@ -180,6 +183,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     }
                     catch (const std::exception& ex) {
                         ReportExceptionAndContinue(ex);
+                    }
+                    catch (...) {
+                        UNKNOWN_EXCEPTION();
                     }
                 }
             }
@@ -218,6 +224,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             for (auto&& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
+                auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                 try {
                     App->Input.ClearEvents();
@@ -235,17 +242,15 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
-
-                ShowExceptionMessageBox(false);
+                catch (...) {
+                    UNKNOWN_EXCEPTION();
+                }
             }
 
             App->EndFrame();
 
             // Process quit
             if (App->IsQuitRequested()) {
-                for (auto&& client : Data->Clients) {
-                    client->Shutdown();
-                }
                 Data->Clients.clear();
 
                 if (Data->Server) {
@@ -260,5 +265,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -73,9 +73,6 @@ enum class RenderType
 #endif
 #if FO_HAVE_VULKAN
     Vulkan,
-#endif
-#if FO_HAVE_GNM
-    GNM,
 #endif
 };
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -76,7 +76,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
-FIXED_SETTING(uint, MinimumOfflineTime, 180000);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
 FIXED_SETTING(uint, DlgTalkMaxTime, 0);
@@ -173,7 +172,6 @@ VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
-VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 VARIABLE_SETTING(bool, VSync, false);
@@ -192,8 +190,9 @@ FIXED_SETTING(int, DefaultModelViewWidth, 0);
 FIXED_SETTING(int, DefaultModelViewHeight, 0);
 FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
-FIXED_SETTING(uint, AnimWalkSpeed, 80);
-FIXED_SETTING(uint, AnimRunSpeed, 160);
+FIXED_SETTING(int, WalkAnimBaseSpeed, 60);
+FIXED_SETTING(int, RunAnimStartSpeed, 80);
+FIXED_SETTING(int, RunAnimBaseSpeed, 120);
 FIXED_SETTING(float, ModelProjFactor, 40.0f);
 FIXED_SETTING(bool, AtlasLinearFiltration, false);
 FIXED_SETTING(int, DefaultParticleDrawWidth, 128);
@@ -209,18 +208,19 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-VARIABLE_SETTING(bool, ForceBakering, false);
-VARIABLE_SETTING(string, BakeOutput);
-VARIABLE_SETTING(vector<string>, BakeResourceEntries);
-VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+FIXED_SETTING(bool, ForceBaking, false);
+FIXED_SETTING(bool, SingleThreadBaking, false);
+FIXED_SETTING(string, BakeOutput);
+FIXED_SETTING(vector<string>, BakeResourceEntries);
+FIXED_SETTING(vector<string>, BakeContentEntries);
+FIXED_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
-FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true, true);
-FIXED_SETTING(vector<bool>, CritterSlotSendData, true, false, true);
-FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false, false);
+FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true);
+FIXED_SETTING(vector<bool>, CritterSlotSendData, false, true);
+FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -229,9 +229,7 @@ FIXED_SETTING(uint, CritterFidgetTime, 50000);
 FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
-FIXED_SETTING(string, PlayerOffAppendix, "_off");
 VARIABLE_SETTING(bool, ShowCritterName, true);
-VARIABLE_SETTING(bool, ShowCritterHeadText, true);
 VARIABLE_SETTING(bool, ShowPlayerName, true);
 VARIABLE_SETTING(bool, ShowNpcName, true);
 VARIABLE_SETTING(bool, ShowDeadNpcName, true);
@@ -333,6 +331,8 @@ FIXED_SETTING(uint, DataBaseCommitPeriod, 10);
 FIXED_SETTING(uint, DataBaseMaxCommitJobs, 100);
 FIXED_SETTING(uint, LoopAverageTimeInterval, 1000);
 FIXED_SETTING(bool, WriteHealthFile, false);
+FIXED_SETTING(bool, ProtoMapStaticGrid, false);
+FIXED_SETTING(bool, MapInstanceStaticGrid, false);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

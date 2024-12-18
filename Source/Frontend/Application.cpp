@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ImGuiStuff.h"
 #include "Log.h"
 #include "Platform.h"
 #include "StringUtils.h"
@@ -45,8 +46,6 @@
 #include "SDL_events.h"
 #include "SDL_syswm.h"
 #include "SDL_video.h"
-
-#include "imgui.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -114,6 +113,8 @@ void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
+    SetThisThreadName("Main");
+
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -150,10 +151,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
     }
     else {
-        LogToFile(_str("{}.log", FO_DEV_NAME));
+        LogToFile(strex("{}.log", FO_DEV_NAME));
     }
 #endif
 
@@ -406,12 +407,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
         throw NotImplementedException(LINE_STR);
     }
 #endif
-#if FO_HAVE_GNM
-    else if (Settings.ForceGNM) {
-        ActiveRendererType = RenderType::GNM;
-        throw NotImplementedException(LINE_STR);
-    }
-#endif
 
     // If none of selected then evaluate automatic selection
 #if FO_HAVE_DIRECT_3D
@@ -428,11 +423,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #if FO_HAVE_VULKAN
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Vulkan;
-    }
-#endif
-#if FO_HAVE_GNM
-    if (ActiveRenderer == nullptr) {
-        ActiveRendererType = RenderType::GNM;
     }
 #endif
 #if FO_HAVE_OPENGL
@@ -482,7 +472,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
             const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
-            Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
+            Settings.ScreenWidth = iround(static_cast<float>(Settings.ScreenHeight) * ratio);
 
             Settings.Fullscreen = true;
         }
@@ -522,9 +512,10 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #endif
 
         // Init Dear ImGui
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
+        ImGuiExt::Init();
+
         ImGuiIO& io = ImGui::GetIO();
+        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
         io.BackendPlatformName = "fonline";
         io.WantSaveIniSettings = false;
@@ -532,7 +523,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return _str(sdl_backend).startsWith(entry); });
+        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return strex(sdl_backend).startsWith(entry); });
 
         if (Settings.ImGuiColorStyle == "Dark") {
             ImGui::StyleColorsDark();
@@ -546,9 +537,9 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        io.GetClipboardTextFn = [](void*) -> const char* { return App->Input.GetClipboardText().c_str(); };
-        io.SetClipboardTextFn = [](void*, const char* text) { App->Input.SetClipboardText(text); };
-        io.ClipboardUserData = nullptr;
+        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* { return App->Input.GetClipboardText().c_str(); };
+        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) { App->Input.SetClipboardText(text); };
+        platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
         if (ActiveRendererType != RenderType::Null) {
@@ -599,6 +590,8 @@ void Application::OpenLink(string_view link)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     SDL_OpenURL(string(link).c_str());
 }
 
@@ -621,6 +614,8 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(size);
 
@@ -859,7 +854,7 @@ void Application::BeginFrame()
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
-                    ev1.Text = _str("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
+                    ev1.Text = strex("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
                     EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
@@ -1057,14 +1052,15 @@ void Application::EndFrame()
 #endif
 }
 
-void Application::RequestQuit()
+void Application::RequestQuit() noexcept
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Quit requested");
+    if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
+        WriteLog("Quit requested");
 
-    _quit = true;
-    _quitEvent.notify_all();
+        _quitEvent.notify_all();
+    }
 }
 
 void Application::WaitForRequestedQuit()
@@ -1272,12 +1268,16 @@ auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
@@ -1287,12 +1287,16 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
@@ -1301,12 +1305,16 @@ void AppRender::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     ActiveRenderer->EnableScissor(pos, size);
 }
 
 void AppRender::DisableScissor()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     ActiveRenderer->DisableScissor();
 }
@@ -1315,12 +1323,16 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
@@ -1329,12 +1341,16 @@ auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float t
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->IsRenderTargetFlipped();
 }
@@ -1356,6 +1372,8 @@ auto AppInput::GetMousePosition() const -> ipos
 void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MousePos = pos;
@@ -1379,6 +1397,8 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (!EventsQueue->empty()) {
         ev = EventsQueue->front();
         EventsQueue->erase(EventsQueue->begin());
@@ -1391,12 +1411,16 @@ void AppInput::ClearEvents()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (push_to_this_frame) {
         EventsQueue->emplace_back(ev);
@@ -1410,6 +1434,8 @@ void AppInput::SetClipboardText(string_view text)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     SDL_SetClipboardText(string(text).c_str());
 }
 
@@ -1421,14 +1447,14 @@ auto AppInput::GetClipboardText() -> const string&
     return _clipboardTextStorage;
 }
 
-auto AppAudio::IsEnabled() -> bool
+auto AppAudio::IsEnabled() const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return AudioDeviceId >= 2;
 }
 
-auto AppAudio::GetStreamSize() -> uint
+auto AppAudio::GetStreamSize() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -1437,7 +1463,7 @@ auto AppAudio::GetStreamSize() -> uint
     return AudioSpec.size;
 }
 
-auto AppAudio::GetSilence() -> uint8
+auto AppAudio::GetSilence() const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -1513,6 +1539,8 @@ void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(IsEnabled());
 
     volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
@@ -1523,6 +1551,8 @@ void AppAudio::LockDevice()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(IsEnabled());
 
     SDL_LockAudioDevice(AudioDeviceId);
@@ -1531,6 +1561,8 @@ void AppAudio::LockDevice()
 void AppAudio::UnlockDevice()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1550,7 +1582,7 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
     auto verb_message = string(message);
 
     if (!traceback.empty()) {
-        verb_message += _str("\n\n{}", traceback);
+        verb_message += strex("\n\n{}", traceback);
     }
 
     static unordered_set<string> ignore_entries;

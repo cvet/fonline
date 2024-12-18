@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ public:
 
     void Lost();
     void FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const;
-    void EraseInvalidChars(string& str, uint flags) const;
+    void RemoveInvalidChars(string& str, uint flags) const;
 
     bool ShiftDwn {};
     bool CtrlDwn {};
@@ -67,7 +67,7 @@ public:
     bool KeyPressed[0x100] {};
 
 private:
-    [[nodiscard]] auto IsInvalidChar(string_view str, uint flags, uint& length) const -> bool;
+    [[nodiscard]] auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
 
     InputSettings& _settings;
     SpriteManager& _sprMngr;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,26 +40,24 @@
 #include "Settings.h"
 
 #if !FO_SINGLEPLAYER
-// ReSharper disable CppInconsistentNaming
-struct ASCompiler_ServerScriptSystem final : public ScriptSystem
+struct AngelScriptCompiler_ServerScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
-struct ASCompiler_ClientScriptSystem final : public ScriptSystem
+struct AngelScriptCompiler_ClientScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 #else
-struct ASCompiler_SingleScriptSystem final : public ScriptSystem
+struct AngelScriptCompiler_SingleScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
 #endif
-struct ASCompiler_MapperScriptSystem final : public ScriptSystem
+struct AngelScriptCompiler_MapperScriptSystem final : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& resources);
+    void InitAngelScriptScripting(const FileSystem& resources);
 };
-// ReSharper restore CppInconsistentNaming
 
 unordered_set<string> CompilerPassedMessages;
 
@@ -73,7 +71,6 @@ int main(int argc, char** argv)
 
     try {
         InitApp(argc, argv);
-        LogWithoutTimestamp();
 
 #if !FO_SINGLEPLAYER
         auto server_failed = false;
@@ -92,7 +89,7 @@ int main(int argc, char** argv)
         WriteLog("Compile server scripts");
 
         try {
-            ASCompiler_ServerScriptSystem().InitAngelScriptScripting(resources);
+            AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -105,7 +102,7 @@ int main(int argc, char** argv)
         WriteLog("Compile client scripts");
 
         try {
-            ASCompiler_ClientScriptSystem().InitAngelScriptScripting(resources);
+            AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -118,7 +115,7 @@ int main(int argc, char** argv)
         WriteLog("Compile game scripts");
 
         try {
-            ASCompiler_SingleScriptSystem().InitAngelScriptScripting(resources);
+            AngelScriptCompiler_SingleScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -132,7 +129,7 @@ int main(int argc, char** argv)
         WriteLog("Compile mapper scripts");
 
         try {
-            ASCompiler_MapperScriptSystem().InitAngelScriptScripting(resources);
+            AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -162,5 +159,8 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

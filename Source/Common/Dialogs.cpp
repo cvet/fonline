@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,11 +41,11 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
-    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
-    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Find(str);
-    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->Find(str);
-    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->Find(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;
@@ -135,12 +135,6 @@ void DialogManager::AddDialog(DialogPack* pack)
         throw DialogManagerException("Dialog already added", pack->PackName);
     }
 
-    for (auto&& [pack_id, other_pack] : _dialogPacks) {
-        if ((pack->PackId.as_uint() & DLGID_MASK) == (pack_id.as_uint() & DLGID_MASK)) {
-            throw DialogManagerException("Name hash collision for dialogs", pack->PackName, other_pack->PackName);
-        }
-    }
-
     _dialogPacks.insert(std::make_pair(pack->PackId, pack));
 }
 
@@ -171,7 +165,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
     auto&& pack = std::make_unique<DialogPack>();
 
-    auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
+    auto fodlg = ConfigFile(strex("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
     pack->PackId = _engine->ToHashedString(pack_name);
     pack->PackName = pack_name;
@@ -186,7 +180,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         throw DialogParseException("Invalid hash for dialog name", pack_name);
     }
 
-    const auto lang_apps = _str(lang_key).split(' ');
+    const auto lang_apps = strex(lang_key).split(' ');
     if (lang_apps.empty()) {
         throw DialogParseException("Lang app is empty", pack_name);
     }
@@ -207,19 +201,16 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             throw DialogParseException("Load MSG fail", pack_name);
         }
 
-        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0) {
-            throw DialogParseException("Text have any text with index greather than 4000", pack_name);
-        }
-
         pack->Texts.emplace_back(lang_app, TextPack {});
 
         uint str_num = 0;
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
             const size_t count = temp_msg.GetStrCount(str_num);
-            const uint new_str_num = DLG_STR_ID(pack->PackId.as_uint(), (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
+            const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
 
             for (size_t n = 0; n < count; n++) {
-                pack->Texts[i].second.AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
+                string str = strex(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[");
+                pack->Texts[i].second.AddStr(new_str_num, std::move(str));
             }
         }
     }
@@ -250,11 +241,8 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         if (input.fail()) {
             throw DialogParseException("Bad text link", pack_name);
         }
-        if (text_id / 10 > ~DLGID_MASK) {
-            throw DialogParseException("Invalid text link value", pack_name);
-        }
 
-        dlg.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
+        dlg.TextId = pack->PackId.as_uint() + text_id / 10;
 
         string script;
         input >> script;
@@ -309,11 +297,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
                 throw DialogParseException("Bad text link in answer", pack_name);
             }
 
-            if (text_id / 10 > ~DLGID_MASK) {
-                throw DialogParseException("Invalid text link value in answer", pack_name);
-            }
-
-            answer.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
+            answer.TextId = pack->PackId.as_uint() + text_id / 10;
 
             while (!input.eof()) {
                 input >> tok;

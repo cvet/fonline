@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -71,6 +71,7 @@ public:
     void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges();
+    void ClearChanges() noexcept;
     void WaitCommitThread();
 
 protected:
@@ -175,6 +176,15 @@ void DataBase::CommitChanges(bool wait_commit_complete)
     }
 }
 
+void DataBase::ClearChanges() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    _impl->ClearChanges();
+}
+
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
 {
     STACK_TRACE_ENTRY();
@@ -209,7 +219,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
         auto arr_key_index = 0;
         for (const auto& arr_value : arr) {
-            string arr_key = _str("{}", arr_key_index);
+            string arr_key = strex("{}", arr_key_index);
             arr_key_index++;
 
             const auto arr_value_index = arr_value.index();
@@ -280,7 +290,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
                 const auto& arr = std::get<AnyData::ARRAY_VALUE>(dict_value);
                 auto arr_key_index = 0;
                 for (const auto& arr_value : arr) {
-                    string arr_key = _str("{}", arr_key_index);
+                    string arr_key = strex("{}", arr_key_index);
                     arr_key_index++;
 
                     const auto arr_value_index = arr_value.index();
@@ -558,7 +568,7 @@ void DataBaseImpl::CommitChanges()
 {
     STACK_TRACE_ENTRY();
 
-    const auto is_changes_empty = [](const auto& collection) {
+    const auto is_changes_empty = [](const auto& collection) noexcept {
         for (auto&& [key, value] : collection) {
             if (!value.empty()) {
                 return false;
@@ -611,6 +621,15 @@ void DataBaseImpl::CommitChanges()
     _deletedRecords.clear();
 }
 
+void DataBaseImpl::ClearChanges() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    _recordChanges.clear();
+    _newRecords.clear();
+    _deletedRecords.clear();
+}
+
 void DataBaseImpl::WaitCommitThread()
 {
     STACK_TRACE_ENTRY();
@@ -642,12 +661,12 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
 
-            const string id_str = _str(path).extractFileName().eraseFileExtension();
-            const auto id = _str(id_str).toUInt();
+            const string id_str = strex(path).extractFileName().eraseFileExtension();
+            const auto id = strex(id_str).toUInt();
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
             }
@@ -663,7 +682,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
         size_t length;
         char* json;
@@ -699,7 +718,7 @@ protected:
 
         RUNTIME_ASSERT(!doc.empty());
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
         if (const auto f_check = DiskFileSystem::OpenFile(path, false)) {
             throw DataBaseException("DbJson File exists for inserting", path);
@@ -737,7 +756,7 @@ protected:
 
         RUNTIME_ASSERT(!doc.empty());
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
         size_t length;
         char* json;
@@ -788,7 +807,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
         if (!DiskFileSystem::DeleteFile(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
@@ -824,7 +843,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
 
         unqlite* ping_db = nullptr;
-        const auto ping_db_path = _str("{}/Ping.unqlite", storage_dir);
+        const string ping_db_path = strex("{}/Ping.unqlite", storage_dir);
         if (unqlite_open(&ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
@@ -945,8 +964,7 @@ protected:
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(
-            db, &id, sizeof(id), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
         }
@@ -1043,7 +1061,7 @@ private:
 
         const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
-            const string db_path = _str("{}/{}.unqlite", _storageDir, collection_name);
+            const string db_path = strex("{}/{}.unqlite", _storageDir, collection_name);
             const auto r = unqlite_open(&db, db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING);
             if (r != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
@@ -1450,7 +1468,7 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto options = _str(connection_info).split(' '); !options.empty()) {
+    if (const auto options = strex(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
 #if FO_HAVE_JSON

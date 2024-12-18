@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,16 +53,15 @@ public:
     auto operator=(Location&&) noexcept = delete;
     ~Location() override = default;
 
-    [[nodiscard]] auto GetProtoLoc() const -> const ProtoLocation*;
-    [[nodiscard]] auto IsLocVisible() const -> bool;
-    [[nodiscard]] auto GetMapsRaw() -> vector<Map*>&;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto IsLocVisible() const noexcept -> bool;
+    [[nodiscard]] auto GetMapsRaw() noexcept -> vector<Map*>&;
+    [[nodiscard]] auto GetMaps() noexcept -> const vector<Map*>&;
     [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
-    [[nodiscard]] auto GetMapsCount() const -> uint;
-    [[nodiscard]] auto GetMapByIndex(uint index) -> Map*;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid) -> Map*;
-    [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> uint;
-    [[nodiscard]] auto IsCanDelete() const -> bool;
+    [[nodiscard]] auto GetMapsCount() const noexcept -> uint;
+    [[nodiscard]] auto GetMapByIndex(uint index) noexcept -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
+    [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> uint;
 
     void BindScript();
 
@@ -71,7 +70,6 @@ public:
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
-    int GeckCount {};
 
 private:
     vector<Map*> _locMaps {};

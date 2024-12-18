@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,7 @@ public:
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
-    virtual void EraseEntry(string_view entry_name) = 0;
+    virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
 class FileCacheStorage final : public CacheStorageImpl
@@ -75,7 +75,7 @@ public:
 
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
-    void EraseEntry(string_view entry_name) override;
+    void RemoveEntry(string_view entry_name) override;
 
 private:
     [[nodiscard]] auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
@@ -100,7 +100,7 @@ public:
 
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
-    void EraseEntry(string_view entry_name) override;
+    void RemoveEntry(string_view entry_name) override;
 
 private:
     unique_ptr<unqlite, std::function<void(unqlite*)>> _db {};
@@ -110,14 +110,14 @@ private:
 
 CacheStorage::CacheStorage(string_view path)
 {
-    if (_str(path).startsWith("unqlite:/")) {
+    if (strex(path).startsWith("unqlite:/")) {
 #if FO_HAVE_UNQLITE
-        _impl = std::make_unique<UnqliteCacheStorage>(_str(path).replace("unqlite:/", ""));
+        _impl = std::make_unique<UnqliteCacheStorage>(strex(path).replace("unqlite:/", ""));
         return;
 #endif
     }
 
-    _impl = std::make_unique<FileCacheStorage>(_str(path).replace("unqlite:/", ""));
+    _impl = std::make_unique<FileCacheStorage>(strex(path).replace("unqlite:/", ""));
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
@@ -161,24 +161,24 @@ void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
     _impl->SetData(entry_name, data);
 }
 
-void CacheStorage::EraseEntry(string_view entry_name)
+void CacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    _impl->EraseEntry(entry_name);
+    _impl->RemoveEntry(entry_name);
 }
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return _str(work_path).combinePath(_str(data_name).replace('/', '_').replace('\\', '_')).str();
+    return strex(work_path).combinePath(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path) :
-    _workPath {_str(real_path).eraseFileExtension()}
+    _workPath {strex(real_path).eraseFileExtension()}
 {
     STACK_TRACE_ENTRY();
 
@@ -269,7 +269,7 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
     }
 }
 
-void FileCacheStorage::EraseEntry(string_view entry_name)
+void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 
@@ -304,8 +304,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
         return false;
     }
 
-    const auto r = unqlite_kv_fetch_callback(
-        _db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+    const auto r = unqlite_kv_fetch_callback(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
         return false;
@@ -314,7 +313,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
     return r == UNQLITE_OK;
 }
 
-void UnqliteCacheStorage::EraseEntry(string_view entry_name)
+void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 

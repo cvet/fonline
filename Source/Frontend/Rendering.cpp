@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -237,18 +237,18 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     const auto depth_write_default = fofx.GetStr("Effect", "DepthWrite", "True");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
-        const auto pass_str = _str("_Pass{}", pass + 1).str();
+        const string pass_str = strex("_Pass{}", pass + 1);
 
-        auto blend_func = _str(fofx.GetStr("Effect", _str("BlendFunc{}", pass_str), blend_func_default)).split(' ');
+        auto blend_func = strex(fofx.GetStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
         RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
-        _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation{}", pass_str), blend_equation_default));
+        _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
-        _depthWrite[pass] = _str(fofx.GetStr("Effect", _str("DepthWrite{}", pass_str), depth_write_default)).toBool();
+        _depthWrite[pass] = strex(fofx.GetStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).toBool();
 
-        const auto pass_info_content = loader(_str("{}.{}.info", _str(name).eraseFileExtension(), pass + 1));
+        const auto pass_info_content = loader(strex("{}.{}.info", strex(name).eraseFileExtension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
         RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 
@@ -272,7 +272,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         const_cast<int&>(_posModelBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelBuf", -1);
         const_cast<bool&>(NeedModelBuf) |= _posModelBuf[pass] != -1;
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
-            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetInt("EffectInfo", _str("ModelTex{}", i), -1);
+            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetInt("EffectInfo", strex("ModelTex{}", i), -1);
             const_cast<bool&>(NeedModelTex[i]) |= _posModelTex[pass][i] != -1;
             const_cast<bool&>(NeedAnyModelTex) |= NeedModelTex[i];
         }

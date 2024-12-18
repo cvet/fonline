@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,15 +39,14 @@
 #error FO_TESTING_APP is not enabled
 #endif
 
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 #include "Common.h"
 
 #include "Application.h"
 #include "GenericUtils.h"
 
-extern "C" int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     STACK_TRACE_ENTRY();
 
@@ -58,5 +57,8 @@ extern "C" int main(int argc, char** argv)
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

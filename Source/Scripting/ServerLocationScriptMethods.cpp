@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,6 @@
 
 #include "Server.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# param initFunc ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
 {
@@ -49,8 +45,6 @@
     self->SetInitScript(initFunc);
 }
 
-///# ...
-///# param initFunc ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
 {
@@ -61,17 +55,12 @@
     self->SetInitScript(initFunc);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Location_GetMapCount(Location* self)
 {
     return self->GetMapsCount();
 }
 
-///# ...
-///# param mapPid ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Location_GetMap(Location* self, hstring mapPid)
 {
@@ -83,13 +72,11 @@
     return static_cast<Map*>(nullptr);
 }
 
-///# ...
-///# param index ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Location_GetMapByIndex(Location* self, uint index)
 {
-    auto maps = self->GetMaps();
+    const auto maps = self->GetMaps();
+
     if (index >= maps.size()) {
         throw ScriptException("Invalid index arg");
     }
@@ -97,19 +84,12 @@
     return maps[index];
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<Map*> Server_Location_GetMaps(Location* self)
 {
     return self->GetMaps();
 }
 
-///# ...
-///# param entranceIndex ...
-///# param mapIndex ...
-///# param entrance ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hstring& entrance)
 {
@@ -123,10 +103,6 @@
     entrance = map_entrances[entranceIndex * 2 + 1];
 }
 
-///# ...
-///# param mapsIndex ...
-///# param entrances ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hstring>& entrances)
 {
@@ -143,8 +119,6 @@
     return count;
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_Regenerate(Location* self)
 {

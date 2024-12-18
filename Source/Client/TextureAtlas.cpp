@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,7 @@ TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
 
 auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (Busy) {
         return true;
@@ -226,6 +226,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tu
     if (atlas == nullptr) {
         atlas = CreateAtlas(atlas_type, size_with_padding);
         atlas_node = atlas->RootNode->FindPosition(size_with_padding);
+        RUNTIME_ASSERT(atlas_node);
     }
 
     const ipos pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
@@ -243,7 +244,7 @@ void TextureAtlasManager::DumpAtlases() const
     }
 
     const auto date = Timer::GetCurrentDateTime();
-    const string dir = _str("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
@@ -265,7 +266,7 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = _str("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Size.width, atlas->Size.height);
+        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Size.width, atlas->Size.height);
         auto tex_data = atlas->MainTex->GetTextureRegion({0, 0}, atlas->Size);
         GenericUtils::WriteSimpleTga(fname, atlas->Size, std::move(tex_data));
         cnt++;

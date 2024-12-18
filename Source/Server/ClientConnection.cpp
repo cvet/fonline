@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -57,51 +57,51 @@ ClientConnection::~ClientConnection()
     _netConnection->Release();
 }
 
-auto ClientConnection::GetIp() const -> uint
+auto ClientConnection::GetIp() const noexcept -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetIp();
 }
 
-auto ClientConnection::GetHost() const -> string_view
+auto ClientConnection::GetHost() const noexcept -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetHost();
 }
 
-auto ClientConnection::GetPort() const -> uint16
+auto ClientConnection::GetPort() const noexcept -> uint16
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetPort();
 }
 
-auto ClientConnection::IsHardDisconnected() const -> bool
+auto ClientConnection::IsHardDisconnected() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsDisconnected();
 }
 
-auto ClientConnection::IsGracefulDisconnected() const -> bool
+auto ClientConnection::IsGracefulDisconnected() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
 }
 
-auto ClientConnection::IsWebConnection() const -> bool
+auto ClientConnection::IsWebConnection() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsWebConnection();
 }
 
-auto ClientConnection::IsInterthreadConnection() const -> bool
+auto ClientConnection::IsInterthreadConnection() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsInterthreadConnection();
 }

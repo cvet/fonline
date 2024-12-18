@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,13 +33,13 @@
 
 #include "ParticleEditor.h"
 #include "GenericUtils.h"
+#include "ImGuiStuff.h"
 #include "SparkExtension.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "VisualParticles.h"
 
 #include "SPARK.h"
-#include "imgui.h"
 
 struct ParticleEditor::Impl
 {
@@ -161,8 +161,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
         _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
     }
-    for (auto tex_files = _editor.InputResources.FilterFiles("tga", _str(asset_path).extractDir()); tex_files.MoveNext();) {
-        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(_str(asset_path).extractDir().length() + 1));
+    for (auto tex_files = _editor.InputResources.FilterFiles("tga", strex(asset_path).extractDir()); tex_files.MoveNext();) {
+        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(strex(asset_path).extractDir().length() + 1));
     }
 }
 
@@ -741,9 +741,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = _str("{}: {} => {}", entry.x, entry.y0, entry.y1).str();
+            string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
-            if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", const_cast<float*>(&entry.y0));
                 ImGui::InputFloat("End", const_cast<float*>(&entry.y1));
 
@@ -751,7 +751,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(_str("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -798,9 +798,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
-            string name = _str("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a).str();
+            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
 
-            if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
                 const_cast<unsigned char&>(entry.y0.r) = static_cast<unsigned char>(c1[0]);
@@ -818,7 +818,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(_str("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -986,8 +986,7 @@ void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
     DRAW_SPK_FLOAT_FLOAT("MinForce", "MaxForce", getForceMin, getForceMax, setForce);
     DRAW_SPK_BOOL("UseFullZone", isFullZone, setUseFullZone);
-    DrawSparkInnerZone(
-        "Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto zone) { obj->setZone(zone); });
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
@@ -1026,8 +1025,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& o
     STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
-    DrawSparkInnerZone(
-        "NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto zone) { obj->setNormalZone(zone); });
+    DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto zone) { obj->setNormalZone(zone); });
     DRAW_SPK_BOOL("NormalEmitter InvertedNormals", isInverted, setInverted);
 }
 
@@ -1046,8 +1044,7 @@ void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModif
     STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
-    DrawSparkInnerZone(
-        "Zone", [obj] { return obj->getZone(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto zone) { obj->setZone(zone); });
     DRAW_SPK_COMBO("ZoneTest", getZoneTest, setZoneTest, "ZONE_TEST_INSIDE", "ZONE_TEST_OUTSIDE", "ZONE_TEST_INTERSECT", "ZONE_TEST_ENTER", "ZONE_TEST_LEAVE", "ZONE_TEST_ALWAYS");
 }
 
@@ -1278,15 +1275,15 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
         for (size_t i = 0; i < get_size(); i++) {
             auto&& obj = get(i);
 
-            const string name = _str("{} ({})", obj->getName().empty() ? _str("{}", i + 1).str() : obj->getName(), obj->getClassName());
+            const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : obj->getName(), obj->getClassName());
 
-            if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(obj.get())).c_str(), false, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(_str("Remove {}", name).c_str())) {
+                if (ImGui::Button(strex("Remove {}", name).c_str())) {
                     delIndex = static_cast<int>(i);
                 }
             }

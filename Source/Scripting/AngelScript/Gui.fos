@@ -1,9 +1,11 @@
-// FOS Client
+namespace Gui
+{
+
+#if CLIENT
 
 ///@ Enum CursorType Default = 0
 
 ///@ Setting Client CursorType Cursor
-///@ Setting Client any CursorData
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
 
@@ -644,6 +646,10 @@ class Object
 
     void _Draw(bool callCallback)
     {
+        if (!Active) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1317,6 +1323,7 @@ class Panel : Object
         }
 
         curImage = null;
+
         if (imageName != EMPTY_HSTRING) {
             Sprite::Sprite spr = Sprite::Sprite();
             if (spr.Load(imageName)) {
@@ -1611,7 +1618,7 @@ class TextInput : Text
 
     void _Focus() override
     {
-        Game.CustomCall("SetScreenKeyboard true");
+        Game.SetScreenKeyboard(true);
 
         Text::_Focus();
     }
@@ -1619,7 +1626,7 @@ class TextInput : Text
     void _Unfocus() override
     {
         if (CurConsole == null || !CurConsole.Active) {
-            Game.CustomCall("SetScreenKeyboard false");
+            Game.SetScreenKeyboard(false);
         }
 
         Text::_Unfocus();
@@ -1997,7 +2004,7 @@ class Screen : Panel
     }
     bool get_IsMain() final
     {
-        return IS_CLIENT_MAIN_SCREEN(_Index);
+        return _Index >= CLIENT_MAIN_SCREEN_LOGIN && _Index <= CLIENT_MAIN_SCREEN_WAIT;
     }
     bool get_IsModal() final
     {
@@ -2598,16 +2605,11 @@ class MessageBox : Text
 
     void AddMessage(string text, int type = FOMB_GAME)
     {
-        // Skip error messages
-        if (type == FOMB_GAME && text == "error") {
-            return;
-        }
-
         // Set text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
             ucolor[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
-            messageText = "|" + sayColors[type] + " " + Game.EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
+            messageText = "|" + sayColors[type] + " " + Game.EncodeUtf8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
         else {
             messageText = text;
@@ -2654,9 +2656,7 @@ class MessageBox : Text
             return;
         }
 
-        int tw = 0, th = 0;
-        int maxLines = 0;
-        Game.GetTextInfo("", _Width, _Height, _TextFont, 0, tw, th, maxLines);
+        int maxLines = Game.GetTextLines(_Width, _Height, _TextFont);
         if (maxLines <= 0) {
             _MaxScroll = 0;
             _ScrollLines = 0;
@@ -2677,6 +2677,7 @@ class MessageBox : Text
 
             // Skip scrolled lines
             int curLines = lines;
+            int tw = 0, th = 0;
             int skipLines = 0;
             Game.GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
             lines += skipLines;
@@ -2818,7 +2819,7 @@ class Console : TextInput
 
     void _ActiveChanged() override
     {
-        Game.CustomCall("SetScreenKeyboard " + (Active ? "true" : "false"));
+        Game.SetScreenKeyboard(Active);
 
         TextInput::_ActiveChanged();
     }
@@ -3198,9 +3199,30 @@ void RegisterScreen(int screenIndex, CreateScreenFunc screenFunc)
     }
 }
 
+void ShowScreen(int screenIndex)
+{
+    Game.ShowScreen(screenIndex);
+}
+
+void ShowScreen(int screenIndex, dict<string, any> params)
+{
+    Game.ShowScreen(screenIndex, params);
+}
+
+void HideScreen()
+{
+    Game.HideScreen();
+}
+
+void HideScreen(int screenIndex)
+{
+    Game.HideScreen(screenIndex);
+}
+
 Screen GetScreen(int screenIndex)
 {
-    Screen lastMultiinstanceScreen = null;
+    Screen firstMultiinstanceScreen = null;
+
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
         if (screen.Index == screenIndex) {
@@ -3208,40 +3230,67 @@ Screen GetScreen(int screenIndex)
                 return screen;
             }
             else {
-                lastMultiinstanceScreen = screen;
+                firstMultiinstanceScreen = screen;
             }
         }
     }
-    return lastMultiinstanceScreen;
+
+    return firstMultiinstanceScreen;
 }
 
 Screen GetActiveMainScreen()
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf && Screens[i].IsMain) {
-            return Screens[i];
+        Screen screen = Screens[i];
+        if (screen.Active && screen.IsMain) {
+            return screen;
         }
     }
-    return null; // Should not be reach this point
+
+    return null;
 }
 
 Screen GetActiveScreen()
 {
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        if (Screens[i].ActiveSelf) {
-            return Screens[i];
+        Screen screen = Screens[i];
+        if (screen.Active) {
+            return screen;
         }
     }
-    return null; // Should not be reach this point
+
+    return null;
 }
 
-void GetActiveScreens(Screen[] result)
+Screen GetActiveScreen(int screenIndex)
 {
-    for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf) {
-            result.insertLast(Screens[i]);
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        if (screen.Index == screenIndex && screen.Active) {
+            return screen;
         }
     }
+
+    return null;
+}
+
+bool IsScreenActive(int screenIndex)
+{
+    return GetActiveScreen(screenIndex) != null;
+}
+
+Screen[] GetActiveScreens()
+{
+    Screen[] result = {};
+
+    for (uint i = 0; i < Screens.length(); i++) {
+        Screen screen = Screens[i];
+        if (screen.Active) {
+            result.insertLast(screen);
+        }
+    }
+
+    return result;
 }
 
 Object GetFocusedObject()
@@ -3595,7 +3644,7 @@ void EngineCallback_MouseDown(MouseButton button)
 
             if (nextScreen.IsModal || nextScreen.FindMouseHit() != null) {
                 // Show screen to top and click on it
-                ShowHideScreen(nextScreen, null, true, nextScreen);
+                ShowHideScreen(nextScreen, null, true);
                 EngineCallback_MouseDown(button);
                 return;
             }
@@ -3859,6 +3908,7 @@ Screen CreateScreen(int screenIndex)
     }
     else {
         CursorScreen = screen;
+        CursorScreen._ActiveSelf = true;
     }
 
     screen._Init();
@@ -3882,7 +3932,7 @@ void UnregisterScreen(int screenIndex)
     }
 }
 
-void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen appearScreen = null)
+void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
 {
     // Clean hovered/focused/pressed objects
     if (HoveredObject != null) {
@@ -3927,8 +3977,6 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen a
         // Callback
         if (!screen._ActiveSelf) {
             screen.SetActive(true);
-        }
-        if (appearScreen == null) {
             screen._Show(params);
         }
         screen._Appear();
@@ -3951,9 +3999,8 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen a
         }
 
         // Appear active screen
-        if (appearScreen == null) {
-            appearScreen = GetActiveScreen();
-        }
+        Screen appearScreen = GetActiveScreen();
+
         if (appearScreen != null) {
             // Move to top
             if (Screens.last() !is appearScreen) {
@@ -3975,4 +4022,8 @@ uint GetScreenCount(int screenIndex)
         }
     }
     return count;
+}
+
+#endif
+
 }

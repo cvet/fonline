@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@
 #include "Settings.h"
 
 Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
     Connection {connection},
     _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
@@ -73,38 +73,79 @@ void Player::SetControlledCritter(Critter* cr)
     _controlledCr = cr;
 }
 
-auto Player::GetIp() const -> uint
+auto Player::GetIp() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return Connection->GetIp();
 }
 
-auto Player::GetHost() const -> string_view
+auto Player::GetHost() const noexcept -> string_view
 {
     STACK_TRACE_ENTRY();
 
     return Connection->GetHost();
 }
 
-auto Player::GetPort() const -> uint16
+auto Player::GetPort() const noexcept -> uint16
 {
     STACK_TRACE_ENTRY();
 
     return Connection->GetPort();
 }
 
+void Player::Send_LoginSuccess()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+
+    vector<const uint8*>* global_vars_data = nullptr;
+    vector<uint>* global_vars_data_sizes = nullptr;
+    _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
+
+    vector<const uint8*>* player_data = nullptr;
+    vector<uint>* player_data_sizes = nullptr;
+    StoreData(true, &player_data, &player_data_sizes);
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_LOGIN_SUCCESS);
+    Connection->OutBuf.Write(encrypt_key);
+    Connection->OutBuf.Write(GetId());
+    Connection->OutBuf.WritePropsData(global_vars_data, global_vars_data_sizes);
+    Connection->OutBuf.WritePropsData(player_data, player_data_sizes);
+    SendInnerEntities(_engine, false);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+
+    Connection->OutBuf.SetEncryptKey(encrypt_key);
+}
+
 void Player::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
     const auto is_chosen = cr == GetControlledCritter();
-    cr->StoreData(is_chosen, &data, &data_sizes);
+
+    vector<const uint8*>* cr_data = nullptr;
+    vector<uint>* cr_data_sizes = nullptr;
+    cr->StoreData(is_chosen, &cr_data, &cr_data_sizes);
+
+    const auto& inv_items = cr->GetConstInvItems();
+    vector<const Item*> send_items;
+    send_items.reserve(inv_items.size());
+
+    for (const auto* item : inv_items) {
+        if (item->CanSendItem(!is_chosen)) {
+            send_items.emplace_back(item);
+        }
+    }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
+
     Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.Write(cr->GetProtoId());
     Connection->OutBuf.Write(cr->GetHex());
@@ -117,20 +158,28 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetAliveActionAnim());
     Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
     Connection->OutBuf.Write(cr->GetDeadActionAnim());
-    Connection->OutBuf.Write(cr->GetIsControlledByPlayer());
-    Connection->OutBuf.Write(cr->GetIsControlledByPlayer() && cr->GetPlayer() == nullptr);
+    Connection->OutBuf.Write(cr->GetControlledByPlayer());
+    Connection->OutBuf.Write(cr->GetControlledByPlayer() && cr->GetPlayer() == nullptr);
     Connection->OutBuf.Write(is_chosen);
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
+    Connection->OutBuf.WritePropsData(cr_data, cr_data_sizes);
+
+    SendInnerEntities(cr, is_chosen);
+
+    Connection->OutBuf.Write(static_cast<uint>(send_items.size()));
+    for (const auto* item : send_items) {
+        SendItem(item, is_chosen, true, true);
+    }
+
+    Connection->OutBuf.Write(cr->GetIsAttached());
+    Connection->OutBuf.Write(static_cast<uint16>(cr->AttachedCritters.size()));
+    if (!cr->AttachedCritters.empty()) {
+        for (const auto* attached_cr : cr->AttachedCritters) {
+            Connection->OutBuf.Write(attached_cr->GetId());
+        }
+    }
+
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
-
-    if (!is_chosen) {
-        Send_MoveItem(cr, nullptr, CritterAction::Refresh, CritterItemSlot::Inventory);
-    }
-
-    if (cr->GetIsAttached() || !cr->AttachedCritters.empty()) {
-        Send_Attachments(cr);
-    }
 
     if (cr->IsMoving()) {
         Send_Moving(cr);
@@ -156,16 +205,10 @@ void Player::Send_LoadMap(const Map* map)
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(_controlledCr);
-
     const Location* loc = nullptr;
     hstring pid_map;
     hstring pid_loc;
     uint8 map_index_in_loc = 0;
-
-    if (map == nullptr) {
-        map = _engine->MapMngr.GetMap(_controlledCr->GetMapId());
-    }
 
     if (map != nullptr) {
         loc = map->GetLocation();
@@ -178,21 +221,24 @@ void Player::Send_LoadMap(const Map* map)
     vector<uint>* map_data_sizes = nullptr;
     vector<const uint8*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
+
     if (map != nullptr) {
         map->StoreData(false, &map_data, &map_data_sizes);
         loc->StoreData(false, &loc_data, &loc_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_LOADMAP);
+    Connection->OutBuf.StartMsg(NETMSG_LOAD_MAP);
     Connection->OutBuf.Write(loc != nullptr ? loc->GetId() : ident_t {});
     Connection->OutBuf.Write(map != nullptr ? map->GetId() : ident_t {});
     Connection->OutBuf.Write(pid_loc);
     Connection->OutBuf.Write(pid_map);
     Connection->OutBuf.Write(map_index_in_loc);
     if (map != nullptr) {
-        NET_WRITE_PROPERTIES(Connection->OutBuf, map_data, map_data_sizes);
-        NET_WRITE_PROPERTIES(Connection->OutBuf, loc_data, loc_data_sizes);
+        Connection->OutBuf.WritePropsData(map_data, map_data_sizes);
+        Connection->OutBuf.WritePropsData(loc_data, loc_data_sizes);
+        SendInnerEntities(loc, false);
+        SendInnerEntities(map, false);
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -224,18 +270,24 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     case NetProperty::ChosenItem:
         additional_args = 1;
         break;
+    case NetProperty::CustomEntity:
+        additional_args = 1;
+        break;
     default:
         break;
     }
 
-    uint data_size = 0;
-    const void* data = entity->GetProperties().GetRawData(prop, data_size);
+    const auto& props = entity->GetProperties();
+
+    props.ValidateForRawData(prop);
+
+    const auto prop_raw_data = props.GetRawData(prop);
+    const auto is_pod = prop->IsPlainData();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
-    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
-        Connection->OutBuf.StartMsg(NETMSG_POD_PROPERTY(data_size, additional_args));
+        Connection->OutBuf.StartMsg(NETMSG_POD_PROPERTY(prop_raw_data.size(), additional_args));
     }
     else {
         Connection->OutBuf.StartMsg(NETMSG_COMPLEX_PROPERTY);
@@ -257,20 +309,15 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     case NetProperty::ChosenItem:
         Connection->OutBuf.Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
         break;
+    case NetProperty::CustomEntity:
+        Connection->OutBuf.Write(dynamic_cast<const CustomEntity*>(entity)->GetId());
+        break;
     default:
         break;
     }
 
-    if (is_pod) {
-        Connection->OutBuf.Write(prop->GetRegIndex());
-        Connection->OutBuf.Push(data, data_size);
-    }
-    else {
-        Connection->OutBuf.Write(prop->GetRegIndex());
-        if (data_size != 0) {
-            Connection->OutBuf.Push(data, data_size);
-        }
-    }
+    Connection->OutBuf.Write(prop->GetRegIndex());
+    Connection->OutBuf.Push(prop_raw_data);
 
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -287,7 +334,7 @@ void Player::Send_Moving(const Critter* from_cr)
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE);
         Connection->OutBuf.Write(from_cr->GetId());
         Connection->OutBuf.Write(static_cast<uint>(std::ceil(from_cr->Moving.WholeTime)));
-        Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime));
+        Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime + from_cr->Moving.OffsetTime));
         Connection->OutBuf.Write(from_cr->Moving.Speed);
         Connection->OutBuf.Write(from_cr->Moving.StartHex);
         Connection->OutBuf.Write(static_cast<uint16>(from_cr->Moving.Steps.size()));
@@ -314,6 +361,20 @@ void Player::Send_Moving(const Critter* from_cr)
     }
 }
 
+void Player::Send_MovingSpeed(const Critter* from_cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE_SPEED);
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(from_cr->Moving.Speed);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
 void Player::Send_Dir(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
@@ -332,9 +393,9 @@ void Player::Send_Action(const Critter* from_cr, CritterAction action, int actio
 {
     STACK_TRACE_ENTRY();
 
-    if (context_item != nullptr) {
-        Send_SomeItem(context_item);
-    }
+    NON_CONST_METHOD_HINT();
+
+    const auto is_chosen = from_cr == GetControlledCritter();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ACTION);
@@ -342,40 +403,28 @@ void Player::Send_Action(const Critter* from_cr, CritterAction action, int actio
     Connection->OutBuf.Write(action);
     Connection->OutBuf.Write(action_data);
     Connection->OutBuf.Write(context_item != nullptr);
+    if (context_item != nullptr) {
+        SendItem(context_item, is_chosen, false, false);
+    }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot)
+void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 
     const auto is_chosen = from_cr == GetControlledCritter();
 
-    if (item != nullptr) {
-        Send_SomeItem(item);
-    }
-
-    vector<const Item*> items;
-    vector<vector<const uint8*>*> items_data;
-    vector<vector<uint>*> items_data_sizes;
+    vector<const Item*> send_items;
 
     if (!is_chosen) {
-        const auto& inv_items = from_cr->GetConstRawInvItems();
-        items.reserve(inv_items.size());
-        for (const auto* item_ : inv_items) {
-            const auto slot = item_->GetCritterSlot();
-            if (static_cast<size_t>(slot) < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[static_cast<size_t>(slot)] && //
-                static_cast<size_t>(slot) < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[static_cast<size_t>(slot)]) {
-                items.push_back(item_);
-            }
-        }
+        const auto& inv_items = from_cr->GetConstInvItems();
+        send_items.reserve(inv_items.size());
 
-        if (!items.empty()) {
-            items_data.resize(items.size());
-            items_data_sizes.resize(items.size());
-            for (const auto i : xrange(items)) {
-                items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
+        for (const auto* item : inv_items) {
+            if (item->CanSendItem(true)) {
+                send_items.emplace_back(item);
             }
         }
     }
@@ -385,15 +434,14 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, CritterActi
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(action);
     Connection->OutBuf.Write(prev_slot);
-    Connection->OutBuf.Write(item != nullptr);
-    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : CritterItemSlot::Inventory);
-    Connection->OutBuf.Write(static_cast<uint16>(items.size()));
-    for (const auto i : xrange(items)) {
-        const auto* item_ = items[i];
-        Connection->OutBuf.Write(item_->GetCritterSlot());
-        Connection->OutBuf.Write(item_->GetId());
-        Connection->OutBuf.Write(item_->GetProtoId());
-        NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
+    Connection->OutBuf.Write(moved_item != nullptr ? moved_item->GetCritterSlot() : CritterItemSlot::Inventory);
+    Connection->OutBuf.Write(moved_item != nullptr);
+    if (moved_item != nullptr) {
+        SendItem(moved_item, is_chosen, false, false);
+    }
+    Connection->OutBuf.Write(static_cast<uint>(send_items.size()));
+    for (const auto* item : send_items) {
+        SendItem(item, false, true, true);
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -403,18 +451,21 @@ void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, C
 {
     STACK_TRACE_ENTRY();
 
-    if (context_item != nullptr) {
-        Send_SomeItem(context_item);
-    }
+    NON_CONST_METHOD_HINT();
+
+    const auto is_chosen = from_cr == GetControlledCritter();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ANIMATE);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(state_anim);
     Connection->OutBuf.Write(action_anim);
-    Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.Write(clear_sequence);
     Connection->OutBuf.Write(delay_play);
+    Connection->OutBuf.Write(context_item != nullptr);
+    if (context_item != nullptr) {
+        SendItem(context_item, is_chosen, false, false);
+    }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -441,28 +492,22 @@ void Player::Send_AddItemOnMap(const Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
-    item->StoreData(false, &data, &data_sizes);
-
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM_ON_MAP);
-    Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(item->GetProtoId());
     Connection->OutBuf.Write(item->GetHex());
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
+    SendItem(item, false, false, true);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_EraseItemFromMap(const Item* item)
+void Player::Send_RemoveItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_ERASE_ITEM_FROM_MAP);
+    Connection->OutBuf.StartMsg(NETMSG_REMOVE_ITEM_FROM_MAP);
     Connection->OutBuf.Write(item->GetId());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -484,44 +529,33 @@ void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AddItem(const Item* item)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (item->GetIsHidden()) {
-        return;
-    }
-
-    vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
-    item->StoreData(true, &data, &data_sizes);
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM);
-    Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(item->GetProtoId());
-    Connection->OutBuf.Write(item->GetCritterSlot());
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_EraseItem(const Item* item)
+void Player::Send_ChosenAddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_REMOVE_ITEM);
+    Connection->OutBuf.StartMsg(NETMSG_CHOSEN_ADD_ITEM);
+    SendItem(item, true, true, true);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::Send_ChosenRemoveItem(const Item* item)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_CHOSEN_REMOVE_ITEM);
     Connection->OutBuf.Write(item->GetId());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_GlobalInfo(uint8 info_flags)
+void Player::Send_GlobalInfo()
 {
     STACK_TRACE_ENTRY();
 
@@ -531,57 +565,49 @@ void Player::Send_GlobalInfo(uint8 info_flags)
 
     const auto known_locs = _controlledCr->GetKnownLocations();
 
-    auto loc_count = static_cast<uint16>(known_locs.size());
-
     CONNECTION_OUTPUT_BEGIN(Connection);
 
     Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
 
-    if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
-        Connection->OutBuf.Write(loc_count);
+    uint16 loc_count = 0;
 
-        for (uint16 i = 0; i < loc_count;) {
-            const auto loc_id = known_locs[i];
-            const auto* loc = _engine->MapMngr.GetLocation(loc_id);
-            if (loc != nullptr && !loc->GetToGarbage()) {
-                i++;
-                Connection->OutBuf.Write(loc_id);
-                Connection->OutBuf.Write(loc->GetProtoId());
-                Connection->OutBuf.Write(loc->GetWorldPos());
-                Connection->OutBuf.Write(loc->GetRadius());
-                Connection->OutBuf.Write(loc->GetColor());
-                uint8 count = 0;
-                if (loc->IsNonEmptyMapEntrances()) {
-                    count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
-                }
-                Connection->OutBuf.Write(count);
-            }
-            else {
-                loc_count--;
-                _engine->MapMngr.EraseKnownLoc(_controlledCr, loc_id);
+    for (size_t i = 0; i < known_locs.size(); i++) {
+        const auto loc_id = known_locs[i];
+        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
 
-                constexpr size_t send_location_size = sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8);
-                constexpr char empty_loc[send_location_size] = {0};
-                Connection->OutBuf.Push(empty_loc, sizeof(empty_loc));
-            }
+        if (loc != nullptr) {
+            loc_count++;
+        }
+        else {
+            _engine->MapMngr.RemoveKnownLoc(_controlledCr, loc_id);
         }
     }
 
-    if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
-        auto gmap_fog = _controlledCr->GetGlobalMapFog();
-        if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-            gmap_fog.resize(GM_ZONES_FOG_SIZE);
+    Connection->OutBuf.Write(loc_count);
+
+    for (uint16 i = 0; i < loc_count; i++) {
+        const ident_t loc_id = known_locs[i];
+        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
+        Connection->OutBuf.Write(loc_id);
+        Connection->OutBuf.Write(loc->GetProtoId());
+        Connection->OutBuf.Write(loc->GetWorldPos());
+        Connection->OutBuf.Write(loc->GetRadius());
+        Connection->OutBuf.Write(loc->GetColor());
+        uint8 count = 0;
+        if (loc->IsNonEmptyMapEntrances()) {
+            count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
         }
-        Connection->OutBuf.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
+        Connection->OutBuf.Write(count);
     }
+
+    auto gmap_fog = _controlledCr->GetGlobalMapFog();
+    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
+        gmap_fog.resize(GM_ZONES_FOG_SIZE);
+    }
+    Connection->OutBuf.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
 
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
-
-    if (IsBitSet(info_flags, GM_INFO_CRITTERS)) {
-        _engine->MapMngr.ProcessVisibleCritters(_controlledCr);
-    }
 }
 
 void Player::Send_GlobalLocation(const Location* loc, bool add)
@@ -590,11 +616,8 @@ void Player::Send_GlobalLocation(const Location* loc, bool add)
 
     NON_CONST_METHOD_HINT();
 
-    constexpr auto info_flags = GM_INFO_LOCATION;
-
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_LOCATION);
     Connection->OutBuf.Write(add);
     Connection->OutBuf.Write(loc->GetId());
     Connection->OutBuf.Write(loc->GetProtoId());
@@ -616,31 +639,11 @@ void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 
     NON_CONST_METHOD_HINT();
 
-    constexpr auto info_flags = GM_INFO_FOG;
-
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_FOG);
     Connection->OutBuf.Write(zx);
     Connection->OutBuf.Write(zy);
     Connection->OutBuf.Write(fog);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_AllProperties()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
-    StoreData(true, &data, &data_sizes);
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_ALL_PROPERTIES);
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -889,86 +892,6 @@ void Player::Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    // Todo: restore automaps
-    UNUSED_VARIABLE(locs_vec);
-    UNUSED_VARIABLE(loc);
-    /*if (locs_vec)
-    {
-        LocationVec* locs = (LocationVec*)locs_vec;
-        for (uint i = 0, j = (uint)locs->size(); i < j; i++)
-        {
-            Location* loc_ = (*locs)[i];
-            if (loc_->IsNonEmptyAutomaps())
-            {
-                CScriptArray* automaps = loc_->GetAutomaps();
-                automaps->Release();
-            }
-        }
-
-        CONNECTION_OUTPUT_BEGIN(Connection);
-        Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf.Write((bool)true; // Clear list
-        Connection->OutBuf.Write((uint16)locs->size();
-        for (uint i = 0, j = (uint)locs->size(); i < j; i++)
-        {
-            Location* loc_ = (*locs)[i];
-            Connection->OutBuf.Write(loc_->GetId();
-            Connection->OutBuf.Write(loc_->GetProtoId();
-            if (loc_->IsNonEmptyAutomaps())
-            {
-                CScriptArray* automaps = loc_->GetAutomaps();
-                Connection->OutBuf.Write((uint16)automaps->GetSize();
-                for (uint k = 0, l = (uint)automaps->GetSize(); k < l; k++)
-                {
-                    hstring pid = *(hash*)automaps->At(k);
-                    Connection->OutBuf.Write(pid;
-                    Connection->OutBuf.Write((uint8)loc_->GetMapIndex(pid);
-                }
-                automaps->Release();
-            }
-            else
-            {
-                Connection->OutBuf.Write((uint16)0;
-            }
-        }
-        Connection->OutBuf.EndMsg();
-        CONNECTION_OUTPUT_END(Connection);
-    }
-
-    if (loc)
-    {
-        CScriptArray* automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr);
-
-        CONNECTION_OUTPUT_BEGIN(Connection);
-        Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf.Write((bool)false; // Append this information
-        Connection->OutBuf.Write((uint16)1;
-        Connection->OutBuf.Write(loc->GetId();
-        Connection->OutBuf.Write(loc->GetProtoId();
-        Connection->OutBuf.Write((uint16)(automaps ? automaps->GetSize() : 0);
-        if (automaps)
-        {
-            for (uint i = 0, j = (uint)automaps->GetSize(); i < j; i++)
-            {
-                hash pid = *(hash*)automaps->At(i);
-                Connection->OutBuf.Write(pid;
-                Connection->OutBuf.Write((uint8)loc->GetMapIndex(pid);
-            }
-        }
-        Connection->OutBuf.EndMsg();
-        CONNECTION_OUTPUT_END(Connection);
-
-        if (automaps)
-            automaps->Release();
-    }*/
-}
-
 void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
     STACK_TRACE_ENTRY();
@@ -1032,25 +955,6 @@ void Player::Send_ViewMap()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SomeItem(const Item* item)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
-    item->StoreData(false, &data, &data_sizes);
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_SOME_ITEM);
-    Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(item->GetProtoId());
-    NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
 void Player::Send_PlaceToGameComplete()
 {
     STACK_TRACE_ENTRY();
@@ -1063,70 +967,18 @@ void Player::Send_PlaceToGameComplete()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AddAllItems()
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_controlledCr);
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_CLEAR_ITEMS);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-
-    for (const auto* item : _controlledCr->_invItems) {
-        Send_AddItem(item);
-    }
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_ALL_ITEMS_SEND);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_AllAutomapsInfo()
+void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_controlledCr);
-
-    vector<Location*> locs;
-    for (const auto loc_id : _controlledCr->GetKnownLocations()) {
-        auto* loc = _engine->MapMngr.GetLocation(loc_id);
-        if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
-            locs.push_back(loc);
-        }
-    }
-
-    Send_AutomapsInfo(&locs, nullptr);
-}
-
-void Player::Send_SomeItems(const vector<Item*>* items, int param)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    vector<vector<const uint8*>*> items_data(items != nullptr ? items->size() : 0);
-    vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
-    for (size_t i = 0; i < items_data.size(); i++) {
-        items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);
-    }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_SOME_ITEMS);
-    Connection->OutBuf.Write(param);
-    Connection->OutBuf.Write(items == nullptr);
-    Connection->OutBuf.Write(static_cast<uint>(items != nullptr ? items->size() : 0));
-    if (items != nullptr) {
-        for (size_t i = 0; i < items_data.size(); i++) {
-            const auto* item = items->at(i);
-            Connection->OutBuf.Write(item->GetId());
-            Connection->OutBuf.Write(item->GetProtoId());
-            NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
-        }
+    Connection->OutBuf.Write(string(context_param));
+    Connection->OutBuf.Write(static_cast<uint>(items.size()));
+    for (const auto* item : items) {
+        SendItem(item, owned, false, with_inner_entities);
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -1149,4 +1001,122 @@ void Player::Send_Attachments(const Critter* from_cr)
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    vector<const uint8*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
+
+    entity->StoreData(owned, &data, &data_sizes);
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_ADD_CUSTOM_ENTITY);
+    Connection->OutBuf.Write(entity->GetCustomHolderId());
+    Connection->OutBuf.Write(entity->GetCustomHolderEntry());
+    Connection->OutBuf.Write(entity->GetId());
+    if (const auto* entity_with_proto = dynamic_cast<CustomEntityWithProto*>(entity); entity_with_proto != nullptr) {
+        RUNTIME_ASSERT(_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        Connection->OutBuf.Write(entity_with_proto->GetProtoId());
+    }
+    else {
+        RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        Connection->OutBuf.Write(hstring());
+    }
+    Connection->OutBuf.WritePropsData(data, data_sizes);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::Send_RemoveCustomEntity(ident_t id)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    CONNECTION_OUTPUT_BEGIN(Connection);
+    Connection->OutBuf.StartMsg(NETMSG_REMOVE_CUSTOM_ENTITY);
+    Connection->OutBuf.Write(id);
+    Connection->OutBuf.EndMsg();
+    CONNECTION_OUTPUT_END(Connection);
+}
+
+void Player::SendItem(const Item* item, bool owned, bool with_slot, bool with_inner_entities)
+{
+    STACK_TRACE_ENTRY();
+
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(item->GetProtoId());
+
+    if (with_slot) {
+        Connection->OutBuf.Write(item->GetCritterSlot());
+    }
+
+    vector<const uint8*>* item_data = nullptr;
+    vector<uint>* item_data_sizes = nullptr;
+    item->StoreData(owned, &item_data, &item_data_sizes);
+    Connection->OutBuf.WritePropsData(item_data, item_data_sizes);
+
+    if (with_inner_entities) {
+        SendInnerEntities(item, false);
+    }
+    else {
+        Connection->OutBuf.Write(static_cast<uint16>(0));
+    }
+}
+
+void Player::SendInnerEntities(const Entity* holder, bool owned)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (!holder->HasInnerEntities()) {
+        Connection->OutBuf.Write(static_cast<uint16>(0));
+        return;
+    }
+
+    const auto& entries_entities = holder->GetRawInnerEntities();
+
+    Connection->OutBuf.Write(static_cast<uint16>(entries_entities.size()));
+
+    for (auto&& [entry, entities] : entries_entities) {
+        Connection->OutBuf.Write(entry);
+
+        const auto entry_access = std::get<1>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
+
+        if (entry_access == EntityHolderEntryAccess::Private || (entry_access == EntityHolderEntryAccess::Protected && !owned)) {
+            Connection->OutBuf.Write(static_cast<uint>(0));
+            continue;
+        }
+
+        Connection->OutBuf.Write(static_cast<uint>(entities.size()));
+
+        for (const auto* entity : entities) {
+            const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity);
+            RUNTIME_ASSERT(custom_entity);
+
+            vector<const uint8*>* data = nullptr;
+            vector<uint>* data_sizes = nullptr;
+
+            custom_entity->StoreData(owned, &data, &data_sizes);
+
+            Connection->OutBuf.Write(custom_entity->GetId());
+
+            if (const auto* custom_entity_with_proto = dynamic_cast<const CustomEntityWithProto*>(custom_entity); custom_entity_with_proto != nullptr) {
+                Connection->OutBuf.Write(custom_entity_with_proto->GetProtoId());
+            }
+            else {
+                Connection->OutBuf.Write(hstring());
+            }
+
+            Connection->OutBuf.WritePropsData(data, data_sizes);
+
+            SendInnerEntities(entity, owned);
+        }
+    }
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// Todo: automatically reconnect on network failtures
+// Todo: automatically reconnect on network failures
 
 #pragma once
 
@@ -40,14 +40,7 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-#define CHECK_SERVER_IN_BUF_ERROR(conn) \
-    do { \
-        if ((conn).InBuf.IsError()) { \
-            WriteLog("Wrong network data!"); \
-            (conn).Disconnect(); \
-            return; \
-        } \
-    } while (0)
+DECLARE_EXCEPTION(ServerConnectionException);
 
 // Proxy types
 constexpr auto PROXY_SOCKS4 = 1;
@@ -69,11 +62,11 @@ public:
     auto operator=(ServerConnection&&) noexcept = delete;
     ~ServerConnection();
 
-    [[nodiscard]] auto IsConnecting() const -> bool { return _isConnecting; }
-    [[nodiscard]] auto IsConnected() const -> bool { return _isConnected; }
-    [[nodiscard]] auto GetBytesSend() const -> size_t { return _bytesSend; }
-    [[nodiscard]] auto GetBytesReceived() const -> size_t { return _bytesReceived; }
-    [[nodiscard]] auto GetUnpackedBytesReceived() const -> size_t { return _bytesRealReceived; }
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
+    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
+    [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
+    [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+    [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
 
     void AddConnectHandler(ConnectCallback handler);
     void AddDisconnectHandler(DisconnectCallback handler);
@@ -88,8 +81,9 @@ public:
 private:
     struct Impl;
 
-    auto ConnectToHost(string_view host, uint16 port) -> bool;
-    auto ReceiveData(bool unpack) -> int;
+    void ConnectToHost();
+    void ProcessConnection();
+    auto ReceiveData(bool unpack) -> bool;
     auto DispatchData() -> bool;
     auto CheckSocketStatus(bool for_write) -> bool;
 
@@ -97,7 +91,7 @@ private:
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;
-    Impl* _impl;
+    unique_ptr<Impl> _impl;
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     vector<uint8> _incomeBuf {};
@@ -118,4 +112,7 @@ private:
     std::mutex _interthreadReceivedLocker {};
     std::atomic_bool _interthreadRequestDisconnect {};
     optional<time_point> _artificalLagTime {};
+#if FO_DEBUG
+    vector<uint> _msgHistory {};
+#endif
 };

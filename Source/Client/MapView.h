@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -119,12 +119,12 @@ public:
     struct FieldFlags
     {
         bool ScrollBlock {};
-        bool IsWall {};
-        bool IsWallTransp {};
-        bool IsScen {};
-        bool IsMoveBlocked {};
-        bool IsShootBlocked {};
-        bool IsLightBlocked {};
+        bool HasWall {};
+        bool HasTransparentWall {};
+        bool HasScenery {};
+        bool MoveBlocked {};
+        bool ShootBlocked {};
+        bool LightBlocked {};
     };
 
     struct Field
@@ -163,18 +163,17 @@ public:
     auto operator=(MapView&&) noexcept = delete;
     ~MapView() override;
 
-    [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
-    [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(mpos pos) -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField.GetCellForReading(pos); }
-    [[nodiscard]] auto IsHexToDraw(mpos pos) const -> bool { return _hexField.GetCellForReading(pos).IsView; }
-    [[nodiscard]] auto GetHexTrack(mpos pos) -> char& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
-    [[nodiscard]] auto GetLightData() -> ucolor* { return _hexLight.data(); }
-    [[nodiscard]] auto GetGlobalDayTime() const -> int;
-    [[nodiscard]] auto GetMapDayTime() const -> int;
-    [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
-    [[nodiscard]] auto IsScrollEnabled() const -> bool;
+    [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
+    [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto GetField(mpos pos) noexcept -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(pos); }
+    [[nodiscard]] auto IsHexToDraw(mpos pos) const noexcept -> bool { return _hexField->GetCellForReading(pos).IsView; }
+    [[nodiscard]] auto GetHexTrack(mpos pos) noexcept -> char& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
+    [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
+    [[nodiscard]] auto GetGlobalDayTime() const noexcept -> int;
+    [[nodiscard]] auto GetMapDayTime() const noexcept -> int;
+    [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
+    [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
 
-    void MarkAsDestroyed() override;
     void EnableMapperMode();
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
@@ -189,7 +188,7 @@ public:
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int quad_dir) const -> bool;
-    auto TraceBullet(mpos start_hex, mpos target_hex, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_passed) -> bool;
+    void TraceBullet(mpos start_hex, mpos target_hex, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -204,7 +203,7 @@ public:
     void RebuildMapOffset(ipos hex_offset);
     void RefreshMap() { RebuildMap(_screenRawHex); }
     void RebuildFog() { _rebuildFog = true; }
-    void SetShootBorders(bool enabled);
+    void SetShootBorders(bool enabled, uint dist);
     auto MeasureMapBorders(const Sprite* spr, ipos offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
@@ -299,6 +298,8 @@ private:
     [[nodiscard]] auto ScrollCheckPos(int (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) const -> bool;
 
+    void OnDestroySelf() override;
+
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
@@ -351,7 +352,7 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    TwoDimensionalGrid<Field, mpos, msize, false> _hexField {};
+    unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<int16> _findPathGrid {};
 
     MapSpriteList _mapSprites;
@@ -387,6 +388,7 @@ private:
     bool _rebuildFog {};
     bool _drawLookBorders {true};
     bool _drawShootBorders {};
+    uint _shootBordersDist {};
     vector<PrimitivePoint> _fogLookPoints {};
     vector<PrimitivePoint> _fogShootPoints {};
 

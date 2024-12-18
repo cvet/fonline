@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@
 
 struct MapperAppData
 {
-    FOMapper* Mapper {};
+    unique_ptr<FOMapper> Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
 
@@ -65,12 +65,15 @@ static void MapperEntry([[maybe_unused]] void* data)
     try {
         App->BeginFrame();
 
-        if (Data->Mapper == nullptr) {
+        if (!Data->Mapper) {
             try {
-                Data->Mapper = new FOMapper(App->Settings, &App->MainWindow);
+                Data->Mapper = std::make_unique<FOMapper>(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
+            }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
             }
         }
 
@@ -81,10 +84,13 @@ static void MapperEntry([[maybe_unused]] void* data)
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
@@ -100,11 +106,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         App->SetMainLoopCallback(MapperEntry);
 
 #elif FO_WEB
-        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
-            true, function(err) {
-                assert(!err);
-                Module.syncfsDone = 1;
-            }););
+        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
+
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
@@ -126,5 +129,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

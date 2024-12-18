@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@
 #include "Application.h"
 #include "EngineBase.h"
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -43,18 +43,21 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
         return false;
     }
 
-    if (type_index(*func_desc.RetType) != type_index(*ret_type)) {
-        return false;
-    }
     if (func_desc.ArgsType.size() != args_type.size()) {
         return false;
     }
 
+    if (func_desc.RetType != ret_type && string_view(func_desc.RetType.name()) != string_view(ret_type.name())) {
+        return false;
+    }
+
     size_t index = 0;
-    for (const auto* arg_type : args_type) {
-        if (type_index(*arg_type) != type_index(*func_desc.ArgsType[index])) {
+
+    for (const auto& arg_type : args_type) {
+        if (arg_type != func_desc.ArgsType[index] && string_view(arg_type.name()) != string_view(func_desc.ArgsType[index].name())) {
             return false;
         }
+
         ++index;
     }
 
@@ -99,24 +102,27 @@ void ScriptSystem::Process()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
+    const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
     RUNTIME_ASSERT(prop_reg);
     const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
     if (prop == nullptr) {
-        throw ScriptException("Invalid property index", class_name, prop_index);
+        throw ScriptException("Invalid property index", type_name, prop_index);
     }
     if (prop->IsDisabled()) {
-        throw ScriptException("Property is disabled", class_name, prop_index);
+        throw ScriptException("Property is disabled", type_name, prop_index);
     }
     if (!prop->IsPlainData()) {
-        throw ScriptException("Property is not plain data", class_name, prop_index);
+        throw ScriptException("Property is not plain data", type_name, prop_index);
     }
     return prop;
 }

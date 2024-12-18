@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
 {
     STACK_TRACE_ENTRY();
 
-    string path_fixed = _str(path).normalizePathSlashes();
+    string path_fixed = strex(path).normalizePathSlashes();
     if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
     }
@@ -56,7 +56,7 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
     for (const auto& fname : fnames) {
         auto add = false;
         if (fname.compare(0, len, path_fixed) == 0 && (include_subdirs || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
-            if (ext.empty() || _str(fname).getFileExtension() == ext) {
+            if (ext.empty() || strex(fname).getFileExtension() == ext) {
                 add = true;
             }
         }
@@ -276,7 +276,7 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     };
 
     if (is_file_present(path)) {
-        const string ext = _str(path).getFileExtension();
+        const string ext = strex(path).getFileExtension();
         if (ext == "dat") {
             return std::make_unique<FalloutDat>(path);
         }
@@ -286,14 +286,14 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
 
         throw DataSourceException("Unknown file extension", ext, path, type);
     }
-    else if (is_file_present(_str("{}.zip", path))) {
-        return std::make_unique<ZipFile>(_str("{}.zip", path));
+    else if (is_file_present(strex("{}.zip", path))) {
+        return std::make_unique<ZipFile>(strex("{}.zip", path));
     }
-    else if (is_file_present(_str("{}.bos", path))) {
-        return std::make_unique<ZipFile>(_str("{}.bos", path));
+    else if (is_file_present(strex("{}.bos", path))) {
+        return std::make_unique<ZipFile>(strex("{}.bos", path));
     }
-    else if (is_file_present(_str("{}.dat", path))) {
-        return std::make_unique<FalloutDat>(_str("{}.dat", path));
+    else if (is_file_present(strex("{}.dat", path))) {
+        return std::make_unique<FalloutDat>(strex("{}.dat", path));
     }
 
     if (type == DataSourceType::MaybeNotAvailable) {
@@ -364,7 +364,7 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto file = DiskFileSystem::OpenFile(_str("{}{}", _basePath, path), false);
+    const auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
     if (!file) {
         return false;
     }
@@ -378,22 +378,21 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     STACK_TRACE_ENTRY();
 
-    auto file = DiskFileSystem::OpenFile(_str("{}{}", _basePath, path), false);
+    auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
     if (!file) {
         return nullptr;
     }
 
     size = file.GetSize();
+    auto buf = std::make_unique<uint8[]>(size + 1);
 
-    auto* buf = new uint8[static_cast<size_t>(size) + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file from non cached dir", _basePath, path);
     }
 
     write_time = file.GetWriteTime();
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -401,7 +400,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
     STACK_TRACE_ENTRY();
 
     FileNameVec fnames;
-    DiskFileSystem::IterateDir(_str(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 
@@ -421,7 +420,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
 
     DiskFileSystem::IterateDir(_basePath, "", recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
-        fe.FileName = _str("{}{}", _basePath, path);
+        fe.FileName = strex("{}{}", _basePath, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
@@ -463,15 +462,15 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     size = fe.FileSize;
-    auto* buf = new uint8[size + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    auto buf = std::make_unique<uint8[]>(size + 1);
+
+    if (!file.Read(buf.get(), size)) {
         return nullptr;
     }
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto CachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -520,8 +519,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // DAT 2.1 Arcanum
-    if (version == 0x44415431) // 1TAD
-    {
+    if (version == 0x44415431) { // 1TAD
         if (!_datFile.SetReadPos(-4, DiskFileSeek::End)) {
             return false;
         }
@@ -558,9 +556,8 @@ auto FalloutDat::ReadTree() -> bool
             uint type = 0;
             std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
-            if (fnsz != 0 && type != 0x400) // Not folder
-            {
-                string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
+            if (fnsz != 0 && type != 0x400) { // Not folder
+                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
 
                 if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
@@ -631,16 +628,16 @@ auto FalloutDat::ReadTree() -> bool
     auto* ptr = _memTree;
     const auto* end_ptr = _memTree + tree_size;
 
-    while (ptr < end_ptr + 4) {
+    while (ptr < end_ptr) {
         uint name_len = 0;
         std::memcpy(&name_len, ptr, 4);
 
-        if (ptr + 4 + name_len >= end_ptr) {
+        if (ptr + 4 + name_len > end_ptr) {
             return false;
         }
 
         if (name_len != 0) {
-            string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
+            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
 
             _filesTree.insert(std::make_pair(name, ptr + 4 + name_len));
             _filesTreeNames.push_back(name);
@@ -699,47 +696,47 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     size = real_size;
-    auto* buf = new uint8[static_cast<size_t>(size) + 1];
+    auto buf = std::make_unique<uint8[]>(size + 1);
 
     if (type == 0) {
         // Plane data
-        if (!_datFile.Read(buf, size)) {
-            delete[] buf;
+        if (!_datFile.Read(buf.get(), size)) {
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
     else {
         // Packed data
-        z_stream stream;
-        stream.zalloc = nullptr;
-        stream.zfree = nullptr;
-        stream.opaque = nullptr;
-        stream.next_in = nullptr;
-        stream.avail_in = 0;
+        z_stream stream = {};
+        stream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
+        stream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+
         if (inflateInit(&stream) != Z_OK) {
-            delete[] buf;
             throw DataSourceException("Can't read file from fallout dat (3)", path);
         }
 
-        stream.next_out = buf;
+        stream.next_in = nullptr;
+        stream.avail_in = 0;
+        stream.next_out = buf.get();
         stream.avail_out = real_size;
 
         auto left = packed_size;
+
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 stream.next_in = _readBuf.data();
                 const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
+
                 if (!_datFile.Read(_readBuf.data(), len)) {
-                    delete[] buf;
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
+
                 stream.avail_in = len;
                 left -= len;
             }
 
             const auto r = inflate(&stream, Z_NO_FLUSH);
+
             if (r != Z_OK && r != Z_STREAM_END) {
-                delete[] buf;
                 throw DataSourceException("Can't read file from fallout dat (5)", path);
             }
             if (r == Z_STREAM_END) {
@@ -752,7 +749,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     write_time = _writeTime;
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 ZipFile::ZipFile(string_view fname)
@@ -932,7 +929,7 @@ auto ZipFile::ReadTree() -> bool
 
         if ((info.external_fa & 0x10) == 0) // Not folder
         {
-            string name = _str(buf).normalizePathSlashes();
+            string name = strex(buf).normalizePathSlashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
@@ -984,17 +981,17 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         throw DataSourceException("Can't read file from zip (2)", path);
     }
 
-    auto* buf = new uint8[static_cast<size_t>(info.UncompressedSize) + 1];
-    const auto read = unzReadCurrentFile(_zipHandle, buf, info.UncompressedSize);
+    auto buf = std::make_unique<uint8[]>(static_cast<size_t>(info.UncompressedSize) + 1);
+    const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
+
     if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
-        delete[] buf;
         throw DataSourceException("Can't read file from zip (3)", path);
     }
 
     write_time = _writeTime;
     size = info.UncompressedSize;
     buf[size] = 0;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 AndroidAssets::AndroidAssets()
@@ -1019,7 +1016,7 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    const auto names = _str(buf).normalizeLineEndings().split('\n');
+    const auto names = strex(buf).normalizeLineEndings().split('\n');
     delete[] buf;
 
     // Parse
@@ -1072,15 +1069,15 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     }
 
     size = fe.FileSize;
-    auto* buf = new uint8[size + 1];
-    if (!file.Read(buf, size)) {
-        delete[] buf;
+    auto buf = std::make_unique<uint8[]>(size + 1);
+
+    if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file in android assets", path);
     }
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf, [](const auto* p) { delete[] p; }};
+    return {buf.release(), [](const auto* p) { delete[] p; }};
 }
 
 auto AndroidAssets::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>

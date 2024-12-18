@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer : virtual public FOEngineBase
+class FOServer : SINGLEPLAYER_VIRTUAL public FOEngineBase
 {
     friend class ServerScriptSystem;
 
@@ -74,10 +74,10 @@ public:
     auto operator=(FOServer&&) noexcept = delete;
     ~FOServer() override;
 
-    [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
+    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { return this; }
 
-    [[nodiscard]] auto IsStarted() const -> bool { return _started; }
-    [[nodiscard]] auto IsStartingError() const -> bool { return _startingError; }
+    [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
+    [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
@@ -87,15 +87,19 @@ public:
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
-    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos dlg_hex, bool ignore_distance);
+    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
 
     auto CreateCritter(hstring pid, bool for_player) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
     void UnloadCritter(Critter* cr);
+    void UnloadCritterInnerEntities(Critter* cr);
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
+
+    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
@@ -124,9 +128,11 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
+    ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
@@ -162,25 +168,17 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*toSlot*/);
+    ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
+    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnItemStackChanged, Item* /*item*/, int /*countDiff*/);
 
     ServerDeferredCallManager ServerDeferredCalls;
 
@@ -192,13 +190,9 @@ public:
 
     DataBase DbStorage {};
     const hstring GameCollectionName = ToHashedString("Game");
-    const hstring PlayersCollectionName = ToHashedString("Players");
-    const hstring LocationsCollectionName = ToHashedString("Locations");
-    const hstring MapsCollectionName = ToHashedString("Maps");
-    const hstring CrittersCollectionName = ToHashedString("Critters");
-    const hstring ItemsCollectionName = ToHashedString("Items");
     const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
     const hstring HistoryCollectionName = ToHashedString("History");
+    const hstring PlayersCollectionName = ToHashedString("Players");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -272,18 +266,18 @@ private:
     void OnSendCritterValue(Entity* entity, const Property* prop);
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
+    void OnSetCritterLook(Entity* entity, const Property* prop);
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemBlockLines(Entity* entity, const Property* prop);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop);
     void OnSetItemIsRadio(Entity* entity, const Property* prop);
 
     void ProcessCritter(Critter* cr);
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, bool send_self);
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;

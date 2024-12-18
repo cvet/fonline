@@ -1,4 +1,6 @@
-// FOS Server Client
+namespace Serializator
+{
+
 // Data serialization
 
 class Serializator
@@ -43,7 +45,7 @@ class Serializator
         dataArray.resize(bufSize);
     }
 
-#ifdef __CLIENT
+#if CLIENT
     void SaveToCache(string name)
     {
         Game.SetCacheData(name, dataArray, dataSize);
@@ -245,6 +247,17 @@ class Serializator
     Serializator Set(const tick_t& value)
     {
         return Set(value.value);
+    }
+
+    Serializator Set(const ucolor& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializator Set(const TextPackName& value)
+    {
+        int i = value;
+        return Set(i);
     }
 
     Serializator Set(const any& value)
@@ -591,6 +604,20 @@ class Serializator
         return this;
     }
 
+    Serializator Get(ucolor& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializator Get(TextPackName& value)
+    {
+        int i = 0;
+        Get(i);
+        value = TextPackName(i);
+        return this;
+    }
+
     Serializator Get(any& value)
     {
         string str;
@@ -731,3 +758,5 @@ class Serializator
         return this;
     }
 };
+
+}

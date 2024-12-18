@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ ModelSprite::ModelSprite(SpriteManager& spr_mngr) :
 
 auto ModelSprite::IsHitTest(ipos pos) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
@@ -64,7 +64,7 @@ auto ModelSprite::IsHitTest(ipos pos) const -> bool
 
 auto ModelSprite::GetViewSize() const -> optional<IRect>
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
@@ -127,6 +127,37 @@ auto ModelSprite::Update() -> bool
     return true;
 }
 
+void ModelSprite::SetSize(isize size)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(size.width > 0);
+    RUNTIME_ASSERT(size.height > 0);
+
+    if (size == Size) {
+        return;
+    }
+
+    if (AtlasNode != nullptr) {
+        AtlasNode->Free();
+        AtlasNode = nullptr;
+    }
+
+    _model->SetupFrame(size);
+
+    Size = size;
+    Offset.y = static_cast<int16>(size.height / 4);
+
+    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(_atlasType, Size);
+
+    Atlas = atlas;
+    AtlasNode = atlas_node;
+    AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
+    AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
+    AtlasRect.Right = static_cast<float>(pos.x + size.width) / static_cast<float>(atlas->Size.width);
+    AtlasRect.Bottom = static_cast<float>(pos.y + size.height) / static_cast<float>(atlas->Size.height);
+}
+
 void ModelSprite::DrawToAtlas()
 {
     STACK_TRACE_ENTRY();
@@ -150,29 +181,19 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     STACK_TRACE_ENTRY();
 
     auto&& model = _modelMngr->CreateModel(path);
-    if (model == nullptr) {
+
+    if (!model) {
         return nullptr;
     }
 
-    model->SetupFrame();
-
-    const auto draw_size = model->GetDrawSize();
-
     auto&& model_spr = std::make_shared<ModelSprite>(_sprMngr);
+    const auto draw_size = model->GetDrawSize();
 
     model_spr->_factory = this;
     model_spr->_model = std::move(model);
-    model_spr->Size = draw_size;
-    model_spr->Offset.y = static_cast<int16>(draw_size.height / 4);
+    model_spr->_atlasType = atlas_type;
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
-
-    model_spr->Atlas = atlas;
-    model_spr->AtlasNode = atlas_node;
-    model_spr->AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
-    model_spr->AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
-    model_spr->AtlasRect.Right = static_cast<float>(pos.x + draw_size.width) / static_cast<float>(atlas->Size.width);
-    model_spr->AtlasRect.Bottom = static_cast<float>(pos.y + draw_size.height) / static_cast<float>(atlas->Size.height);
+    model_spr->SetSize(draw_size);
 
     return model_spr;
 }

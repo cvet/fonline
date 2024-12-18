@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,13 +38,13 @@
 #include "StringUtils.h"
 
 Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void Location::BindScript()
@@ -62,28 +62,28 @@ void Location::BindScript()
     }
 }
 
-auto Location::GetProtoLoc() const -> const ProtoLocation*
+auto Location::GetProtoLoc() const noexcept -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<const ProtoLocation*>(_proto);
 }
 
-auto Location::IsLocVisible() const -> bool
+auto Location::IsLocVisible() const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
+    return !GetHidden();
 }
 
-auto Location::GetMapsRaw() -> vector<Map*>&
+auto Location::GetMapsRaw() noexcept -> vector<Map*>&
 {
     STACK_TRACE_ENTRY();
 
     return _locMaps;
 };
 
-auto Location::GetMaps() -> vector<Map*>
+auto Location::GetMaps() noexcept -> const vector<Map*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -94,19 +94,17 @@ auto Location::GetMaps() const -> vector<const Map*>
 {
     STACK_TRACE_ENTRY();
 
-    vector<const Map*> maps;
-    maps.insert(maps.begin(), _locMaps.begin(), _locMaps.end());
-    return maps;
+    return vec_static_cast<const Map*>(_locMaps);
 }
 
-auto Location::GetMapsCount() const -> uint
+auto Location::GetMapsCount() const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_locMaps.size());
 }
 
-auto Location::GetMapByIndex(uint index) -> Map*
+auto Location::GetMapByIndex(uint index) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -115,10 +113,11 @@ auto Location::GetMapByIndex(uint index) -> Map*
     if (index >= _locMaps.size()) {
         return nullptr;
     }
+
     return _locMaps[index];
 }
 
-auto Location::GetMapByPid(hstring map_pid) -> Map*
+auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -129,45 +128,23 @@ auto Location::GetMapByPid(hstring map_pid) -> Map*
             return map;
         }
     }
+
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) const -> uint
+auto Location::GetMapIndex(hstring map_pid) const noexcept -> uint
 {
     STACK_TRACE_ENTRY();
 
     uint index = 0;
+
     for (const auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
             return index;
         }
+
         index++;
     }
+
     return static_cast<uint>(-1);
-}
-
-auto Location::IsCanDelete() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (GeckCount > 0) {
-        return false;
-    }
-
-    // Check for players
-    for (const auto* map : _locMaps) {
-        if (map->GetPlayerCrittersCount() != 0) {
-            return false;
-        }
-    }
-
-    // Check for npc
-    for (auto* map : _locMaps) {
-        for (const auto* npc : map->GetNonPlayerCritters()) {
-            if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
-                return false;
-            }
-        }
-    }
-    return true;
 }

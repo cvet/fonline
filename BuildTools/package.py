@@ -157,48 +157,48 @@ def build():
 			assert False
 		return resourceEntries
 		
-	bakeringPath = getInput('Bakering', 'Resources')
-	log('Bakering input', bakeringPath)
+	bakingPath = getInput('Baking', 'Resources')
+	log('Baking input', bakingPath)
 	
 	if args.target != 'Editor':
 		os.makedirs(os.path.join(targetOutputPath, resourcesDir))
 	
 	for packName, fileMask in getTargetEntries(args.target):
-		files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+		files = [f for f in glob.glob(os.path.join(bakingPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
 		assert len(files), 'No files in pack ' + packName
 		if packName == 'Embedded':
 			log('Make pack', packName + '/' + fileMask, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 			embeddedData = io.BytesIO()
 			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 				for file in files:
-					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 			embeddedData = embeddedData.getvalue()
 			embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
 		elif packName == 'Raw':
 			log('Make pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
 			for file in files:
-				shutil.copy(file, os.path.join(targetOutputPath, resourcesDir, os.path.relpath(file, os.path.join(bakeringPath, packName))))
+				shutil.copy(file, os.path.join(targetOutputPath, resourcesDir, os.path.relpath(file, os.path.join(bakingPath, packName))))
 		else:
 			log('Make pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
 			with zipfile.ZipFile(os.path.join(targetOutputPath, resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 				for file in files:
-					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
 	if args.target == 'Server':
 		os.makedirs(os.path.join(targetOutputPath, 'Client' + resourcesDir))
 		
 		for packName, fileMask in getTargetEntries('Client'):
-			files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+			files = [f for f in glob.glob(os.path.join(bakingPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
 			assert len(files), 'No files in pack ' + packName
 			if packName == 'Raw':
 				log('Make client pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
 				for file in files:
-					shutil.copy(file, os.path.join(targetOutputPath, 'Client' + resourcesDir, os.path.relpath(file, os.path.join(bakeringPath, packName))))
+					shutil.copy(file, os.path.join(targetOutputPath, 'Client' + resourcesDir, os.path.relpath(file, os.path.join(bakingPath, packName))))
 			elif packName != 'Embedded':
 				log('Make client pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
 				with zipfile.ZipFile(os.path.join(targetOutputPath, 'Client' + resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 					for file in files:
-						zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
 	def patchEmbedded(filePath):
 		patchData(filePath, bytearray([(i + 42) % 200 for i in range(1200000)]), embeddedData, 1200000)
@@ -208,8 +208,8 @@ def build():
 	configName = args.config if args.target != 'Client' else 'Client_' + args.config
 	log('Config', configName)
 	
-	assert os.path.isfile(os.path.join(bakeringPath, 'Configs', configName + '.focfg')), 'Config file not found'
-	with open(os.path.join(bakeringPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
+	assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.focfg')), 'Config file not found'
+	with open(os.path.join(bakingPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
 		configData = str.encode(f.read())
 	
 	def patchConfig(filePath, additionalConfigData=None):
@@ -223,16 +223,16 @@ def build():
 			for binType in [''] + \
 					(['Headless'] if 'Headless' in packArgs else []) + \
 					(['Service'] if 'Service' in packArgs else []) + \
-					(['Profiling'] if 'Profiling' in packArgs else []) + \
+					(['TotalProfiling'] if 'TotalProfiling' in packArgs else []) + \
 					(['OnDemandProfiling'] if 'OnDemandProfiling' in packArgs else []) + \
 					(['OGL'] if 'OGL' in packArgs else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '') + \
+						('_Profiling' if binType in ['TotalProfiling', 'OnDemandProfiling'] else '') + \
 						('_OpenGL' if binType == 'OGL' else '')
 				log('Setup', arch, binName, binType)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
-						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Profiling_Total' if binType == 'TotalProfiling' else '') + \
 						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
 						('-Debug' if 'Debug' in packArgs else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
@@ -336,14 +336,14 @@ def build():
 			for binType in [''] + \
 					(['Headless'] if 'Headless' in packArgs else []) + \
 					(['Daemon'] if 'Daemon' in packArgs else []) + \
-					(['Profiling'] if 'Profiling' in packArgs else []) + \
+					(['TotalProfiling'] if 'TotalProfiling' in packArgs else []) + \
 					(['OnDemandProfiling'] if 'OnDemandProfiling' in packArgs else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Daemon'] else '')
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
-						('_Profiling' if binType in ['Profiling', 'OnDemandProfiling'] else '')
+						('_Profiling' if binType in ['TotalProfiling', 'OnDemandProfiling'] else '')
 				log('Setup', arch, binName, binType)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
-						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Profiling_Total' if binType == 'TotalProfiling' else '') + \
 						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
 						('-Debug' if 'Debug' in packArgs else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)

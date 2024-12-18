@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,26 +52,28 @@ public:
     auto operator=(CritterView&&) noexcept = delete;
     ~CritterView() override = default;
 
-    [[nodiscard]] auto GetName() const -> string_view override { return _name; }
-    [[nodiscard]] auto IsAlive() const -> bool { return GetCondition() == CritterCondition::Alive; }
-    [[nodiscard]] auto IsKnockout() const -> bool { return GetCondition() == CritterCondition::Knockout; }
-    [[nodiscard]] auto IsDead() const -> bool { return GetCondition() == CritterCondition::Dead; }
-    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetInvItem(ident_t item_id) -> ItemView*;
-    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> ItemView*;
-    [[nodiscard]] auto GetInvItems() -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
+    [[nodiscard]] auto IsAlive() const noexcept -> bool { return GetCondition() == CritterCondition::Alive; }
+    [[nodiscard]] auto IsKnockout() const noexcept -> bool { return GetCondition() == CritterCondition::Knockout; }
+    [[nodiscard]] auto IsDead() const noexcept -> bool { return GetCondition() == CritterCondition::Dead; }
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
+    [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> ItemView*;
+    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> ItemView*;
+    [[nodiscard]] auto GetInvItems() noexcept -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
-    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
+    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
 
-    void MarkAsDestroyed() override;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
+    auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    virtual auto AddRawInvItem(ItemView* item) -> ItemView*;
     virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllInvItems();
     void SetName(string_view name);
 
-    vector<ident_t> AttachedCritters {};
+    vector<ident_t> AttachedCritters {}; // Todo: incapsulate AttachedCritters
 
 protected:
+    void OnDestroySelf() override;
+
     vector<ItemView*> _invItems {};
 };

@@ -108,8 +108,15 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 	files/blocking_file_copy$(EXEEXT) \
 	files/async_file_copy$(EXEEXT) futures/daytime_client$(EXEEXT) \
 	handler_tracking/async_tcp_echo_server$(EXEEXT) \
+	http/client/async_client$(EXEEXT) \
+	http/client/sync_client$(EXEEXT) \
 	http/server/http_server$(EXEEXT) \
+	http/server2/http_server$(EXEEXT) \
+	http/server3/http_server$(EXEEXT) \
+	http/server4/http_server$(EXEEXT) icmp/ping$(EXEEXT) \
 	invocation/prioritised_handlers$(EXEEXT) \
+	iostreams/daytime_client$(EXEEXT) \
+	iostreams/daytime_server$(EXEEXT) \
 	iostreams/http_client$(EXEEXT) multicast/receiver$(EXEEXT) \
 	multicast/sender$(EXEEXT) nonblocking/third_party_lib$(EXEEXT) \
 	operations/composed_1$(EXEEXT) operations/composed_2$(EXEEXT) \
@@ -121,14 +128,26 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 	parallel_group/wait_for_one$(EXEEXT) \
 	parallel_group/wait_for_one_error$(EXEEXT) \
 	parallel_group/wait_for_one_success$(EXEEXT) \
-	socks4/sync_client$(EXEEXT) timeouts/async_tcp_client$(EXEEXT) \
+	porthopper/client$(EXEEXT) porthopper/server$(EXEEXT) \
+	services/daytime_client$(EXEEXT) socks4/sync_client$(EXEEXT) \
+	timeouts/async_tcp_client$(EXEEXT) \
 	timeouts/blocking_tcp_client$(EXEEXT) \
 	timeouts/blocking_token_tcp_client$(EXEEXT) \
 	timeouts/blocking_udp_client$(EXEEXT) timeouts/server$(EXEEXT) \
-	timers/time_t_timer$(EXEEXT) \
+	timers/time_t_timer$(EXEEXT) tutorial/timer1/timer$(EXEEXT) \
+	tutorial/timer2/timer$(EXEEXT) tutorial/timer3/timer$(EXEEXT) \
+	tutorial/timer4/timer$(EXEEXT) tutorial/timer5/timer$(EXEEXT) \
+	tutorial/daytime1/client$(EXEEXT) \
+	tutorial/daytime2/server$(EXEEXT) \
+	tutorial/daytime3/server$(EXEEXT) \
+	tutorial/daytime4/client$(EXEEXT) \
+	tutorial/daytime5/server$(EXEEXT) \
+	tutorial/daytime6/server$(EXEEXT) \
+	tutorial/daytime7/server$(EXEEXT) \
 	type_erasure/type_erasure$(EXEEXT) $(am__EXEEXT_1) \
-	$(am__EXEEXT_2) $(am__EXEEXT_3)
+	$(am__EXEEXT_2) $(am__EXEEXT_3) $(am__EXEEXT_4)
 @WINDOWS_TARGET_FALSE@am__append_2 = \
+@WINDOWS_TARGET_FALSE@	chat/posix_chat_client \
 @WINDOWS_TARGET_FALSE@	fork/daemon \
 @WINDOWS_TARGET_FALSE@	fork/process_per_connection \
 @WINDOWS_TARGET_FALSE@	local/connect_pair \
@@ -138,11 +157,14 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	local/fd_passing_stream_server \
 @WINDOWS_TARGET_FALSE@	local/fd_passing_stream_client
 
-@HAVE_OPENSSL_TRUE@am__append_3 = \
+@WINDOWS_TARGET_TRUE@am__append_3 = \
+@WINDOWS_TARGET_TRUE@	windows/transmit_file
+
+@HAVE_OPENSSL_TRUE@am__append_4 = \
 @HAVE_OPENSSL_TRUE@	ssl/client \
 @HAVE_OPENSSL_TRUE@	ssl/server
 
-@HAVE_BOOST_COROUTINE_TRUE@am__append_4 = \
+@HAVE_BOOST_COROUTINE_TRUE@am__append_5 = \
 @HAVE_BOOST_COROUTINE_TRUE@  spawn/echo_server \
 @HAVE_BOOST_COROUTINE_TRUE@  spawn/parallel_grep
 
@@ -156,7 +178,8 @@ DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@WINDOWS_TARGET_FALSE@am__EXEEXT_1 = fork/daemon$(EXEEXT) \
+@WINDOWS_TARGET_FALSE@am__EXEEXT_1 = chat/posix_chat_client$(EXEEXT) \
+@WINDOWS_TARGET_FALSE@	fork/daemon$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	fork/process_per_connection$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	local/connect_pair$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	local/iostream_client$(EXEEXT) \
@@ -164,9 +187,10 @@ CONFIG_CLEAN_VPATH_FILES =
 @WINDOWS_TARGET_FALSE@	local/stream_client$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	local/fd_passing_stream_server$(EXEEXT) \
 @WINDOWS_TARGET_FALSE@	local/fd_passing_stream_client$(EXEEXT)
-@HAVE_OPENSSL_TRUE@am__EXEEXT_2 = ssl/client$(EXEEXT) \
+@WINDOWS_TARGET_TRUE@am__EXEEXT_2 = windows/transmit_file$(EXEEXT)
+@HAVE_OPENSSL_TRUE@am__EXEEXT_3 = ssl/client$(EXEEXT) \
 @HAVE_OPENSSL_TRUE@	ssl/server$(EXEEXT)
-@HAVE_BOOST_COROUTINE_TRUE@am__EXEEXT_3 = spawn/echo_server$(EXEEXT) \
+@HAVE_BOOST_COROUTINE_TRUE@am__EXEEXT_4 = spawn/echo_server$(EXEEXT) \
 @HAVE_BOOST_COROUTINE_TRUE@	spawn/parallel_grep$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 LIBRARIES = $(noinst_LIBRARIES)
@@ -204,6 +228,13 @@ am_chat_chat_server_OBJECTS = chat/chat_server.$(OBJEXT)
 chat_chat_server_OBJECTS = $(am_chat_chat_server_OBJECTS)
 chat_chat_server_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@chat_chat_server_DEPENDENCIES = libasio.a
+am__chat_posix_chat_client_SOURCES_DIST = chat/posix_chat_client.cpp
+@WINDOWS_TARGET_FALSE@am_chat_posix_chat_client_OBJECTS =  \
+@WINDOWS_TARGET_FALSE@	chat/posix_chat_client.$(OBJEXT)
+chat_posix_chat_client_OBJECTS = $(am_chat_posix_chat_client_OBJECTS)
+chat_posix_chat_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@chat_posix_chat_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_deferred_deferred_1_OBJECTS = deferred/deferred_1.$(OBJEXT)
 deferred_deferred_1_OBJECTS = $(am_deferred_deferred_1_OBJECTS)
 deferred_deferred_1_LDADD = $(LDADD)
@@ -329,6 +360,20 @@ handler_tracking_async_tcp_echo_server_OBJECTS =  \
 handler_tracking_async_tcp_echo_server_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@handler_tracking_async_tcp_echo_server_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_http_client_async_client_OBJECTS =  \
+	http/client/async_client.$(OBJEXT)
+http_client_async_client_OBJECTS =  \
+	$(am_http_client_async_client_OBJECTS)
+http_client_async_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@http_client_async_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_http_client_sync_client_OBJECTS =  \
+	http/client/sync_client.$(OBJEXT)
+http_client_sync_client_OBJECTS =  \
+	$(am_http_client_sync_client_OBJECTS)
+http_client_sync_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@http_client_sync_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_http_server_http_server_OBJECTS = http/server/connection.$(OBJEXT) \
 	http/server/connection_manager.$(OBJEXT) \
 	http/server/main.$(OBJEXT) http/server/mime_types.$(OBJEXT) \
@@ -341,12 +386,65 @@ http_server_http_server_OBJECTS =  \
 http_server_http_server_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@http_server_http_server_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_http_server2_http_server_OBJECTS =  \
+	http/server2/connection.$(OBJEXT) \
+	http/server2/io_context_pool.$(OBJEXT) \
+	http/server2/main.$(OBJEXT) http/server2/mime_types.$(OBJEXT) \
+	http/server2/reply.$(OBJEXT) \
+	http/server2/request_handler.$(OBJEXT) \
+	http/server2/request_parser.$(OBJEXT) \
+	http/server2/server.$(OBJEXT)
+http_server2_http_server_OBJECTS =  \
+	$(am_http_server2_http_server_OBJECTS)
+http_server2_http_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@http_server2_http_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_http_server3_http_server_OBJECTS =  \
+	http/server3/connection.$(OBJEXT) http/server3/main.$(OBJEXT) \
+	http/server3/mime_types.$(OBJEXT) http/server3/reply.$(OBJEXT) \
+	http/server3/request_handler.$(OBJEXT) \
+	http/server3/request_parser.$(OBJEXT) \
+	http/server3/server.$(OBJEXT)
+http_server3_http_server_OBJECTS =  \
+	$(am_http_server3_http_server_OBJECTS)
+http_server3_http_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@http_server3_http_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_http_server4_http_server_OBJECTS =  \
+	http/server4/file_handler.$(OBJEXT) \
+	http/server4/main.$(OBJEXT) http/server4/mime_types.$(OBJEXT) \
+	http/server4/reply.$(OBJEXT) \
+	http/server4/request_parser.$(OBJEXT) \
+	http/server4/server.$(OBJEXT)
+http_server4_http_server_OBJECTS =  \
+	$(am_http_server4_http_server_OBJECTS)
+http_server4_http_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@http_server4_http_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_icmp_ping_OBJECTS = icmp/ping.$(OBJEXT)
+icmp_ping_OBJECTS = $(am_icmp_ping_OBJECTS)
+icmp_ping_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@icmp_ping_DEPENDENCIES = libasio.a
 am_invocation_prioritised_handlers_OBJECTS =  \
 	invocation/prioritised_handlers.$(OBJEXT)
 invocation_prioritised_handlers_OBJECTS =  \
 	$(am_invocation_prioritised_handlers_OBJECTS)
 invocation_prioritised_handlers_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@invocation_prioritised_handlers_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_iostreams_daytime_client_OBJECTS =  \
+	iostreams/daytime_client.$(OBJEXT)
+iostreams_daytime_client_OBJECTS =  \
+	$(am_iostreams_daytime_client_OBJECTS)
+iostreams_daytime_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@iostreams_daytime_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_iostreams_daytime_server_OBJECTS =  \
+	iostreams/daytime_server.$(OBJEXT)
+iostreams_daytime_server_OBJECTS =  \
+	$(am_iostreams_daytime_server_OBJECTS)
+iostreams_daytime_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@iostreams_daytime_server_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_iostreams_http_client_OBJECTS = iostreams/http_client.$(OBJEXT)
 iostreams_http_client_OBJECTS = $(am_iostreams_http_client_OBJECTS)
@@ -488,6 +586,22 @@ parallel_group_wait_for_one_success_OBJECTS =  \
 parallel_group_wait_for_one_success_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@parallel_group_wait_for_one_success_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_porthopper_client_OBJECTS = porthopper/client.$(OBJEXT)
+porthopper_client_OBJECTS = $(am_porthopper_client_OBJECTS)
+porthopper_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@porthopper_client_DEPENDENCIES = libasio.a
+am_porthopper_server_OBJECTS = porthopper/server.$(OBJEXT)
+porthopper_server_OBJECTS = $(am_porthopper_server_OBJECTS)
+porthopper_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@porthopper_server_DEPENDENCIES = libasio.a
+am_services_daytime_client_OBJECTS =  \
+	services/daytime_client.$(OBJEXT) \
+	services/logger_service.$(OBJEXT)
+services_daytime_client_OBJECTS =  \
+	$(am_services_daytime_client_OBJECTS)
+services_daytime_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@services_daytime_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_socks4_sync_client_OBJECTS = socks4/sync_client.$(OBJEXT)
 socks4_sync_client_OBJECTS = $(am_socks4_sync_client_OBJECTS)
 socks4_sync_client_LDADD = $(LDADD)
@@ -551,6 +665,80 @@ timers_time_t_timer_OBJECTS = $(am_timers_time_t_timer_OBJECTS)
 timers_time_t_timer_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@timers_time_t_timer_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime1_client_OBJECTS =  \
+	tutorial/daytime1/client.$(OBJEXT)
+tutorial_daytime1_client_OBJECTS =  \
+	$(am_tutorial_daytime1_client_OBJECTS)
+tutorial_daytime1_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime1_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime2_server_OBJECTS =  \
+	tutorial/daytime2/server.$(OBJEXT)
+tutorial_daytime2_server_OBJECTS =  \
+	$(am_tutorial_daytime2_server_OBJECTS)
+tutorial_daytime2_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime2_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime3_server_OBJECTS =  \
+	tutorial/daytime3/server.$(OBJEXT)
+tutorial_daytime3_server_OBJECTS =  \
+	$(am_tutorial_daytime3_server_OBJECTS)
+tutorial_daytime3_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime3_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime4_client_OBJECTS =  \
+	tutorial/daytime4/client.$(OBJEXT)
+tutorial_daytime4_client_OBJECTS =  \
+	$(am_tutorial_daytime4_client_OBJECTS)
+tutorial_daytime4_client_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime4_client_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime5_server_OBJECTS =  \
+	tutorial/daytime5/server.$(OBJEXT)
+tutorial_daytime5_server_OBJECTS =  \
+	$(am_tutorial_daytime5_server_OBJECTS)
+tutorial_daytime5_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime5_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime6_server_OBJECTS =  \
+	tutorial/daytime6/server.$(OBJEXT)
+tutorial_daytime6_server_OBJECTS =  \
+	$(am_tutorial_daytime6_server_OBJECTS)
+tutorial_daytime6_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime6_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_daytime7_server_OBJECTS =  \
+	tutorial/daytime7/server.$(OBJEXT)
+tutorial_daytime7_server_OBJECTS =  \
+	$(am_tutorial_daytime7_server_OBJECTS)
+tutorial_daytime7_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_daytime7_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_timer1_timer_OBJECTS = tutorial/timer1/timer.$(OBJEXT)
+tutorial_timer1_timer_OBJECTS = $(am_tutorial_timer1_timer_OBJECTS)
+tutorial_timer1_timer_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_timer1_timer_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_timer2_timer_OBJECTS = tutorial/timer2/timer.$(OBJEXT)
+tutorial_timer2_timer_OBJECTS = $(am_tutorial_timer2_timer_OBJECTS)
+tutorial_timer2_timer_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_timer2_timer_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_timer3_timer_OBJECTS = tutorial/timer3/timer.$(OBJEXT)
+tutorial_timer3_timer_OBJECTS = $(am_tutorial_timer3_timer_OBJECTS)
+tutorial_timer3_timer_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_timer3_timer_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_timer4_timer_OBJECTS = tutorial/timer4/timer.$(OBJEXT)
+tutorial_timer4_timer_OBJECTS = $(am_tutorial_timer4_timer_OBJECTS)
+tutorial_timer4_timer_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_timer4_timer_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_tutorial_timer5_timer_OBJECTS = tutorial/timer5/timer.$(OBJEXT)
+tutorial_timer5_timer_OBJECTS = $(am_tutorial_timer5_timer_OBJECTS)
+tutorial_timer5_timer_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@tutorial_timer5_timer_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_type_erasure_type_erasure_OBJECTS = type_erasure/main.$(OBJEXT) \
 	type_erasure/stdin_line_reader.$(OBJEXT) \
 	type_erasure/sleep.$(OBJEXT)
@@ -558,6 +746,13 @@ type_erasure_type_erasure_OBJECTS =  \
 	$(am_type_erasure_type_erasure_OBJECTS)
 type_erasure_type_erasure_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@type_erasure_type_erasure_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am__windows_transmit_file_SOURCES_DIST = windows/transmit_file.cpp
+@WINDOWS_TARGET_TRUE@am_windows_transmit_file_OBJECTS =  \
+@WINDOWS_TARGET_TRUE@	windows/transmit_file.$(OBJEXT)
+windows_transmit_file_OBJECTS = $(am_windows_transmit_file_OBJECTS)
+windows_transmit_file_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@windows_transmit_file_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -578,6 +773,7 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	../../$(DEPDIR)/asio_ssl.Po allocation/$(DEPDIR)/server.Po \
 	buffers/$(DEPDIR)/reference_counted.Po \
 	chat/$(DEPDIR)/chat_client.Po chat/$(DEPDIR)/chat_server.Po \
+	chat/$(DEPDIR)/posix_chat_client.Po \
 	deferred/$(DEPDIR)/deferred_1.Po \
 	deferred/$(DEPDIR)/deferred_2.Po \
 	echo/$(DEPDIR)/async_tcp_echo_server.Po \
@@ -597,6 +793,8 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	fork/$(DEPDIR)/process_per_connection.Po \
 	futures/$(DEPDIR)/daytime_client.Po \
 	handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po \
+	http/client/$(DEPDIR)/async_client.Po \
+	http/client/$(DEPDIR)/sync_client.Po \
 	http/server/$(DEPDIR)/connection.Po \
 	http/server/$(DEPDIR)/connection_manager.Po \
 	http/server/$(DEPDIR)/main.Po \
@@ -605,7 +803,30 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	http/server/$(DEPDIR)/request_handler.Po \
 	http/server/$(DEPDIR)/request_parser.Po \
 	http/server/$(DEPDIR)/server.Po \
+	http/server2/$(DEPDIR)/connection.Po \
+	http/server2/$(DEPDIR)/io_context_pool.Po \
+	http/server2/$(DEPDIR)/main.Po \
+	http/server2/$(DEPDIR)/mime_types.Po \
+	http/server2/$(DEPDIR)/reply.Po \
+	http/server2/$(DEPDIR)/request_handler.Po \
+	http/server2/$(DEPDIR)/request_parser.Po \
+	http/server2/$(DEPDIR)/server.Po \
+	http/server3/$(DEPDIR)/connection.Po \
+	http/server3/$(DEPDIR)/main.Po \
+	http/server3/$(DEPDIR)/mime_types.Po \
+	http/server3/$(DEPDIR)/reply.Po \
+	http/server3/$(DEPDIR)/request_handler.Po \
+	http/server3/$(DEPDIR)/request_parser.Po \
+	http/server3/$(DEPDIR)/server.Po \
+	http/server4/$(DEPDIR)/file_handler.Po \
+	http/server4/$(DEPDIR)/main.Po \
+	http/server4/$(DEPDIR)/mime_types.Po \
+	http/server4/$(DEPDIR)/reply.Po \
+	http/server4/$(DEPDIR)/request_parser.Po \
+	http/server4/$(DEPDIR)/server.Po icmp/$(DEPDIR)/ping.Po \
 	invocation/$(DEPDIR)/prioritised_handlers.Po \
+	iostreams/$(DEPDIR)/daytime_client.Po \
+	iostreams/$(DEPDIR)/daytime_server.Po \
 	iostreams/$(DEPDIR)/http_client.Po \
 	local/$(DEPDIR)/connect_pair.Po \
 	local/$(DEPDIR)/fd_passing_stream_client.Po \
@@ -628,6 +849,9 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	parallel_group/$(DEPDIR)/wait_for_one.Po \
 	parallel_group/$(DEPDIR)/wait_for_one_error.Po \
 	parallel_group/$(DEPDIR)/wait_for_one_success.Po \
+	porthopper/$(DEPDIR)/client.Po porthopper/$(DEPDIR)/server.Po \
+	services/$(DEPDIR)/daytime_client.Po \
+	services/$(DEPDIR)/logger_service.Po \
 	socks4/$(DEPDIR)/sync_client.Po spawn/$(DEPDIR)/echo_server.Po \
 	spawn/$(DEPDIR)/parallel_grep.Po ssl/$(DEPDIR)/client.Po \
 	ssl/$(DEPDIR)/server.Po timeouts/$(DEPDIR)/async_tcp_client.Po \
@@ -635,8 +859,21 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	timeouts/$(DEPDIR)/blocking_token_tcp_client.Po \
 	timeouts/$(DEPDIR)/blocking_udp_client.Po \
 	timeouts/$(DEPDIR)/server.Po timers/$(DEPDIR)/time_t_timer.Po \
+	tutorial/daytime1/$(DEPDIR)/client.Po \
+	tutorial/daytime2/$(DEPDIR)/server.Po \
+	tutorial/daytime3/$(DEPDIR)/server.Po \
+	tutorial/daytime4/$(DEPDIR)/client.Po \
+	tutorial/daytime5/$(DEPDIR)/server.Po \
+	tutorial/daytime6/$(DEPDIR)/server.Po \
+	tutorial/daytime7/$(DEPDIR)/server.Po \
+	tutorial/timer1/$(DEPDIR)/timer.Po \
+	tutorial/timer2/$(DEPDIR)/timer.Po \
+	tutorial/timer3/$(DEPDIR)/timer.Po \
+	tutorial/timer4/$(DEPDIR)/timer.Po \
+	tutorial/timer5/$(DEPDIR)/timer.Po \
 	type_erasure/$(DEPDIR)/main.Po type_erasure/$(DEPDIR)/sleep.Po \
-	type_erasure/$(DEPDIR)/stdin_line_reader.Po
+	type_erasure/$(DEPDIR)/stdin_line_reader.Po \
+	windows/$(DEPDIR)/transmit_file.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -654,6 +891,7 @@ am__v_CXXLD_1 =
 SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(buffers_reference_counted_SOURCES) \
 	$(chat_chat_client_SOURCES) $(chat_chat_server_SOURCES) \
+	$(chat_posix_chat_client_SOURCES) \
 	$(deferred_deferred_1_SOURCES) $(deferred_deferred_2_SOURCES) \
 	$(echo_async_tcp_echo_server_SOURCES) \
 	$(echo_async_udp_echo_server_SOURCES) \
@@ -670,8 +908,15 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(fork_process_per_connection_SOURCES) \
 	$(futures_daytime_client_SOURCES) \
 	$(handler_tracking_async_tcp_echo_server_SOURCES) \
+	$(http_client_async_client_SOURCES) \
+	$(http_client_sync_client_SOURCES) \
 	$(http_server_http_server_SOURCES) \
+	$(http_server2_http_server_SOURCES) \
+	$(http_server3_http_server_SOURCES) \
+	$(http_server4_http_server_SOURCES) $(icmp_ping_SOURCES) \
 	$(invocation_prioritised_handlers_SOURCES) \
+	$(iostreams_daytime_client_SOURCES) \
+	$(iostreams_daytime_server_SOURCES) \
 	$(iostreams_http_client_SOURCES) $(local_connect_pair_SOURCES) \
 	$(local_fd_passing_stream_client_SOURCES) \
 	$(local_fd_passing_stream_server_SOURCES) \
@@ -692,6 +937,8 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
 	$(parallel_group_wait_for_one_success_SOURCES) \
+	$(porthopper_client_SOURCES) $(porthopper_server_SOURCES) \
+	$(services_daytime_client_SOURCES) \
 	$(socks4_sync_client_SOURCES) $(spawn_echo_server_SOURCES) \
 	$(spawn_parallel_grep_SOURCES) $(ssl_client_SOURCES) \
 	$(ssl_server_SOURCES) $(timeouts_async_tcp_client_SOURCES) \
@@ -699,11 +946,25 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(timeouts_blocking_token_tcp_client_SOURCES) \
 	$(timeouts_blocking_udp_client_SOURCES) \
 	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES) \
-	$(type_erasure_type_erasure_SOURCES)
+	$(tutorial_daytime1_client_SOURCES) \
+	$(tutorial_daytime2_server_SOURCES) \
+	$(tutorial_daytime3_server_SOURCES) \
+	$(tutorial_daytime4_client_SOURCES) \
+	$(tutorial_daytime5_server_SOURCES) \
+	$(tutorial_daytime6_server_SOURCES) \
+	$(tutorial_daytime7_server_SOURCES) \
+	$(tutorial_timer1_timer_SOURCES) \
+	$(tutorial_timer2_timer_SOURCES) \
+	$(tutorial_timer3_timer_SOURCES) \
+	$(tutorial_timer4_timer_SOURCES) \
+	$(tutorial_timer5_timer_SOURCES) \
+	$(type_erasure_type_erasure_SOURCES) \
+	$(windows_transmit_file_SOURCES)
 DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(allocation_server_SOURCES) \
 	$(buffers_reference_counted_SOURCES) \
 	$(chat_chat_client_SOURCES) $(chat_chat_server_SOURCES) \
+	$(am__chat_posix_chat_client_SOURCES_DIST) \
 	$(deferred_deferred_1_SOURCES) $(deferred_deferred_2_SOURCES) \
 	$(echo_async_tcp_echo_server_SOURCES) \
 	$(echo_async_udp_echo_server_SOURCES) \
@@ -721,8 +982,15 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__fork_process_per_connection_SOURCES_DIST) \
 	$(futures_daytime_client_SOURCES) \
 	$(handler_tracking_async_tcp_echo_server_SOURCES) \
+	$(http_client_async_client_SOURCES) \
+	$(http_client_sync_client_SOURCES) \
 	$(http_server_http_server_SOURCES) \
+	$(http_server2_http_server_SOURCES) \
+	$(http_server3_http_server_SOURCES) \
+	$(http_server4_http_server_SOURCES) $(icmp_ping_SOURCES) \
 	$(invocation_prioritised_handlers_SOURCES) \
+	$(iostreams_daytime_client_SOURCES) \
+	$(iostreams_daytime_server_SOURCES) \
 	$(iostreams_http_client_SOURCES) \
 	$(am__local_connect_pair_SOURCES_DIST) \
 	$(am__local_fd_passing_stream_client_SOURCES_DIST) \
@@ -745,6 +1013,8 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(parallel_group_wait_for_one_SOURCES) \
 	$(parallel_group_wait_for_one_error_SOURCES) \
 	$(parallel_group_wait_for_one_success_SOURCES) \
+	$(porthopper_client_SOURCES) $(porthopper_server_SOURCES) \
+	$(services_daytime_client_SOURCES) \
 	$(socks4_sync_client_SOURCES) \
 	$(am__spawn_echo_server_SOURCES_DIST) \
 	$(am__spawn_parallel_grep_SOURCES_DIST) \
@@ -754,7 +1024,20 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(timeouts_blocking_token_tcp_client_SOURCES) \
 	$(timeouts_blocking_udp_client_SOURCES) \
 	$(timeouts_server_SOURCES) $(timers_time_t_timer_SOURCES) \
-	$(type_erasure_type_erasure_SOURCES)
+	$(tutorial_daytime1_client_SOURCES) \
+	$(tutorial_daytime2_server_SOURCES) \
+	$(tutorial_daytime3_server_SOURCES) \
+	$(tutorial_daytime4_client_SOURCES) \
+	$(tutorial_daytime5_server_SOURCES) \
+	$(tutorial_daytime6_server_SOURCES) \
+	$(tutorial_daytime7_server_SOURCES) \
+	$(tutorial_timer1_timer_SOURCES) \
+	$(tutorial_timer2_timer_SOURCES) \
+	$(tutorial_timer3_timer_SOURCES) \
+	$(tutorial_timer4_timer_SOURCES) \
+	$(tutorial_timer5_timer_SOURCES) \
+	$(type_erasure_type_erasure_SOURCES) \
+	$(am__windows_transmit_file_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -889,8 +1172,51 @@ AUTOMAKE_OPTIONS = subdir-objects
 @SEPARATE_COMPILATION_TRUE@	$(am__append_1)
 @SEPARATE_COMPILATION_TRUE@LDADD = libasio.a
 noinst_HEADERS = \
+	chat/chat_message.hpp \
+	handler_tracking/custom_tracking.hpp \
+	http/server/connection.hpp \
+	http/server/connection_manager.hpp \
+	http/server/header.hpp \
+	http/server/mime_types.hpp \
+	http/server/reply.hpp \
+	http/server/request.hpp \
+	http/server/request_handler.hpp \
+	http/server/request_parser.hpp \
+	http/server/server.hpp \
+	http/server2/connection.hpp \
+	http/server2/io_context_pool.hpp \
+	http/server2/header.hpp \
+	http/server2/mime_types.hpp \
+	http/server2/reply.hpp \
+	http/server2/request.hpp \
+	http/server2/request_handler.hpp \
+	http/server2/request_parser.hpp \
+	http/server2/server.hpp \
+	http/server3/connection.hpp \
+	http/server3/header.hpp \
+	http/server3/mime_types.hpp \
+	http/server3/reply.hpp \
+	http/server3/request.hpp \
+	http/server3/request_handler.hpp \
+	http/server3/request_parser.hpp \
+	http/server3/server.hpp \
+	http/server4/file_handler.hpp \
+	http/server4/header.hpp \
+	http/server4/mime_types.hpp \
+	http/server4/reply.hpp \
+	http/server4/request.hpp \
+	http/server4/request_parser.hpp \
+	http/server4/server.hpp \
+	icmp/icmp_header.hpp \
+	icmp/ipv4_header.hpp \
+	porthopper/protocol.hpp \
+	services/basic_logger.hpp \
+	services/logger.hpp \
+	services/logger_service.hpp \
 	socks4/socks4.hpp \
-	chat/chat_message.hpp
+	type_erasure/line_reader.hpp \
+	type_erasure/stdin_line_reader.hpp \
+	type_erasure/sleep.hpp
 
 AM_CXXFLAGS = -I$(srcdir)/../../../include
 allocation_server_SOURCES = allocation/server.cpp
@@ -915,6 +1241,8 @@ files_blocking_file_copy_SOURCES = files/blocking_file_copy.cpp
 files_async_file_copy_SOURCES = files/async_file_copy.cpp
 futures_daytime_client_SOURCES = futures/daytime_client.cpp
 handler_tracking_async_tcp_echo_server_SOURCES = handler_tracking/async_tcp_echo_server.cpp
+http_client_async_client_SOURCES = http/client/async_client.cpp
+http_client_sync_client_SOURCES = http/client/sync_client.cpp
 http_server_http_server_SOURCES = \
 	http/server/connection.cpp \
 	http/server/connection_manager.cpp \
@@ -925,7 +1253,37 @@ http_server_http_server_SOURCES = \
 	http/server/request_parser.cpp \
 	http/server/server.cpp
 
+http_server2_http_server_SOURCES = \
+	http/server2/connection.cpp \
+	http/server2/io_context_pool.cpp \
+	http/server2/main.cpp \
+	http/server2/mime_types.cpp \
+	http/server2/reply.cpp \
+	http/server2/request_handler.cpp \
+	http/server2/request_parser.cpp \
+	http/server2/server.cpp
+
+http_server3_http_server_SOURCES = \
+	http/server3/connection.cpp \
+	http/server3/main.cpp \
+	http/server3/mime_types.cpp \
+	http/server3/reply.cpp \
+	http/server3/request_handler.cpp \
+	http/server3/request_parser.cpp \
+	http/server3/server.cpp
+
+http_server4_http_server_SOURCES = \
+	http/server4/file_handler.cpp \
+	http/server4/main.cpp \
+	http/server4/mime_types.cpp \
+	http/server4/reply.cpp \
+	http/server4/request_parser.cpp \
+	http/server4/server.cpp
+
+icmp_ping_SOURCES = icmp/ping.cpp
 invocation_prioritised_handlers_SOURCES = invocation/prioritised_handlers.cpp
+iostreams_daytime_client_SOURCES = iostreams/daytime_client.cpp
+iostreams_daytime_server_SOURCES = iostreams/daytime_server.cpp
 iostreams_http_client_SOURCES = iostreams/http_client.cpp
 multicast_receiver_SOURCES = multicast/receiver.cpp
 multicast_sender_SOURCES = multicast/sender.cpp
@@ -943,6 +1301,12 @@ parallel_group_wait_for_all_SOURCES = parallel_group/wait_for_all.cpp
 parallel_group_wait_for_one_SOURCES = parallel_group/wait_for_one.cpp
 parallel_group_wait_for_one_error_SOURCES = parallel_group/wait_for_one_error.cpp
 parallel_group_wait_for_one_success_SOURCES = parallel_group/wait_for_one_success.cpp
+porthopper_client_SOURCES = porthopper/client.cpp
+porthopper_server_SOURCES = porthopper/server.cpp
+services_daytime_client_SOURCES = \
+	services/daytime_client.cpp \
+	services/logger_service.cpp
+
 socks4_sync_client_SOURCES = socks4/sync_client.cpp
 timeouts_async_tcp_client_SOURCES = timeouts/async_tcp_client.cpp
 timeouts_blocking_tcp_client_SOURCES = timeouts/blocking_tcp_client.cpp
@@ -950,7 +1314,20 @@ timeouts_blocking_token_tcp_client_SOURCES = timeouts/blocking_token_tcp_client.
 timeouts_blocking_udp_client_SOURCES = timeouts/blocking_udp_client.cpp
 timeouts_server_SOURCES = timeouts/server.cpp
 timers_time_t_timer_SOURCES = timers/time_t_timer.cpp
+tutorial_timer1_timer_SOURCES = tutorial/timer1/timer.cpp
+tutorial_timer2_timer_SOURCES = tutorial/timer2/timer.cpp
+tutorial_timer3_timer_SOURCES = tutorial/timer3/timer.cpp
+tutorial_timer4_timer_SOURCES = tutorial/timer4/timer.cpp
+tutorial_timer5_timer_SOURCES = tutorial/timer5/timer.cpp
+tutorial_daytime1_client_SOURCES = tutorial/daytime1/client.cpp
+tutorial_daytime2_server_SOURCES = tutorial/daytime2/server.cpp
+tutorial_daytime3_server_SOURCES = tutorial/daytime3/server.cpp
+tutorial_daytime4_client_SOURCES = tutorial/daytime4/client.cpp
+tutorial_daytime5_server_SOURCES = tutorial/daytime5/server.cpp
+tutorial_daytime6_server_SOURCES = tutorial/daytime6/server.cpp
+tutorial_daytime7_server_SOURCES = tutorial/daytime7/server.cpp
 type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_line_reader.cpp type_erasure/sleep.cpp
+@WINDOWS_TARGET_FALSE@chat_posix_chat_client_SOURCES = chat/posix_chat_client.cpp
 @WINDOWS_TARGET_FALSE@fork_daemon_SOURCES = fork/daemon.cpp
 @WINDOWS_TARGET_FALSE@fork_process_per_connection_SOURCES = fork/process_per_connection.cpp
 @WINDOWS_TARGET_FALSE@local_connect_pair_SOURCES = local/connect_pair.cpp
@@ -959,6 +1336,7 @@ type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_lin
 @WINDOWS_TARGET_FALSE@local_stream_client_SOURCES = local/stream_client.cpp
 @WINDOWS_TARGET_FALSE@local_fd_passing_stream_server_SOURCES = local/fd_passing_stream_server.cpp
 @WINDOWS_TARGET_FALSE@local_fd_passing_stream_client_SOURCES = local/fd_passing_stream_client.cpp
+@WINDOWS_TARGET_TRUE@windows_transmit_file_SOURCES = windows/transmit_file.cpp
 @HAVE_OPENSSL_TRUE@ssl_client_SOURCES = ssl/client.cpp
 @HAVE_OPENSSL_TRUE@ssl_server_SOURCES = ssl/server.cpp
 @HAVE_BOOST_COROUTINE_TRUE@spawn_echo_server_SOURCES = spawn/echo_server.cpp
@@ -966,23 +1344,14 @@ type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_lin
 @HAVE_BOOST_COROUTINE_TRUE@spawn_parallel_grep_SOURCES = spawn/parallel_grep.cpp
 @HAVE_BOOST_COROUTINE_TRUE@spawn_parallel_grep_LDADD = $(LDADD) -lboost_coroutine -lboost_context -lboost_thread -lboost_chrono -lboost_system
 EXTRA_DIST = \
-	handler_tracking/custom_tracking.hpp \
-	http/server/connection.hpp \
-	http/server/connection_manager.hpp \
-	http/server/header.hpp \
-	http/server/mime_types.hpp \
-	http/server/reply.hpp \
-	http/server/request.hpp \
-	http/server/request_handler.hpp \
-	http/server/request_parser.hpp \
-	http/server/server.hpp \
+	serialization/client.cpp \
+	serialization/server.cpp \
+	serialization/connection.hpp \
+	serialization/stock.hpp \
 	ssl/README \
 	ssl/ca.pem \
 	ssl/server.pem \
-	ssl/dh4096.pem \
-	type_erasure/line_reader.hpp \
-	type_erasure/stdin_line_reader.hpp \
-	type_erasure/sleep.hpp
+	ssl/dh4096.pem
 
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in
@@ -1083,6 +1452,12 @@ chat/chat_server.$(OBJEXT): chat/$(am__dirstamp) \
 chat/chat_server$(EXEEXT): $(chat_chat_server_OBJECTS) $(chat_chat_server_DEPENDENCIES) $(EXTRA_chat_chat_server_DEPENDENCIES) chat/$(am__dirstamp)
 	@rm -f chat/chat_server$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(chat_chat_server_OBJECTS) $(chat_chat_server_LDADD) $(LIBS)
+chat/posix_chat_client.$(OBJEXT): chat/$(am__dirstamp) \
+	chat/$(DEPDIR)/$(am__dirstamp)
+
+chat/posix_chat_client$(EXEEXT): $(chat_posix_chat_client_OBJECTS) $(chat_posix_chat_client_DEPENDENCIES) $(EXTRA_chat_posix_chat_client_DEPENDENCIES) chat/$(am__dirstamp)
+	@rm -f chat/posix_chat_client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(chat_posix_chat_client_OBJECTS) $(chat_posix_chat_client_LDADD) $(LIBS)
 deferred/$(am__dirstamp):
 	@$(MKDIR_P) deferred
 	@: > deferred/$(am__dirstamp)
@@ -1246,6 +1621,24 @@ handler_tracking/async_tcp_echo_server.$(OBJEXT):  \
 handler_tracking/async_tcp_echo_server$(EXEEXT): $(handler_tracking_async_tcp_echo_server_OBJECTS) $(handler_tracking_async_tcp_echo_server_DEPENDENCIES) $(EXTRA_handler_tracking_async_tcp_echo_server_DEPENDENCIES) handler_tracking/$(am__dirstamp)
 	@rm -f handler_tracking/async_tcp_echo_server$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(handler_tracking_async_tcp_echo_server_OBJECTS) $(handler_tracking_async_tcp_echo_server_LDADD) $(LIBS)
+http/client/$(am__dirstamp):
+	@$(MKDIR_P) http/client
+	@: > http/client/$(am__dirstamp)
+http/client/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) http/client/$(DEPDIR)
+	@: > http/client/$(DEPDIR)/$(am__dirstamp)
+http/client/async_client.$(OBJEXT): http/client/$(am__dirstamp) \
+	http/client/$(DEPDIR)/$(am__dirstamp)
+
+http/client/async_client$(EXEEXT): $(http_client_async_client_OBJECTS) $(http_client_async_client_DEPENDENCIES) $(EXTRA_http_client_async_client_DEPENDENCIES) http/client/$(am__dirstamp)
+	@rm -f http/client/async_client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(http_client_async_client_OBJECTS) $(http_client_async_client_LDADD) $(LIBS)
+http/client/sync_client.$(OBJEXT): http/client/$(am__dirstamp) \
+	http/client/$(DEPDIR)/$(am__dirstamp)
+
+http/client/sync_client$(EXEEXT): $(http_client_sync_client_OBJECTS) $(http_client_sync_client_DEPENDENCIES) $(EXTRA_http_client_sync_client_DEPENDENCIES) http/client/$(am__dirstamp)
+	@rm -f http/client/sync_client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(http_client_sync_client_OBJECTS) $(http_client_sync_client_LDADD) $(LIBS)
 http/server/$(am__dirstamp):
 	@$(MKDIR_P) http/server
 	@: > http/server/$(am__dirstamp)
@@ -1272,6 +1665,90 @@ http/server/server.$(OBJEXT): http/server/$(am__dirstamp) \
 http/server/http_server$(EXEEXT): $(http_server_http_server_OBJECTS) $(http_server_http_server_DEPENDENCIES) $(EXTRA_http_server_http_server_DEPENDENCIES) http/server/$(am__dirstamp)
 	@rm -f http/server/http_server$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(http_server_http_server_OBJECTS) $(http_server_http_server_LDADD) $(LIBS)
+http/server2/$(am__dirstamp):
+	@$(MKDIR_P) http/server2
+	@: > http/server2/$(am__dirstamp)
+http/server2/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) http/server2/$(DEPDIR)
+	@: > http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/connection.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/io_context_pool.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/main.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/mime_types.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/reply.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/request_handler.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/request_parser.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+http/server2/server.$(OBJEXT): http/server2/$(am__dirstamp) \
+	http/server2/$(DEPDIR)/$(am__dirstamp)
+
+http/server2/http_server$(EXEEXT): $(http_server2_http_server_OBJECTS) $(http_server2_http_server_DEPENDENCIES) $(EXTRA_http_server2_http_server_DEPENDENCIES) http/server2/$(am__dirstamp)
+	@rm -f http/server2/http_server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(http_server2_http_server_OBJECTS) $(http_server2_http_server_LDADD) $(LIBS)
+http/server3/$(am__dirstamp):
+	@$(MKDIR_P) http/server3
+	@: > http/server3/$(am__dirstamp)
+http/server3/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) http/server3/$(DEPDIR)
+	@: > http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/connection.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/main.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/mime_types.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/reply.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/request_handler.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/request_parser.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+http/server3/server.$(OBJEXT): http/server3/$(am__dirstamp) \
+	http/server3/$(DEPDIR)/$(am__dirstamp)
+
+http/server3/http_server$(EXEEXT): $(http_server3_http_server_OBJECTS) $(http_server3_http_server_DEPENDENCIES) $(EXTRA_http_server3_http_server_DEPENDENCIES) http/server3/$(am__dirstamp)
+	@rm -f http/server3/http_server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(http_server3_http_server_OBJECTS) $(http_server3_http_server_LDADD) $(LIBS)
+http/server4/$(am__dirstamp):
+	@$(MKDIR_P) http/server4
+	@: > http/server4/$(am__dirstamp)
+http/server4/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) http/server4/$(DEPDIR)
+	@: > http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/file_handler.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/main.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/mime_types.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/reply.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/request_parser.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+http/server4/server.$(OBJEXT): http/server4/$(am__dirstamp) \
+	http/server4/$(DEPDIR)/$(am__dirstamp)
+
+http/server4/http_server$(EXEEXT): $(http_server4_http_server_OBJECTS) $(http_server4_http_server_DEPENDENCIES) $(EXTRA_http_server4_http_server_DEPENDENCIES) http/server4/$(am__dirstamp)
+	@rm -f http/server4/http_server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(http_server4_http_server_OBJECTS) $(http_server4_http_server_LDADD) $(LIBS)
+icmp/$(am__dirstamp):
+	@$(MKDIR_P) icmp
+	@: > icmp/$(am__dirstamp)
+icmp/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) icmp/$(DEPDIR)
+	@: > icmp/$(DEPDIR)/$(am__dirstamp)
+icmp/ping.$(OBJEXT): icmp/$(am__dirstamp) \
+	icmp/$(DEPDIR)/$(am__dirstamp)
+
+icmp/ping$(EXEEXT): $(icmp_ping_OBJECTS) $(icmp_ping_DEPENDENCIES) $(EXTRA_icmp_ping_DEPENDENCIES) icmp/$(am__dirstamp)
+	@rm -f icmp/ping$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(icmp_ping_OBJECTS) $(icmp_ping_LDADD) $(LIBS)
 invocation/$(am__dirstamp):
 	@$(MKDIR_P) invocation
 	@: > invocation/$(am__dirstamp)
@@ -1290,6 +1767,18 @@ iostreams/$(am__dirstamp):
 iostreams/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) iostreams/$(DEPDIR)
 	@: > iostreams/$(DEPDIR)/$(am__dirstamp)
+iostreams/daytime_client.$(OBJEXT): iostreams/$(am__dirstamp) \
+	iostreams/$(DEPDIR)/$(am__dirstamp)
+
+iostreams/daytime_client$(EXEEXT): $(iostreams_daytime_client_OBJECTS) $(iostreams_daytime_client_DEPENDENCIES) $(EXTRA_iostreams_daytime_client_DEPENDENCIES) iostreams/$(am__dirstamp)
+	@rm -f iostreams/daytime_client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(iostreams_daytime_client_OBJECTS) $(iostreams_daytime_client_LDADD) $(LIBS)
+iostreams/daytime_server.$(OBJEXT): iostreams/$(am__dirstamp) \
+	iostreams/$(DEPDIR)/$(am__dirstamp)
+
+iostreams/daytime_server$(EXEEXT): $(iostreams_daytime_server_OBJECTS) $(iostreams_daytime_server_DEPENDENCIES) $(EXTRA_iostreams_daytime_server_DEPENDENCIES) iostreams/$(am__dirstamp)
+	@rm -f iostreams/daytime_server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(iostreams_daytime_server_OBJECTS) $(iostreams_daytime_server_LDADD) $(LIBS)
 iostreams/http_client.$(OBJEXT): iostreams/$(am__dirstamp) \
 	iostreams/$(DEPDIR)/$(am__dirstamp)
 
@@ -1461,6 +1950,38 @@ parallel_group/wait_for_one_success.$(OBJEXT):  \
 parallel_group/wait_for_one_success$(EXEEXT): $(parallel_group_wait_for_one_success_OBJECTS) $(parallel_group_wait_for_one_success_DEPENDENCIES) $(EXTRA_parallel_group_wait_for_one_success_DEPENDENCIES) parallel_group/$(am__dirstamp)
 	@rm -f parallel_group/wait_for_one_success$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(parallel_group_wait_for_one_success_OBJECTS) $(parallel_group_wait_for_one_success_LDADD) $(LIBS)
+porthopper/$(am__dirstamp):
+	@$(MKDIR_P) porthopper
+	@: > porthopper/$(am__dirstamp)
+porthopper/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) porthopper/$(DEPDIR)
+	@: > porthopper/$(DEPDIR)/$(am__dirstamp)
+porthopper/client.$(OBJEXT): porthopper/$(am__dirstamp) \
+	porthopper/$(DEPDIR)/$(am__dirstamp)
+
+porthopper/client$(EXEEXT): $(porthopper_client_OBJECTS) $(porthopper_client_DEPENDENCIES) $(EXTRA_porthopper_client_DEPENDENCIES) porthopper/$(am__dirstamp)
+	@rm -f porthopper/client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(porthopper_client_OBJECTS) $(porthopper_client_LDADD) $(LIBS)
+porthopper/server.$(OBJEXT): porthopper/$(am__dirstamp) \
+	porthopper/$(DEPDIR)/$(am__dirstamp)
+
+porthopper/server$(EXEEXT): $(porthopper_server_OBJECTS) $(porthopper_server_DEPENDENCIES) $(EXTRA_porthopper_server_DEPENDENCIES) porthopper/$(am__dirstamp)
+	@rm -f porthopper/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(porthopper_server_OBJECTS) $(porthopper_server_LDADD) $(LIBS)
+services/$(am__dirstamp):
+	@$(MKDIR_P) services
+	@: > services/$(am__dirstamp)
+services/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) services/$(DEPDIR)
+	@: > services/$(DEPDIR)/$(am__dirstamp)
+services/daytime_client.$(OBJEXT): services/$(am__dirstamp) \
+	services/$(DEPDIR)/$(am__dirstamp)
+services/logger_service.$(OBJEXT): services/$(am__dirstamp) \
+	services/$(DEPDIR)/$(am__dirstamp)
+
+services/daytime_client$(EXEEXT): $(services_daytime_client_OBJECTS) $(services_daytime_client_DEPENDENCIES) $(EXTRA_services_daytime_client_DEPENDENCIES) services/$(am__dirstamp)
+	@rm -f services/daytime_client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(services_daytime_client_OBJECTS) $(services_daytime_client_LDADD) $(LIBS)
 socks4/$(am__dirstamp):
 	@$(MKDIR_P) socks4
 	@: > socks4/$(am__dirstamp)
@@ -1557,6 +2078,150 @@ timers/time_t_timer.$(OBJEXT): timers/$(am__dirstamp) \
 timers/time_t_timer$(EXEEXT): $(timers_time_t_timer_OBJECTS) $(timers_time_t_timer_DEPENDENCIES) $(EXTRA_timers_time_t_timer_DEPENDENCIES) timers/$(am__dirstamp)
 	@rm -f timers/time_t_timer$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(timers_time_t_timer_OBJECTS) $(timers_time_t_timer_LDADD) $(LIBS)
+tutorial/daytime1/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime1
+	@: > tutorial/daytime1/$(am__dirstamp)
+tutorial/daytime1/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime1/$(DEPDIR)
+	@: > tutorial/daytime1/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime1/client.$(OBJEXT): tutorial/daytime1/$(am__dirstamp) \
+	tutorial/daytime1/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime1/client$(EXEEXT): $(tutorial_daytime1_client_OBJECTS) $(tutorial_daytime1_client_DEPENDENCIES) $(EXTRA_tutorial_daytime1_client_DEPENDENCIES) tutorial/daytime1/$(am__dirstamp)
+	@rm -f tutorial/daytime1/client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime1_client_OBJECTS) $(tutorial_daytime1_client_LDADD) $(LIBS)
+tutorial/daytime2/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime2
+	@: > tutorial/daytime2/$(am__dirstamp)
+tutorial/daytime2/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime2/$(DEPDIR)
+	@: > tutorial/daytime2/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime2/server.$(OBJEXT): tutorial/daytime2/$(am__dirstamp) \
+	tutorial/daytime2/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime2/server$(EXEEXT): $(tutorial_daytime2_server_OBJECTS) $(tutorial_daytime2_server_DEPENDENCIES) $(EXTRA_tutorial_daytime2_server_DEPENDENCIES) tutorial/daytime2/$(am__dirstamp)
+	@rm -f tutorial/daytime2/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime2_server_OBJECTS) $(tutorial_daytime2_server_LDADD) $(LIBS)
+tutorial/daytime3/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime3
+	@: > tutorial/daytime3/$(am__dirstamp)
+tutorial/daytime3/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime3/$(DEPDIR)
+	@: > tutorial/daytime3/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime3/server.$(OBJEXT): tutorial/daytime3/$(am__dirstamp) \
+	tutorial/daytime3/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime3/server$(EXEEXT): $(tutorial_daytime3_server_OBJECTS) $(tutorial_daytime3_server_DEPENDENCIES) $(EXTRA_tutorial_daytime3_server_DEPENDENCIES) tutorial/daytime3/$(am__dirstamp)
+	@rm -f tutorial/daytime3/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime3_server_OBJECTS) $(tutorial_daytime3_server_LDADD) $(LIBS)
+tutorial/daytime4/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime4
+	@: > tutorial/daytime4/$(am__dirstamp)
+tutorial/daytime4/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime4/$(DEPDIR)
+	@: > tutorial/daytime4/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime4/client.$(OBJEXT): tutorial/daytime4/$(am__dirstamp) \
+	tutorial/daytime4/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime4/client$(EXEEXT): $(tutorial_daytime4_client_OBJECTS) $(tutorial_daytime4_client_DEPENDENCIES) $(EXTRA_tutorial_daytime4_client_DEPENDENCIES) tutorial/daytime4/$(am__dirstamp)
+	@rm -f tutorial/daytime4/client$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime4_client_OBJECTS) $(tutorial_daytime4_client_LDADD) $(LIBS)
+tutorial/daytime5/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime5
+	@: > tutorial/daytime5/$(am__dirstamp)
+tutorial/daytime5/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime5/$(DEPDIR)
+	@: > tutorial/daytime5/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime5/server.$(OBJEXT): tutorial/daytime5/$(am__dirstamp) \
+	tutorial/daytime5/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime5/server$(EXEEXT): $(tutorial_daytime5_server_OBJECTS) $(tutorial_daytime5_server_DEPENDENCIES) $(EXTRA_tutorial_daytime5_server_DEPENDENCIES) tutorial/daytime5/$(am__dirstamp)
+	@rm -f tutorial/daytime5/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime5_server_OBJECTS) $(tutorial_daytime5_server_LDADD) $(LIBS)
+tutorial/daytime6/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime6
+	@: > tutorial/daytime6/$(am__dirstamp)
+tutorial/daytime6/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime6/$(DEPDIR)
+	@: > tutorial/daytime6/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime6/server.$(OBJEXT): tutorial/daytime6/$(am__dirstamp) \
+	tutorial/daytime6/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime6/server$(EXEEXT): $(tutorial_daytime6_server_OBJECTS) $(tutorial_daytime6_server_DEPENDENCIES) $(EXTRA_tutorial_daytime6_server_DEPENDENCIES) tutorial/daytime6/$(am__dirstamp)
+	@rm -f tutorial/daytime6/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime6_server_OBJECTS) $(tutorial_daytime6_server_LDADD) $(LIBS)
+tutorial/daytime7/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime7
+	@: > tutorial/daytime7/$(am__dirstamp)
+tutorial/daytime7/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/daytime7/$(DEPDIR)
+	@: > tutorial/daytime7/$(DEPDIR)/$(am__dirstamp)
+tutorial/daytime7/server.$(OBJEXT): tutorial/daytime7/$(am__dirstamp) \
+	tutorial/daytime7/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/daytime7/server$(EXEEXT): $(tutorial_daytime7_server_OBJECTS) $(tutorial_daytime7_server_DEPENDENCIES) $(EXTRA_tutorial_daytime7_server_DEPENDENCIES) tutorial/daytime7/$(am__dirstamp)
+	@rm -f tutorial/daytime7/server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_daytime7_server_OBJECTS) $(tutorial_daytime7_server_LDADD) $(LIBS)
+tutorial/timer1/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer1
+	@: > tutorial/timer1/$(am__dirstamp)
+tutorial/timer1/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer1/$(DEPDIR)
+	@: > tutorial/timer1/$(DEPDIR)/$(am__dirstamp)
+tutorial/timer1/timer.$(OBJEXT): tutorial/timer1/$(am__dirstamp) \
+	tutorial/timer1/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/timer1/timer$(EXEEXT): $(tutorial_timer1_timer_OBJECTS) $(tutorial_timer1_timer_DEPENDENCIES) $(EXTRA_tutorial_timer1_timer_DEPENDENCIES) tutorial/timer1/$(am__dirstamp)
+	@rm -f tutorial/timer1/timer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_timer1_timer_OBJECTS) $(tutorial_timer1_timer_LDADD) $(LIBS)
+tutorial/timer2/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer2
+	@: > tutorial/timer2/$(am__dirstamp)
+tutorial/timer2/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer2/$(DEPDIR)
+	@: > tutorial/timer2/$(DEPDIR)/$(am__dirstamp)
+tutorial/timer2/timer.$(OBJEXT): tutorial/timer2/$(am__dirstamp) \
+	tutorial/timer2/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/timer2/timer$(EXEEXT): $(tutorial_timer2_timer_OBJECTS) $(tutorial_timer2_timer_DEPENDENCIES) $(EXTRA_tutorial_timer2_timer_DEPENDENCIES) tutorial/timer2/$(am__dirstamp)
+	@rm -f tutorial/timer2/timer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_timer2_timer_OBJECTS) $(tutorial_timer2_timer_LDADD) $(LIBS)
+tutorial/timer3/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer3
+	@: > tutorial/timer3/$(am__dirstamp)
+tutorial/timer3/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer3/$(DEPDIR)
+	@: > tutorial/timer3/$(DEPDIR)/$(am__dirstamp)
+tutorial/timer3/timer.$(OBJEXT): tutorial/timer3/$(am__dirstamp) \
+	tutorial/timer3/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/timer3/timer$(EXEEXT): $(tutorial_timer3_timer_OBJECTS) $(tutorial_timer3_timer_DEPENDENCIES) $(EXTRA_tutorial_timer3_timer_DEPENDENCIES) tutorial/timer3/$(am__dirstamp)
+	@rm -f tutorial/timer3/timer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_timer3_timer_OBJECTS) $(tutorial_timer3_timer_LDADD) $(LIBS)
+tutorial/timer4/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer4
+	@: > tutorial/timer4/$(am__dirstamp)
+tutorial/timer4/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer4/$(DEPDIR)
+	@: > tutorial/timer4/$(DEPDIR)/$(am__dirstamp)
+tutorial/timer4/timer.$(OBJEXT): tutorial/timer4/$(am__dirstamp) \
+	tutorial/timer4/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/timer4/timer$(EXEEXT): $(tutorial_timer4_timer_OBJECTS) $(tutorial_timer4_timer_DEPENDENCIES) $(EXTRA_tutorial_timer4_timer_DEPENDENCIES) tutorial/timer4/$(am__dirstamp)
+	@rm -f tutorial/timer4/timer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_timer4_timer_OBJECTS) $(tutorial_timer4_timer_LDADD) $(LIBS)
+tutorial/timer5/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer5
+	@: > tutorial/timer5/$(am__dirstamp)
+tutorial/timer5/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tutorial/timer5/$(DEPDIR)
+	@: > tutorial/timer5/$(DEPDIR)/$(am__dirstamp)
+tutorial/timer5/timer.$(OBJEXT): tutorial/timer5/$(am__dirstamp) \
+	tutorial/timer5/$(DEPDIR)/$(am__dirstamp)
+
+tutorial/timer5/timer$(EXEEXT): $(tutorial_timer5_timer_OBJECTS) $(tutorial_timer5_timer_DEPENDENCIES) $(EXTRA_tutorial_timer5_timer_DEPENDENCIES) tutorial/timer5/$(am__dirstamp)
+	@rm -f tutorial/timer5/timer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(tutorial_timer5_timer_OBJECTS) $(tutorial_timer5_timer_LDADD) $(LIBS)
 type_erasure/$(am__dirstamp):
 	@$(MKDIR_P) type_erasure
 	@: > type_erasure/$(am__dirstamp)
@@ -1574,6 +2239,18 @@ type_erasure/sleep.$(OBJEXT): type_erasure/$(am__dirstamp) \
 type_erasure/type_erasure$(EXEEXT): $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_DEPENDENCIES) $(EXTRA_type_erasure_type_erasure_DEPENDENCIES) type_erasure/$(am__dirstamp)
 	@rm -f type_erasure/type_erasure$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(type_erasure_type_erasure_OBJECTS) $(type_erasure_type_erasure_LDADD) $(LIBS)
+windows/$(am__dirstamp):
+	@$(MKDIR_P) windows
+	@: > windows/$(am__dirstamp)
+windows/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) windows/$(DEPDIR)
+	@: > windows/$(DEPDIR)/$(am__dirstamp)
+windows/transmit_file.$(OBJEXT): windows/$(am__dirstamp) \
+	windows/$(DEPDIR)/$(am__dirstamp)
+
+windows/transmit_file$(EXEEXT): $(windows_transmit_file_OBJECTS) $(windows_transmit_file_DEPENDENCIES) $(EXTRA_windows_transmit_file_DEPENDENCIES) windows/$(am__dirstamp)
+	@rm -f windows/transmit_file$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(windows_transmit_file_OBJECTS) $(windows_transmit_file_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1588,7 +2265,12 @@ mostlyclean-compile:
 	-rm -f fork/*.$(OBJEXT)
 	-rm -f futures/*.$(OBJEXT)
 	-rm -f handler_tracking/*.$(OBJEXT)
+	-rm -f http/client/*.$(OBJEXT)
 	-rm -f http/server/*.$(OBJEXT)
+	-rm -f http/server2/*.$(OBJEXT)
+	-rm -f http/server3/*.$(OBJEXT)
+	-rm -f http/server4/*.$(OBJEXT)
+	-rm -f icmp/*.$(OBJEXT)
 	-rm -f invocation/*.$(OBJEXT)
 	-rm -f iostreams/*.$(OBJEXT)
 	-rm -f local/*.$(OBJEXT)
@@ -1596,12 +2278,27 @@ mostlyclean-compile:
 	-rm -f nonblocking/*.$(OBJEXT)
 	-rm -f operations/*.$(OBJEXT)
 	-rm -f parallel_group/*.$(OBJEXT)
+	-rm -f porthopper/*.$(OBJEXT)
+	-rm -f services/*.$(OBJEXT)
 	-rm -f socks4/*.$(OBJEXT)
 	-rm -f spawn/*.$(OBJEXT)
 	-rm -f ssl/*.$(OBJEXT)
 	-rm -f timeouts/*.$(OBJEXT)
 	-rm -f timers/*.$(OBJEXT)
+	-rm -f tutorial/daytime1/*.$(OBJEXT)
+	-rm -f tutorial/daytime2/*.$(OBJEXT)
+	-rm -f tutorial/daytime3/*.$(OBJEXT)
+	-rm -f tutorial/daytime4/*.$(OBJEXT)
+	-rm -f tutorial/daytime5/*.$(OBJEXT)
+	-rm -f tutorial/daytime6/*.$(OBJEXT)
+	-rm -f tutorial/daytime7/*.$(OBJEXT)
+	-rm -f tutorial/timer1/*.$(OBJEXT)
+	-rm -f tutorial/timer2/*.$(OBJEXT)
+	-rm -f tutorial/timer3/*.$(OBJEXT)
+	-rm -f tutorial/timer4/*.$(OBJEXT)
+	-rm -f tutorial/timer5/*.$(OBJEXT)
 	-rm -f type_erasure/*.$(OBJEXT)
+	-rm -f windows/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1612,6 +2309,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@buffers/$(DEPDIR)/reference_counted.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@chat/$(DEPDIR)/chat_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@chat/$(DEPDIR)/chat_server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@chat/$(DEPDIR)/posix_chat_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@deferred/$(DEPDIR)/deferred_1.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@deferred/$(DEPDIR)/deferred_2.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@echo/$(DEPDIR)/async_tcp_echo_server.Po@am__quote@ # am--include-marker
@@ -1632,6 +2330,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@fork/$(DEPDIR)/process_per_connection.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@futures/$(DEPDIR)/daytime_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/client/$(DEPDIR)/async_client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/client/$(DEPDIR)/sync_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/connection.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/connection_manager.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
@@ -1640,7 +2340,31 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/request_handler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/request_parser.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/connection.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/io_context_pool.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/mime_types.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/reply.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/request_handler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/request_parser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server2/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/connection.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/mime_types.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/reply.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/request_handler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/request_parser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server3/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/file_handler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/mime_types.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/reply.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/request_parser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@http/server4/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@icmp/$(DEPDIR)/ping.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@invocation/$(DEPDIR)/prioritised_handlers.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@iostreams/$(DEPDIR)/daytime_client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@iostreams/$(DEPDIR)/daytime_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@iostreams/$(DEPDIR)/http_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@local/$(DEPDIR)/connect_pair.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@local/$(DEPDIR)/fd_passing_stream_client.Po@am__quote@ # am--include-marker
@@ -1664,6 +2388,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one_error.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@parallel_group/$(DEPDIR)/wait_for_one_success.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@porthopper/$(DEPDIR)/client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@porthopper/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@services/$(DEPDIR)/daytime_client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@services/$(DEPDIR)/logger_service.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@socks4/$(DEPDIR)/sync_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@spawn/$(DEPDIR)/echo_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@spawn/$(DEPDIR)/parallel_grep.Po@am__quote@ # am--include-marker
@@ -1675,9 +2403,22 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@timeouts/$(DEPDIR)/blocking_udp_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@timeouts/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@timers/$(DEPDIR)/time_t_timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime1/$(DEPDIR)/client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime2/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime3/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime4/$(DEPDIR)/client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime5/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime6/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/daytime7/$(DEPDIR)/server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/timer1/$(DEPDIR)/timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/timer2/$(DEPDIR)/timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/timer3/$(DEPDIR)/timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/timer4/$(DEPDIR)/timer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tutorial/timer5/$(DEPDIR)/timer.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/sleep.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@type_erasure/$(DEPDIR)/stdin_line_reader.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@windows/$(DEPDIR)/transmit_file.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1837,8 +2578,18 @@ distclean-generic:
 	-rm -f futures/$(am__dirstamp)
 	-rm -f handler_tracking/$(DEPDIR)/$(am__dirstamp)
 	-rm -f handler_tracking/$(am__dirstamp)
+	-rm -f http/client/$(DEPDIR)/$(am__dirstamp)
+	-rm -f http/client/$(am__dirstamp)
 	-rm -f http/server/$(DEPDIR)/$(am__dirstamp)
 	-rm -f http/server/$(am__dirstamp)
+	-rm -f http/server2/$(DEPDIR)/$(am__dirstamp)
+	-rm -f http/server2/$(am__dirstamp)
+	-rm -f http/server3/$(DEPDIR)/$(am__dirstamp)
+	-rm -f http/server3/$(am__dirstamp)
+	-rm -f http/server4/$(DEPDIR)/$(am__dirstamp)
+	-rm -f http/server4/$(am__dirstamp)
+	-rm -f icmp/$(DEPDIR)/$(am__dirstamp)
+	-rm -f icmp/$(am__dirstamp)
 	-rm -f invocation/$(DEPDIR)/$(am__dirstamp)
 	-rm -f invocation/$(am__dirstamp)
 	-rm -f iostreams/$(DEPDIR)/$(am__dirstamp)
@@ -1853,6 +2604,10 @@ distclean-generic:
 	-rm -f operations/$(am__dirstamp)
 	-rm -f parallel_group/$(DEPDIR)/$(am__dirstamp)
 	-rm -f parallel_group/$(am__dirstamp)
+	-rm -f porthopper/$(DEPDIR)/$(am__dirstamp)
+	-rm -f porthopper/$(am__dirstamp)
+	-rm -f services/$(DEPDIR)/$(am__dirstamp)
+	-rm -f services/$(am__dirstamp)
 	-rm -f socks4/$(DEPDIR)/$(am__dirstamp)
 	-rm -f socks4/$(am__dirstamp)
 	-rm -f spawn/$(DEPDIR)/$(am__dirstamp)
@@ -1863,8 +2618,34 @@ distclean-generic:
 	-rm -f timeouts/$(am__dirstamp)
 	-rm -f timers/$(DEPDIR)/$(am__dirstamp)
 	-rm -f timers/$(am__dirstamp)
+	-rm -f tutorial/daytime1/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime1/$(am__dirstamp)
+	-rm -f tutorial/daytime2/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime2/$(am__dirstamp)
+	-rm -f tutorial/daytime3/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime3/$(am__dirstamp)
+	-rm -f tutorial/daytime4/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime4/$(am__dirstamp)
+	-rm -f tutorial/daytime5/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime5/$(am__dirstamp)
+	-rm -f tutorial/daytime6/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime6/$(am__dirstamp)
+	-rm -f tutorial/daytime7/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/daytime7/$(am__dirstamp)
+	-rm -f tutorial/timer1/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/timer1/$(am__dirstamp)
+	-rm -f tutorial/timer2/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/timer2/$(am__dirstamp)
+	-rm -f tutorial/timer3/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/timer3/$(am__dirstamp)
+	-rm -f tutorial/timer4/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/timer4/$(am__dirstamp)
+	-rm -f tutorial/timer5/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tutorial/timer5/$(am__dirstamp)
 	-rm -f type_erasure/$(DEPDIR)/$(am__dirstamp)
 	-rm -f type_erasure/$(am__dirstamp)
+	-rm -f windows/$(DEPDIR)/$(am__dirstamp)
+	-rm -f windows/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -1882,6 +2663,7 @@ distclean: distclean-am
 	-rm -f buffers/$(DEPDIR)/reference_counted.Po
 	-rm -f chat/$(DEPDIR)/chat_client.Po
 	-rm -f chat/$(DEPDIR)/chat_server.Po
+	-rm -f chat/$(DEPDIR)/posix_chat_client.Po
 	-rm -f deferred/$(DEPDIR)/deferred_1.Po
 	-rm -f deferred/$(DEPDIR)/deferred_2.Po
 	-rm -f echo/$(DEPDIR)/async_tcp_echo_server.Po
@@ -1902,6 +2684,8 @@ distclean: distclean-am
 	-rm -f fork/$(DEPDIR)/process_per_connection.Po
 	-rm -f futures/$(DEPDIR)/daytime_client.Po
 	-rm -f handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po
+	-rm -f http/client/$(DEPDIR)/async_client.Po
+	-rm -f http/client/$(DEPDIR)/sync_client.Po
 	-rm -f http/server/$(DEPDIR)/connection.Po
 	-rm -f http/server/$(DEPDIR)/connection_manager.Po
 	-rm -f http/server/$(DEPDIR)/main.Po
@@ -1910,7 +2694,31 @@ distclean: distclean-am
 	-rm -f http/server/$(DEPDIR)/request_handler.Po
 	-rm -f http/server/$(DEPDIR)/request_parser.Po
 	-rm -f http/server/$(DEPDIR)/server.Po
+	-rm -f http/server2/$(DEPDIR)/connection.Po
+	-rm -f http/server2/$(DEPDIR)/io_context_pool.Po
+	-rm -f http/server2/$(DEPDIR)/main.Po
+	-rm -f http/server2/$(DEPDIR)/mime_types.Po
+	-rm -f http/server2/$(DEPDIR)/reply.Po
+	-rm -f http/server2/$(DEPDIR)/request_handler.Po
+	-rm -f http/server2/$(DEPDIR)/request_parser.Po
+	-rm -f http/server2/$(DEPDIR)/server.Po
+	-rm -f http/server3/$(DEPDIR)/connection.Po
+	-rm -f http/server3/$(DEPDIR)/main.Po
+	-rm -f http/server3/$(DEPDIR)/mime_types.Po
+	-rm -f http/server3/$(DEPDIR)/reply.Po
+	-rm -f http/server3/$(DEPDIR)/request_handler.Po
+	-rm -f http/server3/$(DEPDIR)/request_parser.Po
+	-rm -f http/server3/$(DEPDIR)/server.Po
+	-rm -f http/server4/$(DEPDIR)/file_handler.Po
+	-rm -f http/server4/$(DEPDIR)/main.Po
+	-rm -f http/server4/$(DEPDIR)/mime_types.Po
+	-rm -f http/server4/$(DEPDIR)/reply.Po
+	-rm -f http/server4/$(DEPDIR)/request_parser.Po
+	-rm -f http/server4/$(DEPDIR)/server.Po
+	-rm -f icmp/$(DEPDIR)/ping.Po
 	-rm -f invocation/$(DEPDIR)/prioritised_handlers.Po
+	-rm -f iostreams/$(DEPDIR)/daytime_client.Po
+	-rm -f iostreams/$(DEPDIR)/daytime_server.Po
 	-rm -f iostreams/$(DEPDIR)/http_client.Po
 	-rm -f local/$(DEPDIR)/connect_pair.Po
 	-rm -f local/$(DEPDIR)/fd_passing_stream_client.Po
@@ -1934,6 +2742,10 @@ distclean: distclean-am
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_success.Po
+	-rm -f porthopper/$(DEPDIR)/client.Po
+	-rm -f porthopper/$(DEPDIR)/server.Po
+	-rm -f services/$(DEPDIR)/daytime_client.Po
+	-rm -f services/$(DEPDIR)/logger_service.Po
 	-rm -f socks4/$(DEPDIR)/sync_client.Po
 	-rm -f spawn/$(DEPDIR)/echo_server.Po
 	-rm -f spawn/$(DEPDIR)/parallel_grep.Po
@@ -1945,9 +2757,22 @@ distclean: distclean-am
 	-rm -f timeouts/$(DEPDIR)/blocking_udp_client.Po
 	-rm -f timeouts/$(DEPDIR)/server.Po
 	-rm -f timers/$(DEPDIR)/time_t_timer.Po
+	-rm -f tutorial/daytime1/$(DEPDIR)/client.Po
+	-rm -f tutorial/daytime2/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime3/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime4/$(DEPDIR)/client.Po
+	-rm -f tutorial/daytime5/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime6/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime7/$(DEPDIR)/server.Po
+	-rm -f tutorial/timer1/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer2/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer3/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer4/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer5/$(DEPDIR)/timer.Po
 	-rm -f type_erasure/$(DEPDIR)/main.Po
 	-rm -f type_erasure/$(DEPDIR)/sleep.Po
 	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
+	-rm -f windows/$(DEPDIR)/transmit_file.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1999,6 +2824,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f buffers/$(DEPDIR)/reference_counted.Po
 	-rm -f chat/$(DEPDIR)/chat_client.Po
 	-rm -f chat/$(DEPDIR)/chat_server.Po
+	-rm -f chat/$(DEPDIR)/posix_chat_client.Po
 	-rm -f deferred/$(DEPDIR)/deferred_1.Po
 	-rm -f deferred/$(DEPDIR)/deferred_2.Po
 	-rm -f echo/$(DEPDIR)/async_tcp_echo_server.Po
@@ -2019,6 +2845,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f fork/$(DEPDIR)/process_per_connection.Po
 	-rm -f futures/$(DEPDIR)/daytime_client.Po
 	-rm -f handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po
+	-rm -f http/client/$(DEPDIR)/async_client.Po
+	-rm -f http/client/$(DEPDIR)/sync_client.Po
 	-rm -f http/server/$(DEPDIR)/connection.Po
 	-rm -f http/server/$(DEPDIR)/connection_manager.Po
 	-rm -f http/server/$(DEPDIR)/main.Po
@@ -2027,7 +2855,31 @@ maintainer-clean: maintainer-clean-am
 	-rm -f http/server/$(DEPDIR)/request_handler.Po
 	-rm -f http/server/$(DEPDIR)/request_parser.Po
 	-rm -f http/server/$(DEPDIR)/server.Po
+	-rm -f http/server2/$(DEPDIR)/connection.Po
+	-rm -f http/server2/$(DEPDIR)/io_context_pool.Po
+	-rm -f http/server2/$(DEPDIR)/main.Po
+	-rm -f http/server2/$(DEPDIR)/mime_types.Po
+	-rm -f http/server2/$(DEPDIR)/reply.Po
+	-rm -f http/server2/$(DEPDIR)/request_handler.Po
+	-rm -f http/server2/$(DEPDIR)/request_parser.Po
+	-rm -f http/server2/$(DEPDIR)/server.Po
+	-rm -f http/server3/$(DEPDIR)/connection.Po
+	-rm -f http/server3/$(DEPDIR)/main.Po
+	-rm -f http/server3/$(DEPDIR)/mime_types.Po
+	-rm -f http/server3/$(DEPDIR)/reply.Po
+	-rm -f http/server3/$(DEPDIR)/request_handler.Po
+	-rm -f http/server3/$(DEPDIR)/request_parser.Po
+	-rm -f http/server3/$(DEPDIR)/server.Po
+	-rm -f http/server4/$(DEPDIR)/file_handler.Po
+	-rm -f http/server4/$(DEPDIR)/main.Po
+	-rm -f http/server4/$(DEPDIR)/mime_types.Po
+	-rm -f http/server4/$(DEPDIR)/reply.Po
+	-rm -f http/server4/$(DEPDIR)/request_parser.Po
+	-rm -f http/server4/$(DEPDIR)/server.Po
+	-rm -f icmp/$(DEPDIR)/ping.Po
 	-rm -f invocation/$(DEPDIR)/prioritised_handlers.Po
+	-rm -f iostreams/$(DEPDIR)/daytime_client.Po
+	-rm -f iostreams/$(DEPDIR)/daytime_server.Po
 	-rm -f iostreams/$(DEPDIR)/http_client.Po
 	-rm -f local/$(DEPDIR)/connect_pair.Po
 	-rm -f local/$(DEPDIR)/fd_passing_stream_client.Po
@@ -2051,6 +2903,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_error.Po
 	-rm -f parallel_group/$(DEPDIR)/wait_for_one_success.Po
+	-rm -f porthopper/$(DEPDIR)/client.Po
+	-rm -f porthopper/$(DEPDIR)/server.Po
+	-rm -f services/$(DEPDIR)/daytime_client.Po
+	-rm -f services/$(DEPDIR)/logger_service.Po
 	-rm -f socks4/$(DEPDIR)/sync_client.Po
 	-rm -f spawn/$(DEPDIR)/echo_server.Po
 	-rm -f spawn/$(DEPDIR)/parallel_grep.Po
@@ -2062,9 +2918,22 @@ maintainer-clean: maintainer-clean-am
 	-rm -f timeouts/$(DEPDIR)/blocking_udp_client.Po
 	-rm -f timeouts/$(DEPDIR)/server.Po
 	-rm -f timers/$(DEPDIR)/time_t_timer.Po
+	-rm -f tutorial/daytime1/$(DEPDIR)/client.Po
+	-rm -f tutorial/daytime2/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime3/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime4/$(DEPDIR)/client.Po
+	-rm -f tutorial/daytime5/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime6/$(DEPDIR)/server.Po
+	-rm -f tutorial/daytime7/$(DEPDIR)/server.Po
+	-rm -f tutorial/timer1/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer2/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer3/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer4/$(DEPDIR)/timer.Po
+	-rm -f tutorial/timer5/$(DEPDIR)/timer.Po
 	-rm -f type_erasure/$(DEPDIR)/main.Po
 	-rm -f type_erasure/$(DEPDIR)/sleep.Po
 	-rm -f type_erasure/$(DEPDIR)/stdin_line_reader.Po
+	-rm -f windows/$(DEPDIR)/transmit_file.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

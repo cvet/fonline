@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,10 +102,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PING MAKE_NETMSG_HEADER(5)
-#define NETMSG_PING_SIZE (sizeof(uint) + sizeof(uint8))
+#define NETMSG_PING_SIZE (sizeof(uint) + sizeof(bool))
 // ////////////////////////////////////////////////////////////////////////
 // Ping
-// uint8 ping (see Ping in FOdefines.h)
+// bool answer
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PLACE_TO_GAME_COMPLETE MAKE_NETMSG_HEADER(7)
@@ -331,6 +331,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ipos16 end_hex_offset
 // ////////////////////////////////////////////////////////////////////////
 
+#define NETMSG_CRITTER_MOVE_SPEED MAKE_NETMSG_HEADER(48)
+#define NETMSG_CRITTER_MOVE_SPEED_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16))
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// ident_t cr_id
+// uint16 speed
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
 #define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(mpos) + sizeof(ipos16) + sizeof(int16))
 // ////////////////////////////////////////////////////////////////////////
@@ -355,13 +364,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // CHOSEN Params
 // ************************************************************************
 
-#define NETMSG_ALL_PROPERTIES MAKE_NETMSG_HEADER(51)
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// Properties
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_CRITTER_TELEPORT MAKE_NETMSG_HEADER(52)
 #define NETMSG_CRITTER_TELEPORT_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(mpos))
 // ////////////////////////////////////////////////////////////////////////
@@ -375,13 +377,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // CHOSEN ITEMS
 // ************************************************************************
 
-#define NETMSG_CLEAR_ITEMS MAKE_NETMSG_HEADER(64)
-#define NETMSG_CLEAR_ITEMS_SIZE (sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-//
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_ADD_ITEM MAKE_NETMSG_HEADER(65)
+#define NETMSG_CHOSEN_ADD_ITEM MAKE_NETMSG_HEADER(65)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -392,18 +388,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_REMOVE_ITEM MAKE_NETMSG_HEADER(66)
-#define NETMSG_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t))
+#define NETMSG_CHOSEN_REMOVE_ITEM MAKE_NETMSG_HEADER(66)
+#define NETMSG_CHOSEN_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t item_id
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_ALL_ITEMS_SEND MAKE_NETMSG_HEADER(69)
-#define NETMSG_ALL_ITEMS_SEND_SIZE (sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-//
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -415,14 +405,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
+// uint16 item_x
+// uint16 item_y
 // uint item_id
 // hash item_pid
-// mpos item_hex
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_ERASE_ITEM_FROM_MAP MAKE_NETMSG_HEADER(74)
-#define NETMSG_ERASE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(ident_t))
+#define NETMSG_REMOVE_ITEM_FROM_MAP MAKE_NETMSG_HEADER(74)
+#define NETMSG_REMOVE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -440,18 +431,13 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // bool reversed
 // ////////////////////////////////////////////////////////////////////////
 
-// ************************************************************************
-// CHOSEN USE ITEM
-// ************************************************************************
-
 #define NETMSG_SOME_ITEMS MAKE_NETMSG_HEADER(83)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint msg_len
-// int param
-// bool is_null
-// uint count
+// string context_param
+// uint items_count
 //	ident_t item_id
 //	hstring item_pid
 //	Properties data
@@ -461,18 +447,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // CRITTER ACTION
 // ************************************************************************
 
-#define NETMSG_SOME_ITEM MAKE_NETMSG_HEADER(90)
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uint msg_len
-// ident_t item_id
-// hstring item_pid
-// Properties data
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_CRITTER_ACTION MAKE_NETMSG_HEADER(91)
-#define NETMSG_CRITTER_ACTION_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterAction) + sizeof(int) + sizeof(bool))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -480,24 +455,24 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // CritterAction action
 // int action_ext
 // bool is_context_item
+// Item context_item
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_MOVE_ITEM MAKE_NETMSG_HEADER(93)
 // ////////////////////////////////////////////////////////////////////////
-//
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ANIMATE MAKE_NETMSG_HEADER(95)
-#define NETMSG_CRITTER_ANIMATE_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterStateAnim) + sizeof(CritterActionAnim) + sizeof(bool) * 3)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
 // CritterStateAnim state_anim
 // CritterActionAnim action_anim
-// bool is_context_item
 // bool clear_sequence
 // bool delay_play
+// bool is_context_item
+// Item context_item
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_SET_ANIMS MAKE_NETMSG_HEADER(96)
@@ -595,7 +570,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // MAP
 // ************************************************************************
 
-#define NETMSG_LOADMAP MAKE_NETMSG_HEADER(121)
+#define NETMSG_LOAD_MAP MAKE_NETMSG_HEADER(121)
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint mag_len
@@ -608,7 +583,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties location
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_RPC MAKE_NETMSG_HEADER(128)
+#define NETMSG_REMOTE_CALL MAKE_NETMSG_HEADER(128)
 // ////////////////////////////////////////////////////////////////////////
 //
 // ////////////////////////////////////////////////////////////////////////
@@ -630,34 +605,36 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_GLOBAL_INFO MAKE_NETMSG_HEADER(135)
 // ////////////////////////////////////////////////////////////////////////
 //
-// uint msg_len
-// uint8 info_flag; (see GM info in FOdefines.h)
-// Data
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_GLOBAL_LOCATION MAKE_NETMSG_HEADER(136)
+// ////////////////////////////////////////////////////////////////////////
+//
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_GLOBAL_FOG MAKE_NETMSG_HEADER(137)
+// ////////////////////////////////////////////////////////////////////////
+//
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
-// Automaps info
+// Custom entities
 // ************************************************************************
 
-#define NETMSG_AUTOMAPS_INFO MAKE_NETMSG_HEADER(170)
+#define NETMSG_ADD_CUSTOM_ENTITY MAKE_NETMSG_HEADER(180)
 // ////////////////////////////////////////////////////////////////////////
-// Automaps information
-// uint msg_len
-// bool clear_list
-// uint16 locations_count
-//  for locations_count
-//  ident_t location_id
-//  hstring location_pid
-//  uint16 maps_count
-//   for maps_count
-//   hstring map_pid
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_REMOVE_CUSTOM_ENTITY MAKE_NETMSG_HEADER(181)
+#define NETMSG_REMOVE_CUSTOM_ENTITY_SIZE (sizeof(uint) + sizeof(ident_t))
+// ////////////////////////////////////////////////////////////////////////
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
 // Properties
 // ************************************************************************
 
-#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x)*10)
+#define NETMSG_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(190 + (b) + (x) * 10)
 #define NETMSG_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
@@ -677,7 +654,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint8 data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x)*10)
+#define NETMSG_SEND_POD_PROPERTY(b, x) MAKE_NETMSG_HEADER(220 + (b) + (x) * 10)
 #define NETMSG_SEND_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(ident_t) * (x) + sizeof(uint16) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
@@ -696,29 +673,3 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint16 property_index
 // uint8 data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////
-
-// ////////////////////////////////////////////////////////////////////////
-// Properties serialization helpers
-// ////////////////////////////////////////////////////////////////////////
-
-#define NET_WRITE_PROPERTIES(bout, data_vec, data_sizes_vec) \
-    do { \
-        RUNTIME_ASSERT((data_vec)->size() <= 0xFFFF); \
-        bout.Write<uint16>(static_cast<uint16>((data_vec)->size())); \
-        for (size_t i_ = 0; i_ < (data_vec)->size(); i_++) { \
-            const auto data_size_ = static_cast<uint>(data_sizes_vec->at(i_)); \
-            bout.Write<uint>(data_size_); \
-            bout.Push((data_vec)->at(i_), data_size_); \
-        } \
-    } while (0)
-
-#define NET_READ_PROPERTIES(bin, data_vec) \
-    do { \
-        const auto data_count_ = bin.Read<uint16>(); \
-        data_vec.resize(data_count_); \
-        for (uint16 i_ = 0; i_ < data_count_; i_++) { \
-            const auto data_size_ = bin.Read<uint>(); \
-            data_vec[i_].resize(data_size_); \
-            bin.Pop(data_vec[i_].data(), data_size_); \
-        } \
-    } while (0)

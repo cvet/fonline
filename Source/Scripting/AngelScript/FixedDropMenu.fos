@@ -1,4 +1,7 @@
-// FOS Client
+namespace FixedDropMenu
+{
+
+#if CLIENT
 
 funcdef bool DropMenuNeedShowButton(Critter cr, Item item);
 funcdef void DropMenuButtonAction(Critter cr, Item item);
@@ -200,3 +203,7 @@ class FixedDropMenu : Gui::IDropMenu
         }
     }
 };
+
+#endif
+
+}

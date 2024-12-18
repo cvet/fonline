@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,6 @@
 
 #include "ServerEntity.h"
 
-#include "Server.h"
-#include "StringUtils.h"
-
 ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
     Entity(registrator, props),
     _engine {engine},
@@ -43,10 +40,10 @@ ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrat
 {
     STACK_TRACE_ENTRY();
 
-    _name = GetClassName();
+    _name = GetTypeName();
 }
 
-void ServerEntity::SetId(ident_t id)
+void ServerEntity::SetId(ident_t id) noexcept
 {
     STACK_TRACE_ENTRY();
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,16 +35,13 @@
 #include "Client.h"
 
 PlayerView::PlayerView(FOClient* engine, ident_t id, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }
 
-void PlayerView::MarkAsDestroyed()
+void PlayerView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
-
-    Entity::MarkAsDestroying();
-    Entity::MarkAsDestroyed();
 }

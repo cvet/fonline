@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -119,7 +119,7 @@ public:
     FileCollection(const FileCollection&) = delete;
     FileCollection(FileCollection&&) noexcept = default;
     auto operator=(const FileCollection&) = delete;
-    auto operator=(FileCollection&&) noexcept = delete;
+    auto operator=(FileCollection&&) noexcept -> FileCollection& = default;
     ~FileCollection() = default;
 
     [[nodiscard]] auto GetCurFile() const -> File;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -199,13 +199,13 @@ public:
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
 
-    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color);
-    void PrepareSquare(vector<PrimitivePoint>& points, fpos lt, fpos rt, fpos lb, fpos rb, ucolor color);
+    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
+    void PrepareSquare(vector<PrimitivePoint>& points, fpos lt, fpos rt, fpos lb, fpos rb, ucolor color) const;
 
     void BeginScene(ucolor clear_color);
     void EndScene();
 
-    void SetSpritesZoom(float zoom) noexcept;
+    void SetSpritesZoom(float zoom);
 
     void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
     void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, ucolor color);
@@ -315,7 +315,7 @@ private:
         RenderEffect* DrawEffect {};
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
-        map<uint, Letter> Letters {};
+        unordered_map<uint, Letter> Letters {};
         int SpaceWidth {};
         int LineHeight {};
         int YAdvance {};

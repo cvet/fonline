@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,10 +33,10 @@
 
 #include "TwoDimensionalGrid.h"
 
-[[maybe_unused]] void TestSpecializations()
+[[maybe_unused]] static void TestSpecializations()
 {
     if constexpr (FO_DEBUG) {
-        [[maybe_unused]] TwoDimensionalGrid<int, ipos, isize, true> grid1;
-        [[maybe_unused]] TwoDimensionalGrid<int, ipos, isize, false> grid2;
+        [[maybe_unused]] auto grid1 = StaticTwoDimensionalGrid<int, ipos, isize>({100, 100});
+        [[maybe_unused]] auto grid2 = DynamicTwoDimensionalGrid<int, ipos, isize>({100, 100});
     }
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -67,14 +67,14 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetColor(GetIsColorize() ? GetLightColor() : ucolor::clear);
+    mspr->SetColor(GetColorize() ? GetLightColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
-    if (GetIsBadItem()) {
+    if (GetBadItem()) {
         mspr->SetContour(ContourType::Red);
     }
 
-    if (!GetIsNoLightInfluence()) {
+    if (!GetNoLightInfluence()) {
         mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
     }
 
@@ -164,7 +164,7 @@ void ItemHexView::RefreshAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    SetMaxAlpha(GetIsColorize() ? GetLightColor().comp.a : 255);
+    SetMaxAlpha(GetColorize() ? GetLightColor().comp.a : 255);
 }
 
 void ItemHexView::RefreshAnim()
@@ -190,7 +190,7 @@ void ItemHexView::RefreshAnim()
 
     _anim->UseGameplayTimer();
 
-    if (GetIsCanOpen()) {
+    if (GetCanOpen()) {
         _anim->Stop();
 
         if (GetOpened()) {
@@ -201,7 +201,7 @@ void ItemHexView::RefreshAnim()
         }
     }
     else if (_isEffect && !_isDynamicEffect) {
-        _anim->Play(hstring(), false, false);
+        _anim->Play({}, false, false);
     }
     else {
         _anim->PlayDefault();
@@ -212,11 +212,11 @@ void ItemHexView::RefreshAnim()
     RefreshOffs();
 }
 
-auto ItemHexView::GetEggType() const -> EggAppearenceType
+auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
-    if (GetDisableEgg() || GetIsFlat()) {
+    if (GetDisableEgg() || GetDrawFlatten()) {
         return EggAppearenceType::None;
     }
 

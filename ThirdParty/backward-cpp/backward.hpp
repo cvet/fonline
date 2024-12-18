@@ -28,6 +28,8 @@
 #error "It's not going to compile without a C++ compiler..."
 #endif
 
+extern std::ostream BackwardOStream; // (FOnline Patch)
+
 #if defined(BACKWARD_CXX11)
 #elif defined(BACKWARD_CXX98)
 #else
@@ -4244,7 +4246,7 @@ public:
 
     Printer printer;
     printer.address = true;
-    printer.print(st, stderr);
+    printer.print(st, BackwardOStream /*stderr*/); // (FOnline Patch)
 
 #if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
     psiginfo(info, nullptr);
@@ -4443,7 +4445,7 @@ private:
     st.skip_n_firsts(skip_frames);
 
     printer.address = true;
-    printer.print(st, std::cerr);
+    printer.print(st, BackwardOStream /*std::cerr*/); // (FOnline Patch)
   }
 };
 

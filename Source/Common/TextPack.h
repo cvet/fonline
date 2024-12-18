@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,9 @@ enum class TextPackName : uint8
     Game = 1,
     Dialogs = 2,
     Items = 3,
-    Locations = 4,
+    Maps = 4,
+    Locations = 5,
+    Protos = 6,
 };
 
 class FileSystem;
@@ -66,14 +68,15 @@ public:
     [[nodiscard]] auto GetStrNumUpper(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrNumLower(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
-    [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto IsIntersects(const TextPack& other) const -> bool;
+    [[nodiscard]] auto GetSize() const noexcept -> size_t;
+    [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
     auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(TextPackKey num, string_view str);
+    void AddStr(TextPackKey num, string&& str);
     void EraseStr(TextPackKey num);
     void Merge(const TextPack& other);
     void Clear();
@@ -95,7 +98,7 @@ public:
     auto operator==(string_view lang_name) const -> bool { return lang_name == _langName; }
     ~LanguagePack() = default;
 
-    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetName() const noexcept -> const string&;
     [[nodiscard]] auto GetTextPack(TextPackName pack_name) const -> const TextPack&;
     [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
     [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
@@ -109,5 +112,4 @@ private:
     const NameResolver* _nameResolver {};
     vector<unique_ptr<TextPack>> _textPacks {};
     TextPack _emptyPack {};
-    bool _nonConstHelper {};
 };

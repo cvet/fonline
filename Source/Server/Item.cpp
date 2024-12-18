@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,13 +38,13 @@
 #include "StringUtils.h"
 
 Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", proto->GetName(), id);
+    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)
@@ -65,13 +65,11 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
     SetSortValue(sort_value);
 }
 
-auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*
+auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(item_id);
 
     if (!_innerItems) {
         return nullptr;
@@ -79,37 +77,14 @@ auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*
 
     for (auto* item : *_innerItems) {
         if (item->GetId() == item_id) {
-            if (skip_hidden && item->GetIsHidden()) {
-                return nullptr;
-            }
             return item;
         }
     }
+
     return nullptr;
 }
 
-auto Item::GetAllInnerItems(bool skip_hidden) -> vector<Item*>
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (!_innerItems) {
-        return {};
-    }
-
-    vector<Item*> items;
-    items.reserve(_innerItems->size());
-
-    for (auto* item : *_innerItems) {
-        if (!skip_hidden || !item->GetIsHidden()) {
-            items.push_back(item);
-        }
-    }
-    return items;
-}
-
-auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*
+auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -124,6 +99,7 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*
             return item;
         }
     }
+
     return nullptr;
 }
 
@@ -137,20 +113,27 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
         return {};
     }
 
-    vector<Item*> items;
-    for (auto* item : *_innerItems) {
-        if (stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id) {
-            items.push_back(item);
-        }
-    }
-    return items;
+    return vec_filter(*_innerItems, [stack_id](const Item* item) -> bool { //
+        return stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id;
+    });
 }
 
-auto Item::IsInnerItems() const -> bool
+auto Item::HasInnerItems() const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _innerItems && !_innerItems->empty();
+}
+
+auto Item::GetAllInnerItems() -> const vector<Item*>&
 {
     STACK_TRACE_ENTRY();
 
-    return _innerItems && !_innerItems->empty();
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_innerItems);
+
+    return *_innerItems;
 }
 
 auto Item::GetRawInnerItems() -> vector<Item*>&
@@ -162,4 +145,105 @@ auto Item::GetRawInnerItems() -> vector<Item*>&
     RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
+}
+
+void Item::SetItemToContainer(Item* item)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(item);
+
+    make_if_not_exists(_innerItems);
+    vec_add_unique_value(*_innerItems, item);
+
+    item->SetOwnership(ItemOwnership::ItemContainer);
+    item->SetContainerId(GetId());
+}
+
+auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
+
+    if (item->GetStackable()) {
+        auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
+
+        if (item_already != nullptr) {
+            const auto count = item->GetCount();
+
+            _engine->ItemMngr.DestroyItem(item);
+            item_already->SetCount(item_already->GetCount() + count);
+
+            return item_already;
+        }
+    }
+
+    make_if_not_exists(_innerItems);
+
+    item->SetContainerStack(stack_id);
+    item->EvaluateSortValue(*_innerItems);
+    SetItemToContainer(item);
+
+    auto inner_item_ids = GetInnerItemIds();
+    vec_add_unique_value(inner_item_ids, item->GetId());
+    SetInnerItemIds(inner_item_ids);
+
+    return item;
+}
+
+void Item::RemoveItemFromContainer(Item* item)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_innerItems);
+    RUNTIME_ASSERT(item);
+
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetContainerId(ident_t {});
+    item->SetContainerStack(ContainerItemStack::Root);
+
+    vec_remove_unique_value(*_innerItems, item);
+    destroy_if_empty(_innerItems);
+
+    auto inner_item_ids = GetInnerItemIds();
+    vec_remove_unique_value(inner_item_ids, item->GetId());
+    SetInnerItemIds(inner_item_ids);
+}
+
+auto Item::CanSendItem(bool as_public) const noexcept -> bool
+{
+    switch (GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        const auto slot = GetCritterSlot();
+        const auto slot_num = static_cast<size_t>(slot);
+
+        if (slot_num >= _engine->Settings.CritterSlotEnabled.size() || !_engine->Settings.CritterSlotEnabled[slot_num]) {
+            return false;
+        }
+
+        if (as_public) {
+            if (slot_num >= _engine->Settings.CritterSlotSendData.size() || !_engine->Settings.CritterSlotSendData[slot_num]) {
+                return false;
+            }
+        }
+    } break;
+    case ItemOwnership::MapHex:
+        break;
+    case ItemOwnership::ItemContainer:
+        return false;
+    default:
+        return false;
+    }
+
+    if (GetHidden()) {
+        return false;
+    }
+
+    return true;
 }

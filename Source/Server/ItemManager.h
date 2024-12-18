@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -57,26 +57,19 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
-    [[nodiscard]] auto GetItem(ident_t item_id) const -> const Item*;
-    [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
-    [[nodiscard]] auto GetItemsCount() const -> size_t;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
 
-    auto CreateItem(hstring pid, uint count, const Properties* props) -> Item*;
-    auto SplitItem(Item* item, uint count) -> Item*;
-    auto AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> Item*;
-    auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
+    auto CreateItem(hstring pid, uint count, const Properties* props) -> NON_NULL Item*;
+    auto SplitItem(Item* item, uint count) -> NON_NULL Item*;
+    auto AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> NON_NULL Item*;
+    auto AddItemCritter(Critter* cr, hstring pid, uint count) -> NON_NULL Item*;
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
-    void DeleteItem(Item* item);
-    void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
-    void MoveItem(Item* item, uint count, Map* to_map, mpos to_hex, bool skip_checks);
-    void MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks);
-    auto AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*;
-    void EraseItemFromContainer(Item* cont, Item* item);
-    void SetItemToContainer(Item* cont, Item* item);
+    void DestroyItem(Item* item);
+    auto MoveItem(Item* item, uint count, Critter* to_cr) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> NON_NULL Item*;
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
@@ -84,10 +77,9 @@ public:
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
-    [[nodiscard]] auto ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool;
-    [[nodiscard]] auto GetItemHolder(Item* item) -> Entity*;
+    [[nodiscard]] auto GetItemHolder(Item* item) -> NON_NULL Entity*;
 
-    void EraseItemHolder(Item* item, Entity* holder);
+    void RemoveItemHolder(Item* item, Entity* holder);
 
     FOServer* _engine;
     unordered_set<Item*> _radioItems {};

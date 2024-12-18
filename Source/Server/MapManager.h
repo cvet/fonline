@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,17 +54,14 @@ class CritterManager;
 
 struct TraceData
 {
-    using HexCallbackFunc = std::function<void(Map*, Critter*, mpos, mpos, uint8)>;
-
     // Input
     Map* TraceMap {};
     mpos StartHex {};
     mpos TargetHex {};
-    uint Dist {};
+    uint MaxDist {};
     float Angle {};
     Critter* FindCr {};
     CritterFindType FindType {};
-    HexCallbackFunc HexCallback {};
 
     // Output
     vector<Critter*>* Critters {};
@@ -73,7 +70,7 @@ struct TraceData
     mpos* LastMovable {};
     bool IsFullTrace {};
     bool IsCritterFound {};
-    bool IsHaveLastMovable {};
+    bool HasLastMovable {};
 };
 
 struct FindPathInput
@@ -128,33 +125,22 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager();
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
-    [[nodiscard]] auto GetLocation(ident_t loc_id) -> Location*;
-    [[nodiscard]] auto GetLocation(ident_t loc_id) const -> const Location*;
-    [[nodiscard]] auto GetLocationByMap(ident_t map_id) -> Location*;
-    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> const unordered_map<ident_t, Location*>&;
-    [[nodiscard]] auto GetLocationsCount() const -> size_t;
-    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> NON_NULL const StaticMap*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
+    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
-    [[nodiscard]] auto GetMap(ident_t map_id) -> Map*;
-    [[nodiscard]] auto GetMap(ident_t map_id) const -> const Map*;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
-    [[nodiscard]] auto GetMapsCount() const -> size_t;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, upos16 wpos) -> Location*;
-    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-    void DeleteLocation(Location* loc);
-    void LocationGarbager();
+    auto CreateLocation(hstring proto_id, upos16 wpos) -> NON_NULL Location*;
+    void DestroyLocation(Location* loc);
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
-    void AddCrToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
-    void EraseCrFromMap(Critter* cr, Map* map);
+    void AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
+    void RemoveCritterFromMap(Critter* cr, Map* map);
     void TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius);
     void TransitToGlobal(Critter* cr, ident_t global_cr_id);
     void KickPlayersToGlobalMap(Map* map);
@@ -162,19 +148,19 @@ public:
     void ProcessVisibleItems(Critter* cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir);
     void AddKnownLoc(Critter* cr, ident_t loc_id);
-    void EraseKnownLoc(Critter* cr, ident_t loc_id);
+    void RemoveKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
     [[nodiscard]] FORCE_INLINE auto GridAt(mpos pos) -> int16&;
     [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
+    auto CreateMap(hstring proto_id, Location* loc) -> NON_NULL Map*;
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
     void Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
-    void DeleteMapContent(Map* map);
+    void DestroyMapContent(Map* map);
 
     FOServer* _engine;
-    bool _runGarbager {true};
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
     mpos _mapGridOffset {};
     int16* _mapGrid {};

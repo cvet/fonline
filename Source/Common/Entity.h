@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,27 +40,28 @@
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
-///@ ExportEntity Item Item ItemView HasProto HasStatics HasAbstract
-///@ ExportEntity Critter Critter CritterView HasProto
-///@ ExportEntity Map Map MapView HasProto
-///@ ExportEntity Location Location LocationView HasProto
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract
+///@ ExportEntity Critter Critter CritterView HasProtos
+///@ ExportEntity Map Map MapView HasProtos
+///@ ExportEntity Location Location LocationView HasProtos
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* \
+    static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
+    inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
         return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); \
     } \
-    inline prop_type Get##prop() const \
+    inline prop_type Get##prop() const noexcept(noexcept(std::declval<Properties>().GetValueFast<prop_type>(GetProperty##prop()))) \
     { \
-        return _propsRef.GetValue<prop_type>(GetProperty##prop()); \
+        return _propsRef.GetValueFast<prop_type>(GetProperty##prop()); \
     } \
-    inline void Set##prop(prop_type value) \
+    inline void Set##prop(const prop_type& value) \
     { \
         _propsRef.SetValue(GetProperty##prop(), value); \
     } \
-    inline bool IsNonEmpty##prop() const \
+    inline bool IsNonEmpty##prop() const noexcept \
     { \
-        return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; \
+        return _propsRef.GetRawDataSize(GetProperty##prop()) != 0; \
     } \
     static uint16 prop##_RegIndex
 
@@ -139,13 +140,13 @@ enum class CritterActionAnim : uint16
 enum class CritterFindType : uint8
 {
     Any = 0,
-    Alive = 0x01,
+    NonDead = 0x01,
     Dead = 0x02,
     Players = 0x10,
     Npc = 0x20,
-    AlivePlayers = 0x11,
+    NonDeadPlayers = 0x11,
     DeadPlayers = 0x12,
-    AliveNpc = 0x21,
+    NonDeadNpc = 0x21,
     DeadNpc = 0x22,
 };
 
@@ -250,15 +251,38 @@ public:
     virtual ~AnimationResolver() = default;
     [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool = 0;
 };
 
 class EntityProperties
 {
-protected:
+public:
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
+
     explicit EntityProperties(Properties& props);
 
+protected:
     Properties& _propsRef;
+};
+
+enum class EntityHolderEntryAccess
+{
+    Private,
+    Protected,
+    Public,
+};
+
+struct EntityTypeInfo
+{
+    const PropertyRegistrator* PropRegistrator {};
+    bool Exported {};
+    bool HasProtos {};
+    unordered_map<hstring, tuple<hstring, EntityHolderEntryAccess>> HolderEntries {}; // Target type, access
 };
 
 class Entity
@@ -274,7 +298,6 @@ public:
         IgnoreAndContinueChain,
         StopChainAndReturnTrue,
         StopChainAndReturnFalse,
-        PropogateException,
     };
 
     ///@ ExportEnum
@@ -303,17 +326,21 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
-    [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
-    [[nodiscard]] auto GetClassName() const -> string_view;
-    [[nodiscard]] auto GetProperties() const -> const Properties&;
-    [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
-    [[nodiscard]] auto IsDestroying() const -> bool;
-    [[nodiscard]] auto IsDestroyed() const -> bool;
+    [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
+    [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
+    [[nodiscard]] auto GetTypeName() const noexcept -> hstring;
+    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring;
+    [[nodiscard]] auto GetProperties() const noexcept -> const Properties&;
+    [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties&;
+    [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
+    [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
+    [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
+    [[nodiscard]] auto GetRawInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
+    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
@@ -323,32 +350,36 @@ public:
     void SetValueAsAny(const Property* prop, const any_t& value);
     void SetValueAsAny(int prop_index, const any_t& value);
     void SubscribeEvent(const string& event_name, EventCallbackData&& callback);
-    void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
-    void UnsubscribeAllEvent(const string& event_name);
-    auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
+    void UnsubscribeEvent(const string& event_name, const void* subscription_ptr) noexcept;
+    void UnsubscribeAllEvent(const string& event_name) noexcept;
+    auto FireEvent(const string& event_name, const initializer_list<void*>& args) noexcept -> bool;
+    void AddInnerEntity(hstring entry, Entity* entity);
+    void RemoveInnerEntity(hstring entry, Entity* entity);
+    void ClearInnerEntities();
 
     void AddRef() const noexcept;
     void Release() const noexcept;
 
     void MarkAsDestroying();
-    virtual void MarkAsDestroyed();
+    void MarkAsDestroyed();
 
 protected:
     Entity(const PropertyRegistrator* registrator, const Properties* props);
     virtual ~Entity() = default;
 
-    auto GetInitRef() -> Properties& { return _props; }
+    auto GetInitRef() noexcept -> Properties& { return _props; }
 
     bool _nonConstHelper {};
 
 private:
-    auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*;
-    void SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData&& callback);
-    void UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr);
-    auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
+    auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>&;
+    void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
+    void UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept;
+    auto FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool;
 
     Properties _props;
-    unordered_map<string, vector<EventCallbackData>> _events {};
+    unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
+    unique_ptr<unordered_map<hstring, vector<Entity*>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};
@@ -357,15 +388,14 @@ private:
 class ProtoEntity : public Entity
 {
 public:
-    [[nodiscard]] auto GetName() const -> string_view override;
-    [[nodiscard]] auto GetProtoId() const -> hstring;
-    [[nodiscard]] auto HasComponent(hstring name) const -> bool;
-    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;
-    [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
+    [[nodiscard]] auto HasComponent(hstring name) const noexcept -> bool;
+    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const noexcept -> bool;
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _components; }
 
     void EnableComponent(hstring component);
 
-    vector<pair<string, TextPack>> Texts {};
     string CollectionName {};
 
 protected:
@@ -385,8 +415,8 @@ public:
     auto operator=(const EntityWithProto&) = delete;
     auto operator=(EntityWithProto&&) noexcept = delete;
 
-    [[nodiscard]] auto GetProtoId() const -> hstring;
-    [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
+    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
+    [[nodiscard]] auto GetProto() const noexcept -> const ProtoEntity*;
 
 protected:
     explicit EntityWithProto(const ProtoEntity* proto);
@@ -399,13 +429,18 @@ class EntityEventBase
 {
 public:
     void Subscribe(Entity::EventCallbackData&& callback);
-    void Unsubscribe(const void* subscription_ptr);
-    void UnsubscribeAll();
+    void Unsubscribe(const void* subscription_ptr) noexcept;
+    void UnsubscribeAll() noexcept;
 
 protected:
     EntityEventBase(Entity* entity, const char* callback_name);
 
-    [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const -> bool { return _entity->FireEvent(_callbacks, args_list); }
+    [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const noexcept -> bool
+    {
+        STRONG_ASSERT(_callbacks);
+
+        return _entity->FireEvent(*_callbacks, args_list);
+    }
 
     Entity* _entity;
     const char* _callbackName;
@@ -421,13 +456,13 @@ public:
     {
     }
 
-    auto Fire(Args... args) -> bool
+    auto Fire(const Args&... args) noexcept -> bool
     {
         if (_callbacks == nullptr) {
             return true;
         }
 
-        const initializer_list<void*> args_list = {&args...};
+        const initializer_list<void*> args_list = {const_cast<void*>(static_cast<const void*>(&args))...};
         return FireEx(args_list);
     }
 };

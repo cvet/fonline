@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@
 #endif
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
 #endif
@@ -55,7 +55,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv);
 
-        auto* editor = new FOEditor(App->Settings);
+        auto&& editor = std::make_unique<FOEditor>(App->Settings);
 
         while (!App->IsQuitRequested()) {
             App->BeginFrame();
@@ -71,5 +71,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

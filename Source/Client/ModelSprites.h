@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -68,11 +68,13 @@ public:
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
+    void SetSize(isize size);
     void DrawToAtlas();
 
 private:
     ModelSpriteFactory* _factory {};
     unique_ptr<ModelInstance> _model {};
+    AtlasType _atlasType {};
     bool _nonConstHelper {};
 };
 

@@ -10,29 +10,28 @@ jobs:
   check-formatting:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
-    - uses: DoozyX/clang-format-lint-action@v0.15
+    - uses: actions/checkout@v4
+    - uses: DoozyX/clang-format-lint-action@v0.18
       with:
         source: ./Source
         extensions: 'h,cpp,fos'
-        clangFormatVersion: 15
+        clangFormatVersion: 18
   unit-tests:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh code-coverage
-    - uses: codecov/codecov-action@v3
+    - uses: codecov/codecov-action@v4
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
-        gcov: true
   windows:
     runs-on: windows-2019
     strategy:
@@ -49,8 +48,8 @@ jobs:
         - win64-ascompiler
         - win64-baker
     steps:
-    - uses: actions/checkout@v3
-    - run: BuildTools/validate.bat ${{matrix.app}}
+    - uses: actions/checkout@v4
+    - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
     runs-on: ubuntu-20.04
     strategy:
@@ -78,7 +77,7 @@ jobs:
         - linux-baker
         - linux-gcc-baker
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - if: ${{startsWith(matrix.app, 'linux-')}}
       run: BuildTools/prepare-workspace.sh packages linux
     - if: ${{startsWith(matrix.app, 'web-')}}
@@ -91,7 +90,7 @@ jobs:
       run: BuildTools/prepare-workspace.sh packages android-x86
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
-    runs-on: macos-11
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:
@@ -101,5 +100,5 @@ jobs:
         - mac-single
         - ios-single
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: BuildTools/validate.sh ${{matrix.app}}

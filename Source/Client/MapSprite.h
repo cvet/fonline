@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -136,7 +136,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto CheckHit(ipos pos, bool check_transparent) const -> bool;
-    [[nodiscard]] auto IsHidden() const -> bool { return _hidden; }
+    [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
 
     void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
@@ -197,7 +197,7 @@ public:
     auto operator=(MapSpriteList&&) noexcept = delete;
     ~MapSpriteList();
 
-    [[nodiscard]] auto RootSprite() -> MapSprite*;
+    [[nodiscard]] auto RootSprite() noexcept -> MapSprite*;
 
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     auto InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;

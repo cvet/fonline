@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -156,24 +156,29 @@ auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) -> uint
         if ((x1 % 2) == 0) {
             if (y2 <= y1) {
                 const auto rx = y1 - y2 - dx / 2;
+
                 return dx + (rx > 0 ? rx : 0);
             }
 
             const auto rx = y2 - y1 - (dx + 1) / 2;
+
             return dx + (rx > 0 ? rx : 0);
         }
 
         if (y2 >= y1) {
             const auto rx = y2 - y1 - dx / 2;
+
             return dx + (rx > 0 ? rx : 0);
         }
 
         const auto rx = y1 - y2 - (dx + 1) / 2;
+
         return dx + (rx > 0 ? rx : 0);
     }
     else {
         const auto dx = std::abs(x2 - x1);
         const auto dy = std::abs(y2 - y1);
+
         return std::max(dx, dy);
     }
 }
@@ -257,6 +262,7 @@ auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) -> uint8
             return 7;
         }
     }
+
     return 0;
 }
 
@@ -342,10 +348,10 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) -> 
         auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx) + offset;
 
         if (dir < 0.0f) {
-            dir = 360.0f - fmod(-dir, 360.0f);
+            dir = 360.0f - std::fmod(-dir, 360.0f);
         }
         else if (dir >= 360.0f) {
-            dir = fmod(dir, 360.0f);
+            dir = std::fmod(dir, 360.0f);
         }
 
         if (dir >= 60.0f && dir < 120.0f) {
@@ -370,10 +376,10 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) -> 
         auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1)) + offset;
 
         if (dir < 0.0f) {
-            dir = 360.0f - fmod(-dir, 360.0f);
+            dir = 360.0f - std::fmod(-dir, 360.0f);
         }
         else if (dir >= 360.0f) {
-            dir = fmod(dir, 360.0f);
+            dir = std::fmod(dir, 360.0f);
         }
 
         if (dir >= 22.5f && dir < 67.5f) {
@@ -434,6 +440,7 @@ auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
 
     RUNTIME_ASSERT(r >= 0.0f);
     RUNTIME_ASSERT(r < 360.0f);
+
     return r;
 }
 
@@ -451,6 +458,7 @@ auto GeometryHelper::GetDirAngleDiff(float a1, float a2) -> float
     const auto r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
     RUNTIME_ASSERT(r >= 0.0f);
     RUNTIME_ASSERT(r <= 180.0f);
+
     return r;
 }
 
@@ -463,6 +471,7 @@ auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) -> float
     const auto r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
     RUNTIME_ASSERT(r >= -180.0f);
     RUNTIME_ASSERT(r <= 180.0f);
+
     return r;
 }
 
@@ -497,6 +506,7 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
     while (dir_angle < 0) {
         dir_angle += 360;
     }
+
     return static_cast<int16>(dir_angle % 360);
 }
 
@@ -514,7 +524,7 @@ auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
     return static_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
-auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
+auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -523,13 +533,14 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
         hex.x = static_cast<uint16>(raw_pos.x);
         hex.y = static_cast<uint16>(raw_pos.y);
+
         return true;
     }
 
     return false;
 }
 
-auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool
+auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -538,7 +549,7 @@ auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) ->
     return map_size.IsValidPos(hex);
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
+void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -631,6 +642,7 @@ auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> fl
     const auto y2_f = static_cast<float>(y2) * GetYProj();
 
     auto angle = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f);
+
     if (angle < 0.0f) {
         angle += 360.0f;
     }
@@ -640,6 +652,7 @@ auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> fl
 
     RUNTIME_ASSERT(angle >= 0.0f);
     RUNTIME_ASSERT(angle < 360.0f);
+
     return angle;
 }
 

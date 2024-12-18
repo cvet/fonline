@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,9 @@
 #include "Editor.h"
 #include "Application.h"
 #include "AssetExplorer.h"
+#include "ImGuiStuff.h"
 #include "ParticleEditor.h"
 #include "StringUtils.h"
-
-#include "imgui.h"
 
 EditorView::EditorView(string_view view_name, FOEditor& editor) :
     _viewName {view_name},
@@ -150,7 +149,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
     }
 
     for (const auto& res : settings.BakeResourceEntries) {
-        auto res_splitted = _str(res).split(',');
+        auto res_splitted = strex(res).split(',');
         RUNTIME_ASSERT(res_splitted.size() == 2);
         InputResources.AddDataSource(res_splitted[1]);
     }
@@ -196,7 +195,8 @@ void FOEditor::OpenAsset(string_view path)
         }
     }
 
-    const auto ext = _str(path).getFileExtension();
+    const string ext = strex(path).getFileExtension();
+
     if (ext == "fopts") {
         _newViews.emplace_back(std::make_unique<ParticleEditor>(path, *this));
     }
@@ -230,6 +230,9 @@ void FOEditor::MainLoop()
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
     }
 }

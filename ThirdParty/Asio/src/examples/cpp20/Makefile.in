@@ -90,7 +90,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @HAVE_OPENSSL_TRUE@@SEPARATE_COMPILATION_TRUE@am__append_1 = ../../asio_ssl.cpp
-noinst_PROGRAMS = operations/c_callback_wrapper$(EXEEXT) \
+noinst_PROGRAMS = invocation/completion_executor$(EXEEXT) \
+	operations/c_callback_wrapper$(EXEEXT) \
 	operations/callback_wrapper$(EXEEXT) \
 	operations/composed_1$(EXEEXT) operations/composed_1$(EXEEXT) \
 	operations/composed_2$(EXEEXT) operations/composed_3$(EXEEXT) \
@@ -98,6 +99,8 @@ noinst_PROGRAMS = operations/c_callback_wrapper$(EXEEXT) \
 	operations/composed_6$(EXEEXT) operations/composed_7$(EXEEXT) \
 	operations/composed_8$(EXEEXT) $(am__EXEEXT_1)
 @HAVE_COROUTINES_TRUE@am__append_2 = \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_1 \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_2 \
 @HAVE_COROUTINES_TRUE@	channels/throttling_proxy \
 @HAVE_COROUTINES_TRUE@	coroutines/chat_server \
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server \
@@ -120,6 +123,8 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 @HAVE_COROUTINES_TRUE@am__EXEEXT_1 =  \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_1$(EXEEXT) \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_2$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	channels/throttling_proxy$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	coroutines/chat_server$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@	coroutines/echo_server$(EXEEXT) \
@@ -148,6 +153,24 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @SEPARATE_COMPILATION_TRUE@	../../asio.$(OBJEXT) \
 @SEPARATE_COMPILATION_TRUE@	$(am__objects_1)
 libasio_a_OBJECTS = $(am_libasio_a_OBJECTS)
+am__channels_mutual_exclusion_1_SOURCES_DIST =  \
+	channels/mutual_exclusion_1.cpp
+@HAVE_COROUTINES_TRUE@am_channels_mutual_exclusion_1_OBJECTS =  \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_1.$(OBJEXT)
+channels_mutual_exclusion_1_OBJECTS =  \
+	$(am_channels_mutual_exclusion_1_OBJECTS)
+channels_mutual_exclusion_1_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@channels_mutual_exclusion_1_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am__channels_mutual_exclusion_2_SOURCES_DIST =  \
+	channels/mutual_exclusion_2.cpp
+@HAVE_COROUTINES_TRUE@am_channels_mutual_exclusion_2_OBJECTS =  \
+@HAVE_COROUTINES_TRUE@	channels/mutual_exclusion_2.$(OBJEXT)
+channels_mutual_exclusion_2_OBJECTS =  \
+	$(am_channels_mutual_exclusion_2_OBJECTS)
+channels_mutual_exclusion_2_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@channels_mutual_exclusion_2_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am__channels_throttling_proxy_SOURCES_DIST =  \
 	channels/throttling_proxy.cpp
 @HAVE_COROUTINES_TRUE@am_channels_throttling_proxy_OBJECTS =  \
@@ -225,6 +248,13 @@ am__coroutines_timeout_SOURCES_DIST = coroutines/timeout.cpp
 coroutines_timeout_OBJECTS = $(am_coroutines_timeout_OBJECTS)
 coroutines_timeout_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@coroutines_timeout_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_invocation_completion_executor_OBJECTS =  \
+	invocation/completion_executor.$(OBJEXT)
+invocation_completion_executor_OBJECTS =  \
+	$(am_invocation_completion_executor_OBJECTS)
+invocation_completion_executor_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@invocation_completion_executor_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_operations_c_callback_wrapper_OBJECTS =  \
 	operations/c_callback_wrapper.$(OBJEXT)
@@ -308,6 +338,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	../../$(DEPDIR)/asio_ssl.Po \
+	channels/$(DEPDIR)/mutual_exclusion_1.Po \
+	channels/$(DEPDIR)/mutual_exclusion_2.Po \
 	channels/$(DEPDIR)/throttling_proxy.Po \
 	coroutines/$(DEPDIR)/chat_server.Po \
 	coroutines/$(DEPDIR)/echo_server.Po \
@@ -318,6 +350,7 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	coroutines/$(DEPDIR)/echo_server_with_deferred_default.Po \
 	coroutines/$(DEPDIR)/refactored_echo_server.Po \
 	coroutines/$(DEPDIR)/timeout.Po \
+	invocation/$(DEPDIR)/completion_executor.Po \
 	operations/$(DEPDIR)/c_callback_wrapper.Po \
 	operations/$(DEPDIR)/callback_wrapper.Po \
 	operations/$(DEPDIR)/composed_1.Po \
@@ -344,7 +377,9 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libasio_a_SOURCES) $(channels_throttling_proxy_SOURCES) \
+SOURCES = $(libasio_a_SOURCES) $(channels_mutual_exclusion_1_SOURCES) \
+	$(channels_mutual_exclusion_2_SOURCES) \
+	$(channels_throttling_proxy_SOURCES) \
 	$(coroutines_chat_server_SOURCES) \
 	$(coroutines_echo_server_SOURCES) \
 	$(coroutines_echo_server_with_as_single_default_SOURCES) \
@@ -354,6 +389,7 @@ SOURCES = $(libasio_a_SOURCES) $(channels_throttling_proxy_SOURCES) \
 	$(coroutines_echo_server_with_deferred_default_SOURCES) \
 	$(coroutines_refactored_echo_server_SOURCES) \
 	$(coroutines_timeout_SOURCES) \
+	$(invocation_completion_executor_SOURCES) \
 	$(operations_c_callback_wrapper_SOURCES) \
 	$(operations_callback_wrapper_SOURCES) \
 	$(operations_composed_1_SOURCES) \
@@ -366,6 +402,8 @@ SOURCES = $(libasio_a_SOURCES) $(channels_throttling_proxy_SOURCES) \
 	$(operations_composed_8_SOURCES) \
 	$(type_erasure_type_erasure_SOURCES)
 DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
+	$(am__channels_mutual_exclusion_1_SOURCES_DIST) \
+	$(am__channels_mutual_exclusion_2_SOURCES_DIST) \
 	$(am__channels_throttling_proxy_SOURCES_DIST) \
 	$(am__coroutines_chat_server_SOURCES_DIST) \
 	$(am__coroutines_echo_server_SOURCES_DIST) \
@@ -376,6 +414,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__coroutines_echo_server_with_deferred_default_SOURCES_DIST) \
 	$(am__coroutines_refactored_echo_server_SOURCES_DIST) \
 	$(am__coroutines_timeout_SOURCES_DIST) \
+	$(invocation_completion_executor_SOURCES) \
 	$(operations_c_callback_wrapper_SOURCES) \
 	$(operations_callback_wrapper_SOURCES) \
 	$(operations_composed_1_SOURCES) \
@@ -520,6 +559,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 @SEPARATE_COMPILATION_TRUE@	$(am__append_1)
 @SEPARATE_COMPILATION_TRUE@LDADD = libasio.a
 AM_CXXFLAGS = -I$(srcdir)/../../../include
+invocation_completion_executor_SOURCES = invocation/completion_executor.cpp
 operations_c_callback_wrapper_SOURCES = operations/c_callback_wrapper.cpp
 operations_callback_wrapper_SOURCES = operations/callback_wrapper.cpp
 operations_composed_1_SOURCES = operations/composed_1.cpp
@@ -530,6 +570,8 @@ operations_composed_5_SOURCES = operations/composed_5.cpp
 operations_composed_6_SOURCES = operations/composed_6.cpp
 operations_composed_7_SOURCES = operations/composed_7.cpp
 operations_composed_8_SOURCES = operations/composed_8.cpp
+@HAVE_COROUTINES_TRUE@channels_mutual_exclusion_1_SOURCES = channels/mutual_exclusion_1.cpp
+@HAVE_COROUTINES_TRUE@channels_mutual_exclusion_2_SOURCES = channels/mutual_exclusion_2.cpp
 @HAVE_COROUTINES_TRUE@channels_throttling_proxy_SOURCES = channels/throttling_proxy.cpp
 @HAVE_COROUTINES_TRUE@coroutines_chat_server_SOURCES = coroutines/chat_server.cpp
 @HAVE_COROUTINES_TRUE@coroutines_echo_server_SOURCES = coroutines/echo_server.cpp
@@ -609,6 +651,18 @@ channels/$(am__dirstamp):
 channels/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) channels/$(DEPDIR)
 	@: > channels/$(DEPDIR)/$(am__dirstamp)
+channels/mutual_exclusion_1.$(OBJEXT): channels/$(am__dirstamp) \
+	channels/$(DEPDIR)/$(am__dirstamp)
+
+channels/mutual_exclusion_1$(EXEEXT): $(channels_mutual_exclusion_1_OBJECTS) $(channels_mutual_exclusion_1_DEPENDENCIES) $(EXTRA_channels_mutual_exclusion_1_DEPENDENCIES) channels/$(am__dirstamp)
+	@rm -f channels/mutual_exclusion_1$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(channels_mutual_exclusion_1_OBJECTS) $(channels_mutual_exclusion_1_LDADD) $(LIBS)
+channels/mutual_exclusion_2.$(OBJEXT): channels/$(am__dirstamp) \
+	channels/$(DEPDIR)/$(am__dirstamp)
+
+channels/mutual_exclusion_2$(EXEEXT): $(channels_mutual_exclusion_2_OBJECTS) $(channels_mutual_exclusion_2_DEPENDENCIES) $(EXTRA_channels_mutual_exclusion_2_DEPENDENCIES) channels/$(am__dirstamp)
+	@rm -f channels/mutual_exclusion_2$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(channels_mutual_exclusion_2_OBJECTS) $(channels_mutual_exclusion_2_LDADD) $(LIBS)
 channels/throttling_proxy.$(OBJEXT): channels/$(am__dirstamp) \
 	channels/$(DEPDIR)/$(am__dirstamp)
 
@@ -681,6 +735,18 @@ coroutines/timeout.$(OBJEXT): coroutines/$(am__dirstamp) \
 coroutines/timeout$(EXEEXT): $(coroutines_timeout_OBJECTS) $(coroutines_timeout_DEPENDENCIES) $(EXTRA_coroutines_timeout_DEPENDENCIES) coroutines/$(am__dirstamp)
 	@rm -f coroutines/timeout$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(coroutines_timeout_OBJECTS) $(coroutines_timeout_LDADD) $(LIBS)
+invocation/$(am__dirstamp):
+	@$(MKDIR_P) invocation
+	@: > invocation/$(am__dirstamp)
+invocation/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) invocation/$(DEPDIR)
+	@: > invocation/$(DEPDIR)/$(am__dirstamp)
+invocation/completion_executor.$(OBJEXT): invocation/$(am__dirstamp) \
+	invocation/$(DEPDIR)/$(am__dirstamp)
+
+invocation/completion_executor$(EXEEXT): $(invocation_completion_executor_OBJECTS) $(invocation_completion_executor_DEPENDENCIES) $(EXTRA_invocation_completion_executor_DEPENDENCIES) invocation/$(am__dirstamp)
+	@rm -f invocation/completion_executor$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(invocation_completion_executor_OBJECTS) $(invocation_completion_executor_LDADD) $(LIBS)
 operations/$(am__dirstamp):
 	@$(MKDIR_P) operations
 	@: > operations/$(am__dirstamp)
@@ -770,6 +836,7 @@ mostlyclean-compile:
 	-rm -f ../../*.$(OBJEXT)
 	-rm -f channels/*.$(OBJEXT)
 	-rm -f coroutines/*.$(OBJEXT)
+	-rm -f invocation/*.$(OBJEXT)
 	-rm -f operations/*.$(OBJEXT)
 	-rm -f type_erasure/*.$(OBJEXT)
 
@@ -778,6 +845,8 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@../../$(DEPDIR)/asio.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../$(DEPDIR)/asio_ssl.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@channels/$(DEPDIR)/mutual_exclusion_1.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@channels/$(DEPDIR)/mutual_exclusion_2.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@channels/$(DEPDIR)/throttling_proxy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@coroutines/$(DEPDIR)/chat_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@coroutines/$(DEPDIR)/echo_server.Po@am__quote@ # am--include-marker
@@ -788,6 +857,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@coroutines/$(DEPDIR)/echo_server_with_deferred_default.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@coroutines/$(DEPDIR)/refactored_echo_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@coroutines/$(DEPDIR)/timeout.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@invocation/$(DEPDIR)/completion_executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/c_callback_wrapper.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/callback_wrapper.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_1.Po@am__quote@ # am--include-marker
@@ -944,6 +1014,8 @@ distclean-generic:
 	-rm -f channels/$(am__dirstamp)
 	-rm -f coroutines/$(DEPDIR)/$(am__dirstamp)
 	-rm -f coroutines/$(am__dirstamp)
+	-rm -f invocation/$(DEPDIR)/$(am__dirstamp)
+	-rm -f invocation/$(am__dirstamp)
 	-rm -f operations/$(DEPDIR)/$(am__dirstamp)
 	-rm -f operations/$(am__dirstamp)
 	-rm -f type_erasure/$(DEPDIR)/$(am__dirstamp)
@@ -961,6 +1033,8 @@ clean-am: clean-generic clean-noinstLIBRARIES clean-noinstPROGRAMS \
 distclean: distclean-am
 		-rm -f ../../$(DEPDIR)/asio.Po
 	-rm -f ../../$(DEPDIR)/asio_ssl.Po
+	-rm -f channels/$(DEPDIR)/mutual_exclusion_1.Po
+	-rm -f channels/$(DEPDIR)/mutual_exclusion_2.Po
 	-rm -f channels/$(DEPDIR)/throttling_proxy.Po
 	-rm -f coroutines/$(DEPDIR)/chat_server.Po
 	-rm -f coroutines/$(DEPDIR)/echo_server.Po
@@ -971,6 +1045,7 @@ distclean: distclean-am
 	-rm -f coroutines/$(DEPDIR)/echo_server_with_deferred_default.Po
 	-rm -f coroutines/$(DEPDIR)/refactored_echo_server.Po
 	-rm -f coroutines/$(DEPDIR)/timeout.Po
+	-rm -f invocation/$(DEPDIR)/completion_executor.Po
 	-rm -f operations/$(DEPDIR)/c_callback_wrapper.Po
 	-rm -f operations/$(DEPDIR)/callback_wrapper.Po
 	-rm -f operations/$(DEPDIR)/composed_1.Po
@@ -1031,6 +1106,8 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f ../../$(DEPDIR)/asio.Po
 	-rm -f ../../$(DEPDIR)/asio_ssl.Po
+	-rm -f channels/$(DEPDIR)/mutual_exclusion_1.Po
+	-rm -f channels/$(DEPDIR)/mutual_exclusion_2.Po
 	-rm -f channels/$(DEPDIR)/throttling_proxy.Po
 	-rm -f coroutines/$(DEPDIR)/chat_server.Po
 	-rm -f coroutines/$(DEPDIR)/echo_server.Po
@@ -1041,6 +1118,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f coroutines/$(DEPDIR)/echo_server_with_deferred_default.Po
 	-rm -f coroutines/$(DEPDIR)/refactored_echo_server.Po
 	-rm -f coroutines/$(DEPDIR)/timeout.Po
+	-rm -f invocation/$(DEPDIR)/completion_executor.Po
 	-rm -f operations/$(DEPDIR)/c_callback_wrapper.Po
 	-rm -f operations/$(DEPDIR)/callback_wrapper.Po
 	-rm -f operations/$(DEPDIR)/composed_1.Po

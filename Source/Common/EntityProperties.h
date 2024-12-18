@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@
 class GameProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Game";
+    static constexpr string_view ENTITY_TYPE_NAME = "Game";
 
     explicit GameProperties(Properties& props) :
         EntityProperties(props)
@@ -67,12 +67,14 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, LastDeferredCallId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, HistoryRecordsId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
 };
 
 class PlayerProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Player";
+    static constexpr string_view ENTITY_TYPE_NAME = "Player";
 
     explicit PlayerProperties(Properties& props) :
         EntityProperties(props)
@@ -94,7 +96,7 @@ public:
 class ItemProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Item";
+    static constexpr string_view ENTITY_TYPE_NAME = "Item";
 
     explicit ItemProperties(Properties& props) :
         EntityProperties(props)
@@ -104,10 +106,12 @@ public:
     ///@ MigrationRule Property Item ScriptId InitScript
     ///@ ExportProperty ScriptFuncType = ItemInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty ScriptFuncType = ItemScenery
-    ENTITY_PROPERTY(PrivateServer, hstring, SceneryScript);
-    ///@ ExportProperty ScriptFuncType = ItemTrigger
-    ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
+    ///@ MigrationRule Property Item SceneryScript StaticScript
+    ///@ ExportProperty ScriptFuncType = ItemStatic
+    ENTITY_PROPERTY(PrivateServer, hstring, StaticScript);
+    ///@ MigrationRule Property Item IsStatic Static
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, Static);
     ///@ MigrationRule Property Item Accessory Ownership
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
@@ -129,34 +133,66 @@ public:
     ///@ MigrationRule Property Item SubItemIds InnerItemIds
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, uint, Count);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
-    ///@ ExportProperty Resource
-    ENTITY_PROPERTY(Public, hstring, PicInv);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, Opened);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, ipos16, DrawOffset);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, float, FlyEffectSpeed);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, GroundLevel);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Weight);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Volume);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, int8, DrawOrderOffsetHexY);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsStatic);
+    ENTITY_PROPERTY(PrivateCommon, bool, ScrollBlock);
+    ///@ MigrationRule Property Item IsHidden Hidden
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, bool, Hidden);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, AlwaysHideSprite);
+    ///@ MigrationRule Property Item IsHiddenInStatic HiddenInStatic
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, HiddenInStatic);
+    ///@ MigrationRule Property Item IsNoBlock NoBlock
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, NoBlock);
+    ///@ MigrationRule Property Item IsShootThru ShootThru
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, ShootThru);
+    ///@ MigrationRule Property Item IsLightThru LightThru
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, LightThru);
+    ///@ MigrationRule Property Item IsAlwaysView AlwaysView
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, AlwaysView);
+    ///@ MigrationRule Property Item IsLight LightSource
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, LightSource);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, int8, LightIntensity);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, uint8, LightDistance);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, uint8, LightFlags);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, ucolor, LightColor);
+
+    // Todo: exclude item properties from engine:
+    ///@ ExportProperty ScriptFuncType = ItemTrigger
+    ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, IsTrigger);
+    ///@ ExportProperty Resource
+    ENTITY_PROPERTY(Public, hstring, PicInv);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, float, FlyEffectSpeed);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
     ///@ ExportProperty ReadOnly
@@ -168,72 +204,33 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsCanOpen);
+    ENTITY_PROPERTY(PrivateCommon, bool, DrawFlatten);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsScrollBlock);
+    ENTITY_PROPERTY(PrivateCommon, int8, DrawOrderOffsetHexY);
+    ///@ MigrationRule Property Item IsBadItem BadItem
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsHidden);
+    ENTITY_PROPERTY(Public, bool, BadItem);
+    ///@ MigrationRule Property Item IsNoHighlight NoHighlight
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
-    ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, AlwaysHideSprite);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenInStatic);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, bool, IsFlat);
+    ENTITY_PROPERTY(Public, bool, NoHighlight);
+    ///@ MigrationRule Property Item IsNoLightInfluence NoLightInfluence
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoBlock);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShootThru);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsLightThru);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsAlwaysView);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsBadItem);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoHighlight);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnim);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnimExt);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsLight);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, IsGeck);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsTrap);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsTrigger);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoLightInfluence);
+    ENTITY_PROPERTY(Public, bool, NoLightInfluence);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsGag);
+    ///@ MigrationRule Property Item IsColorize Colorize
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsColorize);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsColorizeInv);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanTalk);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsRadio);
+    ENTITY_PROPERTY(Public, bool, Colorize);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
     ENTITY_PROPERTY(PublicModifiable, int16, SortValue);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int8, LightIntensity);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint8, LightDistance);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint8, LightFlags);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, ucolor, LightColor);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Count);
+    ENTITY_PROPERTY(Public, bool, IsTrap);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int16, TrapValue);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, IsRadio);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint16, RadioChannel);
     ///@ ExportProperty
@@ -242,12 +239,16 @@ public:
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastSend);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastRecv);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, CanOpen);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, Opened);
 };
 
 class CritterProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Critter";
+    static constexpr string_view ENTITY_TYPE_NAME = "Critter";
 
     explicit CritterProperties(Properties& props) :
         EntityProperties(props)
@@ -257,32 +258,10 @@ public:
     ///@ MigrationRule Property Critter ScriptId InitScript
     ///@ ExportProperty ScriptFuncType = CritterInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, string, CustomName);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, ModelName);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, MapId);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, upos16, WorldPos);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, ident_t, GlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastMapId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, LastMapPid);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastLocationId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastGlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, mpos, MapLeaveHex);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
     ///@ ExportProperty ReadOnly
@@ -293,9 +272,10 @@ public:
     ENTITY_PROPERTY(PrivateCommon, int16, DirAngle);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ MigrationRule Property Critter Cond Condition
+    ///@ ExportProperty Resource
+    ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
+    ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ MigrationRule Property Critter Anim1Life AliveStateAnim
     ///@ MigrationRule Property Critter Anim1Alive AliveStateAnim
     ///@ ExportProperty ReadOnly
@@ -317,65 +297,15 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, uint, LookDistance);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, int, ReplicationTime);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, TalkDistance);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, int, ScaleFactor);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, CurrentHp);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, DialogId);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, string, Lexems);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ident_t, HomeMapId);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, HomeMapPid);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, mpos, HomeHex);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint8, HomeDir);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, KnownLocations);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist2);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsHide);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoHome);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsGeck);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoTalk);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoFlatten);
-    ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, tick_t, AutoUnloadOfflineTime);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
     ///@ ExportProperty ReadOnly
@@ -384,14 +314,11 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
+    ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateCommon, bool, IsControlledByPlayer);
+    ENTITY_PROPERTY(PrivateCommon, bool, ControlledByPlayer);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateClient, bool, IsChosen);
     ///@ ExportProperty ReadOnly Temporary
@@ -402,12 +329,51 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateServer, int, MovingSpeed);
+
+    // Todo: exclude critter properties from engine:
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, bool, SexTagFemale);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, bool, ModelInCombatMode);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Protected, upos16, WorldPos);
+    ///@ MigrationRule Property Critter Cond Condition
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, uint, SneakCoefficient);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Protected, uint, LookDistance);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, uint, TalkDistance);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, hstring, DialogId);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, string, Lexems);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, KnownLocations);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Protected, bool, InSneakMode);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, DeadDrawNoFlatten);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
 };
 
 class MapProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Map";
+    static constexpr string_view ENTITY_TYPE_NAME = "Map";
 
     explicit MapProperties(Properties& props) :
         EntityProperties(props)
@@ -417,6 +383,20 @@ public:
     ///@ MigrationRule Property Map ScriptId InitScript
     ///@ ExportProperty ScriptFuncType = MapInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, ident_t, LocId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, CritterIds);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, msize, Size);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
+
+    // Todo: exclude map properties from engine:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime1);
     ///@ ExportProperty
@@ -427,38 +407,20 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime4);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime5);
-    ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateClient, string, FileDir);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, msize, Size);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, mpos, WorkHex);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LocId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, CritterIds);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateCommon, uint8, RainCapacity);
+    ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, int, CurDayTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, vector<int>, DayTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, DayColor);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
 };
 
 class LocationProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_CLASS_NAME = "Location";
+    static constexpr string_view ENTITY_TYPE_NAME = "Location";
 
     explicit LocationProperties(Properties& props) :
         EntityProperties(props)
@@ -473,14 +435,10 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, MapIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
+
+    // Todo: exclude location properties from engine:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, GeckVisible);
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
@@ -490,9 +448,5 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, Hidden);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, ToGarbage);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ucolor, Color);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsEncounter);
 };

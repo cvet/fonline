@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -72,6 +72,9 @@ static void MainEntry(void*)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
 
         try {
@@ -80,16 +83,22 @@ static void MainEntry(void*)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
 
         App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 #if !FO_TESTING_APP
-extern "C" int main(int argc, char** argv) // Handled by SDL
+int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto SingleApp(int argc, char** argv) -> int
 #endif
@@ -134,5 +143,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }

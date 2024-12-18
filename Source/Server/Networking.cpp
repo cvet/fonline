@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -75,16 +75,16 @@ NetConnection::NetConnection(ServerNetworkSettings& settings) :
     STACK_TRACE_ENTRY();
 }
 
-void NetConnection::AddRef() const
+void NetConnection::AddRef() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ++_refCount;
 }
 
-void NetConnection::Release() const
+void NetConnection::Release() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (--_refCount == 0) {
         delete this;
@@ -103,9 +103,9 @@ public:
         _outBuf.resize(_settings.NetBufferSize);
 
         if (!settings.DisableZlibCompression) {
-            _zStream.zalloc = [](void*, unsigned int items, unsigned int size) { return std::calloc(items, size); };
-            _zStream.zfree = [](void*, void* address) { std::free(address); };
-            _zStream.opaque = nullptr;
+            _zStream = {};
+            _zStream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
+            _zStream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
 
             const auto result = deflateInit(&_zStream, Z_BEST_SPEED);
             RUNTIME_ASSERT(result == Z_OK);
@@ -129,30 +129,30 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetIp() const -> uint override
+    [[nodiscard]] auto GetIp() const noexcept -> uint override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _ip;
     }
 
-    [[nodiscard]] auto GetHost() const -> string_view override
+    [[nodiscard]] auto GetHost() const noexcept -> string_view override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _host;
     }
 
-    [[nodiscard]] auto GetPort() const -> uint16 override
+    [[nodiscard]] auto GetPort() const noexcept -> uint16 override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _port;
     }
 
-    [[nodiscard]] auto IsDisconnected() const -> bool override
+    [[nodiscard]] auto IsDisconnected() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return _isDisconnected;
     }
@@ -177,7 +177,8 @@ public:
 
         // Nothing to send
         {
-            std::lock_guard locker(OutBufLocker);
+            std::scoped_lock locker(OutBufLocker);
+
             if (OutBuf.IsEmpty()) {
                 return;
             }
@@ -204,7 +205,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(OutBufLocker);
+        std::scoped_lock locker(OutBufLocker);
 
         if (OutBuf.IsEmpty()) {
             return nullptr;
@@ -232,7 +233,7 @@ protected:
             const auto real = static_cast<size_t>(_zStream.next_in - OutBuf.GetData());
             out_len = compr;
 
-            OutBuf.Cut(real);
+            OutBuf.DiscardWriteBuf(real);
         }
         // Without compressing
         else {
@@ -247,7 +248,7 @@ protected:
             std::memcpy(_outBuf.data(), OutBuf.GetData(), len);
             out_len = len;
 
-            OutBuf.Cut(len);
+            OutBuf.DiscardWriteBuf(len);
         }
 
         // Normalize buffer size
@@ -263,7 +264,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(InBufLocker);
+        std::scoped_lock locker(InBufLocker);
 
         if (InBuf.GetReadPos() + len < _settings.FloodSize) {
             InBuf.AddData(buf, len);
@@ -399,16 +400,16 @@ public:
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -486,7 +487,7 @@ private:
 
     asio::ip::tcp::socket* _socket {};
     std::atomic_bool _writePending {};
-    vector<uint8> _inBuf {};
+    std::vector<uint8> _inBuf {};
     asio::error_code _dummyError {};
 };
 
@@ -538,19 +539,22 @@ public:
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+            catch (...) {
+                UNKNOWN_EXCEPTION();
+            }
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return true;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -652,6 +656,9 @@ void NetTcpServer::Run()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
 }
 
 void NetTcpServer::AcceptNext()
@@ -710,6 +717,9 @@ void NetNoTlsWebSocketsServer::Run()
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -772,6 +782,9 @@ void NetTlsWebSocketsServer::Run()
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 }
 
@@ -858,16 +871,16 @@ public:
     auto operator=(InterthreadConnection&&) noexcept = delete;
     ~InterthreadConnection() override = default;
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override
+    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return false;
     }
 
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
     {
-        STACK_TRACE_ENTRY();
+        NO_STACK_TRACE_ENTRY();
 
         return true;
     }

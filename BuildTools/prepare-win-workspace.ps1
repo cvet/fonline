@@ -23,16 +23,18 @@ Function Test-BuildTools {
     }
 
     $vspath = Get-VSSetupInstance `
-        | Select-VSSetupInstance -Version "[16.0,17.0)" `
-            -Product Microsoft.VisualStudio.Product.Community, `
-                Microsoft.VisualStudio.Product.Professional, `
-                Microsoft.VisualStudio.Product.Enterprise, `
-                Microsoft.VisualStudio.Product.BuildTools `
-            -Latest `
-        | Select-Object -ExpandProperty InstallationPath
+    | Select-VSSetupInstance `
+        -Product Microsoft.VisualStudio.Product.Community, `
+        Microsoft.VisualStudio.Product.Professional, `
+        Microsoft.VisualStudio.Product.Enterprise, `
+        Microsoft.VisualStudio.Product.BuildTools `
+        -Latest `
+    | Select-Object -ExpandProperty InstallationPath
+
     if ($vspath) {
         return $True
-    } else {
+    }
+    else {
         return $False
     }
 }
@@ -40,18 +42,21 @@ Function Test-BuildTools {
 Write-Host "Prepare workspace"
 
 $FO_PROJECT_ROOT = $Env:FO_PROJECT_ROOT
-if ($FO_PROJECT_ROOT -eq "") {
+
+if ("$FO_PROJECT_ROOT" -eq "") {
     $FO_PROJECT_ROOT = Resolve-Path "."
 }
 
 $FO_ENGINE_ROOT = $Env:FO_ENGINE_ROOT
-if ($FO_ENGINE_ROOT -eq "") {
+
+if ("$FO_ENGINE_ROOT" -eq "") {
     $FO_ENGINE_ROOT = Resolve-Path "$PSScriptRoot/.."
 }
 
 $FO_WORKSPACE = $Env:FO_WORKSPACE
-if ($FO_WORKSPACE -eq "") {
-    $FO_WORKSPACE = "$pwd\Workspace"
+
+if ("$FO_WORKSPACE" -eq "") {
+    $FO_WORKSPACE = "$pwd/Workspace"
 }
 
 Write-Host "- FO_PROJECT_ROOT=$FO_PROJECT_ROOT"
@@ -62,16 +67,13 @@ if (!(Test-Path $FO_WORKSPACE)) {
     New-Item -Path "$FO_WORKSPACE" -ItemType Directory | Out-Null
 }
 
-Set-Location -Path $FO_WORKSPACE
-
 while ($True) {
     $ready = $True
 
-
     if (!(Test-BuildTools)) {
         Write-Host "Build Tools not found"
-        Write-Host "If you planning development in Visual Studio 2019 then install it"
-        Write-Host "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2019"
+        Write-Host "If you planning development in Visual Studio 2022 then install it"
+        Write-Host "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2022"
         Write-Host "All this stuff you can get here: https://visualstudio.microsoft.com/downloads"
         $ready = $False
     }
@@ -87,18 +89,21 @@ while ($True) {
         Write-Host "You can get it here: https://www.python.org"
         $ready = $False
     }
-    
+
     $toolsetDir = "$FO_WORKSPACE/build-win64-toolset"
+
     if (!(Test-Path -Path $toolsetDir)) {
         if ($args[0] -Eq "check") {
             Write-Host "Toolset not ready"
             $ready = $False
-        } else {
+        }
+        else {
             Write-Host "Prepare toolset"
             $OUTPUT_PATH = "$FO_WORKSPACE/output"
-            mkdir $toolsetDir
-            cd $toolsetDir
-            cmake -G "Visual Studio 16 2019" -A x64 -DFO_OUTPUT_PATH="$OUTPUT_PATH" -DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0 "$FO_PROJECT_ROOT"
+            New-Item -Path $toolsetDir -ItemType Directory
+            Push-Location -Path $toolsetDir
+            cmake -G "Visual Studio 17 2022" -A x64 -DFO_OUTPUT_PATH="$OUTPUT_PATH" -DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0 "$FO_PROJECT_ROOT"
+            Pop-Location
         }
     }
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,32 +45,25 @@
 #include "sha1.h"
 #include "sha2.h"
 
-// ReSharper disable CppInconsistentNaming
-
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine)
 {
     BreakIntoDebugger();
 }
 
-///# ...
-///# param message ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine, string_view message)
 {
     BreakIntoDebugger(message);
 }
 
-///# ...
-///# param text ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const auto module_name = _str(st_entry->file).extractFileName().eraseFileExtension().str();
+        const string module_name = strex(st_entry->file).extractFileName().eraseFileExtension();
 
         WriteLog("{}: {}", module_name, text);
     }
@@ -79,25 +72,18 @@
     }
 }
 
-///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_RequestQuit([[maybe_unused]] FOEngineBase* engine)
 {
     App->RequestQuit();
 }
 
-///# ...
-///# param resourcePath ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Common_Game_IsResourcePresent([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
     return !!engine->Resources.ReadFile(resourcePath);
 }
 
-///# ...
-///# param resourcePath ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_ReadResource([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
@@ -165,7 +151,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi = {};
-    auto* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
+    auto* cmd_line = _wcsdup(strex(command).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 
@@ -226,9 +212,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 #endif
 }
 
-///# ...
-///# param command ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] FOEngineBase* engine, string_view command)
 {
@@ -236,10 +219,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
 }
 
-///# ...
-///# param command ...
-///# param output ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] FOEngineBase* engine, string_view command, string& output)
 {
@@ -253,42 +232,32 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     });
 }
 
-///# ...
-///# param minValue ...
-///# param maxValue ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Common_Game_Random([[maybe_unused]] FOEngineBase* engine, int minValue, int maxValue)
 {
     return GenericUtils::Random(minValue, maxValue);
 }
 
-///# ...
-///# param text ...
-///# param length ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
+[[maybe_unused]] uint Common_Game_DecodeUtf8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
-    return utf8::Decode(text, &length);
+    size_t decode_length = text.length();
+    const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+
+    length = static_cast<uint>(decode_length);
+    return ch;
 }
 
-///# ...
-///# param ucs ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_EncodeUTF8([[maybe_unused]] FOEngineBase* engine, uint ucs)
+[[maybe_unused]] string Common_Game_EncodeUtf8([[maybe_unused]] FOEngineBase* engine, uint ucs)
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
     return {buf, len};
 }
 
-///# ...
-///# param text ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA1([[maybe_unused]] FOEngineBase* engine, string_view text)
+[[maybe_unused]] string Common_Game_Sha1([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
@@ -305,11 +274,8 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return {hex_digest, sizeof(hex_digest)};
 }
 
-///# ...
-///# param text ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
+[[maybe_unused]] string Common_Game_Sha2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     constexpr uint digest_size = 32;
     uint8 digest[digest_size];
@@ -323,106 +289,60 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return {hex_digest, sizeof(hex_digest)};
 }
 
-///# ...
-///# param link ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] FOEngineBase* engine, string_view link)
 {
     App->OpenLink(link);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint64 Common_Game_GetUnixTime([[maybe_unused]] FOEngineBase* engine)
 {
     return static_cast<uint64>(::time(nullptr));
 }
 
-///# ...
-///# param hx1 ...
-///# param hy1 ...
-///# param hx2 ...
-///# param hy2 ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
 {
     return GeometryHelper::DistGame(hx1, hy1, hx2, hy2);
 }
 
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
     return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy);
 }
 
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param offset ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 {
     return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
 
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return static_cast<int16>(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy));
+    return static_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy)));
 }
 
-///# ...
-///# param fromX ...
-///# param fromY ...
-///# param toX ...
-///# param toY ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
 {
-    return static_cast<int16>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
+    return static_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY)));
 }
 
-///# ...
-///# param dirAngle ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int16 dirAngle)
 {
     return GeometryHelper::AngleToDir(dirAngle);
 }
 
-///# ...
-///# param dir ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uint8 dir)
 {
     return GeometryHelper::DirToAngle(dir);
 }
 
-///# ...
-///# param dirAngle ...
-///# param clockwise ...
-///# param step ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, int16 dirAngle, bool clockwise, int16 step)
 {
@@ -445,51 +365,42 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return static_cast<int16>(rotated);
 }
 
-///# ...
-///# param fromHex ...
-///# param toHex ...
-///# param hexOffset ...
+///@ ExportMethod
+[[maybe_unused]] int16 Common_Game_GetDirAngleDiff([[maybe_unused]] FOEngineBase* engine, int16 dirAngle1, int16 dirAngle2)
+{
+    return static_cast<int16>(iround(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
+}
+
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, mpos fromHex, mpos toHex, ipos& hexOffset)
 {
     hexOffset = engine->Geometry.GetHexInterval(fromHex, toHex);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_GetClipboardText([[maybe_unused]] FOEngineBase* engine)
 {
     return App->Input.GetClipboardText();
 }
 
-///# ...
-///# param text ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_SetClipboardText([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     return App->Input.SetClipboardText(text);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_GetGameVersion([[maybe_unused]] FOEngineBase* engine)
 {
     return FO_GAME_VERSION;
 }
 
-///# ...
-///# param pid ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ProtoItem* Common_Game_GetProtoItem(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItem(pid));
+    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItemSafe(pid));
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine)
 {
@@ -505,9 +416,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemComponent component)
 {
@@ -525,10 +433,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemProperty property, int propertyValue)
 {
@@ -547,17 +451,12 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param pid ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ProtoCritter* Common_Game_GetProtoCritter(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritter(pid));
+    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritterSafe(pid));
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine)
 {
@@ -573,9 +472,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterComponent component)
 {
@@ -593,10 +489,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterProperty property, int propertyValue)
 {
@@ -615,17 +507,12 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param pid ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ProtoMap* Common_Game_GetProtoMap(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMap(pid));
+    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMapSafe(pid));
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine)
 {
@@ -641,9 +528,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapComponent component)
 {
@@ -661,10 +545,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapProperty property, int propertyValue)
 {
@@ -683,17 +563,12 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param pid ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] ProtoLocation* Common_Game_GetProtoLocation(FOEngineBase* engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocation(pid));
+    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocationSafe(pid));
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine)
 {
@@ -709,9 +584,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param component ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationComponent component)
 {
@@ -729,10 +601,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return result;
 }
 
-///# ...
-///# param property ...
-///# param propertyValue ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationProperty property, int propertyValue)
 {

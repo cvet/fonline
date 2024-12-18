@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 void TextPack::AddStr(TextPackKey num, string_view str)
@@ -42,6 +43,13 @@ void TextPack::AddStr(TextPackKey num, string_view str)
     STACK_TRACE_ENTRY();
 
     _strData.emplace(num, string(str));
+}
+
+void TextPack::AddStr(TextPackKey num, string&& str)
+{
+    STACK_TRACE_ENTRY();
+
+    _strData.emplace(num, std::move(str));
 }
 
 auto TextPack::GetStr(TextPackKey num) const -> const string&
@@ -138,24 +146,27 @@ void TextPack::Merge(const TextPack& other)
     }
 }
 
-auto TextPack::GetSize() const -> size_t
+auto TextPack::GetSize() const noexcept -> size_t
 {
     STACK_TRACE_ENTRY();
 
     return _strData.size();
 }
 
-auto TextPack::IsIntersects(const TextPack& other) const -> bool
+auto TextPack::CheckIntersections(const TextPack& other) const -> bool
 {
     STACK_TRACE_ENTRY();
 
+    bool result = false;
+
     for (auto&& [key, value] : _strData) {
         if (other._strData.count(key) != 0) {
-            return true;
+            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other._strData.count(key), value, other._strData.find(key)->second);
+            result = true;
         }
     }
 
-    return false;
+    return result;
 }
 
 auto TextPack::GetBinaryData() const -> vector<uint8>
@@ -183,11 +194,12 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
     auto reader = DataReader {data};
 
     const auto count = reader.Read<uint>();
-    string str;
 
     for (uint i = 0; i < count; i++) {
         const auto num = reader.Read<TextPackKey>();
         const auto str_len = reader.Read<uint>();
+
+        string str;
 
         if (str_len != 0) {
             str.resize(str_len);
@@ -197,7 +209,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
             str.resize(0);
         }
 
-        AddStr(num, str);
+        AddStr(num, std::move(str));
     }
 
     return true;
@@ -242,13 +254,13 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
             offset = last + 1;
 
             if (i == 0 && num == 0) {
-                num = _str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
+                num = strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
             }
             else if (i == 1 && num != 0) {
-                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
+                num += !substr.empty() ? (strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
             }
             else if (i == 2 && num != 0) {
-                AddStr(num, substr);
+                AddStr(num, std::move(substr));
             }
             else {
                 failed = true;
@@ -264,7 +276,7 @@ void TextPack::LoadFromMap(const map<string, string>& kv)
     STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
-        const TextPackKey num = _str(key).toUInt();
+        const TextPackKey num = strex(key).toUInt();
 
         if (num != 0) {
             AddStr(num, value);
@@ -292,7 +304,7 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
     _textPacks[static_cast<size_t>(TextPackName::Locations)] = std::make_unique<TextPack>();
 }
 
-auto LanguagePack::GetName() const -> const string&
+auto LanguagePack::GetName() const noexcept -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -383,7 +395,7 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
         if (text_pack) {
             const string& pack_name_str = _nameResolver->ResolveEnumValueName("TextPackName", static_cast<int>(i));
 
-            auto file = DiskFileSystem::OpenFile(_str("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
+            auto file = DiskFileSystem::OpenFile(strex("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
             RUNTIME_ASSERT(file);
 
             const auto write_file_ok = file.Write(text_pack->GetBinaryData());

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,24 +51,33 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0);
 
-    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
-        const auto collision_detected = s != it->second.Str;
+            const auto collision_detected = s != it->second.Str;
 #else
-        const auto collision_detected = s.length() != it->second.Str.length();
+            const auto collision_detected = s.length() != it->second.Str.length();
 #endif
-        if (collision_detected) {
-            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+            }
+
+            return hstring(&it->second);
         }
+    }
+
+    {
+        // Add new entry
+        auto locker = std::unique_lock {_hashStorageLocker};
+
+        const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+        UNUSED_VARIABLE(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(&it->second);
     }
-
-    // Add new entry
-    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
-    RUNTIME_ASSERT(inserted);
-
-    return hstring(&it->second);
 }
 
 auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
@@ -84,23 +93,28 @@ auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0);
 
-    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
-#if FO_DEBUG
-        const auto collision_detected = s != it->second.Str;
-#else
-        const auto collision_detected = s.length() != it->second.Str.length();
-#endif
-        if (collision_detected) {
-            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
-        }
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
 
-        return hstring(&it->second);
+        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+            const auto collision_detected = s != it->second.Str;
+#else
+            const auto collision_detected = s.length() != it->second.Str.length();
+#endif
+
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+            }
+
+            return hstring(&it->second);
+        }
     }
 
     throw HashInsertException("String value is not in hash storage", s);
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
+auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -108,22 +122,45 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
         return {};
     }
 
-    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        return hstring(&it->second);
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+            return hstring(&it->second);
+        }
     }
 
     BreakIntoDebugger("Can't resolve hash");
 
-    if (failed != nullptr) {
-        WriteLog("Can't resolve hash {}", h);
-        *failed = true;
-        return {};
-    }
-
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
+auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (h == 0) {
+        return {};
+    }
+
+    {
+        auto locker = std::shared_lock {_hashStorageLocker};
+
+        if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+            return hstring(&it->second);
+        }
+    }
+
+    BreakIntoDebugger();
+
+    if (failed != nullptr) {
+        *failed = true;
+    }
+
+    return {};
+}
+
+auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -172,10 +209,11 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
     h ^= h >> 13;
     h *= m;
     h ^= h >> 15;
+
     return h;
 }
 
-auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
+auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -234,6 +272,7 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
     h ^= h >> r;
     h *= m;
     h ^= h >> r;
+
     return h;
 }
 
@@ -249,6 +288,7 @@ auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
     }
 
     buf.resize(buf_len);
+
     return buf;
 }
 
@@ -275,6 +315,7 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
     }
 
     buf.resize(buf_len);
+
     return buf;
 }
 
@@ -327,6 +368,7 @@ auto GenericUtils::Percent(int full, int peace) -> int
     }
 
     const auto percent = peace * 100 / full;
+
     return std::clamp(percent, 0, 100);
 }
 
@@ -339,10 +381,11 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
     }
 
     const auto percent = peace * 100 / full;
+
     return std::clamp(percent, 0u, 100u);
 }
 
-auto GenericUtils::NumericalNumber(uint num) -> uint
+auto GenericUtils::NumericalNumber(uint num) noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -353,7 +396,7 @@ auto GenericUtils::NumericalNumber(uint num) -> uint
     return num * num / 2 + num / 2;
 }
 
-auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool
+auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -366,18 +409,20 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     const auto a = dx * dx + dy * dy;
     const auto b = 2 * (x01 * dx + y01 * dy);
     const auto c = x01 * x01 + y01 * y01 - radius * radius;
+
     if (-b < 0) {
         return c < 0;
     }
     if (-b < 2 * a) {
         return 4 * a * c - b * b < 0;
     }
+
     return a + b + c < 0;
 }
 
 auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(day_time.size() == 4);
     RUNTIME_ASSERT(colors.size() == 12);
@@ -436,7 +481,7 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> uint
+auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -446,7 +491,7 @@ auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> uint
     return static_cast<uint>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
 }
 
-auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) -> fpos
+auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -468,7 +513,7 @@ auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) -> fpos
     return {sx, sy};
 }
 
-auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) -> fpos
+auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -479,11 +524,11 @@ auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) -> fpos
     return {x, y};
 }
 
-static void MultMatricesf(const float a[16], const float b[16], float r[16]);
-static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]);
-static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool;
+static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept;
+static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept;
+static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool;
 
-auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool
+auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -496,6 +541,7 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     float out[4];
     MultMatrixVecf(model_matrix, in, out);
     MultMatrixVecf(proj_matrix, out, in);
+
     if (in[3] == 0.0f) {
         return false;
     }
@@ -514,15 +560,17 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     *winx = in[0];
     *winy = in[1];
     *winz = in[2];
+
     return true;
 }
 
-auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool
+auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     float final_matrix[16];
     MultMatricesf(model_matrix, proj_matrix, final_matrix);
+
     if (!InvertMatrixf(final_matrix, final_matrix)) {
         return false;
     }
@@ -542,6 +590,7 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
 
     float out[4];
     MultMatrixVecf(final_matrix, in, out);
+
     if (out[3] == 0.0f) {
         return false;
     }
@@ -552,10 +601,11 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
     *objx = out[0];
     *objy = out[1];
     *objz = out[2];
+
     return true;
 }
 
-static void MultMatricesf(const float a[16], const float b[16], float r[16])
+static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -566,7 +616,7 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16])
     }
 }
 
-static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4])
+static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -575,7 +625,7 @@ static void MultMatrixVecf(const float matrix[16], const float in[4], float out[
     }
 }
 
-static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool
+static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -598,6 +648,7 @@ static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool
     inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
 
     auto det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
     if (det == 0.0f) {
         return false;
     }
@@ -607,5 +658,6 @@ static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool
     for (auto i = 0; i < 16; i++) {
         inv_out[i] = inv[i] * det;
     }
+
     return true;
 }

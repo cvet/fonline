@@ -2,6 +2,149 @@ Note: There is no guarantee that version mismatched client and server will
 be able to talk with each other. Network protocol breakages won't be listed
 here.
 
+v0.11.1 (2024-08-22)
+--------------------
+
+- Utilities import-chrome and import-fuchsia now live together in the import
+  directory.
+- Added TRACY_VERBOSE to available CMake options.
+- It is now possible to set TRACY_SAMPLING_HZ via a environment variable.
+- Thread group hints can be now used to group threads together in the
+  profiler UI.
+- Limit Lua file names to 255 characters, as the source string can contain
+  the whole script, if loaded with loadstring().
+
+
+v0.11.0 (2024-07-16)
+--------------------
+
+- Support for pre-0.9 traces has been dropped.
+- The old server-side build system has been replaced by CMake. The client
+  integration is not affected. Refer to the manual for details.
+  - Most importantly, a known version of the capstone library is now
+    downloaded from GitHub. You will need to have git installed for this
+    to work (there is a CMake option to use the capstone installed on the
+    system, as was done previously).
+- Various Meson fixes.
+- Proper way of loading Vulkan calibrated timestamps extension.
+- Fixed C API support for GPU tracing when on demand mode is enabled.
+- Added a way to resynchronize CPU and GPU timestamps.
+  - Using calibrated contexts should always be preferred.
+  - Each synchronization event requires a sync of CPU and GPU, which is
+    something you always want to avoid.
+  - This is not exposed as an easy-to-use API available through the GPU
+    wrappers.
+- Added TracyIsStarted macro to check if the profiler has been started.
+  Using this functionality only makes sense in the manual lifetime mode,
+  and will always return true in any other mode of operation.
+- Added basic QNX support.
+- Zmmword is now recognized as an assemble size directive.
+- Libunwind can be used for call stack capture on Linux if you build with
+  the TRACY_LIBUNWIND_BACKTRACE define.
+- Preloading symbols for all modules on Windows, which is always performed
+  on program init, and which can be quite slow, may now be omitted through
+  the TRACY_NO_DBGHELP_INIT_LOAD define. In this mode, symbols will be
+  loaded as needed.
+- Validation of discontinuous frames has been disabled in on-demand mode.
+  It's quite likely to connect in the middle of a discontinuous frame,
+  which resulted in frame end event for a frame that hasn't been started.
+- Symbols can be now resolved offline on Windows and Linux.
+  - Enabled with the TRACY_SYMBOL_OFFLINE_RESOLVE define or env variable.
+  - The update utility has two additional options:
+    - -r, which enables resolving symbol and patching stack frames in the
+      trace.
+    - -p, which you can use to modify the paths used for symbol resolution.
+  - Some functionality will be missing if this mode is used. For example,
+    symbol statistics are unavailable.
+- Resolving symbol names on Linux will now use image cache to reduce the
+  number of dladdr() calls.
+- Compiling with the TRACY_LIBBACKTRACE_ELF_DYNLOAD_SUPPORT define will
+  enable support for run-time updating of known elf ranges in libbacktrace
+  on Linux. Previously, shared objects dlopened() after libbacktrace init
+  would not be visible during symbol resolution.
+- Zone group count in the Find zone window is now explicitly displayed.
+- Instrumentation statistics now display in how many threads each source
+  location has appeared in.
+- Added import tool for fuchsia traces.
+  - https://fuchsia.dev/fuchsia-src/reference/tracing/trace-format
+- Added checks for overflow of source locations.
+  - As a reminder, Tracy only allows to have 64K unique source locations,
+    split in half between static and dynamic locations.
+  - Runtime checks are active during capture and will stop a trace that
+    goes beyond the limit.
+  - Load-time checks will stop any broken trace file from loading.
+- Opening the source code view that has no associated address in code
+  (i.e., from the list of instrumented zones, or from the find zone
+  window) will now search the list of symbols for a function name match.
+  - In many cases this will result in displaying the full disassembly view
+    where previously you would only see the source code.
+  - Matching is performed by string comparisons, which in rare cases may
+    result in showing false data.
+  - Press ctrl key while opening source view to keep the old behavior.
+  - If more than one matching symbol is found (e.g., if two classes have
+    methods with the same name, or if a template is instantiated in multiple
+    places in code), it is not possible to tell which of the code locations
+    the source location corresponds to and only the source code will be
+    displayed.
+- Added TracyNoop macro, which inserts a reference to Tracy's object file
+  into your application. Use it if you want to use Tracy in sampling mode,
+  without any manual instrumentation (so no references of your own exist)
+  and link Tracy as a static library. Linkers will only include library code
+  if code references it, and this doesn't work as intended with Tracy, as it
+  ignores global constructors that have side effects.
+- ZoneText and ZoneName macros now have a printf-like variant, denoted with
+  a 'F' postfix.
+- The 'tracy_shared_libs' Meson option was removed. Use interface provided
+  by Meson to set the library type instead.
+- Dropped the 'tracy_' prefix from Meson options. The `tracy_enable` option
+  remains as it was, as it can be inherited from parent projects.
+- Fixed display of active / inactive allocations in memory call tree.
+- Instrumentation statistics can be now sorted by source location.
+- Added option to hide external code frames in call stack view.
+- There's now a copy to clipboard button in the statistics view. It copies
+  the visible rows of either the instrumentation or GPU statistics view to
+  a CSV string matching a subset of the csvexport format.
+- Source file contents can be copied to the clipboard.
+- Added key binding for immediate reconnect: Ctrl+Shift+Alt+R.
+- Lock markup is now available through the C API.
+- Symbol statistics window now allows aggregation of inlined functions in
+  symbols.
+- Cost measurements of inlined functions in the symbol statistics window
+  can be now relative to the base symbol instead of total program run time.
+- ScopedZone and AllocSourceLocation now accept color parameter. Impact on
+  existing code should be minimal.
+  - AllocSourceLocation has a new parameter with a default value.
+  - __tracy_alloc_srcloc and __tracy_alloc_srcloc_name break the existing
+    API. This can be easily fixed by setting the last parameter to zero.
+- To build the profiler GUI with Wayland you now need wayland-scanner and
+  wayland-protocols to be installed. A reasonably recent release of the
+  protocols is required, which, as always, is not available on Ubuntu.
+  Seriously, stop trying to build modern software with that broken distro.
+- Fractional DPI scaling is now properly supported on Wayland.
+- Added Python bindings.
+- The per-line sampling statistics are now also displayed as a percentage
+  of total program run time.
+- The out-of-focus render frame rate reduction can be now disabled in
+  global settings.
+- It is now possible to load source files that are newer than the trace.
+  The default setting is still to reject such files.
+- Memory limit for a capture can be now set, both in the GUI profiler and
+  in the capture utility.
+- Thread list can be now sorted alphabetically.
+- It is now possible to adjust plot height.
+- Trace comparison statistics were expanded and made more clear.
+- Implemented retrieval of kernel symbol code on Linux.
+- Added support for multiple compression streams in trace files. This
+  effectively parallelizes both load and save operations.
+  - The default save setup is now set to Zstd level 3 with 4 compression
+    streams. This gives both faster compression time and smaller file size.
+- New users will be now eased into the profiler with a set of tutorial
+  achievements.
+- You can now set the timeline options default values in global settings.
+- Added a check for program memory being available before symbol retrieval
+  on Windows.
+
+
 v0.10.0 (2023-10-16)
 --------------------
 

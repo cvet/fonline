@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,33 +35,24 @@
 
 #include "Server.h"
 
-// ReSharper disable CppInconsistentNaming
-
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] Critter* Server_Player_GetControlledCritter(Player* self)
 {
     return self->GetControlledCritter();
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Server_Player_GetAccess(Player* self)
 {
     return self->Access;
 }
 
-///# ...
-///# param access ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Player_SetAccess(Player* self, int access)
 {
@@ -82,35 +73,24 @@
     return allow;
 }
 
-///# ...
-///# param text ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Player_Message(Player* self, string_view text)
 {
     self->Send_Text(nullptr, text, SAY_NETMSG);
 }
 
-///# ...
-///# param textMsg ...
-///# param numStr ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr)
 {
     self->Send_TextMsg(nullptr, SAY_NETMSG, textPack, numStr);
 }
 
-///# ...
-///# param textMsg ...
-///# param numStr ...
-///# param lexems ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr, string_view lexems)
 {
     self->Send_TextMsgLex(nullptr, SAY_NETMSG, textPack, numStr, lexems);
 }
 
-///# ...
-///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Player_IsWebConnected(Player* self)
 {

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -122,6 +122,8 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
 VideoClip::~VideoClip()
 {
+    STACK_TRACE_ENTRY();
+
     if (_impl) {
         th_info_clear(&_impl->VideoInfo);
         th_comment_clear(&_impl->Comment);
@@ -131,37 +133,37 @@ VideoClip::~VideoClip()
     }
 }
 
-auto VideoClip::IsPlaying() const -> bool
+auto VideoClip::IsPlaying() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return !_impl->Stopped && !_impl->Paused;
 }
 
-auto VideoClip::IsStopped() const -> bool
+auto VideoClip::IsStopped() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Stopped;
 }
 
-auto VideoClip::IsPaused() const -> bool
+auto VideoClip::IsPaused() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Paused;
 }
 
-auto VideoClip::IsLooped() const -> bool
+auto VideoClip::IsLooped() const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _impl->Looped;
 }
 
 auto VideoClip::GetTime() const -> time_duration
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (_impl->Stopped) {
         return std::chrono::milliseconds {0};
@@ -176,7 +178,7 @@ auto VideoClip::GetTime() const -> time_duration
 
 auto VideoClip::GetSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return {static_cast<int>(_impl->VideoInfo.pic_width), static_cast<int>(_impl->VideoInfo.pic_height)};
 }
@@ -257,14 +259,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     const int new_frame = iround(cur_second * static_cast<double>(_impl->VideoInfo.fps_numerator) / static_cast<double>(_impl->VideoInfo.fps_denominator));
     const int next_frame_diff = new_frame - _impl->CurFrame;
 
-    if (next_frame_diff == 0) {
+    if (next_frame_diff <= 0) {
         return _impl->RenderedTextureData;
-    }
-
-    // Todo: allow video playing in back direction
-    RUNTIME_ASSERT(next_frame_diff > 0);
-    if (next_frame_diff < 0) {
-        // ...
     }
 
     bool last_frame = false;

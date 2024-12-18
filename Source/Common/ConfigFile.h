@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,16 +52,16 @@ public:
     auto operator=(ConfigFile&&) noexcept = delete;
     ~ConfigFile() = default;
 
-    [[nodiscard]] auto HasSection(string_view section_name) const -> bool;
-    [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const -> bool;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const -> const string&;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, const string& def_val) const -> const string&;
-    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const -> int;
-    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const -> int;
+    [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
+    [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const noexcept -> const string&;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, const string& def_val) const noexcept -> const string&;
+    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const noexcept -> int;
+    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
-    [[nodiscard]] auto GetSectionNames() const -> set<string>;
-    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) -> const map<string, string>*;
+    [[nodiscard]] auto GetSections() noexcept -> multimap<string, map<string, string>>&;
+    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> const map<string, string>*;
     [[nodiscard]] auto GetSectionContent(string_view section_name) -> const string&;
 
     void SetStr(string_view section_name, string_view key_name, string_view val);
@@ -69,7 +69,7 @@ public:
     auto CreateSection(string_view section_name) -> map<string, string>&;
 
 private:
-    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const -> const string*;
+    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string*;
 
     string _fileNameHint;
     HashResolver* _hashResolver;

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -367,7 +367,7 @@ namespace SPK::FO
         _textureName = tex_name;
 
         if (!_textureName.empty() && _particleMngr != nullptr) {
-            const auto tex_path = _str(_path).extractDir().combinePath(_textureName);
+            const string tex_path = strex(_path).extractDir().combinePath(_textureName);
             auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffsets = tex_data;

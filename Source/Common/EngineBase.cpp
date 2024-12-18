@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this, *this), nullptr),
+    Entity(new PropertyRegistrator(ENTITY_TYPE_NAME, props_relation, *this, *this), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),
@@ -47,48 +47,61 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
 {
     STACK_TRACE_ENTRY();
 
-    _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
+    _entityTypesInfo.emplace(FOEngineBase::ToHashedString(ENTITY_TYPE_NAME), EntityTypeInfo {_propsRef.GetRegistrator(), true, false});
 }
 
-auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+auto FOEngineBase::RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
-    const auto it = _registrators.find(string(class_name));
-    if (it != _registrators.end()) {
-        return const_cast<PropertyRegistrator*>(it->second);
-    }
+    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    RUNTIME_ASSERT(it == _entityTypesInfo.end());
 
-    auto* registrator = new PropertyRegistrator(class_name, _propsRelation, *this, *this);
-    _registrators.emplace(class_name, registrator);
+    auto* registrator = new PropertyRegistrator(type_name, _propsRelation, *this, *this);
+
+    _entityTypesInfo.emplace(ToHashedString(type_name), EntityTypeInfo {registrator, exported, has_protos});
+
     return registrator;
 }
 
-void FOEngineBase::AddEnumGroup(const string& name, size_t size, unordered_map<string, int>&& key_values)
+void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(IsValidEntityType(ToHashedString(target_type)));
+
+    const auto it = _entityTypesInfo.find(ToHashedString(holder_type));
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+    RUNTIME_ASSERT(it->second.HolderEntries.count(ToHashedString(entry)) == 0);
+
+    it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
+}
+
+void FOEngineBase::RegisterEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-    RUNTIME_ASSERT(_enums.count(name) == 0);
+    RUNTIME_ASSERT(_enums.count(string(name)) == 0);
 
     unordered_map<int, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
         RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev[value] = key;
-        const auto full_key = _str("{}::{}", name, key).str();
+        const string full_key = strex("{}::{}", name, key);
         RUNTIME_ASSERT(_enumsFull.count(full_key) == 0);
         _enumsFull[full_key] = value;
     }
 
-    _enums[name] = std::move(key_values);
-    _enumsRev[name] = std::move(key_values_rev);
-    _enumSizes[name] = size;
+    _enums[string(name)] = std::move(key_values);
+    _enumsRev[string(name)] = std::move(key_values_rev);
+    _enumSizes[string(name)] = size;
 }
 
-void FOEngineBase::AddAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout)
+void FOEngineBase::RegisterAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout)
 {
     STACK_TRACE_ENTRY();
 
@@ -99,7 +112,62 @@ void FOEngineBase::AddAggregatedType(const string& name, size_t size, vector<Bas
     _aggregatedTypes.emplace(name, tuple {size, std::move(layout)});
 }
 
-void FOEngineBase::SetMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _entityTypesInfo.find(type_name);
+
+    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+}
+
+auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto type_name_hashed = ToHashedStringMustExists(type_name);
+    const auto it = _entityTypesInfo.find(type_name_hashed);
+
+    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+}
+
+auto FOEngineBase::GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+
+    return const_cast<PropertyRegistrator*>(it->second.PropRegistrator);
+}
+
+auto FOEngineBase::IsValidEntityType(hstring type_name) const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _entityTypesInfo.find(type_name) != _entityTypesInfo.end();
+}
+
+auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    const auto it = _entityTypesInfo.find(type_name);
+    RUNTIME_ASSERT(it != _entityTypesInfo.end());
+
+    return it->second;
+}
+
+auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _entityTypesInfo;
+}
+
+void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
 {
     STACK_TRACE_ENTRY();
 
@@ -117,15 +185,6 @@ void FOEngineBase::FinalizeDataRegistration()
     _registrationFinalized = true;
 
     GetPropertiesForEdit().AllocData();
-}
-
-auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it = _registrators.find(string(class_name));
-    RUNTIME_ASSERT(it != _registrators.end());
-    return it->second;
 }
 
 auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
@@ -373,20 +432,20 @@ auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
     else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
         return ToHashedString(string_view(str).substr(str.rfind(':') + 1)).as_int();
     }
-    else if (_str(str).isNumber()) {
-        return _str(str).toInt();
+    else if (strex(str).isNumber()) {
+        return strex(str).toInt();
     }
-    else if (_str(str).compareIgnoreCase("true")) {
+    else if (strex(str).compareIgnoreCase("true")) {
         return 1;
     }
-    else if (_str(str).compareIgnoreCase("false")) {
+    else if (strex(str).compareIgnoreCase("false")) {
         return 0;
     }
 
     return ResolveEnumValue(str, failed);
 }
 
-auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const -> optional<hstring>
+auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>
 {
     STACK_TRACE_ENTRY();
 

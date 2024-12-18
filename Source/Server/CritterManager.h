@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,17 +63,13 @@ public:
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritters(upos16 wpos, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
-    [[nodiscard]] auto GetCritter(ident_t cr_id) const -> const Critter*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
-    [[nodiscard]] auto PlayersInGame() const -> size_t;
-    [[nodiscard]] auto CrittersInGame() const -> size_t;
 
-    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir, bool accuracy) -> Critter*;
-    void DeleteCritter(Critter* cr);
-    void DeleteInventory(Critter* cr);
+    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> NON_NULL Critter*;
+    void DestroyCritter(Critter* cr);
+    void DestroyInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;
-    void EraseItemFromCritter(Critter* cr, Item* item, bool send);
+    void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
     void ProcessTalk(Critter* cr, bool force);
     void CloseTalk(Critter* cr);
 

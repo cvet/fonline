@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2023, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2024, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,20 +50,23 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
-        return _engine->CrMngr.GetCritter(item->GetCritterId());
+        return _engine->EntityMngr.GetCritter(item->GetCritterId());
     case ItemOwnership::MapHex:
-        return _engine->MapMngr.GetMap(item->GetMapId());
+        return _engine->EntityMngr.GetMap(item->GetMapId());
     case ItemOwnership::ItemContainer:
-        return GetItem(item->GetContainerId());
+        return _engine->EntityMngr.GetItem(item->GetContainerId());
     default:
         break;
     }
-    return nullptr;
+
+    throw GenericException("Item does not has holder", item->GetId(), item->GetProtoId());
 }
 
-void ItemManager::EraseItemHolder(Item* item, Entity* holder)
+void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 {
     STACK_TRACE_ENTRY();
 
@@ -75,7 +78,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         if (auto* cr = dynamic_cast<Critter*>(holder); cr != nullptr) {
-            _engine->CrMngr.EraseItemFromCritter(cr, item, true);
+            _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
         else {
             throw GenericException("Item owner (critter inventory) not found");
@@ -83,7 +86,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
     } break;
     case ItemOwnership::MapHex: {
         if (auto* map = dynamic_cast<Map*>(holder); map != nullptr) {
-            map->EraseItem(item->GetId());
+            map->RemoveItem(item->GetId());
         }
         else {
             throw GenericException("Item owner (map) not found");
@@ -91,7 +94,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
     } break;
     case ItemOwnership::ItemContainer: {
         if (auto* cont = dynamic_cast<Item*>(holder); cont != nullptr) {
-            EraseItemFromContainer(cont, item);
+            cont->RemoveItemFromContainer(item);
         }
         else {
             throw GenericException("Item owner (container) not found");
@@ -104,120 +107,15 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
-void ItemManager::SetItemToContainer(Item* cont, Item* item)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(cont);
-    RUNTIME_ASSERT(item);
-
-    if (!cont->_innerItems) {
-        cont->_innerItems = std::make_unique<vector<Item*>>();
-    }
-
-    RUNTIME_ASSERT(std::find(cont->_innerItems->begin(), cont->_innerItems->end(), item) == cont->_innerItems->end());
-
-    cont->_innerItems->push_back(item);
-    item->SetOwnership(ItemOwnership::ItemContainer);
-    item->SetContainerId(cont->GetId());
-}
-
-auto ItemManager::AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(cont);
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
-
-    if (!cont->_innerItems) {
-        cont->_innerItems = std::make_unique<vector<Item*>>();
-    }
-
-    if (item->GetStackable()) {
-        auto* item_already = cont->GetInnerItemByPid(item->GetProtoId(), stack_id);
-        if (item_already != nullptr) {
-            const auto count = item->GetCount();
-            DeleteItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
-            return item_already;
-        }
-    }
-
-    item->SetContainerStack(stack_id);
-    item->EvaluateSortValue(*cont->_innerItems);
-    SetItemToContainer(cont, item);
-
-    auto inner_item_ids = cont->GetInnerItemIds();
-    RUNTIME_ASSERT(std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId()) == inner_item_ids.end());
-    inner_item_ids.emplace_back(item->GetId());
-    cont->SetInnerItemIds(std::move(inner_item_ids));
-
-    return item;
-}
-
-void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(cont);
-    RUNTIME_ASSERT(cont->_innerItems);
-    RUNTIME_ASSERT(item);
-
-    const auto it = std::find(cont->_innerItems->begin(), cont->_innerItems->end(), item);
-    RUNTIME_ASSERT(it != cont->_innerItems->end());
-    cont->_innerItems->erase(it);
-
-    item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetContainerId(ident_t {});
-    item->SetContainerStack(ContainerItemStack::Root);
-
-    if (cont->_innerItems->empty()) {
-        cont->_innerItems.reset();
-    }
-
-    auto inner_item_ids = cont->GetInnerItemIds();
-    const auto inner_item_id_it = std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId());
-    RUNTIME_ASSERT(inner_item_id_it != inner_item_ids.end());
-    inner_item_ids.erase(inner_item_id_it);
-    cont->SetInnerItemIds(std::move(inner_item_ids));
-}
-
-auto ItemManager::GetItems() -> const unordered_map<ident_t, Item*>&
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine->EntityMngr.GetItems();
-}
-
-auto ItemManager::GetItemsCount() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->EntityMngr.GetItems().size();
-}
-
 auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    if (proto == nullptr) {
-        WriteLog("Proto item {} not found", pid);
-        return nullptr;
-    }
-
     auto* item = new Item(_engine, ident_t {}, proto, props);
     auto self_destroy_fuse = RefCountHolder(item);
 
-    item->SetIsStatic(false);
+    item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
 
     // Reset ownership properties
@@ -243,10 +141,16 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     _engine->EntityMngr.CallInit(item, true);
 
-    return !item->IsDestroyed() ? item : nullptr;
+    if (item->IsDestroyed()) {
+        throw GenericException("Item destroyed during init", pid);
+    }
+
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
+
+    return item;
 }
 
-void ItemManager::DeleteItem(Item* item)
+void ItemManager::DestroyItem(Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -261,13 +165,17 @@ void ItemManager::DeleteItem(Item* item)
     _engine->OnItemFinish.Fire(item);
 
     // Tear off from environment
-    while (item->GetOwnership() != ItemOwnership::Nowhere || item->IsInnerItems()) {
-        // Delete from owner
-        EraseItemHolder(item, GetItemHolder(item));
+    for (InfinityLoopDetector detector; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities(); detector.AddLoop()) {
+        if (item->GetOwnership() != ItemOwnership::Nowhere) {
+            RemoveItemHolder(item, GetItemHolder(item));
+        }
 
-        // Delete child items
-        while (item->IsInnerItems()) {
-            DeleteItem(item->GetRawInnerItems().front());
+        while (item->HasInnerItems()) {
+            DestroyItem(item->GetAllInnerItems().front());
+        }
+
+        if (item->HasInnerEntities()) {
+            _engine->EntityMngr.DestroyInnerEntities(item);
         }
     }
 
@@ -296,118 +204,77 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     RUNTIME_ASSERT(count > 0);
     RUNTIME_ASSERT(count < item_count);
 
-    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
-    if (new_item == nullptr) {
-        WriteLog("Create item {} failed, count {}", item->GetName(), count);
-        return nullptr;
-    }
-
-    RUNTIME_ASSERT(new_item->GetOwnership() == ItemOwnership::Nowhere);
+    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
     item->SetCount(item_count - count);
-    _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
+    RUNTIME_ASSERT(!new_item->IsDestroyed());
 
     return new_item;
 }
 
-auto ItemManager::GetItem(ident_t item_id) -> Item*
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->EntityMngr.GetItem(item_id);
-}
-
-auto ItemManager::GetItem(ident_t item_id) const -> const Item*
-{
-    STACK_TRACE_ENTRY();
-
-    return const_cast<ItemManager*>(this)->GetItem(item_id);
-}
-
-void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
+auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
-    if (holder == nullptr) {
-        return;
-    }
-
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_cr)) {
-        return;
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        EraseItemHolder(item, holder);
+        RemoveItemHolder(item, holder);
         _engine->CrMngr.AddItemToCritter(to_cr, item, true);
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        if (item_ != nullptr) {
-            _engine->CrMngr.AddItemToCritter(to_cr, item_, true);
-        }
+        auto* splitted_item = SplitItem(item, count);
+        _engine->CrMngr.AddItemToCritter(to_cr, splitted_item, true);
+        return splitted_item;
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex, bool skip_checks)
+auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
-    if (holder == nullptr) {
-        return;
-    }
-
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_map)) {
-        return;
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        EraseItemHolder(item, holder);
+        RemoveItemHolder(item, holder);
         to_map->AddItem(item, to_hex, dynamic_cast<Critter*>(holder));
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        if (item_ != nullptr) {
-            to_map->AddItem(item_, to_hex, dynamic_cast<Critter*>(holder));
-        }
+        auto* splitted_item = SplitItem(item, count);
+        to_map->AddItem(splitted_item, to_hex, dynamic_cast<Critter*>(holder));
+        return splitted_item;
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks)
+auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
-        return;
+        return item;
     }
 
     auto* holder = GetItemHolder(item);
-    if (holder == nullptr) {
-        return;
-    }
-
-    if (!skip_checks && !ItemCheckMove(item, count, holder, to_cont)) {
-        return;
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        EraseItemHolder(item, holder);
-        AddItemToContainer(to_cont, item, stack_id);
+        RemoveItemHolder(item, holder);
+        to_cont->AddItemToContainer(item, stack_id);
+        return item;
     }
     else {
-        auto* item_ = SplitItem(item, count);
-        if (item_ != nullptr) {
-            AddItemToContainer(to_cont, item_, stack_id);
-        }
+        auto* splitted_item = SplitItem(item, count);
+        to_cont->AddItemToContainer(splitted_item, stack_id);
+        return splitted_item;
     }
 }
 
@@ -417,13 +284,13 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
 
     RUNTIME_ASSERT(cont);
 
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cont->GetInnerItemByPid(pid, stack_id);
     Item* result = nullptr;
 
     if (item != nullptr) {
         if (item->GetStackable()) {
             item->SetCount(item->GetCount() + count);
-            _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
             result = item;
         }
         else {
@@ -432,26 +299,15 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-                if (item == nullptr) {
-                    continue;
-                }
-                item = AddItemToContainer(cont, item, stack_id);
+                item = cont->AddItemToContainer(item, stack_id);
                 result = item;
             }
         }
     }
     else {
-        const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
-        if (proto_item == nullptr) {
-            return result;
-        }
-
-        if (proto_item->GetStackable()) {
+        if (proto->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
-            if (item == nullptr) {
-                return result;
-            }
-            item = AddItemToContainer(cont, item, stack_id);
+            item = cont->AddItemToContainer(item, stack_id);
             result = item;
         }
         else {
@@ -460,11 +316,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             }
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-                if (item == nullptr) {
-                    continue;
-                }
-
-                item = AddItemToContainer(cont, item, stack_id);
+                item = cont->AddItemToContainer(item, stack_id);
                 result = item;
             }
         }
@@ -477,29 +329,19 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    if (count == 0) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(count > 0);
 
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cr->GetInvItemByPid(pid);
     Item* result = nullptr;
 
     if (item != nullptr && item->GetStackable()) {
         item->SetCount(item->GetCount() + count);
-        _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
         result = item;
     }
     else {
-        const auto* proto_item = _engine->ProtoMngr.GetProtoItem(pid);
-        if (proto_item == nullptr) {
-            return result;
-        }
-
-        if (proto_item->GetStackable()) {
+        if (proto->GetStackable()) {
             item = CreateItem(pid, count, nullptr);
-            if (item == nullptr) {
-                return result;
-            }
             item = _engine->CrMngr.AddItemToCritter(cr, item, true);
             result = item;
         }
@@ -507,11 +349,9 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
             if (count > MAX_ADDED_NOGROUP_ITEMS) {
                 count = MAX_ADDED_NOGROUP_ITEMS;
             }
+
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
-                if (item == nullptr) {
-                    break;
-                }
                 item = _engine->CrMngr.AddItemToCritter(cr, item, true);
                 result = item;
             }
@@ -530,24 +370,25 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
     }
 
     auto* item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+
     if (item == nullptr) {
         return;
     }
 
     if (item->GetStackable()) {
         if (count >= item->GetCount()) {
-            DeleteItem(item);
+            DestroyItem(item);
         }
         else {
             item->SetCount(item->GetCount() - count);
-            _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
     else {
         for (uint i = 0; i < count; ++i) {
-            DeleteItem(item);
+            DestroyItem(item);
 
             item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+
             if (item == nullptr) {
                 break;
             }
@@ -560,6 +401,7 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
     STACK_TRACE_ENTRY();
 
     const auto cur_count = cr->CountInvItemPid(pid);
+
     if (cur_count > count) {
         SubItemCritter(cr, pid, cur_count - count);
     }
@@ -568,18 +410,12 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
     }
 }
 
-auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _engine->OnItemCheckMove.Fire(item, count, from, to);
-}
-
 void ItemManager::RegisterRadio(Item* radio)
 {
     STACK_TRACE_ENTRY();
 
     const auto it = _radioItems.find(radio);
+
     if (it == _radioItems.end()) {
         _radioItems.emplace(radio);
         radio->AddRef();
@@ -591,6 +427,7 @@ void ItemManager::UnregisterRadio(Item* radio)
     STACK_TRACE_ENTRY();
 
     const auto it = _radioItems.find(radio);
+
     if (it != _radioItems.end()) {
         _radioItems.erase(it);
         radio->Release();
@@ -602,7 +439,8 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     STACK_TRACE_ENTRY();
 
     vector<Item*> radios;
-    for (auto* item : cr->GetRawInvItems()) {
+
+    for (auto* item : cr->GetInvItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
             channels.push_back(item->GetRadioChannel());
             radios.push_back(item);
@@ -651,10 +489,12 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                 }
                 else if (broadcast == RADIO_BROADCAST_MAP || broadcast == RADIO_BROADCAST_LOCATION) {
                     if (!broadcast_map_id) {
-                        auto* map = _engine->MapMngr.GetMap(from_map_id);
+                        auto* map = _engine->EntityMngr.GetMap(from_map_id);
+
                         if (map == nullptr) {
                             continue;
                         }
+
                         broadcast_map_id = map->GetId();
                         broadcast_loc_id = map->GetLocation()->GetId();
                     }
@@ -668,7 +508,8 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
             }
 
             if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
-                auto* cr = _engine->CrMngr.GetCritter(radio->GetCritterId());
+                auto* cr = _engine->EntityMngr.GetCritter(radio->GetCritterId());
+
                 if (cr != nullptr && cr->RadioMessageSended != cur_send) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
                         if (broadcast == RADIO_BROADCAST_MAP) {
@@ -677,7 +518,8 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                             }
                         }
                         else if (broadcast == RADIO_BROADCAST_LOCATION) {
-                            auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
+                            auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
+
                             if (map == nullptr || broadcast_loc_id != map->GetLocation()->GetId()) {
                                 continue;
                             }
@@ -711,11 +553,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     continue;
                 }
 
-                auto* map = _engine->MapMngr.GetMap(radio->GetMapId());
+                auto* map = _engine->EntityMngr.GetMap(radio->GetMapId());
+
                 if (map != nullptr) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP) {
                         if (broadcast == RADIO_BROADCAST_LOCATION) {
                             const auto* loc = map->GetLocation();
+
                             if (broadcast_loc_id != loc->GetId()) {
                                 continue;
                             }
@@ -752,9 +596,8 @@ void ItemManager::ChangeItemStatistics(hstring pid, int val) const
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    if (proto != nullptr) {
-        proto->InstanceCount += val;
-    }
+
+    proto->InstanceCount += val;
 }
 
 auto ItemManager::GetItemStatistics(hstring pid) const -> int64
@@ -762,7 +605,8 @@ auto ItemManager::GetItemStatistics(hstring pid) const -> int64
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    return proto != nullptr ? proto->InstanceCount : 0;
+
+    return proto->InstanceCount;
 }
 
 auto ItemManager::GetItemsStatistics() const -> string
@@ -770,8 +614,10 @@ auto ItemManager::GetItemsStatistics() const -> string
     STACK_TRACE_ENTRY();
 
     string result = "Name                                     Count\n";
+
     for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
+        result += strex("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
     }
+
     return result;
 }

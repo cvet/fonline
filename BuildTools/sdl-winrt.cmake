@@ -1,6 +1,6 @@
 # SDL2 source for WinRT
 
-set( FO_SDL_WINRT_SOURCE
+set(FO_SDL_WINRT_SOURCE
     "${FO_SDL_DIR}/src/atomic/SDL_atomic.c"
     "${FO_SDL_DIR}/src/atomic/SDL_spinlock.c"
     "${FO_SDL_DIR}/src/audio/disk/SDL_diskaudio.c"
@@ -102,7 +102,7 @@ set( FO_SDL_WINRT_SOURCE
     "${FO_SDL_DIR}/src/video/yuv2rgb/yuv_rgb.c"
 )
 
-set( FO_SDL_WINRT_CX_SOURCE
+set(FO_SDL_WINRT_CX_SOURCE
     "${FO_SDL_DIR}/src/audio/wasapi/SDL_wasapi_winrt.cpp"
     "${FO_SDL_DIR}/src/core/winrt/SDL_winrtapp_common.cpp"
     "${FO_SDL_DIR}/src/core/winrt/SDL_winrtapp_direct3d.cpp"

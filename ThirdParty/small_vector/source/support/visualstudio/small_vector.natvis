@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="gch::small_vector&lt;*&gt;">
+    <DisplayString Condition="m_data.m_capacity == inline_capacity_v">{{ size={m_data.m_size} (inlined) }}</DisplayString>
+    <DisplayString Condition="m_data.m_capacity != inline_capacity_v">{{ size={m_data.m_size} (allocated) }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">m_data.m_capacity</Item>
+      <Item Name="[allocator]" ExcludeView="simple" Condition="&amp;m_alloc != 0">m_alloc</Item>
+      <ArrayItems>
+        <Size>m_data.m_size</Size>
+        <ValuePointer>m_data.m_data_ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="gch::small_vector_iterator&lt;*&gt;">
+    <DisplayString>{*m_ptr}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">m_ptr</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>
