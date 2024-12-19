@@ -1415,3 +1415,10 @@
 {
     return tick_t {time_duration_to_ms<tick_t::underlying_type>(self->GetOfflineTime())};
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_RefreshDialogTime(Critter* self)
+{
+    self->Talk.StartTime = self->GetEngine()->GameTime.GameplayTime();
+    self->Talk.TalkTime = std::chrono::milliseconds {self->Talk.Barter ? self->GetEngine()->Settings.DlgBarterMaxTime : self->GetEngine()->Settings.DlgTalkMaxTime};
+}
