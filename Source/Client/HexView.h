@@ -57,8 +57,9 @@ public:
     [[nodiscard]] auto IsSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto GetSprite() const -> const MapSprite*;
     [[nodiscard]] auto GetSprite() -> MapSprite*;
-    [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _maxAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _maxAlpha == 0; }
+    [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8 { return _curAlpha; }
+    [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
+    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _targetAlpha == 0; }
     [[nodiscard]] auto IsFading() const noexcept -> bool { return _fading; }
     [[nodiscard]] auto IsFinishing() const noexcept -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const noexcept -> bool;
@@ -69,8 +70,9 @@ public:
     auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
     void RestoreFading(const tuple<bool, bool, time_point>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
     void FadeUp();
+    void SetTargetAlpha(uint8 alpha);
+    void SetDefaultAlpha(uint8 alpha);
     void RestoreAlpha();
-    void SetMaxAlpha(uint8 alpha);
     void RefreshSprite();
     void InvalidateSprite();
     void SetSpriteVisiblity(bool enabled);
@@ -79,7 +81,6 @@ public:
     const Sprite* Spr {};
     int ScrX {};
     int ScrY {};
-    uint8 Alpha {0xFF};
     RenderEffect* DrawEffect {};
 
 protected:
@@ -90,13 +91,15 @@ protected:
 
 private:
     void SetFade(bool fade_up);
-    auto EvaluateFadeAlpha() -> uint8;
+    void EvaluateCurAlpha();
 
     MapSprite* _mapSpr {};
     bool _mapSprValid {};
     bool _mapSprHidden {};
 
-    uint8 _maxAlpha {0xFF};
+    uint8 _curAlpha {0xFF};
+    uint8 _defaultAlpha {0xFF};
+    uint8 _targetAlpha {0xFF};
 
     bool _fading {};
     bool _fadeUp {};

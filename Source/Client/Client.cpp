@@ -3941,13 +3941,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             CurMap->SetSkipRoof(static_cast<uint16>(hx), static_cast<uint16>(hy));
         }
     }
-    else if (cmd == "ChosenAlpha" && args.size() == 2) {
-        auto alpha = strex(args[1]).toInt();
-
-        if (auto* chosen = GetMapChosen(); chosen != nullptr) {
-            chosen->Alpha = static_cast<uint8>(alpha);
-        }
-    }
     else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
         /*if (SDL_HasScreenKeyboardSupport())
         {
