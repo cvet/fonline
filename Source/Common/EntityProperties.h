@@ -183,6 +183,8 @@ public:
     ENTITY_PROPERTY(Public, uint8, LightFlags);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, ucolor, LightColor);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
 
     // Todo: exclude item properties from engine:
     ///@ ExportProperty ScriptFuncType = ItemTrigger

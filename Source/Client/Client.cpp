@@ -245,6 +245,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
@@ -3004,13 +3005,14 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
     NON_CONST_METHOD_HINT();
 
-    // Colorize, BadItem, ShootThru, LightThru, NoBlock
+    // Colorize, ColorizeColor, BadItem, ShootThru, LightThru, NoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
 
-        if (prop == item->GetPropertyColorize()) {
+        if (prop == item->GetPropertyColorize() || prop == item->GetPropertyColorizeColor()) {
             item->RefreshAlpha();
+            item->RefreshSprite();
         }
         else if (prop == item->GetPropertyBadItem()) {
             item->RefreshSprite();
@@ -3638,13 +3640,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             const auto hx = strex(args[1]).toUInt();
             const auto hy = strex(args[2]).toUInt();
             CurMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
-        }
-    }
-    else if (cmd == "ChosenAlpha" && args.size() == 2) {
-        const auto alpha = strex(args[1]).toInt();
-
-        if (auto* chosen = GetMapChosen(); chosen != nullptr) {
-            chosen->Alpha = static_cast<uint8>(alpha);
         }
     }
     else {

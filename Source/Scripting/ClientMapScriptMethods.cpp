@@ -92,7 +92,7 @@
 
     if (mapSpr->ProtoId) {
         const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        color = proto->GetColorize() ? proto->GetLightColor() : ucolor::clear;
+        color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
         is_flat = proto->GetDrawFlatten();
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;

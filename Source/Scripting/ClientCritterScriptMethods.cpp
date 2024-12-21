@@ -431,7 +431,15 @@
 [[maybe_unused]] uint8 Client_Critter_GetAlpha(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;
+    return hex_cr != nullptr ? hex_cr->GetCurAlpha() : 0xFF;
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetAlpha(CritterView* self, uint8 alpha)
+{
+    if (auto* hex_cr = dynamic_cast<CritterHexView*>(self); hex_cr != nullptr) {
+        hex_cr->SetTargetAlpha(alpha);
+    }
 }
 
 ///@ ExportMethod

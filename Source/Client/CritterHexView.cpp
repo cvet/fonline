@@ -600,11 +600,8 @@ void CritterHexView::Process()
         _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
 
         const auto dist = GenericUtils::DistSqrt({0, 0}, {iround(_offsExt.x), iround(_offsExt.y)});
-        const auto dist_div = dist / 10u;
-        auto mul = static_cast<float>(dist_div);
-        if (mul < 1.0f) {
-            mul = 1.0f;
-        }
+        const auto dist_div = dist / 10;
+        const auto mul = std::max(static_cast<float>(dist_div), 1.0f);
 
         _offsExt.x += _offsExtSpeed.x * mul;
         _offsExt.y += _offsExtSpeed.y * mul;
@@ -957,7 +954,7 @@ void CritterHexView::DrawName()
 
     ucolor color = GetNameColor();
     color = color != ucolor::clear ? color : COLOR_TEXT;
-    color = ucolor {color, Alpha};
+    color = ucolor {color, GetCurAlpha()};
 
     ipos pos;
 
