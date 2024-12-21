@@ -52,7 +52,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx
     RUNTIME_ASSERT(!_mapSprValid);
 
     auto& mspr = list.AddSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
@@ -69,7 +69,7 @@ auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, uint16
     RUNTIME_ASSERT(!_mapSprValid);
 
     auto& mspr = list.InsertSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
@@ -108,11 +108,7 @@ void HexView::ProcessFading()
 {
     STACK_TRACE_ENTRY();
 
-    Alpha = EvaluateFadeAlpha();
-
-    if (Alpha > _maxAlpha) {
-        Alpha = _maxAlpha;
-    }
+    EvaluateCurAlpha();
 }
 
 void HexView::FadeUp()
@@ -132,36 +128,56 @@ void HexView::SetFade(bool fade_up)
     _fadeUp = fade_up;
     _fading = true;
 
-    Alpha = EvaluateFadeAlpha();
+    EvaluateCurAlpha();
 }
 
-auto HexView::EvaluateFadeAlpha() -> uint8
+void HexView::EvaluateCurAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    const auto time = _map->GetEngine()->GameTime.GameplayTime();
-    const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
+    if (_fading) {
+        const auto time = _map->GetEngine()->GameTime.GameplayTime();
+        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
 
-    if (fading_proc == 100) {
-        _fading = false;
+        if ((_fadeUp && fading_proc == 100) || (!_fadeUp && fading_proc == 0)) {
+            _fading = false;
+        }
+
+        _curAlpha = static_cast<uint8>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
     }
-
-    const auto alpha = _fadeUp ? fading_proc * 255 / 100 : (100 - fading_proc) * 255 / 100;
-    return static_cast<uint8>(alpha);
+    else {
+        _curAlpha = _targetAlpha;
+    }
 }
 
-void HexView::SetMaxAlpha(uint8 alpha)
+void HexView::SetTargetAlpha(uint8 alpha)
 {
     STACK_TRACE_ENTRY();
 
-    _maxAlpha = alpha;
+    _targetAlpha = alpha;
+    EvaluateCurAlpha();
+}
+
+void HexView::SetDefaultAlpha(uint8 alpha)
+{
+    STACK_TRACE_ENTRY();
+
+    if (_defaultAlpha == _targetAlpha) {
+        _defaultAlpha = alpha;
+        _targetAlpha = alpha;
+        EvaluateCurAlpha();
+    }
+    else {
+        _defaultAlpha = alpha;
+    }
 }
 
 void HexView::RestoreAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    Alpha = _maxAlpha;
+    _targetAlpha = _defaultAlpha;
+    EvaluateCurAlpha();
 }
 
 void HexView::RefreshSprite()

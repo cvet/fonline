@@ -44,7 +44,6 @@ DECLARE_EXCEPTION(ImageBakerException);
 class ImageBaker final : public BaseBaker
 {
 public:
-    static constexpr int MAX_FRAME_SEQUENCE = 200;
     static constexpr int MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
@@ -62,7 +61,7 @@ public:
     {
         int16 OffsX {};
         int16 OffsY {};
-        FrameShot Frames[MAX_FRAME_SEQUENCE] {};
+        vector<FrameShot> Frames {};
     };
 
     struct FrameCollection
@@ -88,7 +87,7 @@ public:
 
     [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
 
-    void AddLoader(LoadFunc loader, const vector<string_view>& file_extensions);
+    void AddLoader(const LoadFunc& loader, const vector<string_view>& file_extensions);
     void BakeFiles(FileCollection&& files) override;
 
 private:

@@ -135,6 +135,9 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
     }
+    else {
+        item->SetCount(1);
+    }
 
     if (item->GetIsRadio()) {
         RegisterRadio(item);

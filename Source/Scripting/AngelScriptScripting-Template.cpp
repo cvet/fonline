@@ -899,7 +899,7 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 {
     STACK_TRACE_ENTRY();
 
-    static unordered_map<std::type_index, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
+    static unordered_map<std::type_index, std::function<void(asIScriptContext*, asUINT, void*)>> ctx_set_value_map = {
         {typeid(bool), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
         {typeid(int8), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<int8*>(ptr)); }},
         {typeid(int16), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<int16*>(ptr)); }},
@@ -911,27 +911,27 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
         {typeid(uint64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
         {typeid(float), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
         {typeid(double), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
-        {typeid(bool*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<bool*>(ptr)); }},
-        {typeid(int8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int8*>(ptr)); }},
-        {typeid(int16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int16*>(ptr)); }},
-        {typeid(int*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int*>(ptr)); }},
-        {typeid(int64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int64*>(ptr)); }},
-        {typeid(uint8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint8*>(ptr)); }},
-        {typeid(uint16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint16*>(ptr)); }},
-        {typeid(uint*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint*>(ptr)); }},
-        {typeid(uint64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
-        {typeid(float*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
-        {typeid(double*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
+        {typeid(bool*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<bool**>(ptr)); }},
+        {typeid(int8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int8**>(ptr)); }},
+        {typeid(int16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int16**>(ptr)); }},
+        {typeid(int*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int**>(ptr)); }},
+        {typeid(int64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int64**>(ptr)); }},
+        {typeid(uint8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint8**>(ptr)); }},
+        {typeid(uint16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint16**>(ptr)); }},
+        {typeid(uint*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint**>(ptr)); }},
+        {typeid(uint64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint64**>(ptr)); }},
+        {typeid(float*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<float**>(ptr)); }},
+        {typeid(double*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<double**>(ptr)); }},
         {typeid(hstring), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
         {typeid(string), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
         {typeid(any_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
         {typeid(ident_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
         {typeid(tick_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
-        {typeid(hstring*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
-        {typeid(string*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
-        {typeid(any_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<any_t*>(ptr)); }},
-        {typeid(ident_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ident_t*>(ptr)); }},
-        {typeid(tick_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<tick_t*>(ptr)); }},
+        {typeid(hstring*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<hstring**>(ptr)); }},
+        {typeid(string*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<string**>(ptr)); }},
+        {typeid(any_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<any_t**>(ptr)); }},
+        {typeid(ident_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<ident_t**>(ptr)); }},
+        {typeid(tick_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<tick_t**>(ptr)); }},
 #if SERVER_SCRIPTING
         {typeid(Player*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
         {typeid(Item*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
@@ -1014,7 +1014,7 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
         if (args.size() != 0) {
             auto it = args.begin();
             for (asUINT i = 0; i < args.size(); i++, it++) {
-                CtxSetValueMap[func_desc->ArgsType[i]](ctx, i, *it);
+                ctx_set_value_map[func_desc->ArgsType[i]](ctx, i, *it);
             }
         }
 

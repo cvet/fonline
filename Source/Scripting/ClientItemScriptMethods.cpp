@@ -131,5 +131,13 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 [[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
 {
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
-    return hex_item != nullptr ? hex_item->Alpha : 0xFF;
+    return hex_item != nullptr ? hex_item->GetCurAlpha() : 0xFF;
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->SetTargetAlpha(alpha);
+    }
 }
