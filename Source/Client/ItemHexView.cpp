@@ -67,7 +67,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetColor(GetIsColorize() ? GetLightColor() : ucolor::clear);
+    mspr->SetColor(GetIsColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
     if (GetIsBadItem()) {
@@ -166,7 +166,7 @@ void ItemHexView::RefreshAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    SetMaxAlpha(GetIsColorize() ? GetLightColor().comp.a : 255);
+    SetDefaultAlpha(GetIsColorize() ? GetColorizeColor().comp.a : 0xFF);
 }
 
 void ItemHexView::RefreshAnim()
