@@ -2118,7 +2118,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
         SelectedEntities.push_back(entity);
 
         if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
-            hex_view->Alpha = SelectAlpha;
+            hex_view->SetTargetAlpha(SelectAlpha);
         }
     }
 }
