@@ -515,13 +515,13 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
     auto doc = _engine->DbStorage.Get(collection_name, id);
 
-    if (doc.empty()) {
+    if (doc.Empty()) {
         WriteLog("{} document {} not found", collection_name, id);
         is_error = true;
         return {};
     }
 
-    const auto proto_it = doc.find("_Proto");
+    const auto proto_it = doc.Find("_Proto");
 
     if (proto_it == doc.end()) {
         if (expect_proto) {
@@ -532,13 +532,13 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         return {std::move(doc), hstring()};
     }
 
-    if (proto_it->second.index() != AnyData::STRING_VALUE) {
-        WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
+    if (proto_it->second.Type() != AnyData::ValueType::String) {
+        WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.Type());
         is_error = true;
         return {};
     }
 
-    const auto& proto_name = std::get<string>(proto_it->second);
+    const auto& proto_name = proto_it->second.AsString();
 
     if (proto_name.empty()) {
         WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
@@ -998,13 +998,13 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
 
     const auto type_doc = _engine->DbStorage.Get(_entityTypeMapCollection, id);
 
-    if (type_doc.empty()) {
+    if (type_doc.Empty()) {
         WriteLog("Custom entity id {} type not mapped", id);
         is_error = true;
         return nullptr;
     }
 
-    const auto it_type = type_doc.find("Type");
+    const auto it_type = type_doc.Find("Type");
 
     if (it_type == type_doc.end()) {
         WriteLog("Custom entity {} mapped type section 'Type' not found", id);
@@ -1012,13 +1012,13 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
         return nullptr;
     }
 
-    if (it_type->second.index() != AnyData::STRING_VALUE) {
-        WriteLog("Custom entity {} mapped type section 'Type' is not string but {}", id, it_type->second.index());
+    if (it_type->second.Type() != AnyData::ValueType::String) {
+        WriteLog("Custom entity {} mapped type section 'Type' is not string but {}", id, it_type->second.Type());
         is_error = true;
         return nullptr;
     }
 
-    const auto& type_name_str = std::get<string>(it_type->second);
+    const auto& type_name_str = it_type->second.AsString();
     const auto type_name = _engine->ToHashedString(type_name_str);
 
     if (!_engine->IsValidEntityType(type_name)) {
@@ -1032,7 +1032,7 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity
     const auto collection_name = _engine->ToHashedString(strex("{}s", type_name));
     auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
-    if (doc.empty()) {
+    if (doc.Empty()) {
         WriteLog("Custom entity {} with type {} invalid document", id, type_name);
         is_error = true;
         return nullptr;

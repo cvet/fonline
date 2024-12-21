@@ -758,7 +758,7 @@ auto strex::toBool() const noexcept -> bool
         return false;
     }
 
-    return toInt() != 0;
+    return toInt64() != 0;
 }
 
 auto strex::formatPath() -> strex&

@@ -41,11 +41,11 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->FindProperty(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;
@@ -345,17 +345,17 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
 
     NON_CONST_METHOD_HINT();
 
-    char who = DR_WHO_PLAYER;
-    auto oper = '=';
+    uint8 who = DR_WHO_PLAYER;
+    char oper = '=';
     int values_count = 0;
     string svalue;
-    auto ivalue = 0;
+    int ivalue = 0;
     uint id_index = 0;
     hstring id_hash;
     string type_str;
     string name;
     string script_name;
-    auto no_recheck = false;
+    bool no_recheck = false;
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
@@ -487,7 +487,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     return result;
 }
 
-auto DialogManager::GetDrType(string_view str) -> uint8
+auto DialogManager::GetDrType(string_view str) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -509,7 +509,7 @@ auto DialogManager::GetDrType(string_view str) -> uint8
     return DR_NONE;
 }
 
-auto DialogManager::GetWho(char who) -> uint8
+auto DialogManager::GetWho(uint8 who) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -522,7 +522,7 @@ auto DialogManager::GetWho(char who) -> uint8
     return DR_WHO_NONE;
 }
 
-auto DialogManager::CheckOper(char oper) -> bool
+auto DialogManager::CheckOper(char oper) const -> bool
 {
     STACK_TRACE_ENTRY();
 

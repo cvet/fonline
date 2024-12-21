@@ -200,36 +200,67 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     _passCount = static_cast<size_t>(passes);
 
     static auto get_blend_func = [](string_view s) -> BlendFuncType {
-#define CHECK_ENTRY(name) \
-    if (s == #name) \
-    return BlendFuncType::name
-        CHECK_ENTRY(Zero);
-        CHECK_ENTRY(One);
-        CHECK_ENTRY(SrcColor);
-        CHECK_ENTRY(InvSrcColor);
-        CHECK_ENTRY(DstColor);
-        CHECK_ENTRY(InvDstColor);
-        CHECK_ENTRY(SrcAlpha);
-        CHECK_ENTRY(InvSrcAlpha);
-        CHECK_ENTRY(DstAlpha);
-        CHECK_ENTRY(InvDstAlpha);
-        CHECK_ENTRY(ConstantColor);
-        CHECK_ENTRY(InvConstantColor);
-        CHECK_ENTRY(SrcAlphaSaturate);
-#undef CHECK_ENTRY
-        throw UnreachablePlaceException(LINE_STR);
+        if (s == "Zero") {
+            return BlendFuncType::Zero;
+        }
+        if (s == "One") {
+            return BlendFuncType::One;
+        }
+        if (s == "SrcColor") {
+            return BlendFuncType::SrcColor;
+        }
+        if (s == "InvSrcColor") {
+            return BlendFuncType::InvSrcColor;
+        }
+        if (s == "DstColor") {
+            return BlendFuncType::DstColor;
+        }
+        if (s == "InvDstColor") {
+            return BlendFuncType::InvDstColor;
+        }
+        if (s == "SrcAlpha") {
+            return BlendFuncType::SrcAlpha;
+        }
+        if (s == "InvSrcAlpha") {
+            return BlendFuncType::InvSrcAlpha;
+        }
+        if (s == "DstAlpha") {
+            return BlendFuncType::DstAlpha;
+        }
+        if (s == "InvDstAlpha") {
+            return BlendFuncType::InvDstAlpha;
+        }
+        if (s == "ConstantColor") {
+            return BlendFuncType::ConstantColor;
+        }
+        if (s == "InvConstantColor") {
+            return BlendFuncType::InvConstantColor;
+        }
+        if (s == "SrcAlphaSaturate") {
+            return BlendFuncType::SrcAlphaSaturate;
+        }
+
+        throw GenericException("Unknown blend func type", s);
     };
+
     static auto get_blend_equation = [](string_view s) -> BlendEquationType {
-#define CHECK_ENTRY(name) \
-    if (s == #name) \
-    return BlendEquationType::name
-        CHECK_ENTRY(FuncAdd);
-        CHECK_ENTRY(FuncSubtract);
-        CHECK_ENTRY(FuncReverseSubtract);
-        CHECK_ENTRY(Max);
-        CHECK_ENTRY(Min);
-#undef CHECK_ENTRY
-        throw UnreachablePlaceException(LINE_STR);
+        if (s == "FuncAdd") {
+            return BlendEquationType::FuncAdd;
+        }
+        if (s == "FuncSubtract") {
+            return BlendEquationType::FuncSubtract;
+        }
+        if (s == "FuncReverseSubtract") {
+            return BlendEquationType::FuncReverseSubtract;
+        }
+        if (s == "Max") {
+            return BlendEquationType::Max;
+        }
+        if (s == "Min") {
+            return BlendEquationType::Min;
+        }
+
+        throw GenericException("Unknown blend equation type", s);
     };
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");

@@ -164,7 +164,7 @@ auto Properties::operator=(const Properties& other) -> Properties&
 
     // Copy complex data
     for (const auto* prop : _registrator->_complexProperties) {
-        SetRawData(prop, other._complexData[prop->_complexDataIndex].data(), static_cast<uint>(other._complexData[prop->_complexDataIndex].size()));
+        SetRawData(prop, {other._complexData[prop->_complexDataIndex].data(), other._complexData[prop->_complexDataIndex].size()});
     }
 
     return *this;
@@ -192,23 +192,24 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     auto writer = DataWriter(all_data);
 
     // Store plain properties data
-    writer.Write<uint>(_registrator->_wholePodDataSize);
+    writer.Write<uint>(static_cast<uint>(_registrator->_wholePodDataSize));
 
     int start_pos = -1;
+    constexpr int seek_step = 3;
 
-    for (uint i = 0; i < _registrator->_wholePodDataSize; i++) {
+    for (size_t i = 0; i < _registrator->_wholePodDataSize; i++) {
         if (_podData[i] != 0) {
             if (start_pos == -1) {
                 start_pos = static_cast<int>(i);
             }
 
-            i += 3;
+            i += seek_step;
         }
         else {
             if (start_pos != -1) {
-                const auto len = i - start_pos;
-                writer.Write<uint>(start_pos);
-                writer.Write<uint>(len);
+                const size_t len = i - start_pos;
+                writer.Write<uint>(static_cast<uint>(start_pos));
+                writer.Write<uint>(static_cast<uint>(len));
                 writer.WritePtr(_podData.data() + start_pos, len);
 
                 start_pos = -1;
@@ -217,9 +218,9 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     }
 
     if (start_pos != -1) {
-        const auto len = _registrator->_wholePodDataSize - start_pos;
-        writer.Write<uint>(start_pos);
-        writer.Write<uint>(len);
+        const size_t len = _registrator->_wholePodDataSize - start_pos;
+        writer.Write<uint>(static_cast<uint>(start_pos));
+        writer.Write<uint>(static_cast<uint>(len));
         writer.WritePtr(_podData.data() + start_pos, len);
     }
 
@@ -228,6 +229,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
 
     // Store complex properties
     writer.Write<uint>(static_cast<uint>(_registrator->_complexProperties.size()));
+
     for (const auto* prop : _registrator->_complexProperties) {
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         writer.Write<uint>(static_cast<uint>(_complexData[prop->_complexDataIndex].size()));
@@ -246,17 +248,18 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), _registrator->_hashResolver, _registrator->_nameResolver);
 
-            if (value.index() == AnyData::STRING_VALUE) {
-                add_hash(std::get<AnyData::STRING_VALUE>(value));
+            if (value.Type() == AnyData::ValueType::String) {
+                add_hash(value.AsString());
             }
-            else if (value.index() == AnyData::ARRAY_VALUE) {
-                const auto arr = std::get<AnyData::ARRAY_VALUE>(value);
+            else if (value.Type() == AnyData::ValueType::Array) {
+                const auto& arr = value.AsArray();
+
                 for (auto&& arr_entry : arr) {
-                    add_hash(std::get<AnyData::STRING_VALUE>(arr_entry));
+                    add_hash(arr_entry.AsString());
                 }
             }
-            else if (value.index() == AnyData::DICT_VALUE) {
-                const auto dict = std::get<AnyData::DICT_VALUE>(value);
+            else if (value.Type() == AnyData::ValueType::Dict) {
+                const auto& dict = value.AsDict();
 
                 if (prop->IsDictKeyHash()) {
                     for (auto&& dict_entry : dict) {
@@ -266,20 +269,21 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
 
                 if (prop->IsBaseTypeHash()) {
                     for (auto&& dict_entry : dict) {
-                        if (dict_entry.second.index() == AnyData::ARRAY_VALUE) {
-                            const auto dict_arr = std::get<AnyData::ARRAY_VALUE>(dict_entry.second);
+                        if (dict_entry.second.Type() == AnyData::ValueType::Array) {
+                            const auto& dict_arr = dict_entry.second.AsArray();
+
                             for (auto&& dict_arr_entry : dict_arr) {
-                                add_hash(std::get<AnyData::STRING_VALUE>(dict_arr_entry));
+                                add_hash(dict_arr_entry.AsString());
                             }
                         }
                         else {
-                            add_hash(std::get<AnyData::STRING_VALUE>(dict_entry.second));
+                            add_hash(dict_entry.second.AsString());
                         }
                     }
                 }
             }
             else {
-                throw UnreachablePlaceException(LINE_STR);
+                UNREACHABLE_PLACE();
             }
         }
     }
@@ -298,6 +302,7 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     while (true) {
         const auto start_pos = reader.Read<uint>();
         const auto len = reader.Read<uint>();
+
         if (start_pos == 0 && len == 0) {
             break;
         }
@@ -308,10 +313,11 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     // Read complex properties
     const auto complex_props_count = reader.Read<uint>();
     RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
+
     for (const auto* prop : _registrator->_complexProperties) {
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto data_size = reader.Read<uint>();
-        SetRawData(prop, reader.ReadPtr<uint8>(data_size), data_size);
+        SetRawData(prop, {reader.ReadPtr<uint8>(data_size), data_size});
     }
 
     reader.VerifyEnd();
@@ -377,6 +383,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
     const auto private_size = static_cast<uint>(_registrator->_privatePodDataSpace.size());
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
+
     if (all_data_sizes[0] != 0) {
         std::memcpy(_podData.data(), all_data[0], all_data_sizes[0]);
     }
@@ -394,7 +401,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
             RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
             const auto data_size = all_data_sizes[2 + i];
             const auto* data = all_data[2 + i];
-            SetRawData(prop.get(), data, data_size);
+            SetRawData(prop.get(), {data, data_size});
         }
     }
 }
@@ -426,7 +433,7 @@ auto Properties::ApplyFromText(const map<string, string>& key_values) -> bool
 
         // Find property
         bool is_component;
-        const auto* prop = _registrator->Find(key, &is_component);
+        const auto* prop = _registrator->FindProperty(key, &is_component);
 
         if (prop == nullptr) {
             if (is_component) {
@@ -453,6 +460,7 @@ auto Properties::ApplyFromText(const map<string, string>& key_values) -> bool
 
         // Parse
         if (!ApplyPropertyFromText(prop, value)) {
+            WriteLog("Error parsing property {}", key);
             is_error = true;
         }
     }
@@ -537,28 +545,38 @@ auto Properties::ApplyPropertyFromText(const Property* prop, string_view text) -
     RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER || prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
 
     const auto is_dict = prop->IsDict();
-    const auto is_array = prop->IsArray() || prop->IsDictOfArray();
+    const auto is_array = prop->IsArray() || prop->IsDictOfArray() || prop->IsBaseTypeStruct();
 
-    int value_type;
+    AnyData::ValueType value_type;
 
     if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum()) {
-        value_type = AnyData::STRING_VALUE;
+        value_type = AnyData::ValueType::String;
     }
     else if (prop->IsBaseTypeInt()) {
-        value_type = AnyData::INT64_VALUE;
+        value_type = AnyData::ValueType::Int64;
     }
     else if (prop->IsBaseTypeBool()) {
-        value_type = AnyData::BOOL_VALUE;
+        value_type = AnyData::ValueType::Bool;
     }
     else if (prop->IsBaseTypeFloat()) {
-        value_type = AnyData::DOUBLE_VALUE;
+        value_type = AnyData::ValueType::Double;
+    }
+    else if (prop->IsBaseTypeStruct()) {
+        value_type = AnyData::ValueType::String;
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
-    const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
-    return PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_hashResolver, _registrator->_nameResolver);
+    try {
+        const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
+        PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_hashResolver, _registrator->_nameResolver);
+        return true;
+    }
+    catch (const std::exception& ex) {
+        UNUSED_VARIABLE(ex);
+        return false;
+    }
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -627,7 +645,7 @@ auto Properties::GetRawData(const Property* prop) noexcept -> span<uint8>
     }
 }
 
-auto Properties::GetRawDataSize(const Property* prop) const noexcept -> uint
+auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -644,7 +662,7 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> uint
     }
 }
 
-void Properties::SetRawData(const Property* prop, const uint8* data, uint data_size)
+void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data)
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -652,14 +670,14 @@ void Properties::SetRawData(const Property* prop, const uint8* data, uint data_s
 
     if (prop->IsPlainData()) {
         RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        RUNTIME_ASSERT(prop->GetBaseSize() == data_size);
-        std::memcpy(_podData.data() + prop->_podDataOffset, data, data_size);
+        RUNTIME_ASSERT(prop->GetBaseSize() == raw_data.size());
+        std::memcpy(_podData.data() + prop->_podDataOffset, raw_data.data(), raw_data.size());
     }
     else {
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         auto& complex_data = _complexData[prop->_complexDataIndex];
-        complex_data.resize(data_size); // Todo: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
-        std::memcpy(complex_data.data(), data, data_size);
+        complex_data.resize(raw_data.size()); // Todo: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
+        std::memcpy(complex_data.data(), raw_data.data(), raw_data.size());
     }
 }
 
@@ -672,6 +690,7 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
     if (prop->IsVirtual()) {
         RUNTIME_ASSERT(_entity);
         RUNTIME_ASSERT(!prop->_setters.empty());
+
         for (const auto& setter : prop->_setters) {
             setter(_entity, prop, prop_data);
         }
@@ -683,7 +702,7 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
             }
         }
 
-        SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
+        SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
 
         if (_entity != nullptr) {
             for (const auto& setter : prop->_postSetters) {
@@ -883,7 +902,7 @@ auto Properties::GetValueAsInt(int property_index) const -> int
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -902,7 +921,7 @@ auto Properties::GetValueAsAny(int property_index) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -921,7 +940,7 @@ void Properties::SetValueAsInt(int property_index, int value)
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -940,7 +959,7 @@ void Properties::SetValueAsAny(int property_index, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -959,7 +978,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -1033,7 +1052,7 @@ void Properties::SetValueAsAnyProps(int property_index, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop = _registrator->GetByIndex(property_index);
+    const auto* prop = _registrator->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
@@ -1160,7 +1179,7 @@ void PropertyRegistrator::RegisterComponent(string_view name)
     _registeredComponents.insert(name_hash);
 }
 
-auto PropertyRegistrator::GetByIndex(int property_index) const noexcept -> const Property*
+auto PropertyRegistrator::GetPropertyByIndex(int property_index) const noexcept -> const Property*
 {
     STACK_TRACE_ENTRY();
 
@@ -1171,7 +1190,7 @@ auto PropertyRegistrator::GetByIndex(int property_index) const noexcept -> const
     return nullptr;
 }
 
-auto PropertyRegistrator::Find(string_view property_name, bool* is_component) const -> const Property*
+auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_component) const -> const Property*
 {
     STACK_TRACE_ENTRY();
 
@@ -1216,27 +1235,6 @@ auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const no
     }
 
     return _registeredComponents.find(migrated_component_name) != _registeredComponents.end();
-}
-
-auto PropertyRegistrator::GetWholeDataSize() const noexcept -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return _wholePodDataSize;
-}
-
-auto PropertyRegistrator::GetPropertyGroups() const noexcept -> const map<string, vector<const Property*>>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _propertyGroups;
-}
-
-auto PropertyRegistrator::GetComponents() const noexcept -> const unordered_set<hstring>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _registeredComponents;
 }
 
 void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
@@ -1366,6 +1364,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
         else if (flags[i] == "ScriptFuncType") {
             check_next_param();
+
             if (!prop->IsBaseTypeHash()) {
                 throw PropertyRegistrationException("Expected hstring for ScriptFunc flag", prop->_propName);
             }
@@ -1375,6 +1374,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
         else if (flags[i] == "Max") {
             check_next_param();
+
             if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
                 throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
             }
@@ -1391,6 +1391,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
         else if (flags[i] == "Min") {
             check_next_param();
+
             if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
                 throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
             }
@@ -1445,18 +1446,18 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     }
 
     // PlainData property data offset
-    const auto prev_public_space_size = _publicPodDataSpace.size();
-    const auto prev_protected_space_size = _protectedPodDataSpace.size();
+    const size_t prev_public_space_size = _publicPodDataSpace.size();
+    const size_t prev_protected_space_size = _protectedPodDataSpace.size();
 
     auto pod_data_base_offset = Property::INVALID_DATA_MARKER;
 
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
-        const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
-        const auto is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
+        const bool is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
+        const bool is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
         auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
 
-        const auto space_size = static_cast<uint>(space.size());
-        uint space_pos = 0;
+        const size_t space_size = space.size();
+        size_t space_pos = 0;
 
         while (space_pos + prop->GetBaseSize() <= space_size) {
             auto fail = false;

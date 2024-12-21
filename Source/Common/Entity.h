@@ -49,9 +49,9 @@
     static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
     inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
-        return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); \
+        return _propsRef.GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
-    inline prop_type Get##prop() const noexcept(noexcept(std::declval<Properties>().GetValueFast<prop_type>(GetProperty##prop()))) \
+    inline auto Get##prop() const noexcept(noexcept(std::declval<Properties>().GetValueFast<prop_type>(GetProperty##prop()))) \
     { \
         return _propsRef.GetValueFast<prop_type>(GetProperty##prop()); \
     } \
@@ -177,7 +177,7 @@ enum class CornerType : uint8
     EastWest = 5,
 };
 
-///@ ExportValueType mpos mpos HardStrong Layout = uint16-uint16
+///@ ExportValueType mpos mpos HardStrong Layout = uint16-x+uint16-y
 struct mpos
 {
     constexpr mpos() noexcept = default;
@@ -207,7 +207,7 @@ struct std::hash<mpos>
     auto operator()(const mpos& v) const noexcept -> size_t { return hash_combine(std::hash<uint16> {}(v.x), std::hash<uint16> {}(v.y)); }
 };
 
-///@ ExportValueType msize msize HardStrong Layout = uint16-uint16
+///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
 struct msize
 {
     [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }

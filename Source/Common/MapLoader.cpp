@@ -72,9 +72,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             return ident_t {new_id};
         }
 
-        if (id < last_lowest_id) {
-            last_lowest_id = id;
-        }
+        last_lowest_id = std::min(id, last_lowest_id);
 
         return ident_t {id};
     };

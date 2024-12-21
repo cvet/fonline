@@ -66,7 +66,7 @@ public:
     ~PropertyRawData() = default;
 
     [[nodiscard]] auto GetPtr() noexcept -> void*;
-    [[nodiscard]] auto GetSize() const noexcept -> uint { return static_cast<uint>(_dataSize); }
+    [[nodiscard]] auto GetSize() const noexcept -> size_t { return _dataSize; }
 
     template<typename T>
     [[nodiscard]] auto GetPtrAs() noexcept -> T*
@@ -112,7 +112,7 @@ class Property final
     friend class Properties;
 
 public:
-    static constexpr uint INVALID_DATA_MARKER = static_cast<uint>(-1);
+    static constexpr size_t INVALID_DATA_MARKER = static_cast<size_t>(-1);
 
     enum class AccessType
     {
@@ -153,8 +153,12 @@ public:
     [[nodiscard]] auto GetAccess() const noexcept -> AccessType { return _accessType; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
+    [[nodiscard]] auto GetBaseTypeInfo() const noexcept -> const BaseTypeInfo& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> const string& { return _baseType.TypeName; }
-    [[nodiscard]] auto GetBaseSize() const noexcept -> uint { return _baseType.Size; }
+    [[nodiscard]] auto GetBaseSize() const noexcept -> size_t { return _baseType.Size; }
+    [[nodiscard]] auto IsBaseTypeStruct() const noexcept -> bool { return _baseType.IsStruct; }
+    [[nodiscard]] auto GetBaseTypeLayout() const noexcept { return _baseType.StructLayout; }
+    [[nodiscard]] auto IsBaseTypePrimitive() const noexcept -> bool { return _baseType.IsPrimitive; }
     [[nodiscard]] auto IsBaseTypeInt() const noexcept -> bool { return _baseType.IsInt; }
     [[nodiscard]] auto IsBaseTypeSignedInt() const noexcept -> bool { return _baseType.IsSignedInt; }
     [[nodiscard]] auto IsBaseTypeInt8() const noexcept -> bool { return _baseType.IsInt8; }
@@ -183,7 +187,8 @@ public:
     [[nodiscard]] auto IsDictKeyHash() const noexcept -> bool { return _isDictKeyHash; }
     [[nodiscard]] auto IsDictKeyEnum() const noexcept -> bool { return _isDictKeyEnum; }
     [[nodiscard]] auto IsDictKeyString() const noexcept -> bool { return _isDictKeyString; }
-    [[nodiscard]] auto GetDictKeySize() const noexcept -> uint { return _dictKeyType.Size; }
+    [[nodiscard]] auto GetDictKeyTypeInfo() const noexcept -> const BaseTypeInfo& { return _dictKeyType; }
+    [[nodiscard]] auto GetDictKeySize() const noexcept -> size_t { return _dictKeyType.Size; }
     [[nodiscard]] auto GetDictKeyTypeName() const noexcept -> const string& { return _dictKeyType.TypeName; }
     [[nodiscard]] auto GetFullTypeName() const noexcept -> const string& { return _asFullTypeName; }
 
@@ -251,8 +256,8 @@ private:
     bool _isHistorical {};
     bool _isNullGetterForProto {};
     uint16 _regIndex {};
-    uint _podDataOffset {INVALID_DATA_MARKER};
-    uint _complexDataIndex {INVALID_DATA_MARKER};
+    size_t _podDataOffset {INVALID_DATA_MARKER};
+    size_t _complexDataIndex {INVALID_DATA_MARKER};
 };
 
 class Properties final
@@ -273,7 +278,7 @@ public:
     [[nodiscard]] auto GetEntity() noexcept -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
     [[nodiscard]] auto GetRawData(const Property* prop) noexcept -> span<uint8>;
-    [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> uint;
+    [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
@@ -291,7 +296,7 @@ public:
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
-    void SetRawData(const Property* prop, const uint8* data, uint data_size);
+    void SetRawData(const Property* prop, const_span<uint8> raw_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetPlainDataValueAsAny(const Property* prop, const any_t& value);
@@ -494,17 +499,17 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
-    [[nodiscard]] auto GetValueFast(const Property* prop) const -> T
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view
     {
         NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsString());
-        RUNTIME_ASSERT(!prop->IsVirtual());
+        STRONG_ASSERT(!prop->IsDisabled());
+        STRONG_ASSERT(prop->IsString());
+        STRONG_ASSERT(!prop->IsVirtual());
 
-        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
+        const auto result = !complex_data.empty() ? string_view(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string_view();
         return result;
     }
 
@@ -701,10 +706,10 @@ public:
                     setter(_entity, prop, prop_data);
                 }
 
-                SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
+                SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
             }
             else {
-                SetRawData(prop, reinterpret_cast<const uint8*>(new_value.c_str()), static_cast<uint>(new_value.length()));
+                SetRawData(prop, {reinterpret_cast<const uint8*>(new_value.c_str()), new_value.length()});
             }
 
             if (_entity != nullptr) {
@@ -789,7 +794,7 @@ public:
                 }
             }
 
-            SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
+            SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
 
             if (_entity != nullptr) {
                 for (const auto& setter : prop->_postSetters) {
@@ -833,15 +838,15 @@ public:
 
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
-    [[nodiscard]] auto GetCount() const noexcept -> size_t { return _registeredProperties.size(); }
-    [[nodiscard]] auto Find(string_view property_name, bool* is_component = nullptr) const -> const Property*;
-    [[nodiscard]] auto GetByIndex(int property_index) const noexcept -> const Property*;
-    [[nodiscard]] auto GetByIndexFast(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
+    [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
+    [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
+    [[nodiscard]] auto GetPropertyByIndex(int property_index) const noexcept -> const Property*;
+    [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
-    [[nodiscard]] auto GetWholeDataSize() const noexcept -> uint;
+    [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetProperties() const noexcept -> const vector<const Property*>& { return _constRegisteredProperties; }
-    [[nodiscard]] auto GetPropertyGroups() const noexcept -> const map<string, vector<const Property*>>&;
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>&;
+    [[nodiscard]] auto GetPropertyGroups() const noexcept -> const map<string, vector<const Property*>>& { return _propertyGroups; }
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _registeredComponents; }
     [[nodiscard]] auto GetHashResolver() const noexcept -> const HashResolver& { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const noexcept -> const NameResolver& { return _nameResolver; }
 
@@ -865,7 +870,7 @@ private:
     unordered_map<string_view, Property::AccessType> _accessMap {};
 
     // PlainData info
-    uint _wholePodDataSize {};
+    size_t _wholePodDataSize {};
     vector<bool> _publicPodDataSpace {};
     vector<bool> _protectedPodDataSpace {};
     vector<bool> _privatePodDataSpace {};

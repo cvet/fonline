@@ -86,11 +86,11 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastControlledCritterId);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, string, Password);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint16>, ConnectionPort);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, string, Password);
 };
 
 class ItemProperties : public EntityProperties

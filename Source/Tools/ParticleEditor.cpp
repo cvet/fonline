@@ -472,7 +472,7 @@ void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>
     CHECK_AND_DRAW(SPK::FO::SparkQuadRenderer);
 #undef CHECK_AND_DRAW
 
-    throw UnreachablePlaceException("Unknown type");
+    UNREACHABLE_PLACE();
 }
 
 // Core

@@ -64,18 +64,18 @@ public:
     virtual ~DataBaseImpl() = default;
 
     [[nodiscard]] auto GetCommitJobsCount() const -> size_t;
-    [[nodiscard]] virtual auto GetAllIds(hstring collection_name) -> vector<ident_t> = 0;
-    [[nodiscard]] auto Get(hstring collection_name, ident_t id) -> AnyData::Document;
+    [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> = 0;
+    [[nodiscard]] auto GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document;
 
     void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
     void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges();
     void ClearChanges() noexcept;
-    void WaitCommitThread();
+    void WaitCommitThread() const;
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document = 0;
+    [[nodiscard]] virtual auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document = 0;
     virtual void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
     virtual void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, ident_t id) = 0;
@@ -84,6 +84,13 @@ protected:
     ServerSettings& _settings;
 
 private:
+    struct CommitJobData
+    {
+        DataBase::Collections RecordChanges {};
+        DataBase::RecordsState NewRecords {};
+        DataBase::RecordsState DeletedRecords {};
+    };
+
     DataBase::Collections _recordChanges {};
     DataBase::RecordsState _newRecords {};
     DataBase::RecordsState _deletedRecords {};
@@ -119,21 +126,21 @@ auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
 {
     STACK_TRACE_ENTRY();
 
-    return _impl->GetAllIds(collection_name);
+    return _impl->GetAllRecordIds(collection_name);
 }
 
 auto DataBase::Get(hstring collection_name, ident_t id) const -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
-    return _impl->Get(collection_name, id);
+    return _impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::Valid(hstring collection_name, ident_t id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return !_impl->Get(collection_name, id).empty();
+    return !_impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
@@ -189,143 +196,56 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
 {
     STACK_TRACE_ENTRY();
 
-    const auto value_index = value.index();
-    if (value_index == AnyData::INT64_VALUE) {
-        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::INT64_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_int64", key, std::get<AnyData::INT64_VALUE>(value));
+    if (value.Type() == AnyData::ValueType::Int64) {
+        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), value.AsInt64())) {
+            throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
-    else if (value_index == AnyData::DOUBLE_VALUE) {
-        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::DOUBLE_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::DOUBLE_VALUE>(value));
+    else if (value.Type() == AnyData::ValueType::Double) {
+        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), value.AsDouble())) {
+            throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
-    else if (value_index == AnyData::BOOL_VALUE) {
-        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_bool", key, std::get<AnyData::BOOL_VALUE>(value));
+    else if (value.Type() == AnyData::ValueType::Bool) {
+        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), value.AsBool())) {
+            throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
-    else if (value_index == AnyData::STRING_VALUE) {
-        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
-            throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<AnyData::STRING_VALUE>(value));
+    else if (value.Type() == AnyData::ValueType::String) {
+        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), value.AsString().c_str(), static_cast<int>(value.AsString().length()))) {
+            throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
-    else if (value_index == AnyData::ARRAY_VALUE) {
+    else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
+
         if (!bson_append_array_begin(bson, key.data(), static_cast<int>(key.length()), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
-        const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
-        auto arr_key_index = 0;
-        for (const auto& arr_value : arr) {
-            string arr_key = strex("{}", arr_key_index);
-            arr_key_index++;
+        const auto& arr = value.AsArray();
+        size_t arr_index = 0;
 
-            const auto arr_value_index = arr_value.index();
-            if (arr_value_index == AnyData::INT64_VALUE) {
-                if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
-                }
-            }
-            else if (arr_value_index == AnyData::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::DOUBLE_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<AnyData::DOUBLE_VALUE>(arr_value));
-                }
-            }
-            else if (arr_value_index == AnyData::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::BOOL_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<AnyData::BOOL_VALUE>(arr_value));
-                }
-            }
-            else if (arr_value_index == AnyData::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(arr_value).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<AnyData::STRING_VALUE>(arr_value));
-                }
-            }
-            else {
-                throw DataBaseException("ValueToBson Invalid type");
-            }
+        for (const auto& arr_entry : arr) {
+            string arr_key = strex("{}", arr_index++);
+            ValueToBson(arr_key, arr_entry, &bson_arr);
         }
 
         if (!bson_append_array_end(bson, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_end");
         }
     }
-    else if (value_index == AnyData::DICT_VALUE) {
+    else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
+
         if (!bson_append_document_begin(bson, key.data(), static_cast<int>(key.length()), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
-        const auto& dict = std::get<AnyData::DICT_VALUE>(value);
+        const auto& dict = value.AsDict();
+
         for (auto&& [dict_key, dict_value] : dict) {
-            const auto dict_value_index = dict_value.index();
-            if (dict_value_index == AnyData::INT64_VALUE) {
-                if (!bson_append_int64(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::INT64_VALUE>(dict_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", dict_key, std::get<AnyData::INT64_VALUE>(dict_value));
-                }
-            }
-            else if (dict_value_index == AnyData::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::DOUBLE_VALUE>(dict_value))) {
-                    throw DataBaseException("ValueToBson bson_append_double", dict_key, std::get<AnyData::DOUBLE_VALUE>(dict_value));
-                }
-            }
-            else if (dict_value_index == AnyData::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::BOOL_VALUE>(dict_value))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", dict_key, std::get<AnyData::BOOL_VALUE>(dict_value));
-                }
-            }
-            else if (dict_value_index == AnyData::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::STRING_VALUE>(dict_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(dict_value).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", dict_key, std::get<AnyData::STRING_VALUE>(dict_value));
-                }
-            }
-            else if (dict_value_index == AnyData::ARRAY_VALUE) {
-                bson_t bson_arr;
-                if (!bson_append_array_begin(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), &bson_arr)) {
-                    throw DataBaseException("ValueToBson bson_append_array_begin", dict_key);
-                }
-
-                const auto& arr = std::get<AnyData::ARRAY_VALUE>(dict_value);
-                auto arr_key_index = 0;
-                for (const auto& arr_value : arr) {
-                    string arr_key = strex("{}", arr_key_index);
-                    arr_key_index++;
-
-                    const auto arr_value_index = arr_value.index();
-                    if (arr_value_index == AnyData::INT64_VALUE) {
-                        if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
-                        }
-                    }
-                    else if (arr_value_index == AnyData::DOUBLE_VALUE) {
-                        if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::DOUBLE_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<AnyData::DOUBLE_VALUE>(arr_value));
-                        }
-                    }
-                    else if (arr_value_index == AnyData::BOOL_VALUE) {
-                        if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::BOOL_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<AnyData::BOOL_VALUE>(arr_value));
-                        }
-                    }
-                    else if (arr_value_index == AnyData::STRING_VALUE) {
-                        if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(arr_value).length()))) {
-                            throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<AnyData::STRING_VALUE>(arr_value));
-                        }
-                    }
-                    else {
-                        throw DataBaseException("ValueToBson Invalid type");
-                    }
-                }
-
-                if (!bson_append_array_end(&bson_doc, &bson_arr)) {
-                    throw DataBaseException("ValueToBson bson_append_array_end");
-                }
-            }
-            else {
-                throw DataBaseException("ValueToBson Invalid type");
-            }
+            ValueToBson(dict_key, dict_value, &bson_doc);
         }
 
         if (!bson_append_document_end(bson, &bson_doc)) {
@@ -333,7 +253,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         }
     }
     else {
-        throw DataBaseException("ValueToBson Invalid type");
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -341,8 +261,8 @@ static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& [key, value] : doc) {
-        ValueToBson(key, value, bson);
+    for (auto&& [doc_key, doc_value] : doc) {
+        ValueToBson(doc_key, doc_value, bson);
     }
 }
 
@@ -369,100 +289,39 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
     }
     else if (value->value_type == BSON_TYPE_ARRAY) {
         bson_iter_t arr_iter;
+
         if (!bson_iter_recurse(iter, &arr_iter)) {
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
         AnyData::Array arr;
+
         while (bson_iter_next(&arr_iter)) {
-            const auto* arr_value = bson_iter_value(&arr_iter);
-            if (arr_value->value_type == BSON_TYPE_INT32) {
-                arr.emplace_back(static_cast<int64>(arr_value->value.v_int32));
-            }
-            else if (arr_value->value_type == BSON_TYPE_INT64) {
-                arr.emplace_back(arr_value->value.v_int64);
-            }
-            else if (arr_value->value_type == BSON_TYPE_DOUBLE) {
-                arr.emplace_back(arr_value->value.v_double);
-            }
-            else if (arr_value->value_type == BSON_TYPE_BOOL) {
-                arr.emplace_back(arr_value->value.v_bool);
-            }
-            else if (arr_value->value_type == BSON_TYPE_UTF8) {
-                arr.emplace_back(string(arr_value->value.v_utf8.str, arr_value->value.v_utf8.len));
-            }
-            else {
-                throw DataBaseException("BsonToValue Invalid type");
-            }
+            auto&& arr_entry = BsonToValue(&arr_iter);
+            arr.EmplaceBack(std::move(arr_entry));
         }
 
         return std::move(arr);
     }
     else if (value->value_type == BSON_TYPE_DOCUMENT) {
         bson_iter_t doc_iter;
+
         if (!bson_iter_recurse(iter, &doc_iter)) {
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
         AnyData::Dict dict;
+
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
-            const auto* dict_value = bson_iter_value(&doc_iter);
-            if (dict_value->value_type == BSON_TYPE_INT32) {
-                dict.emplace(string(key), static_cast<int64>(dict_value->value.v_int32));
-            }
-            else if (dict_value->value_type == BSON_TYPE_INT64) {
-                dict.emplace(string(key), dict_value->value.v_int64);
-            }
-            else if (dict_value->value_type == BSON_TYPE_DOUBLE) {
-                dict.emplace(string(key), dict_value->value.v_double);
-            }
-            else if (dict_value->value_type == BSON_TYPE_BOOL) {
-                dict.emplace(string(key), dict_value->value.v_bool);
-            }
-            else if (dict_value->value_type == BSON_TYPE_UTF8) {
-                dict.emplace(string(key), string(dict_value->value.v_utf8.str, dict_value->value.v_utf8.len));
-            }
-            else if (dict_value->value_type == BSON_TYPE_ARRAY) {
-                bson_iter_t doc_arr_iter;
-                if (!bson_iter_recurse(&doc_iter, &doc_arr_iter)) {
-                    throw DataBaseException("BsonToValue bson_iter_recurse");
-                }
-
-                AnyData::Array dict_array;
-                while (bson_iter_next(&doc_arr_iter)) {
-                    const auto* doc_arr_value = bson_iter_value(&doc_arr_iter);
-                    if (doc_arr_value->value_type == BSON_TYPE_INT32) {
-                        dict_array.emplace_back(static_cast<int64>(doc_arr_value->value.v_int32));
-                    }
-                    else if (doc_arr_value->value_type == BSON_TYPE_INT64) {
-                        dict_array.emplace_back(doc_arr_value->value.v_int64);
-                    }
-                    else if (doc_arr_value->value_type == BSON_TYPE_DOUBLE) {
-                        dict_array.emplace_back(doc_arr_value->value.v_double);
-                    }
-                    else if (doc_arr_value->value_type == BSON_TYPE_BOOL) {
-                        dict_array.emplace_back(doc_arr_value->value.v_bool);
-                    }
-                    else if (doc_arr_value->value_type == BSON_TYPE_UTF8) {
-                        dict_array.emplace_back(string(doc_arr_value->value.v_utf8.str, doc_arr_value->value.v_utf8.len));
-                    }
-                    else {
-                        throw DataBaseException("BsonToValue Invalid type");
-                    }
-                }
-
-                dict.emplace(string(key), dict_array);
-            }
-            else {
-                throw DataBaseException("BsonToValue Invalid type");
-            }
+            auto&& dict_value = BsonToValue(&doc_iter);
+            dict.Emplace(string(key), std::move(dict_value));
         }
 
         return std::move(dict);
     }
     else {
-        throw DataBaseException("BsonToValue Invalid type");
+        throw DataBaseException("BsonToValue Invalid type", value->value_type);
     }
 }
 
@@ -471,6 +330,7 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
     STACK_TRACE_ENTRY();
 
     bson_iter_t iter;
+
     if (!bson_iter_init(&iter, bson)) {
         throw DataBaseException("BsonToDocument bson_iter_init");
     }
@@ -482,8 +342,8 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
             continue;
         }
 
-        auto value = BsonToValue(&iter);
-        doc.emplace(string(key), std::move(value));
+        auto&& value = BsonToValue(&iter);
+        doc.Emplace(string(key), std::move(value));
     }
 }
 
@@ -499,25 +359,27 @@ auto DataBaseImpl::GetCommitJobsCount() const -> size_t
     return _commitThread.GetJobsCount();
 }
 
-auto DataBaseImpl::Get(hstring collection_name, ident_t id) -> AnyData::Document
+auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
-    if (_deletedRecords[collection_name].count(id) != 0) {
+    if (_deletedRecords.count(collection_name) != 0 && _deletedRecords.at(collection_name).count(id) != 0) {
         return {};
     }
 
-    if (_newRecords[collection_name].count(id) != 0) {
-        return _recordChanges[collection_name].at(id);
+    if (_newRecords.count(collection_name) != 0 && _newRecords.at(collection_name).count(id) != 0) {
+        return _recordChanges.at(collection_name).at(id).Copy();
     }
 
     _commitThread.Wait();
 
     auto doc = GetRecord(collection_name, id);
 
-    if (_recordChanges[collection_name].count(id) != 0) {
-        for (auto&& [key, value] : _recordChanges[collection_name].at(id)) {
-            doc[key] = value;
+    if (_recordChanges.count(collection_name) != 0 && _recordChanges.at(collection_name).count(id) != 0) {
+        const auto& changes_doc = _recordChanges.at(collection_name).at(id);
+
+        for (auto&& [changes_doc_key, changes_doc_value] : changes_doc) {
+            doc.Assign(changes_doc_key, changes_doc_value.Copy());
         }
     }
 
@@ -534,8 +396,9 @@ void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Do
     _newRecords[collection_name].emplace(id);
 
     auto& record_changes = _recordChanges[collection_name][id];
-    for (auto&& [key, value] : doc) {
-        record_changes[key] = value;
+
+    for (auto&& [doc_key, doc_value] : doc) {
+        record_changes.Assign(doc_key, doc_value.Copy());
     }
 }
 
@@ -545,7 +408,7 @@ void DataBaseImpl::Update(hstring collection_name, ident_t id, string_view key, 
 
     RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
-    _recordChanges[collection_name][id][string(key)] = value;
+    _recordChanges[collection_name][id].Assign(string(key), value.Copy());
 }
 
 void DataBaseImpl::Delete(hstring collection_name, ident_t id)
@@ -590,13 +453,23 @@ void DataBaseImpl::CommitChanges()
         }
     }
 
-    _commitThread.AddJob([this, record_changes = std::move(_recordChanges), new_records = std::move(_newRecords), deleted_records = std::move(_deletedRecords)] {
+    auto&& commit_job_data = std::make_shared<CommitJobData>();
+    commit_job_data->RecordChanges = std::move(_recordChanges);
+    commit_job_data->NewRecords = std::move(_newRecords);
+    commit_job_data->DeletedRecords = std::move(_deletedRecords);
+
+    _recordChanges.clear();
+    _newRecords.clear();
+    _deletedRecords.clear();
+
+    _commitThread.AddJob([this, job_data = std::move(commit_job_data)] {
         STACK_TRACE_ENTRY_NAMED("CommitJob");
 
-        for (auto&& [key, value] : record_changes) {
+        for (auto&& [key, value] : job_data->RecordChanges) {
             for (auto&& [key2, value2] : value) {
-                const auto it = new_records.find(key);
-                if (it != new_records.end() && it->second.count(key2) != 0) {
+                const auto it = job_data->NewRecords.find(key);
+
+                if (it != job_data->NewRecords.end() && it->second.count(key2) != 0) {
                     InsertRecord(key, key2, value2);
                 }
                 else {
@@ -605,7 +478,7 @@ void DataBaseImpl::CommitChanges()
             }
         }
 
-        for (auto&& [key, value] : deleted_records) {
+        for (auto&& [key, value] : job_data->DeletedRecords) {
             for (const auto& id : value) {
                 DeleteRecord(key, id);
             }
@@ -615,10 +488,6 @@ void DataBaseImpl::CommitChanges()
 
         return std::nullopt;
     });
-
-    _recordChanges.clear();
-    _newRecords.clear();
-    _deletedRecords.clear();
 }
 
 void DataBaseImpl::ClearChanges() noexcept
@@ -630,7 +499,7 @@ void DataBaseImpl::ClearChanges() noexcept
     _deletedRecords.clear();
 }
 
-void DataBaseImpl::WaitCommitThread()
+void DataBaseImpl::WaitCommitThread() const
 {
     STACK_TRACE_ENTRY();
 
@@ -655,7 +524,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
     }
 
-    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -667,6 +536,7 @@ public:
 
             const string id_str = strex(path).extractFileName().eraseFileExtension();
             const auto id = strex(id_str).toUInt();
+
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
             }
@@ -678,7 +548,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -686,9 +556,11 @@ protected:
 
         size_t length;
         char* json;
+
         if (auto f = DiskFileSystem::OpenFile(path, false)) {
             length = f.GetSize();
             json = new char[length];
+
             if (!f.Read(json, length)) {
                 throw DataBaseException("DbJson Can't read file", path);
             }
@@ -699,6 +571,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
+
         if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
@@ -716,7 +589,7 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -730,6 +603,7 @@ protected:
 
         size_t length = 0;
         auto* json = bson_as_canonical_extended_json(&bson, &length);
+
         if (json == nullptr) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
@@ -754,15 +628,17 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
         size_t length;
         char* json;
+
         if (auto f_read = DiskFileSystem::OpenFile(path, false)) {
             length = f_read.GetSize();
             json = new char[length];
+
             if (!f_read.Read(json, length)) {
                 throw DataBaseException("DbJson Can't read file", path);
             }
@@ -773,6 +649,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
+
         if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
@@ -783,6 +660,7 @@ protected:
 
         size_t new_length = 0;
         auto* new_json = bson_as_canonical_extended_json(&bson, &new_length);
+
         if (new_json == nullptr) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
@@ -808,6 +686,7 @@ protected:
         STACK_TRACE_ENTRY();
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
+
         if (!DiskFileSystem::DeleteFile(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
@@ -844,11 +723,13 @@ public:
 
         unqlite* ping_db = nullptr;
         const string ping_db_path = strex("{}/Ping.unqlite", storage_dir);
+
         if (unqlite_open(&ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
 
         constexpr auto ping = 42u;
+
         if (unqlite_kv_store(ping_db, &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
             unqlite_close(ping_db);
             throw DataBaseException("DbUnQLite Can't write to db", ping_db_path);
@@ -869,22 +750,25 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
+
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
         unqlite_kv_cursor* cursor = nullptr;
         const auto kv_cursor_init = unqlite_kv_cursor_init(db, &cursor);
+
         if (kv_cursor_init != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_init);
         }
 
         const auto kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor);
+
         if (kv_cursor_first_entry != UNQLITE_OK && kv_cursor_first_entry != UNQLITE_DONE) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_first_entry", kv_cursor_first_entry);
         }
@@ -892,7 +776,8 @@ public:
         vector<ident_t> ids;
 
         while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
-            auto id = 0u;
+            ident_t id;
+
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
                 [](const void* output, unsigned int output_len, void* user_data) {
@@ -905,13 +790,14 @@ public:
             if (kv_cursor_key_callback != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_key_callback);
             }
-            if (id == 0) {
+            if (id == ident_t {}) {
                 throw DataBaseException("DbUnQLite Id is zero");
             }
 
             ids.emplace_back(id);
 
             const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor);
+
             if (kv_cursor_next_entry != UNQLITE_OK && kv_cursor_next_entry != UNQLITE_DONE) {
                 throw DataBaseException("DbUnQLite kv_cursor_next_entry", kv_cursor_next_entry);
             }
@@ -921,16 +807,18 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
+
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
         AnyData::Document doc;
+
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db, &id, sizeof(id),
             [](const void* output, unsigned int output_len, void* user_data) {
@@ -957,14 +845,16 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto* db = GetCollection(collection_name);
+
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
         }
@@ -974,11 +864,13 @@ protected:
         DocumentToBson(doc, &bson);
 
         const auto* bson_data = bson_get_data(&bson);
+
         if (bson_data == nullptr) {
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
         const auto kv_store = unqlite_kv_store(db, &id, sizeof(id), bson_data, bson.len);
+
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
             throw DataBaseException("DbUnQLite unqlite_kv_store", kv_store);
@@ -991,20 +883,22 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto* db = GetCollection(collection_name);
+
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
         auto actual_doc = GetRecord(collection_name, id);
-        if (actual_doc.empty()) {
+
+        if (actual_doc.Empty()) {
             throw DataBaseException("DbUnQLite Document not found", collection_name, id);
         }
 
-        for (auto&& [key, value] : doc) {
-            actual_doc[key] = value;
+        for (auto&& [doc_key, doc_value] : doc) {
+            actual_doc.Assign(doc_key, doc_value.Copy());
         }
 
         bson_t bson;
@@ -1012,11 +906,13 @@ protected:
         DocumentToBson(actual_doc, &bson);
 
         const auto* bson_data = bson_get_data(&bson);
+
         if (bson_data == nullptr) {
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
         const auto kv_store = unqlite_kv_store(db, &id, sizeof(id), bson_data, bson.len);
+
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
             throw DataBaseException("DbUnQLite unqlite_kv_store", kv_store);
@@ -1030,11 +926,13 @@ protected:
         STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
+
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
         const auto kv_delete = unqlite_kv_delete(db, &id, sizeof(id));
+
         if (kv_delete != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_delete", kv_delete);
         }
@@ -1046,6 +944,7 @@ protected:
 
         for (auto&& [key, value] : _collections) {
             const auto commit = unqlite_commit(value);
+
             if (commit != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_commit", commit);
             }
@@ -1060,9 +959,11 @@ private:
         unqlite* db;
 
         const auto it = _collections.find(collection_name);
+
         if (it == _collections.end()) {
             const string db_path = strex("{}/{}.unqlite", _storageDir, collection_name);
             const auto r = unqlite_open(&db, db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING);
+
             if (r != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
             }
@@ -1100,11 +1001,13 @@ public:
 
         bson_error_t error;
         auto* mongo_uri = mongoc_uri_new_with_error(string(uri).c_str(), &error);
+
         if (mongo_uri == nullptr) {
             throw DataBaseException("DbMongo Failed to parse URI", uri, error.message);
         }
 
         auto* client = mongoc_client_new_from_uri(mongo_uri);
+
         if (client == nullptr) {
             throw DataBaseException("DbMongo Can't create client");
         }
@@ -1113,6 +1016,7 @@ public:
         mongoc_client_set_appname(client, FO_DEV_NAME);
 
         auto* database = mongoc_client_get_database(client, string(db_name).c_str());
+
         if (database == nullptr) {
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
@@ -1120,6 +1024,7 @@ public:
         // Ping
         const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
+
         if (!mongoc_client_command_simple(client, "admin", ping, nullptr, &reply, &error)) {
             throw DataBaseException("DbMongo Can't ping database", error.message);
         }
@@ -1142,11 +1047,12 @@ public:
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
+
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
@@ -1157,6 +1063,7 @@ public:
         auto* opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
 
         auto* cursor = mongoc_collection_find_with_opts(collection, &filter, opts, nullptr);
+
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
@@ -1164,8 +1071,10 @@ public:
         vector<ident_t> ids;
 
         const bson_t* document = nullptr;
+
         while (mongoc_cursor_next(cursor, &document)) {
             bson_iter_t iter;
+
             if (!bson_iter_init(&iter, document)) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
             }
@@ -1181,6 +1090,7 @@ public:
         }
 
         bson_error_t error;
+
         if (mongoc_cursor_error(cursor, &error)) {
             throw DataBaseException("DbMongo mongoc_cursor_error", collection_name, error.message);
         }
@@ -1193,11 +1103,12 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
+
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
@@ -1206,6 +1117,7 @@ protected:
         bson_init(&filter);
 
         static_assert(sizeof(ident_t) == sizeof(uint));
+
         if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
@@ -1218,11 +1130,13 @@ protected:
         }
 
         auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
+
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name, id);
         }
 
         const bson_t* bson = nullptr;
+
         if (!mongoc_cursor_next(cursor, &bson)) {
             mongoc_cursor_destroy(cursor);
             bson_destroy(&filter);
@@ -1243,9 +1157,10 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto* collection = GetCollection(collection_name);
+
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
@@ -1254,6 +1169,7 @@ protected:
         bson_init(&insert);
 
         static_assert(sizeof(ident_t) == sizeof(uint));
+
         if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
@@ -1261,6 +1177,7 @@ protected:
         DocumentToBson(doc, &insert);
 
         bson_error_t error;
+
         if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
         }
@@ -1272,9 +1189,10 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto* collection = GetCollection(collection_name);
+
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
@@ -1283,6 +1201,7 @@ protected:
         bson_init(&selector);
 
         static_assert(sizeof(ident_t) == sizeof(uint));
+
         if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
@@ -1291,6 +1210,7 @@ protected:
         bson_init(&update);
 
         bson_t update_set;
+
         if (!bson_append_document_begin(&update, "$set", 4, &update_set)) {
             throw DataBaseException("DbMongo bson_append_document_begin", collection_name, id);
         }
@@ -1302,6 +1222,7 @@ protected:
         }
 
         bson_error_t error;
+
         if (!mongoc_collection_update(collection, MONGOC_UPDATE_NONE, &selector, &update, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_update", collection_name, id, error.message);
         }
@@ -1315,6 +1236,7 @@ protected:
         STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
+
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
@@ -1323,11 +1245,13 @@ protected:
         bson_init(&selector);
 
         static_assert(sizeof(ident_t) == sizeof(uint));
+
         if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
         bson_error_t error;
+
         if (!mongoc_collection_remove(collection, MONGOC_REMOVE_SINGLE_REMOVE, &selector, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_remove", collection_name, id, error.message);
         }
@@ -1350,8 +1274,10 @@ private:
         mongoc_collection_t* collection;
 
         const auto it = _collections.find(collection_name);
+
         if (it == _collections.end()) {
             collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.as_str().c_str());
+
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't get collection", collection_name);
             }
@@ -1386,11 +1312,15 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
-        const auto& collection = _collections[collection_name];
+        if (_collections.count(collection_name) == 0) {
+            return {};
+        }
+
+        const auto& collection = _collections.at(collection_name);
 
         vector<ident_t> ids;
         ids.reserve(collection.size());
@@ -1403,41 +1333,45 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
-        const auto& collection = _collections[collection_name];
+        if (_collections.count(collection_name) == 0) {
+            return {};
+        }
+
+        const auto& collection = _collections.at(collection_name);
 
         const auto it = collection.find(id);
-        return it != collection.end() ? it->second : AnyData::Document();
+        return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
     void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto& collection = _collections[collection_name];
         RUNTIME_ASSERT(!collection.count(id));
 
-        collection.emplace(id, doc);
+        collection.emplace(id, doc.Copy());
     }
 
     void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.empty());
+        RUNTIME_ASSERT(!doc.Empty());
 
         auto& collection = _collections[collection_name];
 
-        const auto it = collection.find(id);
-        RUNTIME_ASSERT(it != collection.end());
+        const auto it_collection = collection.find(id);
+        RUNTIME_ASSERT(it_collection != collection.end());
 
-        for (auto&& [key, value] : doc) {
-            it->second[key] = value;
+        for (auto&& [doc_key, doc_value] : doc) {
+            it_collection->second.Assign(doc_key, doc_value.Copy());
         }
     }
 

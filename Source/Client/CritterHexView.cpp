@@ -274,7 +274,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
             proto->AddRef();
         }
         else {
-            throw UnreachablePlaceException("Invalid context item");
+            UNREACHABLE_PLACE();
         }
     }
 

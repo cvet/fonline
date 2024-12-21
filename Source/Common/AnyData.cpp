@@ -34,136 +34,173 @@
 #include "AnyData.h"
 #include "StringUtils.h"
 
-static auto CodeString(string_view str, bool strong_protect, bool just_escape = false) -> string;
-static auto DecodeString(string_view str) -> string;
-static auto ReadToken(const char* str, string& result) -> const char*;
+auto AnyData::Value::operator==(const Value& other) const -> bool
+{
+    STACK_TRACE_ENTRY();
 
-auto AnyData::ValueToString(const Value& value) -> string
+    if (Type() != other.Type()) {
+        return false;
+    }
+
+    switch (Type()) {
+    case ValueType::Int64:
+        return AsInt64() == other.AsInt64();
+    case ValueType::Double:
+        return is_float_equal(AsDouble(), other.AsDouble());
+    case ValueType::Bool:
+        return AsBool() == other.AsBool();
+    case ValueType::String:
+        return AsString() == other.AsString();
+    case ValueType::Array:
+        return AsArray() == other.AsArray();
+    case ValueType::Dict:
+        return AsDict() == other.AsDict();
+    }
+
+    UNREACHABLE_PLACE();
+}
+
+auto AnyData::Value::Copy() const -> Value
+{
+    STACK_TRACE_ENTRY();
+
+    switch (Type()) {
+    case ValueType::Int64:
+        return AsInt64();
+    case ValueType::Double:
+        return AsDouble();
+    case ValueType::Bool:
+        return AsBool();
+    case ValueType::String:
+        return AsString();
+    case ValueType::Array:
+        return AsArray().Copy();
+    case ValueType::Dict:
+        return AsDict().Copy();
+    }
+
+    UNREACHABLE_PLACE();
+}
+
+auto AnyData::Array::Copy() const -> Array
+{
+    STACK_TRACE_ENTRY();
+
+    Array arr;
+
+    for (const auto& value : _value) {
+        arr.EmplaceBack(value.Copy());
+    }
+
+    return arr;
+}
+
+auto AnyData::Dict::Copy() const -> Dict
+{
+    STACK_TRACE_ENTRY();
+
+    Dict dict;
+
+    for (const auto& [key, value] : _value) {
+        dict.Emplace(key, value.Copy());
+    }
+
+    return dict;
+}
+
+auto AnyData::Document::Copy() const -> Document
+{
+    STACK_TRACE_ENTRY();
+
+    Document doc;
+
+    for (const auto& [key, value] : *this) {
+        doc.Emplace(key, value.Copy());
+    }
+
+    return doc;
+}
+
+auto AnyData::ValueToCodedString(const Value& value) -> string
 {
     STACK_TRACE_ENTRY();
 
     constexpr auto default_buf_size = 1024;
 
-    switch (value.index()) {
-    case INT64_VALUE:
-        return strex("{}", std::get<INT64_VALUE>(value));
-    case DOUBLE_VALUE:
-        return strex("{}", std::get<DOUBLE_VALUE>(value));
-    case BOOL_VALUE:
-        return std::get<BOOL_VALUE>(value) ? "True" : "False";
-    case STRING_VALUE:
-        return CodeString(std::get<STRING_VALUE>(value), false);
-    case ARRAY_VALUE: {
+    switch (value.Type()) {
+    case ValueType::Int64:
+        return strex("{}", value.AsInt64());
+    case ValueType::Double:
+        return strex("{}", value.AsDouble());
+    case ValueType::Bool:
+        return value.AsBool() ? "True" : "False";
+    case ValueType::String:
+        return CodeString(value.AsString());
+    case ValueType::Array: {
         string arr_str;
         arr_str.reserve(default_buf_size);
-        const auto& arr = std::get<ARRAY_VALUE>(value);
+        const auto& arr = value.AsArray();
+        bool next_iteration = false;
 
-        for (size_t i = 0; i < arr.size(); i++) {
-            if (i > 0) {
+        for (const auto& arr_entry : arr) {
+            if (next_iteration) {
                 arr_str.append(" ");
             }
-
-            const auto& arr_value = arr[i];
-            switch (arr_value.index()) {
-            case INT64_VALUE:
-                arr_str.append(strex("{}", std::get<INT64_VALUE>(arr_value)));
-                break;
-            case DOUBLE_VALUE:
-                arr_str.append(strex("{}", std::get<DOUBLE_VALUE>(arr_value)));
-                break;
-            case BOOL_VALUE:
-                arr_str.append(std::get<BOOL_VALUE>(arr_value) ? "True" : "False");
-                break;
-            case STRING_VALUE:
-                arr_str.append(CodeString(std::get<STRING_VALUE>(arr_value), true));
-                break;
-            default:
-                throw UnreachablePlaceException(LINE_STR);
+            else {
+                next_iteration = true;
             }
+
+            arr_str.append(ValueToCodedString(arr_entry));
         }
 
-        return arr_str;
+        return CodeString(arr_str);
     }
-    case DICT_VALUE: {
+    case ValueType::Dict: {
         string dict_str;
         dict_str.reserve(default_buf_size);
-        const auto& dict = std::get<DICT_VALUE>(value);
+        const auto& dict = value.AsDict();
+        bool next_iteration = false;
 
-        for (auto it = dict.begin(); it != dict.end(); ++it) {
-            const auto& dict_key = it->first;
-            const auto& dict_value = it->second;
-
-            if (it != dict.begin()) {
+        for (auto&& [dict_key, dict_value] : dict) {
+            if (next_iteration) {
                 dict_str.append(" ");
             }
-
-            dict_str.append(CodeString(dict_key, true));
-
-            dict_str.append(" ");
-
-            switch (dict_value.index()) {
-            case INT64_VALUE:
-                dict_str.append(strex("{}", std::get<INT64_VALUE>(dict_value)));
-                break;
-            case DOUBLE_VALUE:
-                dict_str.append(strex("{}", std::get<DOUBLE_VALUE>(dict_value)));
-                break;
-            case BOOL_VALUE:
-                dict_str.append(std::get<BOOL_VALUE>(dict_value) ? "True" : "False");
-                break;
-            case STRING_VALUE:
-                dict_str.append(CodeString(std::get<STRING_VALUE>(dict_value), true));
-                break;
-            case ARRAY_VALUE: {
-                string dict_arr_str;
-                dict_arr_str.reserve(default_buf_size);
-                const auto& dict_arr = std::get<ARRAY_VALUE>(dict_value);
-
-                for (size_t i = 0; i < dict_arr.size(); i++) {
-                    if (i > 0) {
-                        dict_arr_str.append(" ");
-                    }
-
-                    const auto& dict_arr_value = dict_arr[i];
-                    switch (dict_arr_value.index()) {
-                    case INT64_VALUE:
-                        dict_arr_str.append(strex("{}", std::get<INT64_VALUE>(dict_arr_value)));
-                        break;
-                    case DOUBLE_VALUE:
-                        dict_arr_str.append(strex("{}", std::get<DOUBLE_VALUE>(dict_arr_value)));
-                        break;
-                    case BOOL_VALUE:
-                        dict_arr_str.append(std::get<BOOL_VALUE>(dict_arr_value) ? "True" : "False");
-                        break;
-                    case STRING_VALUE:
-                        dict_arr_str.append(CodeString(std::get<STRING_VALUE>(dict_arr_value), true));
-                        break;
-                    default:
-                        throw UnreachablePlaceException(LINE_STR);
-                    }
-                }
-
-                dict_str.append("\"").append(CodeString(dict_arr_str, true, true)).append("\"");
-            } break;
-            default:
-                throw UnreachablePlaceException(LINE_STR);
+            else {
+                next_iteration = true;
             }
+
+            dict_str.append(CodeString(dict_key));
+            dict_str.append(" ");
+            dict_str.append(ValueToCodedString(dict_value));
         }
 
-        return dict_str;
+        return CodeString(dict_str);
     }
-    default:
-        break;
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
-auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int value_type) -> Value
+auto AnyData::ValueToString(const Value& value) -> string
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(value_type == INT64_VALUE || value_type == DOUBLE_VALUE || value_type == BOOL_VALUE || value_type == STRING_VALUE);
+    auto str = ValueToCodedString(value);
+
+    if (str.length() >= 3 && str.front() == '\"' && str.back() == '\"') {
+        if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
+            str = DecodeString(str);
+        }
+    }
+
+    return str;
+}
+
+auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Double || value_type == ValueType::Bool || value_type == ValueType::String);
 
     if (as_dict) {
         Dict dict;
@@ -182,41 +219,41 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
 
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
-                    case INT64_VALUE:
-                        dict_arr.emplace_back(strex("{}", arr_entry).toInt64());
+                    case ValueType::Int64:
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).toInt64());
                         break;
-                    case DOUBLE_VALUE:
-                        dict_arr.emplace_back(strex("{}", arr_entry).toDouble());
+                    case ValueType::Double:
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).toDouble());
                         break;
-                    case BOOL_VALUE:
-                        dict_arr.emplace_back(strex("{}", arr_entry).toBool());
+                    case ValueType::Bool:
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).toBool());
                         break;
-                    case STRING_VALUE:
-                        dict_arr.emplace_back(DecodeString(arr_entry));
+                    case ValueType::String:
+                        dict_arr.EmplaceBack(DecodeString(arr_entry));
                         break;
                     default:
-                        throw UnreachablePlaceException(LINE_STR);
+                        UNREACHABLE_PLACE();
                     }
                 }
 
-                dict.emplace(dict_key_entry, dict_arr);
+                dict.Emplace(dict_key_entry, std::move(dict_arr));
             }
             else {
                 switch (value_type) {
-                case INT64_VALUE:
-                    dict.emplace(dict_key_entry, strex("{}", dict_value_entry).toInt64());
+                case ValueType::Int64:
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toInt64());
                     break;
-                case DOUBLE_VALUE:
-                    dict.emplace(dict_key_entry, strex("{}", dict_value_entry).toDouble());
+                case ValueType::Double:
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toDouble());
                     break;
-                case BOOL_VALUE:
-                    dict.emplace(dict_key_entry, strex("{}", dict_value_entry).toBool());
+                case ValueType::Bool:
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toBool());
                     break;
-                case STRING_VALUE:
-                    dict.emplace(dict_key_entry, DecodeString(dict_value_entry));
+                case ValueType::String:
+                    dict.Emplace(dict_key_entry, DecodeString(dict_value_entry));
                     break;
                 default:
-                    throw UnreachablePlaceException(LINE_STR);
+                    UNREACHABLE_PLACE();
                 }
             }
         }
@@ -231,20 +268,20 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
 
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
-            case INT64_VALUE:
-                arr.emplace_back(strex("{}", arr_entry).toInt64());
+            case ValueType::Int64:
+                arr.EmplaceBack(strex("{}", arr_entry).toInt64());
                 break;
-            case DOUBLE_VALUE:
-                arr.emplace_back(strex("{}", arr_entry).toDouble());
+            case ValueType::Double:
+                arr.EmplaceBack(strex("{}", arr_entry).toDouble());
                 break;
-            case BOOL_VALUE:
-                arr.emplace_back(strex("{}", arr_entry).toBool());
+            case ValueType::Bool:
+                arr.EmplaceBack(strex("{}", arr_entry).toBool());
                 break;
-            case STRING_VALUE:
-                arr.emplace_back(DecodeString(arr_entry));
+            case ValueType::String:
+                arr.EmplaceBack(DecodeString(arr_entry));
                 break;
             default:
-                throw UnreachablePlaceException(LINE_STR);
+                UNREACHABLE_PLACE();
             }
         }
 
@@ -252,45 +289,33 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
     }
     else {
         switch (value_type) {
-        case INT64_VALUE:
+        case ValueType::Int64:
             return strex("{}", str).toInt64();
-        case DOUBLE_VALUE:
+        case ValueType::Double:
             return strex("{}", str).toDouble();
-        case BOOL_VALUE:
+        case ValueType::Bool:
             return strex("{}", str).toBool();
-        case STRING_VALUE:
+        case ValueType::String:
             return DecodeString(str);
         default:
             break;
         }
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
-static auto CodeString(string_view str, bool strong_protect, bool just_escape) -> string
+auto AnyData::CodeString(string_view str) -> string
 {
     STACK_TRACE_ENTRY();
-
-    auto protect = false;
-
-    if (!just_escape) {
-        if (strong_protect && (str.empty() || str.find_first_of(" \t") != string::npos)) {
-            protect = true;
-        }
-        else if (!strong_protect && !str.empty() && (str.find_first_of(" \t") == 0 || str.find_last_of(" \t") == str.length() - 1)) {
-            protect = true;
-        }
-        if (!protect && str.length() >= 2 && str[str.length() - 1] == '\\' && str[str.length() - 2] == ' ') {
-            protect = true;
-        }
-    }
 
     string result;
     result.reserve(str.length() * 2);
 
+    const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
+
     if (protect) {
-        result.append("\"");
+        result.append(1, '\"');
     }
 
     for (size_t i = 0; i < str.length();) {
@@ -305,7 +330,7 @@ static auto CodeString(string_view str, bool strong_protect, bool just_escape) -
             case '\n':
                 result.append("\\n");
                 break;
-            case '"':
+            case '\"':
                 result.append("\\\"");
                 break;
             case '\\':
@@ -324,13 +349,13 @@ static auto CodeString(string_view str, bool strong_protect, bool just_escape) -
     }
 
     if (protect) {
-        result.append("\"");
+        result.append(1, '\"');
     }
 
     return result;
 }
 
-static auto DecodeString(string_view str) -> string
+auto AnyData::DecodeString(string_view str) -> string
 {
     STACK_TRACE_ENTRY();
 
@@ -389,11 +414,11 @@ static auto DecodeString(string_view str) -> string
     return result;
 }
 
-static auto ReadToken(const char* str, string& result) -> const char*
+auto AnyData::ReadToken(const char* str, string& result) -> const char*
 {
     STACK_TRACE_ENTRY();
 
-    if (*str == 0) {
+    if (str[0] == 0) {
         return nullptr;
     }
 

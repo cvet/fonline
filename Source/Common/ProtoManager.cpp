@@ -220,7 +220,7 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
                 }
 
                 bool is_component;
-                const auto* prop = property_registrator->Find(key, &is_component);
+                const auto* prop = property_registrator->FindProperty(key, &is_component);
                 UNUSED_VARIABLE(prop);
 
                 if (!is_component) {

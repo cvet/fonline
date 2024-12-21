@@ -333,7 +333,7 @@ void MapManager::GenerateMapContent(Map* map)
             owner_id = base_item->GetContainerId();
         }
         else {
-            throw UnreachablePlaceException(LINE_STR);
+            UNREACHABLE_PLACE();
         }
 
         if (id_map.count(owner_id) == 0) {
@@ -359,7 +359,7 @@ void MapManager::GenerateMapContent(Map* map)
             item_cont->AddItemToContainer(item, ContainerItemStack::Root);
         }
         else {
-            throw UnreachablePlaceException(LINE_STR);
+            UNREACHABLE_PLACE();
         }
     }
 }

@@ -1212,8 +1212,8 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
     const auto* registrator = props.GetRegistrator();
 
-    for (size_t i = 0; i < registrator->GetCount(); i++) {
-        const auto* prop = registrator->GetByIndexFast(i);
+    for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+        const auto* prop = registrator->GetPropertyByIndexUnsafe(i);
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {

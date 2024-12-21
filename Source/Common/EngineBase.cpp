@@ -101,15 +101,35 @@ void FOEngineBase::RegisterEnumGroup(string_view name, size_t size, unordered_ma
     _enumSizes[string(name)] = size;
 }
 
-void FOEngineBase::RegisterAggregatedType(const string& name, size_t size, vector<BaseTypeInfo>&& layout)
+void FOEngineBase::RegisterStructType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-    RUNTIME_ASSERT(_aggregatedTypes.count(name) == 0);
-    RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo& t) { return sum + t.Size; }));
+    RUNTIME_ASSERT(_structTypes.count(name) == 0);
+    RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
 
-    _aggregatedTypes.emplace(name, tuple {size, std::move(layout)});
+    _structTypes.emplace(name, tuple {size, std::move(layout)});
+}
+
+void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _migrationRules = std::move(migration_rules);
+}
+
+void FOEngineBase::FinalizeDataRegistration()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _registrationFinalized = true;
+
+    GetPropertiesForEdit().AllocData();
 }
 
 auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
@@ -167,31 +187,11 @@ auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hs
     return _entityTypesInfo;
 }
 
-void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_registrationFinalized);
-
-    _migrationRules = std::move(migration_rules);
-}
-
-void FOEngineBase::FinalizeDataRegistration()
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_registrationFinalized);
-
-    _registrationFinalized = true;
-
-    GetPropertiesForEdit().AllocData();
-}
-
 auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 {
     STACK_TRACE_ENTRY();
 
-    static unordered_map<string_view, std::function<void(BaseTypeInfo&)>> base_types = {//
+    static unordered_map<string_view, std::function<void(BaseTypeInfo&)>> builtin_types = {//
         {"int8",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
@@ -286,20 +286,22 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 
     info.TypeName = type_str;
 
-    if (const auto it = base_types.find(type_str); it != base_types.end()) {
+    if (const auto it = builtin_types.find(type_str); it != builtin_types.end()) {
         it->second(info);
     }
     else if (size_t enum_size; GetEnumInfo(info.TypeName, enum_size)) {
         info.IsEnum = true;
         info.Size = static_cast<uint>(enum_size);
     }
-    else if (size_t type_size; GetAggregatedTypeInfo(info.TypeName, type_size, nullptr)) {
-        info.IsAggregatedType = true;
+    else if (size_t type_size; GetStructInfo(info.TypeName, type_size, &info.StructLayout)) {
+        info.IsStruct = true;
         info.Size = static_cast<uint>(type_size);
     }
     else {
         throw GenericException("Invalid base type", type_str);
     }
+
+    info.IsPrimitive = info.IsInt || info.IsFloat || info.IsBool;
 
     return info;
 }
@@ -320,13 +322,13 @@ auto FOEngineBase::GetEnumInfo(const string& enum_name, size_t& size) const -> b
     return true;
 }
 
-auto FOEngineBase::GetAggregatedTypeInfo(const string& type_name, size_t& size, const vector<BaseTypeInfo>** layout) const -> bool
+auto FOEngineBase::GetStructInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _aggregatedTypes.find(type_name);
+    const auto it = _structTypes.find(type_name);
 
-    if (it == _aggregatedTypes.end()) {
+    if (it == _structTypes.end()) {
         return false;
     }
 
@@ -391,6 +393,7 @@ auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool
     STACK_TRACE_ENTRY();
 
     const auto enum_it = _enumsRev.find(enum_name);
+
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
@@ -402,6 +405,7 @@ auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool
     }
 
     const auto value_it = enum_it->second.find(value);
+
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
             WriteLog("Can't resolve value {} for enum {}", value, enum_name);

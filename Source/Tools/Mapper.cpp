@@ -1119,7 +1119,7 @@ void FOMapper::ObjDraw()
         DrawLine("Type", "", "Static Item", true, r);
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     for (const auto* prop : ShowProps) {
@@ -1215,6 +1215,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
+
         if (prop != nullptr) {
             if (entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineValue)) {
                 if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
@@ -1274,7 +1275,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
         vector<int> prop_indices;
         OnInspectorProperties.Fire(entity, prop_indices);
         for (const auto prop_index : prop_indices) {
-            ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetByIndex(prop_index) : nullptr);
+            ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
         }
     }
 
@@ -1490,7 +1491,7 @@ void FOMapper::IntLMouseDown()
                         owner->DestroyInnerItem(InContItem);
                     }
                     else {
-                        throw UnreachablePlaceException(LINE_STR);
+                        UNREACHABLE_PLACE();
                     }
                     InContItem = nullptr;
 
@@ -1989,7 +1990,7 @@ void FOMapper::IntSetMode(int mode)
             SubTabsY = IntBIgnore.Top;
         }
         else {
-            throw UnreachablePlaceException(LINE_STR);
+            UNREACHABLE_PLACE();
         }
 
         SubTabsX += IntX - SubTabsRect.Width() / 2;

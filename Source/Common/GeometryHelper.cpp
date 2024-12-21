@@ -130,7 +130,7 @@ void GeometryHelper::InitializeHexOffsets() const
                     steps = i + 1;
                     break;
                 default:
-                    throw UnreachablePlaceException(LINE_STR);
+                    UNREACHABLE_PLACE();
                 }
 
                 for (auto k = 0; k < steps; k++) {

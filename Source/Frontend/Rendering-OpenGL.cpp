@@ -346,6 +346,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #if !FO_OPENGL_ES
     GLint max_uniform_components;
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
+
     if (max_uniform_components < 1024) {
         WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
@@ -433,6 +434,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
+
         if constexpr (FO_OPENGL_ES) {
             ext = "glsl-es";
         }
@@ -463,6 +465,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             string result = "(no info)";
             int len = 0;
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));
+
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
@@ -470,6 +473,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 result.assign(str, len);
                 delete[] str;
             }
+
             return result;
         };
 
@@ -477,6 +481,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             string result = "(no info)";
             int len = 0;
             GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len));
+
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
@@ -484,6 +489,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 result.assign(str, len);
                 delete[] str;
             }
+
             return result;
         };
 
@@ -491,6 +497,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GLint compiled;
         GL(glCompileShader(vs));
         GL(glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled));
+
         if (compiled == 0) {
             const auto vert_log = get_shader_compile_log(vs);
             GL(glDeleteShader(vs));
@@ -501,6 +508,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Compile fs
         GL(glCompileShader(fs));
         GL(glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled));
+
         if (compiled == 0) {
             const auto frag_log = get_shader_compile_log(fs);
             GL(glDeleteShader(vs));
@@ -517,6 +525,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glLinkProgram(program));
         GLint linked;
         GL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
+
         if (linked == 0) {
             const auto program_log = get_program_compile_log(program);
             const auto vert_log = get_shader_compile_log(vs);
@@ -811,6 +820,7 @@ static void EnableVertAtribs(EffectUsage usage)
         GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))));
         GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
         GL(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))));
+
         for (uint i = 0; i <= 8; i++) {
             GL(glEnableVertexAttribArray(i));
         }
@@ -823,6 +833,7 @@ static void EnableVertAtribs(EffectUsage usage)
     GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Color))));
     GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))));
     GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))));
+
     for (uint i = 0; i <= 3; i++) {
         GL(glEnableVertexAttribArray(i));
     }
@@ -930,25 +941,35 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
     STACK_TRACE_ENTRY();
 
     switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendFuncType::name: \
-        return glname
-        CHECK_ENTRY(Zero, GL_ZERO);
-        CHECK_ENTRY(One, GL_ONE);
-        CHECK_ENTRY(SrcColor, GL_SRC_COLOR);
-        CHECK_ENTRY(InvSrcColor, GL_ONE_MINUS_SRC_COLOR);
-        CHECK_ENTRY(DstColor, GL_DST_COLOR);
-        CHECK_ENTRY(InvDstColor, GL_ONE_MINUS_DST_COLOR);
-        CHECK_ENTRY(SrcAlpha, GL_SRC_ALPHA);
-        CHECK_ENTRY(InvSrcAlpha, GL_ONE_MINUS_SRC_ALPHA);
-        CHECK_ENTRY(DstAlpha, GL_DST_ALPHA);
-        CHECK_ENTRY(InvDstAlpha, GL_ONE_MINUS_DST_ALPHA);
-        CHECK_ENTRY(ConstantColor, GL_CONSTANT_COLOR);
-        CHECK_ENTRY(InvConstantColor, GL_ONE_MINUS_CONSTANT_COLOR);
-        CHECK_ENTRY(SrcAlphaSaturate, GL_SRC_ALPHA_SATURATE);
-#undef CHECK_ENTRY
+    case BlendFuncType::Zero:
+        return 0;
+    case BlendFuncType::One:
+        return 1;
+    case BlendFuncType::SrcColor:
+        return 0x0300;
+    case BlendFuncType::InvSrcColor:
+        return 0x0301;
+    case BlendFuncType::DstColor:
+        return 0x0306;
+    case BlendFuncType::InvDstColor:
+        return 0x0307;
+    case BlendFuncType::SrcAlpha:
+        return 0x0302;
+    case BlendFuncType::InvSrcAlpha:
+        return 0x0303;
+    case BlendFuncType::DstAlpha:
+        return 0x0304;
+    case BlendFuncType::InvDstAlpha:
+        return 0x0305;
+    case BlendFuncType::ConstantColor:
+        return 0x8001;
+    case BlendFuncType::InvConstantColor:
+        return 0x8002;
+    case BlendFuncType::SrcAlphaSaturate:
+        return 0x0308;
     }
-    throw UnreachablePlaceException(LINE_STR);
+
+    UNREACHABLE_PLACE();
 }
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
@@ -956,17 +977,19 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     STACK_TRACE_ENTRY();
 
     switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendEquationType::name: \
-        return glname
-        CHECK_ENTRY(FuncAdd, GL_FUNC_ADD);
-        CHECK_ENTRY(FuncSubtract, GL_FUNC_SUBTRACT);
-        CHECK_ENTRY(FuncReverseSubtract, GL_FUNC_REVERSE_SUBTRACT);
-        CHECK_ENTRY(Max, GL_MAX);
-        CHECK_ENTRY(Min, GL_MIN);
-#undef CHECK_ENTRY
+    case BlendEquationType::FuncAdd:
+        return 0x8006;
+    case BlendEquationType::FuncSubtract:
+        return 0x800A;
+    case BlendEquationType::FuncReverseSubtract:
+        return 0x800B;
+    case BlendEquationType::Max:
+        return 0x8008;
+    case BlendEquationType::Min:
+        return 0x8007;
     }
-    throw UnreachablePlaceException(LINE_STR);
+
+    UNREACHABLE_PLACE();
 }
 
 OpenGL_Effect::~OpenGL_Effect()

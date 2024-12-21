@@ -274,10 +274,12 @@ public:
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
 #endif
 
+#define PASS_AS_PVOID(ptr) const_cast<void*>(static_cast<const void*>(ptr))
+
 #if !COMPILER_MODE
-#define PTR_OR_DUMMY(ptr) (void*)&(ptr)
+#define PTR_OR_DUMMY(ptr) PASS_AS_PVOID(&(ptr))
 #else
-#define PTR_OR_DUMMY(ptr) (void*)&dummy
+#define PTR_OR_DUMMY(ptr) PASS_AS_PVOID(&dummy)
 #endif
 
 #if !COMPILER_MODE
@@ -1062,21 +1064,27 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
         else if (prop->IsBaseTypeEnum()) {
             return sizeof(int);
         }
-        else {
+        else if (prop->IsBaseTypePrimitive()) {
             return prop->GetBaseSize();
+        }
+        else if (prop->IsBaseTypeStruct()) {
+            return prop->GetBaseSize();
+        }
+        else {
+            UNREACHABLE_PLACE();
         }
     }
     else if (prop->IsString()) {
         return sizeof(string);
     }
     else if (prop->IsArray()) {
-        return sizeof(void*);
+        return sizeof(CScriptArray*);
     }
     else if (prop->IsDict()) {
-        return sizeof(void*);
+        return sizeof(CScriptDict*);
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -1099,7 +1107,7 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
         (*static_cast<CScriptDict**>(construct_addr))->Release();
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -1128,13 +1136,20 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             RUNTIME_ASSERT(data_size != 0);
-            RUNTIME_ASSERT(data_size <= 4);
+            RUNTIME_ASSERT(data_size <= sizeof(int));
             std::memset(construct_addr, 0, sizeof(int));
             std::memcpy(construct_addr, data, data_size);
         }
-        else {
+        else if (prop->IsBaseTypePrimitive()) {
             RUNTIME_ASSERT(data_size != 0);
             std::memcpy(construct_addr, data, data_size);
+        }
+        else if (prop->IsBaseTypeStruct()) {
+            RUNTIME_ASSERT(data_size != 0);
+            std::memcpy(construct_addr, data, data_size);
+        }
+        else {
+            UNREACHABLE_PLACE();
         }
     }
     else if (prop->IsString()) {
@@ -1165,14 +1180,12 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeHash()) {
             if (data_size != 0) {
-                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-                const auto arr_size = data_size / prop->GetBaseSize();
+                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
                 for (uint i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
-                    arr->SetValue(i, (void*)&hvalue);
+                    arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
                     data += sizeof(hstring::hash_t);
                 }
@@ -1180,23 +1193,32 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             if (data_size != 0) {
-                const auto arr_size = data_size / prop->GetBaseSize();
+                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                if (prop->GetBaseSize() == 4) {
+                if (prop->GetBaseSize() == sizeof(int)) {
                     std::memcpy(arr->At(0), data, data_size);
                 }
                 else {
                     auto* dest = static_cast<int*>(arr->At(0));
+
                     for (uint i = 0; i < arr_size; i++) {
+                        *(dest + i) = 0;
                         std::memcpy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
                 }
             }
         }
-        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+        else if (prop->IsBaseTypePrimitive()) {
             if (data_size != 0) {
-                const auto arr_size = data_size / prop->GetBaseSize();
+                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                arr->Resize(arr_size);
+                std::memcpy(arr->At(0), data, data_size);
+            }
+        }
+        else if (prop->IsBaseTypeStruct()) {
+            if (data_size != 0) {
+                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
                 for (uint i = 0; i < arr_size; i++) {
@@ -1206,12 +1228,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else {
-            if (data_size != 0) {
-                const auto arr_size = data_size / prop->GetBaseSize();
-                arr->Resize(arr_size);
-
-                std::memcpy(arr->At(0), data, data_size);
-            }
+            UNREACHABLE_PLACE();
         }
 
         *static_cast<CScriptArray**>(construct_addr) = arr;
@@ -1255,13 +1272,11 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
-                            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
                             arr->Resize(arr_size);
 
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
-                                arr->SetValue(i, (void*)&hvalue);
+                                arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
                                 data += sizeof(hstring::hash_t);
                             }
@@ -1281,7 +1296,13 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                             data += arr_size * prop->GetBaseSize();
                         }
-                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                        else if (prop->IsBaseTypePrimitive()) {
+                            arr->Resize(arr_size);
+
+                            std::memcpy(arr->At(0), data, arr_size * prop->GetBaseSize());
+                            data += arr_size * prop->GetBaseSize();
+                        }
+                        else if (prop->IsBaseTypeStruct()) {
                             arr->Resize(arr_size);
 
                             for (uint i = 0; i < arr_size; i++) {
@@ -1290,28 +1311,25 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                         }
                         else {
-                            arr->Resize(arr_size);
-
-                            std::memcpy(arr->At(0), data, arr_size * prop->GetBaseSize());
-                            data += arr_size * prop->GetBaseSize();
+                            UNREACHABLE_PLACE();
                         }
                     }
 
                     if (prop->IsDictKeyString()) {
                         const uint key_len = *reinterpret_cast<const uint*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
-                        dict->Set((void*)&key_str, &arr);
+                        dict->Set(PASS_AS_PVOID(&key_str), &arr);
                     }
                     else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set((void*)&hkey, &arr);
+                        dict->Set(PASS_AS_PVOID(&hkey), &arr);
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeySize());
-                        dict->Set((void*)&ekey, &arr);
+                        dict->Set(PASS_AS_PVOID(&ekey), &arr);
                     }
                     else {
-                        dict->Set((void*)key, &arr);
+                        dict->Set(PASS_AS_PVOID(key), &arr);
                     }
 
                     arr->Release();
@@ -1340,18 +1358,18 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     if (prop->IsDictKeyString()) {
                         const uint key_len = *reinterpret_cast<const uint*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
-                        dict->Set((void*)&key_str, &str);
+                        dict->Set(PASS_AS_PVOID(&key_str), &str);
                     }
                     else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set((void*)&hkey, &str);
+                        dict->Set(PASS_AS_PVOID(&hkey), &str);
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeySize());
-                        dict->Set((void*)&ekey, &str);
+                        dict->Set(PASS_AS_PVOID(&ekey), &str);
                     }
                     else {
-                        dict->Set((void*)key, &str);
+                        dict->Set(PASS_AS_PVOID(key), &str);
                     }
 
                     data += str_size;
@@ -1374,41 +1392,44 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     if (prop->IsDictKeyString()) {
                         const uint key_len = *reinterpret_cast<const uint*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
+
                         if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
-                            dict->Set((void*)&key_str, (void*)&hvalue);
+                            dict->Set(PASS_AS_PVOID(&key_str), PASS_AS_PVOID(&hvalue));
                         }
                         else {
-                            dict->Set((void*)&key_str, (void*)data);
+                            dict->Set(PASS_AS_PVOID(&key_str), PASS_AS_PVOID(data));
                         }
                     }
                     else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
+
                         if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
-                            dict->Set((void*)&hkey, (void*)&hvalue);
+                            dict->Set(PASS_AS_PVOID(&hkey), PASS_AS_PVOID(&hvalue));
                         }
                         else {
-                            dict->Set((void*)&hkey, (void*)data);
+                            dict->Set(PASS_AS_PVOID(&hkey), PASS_AS_PVOID(data));
                         }
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeySize());
+
                         if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
-                            dict->Set((void*)&ekey, (void*)&hvalue);
+                            dict->Set(PASS_AS_PVOID(&ekey), PASS_AS_PVOID(&hvalue));
                         }
                         else {
-                            dict->Set((void*)&ekey, (void*)data);
+                            dict->Set(PASS_AS_PVOID(&ekey), PASS_AS_PVOID(data));
                         }
                     }
                     else {
                         if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
-                            dict->Set((void*)key, (void*)&hvalue);
+                            dict->Set(PASS_AS_PVOID(key), PASS_AS_PVOID(&hvalue));
                         }
                         else {
-                            dict->Set((void*)key, (void*)data);
+                            dict->Set(PASS_AS_PVOID(key), PASS_AS_PVOID(data));
                         }
                     }
 
@@ -1420,7 +1441,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         *static_cast<CScriptDict**>(construct_addr) = dict;
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -1507,7 +1528,10 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         }
                     }
                 }
-                else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                else if (prop->IsBaseTypePrimitive()) {
+                    prop_data.Pass(arr->At(0), data_size);
+                }
+                else if (prop->IsBaseTypeStruct()) {
                     auto* buf = prop_data.Alloc(data_size);
 
                     for (uint i = 0; i < arr_size; i++) {
@@ -1516,13 +1540,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
                 }
                 else {
-                    prop_data.Pass(arr->At(0), data_size);
+                    UNREACHABLE_PLACE();
                 }
             }
         }
     }
     else if (prop->IsDict()) {
         const auto* dict = *static_cast<CScriptDict**>(as_obj);
+
         if (prop->IsDictOfArray()) {
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
@@ -1560,6 +1585,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
+
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
                         const uint key_len = static_cast<uint>(key_str.length());
@@ -1622,15 +1648,18 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 }
                             }
                         }
-                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                        else if (prop->IsBaseTypePrimitive()) {
+                            std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
+                            buf += arr_size * prop->GetBaseSize();
+                        }
+                        else if (prop->IsBaseTypeStruct()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 std::memcpy(buf, arr->At(i), prop->GetBaseSize());
                                 buf += prop->GetBaseSize();
                             }
                         }
                         else {
-                            std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
-                            buf += arr_size * prop->GetBaseSize();
+                            UNREACHABLE_PLACE();
                         }
                     }
                 }
@@ -1664,6 +1693,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
+
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
                         const uint key_len = static_cast<uint>(key_str.length());
@@ -1733,6 +1763,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         std::memcpy(buf, value, value_element_size);
                     }
+
                     buf += value_element_size;
                 }
             }
@@ -1741,7 +1772,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             const auto key_element_size = prop->GetDictKeySize();
             const auto value_element_size = prop->GetBaseSize();
             const auto whole_element_size = key_element_size + value_element_size;
-            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0);
+            const auto data_size = dict != nullptr ? dict->GetSize() * whole_element_size : 0;
 
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
@@ -1761,6 +1792,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         std::memcpy(buf, key, key_element_size);
                     }
+
                     buf += key_element_size;
 
                     if (prop->IsBaseTypeHash()) {
@@ -1770,13 +1802,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         std::memcpy(buf, value, value_element_size);
                     }
+
                     buf += value_element_size;
                 }
             }
         }
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     return prop_data;
@@ -2699,7 +2732,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
@@ -2783,7 +2816,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
 
@@ -2949,7 +2982,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
         throw ScriptException("Property invalid enum");
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
     RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
@@ -2981,7 +3014,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
         throw ScriptException("Property invalid enum");
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
     RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
@@ -3017,7 +3050,7 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
         throw ScriptException("Property invalid enum");
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
     RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
@@ -3049,7 +3082,7 @@ static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
         throw ScriptException("Property invalid enum");
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
     RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
@@ -3163,7 +3196,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     }
 
     if (!prop->IsVirtual()) {
-        props.SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
+        props.SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
 
         if (!post_setters.empty()) {
             for (auto& setter : post_setters) {
@@ -4370,13 +4403,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const hstring& entry_name_hash = *hashed_strings.emplace(game_engine->ToHashedString(entry_name)).first; \
         if constexpr (SERVER_SCRIPTING) { \
             if (entity_has_protos.count(class_name) != 0) { \
-                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
             else { \
-                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
         } \
-        AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, (void*)&entry_name_hash)); \
+        AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
     }
 
     REGISTER_BASE_ENTITY("Entity", Entity);
@@ -4471,50 +4504,50 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             {
                 const auto component_type = strex("{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_abstract) {
                 const auto component_type = strex("Abstract{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_protos) {
                 const auto component_type = strex("Proto{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_statics) {
                 const auto component_type = strex("Static{}{}Component", type_name_str, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
+                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
         }
 
-        for (const auto i : xrange(registrator->GetCount())) {
-            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+        for (const auto i : xrange(registrator->GetPropertiesCount())) {
+            const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 
             if (!prop->IsDisabled()) {
                 const auto decl_get = strex("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
                     if (is_has_abstract) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                     if (is_has_protos) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                     if (is_has_statics) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                 }
             }
 
             if (!prop->IsDisabled() && !prop->IsReadOnly()) {
                 const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
             }
         }
 

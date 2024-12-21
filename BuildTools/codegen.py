@@ -1572,11 +1572,10 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('// Exported types')
     for et in codeGenTags['ExportValueType']:
         name, ntype, rtype, flags, _ = et
-        registerLines.append('engine->RegisterAggregatedType("' + name + '", sizeof(' + ntype + '), {')
-        for t in flags[flags.index('Layout') + 2:]:
-            if t == '-':
-                continue
-            registerLines.append('    {engine->ResolveBaseType("' + t + '")},')
+        registerLines.append('engine->RegisterStructType("' + name + '", sizeof(' + ntype + '), {')
+        for layoutEntry in ''.join(flags[flags.index('Layout') + 2:]).split('+'):
+            type, name = layoutEntry.split('-')
+            registerLines.append('    {"' + name + '", engine->ResolveBaseType("' + type + '")},')
         registerLines.append('});')
         registerLines.append('')
 

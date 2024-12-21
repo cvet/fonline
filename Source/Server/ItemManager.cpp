@@ -120,12 +120,12 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Reset ownership properties
     if (props != nullptr) {
-        item->SetMapId(ident_t {});
+        item->SetMapId({});
         item->SetHex({});
-        item->SetCritterId(ident_t {});
-        item->SetCritterSlot(CritterItemSlot::Inventory);
-        item->SetContainerId(ident_t {});
-        item->SetContainerStack(ContainerItemStack::Root);
+        item->SetCritterId({});
+        item->SetCritterSlot({});
+        item->SetContainerId({});
+        item->SetContainerStack({});
         item->SetInnerItemIds({});
     }
 

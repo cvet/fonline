@@ -207,8 +207,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     // Properties that sending to clients
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-            for (size_t i = 0; i < registrator->GetCount(); i++) {
-                const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+            for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
 
                 switch (prop->GetAccess()) {
                 case Property::AccessType::PublicModifiable:
@@ -236,7 +236,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     // Properties with custom behaviours
     {
         const auto set_callback = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
-            const auto* prop = registrator->GetByIndex(prop_index);
+            const auto* prop = registrator->GetPropertyByIndex(prop_index);
             prop->AddPostSetter(std::move(callback));
         };
 
@@ -711,7 +711,7 @@ void FOClient::Net_OnConnect(bool success)
             // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         }
         else if (reason != INIT_NET_REASON_CUSTOM) {
-            throw UnreachablePlaceException(LINE_STR);
+            UNREACHABLE_PLACE();
         }
 
         RUNTIME_ASSERT(!_curPlayer);
@@ -2239,7 +2239,7 @@ void FOClient::Net_OnProperty(uint data_size)
         entity = GetEntity(entity_id);
         break;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     if (entity == nullptr) {
@@ -2247,7 +2247,7 @@ void FOClient::Net_OnProperty(uint data_size)
         return;
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(property_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(property_index);
 
     if (prop == nullptr) {
         BreakIntoDebugger();

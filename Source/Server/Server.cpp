@@ -201,8 +201,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
             const auto* registrator = entity_info.PropRegistrator;
 
-            for (size_t i = 0; i < registrator->GetCount(); i++) {
-                const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+            for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -237,8 +237,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Properties that sending to clients
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-                for (size_t i = 0; i < registrator->GetCount(); i++) {
-                    const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+                for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
 
                     if (prop->IsDisabled()) {
                         continue;
@@ -282,11 +282,11 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Properties with custom behaviours
         {
             const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
-                const auto* prop = registrator->GetByIndex(prop_index);
+                const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddSetter(std::move(callback));
             };
             const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
-                const auto* prop = registrator->GetByIndex(prop_index);
+                const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddPostSetter(std::move(callback));
             };
 
@@ -411,7 +411,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         try {
             // Globals
             const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
-            if (globals_doc.empty()) {
+
+            if (globals_doc.Empty()) {
                 DbStorage.Insert(GameCollectionName, ident_t {1}, {});
             }
             else {
@@ -437,7 +438,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             // Init world
-            if (globals_doc.empty()) {
+            if (globals_doc.Empty()) {
                 WriteLog("Generate world");
 
                 if (!OnGenerateWorld.Fire()) {
@@ -1566,7 +1567,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
         if (cr != nullptr) {
-            const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
+            const auto* prop = GetPropertyRegistrator("Critter")->FindProperty(property_name);
             if (prop == nullptr) {
                 logcb("Property not found");
                 return;
@@ -2511,11 +2512,17 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.emplace_back(static_cast<int64>(unlogined_player->Connection->GetIp()));
+    reg_ip.EmplaceBack(static_cast<int64>(unlogined_player->Connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.emplace_back(static_cast<int64>(unlogined_player->Connection->GetPort()));
+    reg_port.EmplaceBack(static_cast<int64>(unlogined_player->Connection->GetPort()));
 
-    DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    AnyData::Document player_data;
+    player_data.Emplace("_Name", string(name));
+    player_data.Emplace("Password", string(password));
+    player_data.Emplace("ConnectionIp", std::move(reg_ip));
+    player_data.Emplace("ConnectionPort", std::move(reg_port));
+
+    DbStorage.Insert(PlayersCollectionName, player_id, player_data);
 
     WriteLog("Registered player {} with id {}", name, player_id);
 
@@ -2560,6 +2567,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check for name length
     const auto name_len_utf8 = strex(name).lengthUtf8();
+
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
         unlogined_player->Connection->GracefulDisconnect();
@@ -2569,7 +2577,8 @@ void FOServer::Process_Login(Player* unlogined_player)
     // Check password
     const auto player_id = MakePlayerId(name);
     auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
-    if (player_doc.count("Password") == 0 || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
+
+    if (!player_doc.Contains("Password") || player_doc["Password"].Type() != AnyData::ValueType::String || player_doc["Password"].AsString().length() != password.length() || player_doc["Password"].AsString() != password) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
@@ -2581,6 +2590,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         auto disallow_msg_num = TextPackName::None;
         TextPackKey disallow_str_num = 0;
         string lexems;
+
         if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num != TextPackName::None && disallow_str_num != 0) {
                 unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, disallow_msg_num, disallow_str_num, lexems);
@@ -2588,6 +2598,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             else {
                 unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
             }
+
             unlogined_player->Connection->GracefulDisconnect();
             return;
         }
@@ -2985,33 +2996,33 @@ void FOServer::Process_Property(Player* player, uint data_size)
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = EntityMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* item = EntityMngr.GetItem(item_id);
             entity = item != nullptr && !item->GetHidden() ? item : nullptr;
@@ -3019,7 +3030,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* cr_ = EntityMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
@@ -3029,7 +3040,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* item = cr->GetInvItem(item_id);
             entity = item != nullptr && !item->GetHidden() ? item : nullptr;
@@ -3037,14 +3048,14 @@ void FOServer::Process_Property(Player* player, uint data_size)
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = EntityMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3156,7 +3167,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         doc["EntityType"] = string(entity->GetTypeName());
         doc["EntityId"] = static_cast<int64>(entry_id.underlying_value());
         doc["Property"] = prop->GetName();
-        doc["Value"] = value;
+        doc["Value"] = std::move(value);
 
         DbStorage.Insert(HistoryCollectionName, history_id, doc);
     }
@@ -4716,7 +4727,7 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
     case 5:
         return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -4758,7 +4769,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     switch (result.ValuesCount) {
@@ -4793,7 +4804,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     return 0;

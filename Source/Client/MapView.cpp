@@ -240,7 +240,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 cont->AddRawInnerItem(item);
             }
             else {
-                return false;
+                UNREACHABLE_PLACE();
             }
 
             return true;
