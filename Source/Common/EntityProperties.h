@@ -232,6 +232,8 @@ public:
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastSend);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastRecv);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
 };
 
 class CritterProperties : public EntityProperties
