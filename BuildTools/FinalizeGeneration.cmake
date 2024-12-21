@@ -864,7 +864,6 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/F2Palette-Include.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.h"
