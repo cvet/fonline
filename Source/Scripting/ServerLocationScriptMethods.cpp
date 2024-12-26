@@ -36,7 +36,7 @@
 #include "Server.h"
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -46,7 +46,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
+FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -56,13 +56,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Location_GetMapCount(Location* self)
+FO_SCRIPT_API uint Server_Location_GetMapCount(Location* self)
 {
     return self->GetMapsCount();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Location_GetMap(Location* self, hstring mapPid)
+FO_SCRIPT_API Map* Server_Location_GetMap(Location* self, hstring mapPid)
 {
     for (auto* map : self->GetMaps()) {
         if (map->GetProtoId() == mapPid) {
@@ -73,7 +73,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Location_GetMapByIndex(Location* self, uint index)
+FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, uint index)
 {
     const auto maps = self->GetMaps();
 
@@ -85,13 +85,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Location_GetMaps(Location* self)
+FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
 {
     return self->GetMaps();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hstring& entrance)
+FO_SCRIPT_API void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hstring& entrance)
 {
     const auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
@@ -104,7 +104,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hstring>& entrances)
+FO_SCRIPT_API uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hstring>& entrances)
 {
     const auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
@@ -120,7 +120,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_Regenerate(Location* self)
+FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
 {
     for (auto* map : self->GetMaps()) {
         self->GetEngine()->MapMngr.RegenerateMap(map);

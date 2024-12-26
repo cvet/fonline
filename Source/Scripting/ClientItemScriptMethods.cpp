@@ -36,20 +36,20 @@
 #include "Client.h"
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 {
     return self->CreateRefClone();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self, uint count)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
     auto* cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
     return cloned_item;
 }
 
-static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
+static void ItemGetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -62,12 +62,10 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
             throw ScriptException("Invalid critter ownership, critter not found");
         }
 
-        hx = cr->GetHexX();
-        hy = cr->GetHexY();
+        hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
-        hx = self->GetHexX();
-        hy = self->GetHexY();
+        hex = self->GetHex();
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
@@ -80,7 +78,7 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
         }
 
         // Look recursively
-        ItemGetMapPos(cont, hx, hy);
+        ItemGetMapPos(cont, hex);
     } break;
     default:
         throw ScriptException("Invalid item ownership");
@@ -88,17 +86,17 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, uint16& hx, uint16& hy)
+FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
-    ItemGetMapPos(self, hx, hy);
+    ItemGetMapPos(self, hex);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->Play(animName, looped, reversed);
@@ -106,7 +104,7 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_StopAnim(ItemView* self)
+FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->Stop();
@@ -114,7 +112,7 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->SetTime(normalizedTime);
@@ -122,20 +120,20 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
+FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
     return self->GetInnerItems();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
+FO_SCRIPT_API uint8 Client_Item_GetAlpha(ItemView* self)
 {
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
     return hex_item != nullptr ? hex_item->GetCurAlpha() : 0xFF;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
+FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetTargetAlpha(alpha);

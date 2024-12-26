@@ -319,7 +319,7 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
     return buf;
 }
 
-void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data)
+void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> data)
 {
     STACK_TRACE_ENTRY();
 
@@ -327,8 +327,8 @@ void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vect
     RUNTIME_ASSERT(file);
 
     const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
-        static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
+        static_cast<uint8>(size.width % 256), static_cast<uint8>(size.width / 256), //
+        static_cast<uint8>(size.height % 256), static_cast<uint8>(size.height / 256), 4 * 8, 0x20};
     file.Write(header);
 
     file.Write(data.data(), data.size() * sizeof(uint));
@@ -481,47 +481,47 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) noexcept -> uint
+auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto dx = x1 - x2;
-    const auto dy = y1 - y2;
+    const auto dx = pos1.x - pos2.x;
+    const auto dy = pos1.y - pos2.y;
 
     return static_cast<uint>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
 }
 
-auto GenericUtils::GetStepsCoords(int x1, int y1, int x2, int y2) noexcept -> tuple<float, float>
+auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto dx = static_cast<float>(std::abs(x2 - x1));
-    const auto dy = static_cast<float>(std::abs(y2 - y1));
+    const auto dx = static_cast<float>(std::abs(to_pos.x - from_pos.x));
+    const auto dy = static_cast<float>(std::abs(to_pos.y - from_pos.y));
 
     auto sx = 1.0f;
     auto sy = 1.0f;
 
     dx < dy ? sx = dx / dy : sy = dy / dx;
 
-    if (x2 < x1) {
+    if (to_pos.x < from_pos.x) {
         sx = -sx;
     }
-    if (y2 < y1) {
+    if (to_pos.y < from_pos.y) {
         sy = -sy;
     }
 
     return {sx, sy};
 }
 
-auto GenericUtils::ChangeStepsCoords(float sx, float sy, float deq) noexcept -> tuple<float, float>
+auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos
 {
     NO_STACK_TRACE_ENTRY();
 
     const auto rad = deq * PI_FLOAT / 180.0f;
-    sx = sx * std::cos(rad) - sy * std::sin(rad);
-    sy = sx * std::sin(rad) + sy * std::cos(rad);
+    const auto x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
+    const auto y = pos.x * std::sin(rad) + pos.y * std::cos(rad);
 
-    return {sx, sy};
+    return {x, y};
 }
 
 static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept;

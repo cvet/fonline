@@ -86,11 +86,11 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastControlledCritterId);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, string, Password);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint16>, ConnectionPort);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, string, Password);
 };
 
 class ItemProperties : public EntityProperties
@@ -118,9 +118,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexY);
+    ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
     ///@ MigrationRule Property Item CritId CritterId
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
@@ -142,9 +140,7 @@ public:
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int16, OffsetX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int16, OffsetY);
+    ENTITY_PROPERTY(Public, ipos16, Offset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
     ///@ ExportProperty ReadOnly
@@ -268,17 +264,13 @@ public:
     ///@ ExportProperty ScriptFuncType = CritterInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, MapId);
+    ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexX);
+    ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, HexY);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, int16, HexOffsX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, int16, HexOffsY);
+    ENTITY_PROPERTY(PrivateCommon, ipos16, HexOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, Dir);
     ///@ ExportProperty ReadOnly
@@ -351,9 +343,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, ModelInCombatMode);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, WorldX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, WorldY);
+    ENTITY_PROPERTY(Protected, ipos, WorldPos);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
@@ -408,9 +398,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Width);
+    ENTITY_PROPERTY(PrivateCommon, msize, Size);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Height);
+    ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
 
     // Todo: exclude map properties from engine:
     ///@ ExportProperty
@@ -423,10 +413,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime4);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime5);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, uint16, WorkHexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateClient, uint16, WorkHexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
     ///@ ExportProperty
@@ -462,9 +448,7 @@ public:
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, WorldX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, WorldY);
+    ENTITY_PROPERTY(PrivateServer, ipos, WorldPos);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint16, Radius);
     ///@ ExportProperty

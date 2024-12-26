@@ -68,12 +68,12 @@ public:
     void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DestroyItem(Item* item);
     auto MoveItem(Item* item, uint count, Critter* to_cr) -> NON_NULL Item*;
-    auto MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> NON_NULL Item*;
     auto MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> NON_NULL Item*;
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
-    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems);
+    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, ipos from_wpos, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:

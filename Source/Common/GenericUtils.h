@@ -78,12 +78,12 @@ public:
     [[nodiscard]] static auto NumericalNumber(uint num) noexcept -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) noexcept -> uint;
-    [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) noexcept -> tuple<float, float>;
-    [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) noexcept -> tuple<float, float>;
+    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) noexcept -> uint;
+    [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
+    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos;
 
     static void SetRandomSeed(int seed);
-    static void WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data);
+    static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
 };
 
 class MatrixHelper final

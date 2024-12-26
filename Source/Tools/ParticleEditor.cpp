@@ -145,8 +145,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
         const auto* data = file.GetCurBuf();
 
-        auto* tex = App->Render.CreateTexture(w, h, true, false);
-        tex->UpdateTextureRegion({0, 0, w, h}, reinterpret_cast<const ucolor*>(data));
+        auto* tex = App->Render.CreateTexture({w, h}, true, false);
+        tex->UpdateTextureRegion({}, {w, h}, reinterpret_cast<const ucolor*>(data));
 
         _impl->LoadedTextures.emplace_back(tex);
 
@@ -156,7 +156,7 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     _impl->Particle = _impl->ParticleMngr->CreateParticle(asset_path);
     _impl->SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
 
-    _impl->RenderTarget.reset(App->Render.CreateTexture(200, 200, true, true));
+    _impl->RenderTarget.reset(App->Render.CreateTexture({200, 200}, true, true));
 
     for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
         _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
@@ -472,7 +472,7 @@ void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>
     CHECK_AND_DRAW(SPK::FO::SparkQuadRenderer);
 #undef CHECK_AND_DRAW
 
-    throw UnreachablePlaceException("Unknown type");
+    UNREACHABLE_PLACE();
 }
 
 // Core

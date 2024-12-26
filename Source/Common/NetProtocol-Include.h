@@ -233,20 +233,18 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint16 hx
-// uint16 hy
+// mpos hex
 // ucolor color
 // string text
 // bool unsafe_text
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT_MSG MAKE_NETMSG_HEADER(36)
-#define NETMSG_MAP_TEXT_MSG_SIZE (sizeof(uint) + sizeof(uint16) * 2 + sizeof(ucolor) + sizeof(TextPackName) + sizeof(TextPackKey))
+#define NETMSG_MAP_TEXT_MSG_SIZE (sizeof(uint) + sizeof(mpos) + sizeof(ucolor) + sizeof(TextPackName) + sizeof(TextPackKey))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint16 hx
-// uint16 hy
+// mpos hex
 // ucolor color
 // TextPackName text_pack
 // TextPackKey str_num
@@ -257,8 +255,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint16 hx
-// uint16 hy
+// mpos hex
 // ucolor color
 // TextPackName text_pack
 // TextPackKey str_num
@@ -296,25 +293,22 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ident_t map_id
 // ident_t cr_id
 // uint16 speed
-// uint16 start_hx
-// uint16 start_hy
+// mpos start_hex
 // uint16 steps_count
 // uint8 steps[]
 // uint16 control_steps_count
 // uint16 control_steps[]
-// char end_hex_ox - -16..16
-// char end_hex_oy - -8..8
+// ipos16 end_hex_offset
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_STOP_MOVE MAKE_NETMSG_HEADER(46)
-#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(ident_t) * 2 + sizeof(uint16) * 2 + sizeof(int16) * 3)
+#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(ident_t) * 2 + sizeof(mpos) + sizeof(int16) * 3)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t map_id
 // ident_t cr_id
-// uint16 hx
-// uint16 hy
+// mpos pos
 // int16 hex_ox
 // int16 hex_oy
 // int16 dir_angle
@@ -329,14 +323,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint whole_time
 // uint offset_time
 // uint16 speed
-// uint16 start_hx
-// uint16 start_hy
+// mpos start_hex
 // uint16 steps_count
 // uint8 steps[]
 // uint16 control_steps_count
 // uint16 control_steps[]
-// char end_hex_ox - -16..16
-// char end_hex_oy - -8..8
+// ipos16 end_hex_offset
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_MOVE_SPEED MAKE_NETMSG_HEADER(48)
@@ -349,15 +341,13 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
-#define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16) * 2 + sizeof(int16) * 2 + sizeof(int16))
+#define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(mpos) + sizeof(ipos16) + sizeof(int16))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
-// uint16 hex_x
-// uint16 hex_y
-// int16 hex_ox
-// int16 hex_oy
+// mpos hex
+// ipos16 hex_offset
 // int16 dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
@@ -375,13 +365,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 
 #define NETMSG_CRITTER_TELEPORT MAKE_NETMSG_HEADER(52)
-#define NETMSG_CRITTER_TELEPORT_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint16) * 2)
+#define NETMSG_CRITTER_TELEPORT_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(mpos))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
-// uint16 to_hx
-// uint16 to_hy
+// mpos to_hex
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -498,28 +487,25 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)
-#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 3)
+#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(mpos) + sizeof(uint16))
 // ////////////////////////////////////////////////////////////////////////
 // explode
 // Params:
 // hstring eff_pid
-// uint16 hex_x
-// uint16 hex_y
+// mpos hex
 // uint16 radius
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_FLY_EFFECT MAKE_NETMSG_HEADER(99)
-#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ident_t) * 2 + sizeof(uint16) * 4)
+#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ident_t) * 2 + sizeof(mpos) * 2)
 // ////////////////////////////////////////////////////////////////////////
 // shoot
 // Params:
 // hash eff_pid
 // ident_t eff_cr1_id
 // ident_t eff_cr2_id
-// uint16 eff_cr1_hx
-// uint16 eff_cr1_hy
-// uint16 eff_cr2_hx
-// uint16 eff_cr2_hy
+// mpos eff_cr1_hex
+// mpos eff_cr2_hex
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PLAY_SOUND MAKE_NETMSG_HEADER(101)

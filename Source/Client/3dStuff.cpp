@@ -153,9 +153,7 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
     STACK_TRACE_ENTRY();
 
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
-    if (_moveTransitionTime < 0.001f) {
-        _moveTransitionTime = 0.001f;
-    }
+    _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
     if (_settings.Animation3dFPS != 0) {
         _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
@@ -323,7 +321,7 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 {
     STACK_TRACE_ENTRY();
 
-    // Try find instance
+    // Try to find instance
     for (auto&& model_info : _allModelInfos) {
         if (model_info->_fileName == name) {
             return model_info.get();
@@ -383,7 +381,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
     _forceDraw = true;
     _lastDrawTime = GetTime();
-    SetupFrame(_modelInfo->_drawWidth, _modelInfo->_drawHeight);
+    SetupFrame(_modelInfo->_drawSize);
 }
 
 ModelInstance::~ModelInstance()
@@ -402,14 +400,14 @@ ModelInstance::~ModelInstance()
     }
 }
 
-void ModelInstance::SetupFrame(int draw_width, int draw_height)
+void ModelInstance::SetupFrame(isize draw_size)
 {
-    _frameWidth = draw_width * FRAME_SCALE;
-    _frameHeight = draw_height * FRAME_SCALE;
+    _frameSize.width = draw_size.width * FRAME_SCALE;
+    _frameSize.height = draw_size.height * FRAME_SCALE;
 
     // Projection
-    const auto frame_ratio = static_cast<float>(_frameWidth) / static_cast<float>(_frameHeight);
-    const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
+    const auto frame_ratio = static_cast<float>(_frameSize.width) / static_cast<float>(_frameSize.height);
+    const auto proj_height = static_cast<float>(_frameSize.height) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
@@ -417,25 +415,25 @@ void ModelInstance::SetupFrame(int draw_width, int draw_height)
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 pos) const noexcept -> IPoint
+auto ModelInstance::Convert3dTo2d(vec3 pos) const noexcept -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
+    const int viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out;
     MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     return {iround(out.x / static_cast<float>(FRAME_SCALE)), iround(out.y / static_cast<float>(FRAME_SCALE))};
 }
 
-auto ModelInstance::Convert2dTo3d(int x, int y) const noexcept -> vec3
+auto ModelInstance::Convert2dTo3d(ipos pos) const noexcept -> vec3
 {
     STACK_TRACE_ENTRY();
 
-    const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
-    const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
-    const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
+    const int viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
+    const auto xf = static_cast<float>(pos.x) * static_cast<float>(FRAME_SCALE);
+    const auto yf = static_cast<float>(pos.y) * static_cast<float>(FRAME_SCALE);
     vec3 out;
-    MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameHeight) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -826,12 +824,12 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     return mesh_changed;
 }
 
-void ModelInstance::MoveModel(int ox, int oy)
+void ModelInstance::MoveModel(ipos offset)
 {
     STACK_TRACE_ENTRY();
 
-    const vec3 pos_zero = Convert2dTo3d(0, 0);
-    const vec3 pos = Convert2dTo3d(ox, oy);
+    const vec3 pos_zero = Convert2dTo3d({0, 0});
+    const vec3 pos = Convert2dTo3d(offset);
     const vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
@@ -1040,21 +1038,21 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const noexcept -> tuple<int, int>
+auto ModelInstance::GetDrawSize() const noexcept -> isize
 {
     NO_STACK_TRACE_ENTRY();
 
-    return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
+    return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
 
-auto ModelInstance::GetViewSize() const noexcept -> tuple<int, int>
+auto ModelInstance::GetViewSize() const noexcept -> isize
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto draw_width_scale = static_cast<float>(_frameWidth / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawWidth);
-    const auto draw_height_scale = static_cast<float>(_frameHeight / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawHeight);
-    const auto view_width = iround(static_cast<float>(_modelInfo->_viewWidth) * draw_width_scale);
-    const auto view_height = iround(static_cast<float>(_modelInfo->_viewHeight) * draw_height_scale);
+    const auto draw_width_scale = static_cast<float>(_frameSize.width / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawSize.width);
+    const auto draw_height_scale = static_cast<float>(_frameSize.height / FRAME_SCALE) / static_cast<float>(_modelInfo->_drawSize.height);
+    const auto view_width = iround(static_cast<float>(_modelInfo->_viewSize.width) * draw_width_scale);
+    const auto view_height = iround(static_cast<float>(_modelInfo->_viewSize.height) * draw_height_scale);
 
     return {view_width, view_height};
 }
@@ -1129,8 +1127,11 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
         // Enable all meshes, set default texture
         for (auto* mesh : _allMeshes) {
             mesh->Disabled = false;
-            std::memcpy(mesh->LastTexures, mesh->CurTexures, sizeof(mesh->LastTexures));
-            std::memcpy(mesh->CurTexures, mesh->DefaultTexures, sizeof(mesh->CurTexures));
+
+            for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
+                mesh->LastTexures[i] = mesh->CurTexures[i];
+                mesh->CurTexures[i] = mesh->DefaultTexures[i];
+            }
         }
     }
 
@@ -1418,8 +1419,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         vertices = mesh_data->Vertices;
         indices = mesh_data->Indices;
         combined_mesh->DrawEffect = mesh_instance->CurEffect;
-        std::memset(combined_mesh->SkinBones.data(), 0, combined_mesh->SkinBones.size() * sizeof(void*));
-        std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
+        std::for_each(combined_mesh->SkinBones.begin(), combined_mesh->SkinBones.end(), [](ModelBone*& bone) { bone = nullptr; });
+        std::for_each(std::begin(combined_mesh->Textures), std::end(combined_mesh->Textures), [](MeshTexture*& tex) { tex = nullptr; });
         combined_mesh->CurBoneMatrix = 0;
     }
     else {
@@ -1824,9 +1825,9 @@ void ModelInstance::Draw()
     _forceDraw = false;
 
     // Move animation
-    const auto w = _frameWidth / FRAME_SCALE;
-    const auto h = _frameHeight / FRAME_SCALE;
-    ProcessAnimation(dt, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
+    const auto w = _frameSize.width / FRAME_SCALE;
+    const auto h = _frameSize.height / FRAME_SCALE;
+    ProcessAnimation(dt, {w / 2, h - h / 4}, static_cast<float>(FRAME_SCALE));
 
     if (_combinedMeshesSize != 0) {
         for (size_t i = 0; i < _combinedMeshesSize; i++) {
@@ -1837,19 +1838,20 @@ void ModelInstance::Draw()
     DrawAllParticles();
 }
 
-void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
+void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
 {
     STACK_TRACE_ENTRY();
 
     // Update world matrix, only for root
     if (_parentBone == nullptr) {
-        const auto pos = Convert2dTo3d(x, y);
+        const auto pos3d = Convert2dTo3d(pos);
         mat44 mat_rot_y;
         mat44 mat_scale;
         mat44 mat_trans;
         mat44::Scaling(vec3(scale, scale, scale), mat_scale);
         mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * PI_FLOAT / 180.0f, mat_rot_y);
-        mat44::Translation(pos, mat_trans);
+        mat44::Translation(pos3d, mat_trans);
+
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos.x = _parentMatrix.a4;
         _groundPos.y = _parentMatrix.b4;
@@ -1934,7 +1936,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
     // Move child animations
     for (auto&& child : _children) {
-        child->ProcessAnimation(elapsed, x, y, 1.0f);
+        child->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     // Animation callbacks
@@ -2065,7 +2067,7 @@ auto ModelInstance::FindBone(hstring bone_name) const noexcept -> const ModelBon
     return bone;
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
+auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
 {
     STACK_TRACE_ENTRY();
 
@@ -2080,10 +2082,10 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
 
     const auto p = Convert3dTo2d(pos);
-    const auto x = p.X - _frameWidth / FRAME_SCALE / 2;
-    const auto y = -(p.Y - _frameHeight / FRAME_SCALE / 4);
+    const auto x = p.x - _frameSize.width / FRAME_SCALE / 2;
+    const auto y = -(p.y - _frameSize.height / FRAME_SCALE / 4);
 
-    return tuple {x, y};
+    return ipos {x, y};
 }
 
 auto ModelInstance::GetAnimDuration() const -> time_duration
@@ -2109,10 +2111,10 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) :
 {
     STACK_TRACE_ENTRY();
 
-    _drawWidth = _modelMngr._settings.DefaultModelDrawWidth;
-    _drawHeight = _modelMngr._settings.DefaultModelDrawHeight;
-    _viewWidth = _modelMngr._settings.DefaultModelViewWidth != 0 ? _modelMngr._settings.DefaultModelViewWidth : _drawWidth / 4;
-    _viewHeight = _modelMngr._settings.DefaultModelViewHeight != 0 ? _modelMngr._settings.DefaultModelViewHeight : _drawHeight / 2;
+    _drawSize.width = _modelMngr._settings.DefaultModelDrawWidth;
+    _drawSize.height = _modelMngr._settings.DefaultModelDrawHeight;
+    _viewSize.width = _modelMngr._settings.DefaultModelViewWidth != 0 ? _modelMngr._settings.DefaultModelViewWidth : _drawSize.width / 4;
+    _viewSize.height = _modelMngr._settings.DefaultModelViewHeight != 0 ? _modelMngr._settings.DefaultModelViewHeight : _viewSize.height / 2;
 }
 
 auto ModelInformation::Load(string_view name) -> bool
@@ -2165,7 +2167,7 @@ auto ModelInformation::Load(string_view name) -> bool
         vector<AnimEntry> anims;
 
         while (!istr->eof()) {
-            (*istr) >> token;
+            *istr >> token;
             if (istr->fail()) {
                 break;
             }
@@ -2195,7 +2197,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 closed = true;
             }
             else if (token == "Model") {
-                (*istr) >> buf;
+                *istr >> buf;
                 model = strex(name).extractDir().combinePath(buf);
             }
             else if (token == "Include") {
@@ -2236,7 +2238,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 istr = new istringstream(file_buf);
             }
             else if (token == "Mesh") {
-                (*istr) >> buf;
+                *istr >> buf;
                 if (buf != "All") {
                     mesh = _modelMngr.GetBoneHashedString(buf);
                 }
@@ -2245,11 +2247,11 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
             else if (token == "Subset") {
-                (*istr) >> buf;
+                *istr >> buf;
                 WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead");
             }
             else if (token == "Layer" || token == "Value") {
-                (*istr) >> buf;
+                *istr >> buf;
                 if (token == "Layer") {
                     layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
@@ -2278,7 +2280,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 mesh = hstring();
             }
             else if (token == "Attach") {
-                (*istr) >> buf;
+                *istr >> buf;
                 if (layer < 0 || layer_val == 0) {
                     continue;
                 }
@@ -2295,7 +2297,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 mesh = hstring();
             }
             else if (token == "AttachParticles") {
-                (*istr) >> buf;
+                *istr >> buf;
                 if (layer < 0 || layer_val == 0) {
                     continue;
                 }
@@ -2311,13 +2313,13 @@ auto ModelInformation::Load(string_view name) -> bool
                 mesh = hstring();
             }
             else if (token == "Link") {
-                (*istr) >> buf;
+                *istr >> buf;
                 if (link->Id != 0) {
                     link->LinkBone = _modelMngr.GetBoneHashedString(buf);
                 }
             }
             else if (token == "Cut") {
-                (*istr) >> buf;
+                *istr >> buf;
                 string fname = strex(name).extractDir().combinePath(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
@@ -2326,7 +2328,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     link->CutInfo.push_back(cut);
 
                     // Layers
-                    (*istr) >> buf;
+                    *istr >> buf;
                     auto cur_layer_names = strex(buf).split('-');
 
                     for (auto& cut_layer_name : cur_layer_names) {
@@ -2344,18 +2346,18 @@ auto ModelInformation::Load(string_view name) -> bool
                     }
 
                     // Shapes
-                    (*istr) >> buf;
+                    *istr >> buf;
                     auto shapes = strex(buf).split('-');
 
                     // Unskin bones
-                    (*istr) >> buf;
+                    *istr >> buf;
                     cut->UnskinBone1 = buf != "-" ? _modelMngr.GetBoneHashedString(buf) : hstring();
 
-                    (*istr) >> buf;
+                    *istr >> buf;
                     cut->UnskinBone2 = buf != "-" ? _modelMngr.GetBoneHashedString(buf) : hstring();
 
                     // Unskin shape
-                    (*istr) >> buf;
+                    *istr >> buf;
                     hstring unskin_shape_name;
                     cut->RevertUnskinShape = false;
                     if (cut->UnskinBone1 && cut->UnskinBone2) {
@@ -2383,141 +2385,141 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
                 else {
                     WriteLog("Cut file '{}' not found", fname);
-                    (*istr) >> buf;
-                    (*istr) >> buf;
-                    (*istr) >> buf;
-                    (*istr) >> buf;
-                    (*istr) >> buf;
+                    *istr >> buf;
+                    *istr >> buf;
+                    *istr >> buf;
+                    *istr >> buf;
+                    *istr >> buf;
                 }
             }
             else if (token == "RotX") {
-                (*istr) >> link->RotX;
+                *istr >> link->RotX;
             }
             else if (token == "RotY") {
-                (*istr) >> link->RotY;
+                *istr >> link->RotY;
             }
             else if (token == "RotZ") {
-                (*istr) >> link->RotZ;
+                *istr >> link->RotZ;
             }
             else if (token == "MoveX") {
-                (*istr) >> link->MoveX;
+                *istr >> link->MoveX;
             }
             else if (token == "MoveY") {
-                (*istr) >> link->MoveY;
+                *istr >> link->MoveY;
             }
             else if (token == "MoveZ") {
-                (*istr) >> link->MoveZ;
+                *istr >> link->MoveZ;
             }
             else if (token == "ScaleX") {
-                (*istr) >> link->ScaleX;
+                *istr >> link->ScaleX;
             }
             else if (token == "ScaleY") {
-                (*istr) >> link->ScaleY;
+                *istr >> link->ScaleY;
             }
             else if (token == "ScaleZ") {
-                (*istr) >> link->ScaleZ;
+                *istr >> link->ScaleZ;
             }
             else if (token == "Scale") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleX = link->ScaleY = link->ScaleZ = valuef;
             }
             else if (token == "Speed") {
-                (*istr) >> link->SpeedAjust;
+                *istr >> link->SpeedAjust;
             }
             else if (token == "RotX+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX + valuef);
             }
             else if (token == "RotY+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY + valuef);
             }
             else if (token == "RotZ+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ + valuef);
             }
             else if (token == "MoveX+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX + valuef);
             }
             else if (token == "MoveY+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY + valuef);
             }
             else if (token == "MoveZ+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ + valuef);
             }
             else if (token == "ScaleX+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
             }
             else if (token == "ScaleY+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
             }
             else if (token == "ScaleZ+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Scale+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Speed+") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
             else if (token == "RotX*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX * valuef);
             }
             else if (token == "RotY*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY * valuef);
             }
             else if (token == "RotZ*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ * valuef);
             }
             else if (token == "MoveX*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX * valuef);
             }
             else if (token == "MoveY*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY * valuef);
             }
             else if (token == "MoveZ*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ * valuef);
             }
             else if (token == "ScaleX*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
             }
             else if (token == "ScaleY*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
             }
             else if (token == "ScaleZ*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Scale*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Speed*") {
-                (*istr) >> valuef;
+                *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
             else if (token == "DisableLayer") {
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto disabled_layers = strex(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
@@ -2528,11 +2530,11 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
             else if (token == "DisableSubset") {
-                (*istr) >> buf;
+                *istr >> buf;
                 WriteLog("Tag 'DisableSubset' obsolete, use 'DisableMesh' instead");
             }
             else if (token == "DisableMesh") {
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto disabled_mesh_names = strex(buf).split('-');
 
                 for (const auto& disabled_mesh_name : disabled_mesh_names) {
@@ -2546,24 +2548,24 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
             else if (token == "Texture") {
-                (*istr) >> buf;
+                *istr >> buf;
                 auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                (*istr) >> buf;
+                *istr >> buf;
                 if (index >= 0 && index < static_cast<int>(MODEL_MAX_TEXTURES)) {
                     link->TextureInfo.emplace_back(buf, mesh, index);
                 }
             }
             else if (token == "Effect") {
-                (*istr) >> buf;
+                *istr >> buf;
 
                 link->EffectInfo.emplace_back(buf, mesh);
             }
             else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt" || token == "AnimSpeedExt") {
                 // Index animation
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (token == "Anim" || token == "AnimExt") {
@@ -2571,33 +2573,33 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     string a1;
                     string a2;
-                    (*istr) >> a1 >> a2;
+                    *istr >> a1 >> a2;
                     anims.push_back({(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
 
                     if (token == "AnimExt") {
-                        (*istr) >> a1 >> a2;
+                        *istr >> a1 >> a2;
                         anims.push_back({(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
                     }
                 }
                 else {
-                    (*istr) >> valuef;
+                    *istr >> valuef;
                     _animSpeed.emplace((ind1 << 16) | ind2, valuef);
 
                     if (token == "AnimSpeedExt") {
-                        (*istr) >> valuef;
+                        *istr >> valuef;
                         _animSpeed.emplace((ind1 << 16) | (ind2 | 0x8000), valuef);
                     }
                 }
             }
             else if (token == "AnimLayerValue") {
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
+                *istr >> buf;
                 const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
@@ -2607,17 +2609,17 @@ auto ModelInformation::Load(string_view name) -> bool
                 _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
             }
             else if (token == "FastTransitionBone") {
-                (*istr) >> buf;
+                *istr >> buf;
                 _fastTransitionBones.insert(_modelMngr.GetBoneHashedString(buf));
             }
             else if (token == "AnimEqual") {
-                (*istr) >> valuei;
+                *istr >> valuei;
 
                 auto ind1 = 0;
                 auto ind2 = 0;
-                (*istr) >> buf;
+                *istr >> buf;
                 ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
+                *istr >> buf;
                 ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (valuei == 1) {
@@ -2630,14 +2632,14 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "RenderFrame" || token == "RenderFrames") {
                 anims.push_back({0, render_fname, render_anim});
 
-                (*istr) >> _renderAnimProcFrom;
+                *istr >> _renderAnimProcFrom;
 
                 // One frame
                 _renderAnimProcTo = _renderAnimProcFrom;
 
                 // Many frames
                 if (token == "RenderFrames") {
-                    (*istr) >> _renderAnimProcTo;
+                    *istr >> _renderAnimProcTo;
                 }
 
                 // Check
@@ -2645,7 +2647,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 _renderAnimProcTo = std::clamp(_renderAnimProcTo, 0, 100);
             }
             else if (token == "RenderDir") {
-                (*istr) >> buf;
+                *istr >> buf;
 
                 _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
@@ -2653,23 +2655,22 @@ auto ModelInformation::Load(string_view name) -> bool
                 _shadowDisabled = true;
             }
             else if (token == "DrawSize") {
-                (*istr) >> buf;
-                _drawWidth = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
-                _drawHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                _drawSize.width = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                _drawSize.height = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
             else if (token == "ViewSize") {
-                (*istr) >> buf;
-                _viewWidth = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-                (*istr) >> buf;
-                _viewHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                _viewSize.width = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                _viewSize.height = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
             else if (token == "DisableAnimationInterpolation") {
                 disable_animation_interpolation = true;
             }
             else if (token == "RotationBone") {
-                (*istr) >> buf;
-
+                *istr >> buf;
                 _rotationBone = _modelMngr.GetBoneHashedString(buf);
             }
             else {

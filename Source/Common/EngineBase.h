@@ -66,6 +66,9 @@ public:
     [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
+    [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
+    [[nodiscard]] auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool override;
+    [[nodiscard]] auto GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
@@ -78,7 +81,8 @@ public:
 
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
-    void RegisterEnumGroup(string_view name, const std::type_info& underlying_type, unordered_map<string, int>&& key_values);
+    void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values);
+    void RegisterValueType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
@@ -101,8 +105,9 @@ private:
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
-    unordered_map<string, const std::type_info*> _enumTypes {};
+    unordered_map<string, BaseTypeInfo> _enumTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
+    unordered_map<string, tuple<size_t, BaseTypeInfo::StructLayoutInfo>> _valueTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };

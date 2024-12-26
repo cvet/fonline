@@ -69,29 +69,27 @@ void GeometryHelper::InitializeHexOffsets() const
         _sxOdd = new int16[size];
         _syOdd = new int16[size];
 
-        auto pos = 0;
-        auto xe = 0;
-        auto ye = 0;
-        auto xo = 1;
-        auto yo = 0;
+        size_t iter = 0;
+        ipos pos1 = {0, 0};
+        ipos pos2 = {1, 0};
 
         for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(xe, ye, 0u);
-            MoveHexByDirUnsafe(xo, yo, 0u);
+            MoveHexByDirUnsafe(pos1, 0);
+            MoveHexByDirUnsafe(pos2, 0);
 
             for (auto j = 0; j < 6; j++) {
                 const uint8 dir = (j + 2) % 6;
 
                 for (auto k = 0; k < i + 1; k++) {
-                    _sxEven[pos] = static_cast<int16>(xe);
-                    _syEven[pos] = static_cast<int16>(ye);
-                    _sxOdd[pos] = static_cast<int16>(xo - 1);
-                    _syOdd[pos] = static_cast<int16>(yo);
+                    _sxEven[iter] = static_cast<int16>(pos1.x);
+                    _syEven[iter] = static_cast<int16>(pos1.y);
+                    _sxOdd[iter] = static_cast<int16>(pos2.x - 1);
+                    _syOdd[iter] = static_cast<int16>(pos2.y);
 
-                    pos++;
+                    iter++;
 
-                    MoveHexByDirUnsafe(xe, ye, dir);
-                    MoveHexByDirUnsafe(xo, yo, dir);
+                    MoveHexByDirUnsafe(pos1, dir);
+                    MoveHexByDirUnsafe(pos2, dir);
                 }
             }
         }
@@ -100,12 +98,11 @@ void GeometryHelper::InitializeHexOffsets() const
         _sxEven = _sxOdd = new int16[size];
         _syEven = _syOdd = new int16[size];
 
-        auto pos = 0;
-        auto hx = 0;
-        auto hy = 0;
+        size_t iter = 0;
+        ipos pos;
 
         for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(hx, hy, 0u);
+            MoveHexByDirUnsafe(pos, 0);
 
             for (auto j = 0; j < 5; j++) {
                 uint8 dir;
@@ -133,16 +130,16 @@ void GeometryHelper::InitializeHexOffsets() const
                     steps = i + 1;
                     break;
                 default:
-                    throw UnreachablePlaceException(LINE_STR);
+                    UNREACHABLE_PLACE();
                 }
 
                 for (auto k = 0; k < steps; k++) {
-                    _sxEven[pos] = static_cast<int16>(hx);
-                    _syEven[pos] = static_cast<int16>(hy);
+                    _sxEven[iter] = static_cast<int16>(pos.x);
+                    _syEven[iter] = static_cast<int16>(pos.y);
 
-                    pos++;
+                    iter++;
 
-                    MoveHexByDirUnsafe(hx, hy, dir);
+                    MoveHexByDirUnsafe(pos, dir);
                 }
             }
         }
@@ -184,6 +181,13 @@ auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) -> uint
 
         return std::max(dx, dy);
     }
+}
+
+auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> uint
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
 auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) -> uint8
@@ -260,6 +264,13 @@ auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) -> uint8
     }
 
     return 0;
+}
+
+auto GeometryHelper::GetNearDir(mpos from_hex, mpos to_hex) -> uint8
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetNearDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
 auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) -> uint8
@@ -397,6 +408,20 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) -> 
     }
 }
 
+auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex) -> uint8
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
+}
+
+auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
+}
+
 auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
 {
     NO_STACK_TRACE_ENTRY();
@@ -424,6 +449,13 @@ auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
     RUNTIME_ASSERT(r < 360.0f);
 
     return r;
+}
+
+auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetDirAngle(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
 auto GeometryHelper::GetDirAngleDiff(float a1, float a2) -> float
@@ -485,11 +517,11 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
     return static_cast<int16>(dir_angle % 360);
 }
 
-auto GeometryHelper::CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) -> bool
+auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, uint dist) -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return DistGame(x1, y1, x2, y2) <= dist;
+    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
 }
 
 auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
@@ -499,16 +531,15 @@ auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
     return static_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
-auto GeometryHelper::MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) noexcept -> bool
+auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    int hx_ = hx;
-    int hy_ = hy;
+    auto raw_pos = ipos {hex.x, hex.y};
 
-    if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
-        hx = static_cast<uint16>(hx_);
-        hy = static_cast<uint16>(hy_);
+    if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
+        hex.x = static_cast<uint16>(raw_pos.x);
+        hex.y = static_cast<uint16>(raw_pos.y);
 
         return true;
     }
@@ -516,50 +547,50 @@ auto GeometryHelper::MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxh
     return false;
 }
 
-auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) noexcept -> bool
+auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    MoveHexByDirUnsafe(hx, hy, dir);
+    MoveHexByDirUnsafe(hex, dir);
 
-    return hx >= 0 && hx < maxhx && hy >= 0 && hy < maxhy;
+    return map_size.IsValidPos(hex);
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) noexcept
+void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         switch (dir) {
         case 0:
-            hx--;
-            if ((hx % 2) == 0) {
-                hy--;
+            hex.x--;
+            if ((hex.x % 2) == 0) {
+                hex.y--;
             }
             break;
         case 1:
-            hx--;
-            if ((hx % 2) != 0) {
-                hy++;
+            hex.x--;
+            if ((hex.x % 2) != 0) {
+                hex.y++;
             }
             break;
         case 2:
-            hy++;
+            hex.y++;
             break;
         case 3:
-            hx++;
-            if ((hx % 2) != 0) {
-                hy++;
+            hex.x++;
+            if ((hex.x % 2) != 0) {
+                hex.y++;
             }
             break;
         case 4:
-            hx++;
-            if ((hx % 2) == 0) {
-                hy--;
+            hex.x++;
+            if ((hex.x % 2) == 0) {
+                hex.y--;
             }
             break;
         case 5:
-            hy--;
+            hex.y--;
             break;
         default:
             break;
@@ -568,32 +599,32 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) noexcept
     else {
         switch (dir) {
         case 0:
-            hx--;
+            hex.x--;
             break;
         case 1:
-            hx--;
-            hy++;
+            hex.x--;
+            hex.y++;
             break;
         case 2:
-            hy++;
+            hex.y++;
             break;
         case 3:
-            hx++;
-            hy++;
+            hex.x++;
+            hex.y++;
             break;
         case 4:
-            hx++;
+            hex.x++;
             break;
         case 5:
-            hx++;
-            hy--;
+            hex.x++;
+            hex.y--;
             break;
         case 6:
-            hy--;
+            hex.y--;
             break;
         case 7:
-            hx--;
-            hy--;
+            hex.x--;
+            hex.y--;
             break;
         default:
             break;
@@ -632,7 +663,7 @@ auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> fl
     return angle;
 }
 
-auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const int16*, const int16*>
+auto GeometryHelper::GetHexOffsets(mpos hex) const -> tuple<const int16*, const int16*>
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -640,23 +671,32 @@ auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const int16*, const 
         InitializeHexOffsets();
     }
 
-    const auto* sx = (odd ? _sxOdd : _sxEven);
-    const auto* sy = (odd ? _syOdd : _syEven);
+    const auto odd = (hex.x % 2) != 0;
+    const auto* sx = odd ? _sxOdd : _sxEven;
+    const auto* sy = odd ? _syOdd : _syEven;
+
     return {sx, sy};
 }
 
-auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>
+auto GeometryHelper::GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetHexInterval(ipos {from_hex.x, from_hex.y}, ipos {to_hex.x, to_hex.y});
+}
+
+auto GeometryHelper::GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos
 {
     NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        auto dx = to_hx - from_hx;
-        const auto dy = to_hy - from_hy;
+        auto dx = to_raw_hex.x - from_raw_hex.x;
+        const auto dy = to_raw_hex.y - from_raw_hex.y;
 
         auto x = dy * (_settings.MapHexWidth / 2) - dx * _settings.MapHexWidth;
         auto y = dy * _settings.MapHexLineHeight;
 
-        if ((from_hx % 2) != 0) {
+        if ((from_raw_hex.x % 2) != 0) {
             if (dx > 0) {
                 dx++;
             }
@@ -669,36 +709,37 @@ auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_
 
         x += _settings.MapHexWidth / 2 * dx;
         y += _settings.MapHexLineHeight * dx;
+
         return {x, y};
     }
     else {
-        const auto dx = to_hx - from_hx;
-        const auto dy = to_hy - from_hy;
+        const auto dx = to_raw_hex.x - from_raw_hex.x;
+        const auto dy = to_raw_hex.y - from_raw_hex.y;
 
         auto x = (dy - dx) * _settings.MapHexWidth / 2;
         auto y = (dy + dx) * _settings.MapHexLineHeight;
+
         return {x, y};
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work)
+void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const std::function<void(mpos)>& callback)
 {
     STACK_TRACE_ENTRY();
 
-    int hx_ = hx;
-    int hy_ = hy;
+    auto raw_pos = ipos {hex.x, hex.y};
 
     for (size_t i = 0; i < lines.size() / 2; i++) {
         const auto dir = lines[i * 2];
         const auto steps = lines[i * 2 + 1];
 
-        if (dir >= GameSettings::MAP_DIR_COUNT || steps == 0u || steps > 9u) {
+        if (dir >= GameSettings::MAP_DIR_COUNT || steps == 0 || steps > 9) {
             continue;
         }
 
         for (uint8 k = 0; k < steps; k++) {
-            if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
-                work(static_cast<uint16>(hx_), static_cast<uint16>(hy_));
+            if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
+                callback({static_cast<uint16>(raw_pos.x), static_cast<uint16>(raw_pos.y)});
             }
         }
     }

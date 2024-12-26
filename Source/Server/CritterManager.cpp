@@ -134,35 +134,34 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
 }
 
-auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir) -> Critter*
+auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(map);
-    RUNTIME_ASSERT(hx < map->GetWidth());
-    RUNTIME_ASSERT(hy < map->GetHeight());
+    RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
     uint multihex;
 
-    if (props == nullptr) {
-        multihex = proto->GetMultihex();
+    if (props != nullptr) {
+        auto props_copy = copy(*props);
+        const auto cr_props = CritterProperties(props_copy);
+        multihex = cr_props.GetMultihex();
     }
     else {
-        multihex = props->GetValue<uint>(proto->GetPropertyMultihex());
+        multihex = proto->GetMultihex();
     }
 
-    auto final_hx = hx;
-    auto final_hy = hy;
-
     // Find better place if target hex busy
-    if (!map->IsHexesMovable(hx, hy, multihex)) {
-        int hx_ = hx;
-        int hy_ = hy;
-        const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
+    auto final_hex = hex;
+
+    if (!map->IsHexesMovable(hex, multihex)) {
+        const auto map_size = map->GetSize();
+        const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         // Find in 2 hex radius
         int pos = -1;
@@ -179,27 +178,28 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
                 break;
             }
 
-            if (hx_ + sx[pos] < 0 || hx_ + sx[pos] >= map->GetWidth()) {
+            const auto raw_check_hex = ipos {hex.x + sx[pos], hex.y + sy[pos]};
+
+            if (!map_size.IsValidPos(raw_check_hex)) {
                 continue;
             }
-            if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
-                continue;
-            }
-            if (!map->IsHexesMovable(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
+            if (!map->IsHexesMovable(map_size.FromRawPos(raw_check_hex), multihex)) {
                 continue;
             }
 
-            hx_ += sx[pos];
-            hy_ += sy[pos];
-            final_hx = static_cast<uint16>(hx_);
-            final_hy = static_cast<uint16>(hy_);
-            RUNTIME_ASSERT(final_hx < map->GetWidth());
-            RUNTIME_ASSERT(final_hy < map->GetHeight());
-
+            final_hex = map_size.FromRawPos(raw_check_hex);
             break;
         }
     }
 
+    // Resolve direction
+    auto final_dir = dir;
+
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
+        final_dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+    }
+
+    // Create critter
     auto* cr = new Critter(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterEntity(cr);
@@ -207,16 +207,10 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    auto final_dir = dir;
+    cr->SetWorldPos(loc != nullptr ? loc->GetWorldPos() : ipos {});
 
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
-    }
+    _engine->MapMngr.AddCritterToMap(cr, map, final_hex, final_dir, ident_t {});
 
-    cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
-    cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
-
-    _engine->MapMngr.AddCritterToMap(cr, map, final_hx, final_hy, final_dir, ident_t {});
     _engine->EntityMngr.CallInit(cr, true);
     _engine->MapMngr.ProcessVisibleItems(cr);
 
@@ -334,7 +328,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     return player_critters;
 }
 
-auto CritterManager::GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>
+auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
@@ -346,7 +340,7 @@ auto CritterManager::GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, Cri
     critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (!cr->GetMapId() && GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), wx, wy) <= radius && cr->CheckFind(find_type)) {
+        if (!cr->GetMapId() && cr->CheckFind(find_type)) {
             critters.emplace_back(cr);
         }
     }
@@ -432,26 +426,23 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     // Check distance
     if (!cr->Talk.IgnoreDistance) {
-        auto map_id = ident_t {};
-        uint16 hx = 0;
-        uint16 hy = 0;
+        ident_t map_id;
+        mpos hex;
         uint talk_distance = 0;
 
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
-            hx = talker->GetHexX();
-            hy = talker->GetHexY();
+            hex = talker->GetHex();
             talk_distance = talker->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
         }
         else if (cr->Talk.Type == TalkType::Hex) {
             map_id = cr->Talk.TalkHexMap;
-            hx = cr->Talk.TalkHexX;
-            hy = cr->Talk.TalkHexY;
+            hex = cr->Talk.TalkHex;
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
+        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHex(), hex, talk_distance)) {
             cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
             CloseTalk(cr);
         }

@@ -667,7 +667,7 @@ void WorkThread::Clear()
     }
 }
 
-void WorkThread::Wait()
+void WorkThread::Wait() const
 {
     STACK_TRACE_ENTRY();
 
@@ -815,28 +815,28 @@ void* SDL_LoadObject(const char* sofile)
 {
     STACK_TRACE_ENTRY();
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
     STACK_TRACE_ENTRY();
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
 void SDL_UnloadObject(void* handle)
 {
     STACK_TRACE_ENTRY();
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
 void emscripten_sleep(unsigned int ms)
 {
     STACK_TRACE_ENTRY();
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 #endif
 

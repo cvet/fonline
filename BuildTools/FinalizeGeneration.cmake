@@ -34,7 +34,7 @@ endif()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
-if(WIN32 OR LINUX OR APPLE OR ANDROID)
+if(FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID)
     StatusMessage("+ Rpmalloc")
     set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     set(FO_RPMALLOC_SOURCE
@@ -61,7 +61,7 @@ set(SDL_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
 set(SDL_TEST OFF CACHE BOOL "Forced by FOnline" FORCE)
 
-if(WIN32 AND WINRT)
+if(FO_UWP)
     include("${FO_ENGINE_ROOT}/BuildTools/sdl-winrt.cmake")
     add_library(SDL2-static STATIC EXCLUDE_FROM_ALL ${FO_SDL_WINRT_SOURCE} ${FO_SDL_WINRT_CX_SOURCE})
     add_library(SDL2main STATIC EXCLUDE_FROM_ALL "${FO_SDL_DIR}/src/main/winrt/SDL_winrt_main_NonXAML.cpp")
@@ -308,7 +308,7 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
 endif()
 
 # Asio & Websockets
-if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT ANDROID AND NOT FO_SINGLEPLAYER)
+if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT FO_ANDROID AND NOT FO_SINGLEPLAYER)
     StatusMessage("+ Asio")
     set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     include_directories("${FO_ASIO_DIR}/include")
@@ -368,7 +368,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
 endif()
 
 # Unqlite
-if(NOT EMSCRIPTEN)
+if(NOT FO_WEB)
     StatusMessage("+ Unqlite")
     set(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
     add_subdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
@@ -420,11 +420,11 @@ list(APPEND FO_TESTING_LIBS "Catch2")
 DisableLibWarnings(Catch2)
 
 # Backward-cpp
-if(WIN32 OR LINUX OR(APPLE AND NOT PLATFORM))
+if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
     set(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
     include_directories("${FO_BACKWARDCPP_DIR}")
 
-    if(NOT WIN32)
+    if(NOT FO_WINDOWS)
         check_include_file("libunwind.h" haveLibUnwind)
         check_include_file("bfd.h" haveBFD)
 
@@ -472,7 +472,7 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(ENABLE_PCH OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ALLOW_EXTERNAL_SPIRV_TOOLS OFF CACHE BOOL "Forced by FOnline" FORCE)
 
-    if(EMSCRIPTEN)
+    if(FO_WEB)
         set(ENABLE_GLSLANG_WEB ON CACHE BOOL "Forced by FOnline" FORCE)
         set(ENABLE_GLSLANG_WEB_DEVEL ON CACHE BOOL "Forced by FOnline" FORCE)
         set(ENABLE_EMSCRIPTEN_SINGLE_FILE ON CACHE BOOL "Forced by FOnline" FORCE)
@@ -580,7 +580,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     add_library(AngelscriptExt STATIC EXCLUDE_FROM_ALL ${FO_ANGELSCRIPT_EXT_SOURCE})
     target_link_libraries(AngelscriptExt Angelscript)
     list(APPEND FO_COMMON_LIBS "AngelscriptExt")
-    target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS" "FO_${FO_OS_UPPER}")
+    target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS")
     DisableLibWarnings(AngelscriptExt)
 
     if(NOT FO_BUILD_BAKER AND NOT FO_BUILD_ASCOMPILER)
@@ -589,13 +589,13 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         add_compile_definitions(AS_NO_COMPILER)
     endif()
 
-    if(EMSCRIPTEN OR APPLE OR(ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 8))
+    if(FO_WEB OR FO_MAC OR FO_IOS OR FO_ANDROID)
         target_compile_definitions(Angelscript PRIVATE "AS_MAX_PORTABILITY")
         target_compile_definitions(AngelscriptExt PRIVATE "AS_MAX_PORTABILITY")
         add_compile_definitions(AS_MAX_PORTABILITY)
     endif()
 
-    if(EMSCRIPTEN)
+    if(FO_WEB)
         target_compile_definitions(Angelscript PRIVATE "WIP_16BYTE_ALIGN")
         target_compile_definitions(AngelscriptExt PRIVATE "WIP_16BYTE_ALIGN")
         add_compile_definitions(WIP_16BYTE_ALIGN)
@@ -615,7 +615,7 @@ if(FO_MONO_SCRIPTING)
     include_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
     link_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
 
-    if(WIN32)
+    if(FO_WINDOWS)
         set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
     else()
         set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
@@ -639,9 +639,9 @@ if(FO_MONO_SCRIPTING)
         mono-component-hot_reload-stub-static
         mono-component-marshal-ilgen-stub-static)
 
-    if(WIN32)
+    if(FO_WINDOWS)
         list(APPEND FO_COMMON_SYSTEM_LIBS bcrypt)
-    elseif(EMSCRIPTEN)
+    elseif(FO_WEB)
         list(APPEND FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
     endif()
 endif()
@@ -650,7 +650,7 @@ endif()
 set(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
 get_filename_component(FO_APP_ICON ${FO_APP_ICON} REALPATH)
 set(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
-configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
+configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
 
 # Engine sources
 list(APPEND FO_COMMON_SOURCE
@@ -1289,7 +1289,7 @@ if(NOT FO_SINGLEPLAYER AND FO_BUILD_SERVER)
     target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib")
     WriteBuildHash(${FO_DEV_NAME}_ServerHeadless)
 
-    if(WIN32)
+    if(FO_WINDOWS)
         StatusMessage("+ ${FO_DEV_NAME}_ServerService")
         list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ServerService")
         add_executable(${FO_DEV_NAME}_ServerService "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp")
@@ -1582,7 +1582,7 @@ endforeach()
 
 # External commands
 if(FO_MAKE_EXTERNAL_COMMANDS)
-    if(WIN32)
+    if(FO_WINDOWS)
         set(prolog "@echo off\n\n")
         set(start "")
         set(breakLine "^")
@@ -1621,7 +1621,7 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
         set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-resource \"${packName},${packEntry}\"")
     endforeach()
 
-    configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+    configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
 endif()
 
 # Copy ReSharper config

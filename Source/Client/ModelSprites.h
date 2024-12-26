@@ -54,7 +54,7 @@ public:
     auto operator=(ModelSprite&&) noexcept -> ModelSprite& = delete;
     ~ModelSprite() override = default;
 
-    [[nodiscard]] auto IsHitTest(int x, int y) const -> bool override;
+    [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<IRect> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
@@ -68,7 +68,7 @@ public:
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
-    void SetSize(int width, int height);
+    void SetSize(isize size);
     void DrawToAtlas();
 
 private:

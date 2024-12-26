@@ -311,11 +311,12 @@ auto LanguagePack::GetName() const noexcept -> const string&
     return _langName;
 }
 
-auto LanguagePack::GetTextPack(TextPackName pack_name) const noexcept -> const TextPack&
+auto LanguagePack::GetTextPack(TextPackName pack_name) const -> const TextPack&
 {
     STACK_TRACE_ENTRY();
 
     const auto pack_index = static_cast<size_t>(pack_name);
+    RUNTIME_ASSERT(pack_index < _textPacks.size());
 
     return _textPacks[pack_index] ? *_textPacks[pack_index] : _emptyPack;
 }
@@ -325,6 +326,7 @@ auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
     STACK_TRACE_ENTRY();
 
     const auto pack_index = static_cast<size_t>(pack_name);
+    RUNTIME_ASSERT(pack_index < _textPacks.size());
 
     if (!_textPacks[pack_index]) {
         _textPacks[pack_index] = std::make_unique<TextPack>();

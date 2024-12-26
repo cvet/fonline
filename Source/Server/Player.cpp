@@ -148,10 +148,8 @@ void Player::Send_AddCritter(const Critter* cr)
 
     Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.Write(cr->GetProtoId());
-    Connection->OutBuf.Write(cr->GetHexX());
-    Connection->OutBuf.Write(cr->GetHexY());
-    Connection->OutBuf.Write(cr->GetHexOffsX());
-    Connection->OutBuf.Write(cr->GetHexOffsY());
+    Connection->OutBuf.Write(cr->GetHex());
+    Connection->OutBuf.Write(cr->GetHexOffset());
     Connection->OutBuf.Write(cr->GetDirAngle());
     Connection->OutBuf.Write(cr->GetCondition());
     Connection->OutBuf.Write(cr->GetAliveStateAnim());
@@ -338,8 +336,7 @@ void Player::Send_Moving(const Critter* from_cr)
         Connection->OutBuf.Write(static_cast<uint>(std::ceil(from_cr->Moving.WholeTime)));
         Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime + from_cr->Moving.OffsetTime));
         Connection->OutBuf.Write(from_cr->Moving.Speed);
-        Connection->OutBuf.Write(from_cr->Moving.StartHexX);
-        Connection->OutBuf.Write(from_cr->Moving.StartHexY);
+        Connection->OutBuf.Write(from_cr->Moving.StartHex);
         Connection->OutBuf.Write(static_cast<uint16>(from_cr->Moving.Steps.size()));
         for (const auto step : from_cr->Moving.Steps) {
             Connection->OutBuf.Write(step);
@@ -348,8 +345,7 @@ void Player::Send_Moving(const Critter* from_cr)
         for (const auto control_step : from_cr->Moving.ControlSteps) {
             Connection->OutBuf.Write(control_step);
         }
-        Connection->OutBuf.Write(from_cr->Moving.EndOx);
-        Connection->OutBuf.Write(from_cr->Moving.EndOy);
+        Connection->OutBuf.Write(from_cr->Moving.EndHexOffset);
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
     }
@@ -357,10 +353,8 @@ void Player::Send_Moving(const Critter* from_cr)
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_POS);
         Connection->OutBuf.Write(from_cr->GetId());
-        Connection->OutBuf.Write(from_cr->GetHexX());
-        Connection->OutBuf.Write(from_cr->GetHexY());
-        Connection->OutBuf.Write(from_cr->GetHexOffsX());
-        Connection->OutBuf.Write(from_cr->GetHexOffsY());
+        Connection->OutBuf.Write(from_cr->GetHex());
+        Connection->OutBuf.Write(from_cr->GetHexOffset());
         Connection->OutBuf.Write(from_cr->GetDirAngle());
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
@@ -500,8 +494,7 @@ void Player::Send_AddItemOnMap(const Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM_ON_MAP);
-    Connection->OutBuf.Write(item->GetHexX());
-    Connection->OutBuf.Write(item->GetHexY());
+    Connection->OutBuf.Write(item->GetHex());
     SendItem(item, false, false, true);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -597,8 +590,7 @@ void Player::Send_GlobalInfo()
         const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
         Connection->OutBuf.Write(loc_id);
         Connection->OutBuf.Write(loc->GetProtoId());
-        Connection->OutBuf.Write(loc->GetWorldX());
-        Connection->OutBuf.Write(loc->GetWorldY());
+        Connection->OutBuf.Write(loc->GetWorldPos());
         Connection->OutBuf.Write(loc->GetRadius());
         Connection->OutBuf.Write(loc->GetColor());
         uint8 count = 0;
@@ -629,8 +621,7 @@ void Player::Send_GlobalLocation(const Location* loc, bool add)
     Connection->OutBuf.Write(add);
     Connection->OutBuf.Write(loc->GetId());
     Connection->OutBuf.Write(loc->GetProtoId());
-    Connection->OutBuf.Write(loc->GetWorldX());
-    Connection->OutBuf.Write(loc->GetWorldY());
+    Connection->OutBuf.Write(loc->GetWorldPos());
     Connection->OutBuf.Write(loc->GetRadius());
     Connection->OutBuf.Write(loc->GetColor());
     uint8 count = 0;
@@ -657,7 +648,7 @@ void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
+void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
@@ -666,8 +657,7 @@ void Player::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_TELEPORT);
     Connection->OutBuf.Write(cr->GetId());
-    Connection->OutBuf.Write(to_hx);
-    Connection->OutBuf.Write(to_hy);
+    Connection->OutBuf.Write(to_hex);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -853,7 +843,7 @@ void Player::Send_TextMsgLex(ident_t from_id, uint8 how_say, TextPackName text_p
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text)
+void Player::Send_MapText(mpos hex, ucolor color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -861,8 +851,7 @@ void Player::Send_MapText(uint16 hx, uint16 hy, ucolor color, string_view text, 
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT);
-    Connection->OutBuf.Write(hx);
-    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(color);
     Connection->OutBuf.Write(text);
     Connection->OutBuf.Write(unsafe_text);
@@ -870,7 +859,7 @@ void Player::Send_MapText(uint16 hx, uint16 hy, ucolor color, string_view text, 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num)
+void Player::Send_MapTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -878,8 +867,7 @@ void Player::Send_MapTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName te
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG);
-    Connection->OutBuf.Write(hx);
-    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(color);
     Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
@@ -887,7 +875,7 @@ void Player::Send_MapTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName te
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
+void Player::Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -895,8 +883,7 @@ void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG_LEX);
-    Connection->OutBuf.Write(hx);
-    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(color);
     Connection->OutBuf.Write(text_pack);
     Connection->OutBuf.Write(str_num);
@@ -905,7 +892,7 @@ void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
+void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
@@ -914,14 +901,13 @@ void Player::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_EFFECT);
     Connection->OutBuf.Write(eff_pid);
-    Connection->OutBuf.Write(hx);
-    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(hex);
     Connection->OutBuf.Write(radius);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
+void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
@@ -932,10 +918,8 @@ void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_i
     Connection->OutBuf.Write(eff_pid);
     Connection->OutBuf.Write(from_cr_id);
     Connection->OutBuf.Write(to_cr_id);
-    Connection->OutBuf.Write(from_hx);
-    Connection->OutBuf.Write(from_hy);
-    Connection->OutBuf.Write(to_hx);
-    Connection->OutBuf.Write(to_hy);
+    Connection->OutBuf.Write(from_hex);
+    Connection->OutBuf.Write(to_hex);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -964,8 +948,7 @@ void Player::Send_ViewMap()
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_VIEW_MAP);
-    Connection->OutBuf.Write(_controlledCr->ViewMapHx);
-    Connection->OutBuf.Write(_controlledCr->ViewMapHy);
+    Connection->OutBuf.Write(_controlledCr->ViewMapHex);
     Connection->OutBuf.Write(_controlledCr->ViewMapLocId);
     Connection->OutBuf.Write(_controlledCr->ViewMapLocEnt);
     Connection->OutBuf.EndMsg();

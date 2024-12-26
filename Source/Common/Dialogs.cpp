@@ -41,11 +41,11 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
 {
     STACK_TRACE_ENTRY();
 
-    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->Find(str);
-    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->Find(str);
+    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->FindProperty(str);
+    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->FindProperty(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;

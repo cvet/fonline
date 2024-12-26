@@ -758,7 +758,7 @@ auto strex::toBool() const noexcept -> bool
         return false;
     }
 
-    return toInt() != 0;
+    return toInt64() != 0;
 }
 
 auto strex::formatPath() -> strex&
@@ -857,6 +857,7 @@ auto strex::getFileExtension() -> strex&
     NO_STACK_TRACE_ENTRY();
 
     const auto dot = _sv.find_last_of('.');
+    lower();
 
     _sv = dot != string::npos ? _sv.substr(dot + 1) : "";
 
@@ -1158,6 +1159,7 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
     buf[0] = static_cast<char>(0xef);
     buf[1] = static_cast<char>(0xbf);
     buf[2] = static_cast<char>(0xbd);
+
     return 3;
 }
 

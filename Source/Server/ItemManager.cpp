@@ -120,13 +120,12 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Reset ownership properties
     if (props != nullptr) {
-        item->SetMapId(ident_t {});
-        item->SetHexX(0);
-        item->SetHexY(0);
-        item->SetCritterId(ident_t {});
-        item->SetCritterSlot(CritterItemSlot::Inventory);
-        item->SetContainerId(ident_t {});
-        item->SetContainerStack(ContainerItemStack::Root);
+        item->SetMapId({});
+        item->SetHex({});
+        item->SetCritterId({});
+        item->SetCritterSlot({});
+        item->SetContainerId({});
+        item->SetContainerStack({});
         item->SetInnerItemIds({});
     }
 
@@ -238,11 +237,11 @@ auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
     }
 }
 
-auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy) -> Item*
+auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
         return item;
     }
 
@@ -250,12 +249,12 @@ auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
-        to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        to_map->AddItem(item, to_hex, dynamic_cast<Critter*>(holder));
         return item;
     }
     else {
         auto* splitted_item = SplitItem(item, count);
-        to_map->AddItem(splitted_item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
+        to_map->AddItem(splitted_item, to_hex, dynamic_cast<Critter*>(holder));
         return splitted_item;
     }
 }
@@ -452,11 +451,11 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, text_pack, str_num, "");
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldPos(), text, unsafe_text, text_pack, str_num, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, ipos from_wpos, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -530,7 +529,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         }
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
-                            if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, cr->GetWorldX(), cr->GetWorldY(), 0, broadcast - 101)) {
+                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, cr->GetWorldPos().x, cr->GetWorldPos().y, 0, broadcast - 101)) {
                                 continue;
                             }
                         }
@@ -571,8 +570,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
                             const auto* loc = map->GetLocation();
-
-                            if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101)) {
+                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, loc->GetWorldPos().x, loc->GetWorldPos().y, loc->GetRadius(), broadcast - 101)) {
                                 continue;
                             }
                         }
@@ -582,13 +580,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                     }
 
                     if (!text.empty()) {
-                        map->SetText(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text, unsafe_text);
+                        map->SetText(radio->GetHex(), ucolor {255, 255, 254, 255}, text, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
+                        map->SetTextMsgLex(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
                     }
                     else {
-                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), ucolor {255, 255, 254, 255}, text_pack, str_num);
+                        map->SetTextMsg(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num);
                     }
                 }
             }
