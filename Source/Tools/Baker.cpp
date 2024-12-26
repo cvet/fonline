@@ -772,70 +772,51 @@ void Baker::BakeAll()
 
                     MapLoader::Load(
                         proto_map->GetName(), map_file.GetStr(), server_proto_mngr, hash_resolver,
-                        [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                        [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
                             auto props = copy(proto->GetProperties());
+                            props.ApplyFromText(kv);
 
-                            if (props.ApplyFromText(kv)) {
-                                map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
+                            map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
 
-                                map_cr_count++;
-                                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                props.StoreAllData(props_data, str_hashes);
-                                map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
-                            }
-                            else {
-                                WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                map_errors++;
-                            }
-
-                            return true;
+                            map_cr_count++;
+                            map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                            map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                            props.StoreAllData(props_data, str_hashes);
+                            map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                            map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
                         },
-                        [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                        [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
                             auto props = copy(proto->GetProperties());
+                            props.ApplyFromText(kv);
 
-                            if (props.ApplyFromText(kv)) {
-                                map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
+                            map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
 
-                                map_item_count++;
-                                map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                props.StoreAllData(props_data, str_hashes);
-                                map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                map_item_data_writer.WritePtr(props_data.data(), props_data.size());
+                            map_item_count++;
+                            map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                            map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                            props.StoreAllData(props_data, str_hashes);
+                            map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                            map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                const auto is_static = props.GetValue<bool>(proto->GetPropertyStatic());
-                                const auto is_hidden = props.GetValue<bool>(proto->GetPropertyHidden());
+                            const auto is_static = proto->GetStatic();
+                            const auto is_hidden = proto->GetHidden();
 
-                                if (is_static && !is_hidden) {
-                                    const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
-                                    auto client_props = copy(client_proto->GetProperties());
+                            if (is_static && !is_hidden) {
+                                const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
+                                auto client_props = copy(client_proto->GetProperties());
+                                client_props.ApplyFromText(kv);
 
-                                    if (client_props.ApplyFromText(kv)) {
-                                        map_client_item_count++;
-                                        map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                        map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
-                                        client_props.StoreAllData(props_data, client_str_hashes);
-                                        map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                        map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
-                                    }
-                                    else {
-                                        WriteLog("Invalid item (client side) {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                        map_errors++;
-                                    }
-                                }
+                                map_client_item_count++;
+                                map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                                map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                                client_props.StoreAllData(props_data, client_str_hashes);
+                                map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
                             }
-                            else {
-                                WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
-                                map_errors++;
-                            }
-
-                            return true;
                         });
 
                     if (map_errors != 0) {
-                        throw GenericException("Map loading error(s)");
+                        throw GenericException("Map validation error(s)");
                     }
 
 #if !FO_SINGLEPLAYER

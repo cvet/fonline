@@ -408,13 +408,13 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     return result;
 }
 
-auto MapManager::CreateLocation(hstring proto_id, upos16 wpos) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, ipos wpos) -> Location*
 {
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
 
-    if (wpos.x >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wpos.y >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
+    if (wpos.x < 0 || wpos.y < 0 || wpos.x >= static_cast<int>(GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength) || wpos.y >= static_cast<int>(GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength)) {
         throw MapManagerException("Invalid location coordinates", proto_id);
     }
 

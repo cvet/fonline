@@ -645,7 +645,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, ipos pos, isize size, b
     }
 }
 
-void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, int spr_width, int spr_height, ucolor color)
+void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -660,18 +660,18 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, i
     auto width = static_cast<float>(atlas_spr->Size.width);
     auto height = static_cast<float>(atlas_spr->Size.height);
 
-    if (spr_width != 0 && spr_height != 0) {
-        width = static_cast<float>(spr_width);
-        height = static_cast<float>(spr_height);
+    if (spr_size.width != 0 && spr_size.height != 0) {
+        width = static_cast<float>(spr_size.width);
+        height = static_cast<float>(spr_size.height);
     }
-    else if (spr_width != 0) {
-        const auto ratio = static_cast<float>(spr_width) / width;
-        width = static_cast<float>(spr_width);
+    else if (spr_size.width != 0) {
+        const auto ratio = static_cast<float>(spr_size.width) / width;
+        width = static_cast<float>(spr_size.width);
         height *= ratio;
     }
-    else if (spr_height != 0) {
-        const auto ratio = static_cast<float>(spr_height) / height;
-        height = static_cast<float>(spr_height);
+    else if (spr_size.height != 0) {
+        const auto ratio = static_cast<float>(spr_size.height) / height;
+        height = static_cast<float>(spr_size.height);
         width *= ratio;
     }
 
@@ -2553,6 +2553,7 @@ auto SpriteManager::GetLinesCount(isize size, string_view str, int num_font /* =
     }
 
     auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return 0;
     }
@@ -2585,16 +2586,18 @@ auto SpriteManager::GetLinesHeight(isize size, string_view str, int num_font /* 
     }
 
     const auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return 0;
     }
 
-    const auto cnt = GetLinesCount(size, str, num_font);
-    if (cnt <= 0) {
+    const auto lines_count = GetLinesCount(size, str, num_font);
+
+    if (lines_count <= 0) {
         return 0;
     }
 
-    return cnt * font->LineHeight + (cnt - 1) * font->YAdvance;
+    return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
 }
 
 auto SpriteManager::GetLineHeight(int num_font) -> int
@@ -2602,6 +2605,7 @@ auto SpriteManager::GetLineHeight(int num_font) -> int
     STACK_TRACE_ENTRY();
 
     const auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return 0;
     }
@@ -2617,6 +2621,7 @@ auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint 
     lines = {};
 
     auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return false;
     }
@@ -2634,7 +2639,7 @@ auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint 
         return false;
     }
 
-    result_size = {fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance, fi.MaxCurX - fi.Rect.x};
+    result_size = {fi.MaxCurX - fi.Rect.x, fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance};
     lines = fi.LinesInRect;
 
     return true;
@@ -2651,6 +2656,7 @@ auto SpriteManager::SplitLines(irect rect, string_view cstr, int num_font) -> ve
     }
 
     auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return {};
     }
@@ -2673,8 +2679,10 @@ auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
     STACK_TRACE_ENTRY();
 
     const auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return false;
     }
+
     return font->Letters.count(letter) > 0;
 }

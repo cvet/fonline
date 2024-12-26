@@ -37,7 +37,7 @@
 #include "StringUtils.h"
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
+FO_SCRIPT_API void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -47,7 +47,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
+FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -57,7 +57,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
     if (count == 0) {
         return nullptr;
@@ -67,13 +67,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
+FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
 {
     return self->GetInnerItems(stackId);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMap(Item* self)
+FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
 {
     Map* map;
 
@@ -119,7 +119,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
     Map* map;
 
@@ -170,7 +170,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {

@@ -105,9 +105,9 @@ void OnMouseUp(MouseButton button) // Engine callback
     MousePressed[button] = false;
 }
 
-void OnMouseMove(int offsetX, int offsetY) // Engine callback
+void OnMouseMove(ipos offset) // Engine callback
 {
-    Gui::EngineCallback_MouseMove(offsetX, offsetY);
+    Gui::EngineCallback_MouseMove(offset);
 }
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////

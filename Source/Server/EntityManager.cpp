@@ -817,7 +817,7 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
         const auto* proto = entity_with_proto->GetProto();
         auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
 
-        doc["_Proto"] = string(proto->GetName());
+        doc.Emplace("_Proto", string(proto->GetName()));
 
         _engine->DbStorage.Insert(collection_name, id, doc);
     }
@@ -829,7 +829,7 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
     {
         AnyData::Document type_map_id;
-        type_map_id["Type"] = string(entity->GetTypeName());
+        type_map_id.Emplace("Type", string(entity->GetTypeName()));
 
         _engine->DbStorage.Insert(_entityTypeMapCollection, id, type_map_id);
     }

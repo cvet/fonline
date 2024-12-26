@@ -125,6 +125,9 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             ReportExceptionAndContinue(ex);
             is_error = true;
         }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 
     return !is_error;
@@ -149,8 +152,10 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
 {
     if (base_type_info.IsString) {
         const uint str_len = *reinterpret_cast<const uint*>(pdata);
-        pdata += sizeof(str_len) + str_len;
-        return string(reinterpret_cast<const char*>(pdata + sizeof(str_len) - str_len), str_len);
+        pdata += sizeof(str_len);
+        const auto* pstr = reinterpret_cast<const char*>(pdata);
+        pdata += str_len;
+        return string(pstr, str_len);
     }
     else if (base_type_info.IsHash) {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
@@ -158,8 +163,9 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
         return hash_resolver.ResolveHash(hash).as_str();
     }
     else if (base_type_info.IsEnum) {
-        const auto enum_value = *reinterpret_cast<const int*>(pdata);
-        pdata += sizeof(int);
+        int enum_value = 0;
+        std::memcpy(&enum_value, pdata, base_type_info.Size);
+        pdata += base_type_info.Size;
         return name_resolver.ResolveEnumValueName(base_type_info.TypeName, enum_value);
     }
     else if (base_type_info.IsPrimitive) {
@@ -228,11 +234,18 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
     const auto* pdata = raw_data.data();
     const auto* pdata_end = raw_data.data() + raw_data.size();
 
-    if (prop->IsPlainData() || prop->IsString()) {
+    if (prop->IsPlainData()) {
         auto value = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
 
         RUNTIME_ASSERT(pdata == pdata_end);
         return value;
+    }
+    else if (prop->IsString()) {
+        const auto* pstr = reinterpret_cast<const char*>(pdata);
+        pdata += raw_data.size();
+
+        RUNTIME_ASSERT(pdata == pdata_end);
+        return string(pstr, raw_data.size());
     }
     else if (prop->IsArray()) {
         AnyData::Array arr;
@@ -453,7 +466,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         }
     }
     else if (base_type_info.IsEnum) {
-        auto& enum_value = *reinterpret_cast<int*>(pdata);
+        int enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
             enum_value = name_resolver.ResolveEnumValue(base_type_info.TypeName, value.AsString());
@@ -465,6 +478,16 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         }
         else {
             throw PropertySerializationException("Wrong enum value type (not string or int)");
+        }
+
+        if (base_type_info.Size == sizeof(uint8)) {
+            *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+        }
+        else if (base_type_info.Size == sizeof(uint16)) {
+            *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+        }
+        else {
+            std::memcpy(pdata, &enum_value, base_type_info.Size);
         }
     }
     else if (base_type_info.IsPrimitive) {
@@ -687,7 +710,16 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             }
             else if (dickt_key_type_info.IsEnum) {
                 const int enum_value = name_resolver.ResolveEnumValue(dickt_key_type_info.TypeName, dict_key);
-                std::memcpy(pdata, &enum_value, dickt_key_type_info.Size);
+
+                if (dickt_key_type_info.Size == sizeof(uint8)) {
+                    *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+                }
+                else if (dickt_key_type_info.Size == sizeof(uint16)) {
+                    *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+                }
+                else {
+                    std::memcpy(pdata, &enum_value, base_type_info.Size);
+                }
             }
             else if (dickt_key_type_info.IsInt8) {
                 *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strex(dict_key).toInt64());

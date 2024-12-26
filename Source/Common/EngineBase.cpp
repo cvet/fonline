@@ -79,7 +79,7 @@ void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_vie
     it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
 }
 
-void FOEngineBase::RegisterEnumGroup(string_view name, size_t size, unordered_map<string, int>&& key_values)
+void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
@@ -98,18 +98,18 @@ void FOEngineBase::RegisterEnumGroup(string_view name, size_t size, unordered_ma
 
     _enums[string(name)] = std::move(key_values);
     _enumsRev[string(name)] = std::move(key_values_rev);
-    _enumSizes[string(name)] = size;
+    _enumTypes[string(name)] = std::move(underlying_type);
 }
 
-void FOEngineBase::RegisterStructType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
+void FOEngineBase::RegisterValueType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-    RUNTIME_ASSERT(_structTypes.count(name) == 0);
+    RUNTIME_ASSERT(_valueTypes.count(name) == 0);
     RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
 
-    _structTypes.emplace(name, tuple {size, std::move(layout)});
+    _valueTypes.emplace(name, tuple {size, std::move(layout)});
 }
 
 void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
@@ -223,28 +223,28 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
         {"uint8",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
-                info.IsInt8 = true;
+                info.IsUInt8 = true;
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint8);
             }},
         {"uint16",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
-                info.IsInt16 = true;
+                info.IsUInt16 = true;
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint16);
             }},
         {"uint",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
-                info.IsInt32 = true;
+                info.IsUInt32 = true;
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint);
             }},
         {"uint64",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
-                info.IsInt64 = true;
+                info.IsUInt64 = true;
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint64);
             }},
@@ -289,13 +289,19 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     if (const auto it = builtin_types.find(type_str); it != builtin_types.end()) {
         it->second(info);
     }
-    else if (size_t enum_size; GetEnumInfo(info.TypeName, enum_size)) {
+    else if (const BaseTypeInfo * underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
         info.IsEnum = true;
-        info.Size = static_cast<uint>(enum_size);
+        info.IsEnumSigned = underlying_type->IsSignedInt;
+        info.Size = underlying_type->Size;
     }
-    else if (size_t type_size; GetStructInfo(info.TypeName, type_size, &info.StructLayout)) {
-        info.IsStruct = true;
-        info.Size = static_cast<uint>(type_size);
+    else if (GetValueTypeInfo(info.TypeName, info.Size, &info.StructLayout)) {
+        if (info.StructLayout->size() > 1) {
+            info.IsStruct = true;
+        }
+        else {
+            info = info.StructLayout->front().second;
+            info.TypeName = type_str;
+        }
     }
     else {
         throw GenericException("Invalid base type", type_str);
@@ -306,29 +312,30 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     return info;
 }
 
-auto FOEngineBase::GetEnumInfo(const string& enum_name, size_t& size) const -> bool
+auto FOEngineBase::GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto enum_it = _enumSizes.find(enum_name);
+    const auto enum_it = _enumTypes.find(enum_name);
 
-    if (enum_it == _enumSizes.end()) {
+    if (enum_it == _enumTypes.end()) {
         return false;
     }
 
-    size = enum_it->second;
-    RUNTIME_ASSERT(size != 0);
+    if (underlying_type != nullptr) {
+        *underlying_type = &enum_it->second;
+    }
 
     return true;
 }
 
-auto FOEngineBase::GetStructInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
+auto FOEngineBase::GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _structTypes.find(type_name);
+    const auto it = _valueTypes.find(type_name);
 
-    if (it == _structTypes.end()) {
+    if (it == _valueTypes.end()) {
         return false;
     }
 

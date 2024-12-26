@@ -183,15 +183,12 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
     MapLoader::Load(
         map_name, str, _engine->ProtoMngr, *_engine,
-        [this](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+        [this](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_crittersMap.count(id) == 0);
 
             auto props = copy(proto->GetProperties());
-
-            if (!props.ApplyFromText(kv)) {
-                return false;
-            }
+            props.ApplyFromText(kv);
 
             auto* cr = new CritterHexView(this, id, proto, &props);
 
@@ -200,17 +197,13 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             }
 
             AddCritterInternal(cr);
-            return true;
         },
-        [this](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+        [this](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_itemsMap.count(id) == 0);
 
             auto props = copy(proto->GetProperties());
-
-            if (!props.ApplyFromText(kv)) {
-                return false;
-            }
+            props.ApplyFromText(kv);
 
             auto* item = new ItemHexView(this, id, proto, &props);
 
@@ -225,7 +218,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 auto* cr = GetCritter(item->GetCritterId());
 
                 if (cr == nullptr) {
-                    return false;
+                    throw GenericException("Critter {} not found", item->GetCritterId());
                 }
 
                 cr->AddRawInvItem(item);
@@ -234,7 +227,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 auto* cont = GetItem(item->GetContainerId());
 
                 if (cont == nullptr) {
-                    return false;
+                    throw GenericException("Container {} not found", item->GetContainerId());
                 }
 
                 cont->AddRawInnerItem(item);
@@ -242,8 +235,6 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             else {
                 UNREACHABLE_PLACE();
             }
-
-            return true;
         });
 
     _mapLoading = false;
@@ -614,6 +605,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
         }
     }
 
+    item->SetMapId(GetId());
     item->Init();
 
     _allItems.emplace_back(item);
@@ -643,7 +635,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     if (!MeasureMapBorders(item->Spr, item->SprOffset)) {
         if (!_mapLoading && IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
             auto& field = _hexField->GetCellForWriting(hex);
-            const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+            const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
             auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), mpos {hex.x, hex_y_with_offset}, &field.Offset);
 
             AddSpriteToChain(field, spr);
@@ -670,7 +662,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
 
     if (IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
         auto& field = _hexField->GetCellForWriting(hex);
-        const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+        const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
         auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), {hex.x, hex_y_with_offset}, &field.Offset);
 
         AddSpriteToChain(field, spr);
@@ -1074,18 +1066,18 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Track
         if (_isShowTrack && GetHexTrack(hex) != 0) {
             auto&& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
-            auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, //
-                {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
+            const auto hex_offset = ipos {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (spr ? spr->Size.height / 2 : 0)};
+            auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
 
             AddSpriteToChain(field, &mspr);
         }
 
-        // Hex Lines
+        // Hex lines
         if (_isShowHex) {
             auto&& spr = _picHex[0];
-            auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, //
-                {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0}, &field.Offset, //
+            const auto hex_offset = ipos {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0};
+            auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
 
             AddSpriteToChain(field, &mspr);
@@ -1098,7 +1090,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                     continue;
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 AddSpriteToChain(field, mspr);
@@ -1112,7 +1104,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                     continue;
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 mspr->SetEggAppearence(EggAppearenceType::Always);
@@ -1157,7 +1149,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                     }
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 AddSpriteToChain(field, mspr);
@@ -1398,7 +1390,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                     continue;
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 AddSpriteToChain(field, mspr);
@@ -1412,7 +1404,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                     continue;
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + tile->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 mspr->SetEggAppearence(EggAppearenceType::Always);
@@ -1457,7 +1449,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                     }
                 }
 
-                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int8>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
+                const auto hex_y_with_offset = static_cast<uint16>(std::clamp(static_cast<int>(hex.y) + item->GetDrawOrderOffsetHexY(), 0, _mapSize.height - 1));
                 auto* mspr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), {hex.x, hex_y_with_offset}, &field.Offset);
 
                 AddSpriteToChain(field, mspr);
@@ -2654,8 +2646,8 @@ void MapView::ResizeView()
 
     const auto view_size = GetViewSize();
 
-    _hVisible = view_size.width + _hTop + _hBottom;
-    _wVisible = view_size.height + _wLeft + _wRight;
+    _wVisible = view_size.width + _wLeft + _wRight;
+    _hVisible = view_size.height + _hTop + _hBottom;
 
     _viewField.resize(static_cast<size_t>(_hVisible) * _wVisible);
 }
@@ -2715,9 +2707,9 @@ void MapView::ChangeZoom(int zoom)
 
     // Check screen blockers
     if (_engine->Settings.ScrollCheck && (zoom > 0 || (zoom == 0 && GetSpritesZoom() < 1.0f))) {
-        for (auto x = -1; x <= 1; x++) {
-            for (auto y = -1; y <= 1; y++) {
-                if (((x != 0) || (y != 0)) && ScrollCheck(x, y)) {
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                if ((x != 0 || y != 0) && ScrollCheck(x, y)) {
                     return;
                 }
             }
@@ -3051,7 +3043,7 @@ auto MapView::Scroll() -> bool
     STACK_TRACE_ENTRY();
 
     // Scroll delay
-    auto time_k = 1.0f;
+    float time_k = 1.0f;
 
     if (_engine->Settings.ScrollDelay != 0) {
         const auto time = _engine->GameTime.FrameTime();
@@ -3064,11 +3056,11 @@ auto MapView::Scroll() -> bool
         _scrollLastTime = time;
     }
 
-    const auto is_scroll = IsScrollEnabled();
-    auto scr_ox = _engine->Settings.ScreenOffset.x;
-    auto scr_oy = _engine->Settings.ScreenOffset.y;
-    const auto prev_scr_ox = scr_ox;
-    const auto prev_scr_oy = scr_oy;
+    const bool is_scroll = IsScrollEnabled();
+    int scr_ox = _engine->Settings.ScreenOffset.x;
+    int scr_oy = _engine->Settings.ScreenOffset.y;
+    const int prev_scr_ox = scr_ox;
+    const int prev_scr_oy = scr_oy;
 
     if (is_scroll && AutoScroll.CanStop) {
         AutoScroll.Active = false;
@@ -3077,6 +3069,7 @@ auto MapView::Scroll() -> bool
     // Check critter scroll lock
     if (AutoScroll.HardLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.HardLockedCritter);
+
         if (cr != nullptr && ipos {cr->GetHex().x, cr->GetHex().y} != _screenRawHex) {
             ScrollToHex(cr->GetHex(), 0.02f, true);
         }
@@ -3084,6 +3077,7 @@ auto MapView::Scroll() -> bool
 
     if (AutoScroll.SoftLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
+
         if (cr != nullptr && cr->GetHex() != AutoScroll.CritterLastHex) {
             const auto hex_offset = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHex, cr->GetHex());
             ScrollOffset(hex_offset, 0.02f, true);
@@ -3148,6 +3142,7 @@ auto MapView::Scroll() -> bool
         if (_engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown) {
             yscroll -= 1;
         }
+
         if (xscroll == 0 && yscroll == 0) {
             return false;
         }
@@ -3160,8 +3155,9 @@ auto MapView::Scroll() -> bool
     scr_oy += yscroll;
 
     if (_engine->Settings.ScrollCheck) {
-        auto xmod = 0;
-        auto ymod = 0;
+        int xmod = 0;
+        int ymod = 0;
+
         if (scr_ox - _engine->Settings.ScreenOffset.x > 0) {
             xmod = 1;
         }
@@ -3174,11 +3170,12 @@ auto MapView::Scroll() -> bool
         if (scr_oy - _engine->Settings.ScreenOffset.y < 0) {
             ymod = 1;
         }
-        if (((xmod != 0) || (ymod != 0)) && ScrollCheck(xmod, ymod)) {
-            if ((xmod != 0) && (ymod != 0) && !ScrollCheck(0, ymod)) {
+
+        if ((xmod != 0 || ymod != 0) && ScrollCheck(xmod, ymod)) {
+            if (xmod != 0 && ymod != 0 && !ScrollCheck(0, ymod)) {
                 scr_ox = 0;
             }
-            else if ((xmod != 0) && (ymod != 0) && !ScrollCheck(xmod, 0)) {
+            else if (xmod != 0 && ymod != 0 && !ScrollCheck(xmod, 0)) {
                 scr_oy = 0;
             }
             else {
@@ -3198,30 +3195,22 @@ auto MapView::Scroll() -> bool
     if (scr_ox >= _engine->Settings.MapHexWidth) {
         xmod = 1;
         scr_ox -= _engine->Settings.MapHexWidth;
-        if (scr_ox > _engine->Settings.MapHexWidth) {
-            scr_ox = _engine->Settings.MapHexWidth;
-        }
+        scr_ox = std::min(scr_ox, _engine->Settings.MapHexWidth);
     }
     else if (scr_ox <= -_engine->Settings.MapHexWidth) {
         xmod = -1;
         scr_ox += _engine->Settings.MapHexWidth;
-        if (scr_ox < -_engine->Settings.MapHexWidth) {
-            scr_ox = -_engine->Settings.MapHexWidth;
-        }
+        scr_ox = std::max(scr_ox, -_engine->Settings.MapHexWidth);
     }
     if (scr_oy >= (_engine->Settings.MapHexLineHeight * 2)) {
         ymod = -2;
-        scr_oy -= (_engine->Settings.MapHexLineHeight * 2);
-        if (scr_oy > (_engine->Settings.MapHexLineHeight * 2)) {
-            scr_oy = (_engine->Settings.MapHexLineHeight * 2);
-        }
+        scr_oy -= _engine->Settings.MapHexLineHeight * 2;
+        scr_oy = std::min(scr_oy, _engine->Settings.MapHexLineHeight * 2);
     }
     else if (scr_oy <= -(_engine->Settings.MapHexLineHeight * 2)) {
         ymod = 2;
-        scr_oy += (_engine->Settings.MapHexLineHeight * 2);
-        if (scr_oy < -(_engine->Settings.MapHexLineHeight * 2)) {
-            scr_oy = -(_engine->Settings.MapHexLineHeight * 2);
-        }
+        scr_oy += _engine->Settings.MapHexLineHeight * 2;
+        scr_oy = std::max(scr_oy, -(_engine->Settings.MapHexLineHeight * 2));
     }
 
     _engine->Settings.ScreenOffset.x = scr_ox;
@@ -3249,8 +3238,9 @@ auto MapView::Scroll() -> bool
     if (!_mapperMode) {
         const auto final_scr_ox = _engine->Settings.ScreenOffset.x - prev_scr_ox + xmod * _engine->Settings.MapHexWidth;
         const auto final_scr_oy = _engine->Settings.ScreenOffset.y - prev_scr_oy + (-ymod / 2) * (_engine->Settings.MapHexLineHeight * 2);
-        if ((final_scr_ox != 0) || (final_scr_oy != 0)) {
-            _engine->OnScreenScroll.Fire(final_scr_ox, final_scr_oy);
+
+        if (final_scr_ox != 0 || final_scr_oy != 0) {
+            _engine->OnScreenScroll.Fire({final_scr_ox, final_scr_oy});
         }
     }
 
@@ -3547,6 +3537,7 @@ auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
         _crittersMap.emplace(cr->GetId(), cr);
     }
 
+    cr->SetMapId(GetId());
     cr->Init();
 
     vec_add_unique_value(_critters, cr);
@@ -3953,6 +3944,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         }
 
         auto p_togo = static_cast<int>(coords.size()) - p;
+
         if (p_togo == 0) {
             return std::nullopt;
         }
@@ -3965,7 +3957,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
             for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
                 const auto raw_next_hex = ipos {hex.x + sx[j], hex.y + sy[j]};
 
-                if (!_mapSize.IsValidPos(raw_next_hex)) {
+                if (!_mapSize.IsValidPos(raw_next_hex) || GRID_AT(raw_next_hex)) {
                     continue;
                 }
 

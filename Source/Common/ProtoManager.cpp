@@ -206,10 +206,7 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
             // Create proto
             const auto* property_registrator = _engine->GetPropertyRegistrator(type_name);
             auto props = Properties(property_registrator);
-
-            if (!props.ApplyFromText(final_kv)) {
-                throw ProtoManagerException("Proto item fail to load properties", base_name);
-            }
+            props.ApplyFromText(final_kv);
 
             auto* proto = CreateProto(type_name, pid, &props);
 

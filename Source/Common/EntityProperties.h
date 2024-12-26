@@ -140,7 +140,7 @@ public:
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, ipos16, DrawOffset);
+    ENTITY_PROPERTY(Public, ipos16, Offset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
     ///@ ExportProperty ReadOnly
@@ -261,7 +261,7 @@ public:
     ///@ ExportProperty ScriptFuncType = CritterInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, MapId);
+    ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
@@ -340,7 +340,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, ModelInCombatMode);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, upos16, WorldPos);
+    ENTITY_PROPERTY(Protected, ipos, WorldPos);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
@@ -444,7 +444,7 @@ public:
     ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, upos16, WorldPos);
+    ENTITY_PROPERTY(PrivateServer, ipos, WorldPos);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint16, Radius);
     ///@ ExportProperty

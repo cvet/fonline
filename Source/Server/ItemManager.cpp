@@ -455,7 +455,7 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, upos16 from_wpos, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, ipos from_wpos, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 

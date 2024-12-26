@@ -186,6 +186,7 @@ struct mpos
         y {y_}
     {
     }
+
     [[nodiscard]] constexpr auto operator==(const mpos& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const mpos& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
@@ -210,6 +211,13 @@ struct std::hash<mpos>
 ///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
 struct msize
 {
+    constexpr msize() noexcept = default;
+    constexpr msize(uint16 width_, uint16 height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
     [[nodiscard]] constexpr auto GetSquare() const noexcept -> uint { return static_cast<uint>(width * height); }

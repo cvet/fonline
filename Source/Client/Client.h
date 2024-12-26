@@ -204,7 +204,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, any_t> /*data*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
@@ -214,7 +214,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMouseMove, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnMouseMove, ipos /*offsetPos*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent

@@ -36,13 +36,13 @@
 #include "Client.h"
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 {
     return self->CreateRefClone();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self, uint count)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
     auto* cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
@@ -86,7 +86,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, mpos& hex)
+FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -96,7 +96,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->Play(animName, looped, reversed);
@@ -104,7 +104,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_StopAnim(ItemView* self)
+FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->Stop();
@@ -112,7 +112,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->SetTime(normalizedTime);
@@ -120,20 +120,20 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
+FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
     return self->GetInnerItems();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
+FO_SCRIPT_API uint8 Client_Item_GetAlpha(ItemView* self)
 {
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
     return hex_item != nullptr ? hex_item->GetCurAlpha() : 0xFF;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
+FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetTargetAlpha(alpha);

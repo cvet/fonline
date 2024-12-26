@@ -1217,19 +1217,21 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
         const auto* prop = ShowProps[ObjCurLine - start_line];
 
         if (prop != nullptr) {
-            if (entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineValue)) {
-                if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
-                    if (prop == hex_item->GetPropertyDrawOffset()) {
-                        hex_item->RefreshOffs();
-                    }
-                    if (prop == hex_item->GetPropertyPicMap()) {
-                        hex_item->RefreshAnim();
-                    }
-                }
+            try {
+                entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineValue);
             }
-            else {
-                const auto r = entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineInitValue);
-                UNUSED_VARIABLE(r);
+            catch (const std::exception& ex) {
+                UNUSED_VARIABLE(ex);
+                entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineInitValue);
+            }
+
+            if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
+                if (prop == hex_item->GetPropertyOffset()) {
+                    hex_item->RefreshOffs();
+                }
+                if (prop == hex_item->GetPropertyPicMap()) {
+                    hex_item->RefreshAnim();
+                }
             }
         }
     }
@@ -2281,14 +2283,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 continue;
             }
 
-            auto ox = item->GetDrawOffset().x + offs_x;
-            auto oy = item->GetDrawOffset().y + offs_y;
+            auto ox = item->GetOffset().x + offs_x;
+            auto oy = item->GetOffset().y + offs_y;
 
             if (Keyb.AltDwn) {
                 ox = oy = 0;
             }
 
-            item->SetDrawOffset({static_cast<int16>(ox), static_cast<int16>(oy)});
+            item->SetOffset({static_cast<int16>(ox), static_cast<int16>(oy)});
             item->RefreshAnim();
         }
         else {
@@ -2624,8 +2626,8 @@ void FOMapper::CurDraw()
 
             const auto* spr = GetIfaceSpr(proto_item->GetPicMap());
             if (spr != nullptr) {
-                auto x = CurMap->GetField(hex).Offset.x - (spr->Size.width / 2) + spr->Offset.x + (Settings.MapHexWidth / 2) + Settings.ScreenOffset.x + proto_item->GetDrawOffset().x;
-                auto y = CurMap->GetField(hex).Offset.y - spr->Size.height + spr->Offset.y + (Settings.MapHexHeight / 2) + Settings.ScreenOffset.y + proto_item->GetDrawOffset().y;
+                auto x = CurMap->GetField(hex).Offset.x - (spr->Size.width / 2) + spr->Offset.x + (Settings.MapHexWidth / 2) + Settings.ScreenOffset.x + proto_item->GetOffset().x;
+                auto y = CurMap->GetField(hex).Offset.y - spr->Size.height + spr->Offset.y + (Settings.MapHexHeight / 2) + Settings.ScreenOffset.y + proto_item->GetOffset().y;
 
                 if (proto_item->GetIsTile()) {
                     if (DrawRoof) {
@@ -3078,9 +3080,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     }
 
     auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    if (!pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"))) {
-        throw MapLoaderException("Invalid map header", map_name);
-    }
+    pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
     auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();

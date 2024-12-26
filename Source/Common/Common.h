@@ -75,6 +75,8 @@
 #define CPLUSPLUS_20 0
 #endif
 
+#define FO_SCRIPT_API extern
+
 // Standard API
 #include <algorithm>
 #include <any>
@@ -1516,6 +1518,13 @@ inline auto parse_from_string(const string& str) -> T
 ///@ ExportValueType isize isize HardStrong Layout = int-width+int-height
 struct isize
 {
+    constexpr isize() noexcept = default;
+    constexpr isize(int width_, int height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
     [[nodiscard]] constexpr auto GetSquare() const noexcept -> int { return width * height; }
@@ -1536,6 +1545,13 @@ DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
 ///@ ExportValueType ipos ipos HardStrong Layout = int-x+int-y
 struct ipos
 {
+    constexpr ipos() noexcept = default;
+    constexpr ipos(int x_, int y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
@@ -1605,6 +1621,13 @@ DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width
 ///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
 struct ipos16
 {
+    constexpr ipos16() noexcept = default;
+    constexpr ipos16(int16 x_, int16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x + other.x), static_cast<int16>(y + other.y)}; }
@@ -1623,6 +1646,13 @@ DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
 ///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-x+uint16-y
 struct upos16
 {
+    constexpr upos16() noexcept = default;
+    constexpr upos16(uint16 x_, uint16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const upos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
@@ -1641,6 +1671,13 @@ DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
 ///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-x+int8-y
 struct ipos8
 {
+    constexpr ipos8() noexcept = default;
+    constexpr ipos8(int8 x_, int8 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos8& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x + other.x), static_cast<int8>(y + other.y)}; }
@@ -1659,6 +1696,13 @@ DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
 ///@ ExportValueType fsize fsize HardStrong Layout = float-width+float-height
 struct fsize
 {
+    constexpr fsize() noexcept = default;
+    constexpr fsize(float width_, float height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto GetSquare() const noexcept -> float { return width * height; }
@@ -1679,6 +1723,13 @@ DECLARE_TYPE_PARSER(fsize, sstr >> value.width, sstr >> value.height);
 ///@ ExportValueType fpos fpos HardStrong Layout = float-x+float-y
 struct fpos
 {
+    constexpr fpos() noexcept = default;
+    constexpr fpos(float x_, float y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
     [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
     [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
     [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
@@ -2163,7 +2214,7 @@ inline constexpr auto numeric_cast(U value) -> T
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
         if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
     else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
@@ -2171,28 +2222,28 @@ inline constexpr auto numeric_cast(U value) -> T
     }
     else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
         if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
         if (value < static_cast<U>(std::numeric_limits<T>::min())) {
-            throw OverflowException("Numeric cast underflow", value, std::numeric_limits<T>::min());
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::min());
         }
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
         if (value < 0) {
-            throw OverflowException("Numeric cast underflow", value, 0);
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
         }
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
         if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
         if (value < 0) {
-            throw OverflowException("Numeric cast underflow", value, 0);
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
         }
     }
     else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
         if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
     else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
@@ -2200,7 +2251,7 @@ inline constexpr auto numeric_cast(U value) -> T
     }
     else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
         if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
 
@@ -2319,6 +2370,7 @@ struct BaseTypeInfo
     bool IsString {};
     bool IsHash {};
     bool IsEnum {};
+    bool IsEnumSigned {};
     bool IsPrimitive {}; // IsInt or IsFloat or IsBool
     bool IsInt {};
     bool IsSignedInt {};
@@ -2345,8 +2397,8 @@ public:
     virtual ~NameResolver() = default;
     // Todo: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
     [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
-    [[nodiscard]] virtual auto GetEnumInfo(const string& enum_name, size_t& size) const -> bool = 0;
-    [[nodiscard]] virtual auto GetStructInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
+    [[nodiscard]] virtual auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
+    [[nodiscard]] virtual auto GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;

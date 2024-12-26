@@ -1666,12 +1666,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
-        const auto wpos = buf.Read<upos16>();
+        const auto wpos = buf.Read<ipos>();
         const auto pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
 
         auto* loc = MapMngr.CreateLocation(pid, wpos);
+
         if (loc == nullptr) {
             logcb("Location not created");
         }
@@ -2576,7 +2577,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check password
     const auto player_id = MakePlayerId(name);
-    auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
+    const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
     if (!player_doc.Contains("Password") || player_doc["Password"].Type() != AnyData::ValueType::String || player_doc["Password"].AsString().length() != password.length() || player_doc["Password"].AsString() != password) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
@@ -3163,11 +3164,11 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
         AnyData::Document doc;
-        doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityType"] = string(entity->GetTypeName());
-        doc["EntityId"] = static_cast<int64>(entry_id.underlying_value());
-        doc["Property"] = prop->GetName();
-        doc["Value"] = std::move(value);
+        doc.Emplace("Time", static_cast<int64>(time.count()));
+        doc.Emplace("EntityType", string(entity->GetTypeName()));
+        doc.Emplace("EntityId", static_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("Property", prop->GetName());
+        doc.Emplace("Value", std::move(value));
 
         DbStorage.Insert(HistoryCollectionName, history_id, doc);
     }

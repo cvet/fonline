@@ -415,6 +415,13 @@ auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex) -> uint8
     return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
+auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
+}
+
 auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
 {
     NO_STACK_TRACE_ENTRY();

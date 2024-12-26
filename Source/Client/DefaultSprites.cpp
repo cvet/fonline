@@ -506,7 +506,7 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, pos.y + size.height + 2}, _borderBuf.data());
+        tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, _borderBuf.data());
 
         // Right
         for (int i = 0; i < size.height; i++) {
@@ -514,7 +514,7 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        tex->UpdateTextureRegion({pos.x + size.width, pos.y - 1}, {1, pos.y + size.height + 2}, _borderBuf.data());
+        tex->UpdateTextureRegion({pos.x + size.width, pos.y - 1}, {1, size.height + 2}, _borderBuf.data());
 
         // Evaluate hit mask
         atlas_spr->HitTestData.resize(static_cast<size_t>(size.width) * size.height);

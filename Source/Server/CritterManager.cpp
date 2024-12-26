@@ -207,7 +207,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    cr->SetWorldPos(loc != nullptr ? loc->GetWorldPos() : upos16 {});
+    cr->SetWorldPos(loc != nullptr ? loc->GetWorldPos() : ipos {});
 
     _engine->MapMngr.AddCritterToMap(cr, map, final_hex, final_dir, ident_t {});
 
@@ -328,7 +328,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     return player_critters;
 }
 
-auto CritterManager::GetGlobalMapCritters(upos16 wpos, uint radius, CritterFindType find_type) -> vector<Critter*>
+auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
@@ -340,9 +340,7 @@ auto CritterManager::GetGlobalMapCritters(upos16 wpos, uint radius, CritterFindT
     critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        const auto cr_pos = cr->GetWorldPos();
-
-        if (!cr->GetMapId() && GenericUtils::DistSqrt(ipos {cr_pos.x, cr_pos.y}, ipos {wpos.x, wpos.y}) <= radius && cr->CheckFind(find_type)) {
+        if (!cr->GetMapId() && cr->CheckFind(find_type)) {
             critters.emplace_back(cr);
         }
     }

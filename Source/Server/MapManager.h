@@ -135,7 +135,7 @@ public:
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, upos16 wpos) -> NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, ipos wpos) -> NON_NULL Location*;
     void DestroyLocation(Location* loc);
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);

@@ -46,20 +46,26 @@
 #include "sha2.h"
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine)
+FO_SCRIPT_API void Common_Game_BreakIntoDebugger(FOEngineBase* engine)
 {
+    UNUSED_VARIABLE(engine);
+
     BreakIntoDebugger();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine, string_view message)
+FO_SCRIPT_API void Common_Game_BreakIntoDebugger(FOEngineBase* engine, string_view message)
 {
+    UNUSED_VARIABLE(engine);
+
     BreakIntoDebugger(message);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
+FO_SCRIPT_API void Common_Game_Log(FOEngineBase* engine, string_view text)
 {
+    UNUSED_VARIABLE(engine);
+
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
@@ -73,20 +79,26 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_RequestQuit([[maybe_unused]] FOEngineBase* engine)
+FO_SCRIPT_API void Common_Game_RequestQuit(FOEngineBase* engine)
 {
+    UNUSED_VARIABLE(engine);
+
     App->RequestQuit();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_IsResourcePresent([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
+FO_SCRIPT_API bool Common_Game_IsResourcePresent(FOEngineBase* engine, string_view resourcePath)
 {
+    UNUSED_VARIABLE(engine);
+
     return !!engine->Resources.ReadFile(resourcePath);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_ReadResource([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
+FO_SCRIPT_API string Common_Game_ReadResource(FOEngineBase* engine, string_view resourcePath)
 {
+    UNUSED_VARIABLE(engine);
+
     return engine->Resources.ReadFileText(resourcePath);
 }
 
@@ -213,15 +225,19 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] FOEngineBase* engine, string_view command)
+FO_SCRIPT_API int Common_Game_SystemCall(FOEngineBase* engine, string_view command)
 {
+    UNUSED_VARIABLE(engine);
+
     auto prefix = command.substr(0, command.find(' '));
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] FOEngineBase* engine, string_view command, string& output)
+FO_SCRIPT_API int Common_Game_SystemCall(FOEngineBase* engine, string_view command, string& output)
 {
+    UNUSED_VARIABLE(engine);
+
     output = "";
 
     return SystemCall(command, [&output](string_view line) {
@@ -233,14 +249,18 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_Random([[maybe_unused]] FOEngineBase* engine, int minValue, int maxValue)
+FO_SCRIPT_API int Common_Game_Random(FOEngineBase* engine, int minValue, int maxValue)
 {
+    UNUSED_VARIABLE(engine);
+
     return GenericUtils::Random(minValue, maxValue);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_DecodeUtf8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
+FO_SCRIPT_API uint Common_Game_DecodeUtf8(FOEngineBase* engine, string_view text, uint& length)
 {
+    UNUSED_VARIABLE(engine);
+
     size_t decode_length = text.length();
     const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
@@ -249,16 +269,20 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_EncodeUtf8([[maybe_unused]] FOEngineBase* engine, uint ucs)
+FO_SCRIPT_API string Common_Game_EncodeUtf8(FOEngineBase* engine, uint ucs)
 {
+    UNUSED_VARIABLE(engine);
+
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
     return {buf, len};
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_Sha1([[maybe_unused]] FOEngineBase* engine, string_view text)
+FO_SCRIPT_API string Common_Game_Sha1(FOEngineBase* engine, string_view text)
 {
+    UNUSED_VARIABLE(engine);
+
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
     _SHA1_Update(&ctx, reinterpret_cast<const uint8*>(text.data()), text.length());
@@ -275,8 +299,10 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_Sha2([[maybe_unused]] FOEngineBase* engine, string_view text)
+FO_SCRIPT_API string Common_Game_Sha2(FOEngineBase* engine, string_view text)
 {
+    UNUSED_VARIABLE(engine);
+
     constexpr uint digest_size = 32;
     uint8 digest[digest_size];
     sha256(reinterpret_cast<const uint8*>(text.data()), static_cast<uint>(text.length()), digest);
@@ -290,62 +316,82 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] FOEngineBase* engine, string_view link)
+FO_SCRIPT_API void Common_Game_OpenLink(FOEngineBase* engine, string_view link)
 {
+    UNUSED_VARIABLE(engine);
+
     App->OpenLink(link);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint64 Common_Game_GetUnixTime([[maybe_unused]] FOEngineBase* engine)
+FO_SCRIPT_API uint64 Common_Game_GetUnixTime(FOEngineBase* engine)
 {
+    UNUSED_VARIABLE(engine);
+
     return static_cast<uint64>(::time(nullptr));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
+FO_SCRIPT_API uint Common_Game_GetDistance(FOEngineBase* engine, mpos hex1, mpos hex2)
 {
-    return GeometryHelper::DistGame(hx1, hy1, hx2, hy2);
+    UNUSED_VARIABLE(engine);
+
+    return GeometryHelper::DistGame(hex1, hex2);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
+FO_SCRIPT_API uint8 Common_Game_GetDirection(FOEngineBase* engine, mpos fromHex, mpos toHex)
 {
-    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy);
+    UNUSED_VARIABLE(engine);
+
+    return GeometryHelper::GetFarDir(fromHex, toHex);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
+FO_SCRIPT_API uint8 Common_Game_GetDirection(FOEngineBase* engine, mpos fromHex, mpos toHex, float offset)
 {
-    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy, offset);
+    UNUSED_VARIABLE(engine);
+
+    return GeometryHelper::GetFarDir(fromHex, toHex, offset);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
+FO_SCRIPT_API int16 Common_Game_GetDirAngle(FOEngineBase* engine, mpos fromHex, mpos toHex)
 {
-    return static_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy)));
+    UNUSED_VARIABLE(engine);
+
+    return static_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHex, toHex)));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int16 Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
+FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(FOEngineBase* engine, ipos fromPos, ipos toPos)
 {
-    return static_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY)));
+    UNUSED_VARIABLE(engine);
+
+    return static_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint8 Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int16 dirAngle)
+FO_SCRIPT_API uint8 Common_Game_AngleToDir(FOEngineBase* engine, int16 dirAngle)
 {
+    UNUSED_VARIABLE(engine);
+
     return GeometryHelper::AngleToDir(dirAngle);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int16 Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uint8 dir)
+FO_SCRIPT_API int16 Common_Game_DirToAngle(FOEngineBase* engine, uint8 dir)
 {
+    UNUSED_VARIABLE(engine);
+
     return GeometryHelper::DirToAngle(dir);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int16 Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, int16 dirAngle, bool clockwise, int16 step)
+FO_SCRIPT_API int16 Common_Game_RotateDirAngle(FOEngineBase* engine, int16 dirAngle, bool clockwise, int16 step)
 {
+    UNUSED_VARIABLE(engine);
+
     auto rotated = static_cast<int>(dirAngle);
 
     if (clockwise) {
@@ -366,43 +412,53 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int16 Common_Game_GetDirAngleDiff([[maybe_unused]] FOEngineBase* engine, int16 dirAngle1, int16 dirAngle2)
+FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(FOEngineBase* engine, int16 dirAngle1, int16 dirAngle2)
 {
+    UNUSED_VARIABLE(engine);
+
     return static_cast<int16>(iround(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, mpos fromHex, mpos toHex, ipos& hexOffset)
+FO_SCRIPT_API void Common_Game_GetHexInterval(FOEngineBase* engine, mpos fromHex, mpos toHex, ipos& hexOffset)
 {
+    UNUSED_VARIABLE(engine);
+
     hexOffset = engine->Geometry.GetHexInterval(fromHex, toHex);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_GetClipboardText([[maybe_unused]] FOEngineBase* engine)
+FO_SCRIPT_API string Common_Game_GetClipboardText(FOEngineBase* engine)
 {
+    UNUSED_VARIABLE(engine);
+
     return App->Input.GetClipboardText();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_SetClipboardText([[maybe_unused]] FOEngineBase* engine, string_view text)
+FO_SCRIPT_API void Common_Game_SetClipboardText(FOEngineBase* engine, string_view text)
 {
+    UNUSED_VARIABLE(engine);
+
     return App->Input.SetClipboardText(text);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_GetGameVersion([[maybe_unused]] FOEngineBase* engine)
+FO_SCRIPT_API string Common_Game_GetGameVersion(FOEngineBase* engine)
 {
+    UNUSED_VARIABLE(engine);
+
     return FO_GAME_VERSION;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ProtoItem* Common_Game_GetProtoItem(FOEngineBase* engine, hstring pid)
+FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(FOEngineBase* engine, hstring pid)
 {
     return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItemSafe(pid));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine)
+FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine)
 {
     const auto& protos = engine->ProtoMngr.GetProtoItems();
 
@@ -417,7 +473,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemComponent component)
+FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemComponent component)
 {
     const auto& protos = engine->ProtoMngr.GetProtoItems();
 
@@ -434,7 +490,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(FOEngineBase* engine, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoItems();
@@ -452,13 +508,13 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ProtoCritter* Common_Game_GetProtoCritter(FOEngineBase* engine, hstring pid)
+FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(FOEngineBase* engine, hstring pid)
 {
     return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritterSafe(pid));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine)
+FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine)
 {
     const auto& protos = engine->ProtoMngr.GetProtoCritters();
 
@@ -473,7 +529,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterComponent component)
+FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterComponent component)
 {
     const auto& protos = engine->ProtoMngr.GetProtoCritters();
 
@@ -490,7 +546,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(FOEngineBase* engine, CritterProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoCritters();
@@ -508,13 +564,13 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ProtoMap* Common_Game_GetProtoMap(FOEngineBase* engine, hstring pid)
+FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(FOEngineBase* engine, hstring pid)
 {
     return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMapSafe(pid));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine)
+FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine)
 {
     const auto& protos = engine->ProtoMngr.GetProtoMaps();
 
@@ -529,7 +585,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapComponent component)
+FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapComponent component)
 {
     const auto& protos = engine->ProtoMngr.GetProtoMaps();
 
@@ -546,7 +602,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(FOEngineBase* engine, MapProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoMaps();
@@ -564,13 +620,13 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ProtoLocation* Common_Game_GetProtoLocation(FOEngineBase* engine, hstring pid)
+FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(FOEngineBase* engine, hstring pid)
 {
     return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocationSafe(pid));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine)
+FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine)
 {
     const auto& protos = engine->ProtoMngr.GetProtoLocations();
 
@@ -585,7 +641,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationComponent component)
+FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationComponent component)
 {
     const auto& protos = engine->ProtoMngr.GetProtoLocations();
 
@@ -602,7 +658,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase* engine, LocationProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoLocations();

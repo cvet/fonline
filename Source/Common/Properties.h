@@ -289,8 +289,8 @@ public:
     void AllocData();
     void SetEntity(Entity* entity) { _entity = entity; }
     void ValidateForRawData(const Property* prop) const noexcept(false);
-    auto ApplyFromText(const map<string, string>& key_values) -> bool;
-    auto ApplyPropertyFromText(const Property* prop, string_view text) -> bool;
+    void ApplyFromText(const map<string, string>& key_values);
+    void ApplyPropertyFromText(const Property* prop, string_view text);
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;

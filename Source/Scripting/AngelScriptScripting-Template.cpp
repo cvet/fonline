@@ -811,7 +811,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     return as_dict;
 }
 
-[[maybe_unused]] static auto GetASObjectInfo(void* ptr, int type_id) -> string
+[[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int type_id) -> string
 {
     STACK_TRACE_ENTRY();
 
@@ -819,27 +819,27 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_VOID:
         return "";
     case asTYPEID_BOOL:
-        return strex("{}", *static_cast<bool*>(ptr) ? "true" : "false");
+        return strex("{}", *static_cast<const bool*>(ptr) ? "true" : "false");
     case asTYPEID_INT8:
-        return strex("{}", *static_cast<int8*>(ptr));
+        return strex("{}", *static_cast<const int8*>(ptr));
     case asTYPEID_INT16:
-        return strex("{}", *static_cast<int16*>(ptr));
+        return strex("{}", *static_cast<const int16*>(ptr));
     case asTYPEID_INT32:
-        return strex("{}", *static_cast<int*>(ptr));
+        return strex("{}", *static_cast<const int*>(ptr));
     case asTYPEID_INT64:
-        return strex("{}", *static_cast<int64*>(ptr));
+        return strex("{}", *static_cast<const int64*>(ptr));
     case asTYPEID_UINT8:
-        return strex("{}", *static_cast<uint8*>(ptr));
+        return strex("{}", *static_cast<const uint8*>(ptr));
     case asTYPEID_UINT16:
-        return strex("{}", *static_cast<uint16*>(ptr));
+        return strex("{}", *static_cast<const uint16*>(ptr));
     case asTYPEID_UINT32:
-        return strex("{}", *static_cast<uint*>(ptr));
+        return strex("{}", *static_cast<const uint*>(ptr));
     case asTYPEID_UINT64:
-        return strex("{}", *static_cast<uint64*>(ptr));
+        return strex("{}", *static_cast<const uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return strex("{}", *static_cast<float*>(ptr));
+        return strex("{}", *static_cast<const float*>(ptr));
     case asTYPEID_DOUBLE:
-        return strex("{}", *static_cast<double*>(ptr));
+        return strex("{}", *static_cast<const double*>(ptr));
     default:
         break;
     }
@@ -853,20 +853,21 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     const string type_name = as_type_info->GetName();
 
     if (type_name == "string") {
-        return strex("{}", *static_cast<string*>(ptr));
+        return strex("{}", *static_cast<const string*>(ptr));
     }
     if (type_name == "hstring") {
-        return strex("{}", *static_cast<hstring*>(ptr));
+        return strex("{}", *static_cast<const hstring*>(ptr));
     }
     if (type_name == "any") {
-        return strex("{}", *static_cast<any_t*>(ptr));
+        return strex("{}", *static_cast<const any_t*>(ptr));
     }
     if (type_name == IDENT_T_NAME) {
-        return strex("{}", *static_cast<ident_t*>(ptr));
+        return strex("{}", *static_cast<const ident_t*>(ptr));
     }
     if (type_name == TICK_T_NAME) {
-        return strex("{}", *static_cast<tick_t*>(ptr));
+        return strex("{}", *static_cast<const tick_t*>(ptr));
     }
+
     return strex("{}", type_name);
 }
 #endif
@@ -2067,640 +2068,126 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
 
 ///@ CodeGen Global
 
-static void Global_Assert_0(bool condition)
+template<int Args>
+static void Global_Assert(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    if (!condition) {
+    const auto condition = *static_cast<bool*>(gen->GetAddressOfArg(0));
+
+    if (condition) {
+        return;
+    }
+
+    vector<string> obj_infos;
+    obj_infos.reserve(Args);
+
+    for (int i = 1; i < gen->GetArgCount(); i++) {
+        const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
+        const auto obj_type_id = gen->GetArgTypeId(i);
+        obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
+    }
+
+    if constexpr (Args == 0) {
         throw ScriptException("Assertion failed");
     }
-
-#else
-    UNUSED_VARIABLE(condition);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        throw ScriptException("Assertion failed", obj_info1);
+    else if constexpr (Args == 1) {
+        throw ScriptException("Assertion failed", obj_infos[0]);
+    }
+    else if constexpr (Args == 2) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1]);
+    }
+    else if constexpr (Args == 3) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2]);
+    }
+    else if constexpr (Args == 4) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3]);
+    }
+    else if constexpr (Args == 5) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4]);
+    }
+    else if constexpr (Args == 6) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5]);
+    }
+    else if constexpr (Args == 7) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6]);
+    }
+    else if constexpr (Args == 8) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7]);
+    }
+    else if constexpr (Args == 9) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8]);
+    }
+    else if constexpr (Args == 10) {
+        throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8], obj_infos[9]);
+    }
+    else {
+        UNREACHABLE_PLACE();
     }
 
 #else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
-static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2)
+template<int Args>
+static void Global_ThrowException(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2);
+    const auto& message = *static_cast<string*>(gen->GetAddressOfArg(0));
+
+    vector<string> obj_infos;
+    obj_infos.reserve(Args);
+
+    for (int i = 1; i < gen->GetArgCount(); i++) {
+        const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
+        const auto obj_type_id = gen->GetArgTypeId(i);
+        obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
+    }
+
+    if constexpr (Args == 0) {
+        throw ScriptException(message);
+    }
+    else if constexpr (Args == 1) {
+        throw ScriptException(message, obj_infos[0]);
+    }
+    else if constexpr (Args == 2) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1]);
+    }
+    else if constexpr (Args == 3) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2]);
+    }
+    else if constexpr (Args == 4) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3]);
+    }
+    else if constexpr (Args == 5) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4]);
+    }
+    else if constexpr (Args == 6) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5]);
+    }
+    else if constexpr (Args == 7) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6]);
+    }
+    else if constexpr (Args == 8) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7]);
+    }
+    else if constexpr (Args == 9) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8]);
+    }
+    else if constexpr (Args == 10) {
+        throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8], obj_infos[9]);
+    }
+    else {
+        UNREACHABLE_PLACE();
     }
 
 #else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-        auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-        auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-        auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-        auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-        auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-        auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    UNUSED_VARIABLE(obj9Ptr);
-    UNUSED_VARIABLE(obj9);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9, void* obj10Ptr, int obj10)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    if (!condition) {
-        auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-        auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-        auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-        auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-        auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-        auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-        auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-        auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-        auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
-        auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
-        throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
-    }
-
-#else
-    UNUSED_VARIABLE(condition);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    UNUSED_VARIABLE(obj9Ptr);
-    UNUSED_VARIABLE(obj9);
-    UNUSED_VARIABLE(obj10Ptr);
-    UNUSED_VARIABLE(obj10);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_0(string message)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    throw ScriptException(message);
-
-#else
-    UNUSED_VARIABLE(message);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    throw ScriptException(message, obj_info1);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    throw ScriptException(message, obj_info1, obj_info2);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-    auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-    auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-    auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-    auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-    auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-    auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    UNUSED_VARIABLE(obj9Ptr);
-    UNUSED_VARIABLE(obj9);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9, void* obj10Ptr, int obj10)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
-    auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
-    auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
-    auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
-    auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
-    auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
-    auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
-    auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
-    auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
-    auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
-    throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
-
-#else
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(obj1Ptr);
-    UNUSED_VARIABLE(obj1);
-    UNUSED_VARIABLE(obj2Ptr);
-    UNUSED_VARIABLE(obj2);
-    UNUSED_VARIABLE(obj3Ptr);
-    UNUSED_VARIABLE(obj3);
-    UNUSED_VARIABLE(obj4Ptr);
-    UNUSED_VARIABLE(obj4);
-    UNUSED_VARIABLE(obj5Ptr);
-    UNUSED_VARIABLE(obj5);
-    UNUSED_VARIABLE(obj6Ptr);
-    UNUSED_VARIABLE(obj6);
-    UNUSED_VARIABLE(obj7Ptr);
-    UNUSED_VARIABLE(obj7);
-    UNUSED_VARIABLE(obj8Ptr);
-    UNUSED_VARIABLE(obj8);
-    UNUSED_VARIABLE(obj9Ptr);
-    UNUSED_VARIABLE(obj9);
-    UNUSED_VARIABLE(obj10Ptr);
-    UNUSED_VARIABLE(obj10);
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3746,6 +3233,91 @@ static void Ipos_ConstructXandY(ipos* self, int x, int y)
     new (self) ipos {x, y};
 }
 
+static auto Ipos_AddAssignIpos(ipos& self, const ipos& pos) -> ipos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x += pos.x;
+    self.y += pos.y;
+    return self;
+}
+
+static auto Ipos_SubAssignIpos(ipos& self, const ipos& pos) -> ipos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x -= pos.x;
+    self.y -= pos.y;
+    return self;
+}
+
+static auto Ipos_AddIpos(const ipos& self, const ipos& pos) -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return ipos {self.x + pos.x, self.y + pos.y};
+}
+
+static auto Ipos_SubIpos(const ipos& self, const ipos& pos) -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return ipos {self.x - pos.x, self.y - pos.y};
+}
+
+static auto Ipos_NegIpos(const ipos& self) -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return ipos {-self.x, -self.y};
+}
+
+static auto Ipos_AddAssignIsize(ipos& self, const isize& size) -> ipos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x += size.width;
+    self.y += size.height;
+    return self;
+}
+
+static auto Ipos_SubAssignIsize(ipos& self, const isize& size) -> ipos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x -= size.width;
+    self.y -= size.height;
+    return self;
+}
+
+static auto Ipos_AddIsize(const ipos& self, const isize& size) -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return ipos {self.x + size.width, self.y + size.height};
+}
+
+static auto Ipos_SubIsize(const ipos& self, const isize& size) -> ipos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return ipos {self.x - size.width, self.y - size.height};
+}
+
+static auto Ipos_FitToSize(const ipos& self, isize size) -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
+}
+
+static auto Ipos_FitToRect(const ipos& self, irect rect) -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
+}
+
 static void Isize_ConstructWandH(isize* self, int width, int height)
 {
     NO_STACK_TRACE_ENTRY();
@@ -3760,6 +3332,13 @@ static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, i
     new (self) irect {x, y, width, height};
 }
 
+static void Fpos_ConstructXandY(fpos* self, float x, float y)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    new (self) fpos {x, y};
+}
+
 static void Mpos_ConstructXandY(mpos* self, int x, int y)
 {
     NO_STACK_TRACE_ENTRY();
@@ -3769,6 +3348,13 @@ static void Mpos_ConstructXandY(mpos* self, int x, int y)
     }
 
     new (self) mpos {static_cast<uint16>(x), static_cast<uint16>(y)};
+}
+
+static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
 
 template<typename T>
@@ -4199,28 +3785,28 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ScriptExtensions::RegisterScriptStdStringAnyExtensions(engine);
 
     // Global functions
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_FUNC(Global_Assert_0), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", SCRIPT_FUNC(Global_Assert_1), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2)", SCRIPT_FUNC(Global_Assert_2), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_FUNC(Global_Assert_3), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_FUNC(Global_Assert_4), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_FUNC(Global_Assert_5), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_FUNC(Global_Assert_6), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_FUNC(Global_Assert_7), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_FUNC(Global_Assert_8), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_FUNC(Global_Assert_9), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_FUNC(Global_Assert_10), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message)", SCRIPT_FUNC(Global_ThrowException_0), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1)", SCRIPT_FUNC(Global_ThrowException_1), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2)", SCRIPT_FUNC(Global_ThrowException_2), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_FUNC(Global_ThrowException_3), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_FUNC(Global_ThrowException_4), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_FUNC(Global_ThrowException_5), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_FUNC(Global_ThrowException_6), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_FUNC(Global_ThrowException_7), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_FUNC(Global_ThrowException_8), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_FUNC(Global_ThrowException_9), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_FUNC(Global_ThrowException_10), SCRIPT_FUNC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_GENERIC(Global_Assert<0>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", SCRIPT_GENERIC(Global_Assert<1>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_Assert<2>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_Assert<3>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_Assert<4>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_Assert<5>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_Assert<6>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_Assert<7>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_Assert<8>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_Assert<9>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_Assert<10>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message)", SCRIPT_GENERIC(Global_ThrowException<0>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1)", SCRIPT_GENERIC(Global_ThrowException<1>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_ThrowException<2>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_ThrowException<3>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_ThrowException<4>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_ThrowException<5>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_ThrowException<6>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_ThrowException<7>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_ThrowException<8>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_ThrowException<9>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_ThrowException<10>), SCRIPT_GENERIC_CONV));
     AS_VERIFY(engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
@@ -4266,12 +3852,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos, x)));
     AS_VERIFY(engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos, y)));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opAdd(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_AddIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opSub(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_SubIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opNeg() const", SCRIPT_FUNC_THIS(Ipos_NegIpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
     REGISTER_HARD_STRONG_TYPE("isize", isize);
     AS_VERIFY(engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectProperty("isize", "int width", offsetof(isize, width)));
     AS_VERIFY(engine->RegisterObjectProperty("isize", "int height", offsetof(isize, height)));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opAdd(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_AddIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opSub(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_SubIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "bool fitTo(isize size) const", SCRIPT_FUNC_THIS(Ipos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Register irect
     REGISTER_HARD_STRONG_TYPE("irect", irect);
@@ -4280,6 +3876,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectProperty("irect", "int y", offsetof(irect, y)));
     AS_VERIFY(engine->RegisterObjectProperty("irect", "int width", offsetof(irect, width)));
     AS_VERIFY(engine->RegisterObjectProperty("irect", "int height", offsetof(irect, height)));
+    AS_VERIFY(engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
+
+    // Register fpos
+    REGISTER_HARD_STRONG_TYPE("fpos", fpos);
+    AS_VERIFY(engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos, x)));
+    AS_VERIFY(engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos, y)));
 
     // Register mpos
     REGISTER_HARD_STRONG_TYPE("mpos", mpos);
@@ -4291,6 +3894,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_HARD_STRONG_TYPE("msize", msize);
     AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
     AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
+    AS_VERIFY(engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", SCRIPT_FUNC_THIS(Mpos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name, real_class) \

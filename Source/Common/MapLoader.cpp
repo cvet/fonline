@@ -33,6 +33,7 @@
 
 #include "MapLoader.h"
 #include "ConfigFile.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 // Todo: restore supporting of the map old text format
@@ -55,6 +56,8 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         throw MapLoaderException("Invalid map format", name);
     }
 
+    size_t errors = 0;
+
     // Automatic id fixier
     unordered_set<ident_t::underlying_type> busy_ids;
     ident_t::underlying_type last_lowest_id = std::numeric_limits<ident_t::underlying_type>::max();
@@ -68,23 +71,20 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             }
 
             last_lowest_id = new_id;
-
             return ident_t {new_id};
         }
 
         last_lowest_id = std::min(id, last_lowest_id);
-
         return ident_t {id};
     };
 
     // Critters
-    vector<string> errors;
-
     for (const auto& pkv : map_data.GetSections("Critter")) {
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            errors.emplace_back("Proto critter invalid data");
+            WriteLog("Proto critter invalid data");
+            errors++;
             continue;
         }
 
@@ -94,10 +94,18 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         const auto* proto = proto_mngr.GetProtoCritterSafe(hashed_proto_name);
 
         if (proto == nullptr) {
-            errors.emplace_back(strex("Proto critter '{}' not found", proto_name));
+            WriteLog("Proto critter '{}' not found", proto_name);
+            errors++;
         }
-        else if (!cr_load(id, proto, kv)) {
-            errors.emplace_back(strex("Unable to load critter '{}' properties", proto_name));
+        else {
+            try {
+                cr_load(id, proto, kv);
+            }
+            catch (const std::exception& ex) {
+                WriteLog("Unable to load critter '{}'", proto_name);
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
         }
     }
 
@@ -106,7 +114,8 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            errors.emplace_back("Proto item invalid data");
+            WriteLog("Proto item invalid data");
+            errors++;
             continue;
         }
 
@@ -116,20 +125,22 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         const auto* proto = proto_mngr.GetProtoItemSafe(hashed_proto_name);
 
         if (proto == nullptr) {
-            errors.emplace_back(strex("Proto item '{}' not found", proto_name));
+            WriteLog("Proto item '{}' not found", proto_name);
+            errors++;
         }
-        else if (!item_load(id, proto, kv)) {
-            errors.emplace_back(strex("Unable to load item '{}' properties", proto_name));
+        else {
+            try {
+                item_load(id, proto, kv);
+            }
+            catch (const std::exception& ex) {
+                WriteLog("Unable to load item '{}'", proto_name);
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
         }
     }
 
-    if (!errors.empty()) {
-        string errors_cat;
-
-        for (const auto& error : errors) {
-            errors_cat += error + "\n";
-        }
-
-        throw MapLoaderException("Map load error", errors_cat);
+    if (errors != 0) {
+        throw MapLoaderException("Map load error", errors);
     }
 }

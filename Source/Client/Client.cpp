@@ -256,7 +256,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::DrawOffset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
@@ -671,7 +671,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
         Settings.MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
 
-        OnMouseMove.Fire(ev.MouseMove.DeltaX, ev.MouseMove.DeltaY);
+        OnMouseMove.Fire({ev.MouseMove.DeltaX, ev.MouseMove.DeltaY});
     }
     else if (ev.Type == InputEvent::EventType::MouseDownEvent) {
         OnMouseDown.Fire(ev.MouseDown.Button);
@@ -1454,12 +1454,8 @@ void FOClient::Net_OnCritterMove()
         cr->Moving.EndHex = hex;
     }
 
-    if (cr->Moving.WholeTime < 0.0001f) {
-        cr->Moving.WholeTime = 0.0001f;
-    }
-    if (cr->Moving.WholeDist < 0.0001f) {
-        cr->Moving.WholeDist = 0.0001f;
-    }
+    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
     RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
@@ -1502,10 +1498,7 @@ void FOClient::Net_OnCritterMoveSpeed()
     cr->Moving.StartTime = GameTime.FrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
     cr->Moving.Speed = speed;
-
-    if (cr->Moving.WholeTime < 0.0001f) {
-        cr->Moving.WholeTime = 0.0001f;
-    }
+    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
 }
 
 void FOClient::Net_OnCritterAction()
@@ -3410,6 +3403,7 @@ void FOClient::LmapPrepareMap()
     for (auto i1 = bx; i1 < ex; i1++) {
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
+
             if (i1 < 0 || i2 < 0 || i1 >= CurMap->GetSize().width || i2 >= CurMap->GetSize().height) {
                 continue;
             }
@@ -3425,8 +3419,8 @@ void FOClient::LmapPrepareMap()
 
             if (const auto* cr = CurMap->GetNonDeadCritter({static_cast<uint16>(i1), static_cast<uint16>(i2)}); cr != nullptr) {
                 cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
-                _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
-                _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y}, cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
             }
             else if (field.Flags.HasWall || field.Flags.HasScenery) {
                 if (field.Flags.ScrollBlock) {
@@ -3445,8 +3439,8 @@ void FOClient::LmapPrepareMap()
                 cur_color.comp.a = 0x22;
             }
 
-            _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y, cur_color});
-            _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y}, cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
         }
 
         pix_x -= _lmapZoom;
@@ -3515,9 +3509,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     const auto command_str = string(command);
     std::istringstream ss(command_str);
 
-    if (separator.length() > 0) {
+    if (!separator.empty()) {
         string arg;
         const auto sep = *separator.data();
+
         while (std::getline(ss, arg, sep)) {
             args.push_back(arg);
         }
@@ -3706,6 +3701,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
             hex_offset = std::get<1>(std::get<0>(pos_or_dir));
 
             const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, -1);
+
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
                 control_steps = find_path->ControlSteps;
@@ -3717,6 +3713,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
 
             if (quad_dir != -1) {
                 hex = cr->GetHex();
+
                 if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
                     control_steps.push_back(static_cast<uint16>(steps.size()));
                     try_move = true;
@@ -3779,12 +3776,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
             }
         }
 
-        if (cr->Moving.WholeTime < 0.0001f) {
-            cr->Moving.WholeTime = 0.0001f;
-        }
-        if (cr->Moving.WholeDist < 0.0001f) {
-            cr->Moving.WholeDist = 0.0001f;
-        }
+        cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+        cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
         RUNTIME_ASSERT(!cr->Moving.Steps.empty());
         RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());

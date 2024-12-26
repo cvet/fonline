@@ -240,9 +240,9 @@ void ItemHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
 
-    const auto draw_offset = GetDrawOffset();
+    const auto offset = GetOffset();
 
-    SprOffset = ipos {draw_offset.x, draw_offset.y};
+    SprOffset = ipos {offset.x, offset.y};
 
     if (GetIsTile()) {
         if (GetIsRoofTile()) {

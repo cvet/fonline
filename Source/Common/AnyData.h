@@ -117,7 +117,6 @@ public:
         [[nodiscard]] auto operator==(const Array& other) const -> bool { return _value == other._value; }
         [[nodiscard]] auto operator!=(const Array& other) const -> bool { return !(*this == other); }
         [[nodiscard]] auto operator[](size_t index) const -> const Value& { return _value.at(index); }
-        [[nodiscard]] auto operator[](size_t index) -> Value& { return _value.at(index); }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
         [[nodiscard]] auto Copy() const -> Array;
@@ -145,7 +144,6 @@ public:
         [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
         [[nodiscard]] auto operator!=(const Dict& other) const -> bool { return !(*this == other); }
         [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
-        [[nodiscard]] auto operator[](const string& key) -> Value& { return _value.at(key); }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
         [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value.count(key) != 0; }

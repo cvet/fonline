@@ -42,85 +42,85 @@
 #include "StringUtils.h"
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsFullscreen(FOClient* client)
+FO_SCRIPT_API bool Client_Game_IsFullscreen(FOClient* client)
 {
     return client->SprMngr.IsFullscreen();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ToggleFullscreen(FOClient* client)
+FO_SCRIPT_API void Client_Game_ToggleFullscreen(FOClient* client)
 {
     client->SprMngr.ToggleFullscreen();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MinimizeWindow(FOClient* client)
+FO_SCRIPT_API void Client_Game_MinimizeWindow(FOClient* client)
 {
     client->SprMngr.MinimizeWindow();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsConnecting(FOClient* client)
+FO_SCRIPT_API bool Client_Game_IsConnecting(FOClient* client)
 {
     return client->IsConnecting();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsConnected(FOClient* client)
+FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
 {
     return client->IsConnected();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
+FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, false, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
+FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, std::move(value));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
+FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
+FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, true, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
+FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, std::move(value));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
+FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, ident_t id)
+FO_SCRIPT_API bool Client_Game_IsDeferredCallPending(FOClient* client, ident_t id)
 {
     return client->ClientDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, ident_t id)
+FO_SCRIPT_API bool Client_Game_CancelDeferredCall(FOClient* client, ident_t id)
 {
     return client->ClientDeferredCalls.CancelDeferredCall(id);
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     UNUSED_VARIABLE(client);
 
@@ -134,45 +134,198 @@
     const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
 
-    if (hex_cr1 != nullptr && hex_cr2 != nullptr) {
+    if (hex_cr1 != nullptr && hex_cr2 != nullptr && hex_cr1->GetMapId() == hex_cr2->GetMapId()) {
         const auto dist = GeometryHelper::DistGame(hex_cr1->GetHex(), hex_cr2->GetHex());
         const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
-    else if (hex_cr1 == nullptr && hex_cr2 == nullptr) {
-        return 0;
+    else {
+        throw ScriptException("Critters not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
+{
+    UNUSED_VARIABLE(client);
+
+    if (item1 == nullptr) {
+        throw ScriptException("Item 1 arg is null");
+    }
+    if (item2 == nullptr) {
+        throw ScriptException("Item 2 arg is null");
+    }
+
+    const auto* hex_item1 = dynamic_cast<ItemHexView*>(item1);
+    const auto* hex_item2 = dynamic_cast<ItemHexView*>(item2);
+
+    if (hex_item1 != nullptr && hex_item2 != nullptr && hex_item1->GetMapId() == hex_item2->GetMapId()) {
+        const auto dist = GeometryHelper::DistGame(hex_item1->GetHex(), hex_item2->GetHex());
+        return dist;
     }
     else {
-        throw ScriptException("Critters unknown positions");
+        throw ScriptException("Items not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
+{
+    UNUSED_VARIABLE(client);
+
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    const auto* hex_item = dynamic_cast<ItemHexView*>(item);
+
+    if (hex_cr != nullptr && hex_item != nullptr && hex_cr->GetMapId() == hex_item->GetMapId()) {
+        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex_item->GetHex());
+        const auto multihex = hex_cr->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
+    }
+    else {
+        throw ScriptException("Critter/Item not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
+{
+    UNUSED_VARIABLE(client);
+
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    const auto* hex_item = dynamic_cast<ItemHexView*>(item);
+
+    if (hex_cr != nullptr && hex_item != nullptr && hex_cr->GetMapId() == hex_item->GetMapId()) {
+        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex_item->GetHex());
+        const auto multihex = hex_cr->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
+    }
+    else {
+        throw ScriptException("Item/Critter not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
+{
+    UNUSED_VARIABLE(client);
+
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+
+    if (hex_cr != nullptr) {
+        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex);
+        const auto multihex = hex_cr->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
+    }
+    else {
+        throw ScriptException("Critter not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
+{
+    UNUSED_VARIABLE(client);
+
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+
+    if (hex_cr != nullptr) {
+        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex);
+        const auto multihex = hex_cr->GetMultihex();
+        return multihex < dist ? dist - multihex : 0;
+    }
+    else {
+        throw ScriptException("Critter not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
+{
+    UNUSED_VARIABLE(client);
+
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+
+    const auto* hex_item = dynamic_cast<ItemHexView*>(item);
+
+    if (hex_item != nullptr) {
+        const auto dist = GeometryHelper::DistGame(hex_item->GetHex(), hex);
+        return dist;
+    }
+    else {
+        throw ScriptException("Item not on map");
+    }
+}
+
+///@ ExportMethod ExcludeInSingleplayer
+FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
+{
+    UNUSED_VARIABLE(client);
+
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+
+    const auto* hex_item = dynamic_cast<ItemHexView*>(item);
+
+    if (hex_item != nullptr) {
+        const auto dist = GeometryHelper::DistGame(hex_item->GetHex(), hex);
+        return dist;
+    }
+    else {
+        throw ScriptException("Item not on map");
     }
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetTick(FOClient* client)
+FO_SCRIPT_API uint Client_Game_GetTick(FOClient* client)
 {
     return time_duration_to_ms<uint>(client->GameTime.FrameTime().time_since_epoch());
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command)
+FO_SCRIPT_API string Client_Game_CustomCall(FOClient* client, string_view command)
 {
     return client->CustomCall(command, " ");
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command, string_view separator)
+FO_SCRIPT_API string Client_Game_CustomCall(FOClient* client, string_view command, string_view separator)
 {
     return client->CustomCall(command, separator);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Game_GetChosen(FOClient* client)
+FO_SCRIPT_API CritterView* Client_Game_GetChosen(FOClient* client)
 {
     return client->GetChosen();
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
+FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -221,7 +374,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId)
+FO_SCRIPT_API CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId)
 {
     if (!crId) {
         return nullptr;
@@ -241,7 +394,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, CritterFindType findType)
 {
     vector<CritterView*> critters;
 
@@ -263,7 +416,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, hstring pid, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hstring pid, CritterFindType findType)
 {
     vector<CritterView*> critters;
 
@@ -304,7 +457,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
+FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
 {
     UNUSED_VARIABLE(client);
 
@@ -336,25 +489,25 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
+FO_SCRIPT_API void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
 {
     client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
+FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
 {
     client->ScreenQuake(noise, std::chrono::milliseconds {duration.underlying_value()});
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_PlaySound(FOClient* client, string_view soundName)
+FO_SCRIPT_API bool Client_Game_PlaySound(FOClient* client, string_view soundName)
 {
     return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
+FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
@@ -365,19 +518,19 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canInterrupt, bool enqueue)
+FO_SCRIPT_API void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canInterrupt, bool enqueue)
 {
     client->PlayVideo(videoName, canInterrupt, enqueue);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsVideoPlaying(FOClient* client)
+FO_SCRIPT_API bool Client_Game_IsVideoPlaying(FOClient* client)
 {
     return client->IsVideoPlaying();
 }
 
 ///@ ExportMethod PassOwnership
-[[maybe_unused]] VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, string_view videoName, bool looped)
+FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, string_view videoName, bool looped)
 {
     const auto file = client->Resources.ReadFile(videoName);
     if (!file) {
@@ -397,7 +550,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -422,86 +575,89 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ConsoleMessage(FOClient* client, string_view msg)
+FO_SCRIPT_API void Client_Game_ConsoleMessage(FOClient* client, string_view msg)
 {
     client->ConsoleMessage(msg);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
+FO_SCRIPT_API void Client_Game_Message(FOClient* client, string_view msg)
 {
     client->AddMessage(FOMB_GAME, msg);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
+FO_SCRIPT_API void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
     client->AddMessage(type, msg);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
 {
     client->AddMessage(FOMB_GAME, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
+FO_SCRIPT_API void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
 {
     client->AddMessage(type, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
+FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
 {
     return static_cast<uint>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_ReplaceText(FOClient* client, string_view text, string_view replace, ObjInfo<1> obj1)
+FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text, string_view from, string_view to)
 {
     UNUSED_VARIABLE(client);
 
-    const auto pos = text.find(replace, 0);
-    if (pos == std::string::npos) {
-        return string(text);
-    }
-
-    return string(text).replace(pos, replace.length(), obj1);
+    return strex(text).replace(from, to);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_FormatTags(FOClient* client, string_view text, string_view lexems)
+FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text, string_view from, int64 to)
+{
+    UNUSED_VARIABLE(client);
+
+    return strex(text).replace(from, strex("{}", to));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API string Client_Game_FormatTags(FOClient* client, string_view text, string_view lexems)
 {
     auto text_copy = string(text);
     client->FormatTags(text_copy, client->GetChosen(), nullptr, lexems);
@@ -509,7 +665,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zoneY)
+FO_SCRIPT_API int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zoneY)
 {
     if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
         throw ScriptException("Invalid world map pos arg");
@@ -519,13 +675,13 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] tick_t Client_Game_GetFullSecond(FOClient* client)
+FO_SCRIPT_API tick_t Client_Game_GetFullSecond(FOClient* client)
 {
     return client->GameTime.GetFullSecond();
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+FO_SCRIPT_API tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
     if (year != 0 && year < client->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
@@ -576,7 +732,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_EvaluateGameTime(FOClient* client, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
+FO_SCRIPT_API void Client_Game_EvaluateGameTime(FOClient* client, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
     const auto dt = client->GameTime.EvaluateGameTime(fullSecond);
     year = dt.Year;
@@ -589,7 +745,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
+FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
     for (size_t i = 0; i < fnames.size(); i++) {
         client->Preload3dFiles.push_back(fnames[i]);
@@ -597,7 +753,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
+FO_SCRIPT_API void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
 {
     bool result;
 
@@ -614,13 +770,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetDefaultFont(FOClient* client, int font)
+FO_SCRIPT_API void Client_Game_SetDefaultFont(FOClient* client, int font)
 {
     client->SprMngr.SetDefaultFont(font);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int64 effectSubtype, string_view effectPath)
+FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType, int64 effectSubtype, string_view effectPath)
 {
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
@@ -725,7 +881,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, MouseButton button)
+FO_SCRIPT_API void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, MouseButton button)
 {
     UNUSED_VARIABLE(client);
     UNUSED_VARIABLE(pos);
@@ -756,7 +912,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
+FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {
         return;
@@ -777,7 +933,7 @@
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
+FO_SCRIPT_API void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
     UNUSED_VARIABLE(client);
 
@@ -793,37 +949,37 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
+FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
+FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
+FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->ToHashedString(sprName), AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
+FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_FreeSprite(FOClient* client, uint sprId)
+FO_SCRIPT_API void Client_Game_FreeSprite(FOClient* client, uint sprId)
 {
     client->AnimFree(sprId);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
+FO_SCRIPT_API isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
 
@@ -835,7 +991,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos pos)
+FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos pos)
 {
     const auto* spr = client->AnimGetSpr(sprId);
 
@@ -847,7 +1003,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_StopSprite(FOClient* client, uint sprId)
+FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
 {
     if (sprId == 0) {
         return;
@@ -863,7 +1019,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
+FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
 {
     if (sprId == 0) {
         return;
@@ -879,7 +1035,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
 {
     if (sprId == 0) {
         return;
@@ -895,7 +1051,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint flags, isize& resultSize, int& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint flags, isize& resultSize, int& resultLines)
 {
     if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -903,13 +1059,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetTextLines(FOClient* client, isize size, int font)
+FO_SCRIPT_API int Client_Game_GetTextLines(FOClient* client, isize size, int font)
 {
     return client->SprMngr.GetLinesCount(size, "", font);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -929,7 +1085,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -949,7 +1105,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -977,7 +1133,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -997,7 +1153,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1017,7 +1173,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool zoom, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool zoom, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1045,7 +1201,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, ipos pos, isize size, int sprWidth, int sprHeight, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, ipos pos, isize size, isize sprSize, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1061,11 +1217,11 @@
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(spr, pos, size, sprWidth, sprHeight, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpritePattern(spr, pos, size, sprSize, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint flags)
+FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1092,7 +1248,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
+FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1139,7 +1295,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
@@ -1149,7 +1305,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
 {
 #if FO_ENABLE_3D
     // x y
@@ -1253,19 +1409,19 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
 {
     client->SprMngr.PushScissor(pos.x, pos.y, pos.x + size.width, pos.y + size.height);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PopDrawScissor(FOClient* client)
+FO_SCRIPT_API void Client_Game_PopDrawScissor(FOClient* client)
 {
     client->SprMngr.PopScissor();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ActivateOffscreenSurface(FOClient* client, bool forceClear)
+FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool forceClear)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1301,7 +1457,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1326,7 +1482,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1358,7 +1514,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1379,13 +1535,20 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    const auto from = IRect(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
-    const auto to = IRect(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
+    const auto from = IRect(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
+        std::clamp(fromY, 0, client->Settings.ScreenHeight), //
+        std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), //
+        std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
+    const auto to = IRect(std::clamp(toX, 0, client->Settings.ScreenWidth), //
+        std::clamp(toY, 0, client->Settings.ScreenHeight), //
+        std::clamp(toX + toW, 0, client->Settings.ScreenWidth), //
+        std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
+
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen)
+FO_SCRIPT_API void Client_Game_ShowScreen(FOClient* client, int screen)
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
         client->ShowMainScreen(screen, {});
@@ -1399,7 +1562,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, any_t>& data)
+FO_SCRIPT_API void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, any_t>& data)
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
         client->ShowMainScreen(screen, data);
@@ -1413,19 +1576,19 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_HideScreen(FOClient* client)
+FO_SCRIPT_API void Client_Game_HideScreen(FOClient* client)
 {
     client->HideScreen(SCREEN_NONE);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_HideScreen(FOClient* client, int screen)
+FO_SCRIPT_API void Client_Game_HideScreen(FOClient* client, int screen)
 {
     client->HideScreen(screen);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
+FO_SCRIPT_API void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
 {
     UNUSED_VARIABLE(client);
     UNUSED_VARIABLE(filePath);
@@ -1436,7 +1599,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
+FO_SCRIPT_API void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
     UNUSED_VARIABLE(client);
 
@@ -1451,13 +1614,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data)
+FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data)
 {
     client->Cache.SetData(name, data);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint dataSize)
+FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint dataSize)
 {
     auto data_copy = data;
     data_copy.resize(dataSize);
@@ -1465,37 +1628,37 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<uint8> Client_Game_GetCacheData(FOClient* client, string_view name)
+FO_SCRIPT_API vector<uint8> Client_Game_GetCacheData(FOClient* client, string_view name)
 {
     return client->Cache.GetData(name);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheText(FOClient* client, string_view name, string_view str)
+FO_SCRIPT_API void Client_Game_SetCacheText(FOClient* client, string_view name, string_view str)
 {
     client->Cache.SetString(name, str);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetCacheText(FOClient* client, string_view name)
+FO_SCRIPT_API string Client_Game_GetCacheText(FOClient* client, string_view name)
 {
     return client->Cache.GetString(name);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsCacheEntry(FOClient* client, string_view name)
+FO_SCRIPT_API bool Client_Game_IsCacheEntry(FOClient* client, string_view name)
 {
     return client->Cache.HasEntry(name);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_RemoveCacheEntry(FOClient* client, string_view name)
+FO_SCRIPT_API void Client_Game_RemoveCacheEntry(FOClient* client, string_view name)
 {
     client->Cache.RemoveEntry(name);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
+FO_SCRIPT_API void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
 {
     string cfg_user;
 
@@ -1507,7 +1670,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const vector<string>& keyValues)
+FO_SCRIPT_API void Client_Game_SetUserConfig(FOClient* client, const vector<string>& keyValues)
 {
     string cfg_user;
 
@@ -1519,19 +1682,19 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, ipos pos)
+FO_SCRIPT_API void Client_Game_SetMousePos(FOClient* client, ipos pos)
 {
     client->SprMngr.SetMousePosition(pos);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
+FO_SCRIPT_API void Client_Game_ChangeLanguage(FOClient* client, string_view langName)
 {
     client->ChangeLanguage(langName);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_FlashUnfocusedWindow(FOClient* client)
+FO_SCRIPT_API void Client_Game_FlashUnfocusedWindow(FOClient* client)
 {
     if (!client->SprMngr.IsWindowFocused()) {
         client->SprMngr.BlinkWindow();
@@ -1539,31 +1702,31 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Login(FOClient* client, string_view login, string_view password)
+FO_SCRIPT_API void Client_Game_Login(FOClient* client, string_view login, string_view password)
 {
     client->Connect(login, password, INIT_NET_REASON_LOGIN);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Register(FOClient* client, string_view login, string_view password)
+FO_SCRIPT_API void Client_Game_Register(FOClient* client, string_view login, string_view password)
 {
     client->Connect(login, password, INIT_NET_REASON_REG);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Connect(FOClient* client)
+FO_SCRIPT_API void Client_Game_Connect(FOClient* client)
 {
     client->Connect("", "", INIT_NET_REASON_CUSTOM);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Disconnect(FOClient* client)
+FO_SCRIPT_API void Client_Game_Disconnect(FOClient* client)
 {
     client->Disconnect();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_BuiltInCommand(FOClient* client, string_view command)
+FO_SCRIPT_API string Client_Game_BuiltInCommand(FOClient* client, string_view command)
 {
     string result;
 
@@ -1581,7 +1744,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
+FO_SCRIPT_API void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
 {
     UNUSED_VARIABLE(client, enabled);
 

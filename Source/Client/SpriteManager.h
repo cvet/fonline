@@ -210,7 +210,7 @@ public:
     void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
     void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, bool stretch, ucolor color);
-    void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, int spr_width, int spr_height, ucolor color);
+    void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);

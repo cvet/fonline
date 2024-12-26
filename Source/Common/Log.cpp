@@ -59,6 +59,7 @@ struct LogData
     map<string, LogFunc> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
+    bool TagsDisabled {};
 };
 GLOBAL_DATA(LogData, Data);
 
@@ -116,6 +117,15 @@ void SetLogCallback(string_view key, LogFunc callback)
     }
 }
 
+void LogDisableTags()
+{
+    STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(Data->LogLocker);
+
+    Data->TagsDisabled = true;
+}
+
 void WriteLogMessage(LogType type, string_view message) noexcept
 {
     STACK_TRACE_ENTRY();
@@ -132,13 +142,15 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         string result;
         result.reserve(message.length() + 64);
 
-        const auto now = time_point::clock::now();
-        const auto now_desc = time_point_desc(now);
-        result += strex("[{:02}/{:02}/{:02}] ", now_desc.Day, now_desc.Month, now_desc.Year % 100);
-        result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
+        if (!Data->TagsDisabled) {
+            const auto now = time_point::clock::now();
+            const auto now_desc = time_point_desc(now);
+            result += strex("[{:02}/{:02}/{:02}] ", now_desc.Day, now_desc.Month, now_desc.Year % 100);
+            result += strex("[{:02}:{:02}:{:02}] ", now_desc.Hour, now_desc.Minute, now_desc.Second);
 
-        if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
-            result += strex("[{}] ", GetThisThreadName());
+            if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
+                result += strex("[{}] ", GetThisThreadName());
+            }
         }
 
         result += message;

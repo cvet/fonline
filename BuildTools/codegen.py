@@ -370,8 +370,6 @@ def parseTags():
             return 'predicate.' + unifiedTypeToMetaType(t[10:])
         if t.startswith('callback-'):
             return 'callback.' + unifiedTypeToMetaType(t[9:])
-        if t.startswith('ObjInfo-'):
-            return t.replace('-', '.')
         if t.startswith('ScriptFunc-'):
             fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFunc-'):].split('|') if a]
             genericFuncdefs.add('|'.join(fd))
@@ -408,8 +406,6 @@ def parseTags():
         elif t.startswith('PredicateFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'predicate-' + r
-        elif t.startswith('ObjInfo<'):
-            return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
         elif t.startswith('ScriptFunc<'):
             fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
             return 'ScriptFunc-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
@@ -1083,7 +1079,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                name = tokenize(tagContext)[1]
+                name = tokenize(tagContext)[2]
                 assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
@@ -1377,8 +1373,6 @@ def metaTypeToUnifiedType(t):
         r = 'callback-' + metaTypeToUnifiedType(tt[1])
     elif tt[0] == 'predicate':
         r = 'predicate-' + metaTypeToUnifiedType(tt[1])
-    elif tt[0] == 'ObjInfo':
-        return 'ObjInfo-' + tt[1]
     elif tt[0] == 'ScriptFunc':
         return 'ScriptFunc-' + ', '.join([metaTypeToUnifiedType(a) for a in '.'.join(tt[1:]).split('|') if a])
     elif tt[0] == 'Entity':
@@ -1414,8 +1408,6 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
     elif tt[0] == 'predicate':
         assert passIn
         r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
-    elif tt[0] == 'ObjInfo':
-        return 'ObjInfo<' + tt[1] + '>'
     elif tt[0] == 'ScriptFunc':
         return 'ScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
     elif tt[0] == 'Entity':
@@ -1552,7 +1544,7 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('// Enums')
     for e in codeGenTags['ExportEnum']:
         gname, utype, keyValues, _, _ = e
-        registerLines.append('engine->RegisterEnumGroup("' + gname + '", sizeof(' + metaTypeToEngineType(utype, target, False) + '),')
+        registerLines.append('engine->RegisterEnumGroup("' + gname + '", engine->ResolveBaseType("' + utype + '"),')
         registerLines.append('{')
         for kv in keyValues:
             registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
@@ -1561,7 +1553,7 @@ def genDataRegistration(target, isASCompiler):
     if target != 'Client' or isASCompiler:
         for e in codeGenTags['Enum']:
             gname, utype, keyValues, _, _ = e
-            registerLines.append('engine->RegisterEnumGroup("' + gname + '", sizeof(' + metaTypeToEngineType(utype, target, False) + '),')
+            registerLines.append('engine->RegisterEnumGroup("' + gname + '", engine->ResolveBaseType("' + utype + '"),')
             registerLines.append('{')
             for kv in keyValues:
                 registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
@@ -1572,7 +1564,7 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('// Exported types')
     for et in codeGenTags['ExportValueType']:
         name, ntype, rtype, flags, _ = et
-        registerLines.append('engine->RegisterStructType("' + name + '", sizeof(' + ntype + '), {')
+        registerLines.append('engine->RegisterValueType("' + name + '", sizeof(' + ntype + '), {')
         for layoutEntry in ''.join(flags[flags.index('Layout') + 2:]).split('+'):
             type, name = layoutEntry.split('-')
             registerLines.append('    {"' + name + '", engine->ResolveBaseType("' + type + '")},')
@@ -1628,30 +1620,17 @@ def genDataRegistration(target, isASCompiler):
     
     # Restore enums info
     if target == 'Baker' and not isASCompiler:
-        def getTypeSize(t):
-            if t in ['int8', 'uint8', 'bool']:
-                return '1'
-            elif t in ['int16', 'uint16']:
-                return '2'
-            elif t in ['int', 'uint', 'float']:
-                return '4'
-            elif t in ['int64', 'uint64', 'double']:
-                return '8'
-            elif t is None:
-                return '0'
-            else:
-                assert False, 'Unknown type size ' + t
         restoreLines.append('restore_info["Enums"] =')
         restoreLines.append('{')
         for e in codeGenTags['Enum']:
             gname, utype, keyValues, _, _ = e
             if keyValues:
-                restoreLines.append('    "' + gname + ' ' + getTypeSize(utype) + '"')
+                restoreLines.append('    "' + gname + ' ' + utype + '"')
                 for kv in keyValues[:-1]:
                     restoreLines.append('    " ' + kv[0] + '=' + kv[1] + '"')
                 restoreLines.append('    " ' + keyValues[-1][0] + '=' + keyValues[-1][1] + '",')
             else:
-                restoreLines.append('    "' + gname + ' ' + getTypeSize(utype) + '",')
+                restoreLines.append('    "' + gname + ' ' + utype + '",')
         restoreLines.append('};')
         restoreLines.append('')
     
@@ -1850,8 +1829,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return tt[0] + '*'
             elif tt[0] in scriptEnums or tt[0] in engineEnums:
                 r = 'int'
-            elif tt[0] == 'ObjInfo':
-                return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFunc':
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
@@ -1903,8 +1880,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r = tt[0]
             elif tt[0] in refTypes or tt[0] in entityRelatives:
                 r = tt[0] + getHandle()
-            elif tt[0] == 'ObjInfo':
-                return '?&in'
             elif tt[0] == 'ScriptFunc':
                 assert not isRet
                 assert len(tt) > 1, 'Invalid generic function'
@@ -1925,8 +1900,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
             elif tt[0] == 'ScriptFunc':
                 return 'GetASScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
-            elif tt[0] == 'ObjInfo':
-                return 'GetASObjectInfo(' + v + 'Ptr, ' + v + ')'
             elif tt[0] in engineEnums:
                 return 'static_cast<' + tt[0] + '>(' + v + ')'
             elif tt[0] in scriptEnums:
@@ -2112,7 +2085,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in refTypes:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in entityRelatives:
-                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', PASS_AS_PVOID(as_' + p[1] + '));')
                 elif p[0] in ['string', 'any']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 elif p[0] in ['int8', 'uint8', 'bool']:

@@ -64,6 +64,7 @@ public:
     [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2) -> uint8;
     [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2, float offset) -> uint8;
     [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex) -> uint8;
+    [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8;
     [[nodiscard]] static auto GetDirAngle(int x1, int y1, int x2, int y2) -> float;
     [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float;
     [[nodiscard]] static auto GetDirAngleDiff(float a1, float a2) -> float;

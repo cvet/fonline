@@ -99,14 +99,14 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
     AnyData::Document call_doc;
 
     if (call.EmptyFunc) {
-        call_doc["Script"] = string(call.EmptyFunc.GetName());
+        call_doc.Emplace("Script", string(call.EmptyFunc.GetName()));
     }
     else if (call.AnyFunc) {
-        call_doc["Script"] = string(call.AnyFunc.GetName());
-        call_doc["Value"] = string(call.FuncValue.front());
+        call_doc.Emplace("Script", string(call.AnyFunc.GetName()));
+        call_doc.Emplace("Value", string(call.FuncValue.front()));
     }
     else if (call.AnyArrayFunc) {
-        call_doc["Script"] = string(call.AnyArrayFunc.GetName());
+        call_doc.Emplace("Script", string(call.AnyArrayFunc.GetName()));
 
         AnyData::Array values;
 
@@ -114,12 +114,12 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
             values.EmplaceBack(string(str));
         }
 
-        call_doc["Values"] = std::move(values);
+        call_doc.Emplace("Values", std::move(values));
     }
 
     RUNTIME_ASSERT(call_doc.Contains("Script") && !call_doc["Script"].AsString().empty());
 
-    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond.underlying_value());
+    call_doc.Emplace("FireFullSecond", static_cast<int64>(call.FireFullSecond.underlying_value()));
 
     _serverEngine->DbStorage.Insert(_serverEngine->DeferredCallsCollectionName, call.Id, call_doc);
 
