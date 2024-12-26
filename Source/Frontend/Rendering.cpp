@@ -35,12 +35,11 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-auto Null_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(linear_filtered);
     UNUSED_VARIABLE(with_depth);
 
@@ -124,14 +123,12 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
     UNUSED_VARIABLE(stencil);
 }
 
-void Null_Renderer::EnableScissor(int x, int y, int width, int height)
+void Null_Renderer::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(pos);
+    UNUSED_VARIABLE(size);
 }
 
 void Null_Renderer::DisableScissor()
@@ -139,25 +136,23 @@ void Null_Renderer::DisableScissor()
     STACK_TRACE_ENTRY();
 }
 
-void Null_Renderer::OnResizeWindow(int width, int height)
+void Null_Renderer::OnResizeWindow(isize size)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(width);
-    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(size);
 }
 
-RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
-    Width {width}, //
-    Height {height},
-    SizeData {static_cast<float>(width), static_cast<float>(height), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height)},
+RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
+    Size {size},
+    SizeData {static_cast<float>(size.width), static_cast<float>(size.height), 1.0f / static_cast<float>(size.width), 1.0f / static_cast<float>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
+    RUNTIME_ASSERT(Size.width > 0);
+    RUNTIME_ASSERT(Size.height > 0);
 }
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
@@ -205,36 +200,67 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     _passCount = static_cast<size_t>(passes);
 
     static auto get_blend_func = [](string_view s) -> BlendFuncType {
-#define CHECK_ENTRY(name) \
-    if (s == #name) \
-    return BlendFuncType::name
-        CHECK_ENTRY(Zero);
-        CHECK_ENTRY(One);
-        CHECK_ENTRY(SrcColor);
-        CHECK_ENTRY(InvSrcColor);
-        CHECK_ENTRY(DstColor);
-        CHECK_ENTRY(InvDstColor);
-        CHECK_ENTRY(SrcAlpha);
-        CHECK_ENTRY(InvSrcAlpha);
-        CHECK_ENTRY(DstAlpha);
-        CHECK_ENTRY(InvDstAlpha);
-        CHECK_ENTRY(ConstantColor);
-        CHECK_ENTRY(InvConstantColor);
-        CHECK_ENTRY(SrcAlphaSaturate);
-#undef CHECK_ENTRY
-        throw UnreachablePlaceException(LINE_STR);
+        if (s == "Zero") {
+            return BlendFuncType::Zero;
+        }
+        if (s == "One") {
+            return BlendFuncType::One;
+        }
+        if (s == "SrcColor") {
+            return BlendFuncType::SrcColor;
+        }
+        if (s == "InvSrcColor") {
+            return BlendFuncType::InvSrcColor;
+        }
+        if (s == "DstColor") {
+            return BlendFuncType::DstColor;
+        }
+        if (s == "InvDstColor") {
+            return BlendFuncType::InvDstColor;
+        }
+        if (s == "SrcAlpha") {
+            return BlendFuncType::SrcAlpha;
+        }
+        if (s == "InvSrcAlpha") {
+            return BlendFuncType::InvSrcAlpha;
+        }
+        if (s == "DstAlpha") {
+            return BlendFuncType::DstAlpha;
+        }
+        if (s == "InvDstAlpha") {
+            return BlendFuncType::InvDstAlpha;
+        }
+        if (s == "ConstantColor") {
+            return BlendFuncType::ConstantColor;
+        }
+        if (s == "InvConstantColor") {
+            return BlendFuncType::InvConstantColor;
+        }
+        if (s == "SrcAlphaSaturate") {
+            return BlendFuncType::SrcAlphaSaturate;
+        }
+
+        throw GenericException("Unknown blend func type", s);
     };
+
     static auto get_blend_equation = [](string_view s) -> BlendEquationType {
-#define CHECK_ENTRY(name) \
-    if (s == #name) \
-    return BlendEquationType::name
-        CHECK_ENTRY(FuncAdd);
-        CHECK_ENTRY(FuncSubtract);
-        CHECK_ENTRY(FuncReverseSubtract);
-        CHECK_ENTRY(Max);
-        CHECK_ENTRY(Min);
-#undef CHECK_ENTRY
-        throw UnreachablePlaceException(LINE_STR);
+        if (s == "FuncAdd") {
+            return BlendEquationType::FuncAdd;
+        }
+        if (s == "FuncSubtract") {
+            return BlendEquationType::FuncSubtract;
+        }
+        if (s == "FuncReverseSubtract") {
+            return BlendEquationType::FuncReverseSubtract;
+        }
+        if (s == "Max") {
+            return BlendEquationType::Max;
+        }
+        if (s == "Min") {
+            return BlendEquationType::Min;
+        }
+
+        throw GenericException("Unknown blend equation type", s);
     };
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");

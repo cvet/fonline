@@ -40,12 +40,10 @@
 
 static constexpr int ATLAS_SPRITES_PADDING = 1;
 
-TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, int x, int y, int width, int height) :
+TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
     Parent {parent},
-    PosX {x},
-    PosY {y},
-    Width {width},
-    Height {height}
+    Pos {pos},
+    Size {size}
 {
     STACK_TRACE_ENTRY();
 }
@@ -67,32 +65,32 @@ auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
     return false;
 }
 
-auto TextureAtlas::SpaceNode::FindPosition(int width, int height) -> SpaceNode*
+auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
 {
     STACK_TRACE_ENTRY();
 
     for (auto&& child : Children) {
-        if (auto* child_node = child->FindPosition(width, height); child_node != nullptr) {
+        if (auto* child_node = child->FindPosition(size); child_node != nullptr) {
             return child_node;
         }
     }
 
-    if (!Busy && Width >= width && Height >= height) {
+    if (!Busy && Size.width >= size.width && Size.height >= size.height) {
         Busy = true;
 
-        if (Width == width && Height > height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, PosX, PosY + height, Width, Height - height));
-            Height = height;
+        if (Size.width == size.width && Size.height > size.height) {
+            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Size.height = size.height;
         }
-        else if (Height == height && Width > width) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, PosX + width, PosY, Width - width, Height));
-            Width = width;
+        else if (Size.height == size.height && Size.width > size.width) {
+            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, Size.height}));
+            Size.width = size.width;
         }
-        else if (Width > width && Height > height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, PosX + width, PosY, Width - width, height));
-            Children.emplace_back(std::make_unique<SpaceNode>(this, PosX, PosY + height, Width, Height - height));
-            Width = width;
-            Height = height;
+        else if (Size.width > size.width && Size.height > size.height) {
+            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, size.height}));
+            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Size.width = size.width;
+            Size.height = size.height;
         }
 
         return this;
@@ -119,16 +117,16 @@ void TextureAtlas::SpaceNode::Free() noexcept
         }
 
         if (all_children_free) {
-            int max_x = PosX + Width;
-            int max_y = PosY + Height;
+            int max_x = Pos.x + Size.width;
+            int max_y = Pos.y + Size.height;
 
             for (auto&& child : Children) {
-                max_x = std::max(max_x, child->PosX + child->Width);
-                max_y = std::max(max_y, child->PosY + child->Height);
+                max_x = std::max(max_x, child->Pos.x + child->Size.width);
+                max_y = std::max(max_y, child->Pos.y + child->Size.height);
             }
 
-            Width = max_x - PosX;
-            Height = max_y - PosY;
+            Size.width = max_x - Pos.x;
+            Size.height = max_y - Pos.y;
 
             Children.clear();
         }
@@ -146,7 +144,7 @@ TextureAtlasManager::TextureAtlasManager(RenderSettings& settings, RenderTargetM
 {
 }
 
-auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, int request_width, int request_height) -> TextureAtlas*
+auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) -> TextureAtlas*
 {
     STACK_TRACE_ENTRY();
 
@@ -161,53 +159,53 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, int request_width, i
     }
 
     // Create new
-    RUNTIME_ASSERT(request_width > 0);
-    RUNTIME_ASSERT(request_height > 0);
-
-    auto result_width = request_width;
-    auto result_height = request_height;
+    RUNTIME_ASSERT(request_size.width > 0);
+    RUNTIME_ASSERT(request_size.height > 0);
 
     auto&& atlas = std::make_unique<TextureAtlas>();
     atlas->Type = atlas_type;
 
+    isize result_size;
+
     switch (atlas->Type) {
     case AtlasType::IfaceSprites:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
+        result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
+        result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
         break;
     case AtlasType::MapSprites:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
+        result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
+        result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
         break;
     case AtlasType::MeshTextures:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
+        result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
+        result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
         break;
     case AtlasType::OneImage:
+        result_size = request_size;
         break;
     }
 
-    atlas->RTarg = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, _settings.AtlasLinearFiltration);
+    RUNTIME_ASSERT(result_size.width >= request_size.width);
+    RUNTIME_ASSERT(result_size.height >= request_size.height);
+
+    atlas->RTarg = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Custom, result_size, _settings.AtlasLinearFiltration);
     atlas->MainTex = atlas->RTarg->MainTex.get();
     atlas->MainTex->FlippedHeight = false;
-    atlas->Width = result_width;
-    atlas->Height = result_height;
-    atlas->RootNode = std::make_unique<TextureAtlas::SpaceNode>(nullptr, 0, 0, result_width, result_height);
+    atlas->Size = result_size;
+    atlas->RootNode = std::make_unique<TextureAtlas::SpaceNode>(nullptr, ipos {0, 0}, result_size);
 
     _allAtlases.push_back(std::move(atlas));
     return _allAtlases.back().get();
 }
 
-auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, int width, int height, int& x, int& y) -> pair<TextureAtlas*, TextureAtlas::SpaceNode*>
+auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos>
 {
     STACK_TRACE_ENTRY();
 
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
     TextureAtlas::SpaceNode* atlas_node = nullptr;
-
-    const auto request_width = width + ATLAS_SPRITES_PADDING * 2;
-    const auto request_height = height + ATLAS_SPRITES_PADDING * 2;
+    const isize size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
         for (auto&& a : _allAtlases) {
@@ -215,7 +213,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, int width, int he
                 continue;
             }
 
-            auto* node = a->RootNode->FindPosition(request_width, request_height);
+            auto* node = a->RootNode->FindPosition(size_with_padding);
             if (node != nullptr) {
                 atlas = a.get();
                 atlas_node = node;
@@ -226,15 +224,14 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, int width, int he
 
     // Create new
     if (atlas == nullptr) {
-        atlas = CreateAtlas(atlas_type, request_width, request_height);
-        atlas_node = atlas->RootNode->FindPosition(request_width, request_height);
+        atlas = CreateAtlas(atlas_type, size_with_padding);
+        atlas_node = atlas->RootNode->FindPosition(size_with_padding);
         RUNTIME_ASSERT(atlas_node);
     }
 
-    x = atlas_node->PosX + ATLAS_SPRITES_PADDING;
-    y = atlas_node->PosY + ATLAS_SPRITES_PADDING;
+    const ipos pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
 
-    return {atlas, atlas_node};
+    return {atlas, atlas_node, pos};
 }
 
 void TextureAtlasManager::DumpAtlases() const
@@ -243,7 +240,7 @@ void TextureAtlasManager::DumpAtlases() const
 
     uint atlases_memory_size = 0;
     for (auto&& atlas : _allAtlases) {
-        atlases_memory_size += atlas->Width * atlas->Height * 4;
+        atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
     }
 
     const auto date = Timer::GetCurrentDateTime();
@@ -269,9 +266,9 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
-        auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
-        GenericUtils::WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
+        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Size.width, atlas->Size.height);
+        auto tex_data = atlas->MainTex->GetTextureRegion({0, 0}, atlas->Size);
+        GenericUtils::WriteSimpleTga(fname, atlas->Size, std::move(tex_data));
         cnt++;
     }
 }

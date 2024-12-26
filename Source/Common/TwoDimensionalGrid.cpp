@@ -33,8 +33,10 @@
 
 #include "TwoDimensionalGrid.h"
 
-[[maybe_unused]] void TestSpecializations()
+[[maybe_unused]] static void TestSpecializations()
 {
-    [[maybe_unused]] StaticTwoDimensionalGrid<int, uint8> grid1(10, 10);
-    [[maybe_unused]] DynamicTwoDimensionalGrid<int, uint8> grid2(10, 10);
+    if constexpr (FO_DEBUG) {
+        [[maybe_unused]] auto grid1 = StaticTwoDimensionalGrid<int, ipos, isize>({100, 100});
+        [[maybe_unused]] auto grid2 = DynamicTwoDimensionalGrid<int, ipos, isize>({100, 100});
+    }
 }

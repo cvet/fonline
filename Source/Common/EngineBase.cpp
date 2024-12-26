@@ -79,7 +79,7 @@ void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_vie
     it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
 }
 
-void FOEngineBase::RegisterEnumGroup(string_view name, const std::type_info& underlying_type, unordered_map<string, int>&& key_values)
+void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
@@ -98,7 +98,38 @@ void FOEngineBase::RegisterEnumGroup(string_view name, const std::type_info& und
 
     _enums[string(name)] = std::move(key_values);
     _enumsRev[string(name)] = std::move(key_values_rev);
-    _enumTypes[string(name)] = &underlying_type;
+    _enumTypes[string(name)] = std::move(underlying_type);
+}
+
+void FOEngineBase::RegisterValueType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+    RUNTIME_ASSERT(_valueTypes.count(name) == 0);
+    RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
+
+    _valueTypes.emplace(name, tuple {size, std::move(layout)});
+}
+
+void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _migrationRules = std::move(migration_rules);
+}
+
+void FOEngineBase::FinalizeDataRegistration()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _registrationFinalized = true;
+
+    GetPropertiesForEdit().AllocData();
 }
 
 auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
@@ -156,24 +187,165 @@ auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hs
     return _entityTypesInfo;
 }
 
-void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_registrationFinalized);
+    static unordered_map<string_view, std::function<void(BaseTypeInfo&)>> builtin_types = {//
+        {"int8",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt8 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int8);
+            }},
+        {"int16",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt16 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int16);
+            }},
+        {"int",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt32 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int);
+            }},
+        {"int64",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsInt64 = true;
+                info.IsSignedInt = true;
+                info.Size = sizeof(int64);
+            }},
+        {"uint8",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsUInt8 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint8);
+            }},
+        {"uint16",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsUInt16 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint16);
+            }},
+        {"uint",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsUInt32 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint);
+            }},
+        {"uint64",
+            [](BaseTypeInfo& info) {
+                info.IsInt = true;
+                info.IsUInt64 = true;
+                info.IsSignedInt = false;
+                info.Size = sizeof(uint64);
+            }},
+        {"float",
+            [](BaseTypeInfo& info) {
+                info.IsFloat = true;
+                info.IsSingleFloat = true;
+                info.Size = sizeof(float);
+            }},
+        {"double",
+            [](BaseTypeInfo& info) {
+                info.IsFloat = true;
+                info.IsDoubleFloat = true;
+                info.Size = sizeof(double);
+            }},
+        {"bool",
+            [](BaseTypeInfo& info) {
+                info.IsBool = true;
+                info.Size = sizeof(bool);
+            }},
+        {"string",
+            [](BaseTypeInfo& info) {
+                info.IsString = true;
+                info.Size = 0;
+            }},
+        {"any",
+            [](BaseTypeInfo& info) {
+                info.IsString = true;
+                info.Size = 0;
+            }},
+        {"hstring", [](BaseTypeInfo& info) {
+             info.IsHash = true;
+             info.Size = sizeof(hstring::hash_t);
+         }}};
 
-    _migrationRules = std::move(migration_rules);
+    RUNTIME_ASSERT(!type_str.empty());
+
+    BaseTypeInfo info;
+
+    info.TypeName = type_str;
+
+    if (const auto it = builtin_types.find(type_str); it != builtin_types.end()) {
+        it->second(info);
+    }
+    else if (const BaseTypeInfo * underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
+        info.IsEnum = true;
+        info.IsEnumSigned = underlying_type->IsSignedInt;
+        info.Size = underlying_type->Size;
+    }
+    else if (GetValueTypeInfo(info.TypeName, info.Size, &info.StructLayout)) {
+        if (info.StructLayout->size() > 1) {
+            info.IsStruct = true;
+        }
+        else {
+            info = info.StructLayout->front().second;
+            info.TypeName = type_str;
+        }
+    }
+    else {
+        throw GenericException("Invalid base type", type_str);
+    }
+
+    info.IsPrimitive = info.IsInt || info.IsFloat || info.IsBool;
+
+    return info;
 }
 
-void FOEngineBase::FinalizeDataRegistration()
+auto FOEngineBase::GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_registrationFinalized);
+    const auto enum_it = _enumTypes.find(enum_name);
 
-    _registrationFinalized = true;
+    if (enum_it == _enumTypes.end()) {
+        return false;
+    }
 
-    GetPropertiesForEdit().AllocData();
+    if (underlying_type != nullptr) {
+        *underlying_type = &enum_it->second;
+    }
+
+    return true;
+}
+
+auto FOEngineBase::GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = _valueTypes.find(type_name);
+
+    if (it == _valueTypes.end()) {
+        return false;
+    }
+
+    size = std::get<0>(it->second);
+
+    if (layout != nullptr) {
+        *layout = &std::get<1>(it->second);
+    }
+
+    return true;
 }
 
 auto FOEngineBase::ResolveEnumValue(const string& enum_value_name, bool* failed) const -> int
@@ -228,6 +400,7 @@ auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool
     STACK_TRACE_ENTRY();
 
     const auto enum_it = _enumsRev.find(enum_name);
+
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
@@ -239,6 +412,7 @@ auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool
     }
 
     const auto value_it = enum_it->second.find(value);
+
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
             WriteLog("Can't resolve value {} for enum {}", value, enum_name);

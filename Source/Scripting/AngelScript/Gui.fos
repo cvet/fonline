@@ -29,8 +29,8 @@ interface IDropMenu
     void Draw();
     void MouseDown(MouseButton button);
     void MouseUp(MouseButton button);
-    bool PreMouseMove(int offsetX, int offsetY);
-    void PostMouseMove(int offsetX, int offsetY);
+    bool PreMouseMove(ipos offset);
+    void PostMouseMove(ipos offset);
     void InputLost();
     void Loop();
 };
@@ -57,56 +57,53 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void OnConstruct()
 //   void OnInit()
 //   void OnShow()
-//   void OnShow( dict<string, any> params )
+//   void OnShow(dict<string, any> params)
 //   void OnHide()
 //   void OnAppear()
 //   void OnDisappear()
 //   void OnDraw()
 //   void OnPostDraw()
-//   void OnMove( int deltaX, int deltaY )
-//   void OnMouseDown( MouseButton button )
-//   void OnMouseUp( MouseButton button, bool lost )
-//   void OnMousePressed( MouseButton button )
+//   void OnMove(ipos deltaPos)
+//   void OnMouseDown(MouseButton button)
+//   void OnMouseUp(MouseButton button, bool lost)
+//   void OnMousePressed(MouseButton button)
 //   void OnLMousePressed()
 //   void OnRMousePressed()
-//   void OnMouseClick( MouseButton button )
+//   void OnMouseClick(MouseButton button)
 //   void OnLMouseClick()
 //   void OnRMouseClick()
 //   void OnMouseMove()
-//   void OnGlobalMouseDown( MouseButton button )
-//   void OnGlobalMouseUp( MouseButton button )
-//   void OnGlobalMousePressed( MouseButton button )
-//   void OnGlobalMouseClick( MouseButton button )
+//   void OnGlobalMouseDown(MouseButton button)
+//   void OnGlobalMouseUp(MouseButton button)
+//   void OnGlobalMousePressed(MouseButton button)
+//   void OnGlobalMouseClick(MouseButton button)
 //   void OnGlobalMouseMove()
 //   void OnInput()
-//   void OnInput( KeyCode key )
-//   void OnInput( string text )
-//   void OnInput( KeyCode key, string text )
-//   void OnGlobalInput( KeyCode key, string text )
+//   void OnInput(KeyCode key)
+//   void OnInput(string text)
+//   void OnInput(KeyCode key, string text)
+//   void OnGlobalInput(KeyCode key, string text)
 //   void OnActiveChanged()
 //   void OnFocusChanged()
 //   void OnHoverChanged()
 //   void OnDragChanged()
-//   void OnResizeGrid( Object cell, uint cellIndex )
-//   void OnDrawItem( Item item, Object cell, uint cellIndex )
+//   void OnResizeGrid(Object cell, uint cellIndex)
+//   void OnDrawItem(Item item, Object cell, uint cellIndex)
 //   void OnRefreshText()
 // CheckBox
 //   void OnCheckedChanged()
 // ItemView
 //   Item[] OnGetItems() - return all items for display
-//   int OnCheckItem( Item item ) - return slot index if UseSorting == false; sorting value if UseSorting == true; < 0 to discard item
+//   int OnCheckItem(Item item) - return slot index if UseSorting == false; sorting value if UseSorting == true; < 0 to discard item
 
 // API
 // Object
 //   bool Active
 //   bool ActiveSelf
 //   string Name
-//   int PosX
-//   int PosY
-//   int AbsolutePosX
-//   int AbsolutePosY
-//   int Width
-//   int Height
+//   ipos Pos
+//   ipos AbsolutePos
+//   isize Size
 //   AnchorStyle Anchor
 //   DockStyle Dock
 //   bool IsDraggable
@@ -122,64 +119,66 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   Screen Screen
 //   Grid Grid
 //   uint CellIndex
-//   void Init( Object parent )
+//   void Init(Object parent)
 //   void Remove()
-//   void SetActive( bool active )
-//   void SetPosition( int x, int y )
-//   void SetPosition( string iniKey )
-//   void SetSize( int w, int h )
-//   void SetAnchor( AnchorStyle anchorStyles )
-//   void SetDock( DockStyle dockStyle )
-//   void SetColor( ucolor color )
-//   void SetDraggable( bool enabled )
-//   void SetNotHittable( bool enabled )
-//   void SetNotCatchable( bool enabled )
-//   void SetCheckTransparentOnHit( bool enabled )
+//   void SetActive(bool active)
+//   void SetPosition(ipos pos)
+//   void SetPosition(int x, int y)
+//   void SetPosition(string iniKey)
+//   void SetSize(isize size)
+//   void SetSize(int width, int height)
+//   void SetAnchor(AnchorStyle anchorStyles)
+//   void SetDock(DockStyle dockStyle)
+//   void SetColor(ucolor color)
+//   void SetDraggable(bool enabled)
+//   void SetNotHittable(bool enabled)
+//   void SetNotCatchable(bool enabled)
+//   void SetCheckTransparentOnHit(bool enabled)
 //   Object FindMouseHit()
-//   Object FindHit( int x, int y )
+//   Object FindHit(ipos pos)
 //   bool IsMouseHit()
-//   bool IsHit( int x, int y )
-//   void GetWholeSize( int& centerX, int& centerY, int& wholeWidth, int& wholeHeight, bool onlyChidren = false )
-//   void Draw( int x, int y )
-//   void Move( int deltaX, int deltaY )
+//   bool IsHit(ipos pos)
+//   void GetWholeSize(ipos& centerPos, isize& wholeSize, bool onlyChidren = false)
+//   void Draw(ipos pos)
+//   void Move(ipos deltaPos)
 //   void StartDragging()
-//   void MouseClick( MouseButton button )
-//   void Input( KeyCode key, string text )
-//   Panel FindPanel( string name )
-//   Text FindText( string name )
-//   TextInput FindTextInput( string name )
-//   Button FindButton( string name )
-//   Object Find( string name, bool deepFind = true )
-//   Object GetChild( uint index )
+//   void MouseClick(MouseButton button)
+//   void Input(KeyCode key, string text)
+//   Panel FindPanel(string name)
+//   Text FindText(string name)
+//   TextInput FindTextInput(string name)
+//   Button FindButton(string name)
+//   Object Find(string name, bool deepFind = true)
+//   Object GetChild(uint index)
 // Panel : Object
 //   Sprite::Sprite BackgroundImage
 //   SpriteLayout BackgroundImageLayout
-//   void SetBackgroundImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetBackgroundImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetCropContent( bool enabled )
-//   void SetAutoScroll( bool ver, bool hor )
-//   void ModifyScroll( int ver, int hor )
-//   bool CanModifyScroll( int ver, int hor )
+//   void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetCropContent(bool enabled)
+//   void SetAutoScroll(bool ver, bool hor)
+//   void ModifyScroll(int ver, int hor)
+//   bool CanModifyScroll(int ver, int hor)
 // Text : Object
 //   string Text (overridable)
 //   int TextFont
 //   ucolor TextColor
 //   ucolor TextColorFocused
 //   int TextFlags
-//   void SetText( string text, int font, int flags )
-//   void SetText( string text )
-//   void SetTextWithResize( string text )
-//   void SetTextFont( int font )
-//   void SetTextFlags( int flags )
-//   void SetTextColor( ucolor color )
-//   void SetTextFocusedColor( ucolor color )
+//   void SetText(string text, int font, int flags)
+//   void SetText(string text)
+//   void SetTextWithResize(string text)
+//   void SetTextFont(int font)
+//   void SetTextFlags(int flags)
+//   void SetTextColor(ucolor color)
+//   void SetTextFocusedColor(ucolor color)
 // TextInput : Text : Object
 //   uint InputLength
 //   bool IsTextPassword
 //   string PasswordChar
-//   void SetInputLength( uint length )
-//   void SetInputPassword( string passwordChar )
-//   void SetCarriage( bool enable )
+//   void SetInputLength(uint length)
+//   void SetInputPassword(string passwordChar)
+//   void SetCarriage(bool enable)
 // Button : Panel : Object
 //   Sprite::Sprite PressedImage
 //   SpriteLayout PressedImageLayout
@@ -187,17 +186,17 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   SpriteLayout HoverImageLayout
 //   bool IsSwitched
 //   bool IsDisabled
-//   void SetPressedImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetPressedImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetHoverImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetHoverImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetDisabledImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetDisabledImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
-//   void SetSwitch( bool enabled )
-//   void SetCondition( bool enabled )
+//   void SetPressedImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetPressedImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetHoverImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetHoverImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetDisabledImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetDisabledImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetSwitch(bool enabled)
+//   void SetCondition(bool enabled)
 // CheckBox : Button : Panel : Object
 //   bool IsChecked
-//   void SetChecked( bool checked )
+//   void SetChecked(bool checked)
 // RadioButton : CheckBox : Button : Panel : Object
 // Screen : Panel : Object
 //   int Index
@@ -210,32 +209,33 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   CursorType[] AvailableCursors
 //   CursorType Cursor
 //   bool IsOnTop
-//   void SetModal( bool enabled )
-//   void SetMultiinstance( bool enabled )
-//   void SetCloseOnMiss( bool enabled )
-//   void SetCanMove( bool enabled, bool ignoreBorders )
-//   void SetAvailableCursors( CursorType[] cursors )
+//   void SetModal(bool enabled)
+//   void SetMultiinstance(bool enabled)
+//   void SetCloseOnMiss(bool enabled)
+//   void SetCanMove(bool enabled, bool ignoreBorders)
+//   void SetAvailableCursors(CursorType[] cursors)
 // Grid : Panel : Object
 //   string CellPrototype
 //   uint GridSize
 //   int Columns
 //   Object[] Cells
-//   void ResizeGrid( uint size )
+//   void ResizeGrid(uint size)
 //   void RefreshContentPositions()
-//   void SetCellPrototype( string name )
-//   void SetGridSize( uint size )
-//   void SetColumns( int length )
-//   void SetPadding( int x, int y )
+//   void SetCellPrototype(string name)
+//   void SetGridSize(uint size)
+//   void SetColumns(int length)
+//   void SetPadding(ipos pos)
+//   void SetPadding(int x, int y)
 // MessageBox : Text : Object
 //   string[] MessageTexts
 //   int[] MessageTypes
 //   string[] MessageTimes
 //   bool[] DisplayedMessages
 //   bool InvertMessages
-//   void AddMessage( string text, int type = FOMB_GAME )
-//   void SetDisplayedMessages( int[] messageTypes )
-//   void ChangeDisplayedMessage( int messageType, bool enable )
-//   void SetInvertMessages( bool invert )
+//   void AddMessage(string text, int type = FOMB_GAME)
+//   void SetDisplayedMessages(int[] messageTypes)
+//   void ChangeDisplayedMessage(int messageType, bool enable)
+//   void SetInvertMessages(bool invert)
 //   void ClearMessages()
 // Console : TextInput : Text : Object
 //   string HistoryStorageName
@@ -245,18 +245,18 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void Deactivate()
 //   void SendText()
 //   void Toggle() // Automatically manage calls of Activate / Deactivate / SendText
-//   void SetHistoryStorage( string storageName )
-//   void SetHistoryMaxLength( uint length )
+//   void SetHistoryStorage(string storageName)
+//   void SetHistoryMaxLength(uint length)
 // ItemView : Grid : Panel : Object
 //   int UserData
 //   int UserDataExt
 //   bool UseSorting
 //   Item[] Items
-//   Item Game.GetItem( uint cellIndex )
+//   Item Game.GetItem(uint cellIndex)
 //   void Resort()
-//   void SetUserData( int data )
-//   void SetUserDataExt( int data )
-//   void SetUseSorting( bool enable )
+//   void SetUserData(int data)
+//   void SetUserDataExt(int data)
+//   void SetUseSorting(bool enable)
 
 class Object
 {
@@ -272,29 +272,17 @@ class Object
     {
         return _Name;
     }
-    int get_PosX() final
+    ipos get_Pos() final
     {
-        return _Parent != null ? _AbsolutePosX - _Parent._AbsolutePosX : _AbsolutePosX;
+        return _Parent != null ? _AbsolutePos - _Parent._AbsolutePos : _AbsolutePos;
     }
-    int get_PosY() final
+    ipos get_AbsolutePos() final
     {
-        return _Parent != null ? _AbsolutePosY - _Parent._AbsolutePosY : _AbsolutePosY;
+        return _AbsolutePos;
     }
-    int get_AbsolutePosX() final
+    isize get_Size() final
     {
-        return _AbsolutePosX;
-    }
-    int get_AbsolutePosY() final
-    {
-        return _AbsolutePosY;
-    }
-    int get_Width() final
-    {
-        return _Width;
-    }
-    int get_Height() final
-    {
-        return _Height;
+        return _Size;
     }
     AnchorStyle get_Anchor() final
     {
@@ -363,14 +351,10 @@ class Object
 
     bool _ActiveSelf;
     string _Name;
-    int _BasePosX;
-    int _BasePosY;
-    int _BaseWidth;
-    int _BaseHeight;
-    int _AbsolutePosX;
-    int _AbsolutePosY;
-    int _Width;
-    int _Height;
+    ipos _BasePos;
+    isize _BaseSize;
+    ipos _AbsolutePos;
+    isize _Size;
     AnchorStyle _Anchor;
     DockStyle _Dock;
     ucolor _Color;
@@ -384,8 +368,7 @@ class Object
     bool _IsPressed;
     bool _IsHovered;
     MouseButton _PressedButton;
-    int _PressedX;
-    int _PressedY;
+    ipos _PressedPos;
     Object _Parent;
     Object[] _Children;
     Grid _Grid;
@@ -422,7 +405,7 @@ class Object
     void OnPostDraw()
     {
     }
-    void OnMove(int deltaX, int deltaY)
+    void OnMove(ipos deltaPos)
     {
     }
     void OnMouseDown(MouseButton button)
@@ -667,44 +650,41 @@ class Object
         }
     }
 
-    void Draw(int x, int y)
+    void Draw(ipos pos)
     {
-        int dx = x - _AbsolutePosX;
-        int dy = y - _AbsolutePosY;
-        _Move(dx, dy, false, false);
+        ipos deltaPos = pos - _AbsolutePos;
+        _Move(deltaPos, false, false);
         _Draw(true);
-        _Move(-dx, -dy, false, false);
+        _Move(-deltaPos, false, false);
     }
 
-    void Move(int deltaX, int deltaY)
+    void Move(ipos deltaPos)
     {
-        _Move(deltaX, deltaY, true, true);
+        _Move(deltaPos, true, true);
     }
 
-    void _Move(int deltaX, int deltaY, bool callCallback, bool moveBasePos)
+    void _Move(ipos deltaPos, bool callCallback, bool moveBasePos)
     {
-        _AbsolutePosX += deltaX;
-        _AbsolutePosY += deltaY;
+        _AbsolutePos += deltaPos;
 
         if (moveBasePos) {
-            _BasePosX += deltaX;
-            _BasePosY += deltaY;
+            _BasePos += deltaPos;
         }
 
         for (uint i = 0; i < _Children.length(); i++) {
-            _Children[i]._Move(deltaX, deltaY, false, false);
+            _Children[i]._Move(deltaPos, false, false);
         }
 
         if (callCallback) {
-            _MoveCallback(deltaX, deltaY);
+            _MoveCallback(deltaPos);
         }
     }
 
-    void _MoveCallback(int deltaX, int deltaY)
+    void _MoveCallback(ipos deltaPos)
     {
-        OnMove(deltaX, deltaY);
+        OnMove(deltaPos);
         for (uint i = 0; i < _Children.length(); i++) {
-            _Children[i]._MoveCallback(deltaX, deltaY);
+            _Children[i]._MoveCallback(deltaPos);
         }
     }
 
@@ -716,21 +696,21 @@ class Object
 
     Object FindMouseHit()
     {
-        return FindHit(Settings.MouseX, Settings.MouseY);
+        return FindHit(Settings.MousePos);
     }
 
-    Object FindHit(int x, int y)
+    Object FindHit(ipos pos)
     {
         // Check children
         for (int i = int(_Children.length()) - 1; i >= 0; i--) {
-            Object obj = _Children[i].FindHit(x, y);
+            Object obj = _Children[i].FindHit(pos);
             if (obj != null) {
                 return obj;
             }
         }
 
         // Check own
-        if (IsHit(x, y)) {
+        if (IsHit(pos)) {
             return this;
         }
 
@@ -740,21 +720,20 @@ class Object
 
     bool IsMouseHit()
     {
-        return IsHit(Settings.MouseX, Settings.MouseY);
+        return IsHit(Settings.MousePos);
     }
 
-    bool IsHit(int x, int y)
+    bool IsHit(ipos pos)
     {
-        return Active && !_IsNotHittable && _Width > 0 && _Height > 0 && Math::IsCollision(x, y, _AbsolutePosX, _AbsolutePosY, _Width, _Height) &&
-               !_IsCropped(x, y);
+        return Active && !_IsNotHittable && _Size.width > 0 && _Size.height > 0 && Math::IsCollision(pos, _AbsolutePos, _Size) && !_IsCropped(pos);
     }
 
-    bool _IsCropped(int x, int y)
+    bool _IsCropped(ipos pos)
     {
         Object obj = Parent;
         while (obj != null) {
             Panel panel = cast<Panel>(obj);
-            if (panel != null && panel._CropContent && !Math::IsCollision(x, y, obj._AbsolutePosX, obj._AbsolutePosY, obj._Width, obj._Height)) {
+            if (panel != null && panel._CropContent && !Math::IsCollision(pos, obj._AbsolutePos, obj._Size)) {
                 return true;
             }
             obj = obj.Parent;
@@ -764,10 +743,10 @@ class Object
 
     void _GetWholeSizeRect(int[] rect)
     {
-        int l = _AbsolutePosX;
-        int t = _AbsolutePosY;
-        int r = l + Width;
-        int b = t + Height;
+        int l = _AbsolutePos.x;
+        int t = _AbsolutePos.y;
+        int r = l + Size.width;
+        int b = t + Size.height;
 
         if (l < rect[0]) {
             rect[0] = l;
@@ -787,7 +766,7 @@ class Object
         }
     }
 
-    void GetWholeSize(int& centerX, int& centerY, int& wholeWidth, int& wholeHeight, bool onlyChidren = false)
+    void GetWholeSize(ipos& centerPos, isize& wholeSize, bool onlyChidren = false)
     {
         int[] rect = {1000000000, 1000000000, -1000000000, -1000000000};
         if (!onlyChidren) {
@@ -801,18 +780,17 @@ class Object
         else {
             rect[0] = rect[1] = rect[2] = rect[3] = 0;
         }
-        wholeWidth = rect[2] - rect[0];
-        wholeHeight = rect[3] - rect[1];
-        centerX = rect[0] + wholeWidth / 2;
-        centerY = rect[1] + wholeHeight / 2;
+        wholeSize.width = rect[2] - rect[0];
+        wholeSize.height = rect[3] - rect[1];
+        centerPos.x = rect[0] + wholeSize.width / 2;
+        centerPos.y = rect[1] + wholeSize.height / 2;
     }
 
     void _MouseDown(MouseButton button)
     {
         _IsPressed = true;
         _PressedButton = button;
-        _PressedX = Settings.MouseX;
-        _PressedY = Settings.MouseY;
+        _PressedPos = Settings.MousePos;
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MouseButton::Left) {
@@ -1044,76 +1022,68 @@ class Object
     void _RefreshPosition()
     {
         // Base data
-        _Width = _BaseWidth;
-        _Height = _BaseHeight;
-        int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
-        int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
-        int parentWidth = (_Parent != null ? _Parent._Width : Settings.ScreenWidth);
-        int parentHeight = (_Parent != null ? _Parent._Height : Settings.ScreenHeight);
-        int parentBaseWidth = (_Parent != null ? _Parent._BaseWidth : _BaseWidth);
-        int parentBaseHeight = (_Parent != null ? _Parent._BaseHeight : _BaseHeight);
+        _Size = _BaseSize;
+        ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ipos();
+        isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+        isize parentBaseSize = _Parent != null ? _Parent._BaseSize : _BaseSize;
 
         // Dock
-        int newPosX;
-        int newPosY;
+        ipos newPos;
         if (_Dock != DockStyle::None) {
             if (_Dock == DockStyle::Left) {
-                newPosX = parentAbsolutePosX;
-                newPosY = parentAbsolutePosY;
-                _Height = parentHeight;
+                newPos = parentAbsolutePos;
+                _Size.height = parentSize.height;
             }
             else if (_Dock == DockStyle::Right) {
-                newPosX = parentAbsolutePosX + parentWidth - _Width;
-                newPosY = parentAbsolutePosY;
-                _Height = parentHeight;
+                newPos.x = parentAbsolutePos.x + parentSize.width - _Size.width;
+                newPos.y = parentAbsolutePos.y;
+                _Size.height = parentSize.height;
             }
             else if (_Dock == DockStyle::Top) {
-                newPosX = parentAbsolutePosX;
-                newPosY = parentAbsolutePosY;
-                _Width = parentWidth;
+                newPos = parentAbsolutePos;
+                _Size.width = parentSize.width;
             }
             else if (_Dock == DockStyle::Bottom) {
-                newPosX = parentAbsolutePosX;
-                newPosY = parentAbsolutePosY + parentHeight - _Height;
-                _Width = parentWidth;
+                newPos.x = parentAbsolutePos.x;
+                newPos.y = parentAbsolutePos.y + parentSize.height - _Size.height;
+                _Size.width = parentSize.width;
             }
             else if (_Dock == DockStyle::Fill) {
-                newPosX = parentAbsolutePosX;
-                newPosY = parentAbsolutePosY;
-                _Width = parentWidth;
-                _Height = parentHeight;
+                newPos.x = parentAbsolutePos.x;
+                newPos.y = parentAbsolutePos.y;
+                _Size.width = parentSize.width;
+                _Size.height = parentSize.height;
             }
             else {
-                newPosX = _BasePosX + parentAbsolutePosX;
-                newPosY = _BasePosY + parentAbsolutePosY;
+                newPos = _BasePos + parentAbsolutePos;
             }
         }
         // Anchor
         else {
             if ((_Anchor & AnchorStyle::Left) != 0) {
-                newPosX = parentAbsolutePosX + _BasePosX;
+                newPos.x = parentAbsolutePos.x + _BasePos.x;
             }
             else if ((_Anchor & AnchorStyle::Right) != 0) {
-                newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth);
+                newPos.x = parentAbsolutePos.x + _BasePos.x + (parentSize.width - parentBaseSize.width);
             }
             else {
-                newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth) / 2;
+                newPos.x = parentAbsolutePos.x + _BasePos.x + (parentSize.width - parentBaseSize.width) / 2;
             }
 
             if ((_Anchor & AnchorStyle::Top) != 0) {
-                newPosY = parentAbsolutePosY + _BasePosY;
+                newPos.y = parentAbsolutePos.y + _BasePos.y;
             }
             else if ((_Anchor & AnchorStyle::Bottom) != 0) {
-                newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight);
+                newPos.y = parentAbsolutePos.y + _BasePos.y + (parentSize.height - parentBaseSize.height);
             }
             else {
-                newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight) / 2;
+                newPos.y = parentAbsolutePos.y + _BasePos.y + (parentSize.height - parentBaseSize.height) / 2;
             }
         }
 
         // Move control
-        if (newPosX != _AbsolutePosX || newPosY != _AbsolutePosY) {
-            _Move(newPosX - _AbsolutePosX, newPosY - _AbsolutePosY, false, false);
+        if (newPos != _AbsolutePos) {
+            _Move(newPos - _AbsolutePos, false, false);
         }
     }
 
@@ -1144,27 +1114,35 @@ class Object
         }
     }
 
-    void SetPosition(int x, int y)
+    void SetPosition(ipos pos)
     {
-        if (_BasePosX == x && _BasePosY == y) {
+        if (_BasePos == pos) {
             return;
         }
 
-        _BasePosX = x;
-        _BasePosY = y;
+        _BasePos = pos;
         _RefreshPosition();
     }
 
-    void SetSize(int w, int h)
+    void SetPosition(int x, int y)
     {
-        if (_BaseWidth == w && _BaseHeight == h) {
+        SetPosition(ipos(x, y));
+    }
+
+    void SetSize(isize size)
+    {
+        if (_BaseSize == size) {
             return;
         }
 
-        _BaseWidth = w;
-        _BaseHeight = h;
+        _BaseSize = size;
         _RefreshPosition();
         _SizeChanged();
+    }
+
+    void SetSize(int width, int height)
+    {
+        SetSize(isize(width, height));
     }
 
     void SetAnchor(AnchorStyle anchorStyles)
@@ -1254,11 +1232,11 @@ class Panel : Object
     int _VerticalScrollPercent;
     int _HorizontalScrollPercent;
 
-    bool IsHit(int x, int y) override
+    bool IsHit(ipos pos) override
     {
-        if (Object::IsHit(x, y)) {
+        if (Object::IsHit(pos)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null) {
-                return Game.IsSpriteHit(_BackgroundImage.Id, x - _AbsolutePosX, y - _AbsolutePosY);
+                return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
             }
             return true;
         }
@@ -1271,7 +1249,7 @@ class Panel : Object
 
         bool crop = _CropContent;
         if (crop) {
-            Game.PushDrawScissor(AbsolutePosX, AbsolutePosY, Width, Height);
+            Game.PushDrawScissor(AbsolutePos, Size);
         }
 
         if (callCallback) {
@@ -1296,8 +1274,8 @@ class Panel : Object
 
     void _DrawImage(Sprite::Sprite image)
     {
-        if (_Width > 0 && _Height > 0) {
-            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, SpriteLayout::None, _Color);
+        if (_Size != isize()) {
+            image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::None, _Color);
         }
     }
 
@@ -1335,8 +1313,8 @@ class Panel : Object
             curImage.Layout = imageLayout;
         }
 
-        if (curImage != null && (imageLayout == SpriteLayout::None || (_BaseWidth == 0 && _BaseHeight == 0))) {
-            SetSize(curImage.Width, curImage.Height);
+        if (curImage != null && (imageLayout == SpriteLayout::None || _BaseSize == isize())) {
+            SetSize(curImage.Size);
         }
     }
 
@@ -1344,6 +1322,7 @@ class Panel : Object
     {
         if (_IsVerticalScroll && (button == MouseButton::WheelUp || button == MouseButton::WheelDown)) {
             int dy = 0;
+
             if (button == MouseButton::WheelUp) {
                 dy = -1;
             }
@@ -1437,11 +1416,13 @@ class Panel : Object
                 _VerticalScroll = curVer;
                 _HorizontalScroll = curHor;
                 for (uint i = 0; i < _Children.length(); i++) {
-                    _Children[i]._Move(-(curHor - oldHor), -(curVer - oldVer), true, false);
+                    _Children[i]._Move(ipos(-(curHor - oldHor), -(curVer - oldVer)), true, false);
                 }
             }
+
             return true;
         }
+
         return false;
     }
 
@@ -1451,13 +1432,15 @@ class Panel : Object
             return;
         }
 
-        int centerX = 0, centerY = 0, wholeWidth = 0, wholeHeight = 0;
-        GetWholeSize(centerX, centerY, wholeWidth, wholeHeight, true);
+        ipos centerPos;
+        isize wholeSize;
+        GetWholeSize(centerPos, wholeSize, true);
+
         if (_IsVerticalScroll) {
-            maxVerScroll = wholeHeight - Height + ((centerY + _VerticalScroll) - wholeHeight / 2 - AbsolutePosY);
+            maxVerScroll = wholeSize.height - Size.height + ((centerPos.y + _VerticalScroll) - wholeSize.height / 2 - AbsolutePos.y);
         }
         if (_IsHorizontalScroll) {
-            maxHorScroll = wholeWidth - Width + ((centerX + _HorizontalScroll) - wholeWidth / 2 - AbsolutePosX);
+            maxHorScroll = wholeSize.width - Size.width + ((centerPos.x + _HorizontalScroll) - wholeSize.width / 2 - AbsolutePos.x);
         }
     }
 
@@ -1524,7 +1507,7 @@ class Text : Object
         string text = Text;
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
         }
 
         Object::_Draw(false);
@@ -1559,9 +1542,10 @@ class Text : Object
 
     void SetTextWithResize(string text)
     {
-        int tw = 0, th = 0, lines = 0;
-        Game.GetTextInfo(text, Width, 1000, _TextFont, _TextFlags, tw, th, lines);
-        SetSize(_Width, th + 5);
+        isize resultSize;
+        int lines = 0;
+        Game.GetTextInfo(text, isize(Size.width, 1000), _TextFont, _TextFlags, resultSize, lines);
+        SetSize(isize(_Size.width, resultSize.height + 5));
         SetText(text);
     }
 
@@ -1661,7 +1645,7 @@ class TextInput : Text
         }
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
         }
 
         Object::_Draw(false);
@@ -2076,7 +2060,7 @@ class Screen : Panel
         _ActiveSelf = true;
 
         // Set default cursor
-        _Cursor = (_AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default);
+        _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
 
         // Base behaviour
         Panel::_Show(params);
@@ -2111,7 +2095,7 @@ class Screen : Panel
         // Store cursor
         _Cursor = Settings.Cursor;
         if (_AvailableCursors.find(_Cursor) == -1) {
-            _Cursor = (_AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default);
+            _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
         }
 
         // Base behaviour
@@ -2144,42 +2128,36 @@ class Screen : Panel
         if (_IsCanMove) {
             Object pressedObj = _FindPressed(this);
             if (pressedObj != null && pressedObj._PressedButton == MouseButton::Left && pressedObj._IsCatchable()) {
-                int lastPosX = _AbsolutePosX;
-                int lastPosY = _AbsolutePosY;
-                int newPosX = _AbsolutePosX + (Settings.MouseX - pressedObj._PressedX);
-                int newPosY = _AbsolutePosY + (Settings.MouseY - pressedObj._PressedY);
-                pressedObj._PressedX = Settings.MouseX;
-                pressedObj._PressedY = Settings.MouseY;
+                ipos lastPos = _AbsolutePos;
+                ipos newPos = _AbsolutePos + (Settings.MousePos - pressedObj._PressedPos);
+                pressedObj._PressedPos = Settings.MousePos;
 
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
-                    int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
-                    int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
-                    int parentWidth = (_Parent != null ? _Parent._Width : Settings.ScreenWidth);
-                    int parentHeight = (_Parent != null ? _Parent._Height : Settings.ScreenHeight);
-                    int px = newPosX;
-                    int py = newPosY;
-                    if (newPosX < parentAbsolutePosX) {
-                        newPosX = parentAbsolutePosX;
+                    ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ipos();
+                    isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+                    ipos prevPos = newPos;
+
+                    if (newPos.x < parentAbsolutePos.x) {
+                        newPos.x = parentAbsolutePos.x;
                     }
-                    if (newPosY < parentAbsolutePosY) {
-                        newPosY = parentAbsolutePosY;
+                    if (newPos.y < parentAbsolutePos.y) {
+                        newPos.y = parentAbsolutePos.y;
                     }
-                    if (newPosX + _Width > parentWidth) {
-                        newPosX = parentWidth - _Width;
+                    if (newPos.x + _Size.width > parentSize.width) {
+                        newPos.x = parentSize.width - _Size.width;
                     }
-                    if (newPosY + _Height > parentHeight) {
-                        newPosY = parentHeight - _Height;
+                    if (newPos.y + _Size.height > parentSize.height) {
+                        newPos.y = parentSize.height - _Size.height;
                     }
-                    pressedObj._PressedX += newPosX - px;
-                    pressedObj._PressedY += newPosY - py;
+
+                    pressedObj._PressedPos += newPos - prevPos;
                 }
 
                 // Callback
-                if (lastPosX != newPosX || lastPosY != newPosY) {
-                    int deltaX = newPosX - lastPosX;
-                    int deltaY = newPosY - lastPosY;
-                    _Move(deltaX, deltaY, true, true);
+                if (lastPos != newPos) {
+                    ipos deltaPos = newPos - lastPos;
+                    _Move(deltaPos, true, true);
                 }
             }
         }
@@ -2243,13 +2221,9 @@ class Grid : Panel
     {
         return _Columns;
     }
-    int get_PaddingX() final
+    ipos get_Padding() final
     {
-        return _PaddingX;
-    }
-    int get_PaddingY() final
-    {
-        return _PaddingY;
+        return _Padding;
     }
     Object[] get_Cells() final
     {
@@ -2259,8 +2233,7 @@ class Grid : Panel
     string _CellPrototype;
     uint _GridSize;
     int _Columns;
-    int _PaddingX;
-    int _PaddingY;
+    ipos _Padding;
     Object[] _Cells;
 
     void _Construct() override
@@ -2299,7 +2272,8 @@ class Grid : Panel
         if (_CellPrototype.isEmpty()) {
             return;
         }
-        Object cellPrototype = (_CellPrototype[0] != "." ? Find(_CellPrototype) : Parent.Find(_CellPrototype.substr(1), false));
+
+        Object cellPrototype = _CellPrototype[0] != "." ? Find(_CellPrototype) : Parent.Find(_CellPrototype.substr(1), false);
         if (cellPrototype == null) {
             return;
         }
@@ -2326,6 +2300,7 @@ class Grid : Panel
         // Create new intsances
         cellPrototype._ActiveSelf = true;
         Object[] cellInstances = {};
+
         for (uint i = 0; i < _GridSize; i++) {
             Object cellInstance = cellPrototype._Clone(this);
             _Children.removeLast();
@@ -2334,6 +2309,7 @@ class Grid : Panel
             _SetCellIndex(cellInstance, this, cellInstances.length());
             cellInstances.insertLast(cellInstance);
         }
+
         cellPrototype._ActiveSelf = false;
 
         // Callbacks
@@ -2348,16 +2324,20 @@ class Grid : Panel
         }
 
         // Move
-        int col = 0, row = 0;
+        int col = 0;
+        int row = 0;
         int rowHeight = 0;
         int shiftX = -_HorizontalScroll;
         int shiftY = -_VerticalScroll;
+
         for (uint i = 0; i < cellInstances.length(); i++) {
-            cellInstances[i]._Move(shiftX, shiftY, false, true);
-            shiftX += cellInstances[i]._Width + _PaddingX;
-            if (rowHeight < cellInstances[i]._Height + _PaddingY) {
-                rowHeight = cellInstances[i]._Height + _PaddingY;
+            cellInstances[i]._Move(ipos(shiftX, shiftY), false, true);
+            shiftX += cellInstances[i]._Size.width + _Padding.x;
+
+            if (rowHeight < cellInstances[i]._Size.height + _Padding.y) {
+                rowHeight = cellInstances[i]._Size.height + _Padding.y;
             }
+
             if (++col >= _Columns) {
                 col = 0;
                 row++;
@@ -2366,6 +2346,7 @@ class Grid : Panel
                 rowHeight = 0;
             }
         }
+
         _ModifyScroll(0, 0);
     }
 
@@ -2375,22 +2356,28 @@ class Grid : Panel
             return;
         }
 
-        int col = 0, row = 0;
+        int col = 0;
+        int row = 0;
         int rowHeight = 0;
         int shiftX = -_HorizontalScroll;
         int shiftY = -_VerticalScroll;
-        int baseX = _Cells[0]._BasePosX - _HorizontalScroll;
-        int baseY = _Cells[0]._BasePosY - _VerticalScroll;
+        int baseX = _Cells[0]._BasePos.x - _HorizontalScroll;
+        int baseY = _Cells[0]._BasePos.y - _VerticalScroll;
+
         for (uint i = 0; i < _Cells.length(); i++) {
-            int ox = shiftX - _Cells[i]._BasePosX + baseX;
-            int oy = shiftY - _Cells[i]._BasePosY + baseY;
+            int ox = shiftX - _Cells[i]._BasePos.x + baseX;
+            int oy = shiftY - _Cells[i]._BasePos.y + baseY;
+
             if (ox != 0 || oy != 0) {
-                _Cells[i]._Move(ox, oy, false, true);
+                _Cells[i]._Move(ipos(ox, oy), false, true);
             }
-            shiftX += _Cells[i]._Width + _PaddingX;
-            if (rowHeight < _Cells[i]._Height + _PaddingY) {
-                rowHeight = _Cells[i]._Height + _PaddingY;
+
+            shiftX += _Cells[i]._Size.width + _Padding.x;
+
+            if (rowHeight < _Cells[i]._Size.height + _Padding.y) {
+                rowHeight = _Cells[i]._Size.height + _Padding.y;
             }
+
             if (++col >= _Columns) {
                 col = 0;
                 row++;
@@ -2399,6 +2386,7 @@ class Grid : Panel
                 rowHeight = 0;
             }
         }
+
         _ModifyScroll(0, 0);
     }
 
@@ -2424,8 +2412,10 @@ class Grid : Panel
     void SetCellPrototype(string name)
     {
         _CellPrototype = name;
+
         if (!_CellPrototype.isEmpty()) {
             Object cellPrototype = (_CellPrototype[0] != "." ? Find(_CellPrototype) : Parent.Find(_CellPrototype.substr(1), false));
+
             if (cellPrototype != null) {
                 cellPrototype._ActiveSelf = false;
             }
@@ -2442,10 +2432,14 @@ class Grid : Panel
         _Columns = length;
     }
 
+    void SetPadding(ipos pos)
+    {
+        _Padding = pos;
+    }
+
     void SetPadding(int x, int y)
     {
-        _PaddingX = x;
-        _PaddingY = y;
+        SetPadding(ipos(x, y));
     }
 };
 
@@ -2527,8 +2521,8 @@ class MessageBox : Text
         Text::_Draw(callCallback);
 
         if (_IsHovered) {
-            Sprite::Sprite spr = (Settings.MouseY < _AbsolutePosY + _Height / 2 ? _ScrollUp : _ScrollDown);
-            spr.Draw(Settings.MouseX - spr.Width / 2, Settings.MouseY - spr.Height / 2);
+            Sprite::Sprite spr = Settings.MousePos.y < _AbsolutePos.y + _Size.height / 2 ? _ScrollUp : _ScrollDown;
+            spr.Draw(ipos(Settings.MousePos.x - spr.Size.width / 2, Settings.MousePos.y - spr.Size.height / 2));
         }
     }
 
@@ -2581,7 +2575,7 @@ class MessageBox : Text
     void _MousePressed(MouseButton button) override
     {
         if (button == MouseButton::Left || button == MouseButton::WheelUp || button == MouseButton::WheelDown) {
-            if (button == MouseButton::WheelUp || (button == MouseButton::Left && Settings.MouseY < _AbsolutePosY + _Height / 2)) {
+            if (button == MouseButton::WheelUp || (button == MouseButton::Left && Settings.MousePos.y < _AbsolutePos.y + _Size.height / 2)) {
                 if (_InvertMessages && _Scroll > 0) {
                     _Scroll--;
                 }
@@ -2589,7 +2583,7 @@ class MessageBox : Text
                     _Scroll++;
                 }
             }
-            else if (button == MouseButton::WheelDown || (button == MouseButton::Left && Settings.MouseY >= _AbsolutePosY + _Height / 2)) {
+            else if (button == MouseButton::WheelDown || (button == MouseButton::Left && Settings.MousePos.y >= _AbsolutePos.y + _Size.height / 2)) {
                 if (_InvertMessages && _Scroll < _MaxScroll) {
                     _Scroll++;
                 }
@@ -2656,7 +2650,7 @@ class MessageBox : Text
             return;
         }
 
-        int maxLines = Game.GetTextLines(_Width, _Height, _TextFont);
+        int maxLines = Game.GetTextLines(_Size, _TextFont);
         if (maxLines <= 0) {
             _MaxScroll = 0;
             _ScrollLines = 0;
@@ -2677,9 +2671,9 @@ class MessageBox : Text
 
             // Skip scrolled lines
             int curLines = lines;
-            int tw = 0, th = 0;
+            isize resultSize;
             int skipLines = 0;
-            Game.GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
+            Game.GetTextInfo(messageText, isize(_Size.width, 1000), _TextFont, 0, resultSize, skipLines);
             lines += skipLines;
 
             if (_ScrollLines < 0) {
@@ -2983,7 +2977,7 @@ class Console : TextInput
         }
 
         text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
-        Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, _TextColor, _TextFont, _TextFlags);
+        Game.DrawText(text, _AbsolutePos, _Size, _TextColor, _TextFont, _TextFlags);
 
         Object::_Draw(false);
 
@@ -3468,10 +3462,10 @@ void SetDropMenu(IDropMenu dropMenu)
     DropMenu = dropMenu;
 }
 
-bool CheckHit(int x, int y)
+bool CheckHit(ipos pos)
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf && Screens[i].FindHit(x, y) != null) {
+        if (Screens[i].ActiveSelf && Screens[i].FindHit(pos) != null) {
             return true;
         }
     }
@@ -3563,9 +3557,10 @@ void EngineCallback_DrawCursor()
     // Dragged object
     Object draggedObject = GetDraggedObject();
     if (draggedObject != null) {
-        int x = 0, y = 0, w = 0, h = 0;
-        draggedObject.GetWholeSize(x, y, w, h);
-        draggedObject.Draw(Settings.MouseX - w / 2, Settings.MouseY - h / 2);
+        ipos pos;
+        isize size;
+        draggedObject.GetWholeSize(pos, size);
+        draggedObject.Draw(ipos(Settings.MousePos.x - size.width / 2, Settings.MousePos.y - size.height / 2));
         return;
     }
 
@@ -3691,13 +3686,13 @@ void EngineCallback_MouseUp(MouseButton button)
     }
 }
 
-void EngineCallback_MouseMove(int offsetX, int offsetY)
+void EngineCallback_MouseMove(ipos offset)
 {
-    bool realMove = (offsetX != 0 || offsetY != 0);
+    bool realMove = offset != ipos();
 
     // Drop menu
     if (DropMenu != null) {
-        if (DropMenu.PreMouseMove(offsetX, offsetY)) {
+        if (DropMenu.PreMouseMove(offset)) {
             return;
         }
     }
@@ -3731,7 +3726,7 @@ void EngineCallback_MouseMove(int offsetX, int offsetY)
 
     // Drop menu
     if (DropMenu != null) {
-        DropMenu.PostMouseMove(offsetX, offsetY);
+        DropMenu.PostMouseMove(offset);
     }
 }
 
@@ -3806,7 +3801,7 @@ void EngineCallback_Loop()
         }
     }
 
-    EngineCallback_MouseMove(0, 0);
+    EngineCallback_MouseMove(ipos(0, 0));
 
     // Drop menu
     if (DropMenu != null) {

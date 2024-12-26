@@ -69,10 +69,14 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             const auto raw_data = props->GetRawData(prop);
 
             if (prop->IsPlainData()) {
-                uint64 pod_zero = 0;
-                RUNTIME_ASSERT(raw_data.size() <= sizeof(pod_zero));
+                const auto* pod_data = raw_data.data();
+                const auto* pod_data_end = pod_data + raw_data.size();
 
-                if (std::memcmp(raw_data.data(), &pod_zero, raw_data.size()) == 0) {
+                while (pod_data != pod_data_end && *pod_data != 0) {
+                    ++pod_data;
+                }
+
+                if (pod_data == pod_data_end) {
                     continue;
                 }
             }
@@ -83,37 +87,46 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             }
         }
 
-        doc.insert(std::make_pair(prop->GetName(), SavePropertyToValue(props, prop, hash_resolver, name_resolver)));
+        auto&& value = SavePropertyToValue(props, prop, hash_resolver, name_resolver);
+        doc.Emplace(prop->GetName(), std::move(value));
     }
 
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
+auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
     bool is_error = false;
 
-    for (const auto& [key, value] : doc) {
+    for (auto&& [doc_key, doc_value] : doc) {
         // Skip technical fields
-        if (key.empty() || key[0] == '$' || key[0] == '_') {
+        if (doc_key.empty() || doc_key[0] == '$' || doc_key[0] == '_') {
             continue;
         }
 
-        // Find property
-        bool is_component;
-        const auto* prop = props->GetRegistrator()->Find(key, &is_component);
+        try {
+            // Find property
+            bool is_component;
+            const auto* prop = props->GetRegistrator()->FindProperty(doc_key, &is_component);
 
-        if (prop != nullptr && !prop->IsDisabled() && !prop->IsVirtual() && !prop->IsTemporary()) {
-            if (!LoadPropertyFromValue(props, prop, value, hash_resolver, name_resolver)) {
-                is_error = true;
+            if (prop != nullptr && !prop->IsDisabled() && !prop->IsVirtual() && !prop->IsTemporary()) {
+                LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
+            }
+            else {
+                // Todo: maybe need some optional warning for unknown/wrong properties
+                // WriteLog("Skip unknown property {}", key);
+                UNUSED_VARIABLE(is_component);
             }
         }
-        else {
-            // Todo: maybe need some optional warning for unknown/wrong properties
-            // WriteLog("Skip unknown property {}", key);
-            UNUSED_VARIABLE(is_component);
+        catch (const std::exception& ex) {
+            WriteLog("Unable to load property {}", doc_key);
+            ReportExceptionAndContinue(ex);
+            is_error = true;
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
         }
     }
 
@@ -132,355 +145,239 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
     const auto raw_data = props->GetRawData(prop);
 
-    if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
-            const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
-            return string {hash_resolver.ResolveHash(hash)};
-        }
-        else if (prop->IsBaseTypeEnum()) {
-            int enum_value = 0;
-            std::memcpy(&enum_value, raw_data.data(), prop->GetBaseSize());
-            return name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value);
-        }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
-#define PARSE_VALUE(is, t, ret_t) \
-    do { \
-        if (prop->is) { \
-            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(raw_data.data()))); \
-        } \
-    } while (false)
+    return SavePropertyToValue(prop, raw_data, hash_resolver, name_resolver);
+}
 
-            PARSE_VALUE(IsInt8(), int8, int64);
-            PARSE_VALUE(IsInt16(), int16, int64);
-            PARSE_VALUE(IsInt32(), int, int64);
-            PARSE_VALUE(IsInt64(), int64, int64);
-            PARSE_VALUE(IsUInt8(), uint8, int64);
-            PARSE_VALUE(IsUInt16(), uint16, int64);
-            PARSE_VALUE(IsUInt32(), uint, int64);
-            PARSE_VALUE(IsSingleFloat(), float, double);
-            PARSE_VALUE(IsDoubleFloat(), double, double);
-            PARSE_VALUE(IsBool(), bool, bool);
-
-#undef PARSE_VALUE
-        }
+static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata) -> AnyData::Value
+{
+    if (base_type_info.IsString) {
+        const uint str_len = *reinterpret_cast<const uint*>(pdata);
+        pdata += sizeof(str_len);
+        const auto* pstr = reinterpret_cast<const char*>(pdata);
+        pdata += str_len;
+        return string(pstr, str_len);
     }
-    else if (prop->IsString()) {
-        if (!raw_data.empty()) {
-            return string {reinterpret_cast<const char*>(raw_data.data()), raw_data.size()};
-        }
-
-        return string {};
+    else if (base_type_info.IsHash) {
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        pdata += sizeof(hstring::hash_t);
+        return hash_resolver.ResolveHash(hash).as_str();
     }
-    else if (prop->IsArray()) {
-        if (prop->IsArrayOfString()) {
-            if (!raw_data.empty()) {
-                const auto* data = raw_data.data();
+    else if (base_type_info.IsEnum) {
+        int enum_value = 0;
+        std::memcpy(&enum_value, pdata, base_type_info.Size);
+        pdata += base_type_info.Size;
+        return name_resolver.ResolveEnumValueName(base_type_info.TypeName, enum_value);
+    }
+    else if (base_type_info.IsPrimitive) {
+        pdata += base_type_info.Size;
 
-                uint arr_size;
-                std::memcpy(&arr_size, data, sizeof(arr_size));
-                data += sizeof(uint);
-
-                AnyData::Array arr;
-                arr.reserve(arr_size);
-                for (uint i = 0; i < arr_size; i++) {
-                    uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
-                    string str(reinterpret_cast<const char*>(data), str_size);
-                    arr.emplace_back(std::move(str));
-                    data += str_size;
-                }
-
-                return arr;
-            }
-
-            return AnyData::Array();
+        if (base_type_info.IsInt8) {
+            return static_cast<int64>(*reinterpret_cast<const int8*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsInt16) {
+            return static_cast<int64>(*reinterpret_cast<const int16*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsInt32) {
+            return static_cast<int64>(*reinterpret_cast<const int*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsInt64) {
+            return static_cast<int64>(*reinterpret_cast<const int64*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsUInt8) {
+            return static_cast<int64>(*reinterpret_cast<const uint8*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsUInt16) {
+            return static_cast<int64>(*reinterpret_cast<const uint16*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsUInt32) {
+            return static_cast<int64>(*reinterpret_cast<const uint*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsFloat) {
+            return static_cast<double>(*reinterpret_cast<const float*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsDoubleFloat) {
+            return static_cast<double>(*reinterpret_cast<const double*>(pdata - base_type_info.Size));
+        }
+        else if (base_type_info.IsBool) {
+            return static_cast<bool>(*reinterpret_cast<const bool*>(pdata - base_type_info.Size));
         }
         else {
-            const size_t arr_size = raw_data.size() / prop->GetBaseSize();
+            UNREACHABLE_PLACE();
+        }
+    }
+    else if (base_type_info.IsStruct) {
+        const auto& struct_layout = *base_type_info.StructLayout;
+        AnyData::Array struct_value;
+        struct_value.Reserve(struct_layout.size());
 
-            AnyData::Array arr;
-            arr.reserve(arr_size);
+        for (const auto& [field_name, field_type_info] : struct_layout) {
+            auto field_value = RawDataToValue(field_type_info, hash_resolver, name_resolver, pdata);
+            struct_value.EmplaceBack(std::move(field_value));
+        }
 
-            for (size_t i = 0; i < arr_size; i++) {
-                if (prop->IsBaseTypeHash()) {
-                    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data() + i * prop->GetBaseSize());
-                    arr.emplace_back(string {hash_resolver.ResolveHash(hash)});
-                }
-                else if (prop->IsBaseTypeEnum()) {
-                    int enum_value = 0;
-                    std::memcpy(&enum_value, raw_data.data() + i * prop->GetBaseSize(), prop->GetBaseSize());
-                    arr.emplace_back(name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value));
-                }
-                else {
-#define PARSE_VALUE(t, db_t) \
-    RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(raw_data.data() + i * prop->GetBaseSize()))))
+        return std::move(struct_value);
+    }
+    else {
+        UNREACHABLE_PLACE();
+    }
+}
 
-                    if (prop->IsInt8()) {
-                        PARSE_VALUE(int8, int64);
-                    }
-                    else if (prop->IsInt16()) {
-                        PARSE_VALUE(int16, int64);
-                    }
-                    else if (prop->IsInt32()) {
-                        PARSE_VALUE(int, int64);
-                    }
-                    else if (prop->IsInt64()) {
-                        PARSE_VALUE(int64, int64);
-                    }
-                    else if (prop->IsUInt8()) {
-                        PARSE_VALUE(uint8, int64);
-                    }
-                    else if (prop->IsUInt16()) {
-                        PARSE_VALUE(uint16, int64);
-                    }
-                    else if (prop->IsUInt32()) {
-                        PARSE_VALUE(uint, int64);
-                    }
-                    else if (prop->IsSingleFloat()) {
-                        PARSE_VALUE(float, double);
-                    }
-                    else if (prop->IsDoubleFloat()) {
-                        PARSE_VALUE(double, double);
-                    }
-                    else if (prop->IsBool()) {
-                        PARSE_VALUE(bool, bool);
-                    }
-                    else {
-                        throw UnreachablePlaceException(LINE_STR);
-                    }
+auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_span<uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+{
+    STACK_TRACE_ENTRY();
 
-#undef PARSE_VALUE
-                }
+    RUNTIME_ASSERT(!prop->IsDisabled());
+    RUNTIME_ASSERT(!prop->IsVirtual());
+    RUNTIME_ASSERT(!prop->IsTemporary());
+
+    const BaseTypeInfo& base_type_info = prop->GetBaseTypeInfo();
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+
+    if (prop->IsPlainData()) {
+        auto value = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
+
+        RUNTIME_ASSERT(pdata == pdata_end);
+        return value;
+    }
+    else if (prop->IsString()) {
+        const auto* pstr = reinterpret_cast<const char*>(pdata);
+        pdata += raw_data.size();
+
+        RUNTIME_ASSERT(pdata == pdata_end);
+        return string(pstr, raw_data.size());
+    }
+    else if (prop->IsArray()) {
+        AnyData::Array arr;
+
+        if (!raw_data.empty()) {
+            uint arr_size;
+
+            if (prop->IsArrayOfString()) {
+                std::memcpy(&arr_size, pdata, sizeof(arr_size));
+                pdata += sizeof(uint);
+            }
+            else {
+                arr_size = static_cast<uint>(raw_data.size() / base_type_info.Size);
             }
 
-            return arr;
+            arr.Reserve(arr_size);
+
+            for (uint i = 0; i < arr_size; i++) {
+                auto arr_entry = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
+                arr.EmplaceBack(std::move(arr_entry));
+            }
         }
+
+        RUNTIME_ASSERT(pdata == pdata_end);
+        return std::move(arr);
     }
     else if (prop->IsDict()) {
         AnyData::Dict dict;
 
         if (!raw_data.empty()) {
-            const auto get_key_string = [prop, &hash_resolver, &name_resolver](const uint8* p) -> string {
-                if (prop->IsDictKeyString()) {
+            const auto& dict_key_type_info = prop->GetDictKeyTypeInfo();
+
+            const auto get_key_string = [&dict_key_type_info, &hash_resolver, &name_resolver](const uint8* p) -> string {
+                if (dict_key_type_info.IsString) {
                     const uint str_len = *reinterpret_cast<const uint*>(p);
                     return string {reinterpret_cast<const char*>(p + sizeof(uint)), str_len};
                 }
-                else if (prop->IsDictKeyHash()) {
+                else if (dict_key_type_info.IsHash) {
                     const auto hash = *reinterpret_cast<const hstring::hash_t*>(p);
                     return hash_resolver.ResolveHash(hash).as_str();
                 }
-                else if (prop->IsDictKeyEnum()) {
+                else if (dict_key_type_info.IsEnum) {
                     int enum_value = 0;
-                    std::memcpy(&enum_value, p, prop->GetDictKeySize());
-                    return name_resolver.ResolveEnumValueName(prop->GetDictKeyTypeName(), enum_value);
+                    std::memcpy(&enum_value, p, dict_key_type_info.Size);
+                    return name_resolver.ResolveEnumValueName(dict_key_type_info.TypeName, enum_value);
                 }
-                else if (prop->GetDictKeySize() == 1) {
-                    return strex("{}", static_cast<int>(*reinterpret_cast<const int8*>(p)));
+                else if (dict_key_type_info.IsInt8) {
+                    return strex("{}", *reinterpret_cast<const int8*>(p));
                 }
-                else if (prop->GetDictKeySize() == 2) {
-                    return strex("{}", static_cast<int>(*reinterpret_cast<const int16*>(p)));
+                else if (dict_key_type_info.IsInt16) {
+                    return strex("{}", *reinterpret_cast<const int16*>(p));
                 }
-                else if (prop->GetDictKeySize() == 4) {
-                    return strex("{}", static_cast<int>(*reinterpret_cast<const int*>(p)));
+                else if (dict_key_type_info.IsInt32) {
+                    return strex("{}", *reinterpret_cast<const int*>(p));
                 }
-                else if (prop->GetDictKeySize() == 8) {
-                    return strex("{}", static_cast<int64>(*reinterpret_cast<const int64*>(p)));
+                else if (dict_key_type_info.IsInt64) {
+                    return strex("{}", *reinterpret_cast<const int64*>(p));
                 }
-                throw UnreachablePlaceException(LINE_STR);
+                else if (dict_key_type_info.IsUInt8) {
+                    return strex("{}", *reinterpret_cast<const uint8*>(p));
+                }
+                else if (dict_key_type_info.IsUInt16) {
+                    return strex("{}", *reinterpret_cast<const uint16*>(p));
+                }
+                else if (dict_key_type_info.IsUInt32) {
+                    return strex("{}", *reinterpret_cast<const uint*>(p));
+                }
+                else if (dict_key_type_info.IsSingleFloat) {
+                    return strex("{}", *reinterpret_cast<const float*>(p));
+                }
+                else if (dict_key_type_info.IsDoubleFloat) {
+                    return strex("{}", *reinterpret_cast<const double*>(p));
+                }
+                else if (dict_key_type_info.IsBool) {
+                    return strex("{}", *reinterpret_cast<const bool*>(p));
+                }
+                else {
+                    UNREACHABLE_PLACE();
+                }
             };
 
-            const auto get_key_len = [prop](const uint8* p) -> size_t {
-                if (prop->IsDictKeyString()) {
+            const auto get_key_len = [&dict_key_type_info](const uint8* p) -> size_t {
+                if (dict_key_type_info.IsString) {
                     const uint str_len = *reinterpret_cast<const uint*>(p);
                     return sizeof(uint) + str_len;
                 }
                 else {
-                    return prop->GetDictKeySize();
+                    return dict_key_type_info.Size;
                 }
             };
 
             if (prop->IsDictOfArray()) {
-                const auto* data = raw_data.data();
-                const auto* data_end = raw_data.data() + raw_data.size();
-
-                while (data < data_end) {
-                    const auto* key = data;
-                    data += get_key_len(key);
+                while (pdata < pdata_end) {
+                    const auto* key_data = pdata;
+                    pdata += get_key_len(key_data);
+                    string key_str = get_key_string(key_data);
 
                     uint arr_size;
-                    std::memcpy(&arr_size, data, sizeof(arr_size));
-                    data += sizeof(uint);
+                    std::memcpy(&arr_size, pdata, sizeof(arr_size));
+                    pdata += sizeof(uint);
 
                     AnyData::Array arr;
-                    arr.reserve(arr_size);
+                    arr.Reserve(arr_size);
 
-                    if (arr_size != 0) {
-                        if (prop->IsDictOfArrayOfString()) {
-                            for (uint i = 0; i < arr_size; i++) {
-                                uint str_size;
-                                std::memcpy(&str_size, data, sizeof(str_size));
-                                data += sizeof(uint);
-                                auto str = string {reinterpret_cast<const char*>(data), str_size};
-                                arr.emplace_back(std::move(str));
-                                data += str_size;
-                            }
-                        }
-                        else {
-                            for (uint i = 0; i < arr_size; i++) {
-                                if (prop->IsBaseTypeHash()) {
-                                    arr.emplace_back(string {hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * sizeof(hstring::hash_t)))});
-                                }
-                                else if (prop->IsBaseTypeEnum()) {
-                                    int enum_value = 0;
-                                    std::memcpy(&enum_value, data + static_cast<size_t>(i) * prop->GetBaseSize(), prop->GetBaseSize());
-                                    arr.emplace_back(name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value));
-                                }
-                                else {
-#define PARSE_VALUE(t, db_t) \
-    RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + static_cast<size_t>(i) * prop->GetBaseSize()))))
-
-                                    if (prop->IsInt8()) {
-                                        PARSE_VALUE(int8, int64);
-                                    }
-                                    else if (prop->IsInt16()) {
-                                        PARSE_VALUE(int16, int64);
-                                    }
-                                    else if (prop->IsInt32()) {
-                                        PARSE_VALUE(int, int64);
-                                    }
-                                    else if (prop->IsInt64()) {
-                                        PARSE_VALUE(int64, int64);
-                                    }
-                                    else if (prop->IsUInt8()) {
-                                        PARSE_VALUE(uint8, int64);
-                                    }
-                                    else if (prop->IsUInt16()) {
-                                        PARSE_VALUE(uint16, int64);
-                                    }
-                                    else if (prop->IsUInt32()) {
-                                        PARSE_VALUE(uint, int64);
-                                    }
-                                    else if (prop->IsSingleFloat()) {
-                                        PARSE_VALUE(float, double);
-                                    }
-                                    else if (prop->IsDoubleFloat()) {
-                                        PARSE_VALUE(double, double);
-                                    }
-                                    else if (prop->IsBool()) {
-                                        PARSE_VALUE(bool, bool);
-                                    }
-                                    else {
-                                        throw UnreachablePlaceException(LINE_STR);
-                                    }
-
-#undef PARSE_VALUE
-                                }
-                            }
-
-                            data += static_cast<size_t>(arr_size) * prop->GetBaseSize();
-                        }
+                    for (uint i = 0; i < arr_size; i++) {
+                        auto arr_entry = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
+                        arr.EmplaceBack(std::move(arr_entry));
                     }
 
-                    string key_str = get_key_string(key);
-                    dict.insert(std::make_pair(std::move(key_str), std::move(arr)));
-                }
-            }
-            else if (prop->IsDictOfString()) {
-                const auto* data = raw_data.data();
-                const auto* data_end = raw_data.data() + raw_data.size();
-
-                while (data < data_end) {
-                    const auto* key = data;
-                    data += get_key_len(key);
-
-                    uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
-
-                    string str(reinterpret_cast<const char*>(data), str_size);
-                    data += str_size;
-
-                    string key_str = get_key_string(key);
-                    dict.insert(std::make_pair(std::move(key_str), std::move(str)));
+                    dict.Emplace(std::move(key_str), std::move(arr));
                 }
             }
             else {
-                const auto* data = raw_data.data();
-                const auto* data_end = raw_data.data() + raw_data.size();
+                while (pdata < pdata_end) {
+                    const auto* key_data = pdata;
+                    pdata += get_key_len(key_data);
+                    string key_str = get_key_string(key_data);
 
-                while (data < data_end) {
-                    const auto* key = data;
-                    data += get_key_len(key);
-
-                    string key_str = get_key_string(key);
-
-                    if (prop->IsBaseTypeHash()) {
-                        const auto hash = *reinterpret_cast<const hstring::hash_t*>(data);
-                        dict.insert(std::make_pair(std::move(key_str), string {hash_resolver.ResolveHash(hash)}));
-                        data += prop->GetBaseSize();
-                    }
-                    else if (prop->IsBaseTypeEnum()) {
-                        int enum_value = 0;
-                        std::memcpy(&enum_value, data, prop->GetBaseSize());
-                        dict.insert(std::make_pair(std::move(key_str), name_resolver.ResolveEnumValueName(prop->GetBaseTypeName(), enum_value)));
-                        data += prop->GetBaseSize();
-                    }
-                    else {
-#define PARSE_VALUE(t, db_t) \
-    RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-    dict.insert(std::make_pair(std::move(key_str), static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data))))); \
-    data += prop->GetBaseSize()
-
-                        if (prop->IsInt8()) {
-                            PARSE_VALUE(int8, int64);
-                        }
-                        else if (prop->IsInt16()) {
-                            PARSE_VALUE(int16, int64);
-                        }
-                        else if (prop->IsInt32()) {
-                            PARSE_VALUE(int, int64);
-                        }
-                        else if (prop->IsInt64()) {
-                            PARSE_VALUE(int64, int64);
-                        }
-                        else if (prop->IsUInt8()) {
-                            PARSE_VALUE(uint8, int64);
-                        }
-                        else if (prop->IsUInt16()) {
-                            PARSE_VALUE(uint16, int64);
-                        }
-                        else if (prop->IsUInt32()) {
-                            PARSE_VALUE(uint, int64);
-                        }
-                        else if (prop->IsSingleFloat()) {
-                            PARSE_VALUE(float, double);
-                        }
-                        else if (prop->IsDoubleFloat()) {
-                            PARSE_VALUE(double, double);
-                        }
-                        else if (prop->IsBool()) {
-                            PARSE_VALUE(bool, bool);
-                        }
-                        else {
-                            throw UnreachablePlaceException(LINE_STR);
-                        }
-
-#undef PARSE_VALUE
-                    }
+                    auto dict_value = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
+                    dict.Emplace(std::move(key_str), std::move(dict_value));
                 }
             }
         }
 
-        return dict;
+        RUNTIME_ASSERT(pdata == pdata_end);
+        return std::move(dict);
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
-auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
+void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -488,749 +385,418 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     RUNTIME_ASSERT(!prop->IsVirtual());
     RUNTIME_ASSERT(!prop->IsDisabled());
 
-    // Implicit conversion to string
-    string tmp_str;
+    const auto set_data = [props, prop](const_span<uint8> raw_data) { props->SetRawData(prop, raw_data); };
 
-    const auto can_read_to_string = [](const auto& some_value) -> bool {
-        return some_value.index() == AnyData::STRING_VALUE || some_value.index() == AnyData::INT64_VALUE || //
-            some_value.index() == AnyData::DOUBLE_VALUE || some_value.index() == AnyData::BOOL_VALUE;
-    };
+    return LoadPropertyFromValue(prop, value, set_data, hash_resolver, name_resolver);
+}
 
-    const auto read_to_string = [&tmp_str](const auto& some_value) -> const string& {
-        switch (some_value.index()) {
-        case AnyData::STRING_VALUE:
-            return std::get<string>(some_value);
-        case AnyData::INT64_VALUE:
-            return tmp_str = strex("{}", std::get<int64>(some_value));
-        case AnyData::DOUBLE_VALUE:
-            return tmp_str = strex("{}", std::get<double>(some_value));
-        case AnyData::BOOL_VALUE:
-            return tmp_str = strex("{}", std::get<bool>(some_value));
-        default:
-            throw UnreachablePlaceException(LINE_STR);
-        }
-    };
+static auto ConvertToString(const AnyData::Value& value, string& buf) -> const string&
+{
+    STACK_TRACE_ENTRY();
 
-    // Implicit conversion to number
-    const auto can_convert_str_to_number = [](const auto& some_value) -> bool {
-        // Todo: check if converted value fits to target bounds
-        return strex(std::get<string>(some_value)).isNumber();
-    };
+    switch (value.Type()) {
+    case AnyData::ValueType::String:
+        return value.AsString();
+    case AnyData::ValueType::Int64:
+        return buf = strex("{}", value.AsInt64());
+    case AnyData::ValueType::Double:
+        return buf = strex("{}", value.AsDouble());
+    case AnyData::ValueType::Bool:
+        return buf = strex("{}", value.AsBool());
+    default:
+        throw PropertySerializationException("Unable to convert not string, int, float or bool value to string", value.Type());
+    }
+};
 
-    const auto convert_str_to_number = [prop](const auto& some_value, uint8* pod_data) {
-        if (prop->IsInt8()) {
-            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(strex(std::get<string>(some_value)).toInt());
+template<typename T>
+static void ConvertToNumber(const AnyData::Value& value, T& result_value)
+{
+    STACK_TRACE_ENTRY();
+
+    if (value.Type() == AnyData::ValueType::Int64) {
+        result_value = numeric_cast<T>(value.AsInt64());
+    }
+    else if (value.Type() == AnyData::ValueType::Double) {
+        result_value = numeric_cast<T>(value.AsDouble());
+    }
+    else if (value.Type() == AnyData::ValueType::Bool) {
+        result_value = numeric_cast<T>(value.AsBool());
+    }
+    else if (value.Type() == AnyData::ValueType::String) {
+        const auto& str = value.AsString();
+
+        if (strex(str).isNumber()) {
+            if constexpr (std::is_integral_v<T>) {
+                result_value = numeric_cast<T>(strex(str).toInt64());
+            }
+            else if constexpr (std::is_floating_point_v<T>) {
+                result_value = numeric_cast<T>(strex(str).toDouble());
+            }
+            else if constexpr (std::is_same_v<T, bool>) {
+                result_value = numeric_cast<T>(strex(str).toBool());
+            }
+            else {
+                UNREACHABLE_PLACE();
+            }
         }
-        else if (prop->IsInt16()) {
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(strex(std::get<string>(some_value)).toInt());
-        }
-        else if (prop->IsInt32()) {
-            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(strex(std::get<string>(some_value)).toInt());
-        }
-        else if (prop->IsInt64()) {
-            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(strex(std::get<string>(some_value)).toInt64());
-        }
-        else if (prop->IsUInt8()) {
-            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(strex(std::get<string>(some_value)).toUInt());
-        }
-        else if (prop->IsUInt16()) {
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(strex(std::get<string>(some_value)).toUInt());
-        }
-        else if (prop->IsUInt32()) {
-            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(strex(std::get<string>(some_value)).toUInt());
-        }
-        else if (prop->IsSingleFloat()) {
-            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(strex(std::get<string>(some_value)).toFloat());
-        }
-        else if (prop->IsDoubleFloat()) {
-            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(strex(std::get<string>(some_value)).toDouble());
-        }
-        else if (prop->IsBool()) {
-            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = static_cast<bool>(strex(std::get<string>(some_value)).toBool());
+        else if (strex(str).isExplicitBool()) {
+            result_value = numeric_cast<T>(strex(str).toBool());
         }
         else {
-            throw UnreachablePlaceException(LINE_STR);
+            throw PropertySerializationException("Uncable to convert value to number", str);
         }
-    };
+    }
+    else {
+        throw PropertySerializationException("Wrong value type (not string, int, float or bool)", value.Type());
+    }
+}
+
+static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
+{
+    STACK_TRACE_ENTRY();
+
+    if (base_type_info.IsHash) {
+        auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
+
+        if (value.Type() == AnyData::ValueType::String) {
+            hash = hash_resolver.ToHashedString(value.AsString()).as_hash();
+        }
+        else {
+            throw PropertySerializationException("Wrong hash value type");
+        }
+    }
+    else if (base_type_info.IsEnum) {
+        int enum_value = 0;
+
+        if (value.Type() == AnyData::ValueType::String) {
+            enum_value = name_resolver.ResolveEnumValue(base_type_info.TypeName, value.AsString());
+        }
+        else if (value.Type() == AnyData::ValueType::Int64) {
+            enum_value = numeric_cast<int>(value.AsInt64());
+            const auto& enum_value_name = name_resolver.ResolveEnumValueName(base_type_info.TypeName, enum_value);
+            UNUSED_VARIABLE(enum_value_name);
+        }
+        else {
+            throw PropertySerializationException("Wrong enum value type (not string or int)");
+        }
+
+        if (base_type_info.Size == sizeof(uint8)) {
+            *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+        }
+        else if (base_type_info.Size == sizeof(uint16)) {
+            *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+        }
+        else {
+            std::memcpy(pdata, &enum_value, base_type_info.Size);
+        }
+    }
+    else if (base_type_info.IsPrimitive) {
+        if (base_type_info.IsInt8) {
+            ConvertToNumber(value, *reinterpret_cast<int8*>(pdata));
+        }
+        else if (base_type_info.IsInt16) {
+            ConvertToNumber(value, *reinterpret_cast<int16*>(pdata));
+        }
+        else if (base_type_info.IsInt32) {
+            ConvertToNumber(value, *reinterpret_cast<int*>(pdata));
+        }
+        else if (base_type_info.IsInt64) {
+            ConvertToNumber(value, *reinterpret_cast<int64*>(pdata));
+        }
+        else if (base_type_info.IsUInt8) {
+            ConvertToNumber(value, *reinterpret_cast<uint8*>(pdata));
+        }
+        else if (base_type_info.IsUInt16) {
+            ConvertToNumber(value, *reinterpret_cast<uint16*>(pdata));
+        }
+        else if (base_type_info.IsUInt32) {
+            ConvertToNumber(value, *reinterpret_cast<uint*>(pdata));
+        }
+        else if (base_type_info.IsSingleFloat) {
+            ConvertToNumber(value, *reinterpret_cast<float*>(pdata));
+        }
+        else if (base_type_info.IsDoubleFloat) {
+            ConvertToNumber(value, *reinterpret_cast<double*>(pdata));
+        }
+        else if (base_type_info.IsBool) {
+            ConvertToNumber(value, *reinterpret_cast<bool*>(pdata));
+        }
+        else {
+            UNREACHABLE_PLACE();
+        }
+    }
+    else if (base_type_info.IsStruct) {
+        if (value.Type() == AnyData::ValueType::Array) {
+            const auto& struct_value = value.AsArray();
+            const auto& struct_layout = *base_type_info.StructLayout;
+
+            if (struct_value.Size() != struct_layout.size()) {
+                throw PropertySerializationException("Wrong struct size");
+            }
+
+            for (size_t i = 0; i < struct_layout.size(); i++) {
+                const auto& [field_name, field_type_info] = struct_layout[i];
+                const auto& field_value = struct_value[i];
+                ConvertFixedValue(field_type_info, hash_resolver, name_resolver, field_value, pdata);
+            }
+        }
+        else {
+            throw PropertySerializationException("Wrong struct value type", value.Type());
+        }
+    }
+    else {
+        UNREACHABLE_PLACE();
+    }
+
+    pdata += base_type_info.Size;
+}
+
+void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const std::function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!prop->IsDisabled());
+    RUNTIME_ASSERT(!prop->IsVirtual());
+    RUNTIME_ASSERT(!prop->IsDisabled());
+
+    const auto& base_type_info = prop->GetBaseTypeInfo();
 
     // Parse value
     if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
-            if (value.index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong hash value type, property {}", prop->GetName());
-                return false;
-            }
+        if (base_type_info.IsStruct) {
+            PropertyRawData struct_data;
+            struct_data.Alloc(base_type_info.Size);
+            auto* pdata = struct_data.GetPtrAs<uint8>();
 
-            const auto h = hash_resolver.ToHashedString(std::get<string>(value)).as_hash();
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->GetBaseSize());
-        }
-        else if (prop->IsBaseTypeEnum()) {
-            int enum_value;
+            ConvertFixedValue(base_type_info, hash_resolver, name_resolver, value, pdata);
 
-            if (value.index() == AnyData::STRING_VALUE) {
-                auto is_error = false;
-                enum_value = name_resolver.ResolveEnumValue(prop->GetBaseTypeName(), std::get<string>(value), &is_error);
-                if (is_error) {
-                    return false;
-                }
-            }
-            else if (value.index() == AnyData::INT64_VALUE) {
-                // Todo: validate integer value to fit in enum range
-                enum_value = static_cast<int>(std::get<int64>(value));
-            }
-            else {
-                WriteLog("Wrong enum value type, property {}", prop->GetName());
-                return false;
-            }
-
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&enum_value), prop->GetBaseSize());
-        }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
-            if (value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong integer value type (array or dict), property {}", prop->GetName());
-                return false;
-            }
-
-            if (value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value)) {
-                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop->GetName());
-                return false;
-            }
-
-#define PARSE_VALUE(t) \
-    do { \
-        if (prop->IsInt8()) { \
-            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(std::get<t>(value)); \
-        } \
-        else if (prop->IsInt16()) { \
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
-        } \
-        else if (prop->IsInt32()) { \
-            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(std::get<t>(value)); \
-        } \
-        else if (prop->IsInt64()) { \
-            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(std::get<t>(value)); \
-        } \
-        else if (prop->IsUInt8()) { \
-            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(std::get<t>(value)); \
-        } \
-        else if (prop->IsUInt16()) { \
-            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
-        } \
-        else if (prop->IsUInt32()) { \
-            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(std::get<t>(value)); \
-        } \
-        else if (prop->IsSingleFloat()) { \
-            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(std::get<t>(value)); \
-        } \
-        else if (prop->IsDoubleFloat()) { \
-            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(std::get<t>(value)); \
-        } \
-        else if (prop->IsBool()) { \
-            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = (std::get<t>(value) != static_cast<t>(0)); \
-        } \
-        else { \
-            throw UnreachablePlaceException(LINE_STR); \
-        } \
-    } while (false)
-
-            uint8 pod_data[8];
-            if (value.index() == AnyData::INT64_VALUE) {
-                PARSE_VALUE(int64);
-            }
-            else if (value.index() == AnyData::DOUBLE_VALUE) {
-                PARSE_VALUE(double);
-            }
-            else if (value.index() == AnyData::BOOL_VALUE) {
-                PARSE_VALUE(bool);
-            }
-            else if (value.index() == AnyData::STRING_VALUE) {
-                convert_str_to_number(value, pod_data);
-            }
-            else {
-                throw UnreachablePlaceException(LINE_STR);
-            }
-
-#undef PARSE_VALUE
-
-            props->SetRawData(prop, pod_data, prop->GetBaseSize());
+            set_data({struct_data.GetPtrAs<uint8>(), base_type_info.Size});
         }
         else {
-            throw UnreachablePlaceException(LINE_STR);
+            RUNTIME_ASSERT(base_type_info.Size <= sizeof(size_t));
+            uint8 primitive_data[sizeof(size_t)];
+            auto* pdata = primitive_data;
+
+            ConvertFixedValue(base_type_info, hash_resolver, name_resolver, value, pdata);
+
+            set_data({primitive_data, base_type_info.Size});
         }
     }
     else if (prop->IsString()) {
-        if (!can_read_to_string(value)) {
-            WriteLog("Wrong string value type, property {}", prop->GetName());
-            return false;
-        }
+        string str_buf;
+        const auto& str = ConvertToString(value, str_buf);
 
-        const auto& str = read_to_string(value);
-
-        props->SetRawData(prop, reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
+        set_data({reinterpret_cast<const uint8*>(str.c_str()), str.length()});
     }
     else if (prop->IsArray()) {
-        if (value.index() != AnyData::ARRAY_VALUE) {
-            WriteLog("Wrong array value type, property {}", prop->GetName());
-            return false;
+        if (value.Type() != AnyData::ValueType::Array) {
+            throw PropertySerializationException("Wrong array value type", prop->GetName(), value.Type());
         }
 
-        const auto& arr = std::get<AnyData::Array>(value);
+        const auto& arr = value.AsArray();
 
-        if (arr.empty()) {
-            props->SetRawData(prop, nullptr, 0);
-            return true;
+        if (arr.Empty()) {
+            set_data({});
+            return;
         }
 
-        if (prop->IsBaseTypeHash()) {
-            if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array hash element value type, property {}", prop->GetName());
-                return false;
+        string str_buf;
+
+        if (prop->IsArrayOfString()) {
+            size_t data_size = sizeof(uint);
+
+            for (const auto& arr_entry : arr) {
+                string_view str = ConvertToString(arr_entry, str_buf);
+                data_size += sizeof(uint) + str.length();
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
-            auto data = unique_ptr<uint8>(new uint8[data_size]);
+            auto&& data = std::make_unique<uint8[]>(data_size);
+            auto* pdata = data.get();
 
-            for (size_t i = 0; i < arr.size(); i++) {
-                RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
+            *reinterpret_cast<uint*>(pdata) = static_cast<uint>(arr.Size());
+            pdata += sizeof(uint);
 
-                const auto h = hash_resolver.ToHashedString(std::get<string>(arr[i])).as_hash();
-                *reinterpret_cast<hstring::hash_t*>(data.get() + i * sizeof(hstring::hash_t)) = h;
-            }
-
-            props->SetRawData(prop, data.get(), data_size);
-        }
-        else if (prop->IsBaseTypeEnum()) {
-            if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
-                WriteLog("Wrong array enum element value type, property {}", prop->GetName());
-                return false;
+            for (const auto& arr_entry : arr) {
+                const auto& str = ConvertToString(arr_entry, str_buf);
+                *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
+                pdata += sizeof(uint);
+                std::memcpy(pdata, str.c_str(), str.length());
+                pdata += str.length();
             }
 
-            uint data_size = static_cast<uint>(arr.size()) * prop->GetBaseSize();
-            auto data = unique_ptr<uint8>(new uint8[data_size]);
-
-            for (size_t i = 0; i < arr.size(); i++) {
-                RUNTIME_ASSERT(arr[i].index() == arr[0].index());
-
-                int enum_value;
-
-                if (arr[i].index() == AnyData::STRING_VALUE) {
-                    auto is_error = false;
-                    enum_value = name_resolver.ResolveEnumValue(prop->GetBaseTypeName(), std::get<string>(arr[i]), &is_error);
-                    if (is_error) {
-                        return false;
-                    }
-                }
-                else {
-                    enum_value = static_cast<int>(std::get<int64>(arr[i]));
-                }
-
-                std::memcpy(data.get() + i * prop->GetBaseSize(), &enum_value, prop->GetBaseSize());
-            }
-
-            props->SetRawData(prop, data.get(), data_size);
-        }
-        else if (prop->IsInt() || prop->IsFloat() || prop->IsBool()) {
-            if (arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong array element value type (array or dict), property {}", prop->GetName());
-                return false;
-            }
-
-            if (arr[0].index() == AnyData::STRING_VALUE) {
-                for (size_t i = 0; i < arr.size(); i++) {
-                    RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
-                    if (!can_convert_str_to_number(arr[i])) {
-                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop->GetName());
-                        return false;
-                    }
-                }
-            }
-
-            uint data_size = prop->GetBaseSize() * static_cast<uint>(arr.size());
-            auto data = unique_ptr<uint8>(new uint8[data_size]);
-            const auto arr_element_index = arr[0].index();
-
-#define PARSE_VALUE(t) \
-    do { \
-        for (size_t i = 0; i < arr.size(); i++) { \
-            RUNTIME_ASSERT(arr[i].index() == arr_element_index); \
-            if (arr_element_index == AnyData::INT64_VALUE) { \
-                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->GetBaseSize())) = static_cast<t>(std::get<int64>(arr[i])); \
-            } \
-            else if (arr_element_index == AnyData::DOUBLE_VALUE) { \
-                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->GetBaseSize())) = static_cast<t>(std::get<double>(arr[i])); \
-            } \
-            else if (arr_element_index == AnyData::BOOL_VALUE) { \
-                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->GetBaseSize())) = static_cast<t>(std::get<bool>(arr[i])); \
-            } \
-            else if (arr_element_index == AnyData::STRING_VALUE) { \
-                convert_str_to_number(arr[i], data.get() + i * prop->GetBaseSize()); \
-            } \
-            else { \
-                throw UnreachablePlaceException(LINE_STR); \
-            } \
-        } \
-    } while (false)
-
-            if (prop->IsInt8()) {
-                PARSE_VALUE(int8);
-            }
-            else if (prop->IsInt16()) {
-                PARSE_VALUE(int16);
-            }
-            else if (prop->IsInt32()) {
-                PARSE_VALUE(int);
-            }
-            else if (prop->IsInt64()) {
-                PARSE_VALUE(int64);
-            }
-            else if (prop->IsUInt8()) {
-                PARSE_VALUE(uint8);
-            }
-            else if (prop->IsUInt16()) {
-                PARSE_VALUE(uint16);
-            }
-            else if (prop->IsUInt32()) {
-                PARSE_VALUE(uint);
-            }
-            else if (prop->IsSingleFloat()) {
-                PARSE_VALUE(float);
-            }
-            else if (prop->IsDoubleFloat()) {
-                PARSE_VALUE(double);
-            }
-            else if (prop->IsBool()) {
-                PARSE_VALUE(bool);
-            }
-            else {
-                throw UnreachablePlaceException(LINE_STR);
-            }
-
-#undef PARSE_VALUE
-
-            props->SetRawData(prop, data.get(), data_size);
+            RUNTIME_ASSERT(pdata == data.get() + data_size);
+            set_data({data.get(), data_size});
         }
         else {
-            RUNTIME_ASSERT(prop->IsArrayOfString());
+            const size_t data_size = arr.Size() * base_type_info.Size;
+            auto&& data = std::make_unique<uint8[]>(data_size);
+            auto* pdata = data.get();
 
-            if (!can_read_to_string(arr[0])) {
-                WriteLog("Wrong array element value type, property {}", prop->GetName());
-                return false;
+            for (const auto& arr_entry : arr) {
+                ConvertFixedValue(base_type_info, hash_resolver, name_resolver, arr_entry, pdata);
             }
 
-            uint data_size = sizeof(uint);
-            for (size_t i = 0; i < arr.size(); i++) {
-                RUNTIME_ASSERT(can_read_to_string(arr[i]));
-
-                string_view str = read_to_string(arr[i]);
-                data_size += sizeof(uint) + static_cast<uint>(str.length());
-            }
-
-            auto data = unique_ptr<uint8>(new uint8[data_size]);
-            *reinterpret_cast<uint*>(data.get()) = static_cast<uint>(arr.size());
-
-            size_t data_pos = sizeof(uint);
-            for (size_t i = 0; i < arr.size(); i++) {
-                const auto& str = read_to_string(arr[i]);
-                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
-                if (!str.empty()) {
-                    std::memcpy(data.get() + data_pos + sizeof(uint), str.c_str(), str.length());
-                }
-                data_pos += sizeof(uint) + str.length();
-            }
-            RUNTIME_ASSERT(data_pos == data_size);
-
-            props->SetRawData(prop, data.get(), data_size);
+            RUNTIME_ASSERT(pdata == data.get() + data_size);
+            set_data({data.get(), data_size});
         }
     }
     else if (prop->IsDict()) {
-        if (value.index() != AnyData::DICT_VALUE) {
-            WriteLog("Wrong dict value type, property {}", prop->GetName());
-            return false;
+        if (value.Type() != AnyData::ValueType::Dict) {
+            throw PropertySerializationException("Wrong dict value type", prop->GetName(), value.Type());
         }
 
-        const auto& dict = std::get<AnyData::Dict>(value);
+        const auto& dict = value.AsDict();
 
-        if (dict.empty()) {
-            props->SetRawData(prop, nullptr, 0);
-            return true;
+        if (dict.Empty()) {
+            set_data({});
+            return;
         }
+
+        const auto& dickt_key_type_info = prop->GetDictKeyTypeInfo();
+        string str_buf;
 
         // Measure data length
-        uint data_size = 0;
-        bool wrong_input = false;
-        for (const auto& [dict_key, dict_value] : dict) {
-            if (prop->IsDictKeyString()) {
-                data_size += sizeof(uint) + static_cast<uint>(dict_key.length());
+        size_t data_size = 0;
+
+        for (auto&& [dict_key, dict_value] : dict) {
+            if (dickt_key_type_info.IsString) {
+                data_size += sizeof(uint) + dict_key.length();
             }
             else {
-                data_size += prop->GetDictKeySize();
+                data_size += dickt_key_type_info.Size;
             }
 
             if (prop->IsDictOfArray()) {
-                if (dict_value.index() != AnyData::ARRAY_VALUE) {
-                    WriteLog("Wrong dict array value type, property {}", prop->GetName());
-                    wrong_input = true;
-                    break;
+                if (dict_value.Type() != AnyData::ValueType::Array) {
+                    throw PropertySerializationException("Wrong dict array value type", prop->GetName(), dict_value.Type());
                 }
 
-                const auto& arr = std::get<AnyData::Array>(dict_value);
+                const auto& arr = dict_value.AsArray();
 
                 data_size += sizeof(uint);
 
-                if (prop->IsBaseTypeHash()) {
-                    for (const auto& e : arr) {
-                        if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element hash value type, property {}", prop->GetName());
-                            wrong_input = true;
-                            break;
-                        }
-                    }
-
-                    data_size += static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
-                }
-                else if (prop->IsBaseTypeEnum()) {
-                    for (const auto& e : arr) {
-                        if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element enum value type, property {}", prop->GetName());
-                            wrong_input = true;
-                            break;
-                        }
-                    }
-
-                    data_size += static_cast<uint>(arr.size()) * prop->GetBaseSize();
-                }
-                else if (prop->IsDictOfArrayOfString()) {
-                    for (const auto& e : arr) {
-                        if (!can_read_to_string(e)) {
-                            WriteLog("Wrong dict array element string value type, property {}", prop->GetName());
-                            wrong_input = true;
-                            break;
-                        }
-
-                        data_size += sizeof(uint) + static_cast<uint>(read_to_string(e).length());
+                if (prop->IsDictOfArrayOfString()) {
+                    for (const auto& arr_entry : arr) {
+                        data_size += sizeof(uint) + ConvertToString(arr_entry, str_buf).length();
                     }
                 }
                 else {
-                    for (const auto& e : arr) {
-                        if (e.index() == AnyData::ARRAY_VALUE || e.index() == AnyData::DICT_VALUE || e.index() != arr[0].index()) {
-                            WriteLog("Wrong dict array element value type, property {}", prop->GetName());
-                            wrong_input = true;
-                            break;
-                        }
-
-                        if (e.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(e)) {
-                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop->GetName());
-                            wrong_input = true;
-                            break;
-                        }
-                    }
-
-                    data_size += static_cast<int>(arr.size()) * prop->GetBaseSize();
+                    data_size += arr.Size() * base_type_info.Size;
                 }
             }
             else if (prop->IsDictOfString()) {
-                if (!can_read_to_string(dict_value)) {
-                    WriteLog("Wrong dict string element value type, property {}", prop->GetName());
-                    wrong_input = true;
-                    break;
-                }
-
-                data_size += static_cast<uint>(read_to_string(dict_value).length());
-            }
-            else if (prop->IsBaseTypeHash()) {
-                if (dict_value.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict hash element value type, property {}", prop->GetName());
-                    wrong_input = true;
-                    break;
-                }
-
-                data_size += sizeof(hstring::hash_t);
-            }
-            else if (prop->IsBaseTypeEnum()) {
-                if (dict_value.index() != AnyData::STRING_VALUE && dict_value.index() != AnyData::INT64_VALUE) {
-                    WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
-                    wrong_input = true;
-                    break;
-                }
-
-                data_size += prop->GetBaseSize();
+                data_size += ConvertToString(dict_value, str_buf).length();
             }
             else {
-                if (dict_value.index() == AnyData::ARRAY_VALUE || dict_value.index() == AnyData::DICT_VALUE) {
-                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop->GetName());
-                    wrong_input = true;
-                    break;
-                }
-
-                if (dict_value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(dict_value)) {
-                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(dict_value), prop->GetName());
-                    wrong_input = true;
-                    break;
-                }
-
-                data_size += prop->GetBaseSize();
+                data_size += base_type_info.Size;
             }
-
-            if (wrong_input) {
-                break;
-            }
-        }
-
-        if (wrong_input) {
-            return false;
         }
 
         // Write data
-        auto data = unique_ptr<uint8>(new uint8[data_size]);
-        size_t data_pos = 0;
+        auto&& data = std::make_unique<uint8[]>(data_size);
+        auto* pdata = data.get();
 
-        for (const auto& [dict_key, dict_value] : dict) {
+        for (auto&& [dict_key, dict_value] : dict) {
             // Key
-            if (prop->IsDictKeyString()) {
+            if (dickt_key_type_info.IsString) {
                 const uint key_len = static_cast<uint>(dict_key.length());
-                std::memcpy(data.get() + data_pos, &key_len, sizeof(key_len));
-                data_pos += sizeof(key_len);
-                std::memcpy(data.get() + data_pos, dict_key.c_str(), dict_key.length());
-                data_pos += dict_key.length();
+                std::memcpy(pdata, &key_len, sizeof(key_len));
+                pdata += sizeof(key_len);
+                std::memcpy(pdata, dict_key.c_str(), dict_key.length());
+                pdata += dict_key.length();
             }
-            else if (prop->IsDictKeyHash()) {
-                *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(dict_key).as_hash();
-                data_pos += prop->GetDictKeySize();
+            else if (dickt_key_type_info.IsHash) {
+                *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
             }
-            else if (prop->IsDictKeyEnum()) {
-                auto is_error = false;
-                int enum_value = name_resolver.ResolveEnumValue(prop->GetDictKeyTypeName(), dict_key, &is_error);
-                std::memcpy(data.get() + data_pos, &enum_value, prop->GetBaseSize());
-                data_pos += prop->GetDictKeySize();
-                if (is_error) {
-                    return false;
+            else if (dickt_key_type_info.IsEnum) {
+                const int enum_value = name_resolver.ResolveEnumValue(dickt_key_type_info.TypeName, dict_key);
+
+                if (dickt_key_type_info.Size == sizeof(uint8)) {
+                    *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+                }
+                else if (dickt_key_type_info.Size == sizeof(uint16)) {
+                    *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+                }
+                else {
+                    std::memcpy(pdata, &enum_value, base_type_info.Size);
                 }
             }
-            else if (prop->GetDictKeySize() == 1) {
-                *reinterpret_cast<int8*>(data.get() + data_pos) = static_cast<int8>(strex(dict_key).toInt64());
-                data_pos += prop->GetDictKeySize();
+            else if (dickt_key_type_info.IsInt8) {
+                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strex(dict_key).toInt64());
             }
-            else if (prop->GetDictKeySize() == 2) {
-                *reinterpret_cast<int16*>(data.get() + data_pos) = static_cast<int16>(strex(dict_key).toInt64());
-                data_pos += prop->GetDictKeySize();
+            else if (dickt_key_type_info.IsInt16) {
+                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strex(dict_key).toInt64());
             }
-            else if (prop->GetDictKeySize() == 4) {
-                *reinterpret_cast<int*>(data.get() + data_pos) = static_cast<int>(strex(dict_key).toInt64());
-                data_pos += prop->GetDictKeySize();
+            else if (dickt_key_type_info.IsInt32) {
+                *reinterpret_cast<int*>(pdata) = numeric_cast<int>(strex(dict_key).toInt64());
             }
-            else if (prop->GetDictKeySize() == 8) {
-                *reinterpret_cast<int64*>(data.get() + data_pos) = strex(dict_key).toInt64();
-                data_pos += prop->GetDictKeySize();
+            else if (dickt_key_type_info.IsInt64) {
+                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strex(dict_key).toInt64());
+            }
+            else if (dickt_key_type_info.IsUInt8) {
+                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strex(dict_key).toInt64());
+            }
+            else if (dickt_key_type_info.IsUInt16) {
+                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strex(dict_key).toInt64());
+            }
+            else if (dickt_key_type_info.IsUInt32) {
+                *reinterpret_cast<uint*>(pdata) = numeric_cast<uint>(strex(dict_key).toInt64());
+            }
+            else if (dickt_key_type_info.IsSingleFloat) {
+                *reinterpret_cast<float*>(pdata) = numeric_cast<float>(strex(dict_key).toFloat());
+            }
+            else if (dickt_key_type_info.IsDoubleFloat) {
+                *reinterpret_cast<double*>(pdata) = numeric_cast<double>(strex(dict_key).toDouble());
+            }
+            else if (dickt_key_type_info.IsBool) {
+                *reinterpret_cast<bool*>(pdata) = numeric_cast<bool>(strex(dict_key).toBool());
             }
             else {
-                throw UnreachablePlaceException(LINE_STR);
+                UNREACHABLE_PLACE();
+            }
+
+            if (!dickt_key_type_info.IsString) {
+                pdata += dickt_key_type_info.Size;
             }
 
             // Value
             if (prop->IsDictOfArray()) {
-                const auto& arr = std::get<AnyData::Array>(dict_value);
+                const auto& arr = dict_value.AsArray();
 
-                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(arr.size());
-                data_pos += sizeof(uint);
+                *reinterpret_cast<uint*>(pdata) = static_cast<uint>(arr.Size());
+                pdata += sizeof(uint);
 
-                if (prop->IsBaseTypeEnum()) {
-                    for (const auto& e : arr) {
-                        int enum_value;
-
-                        if (e.index() == AnyData::STRING_VALUE) {
-                            auto is_error = false;
-                            enum_value = name_resolver.ResolveEnumValue(prop->GetBaseTypeName(), std::get<string>(e), &is_error);
-                            if (is_error) {
-                                return false;
-                            }
-                        }
-                        else {
-                            enum_value = static_cast<int>(std::get<int64>(e));
-                        }
-
-                        std::memcpy(data.get() + data_pos, &enum_value, prop->GetBaseSize());
-                        data_pos += prop->GetBaseSize();
-                    }
-                }
-                else if (prop->IsBaseTypeHash()) {
-                    for (const auto& e : arr) {
-                        *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(std::get<string>(e)).as_hash();
-                        data_pos += sizeof(hstring::hash_t);
-                    }
-                }
-                else if (prop->IsDictOfArrayOfString()) {
-                    for (const auto& e : arr) {
-                        const auto& str = read_to_string(e);
-                        *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
-                        data_pos += sizeof(uint);
-                        if (!str.empty()) {
-                            std::memcpy(data.get() + data_pos, str.c_str(), str.length());
-                            data_pos += static_cast<uint>(str.length());
-                        }
+                if (prop->IsDictOfArrayOfString()) {
+                    for (const auto& arr_entry : arr) {
+                        const auto& str = ConvertToString(arr_entry, str_buf);
+                        *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
+                        pdata += sizeof(uint);
+                        std::memcpy(pdata, str.c_str(), str.length());
+                        pdata += str.length();
                     }
                 }
                 else {
-                    for (const auto& e : arr) {
-#define PARSE_VALUE(t) \
-    do { \
-        RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-        if (e.index() == AnyData::INT64_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(e)); \
-        } \
-        else if (e.index() == AnyData::DOUBLE_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<double>(e)); \
-        } \
-        else if (e.index() == AnyData::BOOL_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(e)); \
-        } \
-        else if (e.index() == AnyData::STRING_VALUE) { \
-            convert_str_to_number(e, data.get() + data_pos); \
-        } \
-        else { \
-            throw UnreachablePlaceException(LINE_STR); \
-        } \
-    } while (false)
-
-                        if (prop->IsInt8()) {
-                            PARSE_VALUE(int8);
-                        }
-                        else if (prop->IsInt16()) {
-                            PARSE_VALUE(int16);
-                        }
-                        else if (prop->IsInt32()) {
-                            PARSE_VALUE(int);
-                        }
-                        else if (prop->IsInt64()) {
-                            PARSE_VALUE(int64);
-                        }
-                        else if (prop->IsUInt8()) {
-                            PARSE_VALUE(uint8);
-                        }
-                        else if (prop->IsUInt16()) {
-                            PARSE_VALUE(uint16);
-                        }
-                        else if (prop->IsUInt32()) {
-                            PARSE_VALUE(uint);
-                        }
-                        else if (prop->IsSingleFloat()) {
-                            PARSE_VALUE(float);
-                        }
-                        else if (prop->IsDoubleFloat()) {
-                            PARSE_VALUE(double);
-                        }
-                        else if (prop->IsBool()) {
-                            PARSE_VALUE(bool);
-                        }
-                        else {
-                            throw UnreachablePlaceException(LINE_STR);
-                        }
-
-#undef PARSE_VALUE
-
-                        data_pos += prop->GetBaseSize();
+                    for (const auto& arr_entry : arr) {
+                        ConvertFixedValue(base_type_info, hash_resolver, name_resolver, arr_entry, pdata);
                     }
                 }
             }
             else if (prop->IsDictOfString()) {
-                const auto& str = read_to_string(dict_value);
-
-                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
-                data_pos += sizeof(uint);
-
-                if (!str.empty()) {
-                    std::memcpy(data.get() + data_pos, str.c_str(), str.length());
-                    data_pos += str.length();
-                }
+                const auto& str = ConvertToString(dict_value, str_buf);
+                *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
+                pdata += sizeof(uint);
+                std::memcpy(pdata, str.c_str(), str.length());
+                pdata += str.length();
             }
             else {
-                if (prop->IsBaseTypeHash()) {
-                    *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(std::get<string>(dict_value)).as_hash();
-                }
-                else if (prop->IsBaseTypeEnum()) {
-                    int enum_value;
-
-                    if (dict_value.index() == AnyData::STRING_VALUE) {
-                        auto is_error = false;
-                        enum_value = name_resolver.ResolveEnumValue(prop->GetBaseTypeName(), std::get<string>(dict_value), &is_error);
-                        if (is_error) {
-                            return false;
-                        }
-                    }
-                    else {
-                        enum_value = static_cast<int>(std::get<int64>(dict_value));
-                    }
-
-                    std::memcpy(data.get() + data_pos, &enum_value, prop->GetBaseSize());
-                }
-                else {
-#define PARSE_VALUE(t) \
-    do { \
-        RUNTIME_ASSERT(sizeof(t) == prop->GetBaseSize()); \
-        if (dict_value.index() == AnyData::INT64_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(dict_value)); \
-        } \
-        else if (dict_value.index() == AnyData::DOUBLE_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<double>(dict_value)); \
-        } \
-        else if (dict_value.index() == AnyData::BOOL_VALUE) { \
-            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(dict_value)); \
-        } \
-        else if (dict_value.index() == AnyData::STRING_VALUE) { \
-            convert_str_to_number(dict_value, data.get() + data_pos); \
-        } \
-        else { \
-            throw UnreachablePlaceException(LINE_STR); \
-        } \
-    } while (false)
-
-                    if (prop->IsInt8()) {
-                        PARSE_VALUE(int8);
-                    }
-                    else if (prop->IsInt16()) {
-                        PARSE_VALUE(int16);
-                    }
-                    else if (prop->IsInt32()) {
-                        PARSE_VALUE(int);
-                    }
-                    else if (prop->IsInt64()) {
-                        PARSE_VALUE(int64);
-                    }
-                    else if (prop->IsUInt8()) {
-                        PARSE_VALUE(uint8);
-                    }
-                    else if (prop->IsUInt16()) {
-                        PARSE_VALUE(uint16);
-                    }
-                    else if (prop->IsUInt32()) {
-                        PARSE_VALUE(uint);
-                    }
-                    else if (prop->IsSingleFloat()) {
-                        PARSE_VALUE(float);
-                    }
-                    else if (prop->IsDoubleFloat()) {
-                        PARSE_VALUE(double);
-                    }
-                    else if (prop->IsBool()) {
-                        PARSE_VALUE(bool);
-                    }
-                    else {
-                        throw UnreachablePlaceException(LINE_STR);
-                    }
-
-#undef PARSE_VALUE
-                }
-
-                data_pos += prop->GetBaseSize();
+                ConvertFixedValue(base_type_info, hash_resolver, name_resolver, dict_value, pdata);
             }
         }
 
-        RUNTIME_ASSERT(data_pos == data_size);
-
-        props->SetRawData(prop, data.get(), data_size);
+        RUNTIME_ASSERT(pdata == data.get() + data_size);
+        set_data({data.get(), data_size});
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
-
-    return true;
 }

@@ -87,9 +87,9 @@ public:
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    auto CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
-    void VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir);
-    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance);
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
+    void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
+    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
 
     auto CreateCritter(hstring pid, bool for_player) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
@@ -98,7 +98,7 @@ public:
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, const Player* initiator);
+    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
     void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
 
     ///@ ExportEvent

@@ -85,7 +85,7 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetLight(CornerType::EastWest, _map->GetLightData(), _map->GetWidth(), _map->GetHeight());
+    mspr->SetLight(CornerType::EastWest, _map->GetLightData(), _map->GetSize());
 
     if (!mspr->IsHidden() && GetHideSprite()) {
         mspr->SetHidden(true);
@@ -132,16 +132,12 @@ void CritterHexView::ClearMove()
     Moving.StartTime = {};
     Moving.OffsetTime = {};
     Moving.Speed = {};
-    Moving.StartHexX = {};
-    Moving.StartHexY = {};
-    Moving.EndHexX = {};
-    Moving.EndHexY = {};
+    Moving.StartHex = {};
+    Moving.EndHex = {};
     Moving.WholeTime = {};
     Moving.WholeDist = {};
-    Moving.StartOx = {};
-    Moving.StartOy = {};
-    Moving.EndOx = {};
-    Moving.EndOy = {};
+    Moving.StartHexOffset = {};
+    Moving.EndHexOffset = {};
 }
 
 void CritterHexView::MoveAttachedCritters()
@@ -150,20 +146,17 @@ void CritterHexView::MoveAttachedCritters()
 
     NON_CONST_METHOD_HINT();
 
-    const auto hx = GetHexX();
-    const auto hy = GetHexY();
-    const auto hex_ox = GetHexOffsX();
-    const auto hex_oy = GetHexOffsY();
+    const auto hex = GetHex();
+    const auto hex_offset = GetHexOffset();
 
     for (const auto cr_id : AttachedCritters) {
         if (auto* cr = _map->GetCritter(cr_id); cr != nullptr) {
-            if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-                _map->MoveCritter(cr, hx, hy, false);
+            if (cr->GetHex() != hex) {
+                _map->MoveCritter(cr, hex, false);
             }
 
-            if (cr->GetHexOffsX() != hex_ox || cr->GetHexOffsY() != hex_oy) {
-                cr->SetHexOffsX(hex_ox);
-                cr->SetHexOffsY(hex_oy);
+            if (cr->GetHexOffset() != hex_offset) {
+                cr->SetHexOffset(hex_offset);
                 cr->RefreshOffs();
             }
         }
@@ -281,7 +274,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
             proto->AddRef();
         }
         else {
-            throw UnreachablePlaceException("Invalid context item");
+            UNREACHABLE_PLACE();
         }
     }
 
@@ -606,17 +599,16 @@ void CritterHexView::Process()
     if (_offsExtNextTime != time_point {} && _engine->GameTime.GameplayTime() >= _offsExtNextTime) {
         _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
 
-        const auto dist = GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt));
+        const auto dist = GenericUtils::DistSqrt({0, 0}, {iround(_offsExt.x), iround(_offsExt.y)});
         const auto dist_div = dist / 10;
         const auto mul = std::max(static_cast<float>(dist_div), 1.0f);
 
-        _oxExt += _oxExtSpeed * mul;
-        _oyExt += _oyExtSpeed * mul;
+        _offsExt.x += _offsExtSpeed.x * mul;
+        _offsExt.y += _offsExtSpeed.y * mul;
 
-        if (GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt)) > dist) {
-            _offsExtNextTime = time_point {};
-            _oxExt = 0.0f;
-            _oyExt = 0.0f;
+        if (GenericUtils::DistSqrt({0, 0}, {iround(_offsExt.x), iround(_offsExt.y)}) > dist) {
+            _offsExtNextTime = {};
+            _offsExt = {};
         }
 
         RefreshOffs();
@@ -717,32 +709,30 @@ void CritterHexView::ProcessMoving()
 
     const auto dist_pos = Moving.WholeDist * normalized_time;
 
-    auto start_hx = Moving.StartHexX;
-    auto start_hy = Moving.StartHexY;
+    auto start_hex = Moving.StartHex;
     auto cur_dist = 0.0f;
 
     auto done = false;
     auto control_step_begin = 0;
     for (size_t i = 0; i < Moving.ControlSteps.size(); i++) {
-        auto hx = start_hx;
-        auto hy = start_hy;
+        auto hex = start_hex;
 
         RUNTIME_ASSERT(control_step_begin <= Moving.ControlSteps[i]);
         RUNTIME_ASSERT(Moving.ControlSteps[i] <= Moving.Steps.size());
         for (auto j = control_step_begin; j < Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, Moving.Steps[j], _map->GetWidth(), _map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, Moving.Steps[j], _map->GetSize());
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = _engine->Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+        auto&& [ox, oy] = _engine->Geometry.GetHexInterval(start_hex, hex);
 
         if (i == 0) {
-            ox -= Moving.StartOx;
-            oy -= Moving.StartOy;
+            ox -= Moving.StartHexOffset.x;
+            oy -= Moving.StartHexOffset.y;
         }
         if (i == Moving.ControlSteps.size() - 1) {
-            ox += Moving.EndOx;
-            oy += Moving.EndOy;
+            ox += Moving.EndHexOffset.x;
+            oy += Moving.EndHexOffset.y;
         }
 
         const auto proj_oy = static_cast<float>(oy) * _engine->Geometry.GetYProj();
@@ -764,32 +754,26 @@ void CritterHexView::ProcessMoving()
             RUNTIME_ASSERT(step_index >= control_step_begin);
             RUNTIME_ASSERT(step_index <= Moving.ControlSteps[i]);
 
-            auto hx2 = start_hx;
-            auto hy2 = start_hy;
+            auto hex2 = start_hex;
 
             for (auto j2 = control_step_begin; j2 < step_index; j2++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, Moving.Steps[j2], _map->GetWidth(), _map->GetHeight());
+                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, Moving.Steps[j2], _map->GetSize());
                 RUNTIME_ASSERT(move_ok);
             }
 
-            const auto old_hx = GetHexX();
-            const auto old_hy = GetHexY();
+            const auto prev_hex = GetHex();
 
-            _map->MoveCritter(this, hx2, hy2, false);
+            _map->MoveCritter(this, hex2, false);
 
-            const auto cur_hx = GetHexX();
-            const auto cur_hy = GetHexY();
-            const auto moved = cur_hx != old_hx || cur_hy != old_hy;
+            const auto cur_hex = GetHex();
+            const auto moved = cur_hex != prev_hex;
 
             // Evaluate current position
-            const auto cr_hx = GetHexX();
-            const auto cr_hy = GetHexY();
-
-            auto&& [cr_ox, cr_oy] = _engine->Geometry.GetHexInterval(start_hx, start_hy, cr_hx, cr_hy);
+            auto&& [cr_ox, cr_oy] = _engine->Geometry.GetHexInterval(start_hex, cur_hex);
 
             if (i == 0) {
-                cr_ox -= Moving.StartOx;
-                cr_oy -= Moving.StartOy;
+                cr_ox -= Moving.StartHexOffset.x;
+                cr_oy -= Moving.StartHexOffset.y;
             }
 
             const auto lerp = [](int a, int b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
@@ -801,23 +785,25 @@ void CritterHexView::ProcessMoving()
 
             const auto mxi = static_cast<int16>(iround(mx));
             const auto myi = static_cast<int16>(iround(my));
+            const auto hex_offset = GetHexOffset();
 
-            if (moved || GetHexOffsX() != mxi || GetHexOffsY() != myi) {
+            if (moved || hex_offset.x != mxi || hex_offset.y != myi) {
 #if FO_ENABLE_3D
                 if (_model != nullptr) {
-                    int model_ox = 0;
-                    int model_oy = 0;
+                    ipos model_offset;
+
                     if (moved) {
-                        std::tie(model_ox, model_oy) = _engine->Geometry.GetHexInterval(old_hx, old_hy, cur_hx, cur_hy);
+                        model_offset = _engine->Geometry.GetHexInterval(prev_hex, cur_hex);
                     }
-                    model_ox -= GetHexOffsX() - mxi;
-                    model_oy -= GetHexOffsY() - myi;
-                    _model->MoveModel(model_ox, model_oy);
+
+                    model_offset.x -= hex_offset.x - mxi;
+                    model_offset.y -= hex_offset.y - myi;
+
+                    _model->MoveModel(model_offset);
                 }
 #endif
 
-                SetHexOffsX(mxi);
-                SetHexOffsY(myi);
+                SetHexOffset(ipos16 {mxi, myi});
                 RefreshOffs();
             }
 
@@ -845,12 +831,11 @@ void CritterHexView::ProcessMoving()
         RUNTIME_ASSERT(i < Moving.ControlSteps.size() - 1);
 
         control_step_begin = Moving.ControlSteps[i];
-        start_hx = hx;
-        start_hy = hy;
+        start_hex = hex;
         cur_dist += dist;
     }
 
-    if (normalized_time == 1.0f && GetHexX() == Moving.EndHexX && GetHexY() == Moving.EndHexY) {
+    if (normalized_time == 1.0f && GetHex() == Moving.EndHex) {
         ClearMove();
         AnimateStay();
     }
@@ -873,32 +858,31 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint frm_index)
 
     Spr = anim->GetSpr(_curFrmIndex);
 
-    _oxAnim = 0;
-    _oyAnim = 0;
+    _offsAnim = {};
 
     if (anim->ActionAnim == CritterActionAnim::Walk || anim->ActionAnim == CritterActionAnim::Run) {
         // ...
     }
     else {
         for (const auto i : xrange(_curFrmIndex + 1u)) {
-            _oxAnim += anim->SprOffset[i].X;
-            _oyAnim += anim->SprOffset[i].Y;
+            _offsAnim.x += anim->SprOffset[i].x;
+            _offsAnim.y += anim->SprOffset[i].y;
         }
     }
 
     RefreshOffs();
 }
 
-void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
+void CritterHexView::AddExtraOffs(ipos offset)
 {
     STACK_TRACE_ENTRY();
 
-    _oxExt += static_cast<float>(ext_ox);
-    _oyExt += static_cast<float>(ext_oy);
+    _offsExt.x += static_cast<float>(offset.x);
+    _offsExt.y += static_cast<float>(offset.y);
 
-    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsCoords(0, 0, iround(_oxExt), iround(_oyExt));
-    _oxExtSpeed = -_oxExtSpeed;
-    _oyExtSpeed = -_oyExtSpeed;
+    _offsExtSpeed = GenericUtils::GetStepsCoords({}, {iround(_offsExt.x), iround(_offsExt.y)});
+    _offsExtSpeed.x = -_offsExtSpeed.x;
+    _offsExtSpeed.y = -_offsExtSpeed.y;
 
     _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
 
@@ -909,25 +893,26 @@ void CritterHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
 
-    ScrX = GetHexOffsX() + iround(_oxExt) + _oxAnim;
-    ScrY = GetHexOffsY() + iround(_oyExt) + _oyAnim;
+    const auto hex_offset = GetHexOffset();
+
+    SprOffset = ipos {hex_offset.x, hex_offset.y} + ipos {iround(_offsExt.x), iround(_offsExt.y)} + _offsAnim;
 
     if (IsSpriteValid() && GetIsChosen()) {
-        _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), GetSprite());
+        _engine->SprMngr.SetEgg(GetHex(), GetSprite());
     }
 }
 
-auto CritterHexView::GetNameTextPos(int& x, int& y) const -> bool
+auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     if (IsSpriteValid()) {
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
+        const int x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
+        const int y = iround(static_cast<float>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
 
-        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _map->GetSpritesZoom());
-        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
-
+        pos = {x, y};
         return true;
     }
 
@@ -971,11 +956,10 @@ void CritterHexView::DrawName()
     color = color != ucolor::clear ? color : COLOR_TEXT;
     color = ucolor {color, GetCurAlpha()};
 
-    int x = 0;
-    int y = 0;
+    ipos pos;
 
-    if (GetNameTextPos(x, y)) {
-        const auto r = IRect(x - 100, y - 200, x + 100, y);
-        _engine->SprMngr.DrawStr(r, _name, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
+    if (GetNameTextPos(pos)) {
+        const auto r = irect(pos.x - 100, pos.y - 200, pos.x + 100, pos.y);
+        _engine->SprMngr.DrawText(r, _name, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
     }
 }

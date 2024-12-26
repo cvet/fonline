@@ -63,6 +63,8 @@ public:
     [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
+    [[nodiscard]] auto GetNameTextPos() const -> ipos;
+    [[nodiscard]] auto GetNameTextInfo(bool& name_visible, int& lines) const -> irect;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return _model != nullptr; }
     [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
@@ -81,33 +83,29 @@ public:
     void Process();
     void ResetOk();
     void ClearAnim();
-    void AddExtraOffs(int ext_ox, int ext_oy);
+    void AddExtraOffs(ipos offset);
     void RefreshOffs();
     void DrawName();
-    auto GetNameTextPos(int& x, int& y) const -> bool;
+    auto GetNameTextPos(ipos& pos) const -> bool;
     void ClearMove();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
 
-    struct
+    struct MovingData
     {
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
         time_point StartTime {};
         time_duration OffsetTime {};
-        uint16 StartHexX {};
-        uint16 StartHexY {};
-        uint16 EndHexX {};
-        uint16 EndHexY {};
+        mpos StartHex {};
+        mpos EndHex {};
         float WholeTime {};
         float WholeDist {};
-        int16 StartOx {};
-        int16 StartOy {};
-        int16 EndOx {};
-        int16 EndOy {};
+        ipos16 StartHexOffset {};
+        ipos16 EndHexOffset {};
     } Moving {};
 
 private:
@@ -143,12 +141,9 @@ private:
 
     time_point _fidgetTime {};
 
-    int _oxAnim {};
-    int _oyAnim {};
-    float _oxExt {};
-    float _oyExt {};
-    float _oxExtSpeed {};
-    float _oyExtSpeed {};
+    ipos _offsAnim {};
+    fpos _offsExt {};
+    fpos _offsExtSpeed {};
     time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D

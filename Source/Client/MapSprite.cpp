@@ -105,16 +105,15 @@ auto MapSprite::GetDrawRect() const -> IRect
     const auto* spr = PSpr != nullptr ? *PSpr : Spr;
     RUNTIME_ASSERT(spr);
 
-    auto x = ScrX - spr->Width / 2 + spr->OffsX + *PScrX;
-    auto y = ScrY - spr->Height + spr->OffsY + *PScrY;
-    if (OffsX != nullptr) {
-        x += *OffsX;
-    }
-    if (OffsY != nullptr) {
-        y += *OffsY;
+    auto x = HexOffset.x - spr->Size.width / 2 + spr->Offset.x + PHexOffset->x;
+    auto y = HexOffset.y - spr->Size.height + spr->Offset.y + PHexOffset->y;
+
+    if (SprOffset != nullptr) {
+        x += SprOffset->x;
+        y += SprOffset->y;
     }
 
-    return {x, y, x + spr->Width, y + spr->Height};
+    return {x, y, x + spr->Size.width, y + spr->Size.height};
 }
 
 auto MapSprite::GetViewRect() const -> IRect
@@ -141,15 +140,15 @@ auto MapSprite::GetViewRect() const -> IRect
     return rect;
 }
 
-auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
+auto MapSprite::CheckHit(ipos pos, bool check_transparent) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (ox < 0 || oy < 0) {
+    if (pos.x < 0 || pos.y < 0) {
         return false;
     }
 
-    return !check_transparent || Root->_sprMngr.SpriteHitTest(PSpr != nullptr ? *PSpr : Spr, ox, oy, true);
+    return !check_transparent || Root->_sprMngr.SpriteHitTest(PSpr != nullptr ? *PSpr : Spr, pos, true);
 }
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
@@ -197,12 +196,12 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
     Alpha = color_alpha;
 }
 
-void MapSprite::SetLight(CornerType corner, const ucolor* light, uint16 maxhx, uint16 maxhy)
+void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1) {
-        Light = &light[HexY * maxhx + HexX];
+    if (Hex.x >= 1 && Hex.x < size.width - 1 && Hex.y >= 1 && Hex.y < size.height - 1) {
+        Light = &light[Hex.y * size.width + Hex.x];
 
         switch (corner) {
         case CornerType::EastWest:
@@ -212,15 +211,15 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, uint16 maxhx, u
             break;
         case CornerType::NorthSouth:
         case CornerType::West:
-            LightRight = Light + maxhx;
-            LightLeft = Light - maxhx;
+            LightRight = Light + static_cast<size_t>(size.width);
+            LightLeft = Light - static_cast<size_t>(size.width);
             break;
         case CornerType::South:
             LightRight = Light - 1;
-            LightLeft = Light - maxhx;
+            LightLeft = Light - static_cast<size_t>(size.width);
             break;
         case CornerType::North:
-            LightRight = Light + maxhx;
+            LightRight = Light + static_cast<size_t>(size.width);
             LightLeft = Light + 1;
             break;
         }
@@ -289,7 +288,7 @@ auto MapSpriteList::RootSprite() noexcept -> MapSprite*
     return _rootSprite;
 }
 
-auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
@@ -356,16 +355,12 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
         }
     }
 
-    mspr->HexX = hx;
-    mspr->HexY = hy;
-    mspr->ScrX = x;
-    mspr->ScrY = y;
-    mspr->PScrX = sx;
-    mspr->PScrY = sy;
+    mspr->Hex = hex;
+    mspr->HexOffset = hex_offset;
+    mspr->PHexOffset = phex_offset;
     mspr->Spr = spr;
     mspr->PSpr = pspr;
-    mspr->OffsX = ox;
-    mspr->OffsY = oy;
+    mspr->SprOffset = spr_offset;
     mspr->Alpha = alpha;
     mspr->Light = nullptr;
     mspr->LightRight = nullptr;
@@ -385,33 +380,34 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
     mspr->DrawOrder = draw_order;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + mspr->HexY * MAXHEX_MAX + mspr->HexX;
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + mspr->Hex.y * MAXHEX_MAX + mspr->Hex.x;
     }
     else {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + mspr->HexY * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->HexX * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + mspr->Hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->Hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
     }
 
     return *mspr;
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
-    return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, spr, pspr, ox, oy, alpha, effect, callback);
+    return PutSprite(nullptr, draw_order, hex, hex_offset, phex_offset, spr, pspr, spr_offset, alpha, effect, callback);
 }
 
-auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
     // Find place
-    uint pos;
+    uint order_pos;
+
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hy * MAXHEX_MAX + hx;
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hex.y * MAXHEX_MAX + hex.x;
     }
     else {
-        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + hy * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hx * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
     }
 
     auto* parent = _rootSprite;
@@ -419,13 +415,13 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy,
         if (!parent->Valid) {
             continue;
         }
-        if (pos < parent->DrawOrderPos) {
+        if (order_pos < parent->DrawOrderPos) {
             break;
         }
         parent = parent->ChainChild;
     }
 
-    return PutSprite(parent, draw_order, hx, hy, x, y, sx, sy, spr, pspr, ox, oy, alpha, effect, callback);
+    return PutSprite(parent, draw_order, hex, hex_offset, phex_offset, spr, pspr, spr_offset, alpha, effect, callback);
 }
 
 void MapSpriteList::Invalidate()

@@ -52,13 +52,13 @@ struct StaticMap
 {
     struct Field
     {
-        bool IsMoveBlocked {};
-        bool IsShootBlocked {};
+        bool MoveBlocked {};
+        bool ShootBlocked {};
         vector<StaticItem*> StaticItems {};
         vector<StaticItem*> TriggerItems {};
     };
 
-    unique_ptr<TwoDimensionalGrid<Field, uint16>> HexField {};
+    unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> HexField {};
     vector<pair<ident_t, const Critter*>> CritterBillets {};
     vector<pair<ident_t, const Item*>> ItemBillets {};
     vector<pair<ident_t, const Item*>> HexItemBillets {};
@@ -84,63 +84,63 @@ public:
     [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto); }
     [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation; }
     [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation; }
-    [[nodiscard]] auto IsHexMovable(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsHexShootable(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsHexesMovable(uint16 hx, uint16 hy, uint radius) const -> bool;
-    [[nodiscard]] auto IsHexesMovable(uint16 to_hx, uint16 to_hy, uint radius, Critter* skip_cr) -> bool;
-    [[nodiscard]] auto IsBlockItem(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool;
-    [[nodiscard]] auto IsItemGag(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, uint radius) const -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, uint radius, Critter* skip_cr) -> bool;
+    [[nodiscard]] auto IsBlockItem(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsItemTrigger(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsItemGag(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
-    [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
-    [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) noexcept -> Item*;
+    [[nodiscard]] auto GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
+    [[nodiscard]] auto GetItemGag(mpos hex) noexcept -> Item*;
     [[nodiscard]] auto GetItems() noexcept -> const vector<Item*>&;
-    [[nodiscard]] auto GetItems(uint16 hx, uint16 hy) noexcept -> const vector<Item*>&;
-    [[nodiscard]] auto GetItemsInRadius(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItems(mpos hex) noexcept -> const vector<Item*>&;
+    [[nodiscard]] auto GetItemsInRadius(mpos hex, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>;
-    [[nodiscard]] auto IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool;
-    [[nodiscard]] auto FindStartHex(uint16 hx, uint16 hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<uint16, uint16>>;
-    [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto IsCritter(uint16 hx, uint16 hy, const Critter* cr) const -> bool;
+    [[nodiscard]] auto GetItemsTrigger(mpos hex) -> vector<Item*>;
+    [[nodiscard]] auto IsPlaceForProtoItem(mpos hex, const ProtoItem* proto_item) const -> bool;
+    [[nodiscard]] auto FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<mpos>;
+    [[nodiscard]] auto IsCritter(mpos hex, CritterFindType find_type) const -> bool;
+    [[nodiscard]] auto IsCritter(mpos hex, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
-    [[nodiscard]] auto GetCritter(uint16 hx, uint16 hy, CritterFindType find_type) noexcept -> Critter*;
-    [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*;
+    [[nodiscard]] auto GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>&;
     [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>&;
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>&;
     [[nodiscard]] auto GetCrittersCount() const noexcept -> uint;
     [[nodiscard]] auto GetPlayerCrittersCount() const noexcept -> uint;
     [[nodiscard]] auto GetNonPlayerCrittersCount() const noexcept -> uint;
-    [[nodiscard]] auto IsStaticItemTrigger(uint16 hx, uint16 hy) const noexcept -> bool;
+    [[nodiscard]] auto IsStaticItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
-    [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) noexcept -> StaticItem*;
-    [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&;
-    [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*;
+    [[nodiscard]] auto GetStaticItemsHex(mpos hex) noexcept -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetStaticItemsHexEx(mpos hex, uint radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
-    [[nodiscard]] auto GetStaticItemsTrigger(uint16 hx, uint16 hy) noexcept -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc);
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
-    void SetText(uint16 hx, uint16 hy, ucolor color, string_view text, bool unsafe_text);
-    void SetTextMsg(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num);
-    void SetTextMsgLex(uint16 hx, uint16 hy, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
+    void SetText(mpos hex, ucolor color, string_view text, bool unsafe_text);
+    void SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num);
+    void SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void RemoveCritter(Critter* cr);
-    void AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper);
+    void AddItem(Item* item, mpos hex, Critter* dropper);
     void SetItem(Item* item);
     void RemoveItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);
-    void SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
-    void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
-    void SetHexManualBlock(uint16 hx, uint16 hy, bool enable, bool full);
+    void SendEffect(hstring eff_pid, mpos hex, uint16 radius);
+    void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex);
+    void SetHexManualBlock(mpos hex, bool enable, bool full);
     void AddCritterToField(Critter* cr);
     void RemoveCritterFromField(Critter* cr);
-    void RecacheHexFlags(uint16 hx, uint16 hy);
+    void RecacheHexFlags(mpos hex);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
@@ -176,9 +176,8 @@ private:
     void RecacheHexFlags(Field& field);
 
     const StaticMap* _staticMap {};
-    uint16 _width {};
-    uint16 _height {};
-    unique_ptr<TwoDimensionalGrid<Field, uint16>> _hexField {};
+    msize _mapSize {};
+    unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<Critter*> _critters {};
     unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};

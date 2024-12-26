@@ -67,7 +67,7 @@
 DECLARE_EXCEPTION(EngineDataNotFoundException);
 DECLARE_EXCEPTION(ResourcesOutdatedException);
 
-///@ ExportObject Client
+///@ ExportRefType Client
 struct VideoPlayback
 {
     SCRIPTABLE_OBJECT_BEGIN();
@@ -79,6 +79,7 @@ struct VideoPlayback
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
 };
+// Todo: fix static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
 enum class EffectType : uint
@@ -165,18 +166,18 @@ public:
     void AnimFree(uint anim_id);
     auto AnimGetSpr(uint anim_id) -> Sprite*;
 
-    void ShowMainScreen(int new_screen, map<string, any_t> params);
+    void ShowMainScreen(int new_screen, const map<string, any_t>& params);
     auto GetMainScreen() const -> int { return _screenModeMain; }
     auto IsMainScreen(int check_screen) const -> bool { return check_screen == _screenModeMain; }
-    void ShowScreen(int screen, map<string, any_t> params);
+    void ShowScreen(int screen, const map<string, any_t>& params);
     void HideScreen(int screen);
     auto GetActiveScreen(vector<int>* screens) -> int;
     auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, map<string, any_t> params);
+    void RunScreenScript(bool show, int screen, const map<string, any_t>& params);
 
     void Connect(string_view login, string_view password, int reason);
     void Disconnect();
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -203,7 +204,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, any_t> /*data*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
@@ -213,7 +214,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMouseMove, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnMouseMove, ipos /*offsetPos*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
@@ -247,7 +248,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, ucolor& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, mpos& /*hex*/, ucolor& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnInMessage, string /*text*/, int /*sayType*/, ident_t /*crId*/);
     ///@ ExportEvent
@@ -312,8 +313,7 @@ protected:
     {
         ident_t LocId {};
         hstring LocPid {};
-        uint16 LocWx {};
-        uint16 LocWy {};
+        upos16 LocPos {};
         uint16 Radius {};
         ucolor Color {};
         uint8 Entrances {};
@@ -387,7 +387,7 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
+    void OnMapText(string_view str, mpos hex, ucolor color);
     void ReceiveCustomEntities(Entity* holder);
     auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*;
 

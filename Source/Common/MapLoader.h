@@ -42,8 +42,8 @@ DECLARE_EXCEPTION(MapLoaderException);
 class MapLoader final
 {
 public:
-    using CrLoadFunc = std::function<bool(ident_t id, const ProtoCritter* proto, const map<string, string>& kv)>;
-    using ItemLoadFunc = std::function<bool(ident_t id, const ProtoItem* proto, const map<string, string>& kv)>;
+    using CrLoadFunc = std::function<void(ident_t id, const ProtoCritter* proto, const map<string, string>& kv)>;
+    using ItemLoadFunc = std::function<void(ident_t id, const ProtoItem* proto, const map<string, string>& kv)>;
 
     MapLoader() = delete;
 

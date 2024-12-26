@@ -40,35 +40,35 @@
 #include "StringUtils.h"
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy)
+FO_SCRIPT_API ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, mpos hex)
 {
-    if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
+    if (!mapper->CurMap->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    return mapper->CreateItem(pid, hx, hy, nullptr);
+    return mapper->CreateItem(pid, hex, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy)
+FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, mpos hex)
 {
-    if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
+    if (!mapper->CurMap->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    return mapper->CreateCritter(pid, hx, hy);
+    return mapper->CreateCritter(pid, hex);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, uint16 hx, uint16 hy)
+FO_SCRIPT_API ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 {
-    return mapper->CurMap->GetItem(hx, hy, hstring());
+    return mapper->CurMap->GetItem(hex, hstring());
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, uint16 hx, uint16 hy)
+FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
-    auto&& hex_items = mapper->CurMap->GetItems(hx, hy);
+    auto&& hex_items = mapper->CurMap->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
@@ -81,42 +81,36 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, uint16 hx, uint16 hy, CritterFindType findType)
+FO_SCRIPT_API CritterView* Mapper_Game_GetCritter(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    const auto critters = mapper->CurMap->GetCritters(hx, hy, findType);
+    const auto critters = mapper->CurMap->GetCritters(hex, findType);
     return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, uint16 hx, uint16 hy, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    return vec_static_cast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
+    return vec_static_cast<CritterView*>(mapper->CurMap->GetCritters(hex, findType));
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, uint16 hx, uint16 hy)
+FO_SCRIPT_API void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, mpos hex)
 {
-    auto hx_ = hx;
-    auto hy_ = hy;
-
-    if (hx_ >= mapper->CurMap->GetWidth()) {
-        hx_ = mapper->CurMap->GetWidth() - 1;
-    }
-    if (hy_ >= mapper->CurMap->GetHeight()) {
-        hy_ = mapper->CurMap->GetHeight() - 1;
+    if (!mapper->CurMap->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex args");
     }
 
-    mapper->MoveEntity(entity, hx_, hy_);
+    mapper->MoveEntity(entity, hex);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DeleteEntity(FOMapper* mapper, ClientEntity* entity)
+FO_SCRIPT_API void Mapper_Game_DeleteEntity(FOMapper* mapper, ClientEntity* entity)
 {
     mapper->DeleteEntity(entity);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
+FO_SCRIPT_API void Mapper_Game_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
 {
     for (auto* entity : entities) {
         if (entity != nullptr && !entity->IsDestroyed()) {
@@ -126,7 +120,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_SelectEntity(FOMapper* mapper, ClientEntity* entity, bool set)
+FO_SCRIPT_API void Mapper_Game_SelectEntity(FOMapper* mapper, ClientEntity* entity, bool set)
 {
     if (entity == nullptr) {
         throw ScriptException("Entity arg is null");
@@ -141,7 +135,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<ClientEntity*>& entities, bool set)
+FO_SCRIPT_API void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<ClientEntity*>& entities, bool set)
 {
     for (auto* entity : entities) {
         if (entity != nullptr) {
@@ -156,13 +150,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Mapper_Game_GetSelectedEntity(FOMapper* mapper)
+FO_SCRIPT_API ClientEntity* Mapper_Game_GetSelectedEntity(FOMapper* mapper)
 {
     return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0] : nullptr;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<ClientEntity*> Mapper_Game_GetSelectedEntities(FOMapper* mapper)
+FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(FOMapper* mapper)
 {
     vector<ClientEntity*> entities;
     entities.reserve(mapper->SelectedEntities.size());
@@ -175,50 +169,46 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy, int layer, bool roof)
+FO_SCRIPT_API ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, mpos hex, int layer, bool roof)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->CurMap->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
+    if (!mapper->CurMap->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex args");
     }
 
-    auto layer_ = layer;
-    layer_ = std::clamp(layer_, 0, 4);
+    const auto corrected_layer = std::clamp(layer, 0, 4);
 
-    return mapper->CurMap->AddMapperTile(pid, hx, hy, static_cast<uint8>(layer_), roof);
+    return mapper->CurMap->AddMapperTile(pid, hex, static_cast<uint8>(corrected_layer), roof);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
+FO_SCRIPT_API MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
     return mapper->LoadMap(fileName);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_UnloadMap(FOMapper* mapper, MapView* map)
+FO_SCRIPT_API void Mapper_Game_UnloadMap(FOMapper* mapper, MapView* map)
 {
     mapper->UnloadMap(map);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
+FO_SCRIPT_API void Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
 {
     mapper->SaveMap(map, customName);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
+FO_SCRIPT_API void Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
 {
     mapper->ShowMap(map);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& index)
+FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& index)
 {
     index = -1;
 
@@ -233,7 +223,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, string_view dir)
+FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, string_view dir)
 {
     vector<string> names;
 
@@ -247,7 +237,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, uint16 width, uint16 height)
+FO_SCRIPT_API void Mapper_Game_ResizeMap(FOMapper* mapper, uint16 width, uint16 height)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -257,7 +247,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<hstring> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
+FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -275,7 +265,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
+FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -293,7 +283,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& itemPids)
+FO_SCRIPT_API void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& itemPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -355,7 +345,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& critterPids)
+FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& critterPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -413,7 +403,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabDelete(FOMapper* mapper, int tab)
+FO_SCRIPT_API void Mapper_Game_TabDelete(FOMapper* mapper, int tab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -425,7 +415,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSelect(FOMapper* mapper, int tab, string_view subTab, bool show)
+FO_SCRIPT_API void Mapper_Game_TabSelect(FOMapper* mapper, int tab, string_view subTab, bool show)
 {
     if (tab < 0 || tab >= FOMapper::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -446,7 +436,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetName(FOMapper* mapper, int tab, string_view tabName)
+FO_SCRIPT_API void Mapper_Game_TabSetName(FOMapper* mapper, int tab, string_view tabName)
 {
     if (tab < 0 || tab >= FOMapper::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -456,7 +446,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
+FO_SCRIPT_API string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
 {
     return mapper->IfaceIni->GetStr("", key, "");
 }

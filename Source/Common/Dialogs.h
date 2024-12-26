@@ -112,8 +112,7 @@ struct TalkData
     TalkType Type {};
     ident_t CritterId {};
     ident_t TalkHexMap {};
-    uint16 TalkHexX {};
-    uint16 TalkHexY {};
+    mpos TalkHex {};
     hstring DialogPackId {};
     Dialog CurDialog {};
     uint LastDialogId {};
@@ -145,9 +144,9 @@ public:
     void LoadFromResources();
 
 private:
-    [[nodiscard]] auto GetDrType(string_view str) -> uint8;
-    [[nodiscard]] auto GetWho(char who) -> uint8;
-    [[nodiscard]] auto CheckOper(char oper) -> bool;
+    [[nodiscard]] auto GetDrType(string_view str) const -> uint8;
+    [[nodiscard]] auto GetWho(uint8 who) const -> uint8;
+    [[nodiscard]] auto CheckOper(char oper) const -> bool;
 
     auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq;

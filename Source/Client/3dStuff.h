@@ -243,8 +243,8 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
-    [[nodiscard]] auto Convert2dTo3d(int x, int y) const noexcept -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> IPoint;
+    [[nodiscard]] auto Convert2dTo3d(ipos pos) const noexcept -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> ipos;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
@@ -254,14 +254,14 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const noexcept -> tuple<int, int>;
-    [[nodiscard]] auto GetViewSize() const noexcept -> tuple<int, int>;
+    [[nodiscard]] auto GetDrawSize() const noexcept -> isize;
+    [[nodiscard]] auto GetViewSize() const noexcept -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
-    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
     [[nodiscard]] auto GetAnimDuration() const -> time_duration;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
-    void SetupFrame(int draw_width, int draw_height);
+    void SetupFrame(isize draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
     auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
@@ -274,7 +274,7 @@ public:
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
-    void MoveModel(int ox, int oy);
+    void MoveModel(ipos offset);
     void SetMoving(bool enabled, int speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
@@ -308,7 +308,7 @@ private:
     void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
-    void ProcessAnimation(float elapsed, int x, int y, float scale);
+    void ProcessAnimation(float elapsed, ipos pos, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
@@ -316,8 +316,7 @@ private:
     void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
-    int _frameWidth {};
-    int _frameHeight {};
+    isize _frameSize {};
     mat44 _frameProj {};
     mat44 _frameProjColMaj {};
     CritterStateAnim _curStateAnim {};
@@ -423,10 +422,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    int _drawWidth {};
-    int _drawHeight {};
-    int _viewWidth {};
-    int _viewHeight {};
+    isize _drawSize {};
+    isize _viewSize {};
     hstring _rotationBone {};
 };
 

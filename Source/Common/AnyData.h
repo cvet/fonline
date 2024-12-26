@@ -40,18 +40,145 @@ class AnyData final
 public:
     AnyData() = delete;
 
-    static constexpr auto INT64_VALUE = 0;
-    static constexpr auto DOUBLE_VALUE = 1;
-    static constexpr auto BOOL_VALUE = 2;
-    static constexpr auto STRING_VALUE = 3;
-    static constexpr auto ARRAY_VALUE = 4;
-    static constexpr auto DICT_VALUE = 5;
+    enum class ValueType : uint8
+    {
+        Int64 = 0,
+        Double,
+        Bool,
+        String,
+        Array,
+        Dict
+    };
 
-    using Array = vector<std::variant<int64, double, bool, string>>;
-    using Dict = map<string, std::variant<int64, double, bool, string, Array>>;
-    using Value = std::variant<int64, double, bool, string, Array, Dict>;
-    using Document = map<string, Value>;
+    class Dict;
+    class Array;
+
+    class Value
+    {
+    public:
+        // ReSharper disable CppNonExplicitConvertingConstructor
+        Value(int64 value) :
+            _value(value)
+        {
+        }
+        Value(double value) :
+            _value(value)
+        {
+        }
+        Value(bool value) :
+            _value(value)
+        {
+        }
+        Value(string value) :
+            _value(std::move(value))
+        {
+        }
+        Value(Array&& value) :
+            _value(std::make_unique<Array>(std::move(value)))
+        {
+        }
+        Value(Dict&& value) :
+            _value(std::make_unique<Dict>(std::move(value)))
+        {
+        }
+        // ReSharper restore CppNonExplicitConvertingConstructor
+
+        Value(const Value&) = delete;
+        Value(Value&&) noexcept = default;
+        auto operator=(const Value&) = delete;
+        auto operator=(Value&&) noexcept -> Value& = default;
+        ~Value() = default;
+
+        [[nodiscard]] auto operator==(const Value& other) const -> bool;
+        [[nodiscard]] auto operator!=(const Value& other) const -> bool { return !(*this == other); }
+        [[nodiscard]] auto Type() const -> ValueType { return static_cast<ValueType>(_value.index()); }
+        [[nodiscard]] auto AsInt64() const -> int64 { return std::get<int64>(_value); }
+        [[nodiscard]] auto AsDouble() const -> double { return std::get<double>(_value); }
+        [[nodiscard]] auto AsBool() const -> bool { return std::get<bool>(_value); }
+        [[nodiscard]] auto AsString() const -> const string& { return std::get<string>(_value); }
+        [[nodiscard]] auto AsArray() const -> const Array& { return *std::get<unique_ptr<Array>>(_value); }
+        [[nodiscard]] auto AsDict() const -> const Dict& { return *std::get<unique_ptr<Dict>>(_value); }
+        [[nodiscard]] auto Copy() const -> Value;
+
+    private:
+        std::variant<int64, double, bool, string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
+    };
+
+    class Array
+    {
+    public:
+        Array() = default;
+        Array(const Array&) = delete;
+        Array(Array&&) noexcept = default;
+        auto operator=(const Array&) = delete;
+        auto operator=(Array&&) noexcept -> Array& = default;
+        ~Array() = default;
+
+        [[nodiscard]] auto operator==(const Array& other) const -> bool { return _value == other._value; }
+        [[nodiscard]] auto operator!=(const Array& other) const -> bool { return !(*this == other); }
+        [[nodiscard]] auto operator[](size_t index) const -> const Value& { return _value.at(index); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
+        [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
+        [[nodiscard]] auto Copy() const -> Array;
+
+        [[nodiscard]] auto begin() const noexcept { return _value.begin(); }
+        [[nodiscard]] auto end() const noexcept { return _value.end(); }
+
+        void Reserve(size_t size) { _value.reserve(size); }
+        void EmplaceBack(Value value) { _value.emplace_back(std::move(value)); }
+
+    private:
+        vector<Value> _value {};
+    };
+
+    class Dict
+    {
+    public:
+        Dict() = default;
+        Dict(const Dict&) = delete;
+        Dict(Dict&&) noexcept = default;
+        auto operator=(const Dict&) = delete;
+        auto operator=(Dict&&) noexcept -> Dict& = default;
+        ~Dict() = default;
+
+        [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
+        [[nodiscard]] auto operator!=(const Dict& other) const -> bool { return !(*this == other); }
+        [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
+        [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
+        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value.count(key) != 0; }
+        [[nodiscard]] auto Find(const string& key) const { return _value.find(key); }
+        [[nodiscard]] auto Copy() const -> Dict;
+
+        [[nodiscard]] auto begin() const noexcept { return _value.begin(); }
+        [[nodiscard]] auto end() const noexcept { return _value.end(); }
+
+        void Emplace(string key, Value value) { _value.emplace(std::move(key), std::move(value)); }
+        void Assign(const string& key, Value value) { _value.insert_or_assign(key, std::move(value)); }
+
+    private:
+        map<string, Value> _value {};
+    };
+
+    class Document : public Dict
+    {
+    public:
+        Document() = default;
+        Document(const Document&) = delete;
+        Document(Document&&) noexcept = default;
+        auto operator=(const Document&) = delete;
+        auto operator=(Document&&) noexcept -> Document& = default;
+        ~Document() = default;
+
+        [[nodiscard]] auto Copy() const -> Document;
+    };
 
     [[nodiscard]] static auto ValueToString(const Value& value) -> string;
-    [[nodiscard]] static auto ParseValue(const string& str, bool as_dict, bool as_array, int value_type) -> Value;
+    [[nodiscard]] static auto ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value;
+
+private:
+    [[nodiscard]] static auto ValueToCodedString(const Value& value) -> string;
+    [[nodiscard]] static auto CodeString(string_view str) -> string;
+    [[nodiscard]] static auto DecodeString(string_view str) -> string;
+    [[nodiscard]] static auto ReadToken(const char* str, string& result) -> const char*;
 };

@@ -79,8 +79,6 @@ template<typename T>
 using CallbackFunc = hstring;
 template<typename T>
 using PredicateFunc = hstring;
-template<int N>
-using ObjInfo = string_view;
 
 class FOEngineBase;
 

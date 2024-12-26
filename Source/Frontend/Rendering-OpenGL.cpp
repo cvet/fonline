@@ -114,10 +114,8 @@ static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static bool BaseFrameBufObjBinded {};
-static int BaseFrameBufWidth {};
-static int BaseFrameBufHeight {};
-static int TargetWidth {};
-static int TargetHeight {};
+static isize BaseFrameBufSize {};
+static isize TargetSize {};
 static mat44 ProjectionMatrixColMaj {};
 static RenderTexture* DummyTexture {};
 static IRect ViewPortRect {};
@@ -134,15 +132,15 @@ static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work wit
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) :
-        RenderTexture(width, height, linear_filtered, with_depth)
+    OpenGL_Texture(isize size, bool linear_filtered, bool with_depth) :
+        RenderTexture(size, linear_filtered, with_depth)
     {
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
-    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
+    [[nodiscard]] auto GetTexturePixel(ipos pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -327,8 +325,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &BaseFrameBufObj));
-    BaseFrameBufWidth = settings.ScreenWidth;
-    BaseFrameBufHeight = settings.ScreenHeight;
+    BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
     // Calculate atlas size
     GLint max_texture_size;
@@ -349,6 +346,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #if !FO_OPENGL_ES
     GLint max_uniform_components;
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
+
     if (max_uniform_components < 1024) {
         WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
@@ -357,8 +355,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    DummyTexture = CreateTexture(1, 1, false, false);
-    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
+    DummyTexture = CreateTexture({1, 1}, false, false);
+    DummyTexture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
     // Init render target
     SetRenderTarget(nullptr);
@@ -377,11 +375,11 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
+    auto&& opengl_tex = std::make_unique<OpenGL_Texture>(size, linear_filtered, with_depth);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -397,7 +395,7 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
 #endif
-    GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+    GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.width, size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
     GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
 
     if (with_depth) {
@@ -405,7 +403,7 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
         GL(glGetIntegerv(GL_RENDERBUFFER_BINDING, &cur_rb));
         GL(glGenRenderbuffers(1, &opengl_tex->DepthBuffer));
         GL(glBindRenderbuffer(GL_RENDERBUFFER, opengl_tex->DepthBuffer));
-        GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height));
+        GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, size.width, size.height));
         GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, opengl_tex->DepthBuffer));
         GL(glBindRenderbuffer(GL_RENDERBUFFER, cur_rb));
     }
@@ -436,6 +434,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
+
         if constexpr (FO_OPENGL_ES) {
             ext = "glsl-es";
         }
@@ -466,6 +465,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             string result = "(no info)";
             int len = 0;
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));
+
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
@@ -473,6 +473,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 result.assign(str, len);
                 delete[] str;
             }
+
             return result;
         };
 
@@ -480,6 +481,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             string result = "(no info)";
             int len = 0;
             GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len));
+
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
@@ -487,6 +489,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 result.assign(str, len);
                 delete[] str;
             }
+
             return result;
         };
 
@@ -494,6 +497,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GLint compiled;
         GL(glCompileShader(vs));
         GL(glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled));
+
         if (compiled == 0) {
             const auto vert_log = get_shader_compile_log(vs);
             GL(glDeleteShader(vs));
@@ -504,6 +508,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Compile fs
         GL(glCompileShader(fs));
         GL(glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled));
+
         if (compiled == 0) {
             const auto frag_log = get_shader_compile_log(fs);
             GL(glDeleteShader(vs));
@@ -520,6 +525,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         GL(glLinkProgram(program));
         GLint linked;
         GL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
+
         if (linked == 0) {
             const auto program_log = get_program_compile_log(program);
             const auto vert_log = get_shader_compile_log(vs);
@@ -618,8 +624,8 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
         vp_ox = 0;
         vp_oy = 0;
-        vp_width = opengl_tex->Width;
-        vp_height = opengl_tex->Height;
+        vp_width = opengl_tex->Size.width;
+        vp_height = opengl_tex->Size.height;
         screen_width = vp_width;
         screen_height = vp_height;
     }
@@ -627,13 +633,13 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const float back_buf_aspect = static_cast<float>(BaseFrameBufWidth) / static_cast<float>(BaseFrameBufHeight);
+        const float back_buf_aspect = static_cast<float>(BaseFrameBufSize.width) / static_cast<float>(BaseFrameBufSize.height);
         const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufHeight) * screen_aspect : static_cast<float>(BaseFrameBufHeight) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufWidth) / back_buf_aspect : static_cast<float>(BaseFrameBufWidth) / screen_aspect);
+        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
+        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
 
-        vp_ox = (BaseFrameBufWidth - fit_width) / 2;
-        vp_oy = (BaseFrameBufHeight - fit_height) / 2;
+        vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
+        vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
         screen_width = Settings->ScreenWidth;
@@ -646,8 +652,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
-    TargetWidth = screen_width;
-    TargetHeight = screen_height;
+    TargetSize = {screen_width, screen_height};
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -680,7 +685,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     }
 }
 
-void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
+void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
 {
     STACK_TRACE_ENTRY();
 
@@ -689,20 +694,20 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
     int r;
     int b;
 
-    if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
-        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
-        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetHeight);
+    if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
+        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
+        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(x + width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(y + height) * y_ratio);
+        l = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
+        t = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
+        r = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
+        b = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
     }
     else {
-        l = ViewPortRect.Left + x;
-        t = ViewPortRect.Top + y;
-        r = ViewPortRect.Left + x + width;
-        b = ViewPortRect.Top + y + height;
+        l = ViewPortRect.Left + pos.x;
+        t = ViewPortRect.Top + pos.y;
+        r = ViewPortRect.Left + pos.x + size.width;
+        b = ViewPortRect.Top + pos.y + size.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));
@@ -716,10 +721,9 @@ void OpenGL_Renderer::DisableScissor()
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
-void OpenGL_Renderer::OnResizeWindow(int width, int height)
+void OpenGL_Renderer::OnResizeWindow(isize size)
 {
-    BaseFrameBufWidth = width;
-    BaseFrameBufHeight = height;
+    BaseFrameBufSize = size;
 
     if (BaseFrameBufObjBinded) {
         SetRenderTarget(nullptr);
@@ -741,14 +745,11 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> ucolor
+auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x < Width);
-    RUNTIME_ASSERT(y < Height);
+    RUNTIME_ASSERT(Size.IsValidPos(pos));
 
     ucolor result;
 
@@ -756,51 +757,49 @@ auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> ucolor
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
+    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
+auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
-    RUNTIME_ASSERT(x >= 0);
-    RUNTIME_ASSERT(y >= 0);
-    RUNTIME_ASSERT(x + width <= Width);
-    RUNTIME_ASSERT(y + height <= Height);
+    RUNTIME_ASSERT(size.width > 0);
+    RUNTIME_ASSERT(size.height > 0);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(width) * height);
+    result.resize(static_cast<size_t>(size.width) * size.height);
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
+    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(r.Left >= 0);
-    RUNTIME_ASSERT(r.Right >= 0);
-    RUNTIME_ASSERT(r.Right <= Width);
-    RUNTIME_ASSERT(r.Bottom <= Height);
-    RUNTIME_ASSERT(r.Right > r.Left);
-    RUNTIME_ASSERT(r.Bottom > r.Top);
+    RUNTIME_ASSERT(pos.x >= 0);
+    RUNTIME_ASSERT(pos.y >= 0);
+    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
-    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
+    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
@@ -821,6 +820,7 @@ static void EnableVertAtribs(EffectUsage usage)
         GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))));
         GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
         GL(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))));
+
         for (uint i = 0; i <= 8; i++) {
             GL(glEnableVertexAttribArray(i));
         }
@@ -833,6 +833,7 @@ static void EnableVertAtribs(EffectUsage usage)
     GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Color))));
     GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))));
     GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))));
+
     for (uint i = 0; i <= 3; i++) {
         GL(glEnableVertexAttribArray(i));
     }
@@ -940,25 +941,35 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
     STACK_TRACE_ENTRY();
 
     switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendFuncType::name: \
-        return glname
-        CHECK_ENTRY(Zero, GL_ZERO);
-        CHECK_ENTRY(One, GL_ONE);
-        CHECK_ENTRY(SrcColor, GL_SRC_COLOR);
-        CHECK_ENTRY(InvSrcColor, GL_ONE_MINUS_SRC_COLOR);
-        CHECK_ENTRY(DstColor, GL_DST_COLOR);
-        CHECK_ENTRY(InvDstColor, GL_ONE_MINUS_DST_COLOR);
-        CHECK_ENTRY(SrcAlpha, GL_SRC_ALPHA);
-        CHECK_ENTRY(InvSrcAlpha, GL_ONE_MINUS_SRC_ALPHA);
-        CHECK_ENTRY(DstAlpha, GL_DST_ALPHA);
-        CHECK_ENTRY(InvDstAlpha, GL_ONE_MINUS_DST_ALPHA);
-        CHECK_ENTRY(ConstantColor, GL_CONSTANT_COLOR);
-        CHECK_ENTRY(InvConstantColor, GL_ONE_MINUS_CONSTANT_COLOR);
-        CHECK_ENTRY(SrcAlphaSaturate, GL_SRC_ALPHA_SATURATE);
-#undef CHECK_ENTRY
+    case BlendFuncType::Zero:
+        return 0;
+    case BlendFuncType::One:
+        return 1;
+    case BlendFuncType::SrcColor:
+        return 0x0300;
+    case BlendFuncType::InvSrcColor:
+        return 0x0301;
+    case BlendFuncType::DstColor:
+        return 0x0306;
+    case BlendFuncType::InvDstColor:
+        return 0x0307;
+    case BlendFuncType::SrcAlpha:
+        return 0x0302;
+    case BlendFuncType::InvSrcAlpha:
+        return 0x0303;
+    case BlendFuncType::DstAlpha:
+        return 0x0304;
+    case BlendFuncType::InvDstAlpha:
+        return 0x0305;
+    case BlendFuncType::ConstantColor:
+        return 0x8001;
+    case BlendFuncType::InvConstantColor:
+        return 0x8002;
+    case BlendFuncType::SrcAlphaSaturate:
+        return 0x0308;
     }
-    throw UnreachablePlaceException(LINE_STR);
+
+    UNREACHABLE_PLACE();
 }
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
@@ -966,17 +977,19 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     STACK_TRACE_ENTRY();
 
     switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendEquationType::name: \
-        return glname
-        CHECK_ENTRY(FuncAdd, GL_FUNC_ADD);
-        CHECK_ENTRY(FuncSubtract, GL_FUNC_SUBTRACT);
-        CHECK_ENTRY(FuncReverseSubtract, GL_FUNC_REVERSE_SUBTRACT);
-        CHECK_ENTRY(Max, GL_MAX);
-        CHECK_ENTRY(Min, GL_MIN);
-#undef CHECK_ENTRY
+    case BlendEquationType::FuncAdd:
+        return 0x8006;
+    case BlendEquationType::FuncSubtract:
+        return 0x800A;
+    case BlendEquationType::FuncReverseSubtract:
+        return 0x800B;
+    case BlendEquationType::Max:
+        return 0x8008;
+    case BlendEquationType::Min:
+        return 0x8007;
     }
-    throw UnreachablePlaceException(LINE_STR);
+
+    UNREACHABLE_PLACE();
 }
 
 OpenGL_Effect::~OpenGL_Effect()

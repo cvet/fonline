@@ -900,7 +900,7 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         return a < b;
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
 static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
@@ -958,7 +958,7 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         return a == b;
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    UNREACHABLE_PLACE();
 }
 
 static CScriptDict* CScriptDict_Create(asITypeInfo* ti)

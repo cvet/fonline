@@ -99,7 +99,7 @@ public:
     ~LanguagePack() = default;
 
     [[nodiscard]] auto GetName() const noexcept -> const string&;
-    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const noexcept -> const TextPack&;
+    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const -> const TextPack&;
     [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
     [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
 

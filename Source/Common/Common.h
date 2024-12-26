@@ -75,6 +75,8 @@
 #define CPLUSPLUS_20 0
 #endif
 
+#define FO_SCRIPT_API extern
+
 // Standard API
 #include <algorithm>
 #include <any>
@@ -102,6 +104,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <optional>
 #include <random>
 #include <set>
@@ -273,12 +276,17 @@ inline constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
     }
 }
 
+inline auto hash_combine(size_t h1, size_t h2) -> size_t
+{
+    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+}
+
 struct pair_hash
 {
     template<typename T, typename U>
-    std::size_t operator()(const std::pair<T, U>& p) const noexcept
+    auto operator()(const std::pair<T, U>& v) const noexcept -> size_t
     {
-        return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
+        return hash_combine(std::hash<T> {}(v.first), std::hash<U> {}(v.second));
     }
 };
 
@@ -297,23 +305,29 @@ struct FMTNS::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatte
 template<typename T>
 struct strong_type
 {
-    using underlying_type = typename T::type;
+    using underlying_type = typename T::underlying_type;
     static constexpr bool is_strong_type = true;
     static constexpr const char* type_name = T::name;
+    static constexpr const char* underlying_type_name = T::underlying_type_name;
 
     constexpr strong_type() noexcept :
         _value {}
     {
     }
-
     constexpr explicit strong_type(underlying_type v) noexcept :
         _value {v}
     {
     }
+    strong_type(const strong_type&) = default;
+    strong_type(strong_type&&) noexcept = default;
+    auto operator=(const strong_type&) -> strong_type& = default;
+    auto operator=(strong_type&&) noexcept -> strong_type& = default;
+    ~strong_type() = default;
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != underlying_type {}; }
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
+    [[nodiscard]] constexpr auto operator<(const strong_type& other) const noexcept -> bool { return _value < other._value; }
     [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
     [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
@@ -333,9 +347,9 @@ template<typename T>
 constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 template<typename T>
-struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
+struct std::hash<strong_type<T>>
 {
-    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
+    auto operator()(const strong_type<T>& v) const noexcept -> size_t { return std::hash<typename strong_type<T>::underlying_type> {}(v.underlying_value()); }
 };
 
 template<typename T>
@@ -348,29 +362,32 @@ struct FMTNS::formatter<T, std::enable_if_t<is_strong_type_v<T>, char>> : format
     }
 };
 
-///@ ExportType ident ident_t uint HardStrong
+///@ ExportValueType ident ident_t HardStrong HasValueAccessor Layout = uint-value
 #define IDENT_T_NAME "ident"
 struct ident_t_traits
 {
     static constexpr const char* name = IDENT_T_NAME;
-    using type = uint;
+    static constexpr const char* underlying_type_name = "uint";
+    using underlying_type = uint;
 };
 using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
 static_assert(std::is_standard_layout_v<ident_t>);
 
-///@ ExportType tick_t tick_t uint RelaxedStrong
+///@ ExportValueType tick_t tick_t RelaxedStrong HasValueAccessor Layout = uint-value
 #define TICK_T_NAME "tick_t"
 struct tick_t_traits
 {
     static constexpr const char* name = TICK_T_NAME;
-    using type = uint;
+    static constexpr const char* underlying_type_name = "uint";
+    using underlying_type = uint;
 };
 using tick_t = strong_type<tick_t_traits>;
 static_assert(sizeof(tick_t) == sizeof(uint));
 static_assert(std::is_standard_layout_v<tick_t>);
 
 // Custom any as string
+// Todo: export any_t with ExportType
 class any_t : public string
 {
 };
@@ -812,6 +829,7 @@ private:
 #define STRONG_ASSERT(expr)
 #endif
 
+#define UNREACHABLE_PLACE() throw UnreachablePlaceException(__FILE__, __LINE__)
 #define UNKNOWN_EXCEPTION() ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
 
 // Common exceptions
@@ -1319,79 +1337,17 @@ struct TRect
     T Right {};
     T Bottom {};
 };
-using IRect = TRect<int>;
-using FRect = TRect<float>;
-
-template<typename T>
-struct TPoint
-{
-    TPoint() noexcept = default;
-    template<typename T2>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    TPoint(const TPoint<T2>& r) noexcept :
-        X(static_cast<T>(r.X)),
-        Y(static_cast<T>(r.Y))
-    {
-    }
-    TPoint(T x, T y) noexcept :
-        X(x),
-        Y(y)
-    {
-    }
-    TPoint(const TPoint& fp, T ox, T oy) noexcept :
-        X(fp.X + ox),
-        Y(fp.Y + oy)
-    {
-    }
-
-    template<typename T2>
-    auto operator=(const TPoint<T2>& fp) noexcept -> TPoint&
-    {
-        X = static_cast<T>(fp.X);
-        Y = static_cast<T>(fp.Y);
-        return *this;
-    }
-
-    void Clear() noexcept
-    {
-        X = 0;
-        Y = 0;
-    }
-
-    [[nodiscard]] auto IsZero() const noexcept -> bool { return !X && !Y; }
-
-    [[nodiscard]] auto operator[](int index) noexcept -> T&
-    {
-        switch (index) {
-        case 0:
-            return X;
-        case 1:
-            return Y;
-        default:
-            break;
-        }
-        return X;
-    }
-
-    [[nodiscard]] auto operator()(T x, T y) noexcept -> TPoint&
-    {
-        X = x;
-        Y = y;
-        return *this;
-    }
-
-    T X {};
-    T Y {};
-};
-using IPoint = TPoint<int>;
-using FPoint = TPoint<float>;
+using IRect = TRect<int>; // Todo: move IRect to irect
+using FRect = TRect<float>; // Todo: move FRect to frect
 
 // Color type
-///@ ExportType ucolor ucolor uint HardStrong
+///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint-value
 struct ucolor
 {
     using underlying_type = uint;
     static constexpr bool is_strong_type = true;
+    static constexpr const char* type_name = "ucolor";
+    static constexpr const char* underlying_type_name = "uint";
 
     constexpr ucolor() noexcept :
         rgba {}
@@ -1444,7 +1400,7 @@ static_assert(std::is_standard_layout_v<ucolor>);
 template<>
 struct std::hash<ucolor>
 {
-    size_t operator()(const ucolor& s) const noexcept { return std::hash<uint>()(s.rgba); }
+    auto operator()(const ucolor& v) const noexcept -> size_t { return std::hash<uint> {}(v.rgba); }
 };
 
 template<>
@@ -1455,7 +1411,6 @@ struct FMTNS::formatter<ucolor> : formatter<string_view>
     {
         string buf;
         FMTNS::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
-
         return formatter<string_view>::format(buf, ctx);
     }
 };
@@ -1503,7 +1458,7 @@ static_assert(std::is_standard_layout_v<hstring>);
 template<>
 struct std::hash<hstring>
 {
-    size_t operator()(const hstring& s) const noexcept { return std::hash<hstring::hash_t>()(s.as_hash()); }
+    auto operator()(const hstring& v) const noexcept -> size_t { return std::hash<hstring::hash_t> {}(v.as_hash()); }
 };
 
 template<>
@@ -1515,6 +1470,325 @@ struct FMTNS::formatter<hstring> : formatter<string_view>
         return formatter<string_view>::format(value.as_str(), ctx);
     }
 };
+
+// Plain data
+template<typename T>
+constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_type_v<T> && !std::is_same_v<T, any_t> && //
+    !std::is_same_v<T, string> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && //
+    !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value && !is_vector_v<T> && !is_map_v<T>;
+
+template<typename T>
+inline auto parse_from_string(const string& str) -> T;
+
+template<typename...>
+struct always_false : std::false_type
+{
+};
+
+template<typename T>
+inline auto parse_from_string(const string& str) -> T
+{
+    static_assert(always_false<T>::value, "No specialization exists for parse_from_string");
+}
+
+#define DECLARE_FORMATTER(type, ...) \
+    template<> \
+    struct FMTNS::formatter<type> : formatter<string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            string buf; \
+            FMTNS::format_to(std::back_inserter(buf), __VA_ARGS__); \
+            return formatter<string_view>::format(buf, ctx); \
+        } \
+    }
+
+#define DECLARE_TYPE_PARSER(type, ...) \
+    template<> \
+    inline auto parse_from_string<type>(const string& str) -> type \
+    { \
+        type value = {}; \
+        istringstream sstr {str}; \
+        __VA_ARGS__; \
+        return value; \
+    }
+
+// Position types
+///@ ExportValueType isize isize HardStrong Layout = int-width+int-height
+struct isize
+{
+    constexpr isize() noexcept = default;
+    constexpr isize(int width_, int height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> int { return width * height; }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
+    }
+
+    int width {};
+    int height {};
+};
+static_assert(std::is_standard_layout_v<isize>);
+static_assert(sizeof(isize) == 8);
+DECLARE_FORMATTER(isize, "{} {}", value.width, value.height);
+DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
+
+///@ ExportValueType ipos ipos HardStrong Layout = int-x+int-y
+struct ipos
+{
+    constexpr ipos() noexcept = default;
+    constexpr ipos(int x_, int y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
+
+    int x {};
+    int y {};
+};
+static_assert(std::is_standard_layout_v<ipos>);
+static_assert(sizeof(ipos) == 8);
+DECLARE_FORMATTER(ipos, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos, sstr >> value.x, sstr >> value.y);
+
+template<>
+struct std::hash<ipos>
+{
+    auto operator()(const ipos& v) const noexcept -> size_t { return hash_combine(std::hash<int> {}(v.x), std::hash<int> {}(v.y)); }
+};
+
+///@ ExportValueType irect irect HardStrong Layout = int-x+int-y+int-width+int-height
+struct irect
+{
+    constexpr irect() noexcept = default;
+    constexpr irect(ipos pos, isize size) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr irect(int x_, int y_, isize size) noexcept :
+        x {x_},
+        y {y_},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr irect(ipos pos, int width_, int height_) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr irect(int x_, int y_, int width_, int height_) noexcept :
+        x {x_},
+        y {y_},
+        width {width_},
+        height {height_}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && width == other.width; }
+    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || height != other.height || height != other.height; }
+
+    int x {};
+    int y {};
+    int width {};
+    int height {};
+};
+static_assert(std::is_standard_layout_v<irect>);
+static_assert(sizeof(irect) == 16);
+DECLARE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
+
+///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
+struct ipos16
+{
+    constexpr ipos16() noexcept = default;
+    constexpr ipos16(int16 x_, int16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x + other.x), static_cast<int16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x - other.x), static_cast<int16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x * other.x), static_cast<int16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x / other.x), static_cast<int16>(y / other.y)}; }
+
+    int16 x {};
+    int16 y {};
+};
+static_assert(std::is_standard_layout_v<ipos16>);
+static_assert(sizeof(ipos16) == 4);
+DECLARE_FORMATTER(ipos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
+
+///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-x+uint16-y
+struct upos16
+{
+    constexpr upos16() noexcept = default;
+    constexpr upos16(uint16 x_, uint16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const upos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x - other.x), static_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x * other.x), static_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x / other.x), static_cast<uint16>(y / other.y)}; }
+
+    uint16 x {};
+    uint16 y {};
+};
+static_assert(std::is_standard_layout_v<upos16>);
+static_assert(sizeof(upos16) == 4);
+DECLARE_FORMATTER(upos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
+
+///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-x+int8-y
+struct ipos8
+{
+    constexpr ipos8() noexcept = default;
+    constexpr ipos8(int8 x_, int8 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos8& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x + other.x), static_cast<int8>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x - other.x), static_cast<int8>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x * other.x), static_cast<int8>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x / other.x), static_cast<int8>(y / other.y)}; }
+
+    int8 x {};
+    int8 y {};
+};
+static_assert(std::is_standard_layout_v<ipos8>);
+static_assert(sizeof(ipos8) == 2);
+DECLARE_FORMATTER(ipos8, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
+
+///@ ExportValueType fsize fsize HardStrong Layout = float-width+float-height
+struct fsize
+{
+    constexpr fsize() noexcept = default;
+    constexpr fsize(float width_, float height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> float { return width * height; }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < width && pos.y < height;
+    }
+
+    float width {};
+    float height {};
+};
+static_assert(std::is_standard_layout_v<fsize>);
+static_assert(sizeof(fsize) == 8);
+DECLARE_FORMATTER(fsize, "{} {}", value.width, value.height);
+DECLARE_TYPE_PARSER(fsize, sstr >> value.width, sstr >> value.height);
+
+///@ ExportValueType fpos fpos HardStrong Layout = float-x+float-y
+struct fpos
+{
+    constexpr fpos() noexcept = default;
+    constexpr fpos(float x_, float y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const fpos& other) const noexcept -> fpos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const fpos& other) const noexcept -> fpos { return {x / other.x, y / other.y}; }
+
+    float x {};
+    float y {};
+};
+static_assert(std::is_standard_layout_v<fpos>);
+static_assert(sizeof(fpos) == 8);
+DECLARE_FORMATTER(fpos, "{} {}", value.x, value.y);
+DECLARE_TYPE_PARSER(fpos, sstr >> value.x, sstr >> value.y);
+
+///@ ExportValueType frect frect HardStrong Layout = float-x+float-y+float-width+float-height
+struct frect
+{
+    constexpr frect() noexcept = default;
+    constexpr frect(fpos pos, fsize size) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(float x_, float y_, fsize size) noexcept :
+        x {x_},
+        y {y_},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(fpos pos, float width_, float height_) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr frect(float x_, float y_, float width_, float height_) noexcept :
+        x {x_},
+        y {y_},
+        width {width_},
+        height {height_}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const frect& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+
+    float x {};
+    float y {};
+    float width {};
+    float height {};
+};
+static_assert(std::is_standard_layout_v<frect>);
+static_assert(sizeof(frect) == 16);
+DECLARE_FORMATTER(frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_PARSER(frect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
 
 // Generic constants
 // Todo: eliminate as much defines as possible
@@ -1934,53 +2208,109 @@ inline constexpr auto numeric_cast(U value) -> T
 {
     static_assert(std::is_arithmetic_v<T>);
     static_assert(std::is_arithmetic_v<U>);
-    static_assert(std::is_integral_v<T>);
-    static_assert(std::is_integral_v<U>);
 
     if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
     else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
     }
     else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
-        if (value < std::numeric_limits<T>::min()) {
-            throw OverflowException("Numeric cast underflow", value, std::numeric_limits<T>::min());
+        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::min());
         }
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
         if (value < 0) {
-            throw OverflowException("Numeric cast underflow", value, 0);
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
         }
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
         if (value < 0) {
-            throw OverflowException("Numeric cast underflow", value, 0);
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
         }
     }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
+        // Always fit
     }
     else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > std::numeric_limits<T>::max()) {
-            throw OverflowException("Numeric cast overflow", value, std::numeric_limits<T>::max());
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
 
     return static_cast<T>(value);
+}
+
+template<typename T, typename U>
+inline constexpr auto check_numeric_cast(U value) noexcept -> bool
+{
+    static_assert(std::is_arithmetic_v<T>);
+    static_assert(std::is_arithmetic_v<U>);
+
+    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            return false;
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            return false;
+        }
+        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
+            return false;
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        if (value < 0) {
+            return false;
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            return false;
+        }
+        if (value < 0) {
+            return false;
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            return false;
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // Lerp
@@ -2031,11 +2361,44 @@ public:
 
 DECLARE_EXCEPTION(EnumResolveException);
 
+struct BaseTypeInfo
+{
+    using StructLayoutEntry = pair<string, BaseTypeInfo>;
+    using StructLayoutInfo = std::vector<StructLayoutEntry>;
+
+    string TypeName {};
+    bool IsString {};
+    bool IsHash {};
+    bool IsEnum {};
+    bool IsEnumSigned {};
+    bool IsPrimitive {}; // IsInt or IsFloat or IsBool
+    bool IsInt {};
+    bool IsSignedInt {};
+    bool IsInt8 {};
+    bool IsInt16 {};
+    bool IsInt32 {};
+    bool IsInt64 {};
+    bool IsUInt8 {};
+    bool IsUInt16 {};
+    bool IsUInt32 {};
+    bool IsUInt64 {};
+    bool IsFloat {};
+    bool IsSingleFloat {};
+    bool IsDoubleFloat {};
+    bool IsBool {};
+    bool IsStruct {};
+    const StructLayoutInfo* StructLayout {};
+    size_t Size {};
+};
+
 class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
     // Todo: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
+    [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
+    [[nodiscard]] virtual auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
+    [[nodiscard]] virtual auto GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
@@ -2121,7 +2484,7 @@ public:
     void AddJob(Job job);
     void AddJob(time_duration delay, Job job);
     void Clear();
-    void Wait();
+    void Wait() const;
 
 private:
     void AddJobInternal(time_duration delay, Job job, bool no_notify);
@@ -2134,7 +2497,7 @@ private:
     bool _jobActive {};
     mutable std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
-    std::condition_variable _doneSignal {};
+    mutable std::condition_variable _doneSignal {};
     bool _clearJobs {};
     bool _finish {};
 };

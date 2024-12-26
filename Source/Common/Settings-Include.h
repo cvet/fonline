@@ -133,8 +133,7 @@ VARIABLE_SETTING(int, ScreenHeight, 768);
 FIXED_SETTING(int, MonitorWidth, 0); // Auto
 FIXED_SETTING(int, MonitorHeight, 0); // Auto
 VARIABLE_SETTING(int, ScreenHudHeight, 0);
-VARIABLE_SETTING(int, ScrOx, 0);
-VARIABLE_SETTING(int, ScrOy, 0);
+VARIABLE_SETTING(ipos, ScreenOffset, 0, 0);
 VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
@@ -289,8 +288,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(InputSettings, virtual DummySettings);
 VARIABLE_SETTING(uint, DoubleClickTime, 500);
 VARIABLE_SETTING(uint, ConsoleHistorySize, 100);
-VARIABLE_SETTING(int, MouseX, 0);
-VARIABLE_SETTING(int, MouseY, 0);
+VARIABLE_SETTING(ipos, MousePos, 0, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

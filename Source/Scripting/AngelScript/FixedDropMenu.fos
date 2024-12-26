@@ -71,15 +71,14 @@ class FixedDropMenu : Gui::IDropMenu
     void Draw()
     {
         if (ShowButtons.length() > 0) {
-            int x = Settings.MouseX + 20; // Todo: rework to actual cursor size
-            int y = Settings.MouseY + 20;
+            ipos pos = Settings.MousePos + ipos(20, 20); // Todo: rework to actual cursor size
             int activeIndex = PressedOffsetY / ButtonHeight;
             activeIndex = Math::Clamp(activeIndex, 0, int(ShowButtons.length()) - 1);
             for (uint i = 0; i < ShowButtons.length(); i++) {
                 DropButton button = ShowButtons[i];
                 Sprite::Sprite pic = (int(i) == activeIndex ? button.PicActive : button.PicNormal);
-                pic.Draw(x, y);
-                y += ButtonHeight;
+                pic.Draw(pos);
+                pos.y += ButtonHeight;
             }
         }
     }
@@ -120,19 +119,19 @@ class FixedDropMenu : Gui::IDropMenu
         }
     }
 
-    bool PreMouseMove(int offsetX, int offsetY)
+    bool PreMouseMove(ipos offset)
     {
         if (Pressed) {
-            if (offsetX != 0 || offsetY != 0) {
-                PressedOffsetY += offsetY;
-                Game.SetMousePos(Settings.MouseX - offsetX, Settings.MouseY - offsetY);
+            if (offset != ipos()) {
+                PressedOffsetY += offset.y;
+                Game.SetMousePos(Settings.MousePos - offset);
             }
             return true;
         }
         return false;
     }
 
-    void PostMouseMove(int offsetX, int offsetY)
+    void PostMouseMove(ipos offset)
     {
         if (Cursor == Settings.Cursor) {
             Entity prevEntity = SafeSelectedEntity;
@@ -146,13 +145,13 @@ class FixedDropMenu : Gui::IDropMenu
                 }
             }
             else if (CurMap != null && (screen == null || !screen.IsModal)) {
-                Entity entity = CurMap.GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
+                Entity entity = CurMap.GetEntityAtScreenPos(Settings.MousePos);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null)) {
                     SelectedEntity = entity;
                 }
             }
 
-            if (prevEntity !is SafeSelectedEntity || offsetX != 0 || offsetY != 0) {
+            if (prevEntity !is SafeSelectedEntity || offset != ipos()) {
                 MouseStayTick = Game.GetTick();
                 ShowButtons.clear();
             }

@@ -62,10 +62,10 @@ public:
 
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
 
-    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir) -> NON_NULL Critter*;
+    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> NON_NULL Critter*;
     void DestroyCritter(Critter* cr);
     void DestroyInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;

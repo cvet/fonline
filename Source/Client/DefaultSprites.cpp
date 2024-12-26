@@ -47,15 +47,16 @@ AtlasSprite::~AtlasSprite()
 #if 0 // For debug purposes
     if constexpr (FO_DEBUG) {
         try {
-            const auto rnd_color = COLOR_RGB(GenericUtils::Random(0, 255), GenericUtils::Random(0, 255), GenericUtils::Random(0, 255));
+            const auto rnd_color = ucolor {static_cast<uint8>(GenericUtils::Random(0, 255)), static_cast<uint8>(GenericUtils::Random(0, 255)), static_cast<uint8>(GenericUtils::Random(0, 255))};
 
-            vector<uint> color_data;
-            color_data.resize(static_cast<size_t>(AtlasNode->Width) * AtlasNode->Height);
+            vector<ucolor> color_data;
+            color_data.resize(AtlasNode->Size.GetSquare());
+
             for (size_t i = 0; i < color_data.size(); i++) {
                 color_data[i] = rnd_color;
             }
 
-            Atlas->MainTex->UpdateTextureRegion({AtlasNode->PosX, AtlasNode->PosY, AtlasNode->PosX + AtlasNode->Width, AtlasNode->PosY + AtlasNode->Height}, color_data.data());
+            Atlas->MainTex->UpdateTextureRegion(AtlasNode->Pos, AtlasNode->Size, color_data.data());
         }
         catch (...) {
         }
@@ -67,16 +68,16 @@ AtlasSprite::~AtlasSprite()
     }
 }
 
-auto AtlasSprite::IsHitTest(int x, int y) const -> bool
+auto AtlasSprite::IsHitTest(ipos pos) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (x < 0 || y < 0 || x >= Width || y >= Height) {
+    if (!Size.IsValidPos(pos)) {
         return false;
     }
 
     if (!HitTestData.empty()) {
-        return HitTestData[y * Width + x];
+        return HitTestData[pos.y * Size.width + pos.x];
     }
     else {
         return false;
@@ -161,11 +162,11 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
     }
 }
 
-auto SpriteSheet::IsHitTest(int x, int y) const -> bool
+auto SpriteSheet::IsHitTest(ipos pos) const -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return GetCurSpr()->IsHitTest(x, y);
+    return GetCurSpr()->IsHitTest(pos);
 }
 
 auto SpriteSheet::GetBatchTex() const -> RenderTexture*
@@ -197,10 +198,8 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
     auto&& copy = std::make_shared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
 
-    copy->Width = Width;
-    copy->Height = Height;
-    copy->OffsX = OffsX;
-    copy->OffsY = OffsY;
+    copy->Size = Size;
+    copy->Offset = Offset;
 
     for (size_t i = 0; i < Spr.size(); i++) {
         copy->Spr[i] = Spr[i]->MakeCopy();
@@ -331,10 +330,8 @@ void SpriteSheet::RefreshParams()
 
     const auto* cur_spr = GetCurSpr();
 
-    Width = cur_spr->Width;
-    Height = cur_spr->Height;
-    OffsX = cur_spr->OffsX;
-    OffsY = cur_spr->OffsY;
+    Size = cur_spr->Size;
+    Offset = cur_spr->Offset;
 }
 
 auto SpriteSheet::GetSpr(uint num_frm) const -> const Sprite*
@@ -398,8 +395,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             const auto ox = file.GetLEShort();
             const auto oy = file.GetLEShort();
 
-            dir_anim->OffsX = ox;
-            dir_anim->OffsY = oy;
+            dir_anim->Offset.x = ox;
+            dir_anim->Offset.y = oy;
 
             for (uint16 i = 0; i < frames_count; i++) {
                 const auto is_spr_ref = file.GetUChar();
@@ -412,18 +409,18 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     auto&& spr = std::make_shared<AtlasSprite>(_sprMngr);
 
-                    spr->Width = width;
-                    spr->Height = height;
-                    spr->OffsX = ox;
-                    spr->OffsY = oy;
-                    dir_anim->SprOffset[i].X = nx;
-                    dir_anim->SprOffset[i].Y = ny;
+                    spr->Size.width = width;
+                    spr->Size.height = height;
+                    spr->Offset.x = ox;
+                    spr->Offset.y = oy;
+                    dir_anim->SprOffset[i].x = nx;
+                    dir_anim->SprOffset[i].y = ny;
 
                     FillAtlas(spr.get(), atlas_type, reinterpret_cast<const ucolor*>(data));
 
                     if (i == 0) {
-                        dir_anim->Width = width;
-                        dir_anim->Height = height;
+                        dir_anim->Size.width = width;
+                        dir_anim->Size.height = height;
                     }
 
                     dir_anim->Spr[i] = spr;
@@ -462,10 +459,10 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         auto&& spr = std::make_shared<AtlasSprite>(_sprMngr);
 
-        spr->Width = width;
-        spr->Height = height;
-        spr->OffsX = ox;
-        spr->OffsY = oy;
+        spr->Size.width = width;
+        spr->Size.height = height;
+        spr->Offset.x = ox;
+        spr->Offset.y = oy;
 
         FillAtlas(spr.get(), atlas_type, reinterpret_cast<const ucolor*>(data));
 
@@ -484,47 +481,44 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
 
     RUNTIME_ASSERT(atlas_spr);
 
-    const auto width = atlas_spr->Width;
-    const auto height = atlas_spr->Height;
+    const auto size = atlas_spr->Size;
 
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
+    RUNTIME_ASSERT(size.width > 0);
+    RUNTIME_ASSERT(size.height > 0);
 
-    int x = 0;
-    int y = 0;
-    auto&& [atlas, atlas_node] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, width, height, x, y);
+    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, size);
 
     // Refresh texture
     if (data != nullptr) {
         auto* tex = atlas->MainTex;
-        tex->UpdateTextureRegion(IRect(x, y, x + width, y + height), data);
+        tex->UpdateTextureRegion(pos, size, data);
 
         // 1px border for correct linear interpolation
         // Top
-        tex->UpdateTextureRegion(IRect(x, y - 1, x + width, y), data);
+        tex->UpdateTextureRegion({pos.x, pos.y - 1}, {size.width, 1}, data);
 
         // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + height, x + width, y + height + 1), data + static_cast<size_t>(height - 1) * width);
+        tex->UpdateTextureRegion({pos.x, pos.y + size.height}, {size.width, 1}, data + static_cast<size_t>(size.height - 1) * size.width);
 
         // Left
-        for (int i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * width);
+        for (int i = 0; i < size.height; i++) {
+            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * size.width);
         }
         _borderBuf[0] = _borderBuf[1];
-        _borderBuf[height + 1] = _borderBuf[height];
-        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + height + 1), _borderBuf.data());
+        _borderBuf[size.height + 1] = _borderBuf[size.height];
+        tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, _borderBuf.data());
 
         // Right
-        for (int i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * width + (width - 1));
+        for (int i = 0; i < size.height; i++) {
+            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * size.width + (size.width - 1));
         }
         _borderBuf[0] = _borderBuf[1];
-        _borderBuf[height + 1] = _borderBuf[height];
-        tex->UpdateTextureRegion(IRect(x + width, y - 1, x + width + 1, y + height + 1), _borderBuf.data());
+        _borderBuf[size.height + 1] = _borderBuf[size.height];
+        tex->UpdateTextureRegion({pos.x + size.width, pos.y - 1}, {1, size.height + 2}, _borderBuf.data());
 
         // Evaluate hit mask
-        atlas_spr->HitTestData.resize(static_cast<size_t>(width) * height);
-        for (size_t i = 0, j = static_cast<size_t>(width) * height; i < j; i++) {
+        atlas_spr->HitTestData.resize(static_cast<size_t>(size.width) * size.height);
+        for (size_t i = 0, j = static_cast<size_t>(size.width) * size.height; i < j; i++) {
             atlas_spr->HitTestData[i] = data[i].comp.a > 0;
         }
     }
@@ -537,8 +531,8 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
     // Set parameters
     atlas_spr->Atlas = atlas;
     atlas_spr->AtlasNode = atlas_node;
-    atlas_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    atlas_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    atlas_spr->AtlasRect.Right = static_cast<float>(x + width) / static_cast<float>(atlas->Width);
-    atlas_spr->AtlasRect.Bottom = static_cast<float>(y + height) / static_cast<float>(atlas->Height);
+    atlas_spr->AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
+    atlas_spr->AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
+    atlas_spr->AtlasRect.Right = static_cast<float>(pos.x + size.width) / static_cast<float>(atlas->Size.width);
+    atlas_spr->AtlasRect.Bottom = static_cast<float>(pos.y + size.height) / static_cast<float>(atlas->Size.height);
 }

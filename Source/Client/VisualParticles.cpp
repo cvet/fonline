@@ -158,7 +158,7 @@ void ParticleSystem::SetBaseSystem(SPK::System* system)
     _impl->BaseSystem = system;
 }
 
-auto ParticleSystem::GetDrawSize() const -> tuple<int, int>
+auto ParticleSystem::GetDrawSize() const -> isize
 {
     STACK_TRACE_ENTRY();
 

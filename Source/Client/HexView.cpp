@@ -45,14 +45,14 @@ HexView::HexView(MapView* map) :
     STACK_TRACE_ENTRY();
 }
 
-auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*
+auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& mspr = list.AddSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &_curAlpha, &DrawEffect, &_mapSprValid);
+    const auto hex_offset = ipos {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
+    auto& mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
@@ -62,14 +62,14 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx
     return _mapSpr;
 }
 
-auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx, uint16 hy, const int* sx, const int* sy) -> MapSprite*
+auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& mspr = list.InsertSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &_curAlpha, &DrawEffect, &_mapSprValid);
+    const auto hex_offset = ipos {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
+    auto& mspr = list.InsertSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
@@ -137,9 +137,9 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GameplayTime();
-        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
+        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
 
-        if ((_fadeUp && fading_proc == 100) || (!_fadeUp && fading_proc == 0)) {
+        if (fading_proc == 100) {
             _fading = false;
         }
 

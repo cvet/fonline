@@ -61,31 +61,27 @@ class Sprite
     }
 
     // alignX/Y = -1 left / top, 0 center, 1 right / bottom
-    void Draw(int x, int y, int width = 0, int height = 0, int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None,
-              ucolor color = ZERO_UCOLOR)
+    void Draw(ipos pos, isize size = isize(), int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None, ucolor color = ZERO_UCOLOR)
     {
         if (Id == 0 || Hidden) {
             return;
         }
 
-        if (width == 0) {
-            width = Width;
-        }
-        if (height == 0) {
-            height = Height;
+        if (size == isize()) {
+            size = Size;
         }
 
         if (alignX == 0) {
-            x -= width / 2;
+            pos.x -= size.width / 2;
         }
         else if (alignX == 1) {
-            x -= width;
+            pos.x -= size.width;
         }
         if (alignY == 0) {
-            y -= height / 2;
+            pos.y -= size.height / 2;
         }
         else if (alignY == 1) {
-            y -= height;
+            pos.y -= size.height;
         }
 
         if (color == ZERO_UCOLOR) {
@@ -94,19 +90,20 @@ class Sprite
 
         switch (layout != SpriteLayout::None ? layout : Layout) {
         case SpriteLayout::Tile:
-            Game.DrawSpritePattern(Id, x, y, width, height, Width, Height, color);
+            Game.DrawSpritePattern(Id, pos, size, Size, color);
             break;
         case SpriteLayout::Center:
-            Game.DrawSprite(Id, x + width / 2 - Width / 2, y + height / 2 - Height / 2, color, false);
+            Game.DrawSpritePattern(Id, pos, size, Size, color);
+            Game.DrawSprite(Id, ipos(pos.x + size.width / 2 - Size.width / 2, pos.y + size.height / 2 - Size.height / 2), color, false);
             break;
         case SpriteLayout::Stretch:
-            Game.DrawSprite(Id, x, y, width, height, color, false, false);
+            Game.DrawSprite(Id, pos, size, color, false, false);
             break;
         case SpriteLayout::Zoom:
-            Game.DrawSprite(Id, x, y, width, height, color, true, false);
+            Game.DrawSprite(Id, pos, size, color, true, false);
             break;
         default:
-            Game.DrawSprite(Id, x, y, color, false);
+            Game.DrawSprite(Id, pos, color, false);
             break;
         }
     }
@@ -160,19 +157,16 @@ class Sprite
     void RefreshData()
     {
         if (Id != 0) {
-            Width = Game.GetSpriteWidth(Id);
-            Height = Game.GetSpriteHeight(Id);
+            Size = Game.GetSpriteSize(Id);
         }
         else {
-            Width = 0;
-            Height = 0;
+            Size = isize();
         }
     }
 
     uint Id = 0;
     SpriteLayout Layout = SpriteLayout::None;
-    int Width = 0;
-    int Height = 0;
+    isize Size;
     uint Ticks = 0;
     bool Hidden = false;
     hstring LoadedName;

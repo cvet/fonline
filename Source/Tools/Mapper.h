@@ -76,8 +76,7 @@ public:
 
     struct EntityBuf
     {
-        uint16 HexX {};
-        uint16 HexY {};
+        mpos Hex {};
         bool IsCritter {};
         bool IsItem {};
         const ProtoEntity* Proto {};
@@ -150,6 +149,7 @@ public:
     auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
     void ProcessMapperInput();
+    void DrawStr(const IRect& rect, string_view str, uint flags, ucolor color, int num_font);
 
     void CurDraw();
     void CurRMouseUp();
@@ -159,7 +159,7 @@ public:
     auto IsCurInRect(const IRect& rect) const -> bool;
     auto IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int ax, int ay) const -> bool;
     auto IsCurInInterface() const -> bool;
-    auto GetCurHex(uint16& hx, uint16& hy, bool ignore_interface) -> bool;
+    auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
 
     void IntDraw();
     void IntLMouseDown();
@@ -173,20 +173,20 @@ public:
     auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
 
-    void MoveEntity(ClientEntity* entity, uint16 hx, uint16 hy);
+    void MoveEntity(ClientEntity* entity, mpos hex);
     void DeleteEntity(ClientEntity* entity);
     void SelectClear();
     void SelectAddItem(ItemHexView* item);
     void SelectAddCrit(CritterView* npc);
-    void SelectAddTile(uint16 hx, uint16 hy, bool is_roof);
+    void SelectAddTile(mpos hex, bool is_roof);
     void SelectAdd(ClientEntity* entity);
     void SelectErase(ClientEntity* entity);
     void SelectAll();
     auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
     void SelectDelete();
 
-    auto CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*;
-    auto CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*;
+    auto CreateCritter(hstring pid, mpos hex) -> CritterView*;
+    auto CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*;
     auto CloneEntity(Entity* entity) -> Entity*;
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
 
@@ -217,7 +217,7 @@ public:
 
     void DrawIfaceLayer(uint layer);
 
-    auto GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>;
+    auto GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>;
 
     ///@ ExportEvent
     ENTITY_EVENT(OnConsoleMessage, string& /*text*/);
@@ -247,12 +247,9 @@ public:
     int IntY {};
     int IntVectX {};
     int IntVectY {};
-    uint16 SelectHexX1 {};
-    uint16 SelectHexY1 {};
-    uint16 SelectHexX2 {};
-    uint16 SelectHexY2 {};
-    int SelectX {};
-    int SelectY {};
+    mpos SelectHex1 {};
+    mpos SelectHex2 {};
+    ipos SelectPos {};
     int SelectType {};
     bool IntVisible {};
     bool IntFix {};
@@ -313,8 +310,7 @@ public:
     bool IsSelectCrit {};
     bool IsSelectTile {};
     bool IsSelectRoof {};
-    int BefferHexX {};
-    int BefferHexY {};
+    ipos BufferRawHex {};
     vector<ClientEntity*> SelectedEntities {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};

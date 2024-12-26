@@ -42,7 +42,7 @@
 
 struct RenderTarget
 {
-    enum class SizeType
+    enum class SizeKindType
     {
         Custom,
         Screen,
@@ -51,10 +51,9 @@ struct RenderTarget
 
     unique_ptr<RenderTexture> MainTex {};
     RenderEffect* CustomDrawEffect {};
-    SizeType Size {};
-    int BaseWidth {};
-    int BaseHeight {};
-    vector<tuple<int, int, ucolor>> LastPixelPicks {};
+    SizeKindType SizeKind {};
+    isize BaseSize {};
+    vector<tuple<ipos, ucolor>> LastPixelPicks {};
 };
 
 class RenderTargetManager
@@ -69,8 +68,8 @@ public:
     auto operator=(RenderTargetManager&&) noexcept -> RenderTargetManager& = delete;
     ~RenderTargetManager() = default;
 
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
-    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> ucolor;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
 
     void PushRenderTarget(RenderTarget* rt);

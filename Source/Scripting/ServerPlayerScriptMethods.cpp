@@ -36,25 +36,25 @@
 #include "Server.h"
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Player_SwitchCritter(Player* self, Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] Critter* Server_Player_GetControlledCritter(Player* self)
+FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
 {
     return self->GetControlledCritter();
 }
 
 ///@ ExportMethod
-[[maybe_unused]] int Server_Player_GetAccess(Player* self)
+FO_SCRIPT_API int Server_Player_GetAccess(Player* self)
 {
     return self->Access;
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Player_SetAccess(Player* self, int access)
+FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int access)
 {
     if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
         throw ScriptException("Wrong access type");
@@ -74,25 +74,25 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, string_view text)
+FO_SCRIPT_API void Server_Player_Message(Player* self, string_view text)
 {
     self->Send_Text(nullptr, text, SAY_NETMSG);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr)
+FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, uint numStr)
 {
     self->Send_TextMsg(nullptr, SAY_NETMSG, textPack, numStr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, TextPackName textPack, uint numStr, string_view lexems)
+FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, uint numStr, string_view lexems)
 {
     self->Send_TextMsgLex(nullptr, SAY_NETMSG, textPack, numStr, lexems);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Player_IsWebConnected(Player* self)
+FO_SCRIPT_API bool Server_Player_IsWebConnected(Player* self)
 {
     return self->Connection->IsWebConnection();
 }

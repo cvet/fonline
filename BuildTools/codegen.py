@@ -137,11 +137,11 @@ genFileList = ['EmbeddedResources-Include.h',
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
-        'ExportType': [], # (name, native type, underlying type, representation type, [flags], [comment])
+        'ExportValueType': [], # (name, native type, representation type, [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
-        'ExportObject': [], # (target, name, [(type, name, [comment])], [(name, ret, [(type, name)], [comment])], [flags], [comment])
+        'ExportRefType': [], # (target, name, [(type, name, [comment])], [(name, ret, [(type, name)], [comment])], [flags], [comment])
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
         'Entity': [], # (target, name, [flags], [comment])
@@ -261,7 +261,7 @@ def parseMetaFile(absPath):
                             if lines[i].lstrip().startswith('};'):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
                                 break
-                    elif tagName == 'ExportType':
+                    elif tagName == 'ExportValueType':
                         tagContext = True
                     elif tagName == 'ExportProperty':
                         tagContext = lines[lineIndex + 1].strip()
@@ -279,7 +279,7 @@ def parseMetaFile(absPath):
                                 className = lines[i][6:lines[i].find(' ', 6)]
                                 tagContext = className + ' ' + lines[lineIndex + 1].strip()
                                 break
-                    elif tagName == 'ExportObject':
+                    elif tagName == 'ExportRefType':
                         for i in range(lineIndex + 1, len(lines)):
                             if lines[i].startswith('};'):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
@@ -321,7 +321,7 @@ for absPath in metaFiles:
 
 checkErrors()
 
-userObjects = set()
+refTypes = set()
 scriptEnums = set()
 engineEnums = set()
 customTypes = set()
@@ -370,8 +370,6 @@ def parseTags():
             return 'predicate.' + unifiedTypeToMetaType(t[10:])
         if t.startswith('callback-'):
             return 'callback.' + unifiedTypeToMetaType(t[9:])
-        if t.startswith('ObjInfo-'):
-            return t.replace('-', '.')
         if t.startswith('ScriptFunc-'):
             fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFunc-'):].split('|') if a]
             genericFuncdefs.add('|'.join(fd))
@@ -408,8 +406,6 @@ def parseTags():
         elif t.startswith('PredicateFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'predicate-' + r
-        elif t.startswith('ObjInfo<'):
-            return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
         elif t.startswith('ScriptFunc<'):
             fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
             return 'ScriptFunc-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
@@ -436,7 +432,7 @@ def parseTags():
             return t
         elif t[-1] == '*' and t not in typeMap:
             tt = t[:-1]
-            if tt in userObjects or tt in entityRelatives:
+            if tt in refTypes or tt in entityRelatives:
                 return tt
             for ename, einfo in gameEntitiesInfo.items():
                 if tt == einfo['Server'] or tt == einfo['Client']:
@@ -508,7 +504,7 @@ def parseTags():
     def parseTypeTags2():
         global codeGenTags
         
-        for tagMeta in tagsMetas['ExportType']:
+        for tagMeta in tagsMetas['ExportValueType']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
@@ -516,13 +512,14 @@ def parseTags():
                 
                 name = tok[0]
                 ntype = tok[1]
-                utype = tok[2]
-                rtype = tok[3]
+                rtype = tok[2]
                 exportFlags = tok[3:]
                 
                 assert rtype in ['RelaxedStrong', 'HardStrong'], 'Wrong type type'
+                assert 'Layout' in exportFlags, 'No Layout specified in ExportValueType'
+                assert exportFlags[exportFlags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
                 
-                codeGenTags['ExportType'].append((name, ntype, utype, rtype, exportFlags, comment))
+                codeGenTags['ExportValueType'].append((name, ntype, rtype, exportFlags, comment))
                 assert name not in validTypes, 'Type already in valid types'
                 validTypes.add(name)
                 assert name not in customTypes, 'Type already in custom types'
@@ -531,7 +528,7 @@ def parseTags():
                 customTypesNativeMap[ntype] = name
                 
             except Exception as ex:
-                showError('Invalid tag ExportType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+                showError('Invalid tag ExportValueType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
 
         for tagMeta in tagsMetas['Enum']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -707,7 +704,7 @@ def parseTags():
     def parseTypeTags3():
         global codeGenTags
         
-        for tagMeta in tagsMetas['ExportObject']:
+        for tagMeta in tagsMetas['ExportRefType']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
@@ -721,8 +718,8 @@ def parseTags():
                 assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in first line'
                 assert firstLineTok[0] in ['class', 'struct'], 'Expected class/struct'
                 
-                objName = firstLineTok[1]
-                assert objName not in validTypes
+                refTypeName = firstLineTok[1]
+                assert refTypeName not in validTypes
                 
                 assert tagContext[1].startswith('{')
                 
@@ -753,13 +750,13 @@ def parseTags():
                         else:
                             methods.append((lTok[1], 'void', [], []))
                 
-                codeGenTags['ExportObject'].append((target, objName, fields, methods, exportFlags, comment))
+                codeGenTags['ExportRefType'].append((target, refTypeName, fields, methods, exportFlags, comment))
                 
-                validTypes.add(objName)
-                userObjects.add(objName)
+                validTypes.add(refTypeName)
+                refTypes.add(refTypeName)
                 
             except Exception as ex:
-                showError('Invalid tag ExportObject', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+                showError('Invalid tag ExportRefType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
         
         for tagMeta in tagsMetas['EntityHolder']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -1082,7 +1079,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                name = tokenize(tagContext)[1]
+                name = tokenize(tagContext)[2]
                 assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
@@ -1376,8 +1373,6 @@ def metaTypeToUnifiedType(t):
         r = 'callback-' + metaTypeToUnifiedType(tt[1])
     elif tt[0] == 'predicate':
         r = 'predicate-' + metaTypeToUnifiedType(tt[1])
-    elif tt[0] == 'ObjInfo':
-        return 'ObjInfo-' + tt[1]
     elif tt[0] == 'ScriptFunc':
         return 'ScriptFunc-' + ', '.join([metaTypeToUnifiedType(a) for a in '.'.join(tt[1:]).split('|') if a])
     elif tt[0] == 'Entity':
@@ -1386,7 +1381,7 @@ def metaTypeToUnifiedType(t):
         r = tt[0]
     elif tt[0] in scriptEnums:
         r = tt[0]
-    elif tt[0] in userObjects or tt[0] in entityRelatives:
+    elif tt[0] in refTypes or tt[0] in entityRelatives:
         r = tt[0]
     else:
         def mapType(mt):
@@ -1413,8 +1408,6 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
     elif tt[0] == 'predicate':
         assert passIn
         r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
-    elif tt[0] == 'ObjInfo':
-        return 'ObjInfo<' + tt[1] + '>'
     elif tt[0] == 'ScriptFunc':
         return 'ScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
     elif tt[0] == 'Entity':
@@ -1431,10 +1424,10 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
             if e[0] == tt[0]:
                 return 'ScriptEnum_' + e[1]
         assert False, 'Enum not found ' + tt[0]
-    elif tt[0] in userObjects or tt[0] in entityRelatives:
+    elif tt[0] in refTypes or tt[0] in entityRelatives:
         r = tt[0] + '*'
     elif tt[0] in customTypes:
-        for e in codeGenTags['ExportType']:
+        for e in codeGenTags['ExportValueType']:
             if e[0] == tt[0]:
                 r = e[1]
                 break
@@ -1551,7 +1544,7 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('// Enums')
     for e in codeGenTags['ExportEnum']:
         gname, utype, keyValues, _, _ = e
-        registerLines.append('engine->RegisterEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+        registerLines.append('engine->RegisterEnumGroup("' + gname + '", engine->ResolveBaseType("' + utype + '"),')
         registerLines.append('{')
         for kv in keyValues:
             registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
@@ -1560,13 +1553,24 @@ def genDataRegistration(target, isASCompiler):
     if target != 'Client' or isASCompiler:
         for e in codeGenTags['Enum']:
             gname, utype, keyValues, _, _ = e
-            registerLines.append('engine->RegisterEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+            registerLines.append('engine->RegisterEnumGroup("' + gname + '", engine->ResolveBaseType("' + utype + '"),')
             registerLines.append('{')
             for kv in keyValues:
                 registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
             registerLines.append('});')
             registerLines.append('')
     
+    # Exported types
+    registerLines.append('// Exported types')
+    for et in codeGenTags['ExportValueType']:
+        name, ntype, rtype, flags, _ = et
+        registerLines.append('engine->RegisterValueType("' + name + '", sizeof(' + ntype + '), {')
+        for layoutEntry in ''.join(flags[flags.index('Layout') + 2:]).split('+'):
+            type, name = layoutEntry.split('-')
+            registerLines.append('    {"' + name + '", engine->ResolveBaseType("' + type + '")},')
+        registerLines.append('});')
+        registerLines.append('')
+
     # Entity types
     registerLines.append('// Entity types')
     registerLines.append('unordered_map<string, PropertyRegistrator*> registrators;')
@@ -1593,72 +1597,7 @@ def genDataRegistration(target, isASCompiler):
     
     # Properties
     def getRegisterFlags(t, name, access, baseFlags):
-        def getUnderlyingType(t):
-            if t in engineEnums:
-                for e in codeGenTags['ExportEnum']:
-                    if e[0] == t:
-                        return e[1]
-                assert False, 'Invalid underlying type ' + t
-            if t in scriptEnums:
-                for e in codeGenTags['Enum']:
-                    if e[0] == t:
-                        return e[1]
-                assert False, 'Invalid underlying type ' + t
-            if t in customTypes:
-                for e in codeGenTags['ExportType']:
-                    if e[0] == t:
-                        return e[2]
-                assert False, 'Invalid underlying type ' + t
-            if t == 'hstring':
-                return 'uint'
-            return t if t in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'bool', 'float', 'double'] else None
-        def getTypeSize(t):
-            if t in ['int8', 'uint8', 'bool']:
-                return '1'
-            elif t in ['int16', 'uint16']:
-                return '2'
-            elif t in ['int', 'uint', 'float']:
-                return '4'
-            elif t in ['int64', 'uint64', 'double']:
-                return '8'
-            elif t is None:
-                return '0'
-            else:
-                assert False, 'Unknown type size ' + t
-        tt = t.split('.')
-        bt = tt[-1]
-        if tt[0] == 'dict':
-            dt = 'Dict'
-        elif tt[0] == 'arr':
-            dt = 'Array'
-        elif bt in ['string', 'any']:
-            dt = 'String'
-        else:
-            dt = 'PlainData'
-        ut = getUnderlyingType(bt)
-        r = [name, access, dt, bt]
-        r.append(getTypeSize(ut)) # type size
-        r.append('1' if bt == 'hstring' else '0') # is hash
-        r.append('1' if bt in scriptEnums | engineEnums else '0') # is enum
-        r.append('1' if ut in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64'] else '0') # is int
-        r.append('1' if ut in ['int8', 'int16', 'int', 'int64'] else '0') # is signed int
-        r.append('1' if ut in ['float', 'double'] else '0') # is float
-        r.append('1' if ut in ['bool'] else '0') # is bool
-        if dt == 'Array':
-            r.append('1' if bt in ['string', 'any'] else '0') # is array of string
-        elif dt == 'Dict':
-            btKey = tt[1]
-            isDictArr = tt[2] == 'arr'
-            r.append('1' if isDictArr else '0') # is dict of array
-            r.append('1' if not isDictArr and bt in ['string', 'any'] else '0') # is dict of string
-            r.append('1' if isDictArr and bt in ['string', 'any'] else '0') # is dict of array of string
-            utKey = getUnderlyingType(btKey)
-            r.append(btKey) # key type name
-            r.append(getTypeSize(utKey)) # key size
-            r.append('1' if btKey == 'string' else '0') # is key string
-            r.append('1' if btKey == 'hstring' else '0') # is key hash
-            r.append('1' if btKey in scriptEnums | engineEnums else '0') # is key enum
-        return r + baseFlags
+        return [name, access, t] + baseFlags
     for entity in gameEntities:
         if not entityAllowed(entity, target):
             continue
@@ -1886,16 +1825,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     return gameEntitiesInfo[tt[0]]['Client'] + '*'
                 else:
                     return gameEntitiesInfo[tt[0]]['Server'] + '*'
-            elif tt[0] in userObjects or tt[0] in entityRelatives:
+            elif tt[0] in refTypes or tt[0] in entityRelatives:
                 return tt[0] + '*'
             elif tt[0] in scriptEnums or tt[0] in engineEnums:
                 r = 'int'
-            elif tt[0] == 'ObjInfo':
-                return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFunc':
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
-                for e in codeGenTags['ExportType']:
+                for e in codeGenTags['ExportValueType']:
                     if e[0] == tt[0]:
                         r = e[1]
                         break
@@ -1941,10 +1878,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r = tt[0] + getHandle()
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
                 r = tt[0]
-            elif tt[0] in userObjects or tt[0] in entityRelatives:
+            elif tt[0] in refTypes or tt[0] in entityRelatives:
                 r = tt[0] + getHandle()
-            elif tt[0] == 'ObjInfo':
-                return '?&in'
             elif tt[0] == 'ScriptFunc':
                 assert not isRet
                 assert len(tt) > 1, 'Invalid generic function'
@@ -1965,8 +1900,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
             elif tt[0] == 'ScriptFunc':
                 return 'GetASScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
-            elif tt[0] == 'ObjInfo':
-                return 'GetASObjectInfo(' + v + 'Ptr, ' + v + ')'
             elif tt[0] in engineEnums:
                 return 'static_cast<' + tt[0] + '>(' + v + ')'
             elif tt[0] in scriptEnums:
@@ -2073,10 +2006,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('')
             
             globalLines.append('// Scriptable objects')
-            for eo in codeGenTags['ExportObject']:
-                targ, objName, fields, methods, _, _ = eo
+            for eo in codeGenTags['ExportRefType']:
+                targ, refTypeName, fields, methods, _, _ = eo
                 if targ in allowedTargets:
-                    globalLines.append('struct ' + objName)
+                    globalLines.append('struct ' + refTypeName)
                     globalLines.append('{')
                     globalLines.append('    void AddRef() { }')
                     globalLines.append('    void Release() { }')
@@ -2149,10 +2082,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 tt = p[0].split('.')
                 if tt[-1] == 'ref':
                     globalLines.append('    ctx->SetArgAddress(' + str(setIndex) + ', &as_' + p[1] + ');')
-                elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
+                elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in refTypes:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in entityRelatives:
-                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', PASS_AS_PVOID(as_' + p[1] + '));')
                 elif p[0] in ['string', 'any']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 elif p[0] in ['int8', 'uint8', 'bool']:
@@ -2470,29 +2403,31 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             
         # Register custom types
         registerLines.append('// Exported types')
-        for et in codeGenTags['ExportType']:
-            name, ntype, utype, rtype, flags, _ = et
+        for et in codeGenTags['ExportValueType']:
+            name, ntype, rtype, flags, _ = et
             if rtype == 'RelaxedStrong':
-                registerLines.append('REGISTER_RELAXED_STRONG_TYPE("' + name + '", ' + ntype + ', ' + utype + ');')
+                registerLines.append('REGISTER_RELAXED_STRONG_TYPE("' + name + '", ' + ntype + ');')
             elif rtype == 'HardStrong':
-                registerLines.append('REGISTER_HARD_STRONG_TYPE("' + name + '", ' + ntype + ', ' + utype + ');')
+                registerLines.append('REGISTER_HARD_STRONG_TYPE("' + name + '", ' + ntype + ');')
+            if 'HasValueAccessor' in flags:
+                registerLines.append('REGISTER_STRONG_TYPE_VALUE_ACCESSOR("' + name + '", ' + ntype + ');')
         registerLines.append('')
         
         # Register exported objects
         registerLines.append('// Exported objects')
-        for eo in codeGenTags['ExportObject']:
-            targ, objName, fields, methods, flags, _ = eo
+        for eo in codeGenTags['ExportRefType']:
+            targ, refTypeName, fields, methods, flags, _ = eo
             if targ in allowedTargets:
-                registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + objName + '", sizeof(' + objName + '), asOBJ_REF));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + objName + ', AddRef), SCRIPT_METHOD_CONV));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + objName + ', Release), SCRIPT_METHOD_CONV));')
+                registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + refTypeName + '", sizeof(' + refTypeName + '), asOBJ_REF));')
+                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + refTypeName + ', AddRef), SCRIPT_METHOD_CONV));')
+                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + refTypeName + ', Release), SCRIPT_METHOD_CONV));')
                 if 'HasFactory' in flags:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_FACTORY, "' + objName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + objName + '>)), SCRIPT_FUNC_CONV));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "const int RefCounter", offsetof(' + objName + ', RefCounter)));')
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_FACTORY, "' + refTypeName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + refTypeName + '>)), SCRIPT_FUNC_CONV));')
+                registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + refTypeName + '", "const int RefCounter", offsetof(' + refTypeName + ', RefCounter)));')
                 for f in fields:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + objName + ', ' + f[1] + ')));')
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
                 for m in methods:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + objName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + objName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
@@ -2837,9 +2772,9 @@ def genApiMarkdown(target):
     
     writeFile('## Types')
     writeFile('')
-    for eoTag in codeGenTags['ExportObject']:
-        targ, objName, fields, methods, flags, comm = eoTag
-        writeFile('### ' + objName + ' reference object')
+    for eoTag in codeGenTags['ExportRefType']:
+        targ, refTypeName, fields, methods, flags, comm = eoTag
+        writeFile('### ' + refTypeName + ' reference object')
         writeComm(comm, 0)
         for f in fields:
             writeFile('* `' + metaTypeToUnifiedType(f[0]) + ' ' + f[1] + '`')
@@ -2847,11 +2782,10 @@ def genApiMarkdown(target):
         for m in methods:
             writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
             writeComm(m[2], 0)
-    for etTag in codeGenTags['ExportType']:
-        name, ntype, utype, rtype, flags, comm = etTag
+    for etTag in codeGenTags['ExportValueType']:
+        name, ntype, rtype, flags, comm = etTag
         writeFile('### ' + name + ' value object')
         writeComm(comm, 0)
-        writeFile('* `Alias to: ' + metaTypeToUnifiedType(utype) + '`')
         writeFile('* `Type: ' + rtype + '`')
         if flags:
             writeFile('* `Flags: ' + ', '.join(flags) + '`')
@@ -2918,7 +2852,7 @@ def genApi(target):
             tt = t.split('.')
             if tt[0] == 'dict':
                 r = 'std::map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
-            elif tt[0] in userObjects:
+            elif tt[0] in refTypes:
                 return tt[0] + '*'
             else:
                 r = mapType(tt[0])

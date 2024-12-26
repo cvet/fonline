@@ -32,6 +32,7 @@
 //
 
 #include "Server.h"
+
 #include "AdminPanel.h"
 #include "AnyData.h"
 #include "Application.h"
@@ -200,8 +201,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
             const auto* registrator = entity_info.PropRegistrator;
 
-            for (size_t i = 0; i < registrator->GetCount(); i++) {
-                const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+            for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -236,8 +237,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Properties that sending to clients
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-                for (size_t i = 0; i < registrator->GetCount(); i++) {
-                    const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+                for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
 
                     if (prop->IsDisabled()) {
                         continue;
@@ -281,11 +282,11 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Properties with custom behaviours
         {
             const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
-                const auto* prop = registrator->GetByIndex(prop_index);
+                const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddSetter(std::move(callback));
             };
             const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
-                const auto* prop = registrator->GetByIndex(prop_index);
+                const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddPostSetter(std::move(callback));
             };
 
@@ -410,7 +411,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         try {
             // Globals
             const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
-            if (globals_doc.empty()) {
+
+            if (globals_doc.Empty()) {
                 DbStorage.Insert(GameCollectionName, ident_t {1}, {});
             }
             else {
@@ -436,7 +438,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             // Init world
-            if (globals_doc.empty()) {
+            if (globals_doc.Empty()) {
                 WriteLog("Generate world");
 
                 if (!OnGenerateWorld.Fire()) {
@@ -1008,7 +1010,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
+        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), cr->GetWorldPos(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -1497,8 +1499,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_MOVECRIT: {
         const auto cr_id = buf.Read<ident_t>();
-        const auto hex_x = buf.Read<uint16>();
-        const auto hex_y = buf.Read<uint16>();
+        const auto cr_hex = buf.Read<mpos>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1514,12 +1515,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
+        if (!map->GetSize().IsValidPos(cr_hex)) {
             logcb("Invalid hex position");
             break;
         }
 
-        MapMngr.TransitToMap(cr, map, hex_x, hex_y, cr->GetDir(), std::nullopt);
+        MapMngr.TransitToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1566,7 +1567,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
         if (cr != nullptr) {
-            const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
+            const auto* prop = GetPropertyRegistrator("Critter")->FindProperty(property_name);
             if (prop == nullptr) {
                 logcb("Property not found");
                 return;
@@ -1619,8 +1620,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Access changed");
     } break;
     case CMD_ADDITEM: {
-        const auto hex_x = buf.Read<uint16>();
-        const auto hex_y = buf.Read<uint16>();
+        const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(*this);
         const auto count = buf.Read<uint>();
 
@@ -1629,12 +1629,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
 
-        if (map == nullptr || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
+        if (map == nullptr || !map->GetSize().IsValidPos(hex)) {
             logcb("Wrong hexes or critter on global map");
             return;
         }
 
-        CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr);
+        CreateItemOnHex(map, hex, pid, count, nullptr);
         logcb("Item(s) added");
     } break;
     case CMD_ADDITEM_SELF: {
@@ -1653,8 +1653,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDNPC: {
-        const auto hex_x = buf.Read<uint16>();
-        const auto hex_y = buf.Read<uint16>();
+        const auto hex = buf.Read<mpos>();
         const auto dir = buf.Read<uint8>();
         const auto pid = buf.Read<hstring>(*this);
 
@@ -1662,18 +1661,18 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
-        CrMngr.CreateCritterOnMap(pid, nullptr, map, hex_x, hex_y, dir);
+        CrMngr.CreateCritterOnMap(pid, nullptr, map, hex, dir);
 
         logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
-        const auto wx = buf.Read<uint16>();
-        const auto wy = buf.Read<uint16>();
+        const auto wpos = buf.Read<ipos>();
         const auto pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
 
-        auto* loc = MapMngr.CreateLocation(pid, wx, wy);
+        auto* loc = MapMngr.CreateLocation(pid, wpos);
+
         if (loc == nullptr) {
             logcb("Location not created");
         }
@@ -1744,11 +1743,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         // Regenerate
-        auto hx = player_cr->GetHexX();
-        auto hy = player_cr->GetHexY();
+        auto hex = player_cr->GetHex();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.TransitToMap(player_cr, map, hx, hy, dir, 5);
+        MapMngr.TransitToMap(player_cr, map, hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_SETTIME: {
@@ -1950,7 +1948,7 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr, nullptr, 0, 0, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, true);
@@ -2000,7 +1998,7 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr, nullptr, 0, 0, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
         OnCritterLoad.Fire(cr);
@@ -2181,7 +2179,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         auto* map = EntityMngr.GetMap(cr->ViewMapId);
         cr->ViewMapId = ident_t {};
         if (map != nullptr) {
-            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
+            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
             cr->Send_ViewMap();
             return;
         }
@@ -2259,12 +2257,12 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_PlaceToGameComplete();
 }
 
-void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir)
+void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
 {
     STACK_TRACE_ENTRY();
 
-    if (map->IsStaticItemTrigger(from_hx, from_hy)) {
-        for (auto* item : map->GetStaticItemsTrigger(from_hx, from_hy)) {
+    if (map->IsStaticItemTrigger(from_hex)) {
+        for (auto* item : map->GetStaticItemsTrigger(from_hex)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item, false, dir)) {
                     // Nop
@@ -2283,8 +2281,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_
         }
     }
 
-    if (map->IsStaticItemTrigger(to_hx, to_hy)) {
-        for (auto* item : map->GetStaticItemsTrigger(to_hx, to_hy)) {
+    if (map->IsStaticItemTrigger(to_hex)) {
+        for (auto* item : map->GetStaticItemsTrigger(to_hex)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item, true, dir)) {
                     // Nop
@@ -2303,8 +2301,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_
         }
     }
 
-    if (map->IsItemTrigger(from_hx, from_hy)) {
-        for (auto* item : map->GetItemsTrigger(from_hx, from_hy)) {
+    if (map->IsItemTrigger(from_hex)) {
+        for (auto* item : map->GetItemsTrigger(from_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -2317,8 +2315,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_
         }
     }
 
-    if (map->IsItemTrigger(to_hx, to_hy)) {
-        for (auto* item : map->GetItemsTrigger(to_hx, to_hy)) {
+    if (map->IsItemTrigger(to_hex)) {
+        for (auto* item : map->GetItemsTrigger(to_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -2515,11 +2513,17 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.emplace_back(static_cast<int64>(unlogined_player->Connection->GetIp()));
+    reg_ip.EmplaceBack(static_cast<int64>(unlogined_player->Connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.emplace_back(static_cast<int64>(unlogined_player->Connection->GetPort()));
+    reg_port.EmplaceBack(static_cast<int64>(unlogined_player->Connection->GetPort()));
 
-    DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    AnyData::Document player_data;
+    player_data.Emplace("_Name", string(name));
+    player_data.Emplace("Password", string(password));
+    player_data.Emplace("ConnectionIp", std::move(reg_ip));
+    player_data.Emplace("ConnectionPort", std::move(reg_port));
+
+    DbStorage.Insert(PlayersCollectionName, player_id, player_data);
 
     WriteLog("Registered player {} with id {}", name, player_id);
 
@@ -2564,6 +2568,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check for name length
     const auto name_len_utf8 = strex(name).lengthUtf8();
+
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
         unlogined_player->Connection->GracefulDisconnect();
@@ -2572,8 +2577,9 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check password
     const auto player_id = MakePlayerId(name);
-    auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
-    if (player_doc.count("Password") == 0 || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
+    const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
+
+    if (!player_doc.Contains("Password") || player_doc["Password"].Type() != AnyData::ValueType::String || player_doc["Password"].AsString().length() != password.length() || player_doc["Password"].AsString() != password) {
         unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
         unlogined_player->Connection->GracefulDisconnect();
         return;
@@ -2585,6 +2591,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         auto disallow_msg_num = TextPackName::None;
         TextPackKey disallow_str_num = 0;
         string lexems;
+
         if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num != TextPackName::None && disallow_str_num != 0) {
                 unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, disallow_msg_num, disallow_str_num, lexems);
@@ -2592,6 +2599,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             else {
                 unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
             }
+
             unlogined_player->Connection->GracefulDisconnect();
             return;
         }
@@ -2726,9 +2734,7 @@ void FOServer::Process_Move(Player* player)
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto speed = player->Connection->InBuf.Read<uint16>();
-
-    const auto start_hx = player->Connection->InBuf.Read<uint16>();
-    const auto start_hy = player->Connection->InBuf.Read<uint16>();
+    const auto start_hex = player->Connection->InBuf.Read<mpos>();
 
     const auto steps_count = player->Connection->InBuf.Read<uint16>();
     vector<uint8> steps;
@@ -2744,8 +2750,7 @@ void FOServer::Process_Move(Player* player)
         control_steps[i] = player->Connection->InBuf.Read<uint16>();
     }
 
-    const auto end_hex_ox = player->Connection->InBuf.Read<int16>();
-    const auto end_hex_oy = player->Connection->InBuf.Read<int16>();
+    const auto end_hex_offset = player->Connection->InBuf.Read<ipos16>();
 
     auto* map = EntityMngr.GetMap(map_id);
     if (map == nullptr) {
@@ -2804,17 +2809,14 @@ void FOServer::Process_Move(Player* player)
     }
 
     // Fix async errors
-    const auto cr_hx = cr->GetHexX();
-    const auto cr_hy = cr->GetHexY();
+    const auto cr_hex = cr->GetHex();
 
-    if (cr_hx != start_hx || cr_hy != start_hy) {
+    if (cr_hex != start_hex) {
         FindPathInput find_input;
         find_input.MapId = map_id;
         find_input.FromCritter = cr;
-        find_input.FromHexX = cr_hx;
-        find_input.FromHexY = cr_hy;
-        find_input.ToHexX = start_hx;
-        find_input.ToHexY = start_hy;
+        find_input.FromHex = cr_hex;
+        find_input.ToHex = start_hex;
         find_input.Multihex = cr->GetMultihex();
 
         const auto find_result = MapMngr.FindPath(find_input);
@@ -2834,17 +2836,17 @@ void FOServer::Process_Move(Player* player)
         steps.insert(steps.begin(), find_result.Steps.begin(), find_result.Steps.end());
     }
 
-    if (end_hex_ox < -Settings.MapHexWidth / 2 || end_hex_ox > Settings.MapHexWidth / 2) {
+    if (end_hex_offset.x < -Settings.MapHexWidth / 2 || end_hex_offset.x > Settings.MapHexWidth / 2) {
         BreakIntoDebugger();
     }
-    if (end_hex_oy < -Settings.MapHexHeight / 2 || end_hex_oy > Settings.MapHexHeight / 2) {
+    if (end_hex_offset.y < -Settings.MapHexHeight / 2 || end_hex_offset.y > Settings.MapHexHeight / 2) {
         BreakIntoDebugger();
     }
 
-    const auto clamped_end_hex_ox = std::clamp(end_hex_ox, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
-    const auto clamped_end_hex_oy = std::clamp(end_hex_oy, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
+    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
+    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
 
-    StartCritterMoving(cr, static_cast<uint16>(corrected_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, player);
+    StartCritterMoving(cr, static_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
     if (corrected_speed != speed) {
         player->Send_MovingSpeed(cr);
@@ -2995,33 +2997,33 @@ void FOServer::Process_Property(Player* player, uint data_size)
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = EntityMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* item = EntityMngr.GetItem(item_id);
             entity = item != nullptr && !item->GetHidden() ? item : nullptr;
@@ -3029,7 +3031,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* cr_ = EntityMngr.GetCritter(cr_id);
             if (cr_ != nullptr) {
@@ -3039,7 +3041,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* item = cr->GetInvItem(item_id);
             entity = item != nullptr && !item->GetHidden() ? item : nullptr;
@@ -3047,14 +3049,14 @@ void FOServer::Process_Property(Player* player, uint data_size)
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             entity = EntityMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetByIndex(property_index);
+        prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
         if (prop != nullptr) {
             auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3162,11 +3164,11 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
         AnyData::Document doc;
-        doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityType"] = string(entity->GetTypeName());
-        doc["EntityId"] = static_cast<int64>(entry_id.underlying_value());
-        doc["Property"] = prop->GetName();
-        doc["Value"] = value;
+        doc.Emplace("Time", static_cast<int64>(time.count()));
+        doc.Emplace("EntityType", string(entity->GetTypeName()));
+        doc.Emplace("EntityId", static_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("Property", prop->GetName());
+        doc.Emplace("Value", std::move(value));
 
         DbStorage.Insert(HistoryCollectionName, history_id, doc);
     }
@@ -3189,6 +3191,8 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
@@ -3197,6 +3201,8 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -3264,6 +3270,8 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
 
@@ -3274,6 +3282,8 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -3351,7 +3361,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             map->ChangeViewItem(item);
 
             if (prop == item->GetPropertyIsTrap()) {
-                map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+                map->RecacheHexFlags(item->GetHex());
             }
         }
     }
@@ -3384,7 +3394,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
         auto* map = EntityMngr.GetMap(item->GetMapId());
 
         if (map != nullptr) {
-            map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+            map->RecacheHexFlags(item->GetHex());
         }
     }
 }
@@ -3463,16 +3473,16 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     if (cr->TargetMoving.State == MovingState::InProgress) {
         bool need_find_path = !cr->IsMoving();
 
-        if (!need_find_path && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0 || cr->TargetMoving.HexY != 0)) {
+        if (!need_find_path && cr->TargetMoving.TargId) {
             const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
-            if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
+
+            if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHex(), cr->TargetMoving.TargHex, 0)) {
                 need_find_path = true;
             }
         }
 
         if (need_find_path) {
-            uint16 hx;
-            uint16 hy;
+            mpos hex;
             uint cut;
             uint trace_dist;
             Critter* trace_cr;
@@ -3484,18 +3494,15 @@ void FOServer::ProcessCritterMoving(Critter* cr)
                     return;
                 }
 
-                hx = targ->GetHexX();
-                hy = targ->GetHexY();
+                hex = targ->GetHex();
                 cut = cr->TargetMoving.Cut;
                 trace_dist = cr->TargetMoving.TraceDist;
                 trace_cr = targ;
 
-                cr->TargetMoving.HexX = hx;
-                cr->TargetMoving.HexY = hy;
+                cr->TargetMoving.TargHex = hex;
             }
             else {
-                hx = cr->TargetMoving.HexX;
-                hy = cr->TargetMoving.HexY;
+                hex = cr->TargetMoving.TargHex;
                 cut = cr->TargetMoving.Cut;
                 trace_dist = 0;
                 trace_cr = nullptr;
@@ -3504,10 +3511,8 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             FindPathInput find_input;
             find_input.MapId = cr->GetMapId();
             find_input.FromCritter = cr;
-            find_input.FromHexX = cr->GetHexX();
-            find_input.FromHexY = cr->GetHexY();
-            find_input.ToHexX = hx;
-            find_input.ToHexY = hy;
+            find_input.FromHex = cr->GetHex();
+            find_input.ToHex = hex;
             find_input.Multihex = cr->GetMultihex();
             find_input.Cut = cut;
             find_input.TraceDist = trace_dist;
@@ -3586,7 +3591,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             }
 
             // Success
-            StartCritterMoving(cr, cr->TargetMoving.Speed, find_path.Steps, find_path.ControlSteps, 0, 0, nullptr);
+            StartCritterMoving(cr, cr->TargetMoving.Speed, find_path.Steps, find_path.ControlSteps, {0, 0}, nullptr);
         }
     }
 }
@@ -3600,7 +3605,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId(), map](uint16 expected_hx, uint16 expected_hy) -> bool {
+    const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
         const auto validate_moving_inner = [&]() -> bool {
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return false;
@@ -3611,7 +3616,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             if (cr->GetMapId() != expected_map_id) {
                 return false;
             }
-            if (cr->GetHexX() != expected_hx || cr->GetHexY() != expected_hy) {
+            if (cr->GetHex() != expected_hex) {
                 return false;
             }
             return true;
@@ -3634,43 +3639,38 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
-
-    auto next_start_hx = cr->Moving.StartHexX;
-    auto next_start_hy = cr->Moving.StartHexY;
+    auto next_start_hex = cr->Moving.StartHex;
     auto cur_dist = 0.0f;
 
     uint16 control_step_begin = 0;
 
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = next_start_hx;
-        auto hy = next_start_hy;
+        auto hex = next_start_hex;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], map->GetSize());
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
 
         if (i == 0) {
-            ox -= cr->Moving.StartOx;
-            oy -= cr->Moving.StartOy;
+            ox -= cr->Moving.StartHexOffset.x;
+            oy -= cr->Moving.StartHexOffset.y;
         }
         if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndOx;
-            oy += cr->Moving.EndOy;
+            ox += cr->Moving.EndHexOffset.x;
+            oy += cr->Moving.EndHexOffset.y;
         }
 
         const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
         auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
-        if (dist < 0.0001f) {
-            dist = 0.0001f;
-        }
+        dist = std::max(dist, 0.0001f);
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == cr->Moving.ControlSteps.size() - 1)) {
-            auto normalized_dist = (dist_pos - cur_dist) / dist;
+            float normalized_dist = (dist_pos - cur_dist) / dist;
             normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
             if (normalized_time == 1.0f) {
                 normalized_dist = 1.0f;
@@ -3682,45 +3682,42 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             RUNTIME_ASSERT(step_index >= control_step_begin);
             RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
 
-            auto hx2 = next_start_hx;
-            auto hy2 = next_start_hy;
+            auto hex2 = next_start_hex;
 
-            for (auto j2 = control_step_begin; j2 < step_index; j2++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
+            for (int j2 = control_step_begin; j2 < step_index; j2++) {
+                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j2], map->GetSize());
                 RUNTIME_ASSERT(move_ok);
             }
 
-            const auto old_hx = cr->GetHexX();
-            const auto old_hy = cr->GetHexY();
-            const uint8 dir = GeometryHelper::GetFarDir(old_hx, old_hy, hx2, hy2);
+            const auto old_hex = cr->GetHex();
+            const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
-            if (old_hx != hx2 || old_hy != hy2) {
+            if (old_hex != hex2) {
                 const uint multihex = cr->GetMultihex();
 
-                if (map->IsHexesMovable(hx2, hy2, multihex, cr)) {
+                if (map->IsHexesMovable(hex2, multihex, cr)) {
                     map->RemoveCritterFromField(cr);
-                    cr->SetHexX(hx2);
-                    cr->SetHexY(hy2);
+                    cr->SetHex(hex2);
                     map->AddCritterToField(cr);
 
                     RUNTIME_ASSERT(!cr->IsDestroyed());
 
-                    VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
-                    if (!validate_moving(hx2, hy2)) {
+                    VerifyTrigger(map, cr, old_hex, hex2, dir);
+                    if (!validate_moving(hex2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleCritters(cr);
-                    if (!validate_moving(hx2, hy2)) {
+                    if (!validate_moving(hex2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
-                    if (!validate_moving(hx2, hy2)) {
+                    if (!validate_moving(hex2)) {
                         return;
                     }
                 }
-                else if (map->IsBlockItem(hx2, hy2)) {
+                else if (map->IsBlockItem(hex2)) {
                     cr->ClearMove();
                     cr->SendAndBroadcast_Moving();
                     return;
@@ -3728,29 +3725,28 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
 
             // Evaluate current position
-            const auto cr_hx = cr->GetHexX();
-            const auto cr_hy = cr->GetHexY();
-            const auto moved = (cr_hx != old_hx || cr_hy != old_hy);
+            const auto cr_hex = cr->GetHex();
+            const auto moved = cr_hex != old_hex;
 
-            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, cr_hx, cr_hy);
+            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
             if (i == 0) {
-                cr_ox -= cr->Moving.StartOx;
-                cr_oy -= cr->Moving.StartOy;
+                cr_ox -= cr->Moving.StartHexOffset.x;
+                cr_oy -= cr->Moving.StartHexOffset.y;
             }
 
             const auto lerp = [](int a, int b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
 
             auto mx = lerp(0, ox, normalized_dist);
             auto my = lerp(0, oy, normalized_dist);
+
             mx -= static_cast<float>(cr_ox);
             my -= static_cast<float>(cr_oy);
 
             const auto mxi = static_cast<int16>(std::round(mx));
             const auto myi = static_cast<int16>(std::round(my));
 
-            if (moved || cr->GetHexOffsX() != mxi || cr->GetHexOffsY() != myi) {
-                cr->SetHexOffsX(mxi);
-                cr->SetHexOffsY(myi);
+            if (moved || cr->GetHexOffset() != ipos16 {mxi, myi}) {
+                cr->SetHexOffset({mxi, myi});
             }
 
             // Evaluate dir angle
@@ -3763,7 +3759,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             if (!cr->AttachedCritters.empty()) {
                 cr->MoveAttachedCritters();
 
-                if (!validate_moving(cr_hx, cr_hy)) {
+                if (!validate_moving(cr_hex)) {
                     return;
                 }
             }
@@ -3774,13 +3770,12 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hx = hx;
-        next_start_hy = hy;
+        next_start_hex = hex;
         cur_dist += dist;
     }
 
     if (normalized_time == 1.0f) {
-        const bool incorrect_final_position = cr->GetHexX() != cr->Moving.EndHexX || cr->GetHexY() != cr->Moving.EndHexY;
+        const bool incorrect_final_position = cr->GetHex() != cr->Moving.EndHex;
 
         cr->ClearMove();
         cr->TargetMoving.State = MovingState::Success;
@@ -3791,7 +3786,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     }
 }
 
-void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, const Player* initiator)
+void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
     STACK_TRACE_ENTRY();
 
@@ -3804,20 +3799,16 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     const auto* map = EntityMngr.GetMap(cr->GetMapId());
     RUNTIME_ASSERT(map);
 
-    const auto start_hx = cr->GetHexX();
-    const auto start_hy = cr->GetHexY();
+    const auto start_hex = cr->GetHex();
 
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.FrameTime();
     cr->Moving.OffsetTime = {};
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
-    cr->Moving.StartHexX = start_hx;
-    cr->Moving.StartHexY = start_hy;
-    cr->Moving.StartOx = cr->GetHexOffsX();
-    cr->Moving.StartOy = cr->GetHexOffsY();
-    cr->Moving.EndOx = end_hex_ox;
-    cr->Moving.EndOy = end_hex_oy;
+    cr->Moving.StartHex = start_hex;
+    cr->Moving.StartHexOffset = cr->GetHexOffset();
+    cr->Moving.EndHexOffset = end_hex_offset;
 
     cr->Moving.WholeTime = 0.0f;
     cr->Moving.WholeDist = 0.0f;
@@ -3825,30 +3816,28 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     RUNTIME_ASSERT(cr->Moving.Speed > 0);
     const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
-    auto next_start_hx = start_hx;
-    auto next_start_hy = start_hy;
+    auto next_start_hex = start_hex;
     uint16 control_step_begin = 0;
 
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = next_start_hx;
-        auto hy = next_start_hy;
+        auto hex = next_start_hex;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], map->GetSize());
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
 
         if (i == 0) {
-            ox -= cr->Moving.StartOx;
-            oy -= cr->Moving.StartOy;
+            ox -= cr->Moving.StartHexOffset.x;
+            oy -= cr->Moving.StartHexOffset.y;
         }
         if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndOx;
-            oy += cr->Moving.EndOy;
+            ox += cr->Moving.EndHexOffset.x;
+            oy += cr->Moving.EndHexOffset.y;
         }
 
         const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
@@ -3858,11 +3847,9 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
         cr->Moving.WholeDist += dist;
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hx = hx;
-        next_start_hy = hy;
+        next_start_hex = hex;
 
-        cr->Moving.EndHexX = hx;
-        cr->Moving.EndHexY = hy;
+        cr->Moving.EndHex = hex;
     }
 
     if (cr->Moving.WholeTime < 0.0001f) {
@@ -4247,7 +4234,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
     return force_dialog;
 }
 
-void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance)
+void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos dlg_hex, bool ignore_distance)
 {
     STACK_TRACE_ENTRY();
 
@@ -4282,7 +4269,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
             auto talk_distance = npc->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-            if (!GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
+            if (!GeometryHelper::CheckDist(cl->GetHex(), npc->GetHex(), talk_distance)) {
                 cl->Send_Moving(cl);
                 cl->Send_Moving(npc);
                 cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
@@ -4297,10 +4284,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
             TraceData trace;
             trace.TraceMap = map;
-            trace.BeginHx = cl->GetHexX();
-            trace.BeginHy = cl->GetHexY();
-            trace.EndHx = npc->GetHexX();
-            trace.EndHy = npc->GetHexY();
+            trace.StartHex = cl->GetHex();
+            trace.TargetHex = npc->GetHex();
             trace.MaxDist = talk_distance;
             trace.FindCr = npc;
             MapMngr.TraceBullet(trace);
@@ -4330,12 +4315,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
         dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
+
         if (dialogs == nullptr || dialogs->empty()) {
             return;
         }
 
         if (!ignore_distance) {
-            const auto dir = GeometryHelper::GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
+            const auto dir = GeometryHelper::GetFarDir(cl->GetHex(), npc->GetHex());
+
             npc->ChangeDir(GeometryHelper::ReverseDir(dir));
             npc->Broadcast_Dir();
             cl->ChangeDir(dir);
@@ -4345,17 +4332,17 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     }
     // Talk with hex
     else {
-        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
+        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHex(), dlg_hex, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Moving(cl);
             cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
-            WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
+            WriteLog("Wrong distance to hexes, hex {}, client '{}'", dlg_hex, cl->GetName());
             return;
         }
 
         dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
-            WriteLog("No dialogs, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
+            WriteLog("No dialogs, hex {}, client '{}'", dlg_hex, cl->GetName());
             return;
         }
     }
@@ -4408,8 +4395,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     else {
         cl->Talk.Type = TalkType::Hex;
         cl->Talk.TalkHexMap = cl->GetMapId();
-        cl->Talk.TalkHexX = hx;
-        cl->Talk.TalkHexY = hy;
+        cl->Talk.TalkHex = dlg_hex;
     }
 
     cl->Talk.DialogPackId = selected_dlg_pack_id;
@@ -4450,7 +4436,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
         else {
             auto* map = EntityMngr.GetMap(cl->GetMapId());
             if (map != nullptr) {
-                map->SetTextMsg(hx, hy, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
+                map->SetTextMsg(dlg_hex, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
             }
         }
 
@@ -4662,7 +4648,7 @@ void FOServer::Process_Dialog(Player* player)
         else {
             auto* map = EntityMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
-                map->SetTextMsg(cr->Talk.TalkHexX, cr->Talk.TalkHexY, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
+                map->SetTextMsg(cr->Talk.TalkHex, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
             }
         }
 
@@ -4687,7 +4673,7 @@ void FOServer::Process_RemoteCall(Player* player)
     ScriptSys->HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -4699,8 +4685,7 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
 
     const auto add_item = [&]() -> Item* {
         auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);
-        map->AddItem(item, hx, hy, nullptr);
-
+        map->AddItem(item, hex, nullptr);
         return item;
     };
 
@@ -4743,7 +4728,7 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
     case 5:
         return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 }
 
@@ -4785,7 +4770,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     switch (result.ValuesCount) {
@@ -4820,7 +4805,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        throw UnreachablePlaceException(LINE_STR);
+        UNREACHABLE_PLACE();
     }
 
     return 0;
