@@ -1475,7 +1475,7 @@ struct FMTNS::formatter<hstring> : formatter<string_view>
 template<typename T>
 constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_type_v<T> && !std::is_same_v<T, any_t> && //
     !std::is_same_v<T, string> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && //
-    !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value;
+    !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value && !is_vector_v<T> && !is_map_v<T>;
 
 template<typename T>
 inline auto parse_from_string(const string& str) -> T;
