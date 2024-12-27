@@ -64,9 +64,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ident_t, LastDeferredCallId);
+    ENTITY_PROPERTY(PrivateServer, ident_t, LastDeferredCallId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ident_t, HistoryRecordsId);
+    ENTITY_PROPERTY(PrivateServer, ident_t, HistoryRecordsId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
 };
