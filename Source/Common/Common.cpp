@@ -80,6 +80,15 @@ struct StackTraceData
 
 static thread_local StackTraceData StackTrace;
 
+static StackTraceData* CrashStackTrace;
+
+extern void SetCrashStackTrace() noexcept // Called in backward.hpp
+{
+    NO_STACK_TRACE_ENTRY();
+
+    CrashStackTrace = &StackTrace;
+}
+
 class BackwardOStreamBuffer : public std::streambuf
 {
 public:
@@ -103,10 +112,10 @@ public:
         return ch;
     }
 
-    auto xsputn(const char_type* s, std::streamsize count) -> std::streamsize override
+    auto xsputn(const char_type* s, std::streamsize count) -> std::streamsize override /*noexcept*/
     {
         if (_firstCall) {
-            WriteLogFatalMessage("\nFATAL ERROR!\n\n");
+            WriteHeader();
             _firstCall = false;
         }
 
@@ -115,10 +124,39 @@ public:
     }
 
 private:
+    void WriteHeader() const noexcept
+    {
+        WriteLogFatalMessage("\nFATAL ERROR!\n\n");
+
+        if (CrashStackTrace != nullptr) {
+            WriteLogFatalMessage("Stack trace (most recent call first):\n");
+
+            for (int i = std::min(static_cast<int>(CrashStackTrace->CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+                const auto& entry = CrashStackTrace->CallTree[i];
+                WriteLogFatalMessage("- ");
+                WriteLogFatalMessage(entry->function);
+                WriteLogFatalMessage(" (");
+                WriteLogFatalMessage(strex(entry->file).extractFileName());
+                WriteLogFatalMessage(" line ");
+                WriteLogFatalMessage(strex(strex::safe_format_tag {}, "{}", entry->line));
+                WriteLogFatalMessage(")\n");
+            }
+
+            if (CrashStackTrace->CallsCount > STACK_TRACE_MAX_SIZE) {
+                WriteLogFatalMessage("- ...and ");
+                WriteLogFatalMessage(strex(strex::safe_format_tag {}, "{}", CrashStackTrace->CallsCount - STACK_TRACE_MAX_SIZE));
+                WriteLogFatalMessage(" more entries\n");
+            }
+
+            WriteLogFatalMessage("\n");
+        }
+    }
+
     bool _firstCall = true;
 };
 
 static BackwardOStreamBuffer BackwardOStreamBuf;
+extern std::ostream BackwardOStream;
 std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
 
 void CreateGlobalData()
@@ -147,12 +185,14 @@ static auto InsertCatchedMark(const string& st) -> string
 
     // Skip 'Stack trace (most recent ...'
     auto pos = catched_st.find('\n');
+
     if (pos == string::npos) {
         return st;
     }
 
     // Find stack traces intercection
     pos = st.find(catched_st.substr(pos + 1));
+
     if (pos == string::npos) {
         return st;
     }
@@ -305,8 +345,7 @@ auto GetStackTrace() -> string
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
-        ss << "- ..."
-           << "and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
+        ss << "- ...and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
     }
 
     auto st_str = ss.str();

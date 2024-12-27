@@ -837,13 +837,11 @@ auto strex::extractDir() -> strex&
     return *this;
 }
 
-auto strex::extractFileName() -> strex&
+auto strex::extractFileName() noexcept -> strex&
 {
     NO_STACK_TRACE_ENTRY();
 
-    formatPath();
-
-    const auto pos = _sv.find_last_of('/');
+    const auto pos = _sv.find_last_of("/\\");
 
     if (pos != string::npos) {
         _sv = _sv.substr(pos + 1);

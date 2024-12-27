@@ -164,13 +164,12 @@ public:
 
     auto formatPath() -> strex&;
     auto extractDir() -> strex&;
-    auto extractFileName() -> strex&;
+    auto extractFileName() noexcept -> strex&;
     auto getFileExtension() -> strex&; // Extension without dot and lowered
     auto eraseFileExtension() noexcept -> strex&; // Erase extension with dot
     auto changeFileName(string_view new_name) -> strex&;
     auto combinePath(string_view path) -> strex&;
     auto normalizePathSlashes() -> strex&;
-
     auto normalizeLineEndings() -> strex&;
 
 #if FO_WINDOWS
