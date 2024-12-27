@@ -88,7 +88,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> ide
 
     if (delay != 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+        call.FireTime = tick_t {_engine->GameTime.GetServerTime().underlying_value() + delay * time_mul / 1000};
     }
 
     _deferredCalls.emplace_back(std::move(call));
@@ -132,7 +132,7 @@ void DeferredCallManager::ProcessDeferredCalls()
         return;
     }
 
-    const auto full_second = _engine->GameTime.GetFullSecond();
+    const auto server_time = _engine->GameTime.GetServerTime();
     const auto time_mul = _engine->GetTimeMultiplier();
 
     unordered_set<ident_t> skip_ids;
@@ -142,12 +142,12 @@ void DeferredCallManager::ProcessDeferredCalls()
         done = true;
 
         for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
-            if (full_second.underlying_value() >= it->FireFullSecond.underlying_value() && skip_ids.count(it->Id) == 0) {
+            if (server_time.underlying_value() >= it->FireTime.underlying_value() && skip_ids.count(it->Id) == 0) {
                 DeferredCall call = copy(*it);
 
                 if (call.Repeating) {
                     if (call.Delay.underlying_value() != 0) {
-                        it->FireFullSecond = tick_t {full_second.underlying_value() + call.Delay.underlying_value() * time_mul / 1000};
+                        it->FireTime = tick_t {server_time.underlying_value() + call.Delay.underlying_value() * time_mul / 1000};
                     }
 
                     skip_ids.emplace(call.Id);

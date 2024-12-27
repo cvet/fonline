@@ -454,7 +454,7 @@ void FOClient::MainLoop()
 
     // Game time
     if (time_changed) {
-        const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
+        const auto st = GameTime.ServerTimeToDate(GameTime.GetServerTime());
 
         SetYear(st.Year);
         SetMonth(st.Month);
@@ -2527,7 +2527,7 @@ void FOClient::Net_OnTimeSync()
     const auto second = _conn.InBuf.Read<uint16>();
     const auto multiplier = _conn.InBuf.Read<uint16>();
 
-    GameTime.Reset(year, month, day, hour, minute, second, multiplier);
+    GameTime.SetServerTime(year, month, day, hour, minute, second, multiplier);
 
     SetYear(year);
     SetMonth(month);

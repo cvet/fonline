@@ -1272,14 +1272,14 @@
     RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
     RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
 
-    const auto full_second = self->GetEngine()->GameTime.GetFullSecond();
+    const auto server_time = self->GetEngine()->GameTime.GetServerTime();
 
     uint count = 0;
 
     for (size_t i = 0; i < te_identifiers.size(); i++) {
         if (te_identifiers[i] == identifier) {
             indexes.push_back(static_cast<uint>(i));
-            durations.emplace_back(te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0);
+            durations.emplace_back(te_fire_times[i].underlying_value() > server_time.underlying_value() ? te_fire_times[i].underlying_value() - server_time.underlying_value() : 0);
             rates.push_back(te_rates[i]);
             count++;
         }
@@ -1304,7 +1304,7 @@
     RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
     RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
 
-    const auto full_second = self->GetEngine()->GameTime.GetFullSecond();
+    const auto server_time = self->GetEngine()->GameTime.GetServerTime();
 
     uint count = 0;
 
@@ -1313,7 +1313,7 @@
             if (te_identifiers[i] == identifier) {
                 identifiers.push_back(te_identifiers[i]);
                 indexes.push_back(static_cast<uint>(i));
-                durations.emplace_back(te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0);
+                durations.emplace_back(te_fire_times[i].underlying_value() > server_time.underlying_value() ? te_fire_times[i].underlying_value() - server_time.underlying_value() : 0);
                 rates.push_back(te_rates[i]);
                 count++;
             }

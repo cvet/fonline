@@ -67,16 +67,15 @@ public:
     [[nodiscard]] auto GameplayTime() const noexcept -> time_point;
     [[nodiscard]] auto GameplayDeltaTime() const noexcept -> time_duration;
 
-    [[nodiscard]] auto GetFullSecond() const noexcept -> tick_t;
-    [[nodiscard]] auto EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
-    [[nodiscard]] auto EvaluateGameTime(tick_t full_second) const noexcept -> DateTimeStamp;
-    [[nodiscard]] auto GameTimeMonthDays(uint16 year, uint16 month) const noexcept -> uint16;
+    [[nodiscard]] auto GetServerTime() const noexcept -> tick_t;
+    [[nodiscard]] auto DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
+    [[nodiscard]] auto ServerTimeToDate(tick_t server_time) const noexcept -> DateTimeStamp;
 
 #if FO_SINGLEPLAYER
     [[nodiscard]] auto IsGameplayPaused() const noexcept -> bool;
 #endif
 
-    void Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
+    void SetServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
     auto FrameAdvance() -> bool;
 #if FO_SINGLEPLAYER
     void SetGameplayPause(bool pause);
@@ -92,10 +91,10 @@ private:
     time_duration _gameplayDeltaTime {};
     time_duration _debuggingOffset {};
 
-    uint64 _yearStartFullTime {};
-    int _gameTimeMultiplier {};
-    tick_t _fullSecondBase {};
-    tick_t _fullSecond {};
+    uint64 _servetTimeStartYear {};
+    int _serverTimeMultiplier {};
+    tick_t _serverTimeBase {};
+    tick_t _serverTime {};
 
 #if FO_SINGLEPLAYER
     bool _isGameplayPaused {};
@@ -113,4 +112,5 @@ public:
     [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) noexcept -> DateTimeStamp;
     [[nodiscard]] static auto GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) noexcept -> int;
     [[nodiscard]] static auto AdvanceTime(const DateTimeStamp& dt, int seconds) noexcept -> DateTimeStamp;
+    [[nodiscard]] static auto GameTimeMonthDays(uint16 year, uint16 month) noexcept -> int;
 };

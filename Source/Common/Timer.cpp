@@ -45,11 +45,11 @@ GameTimer::GameTimer(TimerSettings& settings) :
 
     _frameTime = time_point::clock::now();
 
-    Reset(static_cast<uint16>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
-    FrameAdvance();
+    const DateTimeStamp dt = {static_cast<uint16>(_settings.StartYear), 1, 1, 0, 0, 0, 1};
+    _servetTimeStartYear = Timer::DateTimeToFullTime(dt);
 }
 
-void GameTimer::Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier)
+void GameTimer::SetServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier)
 {
     STACK_TRACE_ENTRY();
 
@@ -57,13 +57,10 @@ void GameTimer::Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16
     _isGameplayPaused = false;
 #endif
 
-    _gameTimeMultiplier = multiplier;
+    _serverTimeMultiplier = multiplier;
     _gameplayTimeBase = _gameplayTimeFrame = _frameTime;
 
-    const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
-    _yearStartFullTime = Timer::DateTimeToFullTime(dt);
-
-    _fullSecond = _fullSecondBase = EvaluateFullSecond(year, month, day, hour, minute, second);
+    _serverTime = _serverTimeBase = DateToServerTime(year, month, day, hour, minute, second);
 }
 
 auto GameTimer::FrameAdvance() -> bool
@@ -98,10 +95,10 @@ auto GameTimer::FrameAdvance() -> bool
 #endif
 
     const auto whole_dt = time_duration_to_ms<tick_t::underlying_type>(GameplayTime() - _gameplayTimeBase);
-    const auto full_seconds = tick_t {static_cast<tick_t::underlying_type>(_fullSecondBase.underlying_value() + (whole_dt / 1000 * _gameTimeMultiplier + whole_dt % 1000 * _gameTimeMultiplier / 1000))};
+    const auto server_time = tick_t {static_cast<tick_t::underlying_type>(_serverTimeBase.underlying_value() + (whole_dt / 1000 * _serverTimeMultiplier + whole_dt % 1000 * _serverTimeMultiplier / 1000))};
 
-    if (_fullSecond != full_seconds) {
-        _fullSecond = full_seconds;
+    if (_serverTime != server_time) {
+        _serverTime = server_time;
         return true;
     }
 
@@ -156,54 +153,31 @@ auto GameTimer::GameplayDeltaTime() const noexcept -> time_duration
     return _gameplayDeltaTime;
 }
 
-auto GameTimer::GetFullSecond() const noexcept -> tick_t
+auto GameTimer::GetServerTime() const noexcept -> tick_t
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _fullSecond;
+    return _serverTime;
 }
 
-auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t
+auto GameTimer::DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t
 {
     NO_STACK_TRACE_ENTRY();
 
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     auto ft = Timer::DateTimeToFullTime(dt);
-    ft -= _yearStartFullTime;
+    ft -= _servetTimeStartYear;
 
     return tick_t {static_cast<tick_t::underlying_type>(ft / 10000000ULL)};
 }
 
-auto GameTimer::EvaluateGameTime(tick_t full_second) const noexcept -> DateTimeStamp
+auto GameTimer::ServerTimeToDate(tick_t server_time) const noexcept -> DateTimeStamp
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto ft = _yearStartFullTime + static_cast<uint64>(full_second.underlying_value()) * 10000000ULL;
+    const auto ft = _servetTimeStartYear + static_cast<uint64>(server_time.underlying_value()) * 10000000ULL;
 
     return Timer::FullTimeToDateTime(ft);
-}
-
-auto GameTimer::GameTimeMonthDays(uint16 year, uint16 month) const noexcept -> uint16
-{
-    NO_STACK_TRACE_ENTRY();
-
-    switch (month) {
-    case 1:
-    case 3:
-    case 5:
-    case 7:
-    case 8:
-    case 10:
-    case 12: // 31
-        return 31;
-    case 2: // 28-29
-        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
-            return 29;
-        }
-        return 28;
-    default: // 30
-        return 30;
-    }
 }
 
 #if FO_SINGLEPLAYER
@@ -389,4 +363,27 @@ auto Timer::AdvanceTime(const DateTimeStamp& dt, int seconds) noexcept -> DateTi
     ft += static_cast<uint64>(seconds) * 10000000ULL;
 
     return FullTimeToDateTime(ft);
+}
+
+auto Timer::GameTimeMonthDays(uint16 year, uint16 month) noexcept -> int
+{
+    NO_STACK_TRACE_ENTRY();
+
+    switch (month) {
+    case 1:
+    case 3:
+    case 5:
+    case 7:
+    case 8:
+    case 10:
+    case 12: // 31
+        return 31;
+    case 2: // 28-29
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
+            return 29;
+        }
+        return 28;
+    default: // 30
+        return 30;
+    }
 }
