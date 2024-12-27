@@ -2088,8 +2088,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', PASS_AS_PVOID(as_' + p[1] + '));')
                 elif p[0] in ['string', 'any']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
-                elif p[0] in ['int8', 'uint8', 'bool']:
+                elif p[0] in ['int8', 'uint8']:
                     globalLines.append('    ctx->SetArgByte(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['bool']:
+                    globalLines.append('    ctx->SetArgByte(' + str(setIndex) + ', as_' + p[1] + ' ? 1 : 0);')
                 elif p[0] in ['int16', 'uint16']:
                     globalLines.append('    ctx->SetArgWord(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in ['int', 'uint'] or p[0] in engineEnums or p[0] in scriptEnums:

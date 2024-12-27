@@ -1364,7 +1364,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
         }
 
         // Track
-        if (_isShowTrack && (GetHexTrack(hex) != 0)) {
+        if (_isShowTrack && GetHexTrack(hex) != 0) {
             auto&& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
             auto& mspr = _mapSprites.InsertSprite(DrawOrderType::Track, hex, //
                 {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
@@ -4382,39 +4382,31 @@ void MapView::FindSetCenter(mpos hex)
         return;
     }
 
+    mpos corrected_hex = hex;
+
+    const auto find_set_center_dir = [this, &corrected_hex](const array<int, 2>& dirs, size_t steps) {
+        auto moved_hex = corrected_hex;
+        const auto dirs_index = dirs[1] == -1 ? 1 : 2;
+
+        size_t i = 0;
+
+        for (; i < steps; i++) {
+            if (!GeometryHelper::MoveHexByDir(moved_hex, static_cast<uint8>(dirs[i % dirs_index]), _mapSize)) {
+                break;
+            }
+            if (_hexField->GetCellForReading(moved_hex).Flags.ScrollBlock) {
+                break;
+            }
+        }
+
+        for (; i < steps; i++) {
+            GeometryHelper::MoveHexByDir(corrected_hex, GeometryHelper::ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _mapSize);
+        }
+    };
+
     const auto view_size = GetViewSize();
     const auto iw = view_size.width / 2 + 2;
     const auto ih = view_size.height / 2 + 2;
-    auto hex2 = hex;
-
-    auto find_set_center_dir = [this, &hex2](const array<int, 2>& dirs, int steps) {
-        auto hex3 = hex2;
-        const auto dirs_index = (dirs[1] == -1 ? 1 : 2);
-
-        auto i = 0;
-
-        for (; i < steps; i++) {
-            if (!GeometryHelper::MoveHexByDir(hex3, static_cast<uint8>(dirs[i % dirs_index]), _mapSize)) {
-                break;
-            }
-
-            if (_isShowTrack) {
-                GetHexTrack(hex3) = 1;
-            }
-
-            if (_hexField->GetCellForReading(hex3).Flags.ScrollBlock) {
-                break;
-            }
-
-            if (_isShowTrack) {
-                GetHexTrack(hex3) = 2;
-            }
-        }
-
-        for (; i < steps; i++) {
-            GeometryHelper::MoveHexByDir(hex2, GeometryHelper::ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _mapSize);
-        }
-    };
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         find_set_center_dir({0, 5}, ih); // Up
@@ -4437,7 +4429,7 @@ void MapView::FindSetCenter(mpos hex)
         find_set_center_dir({2, 1}, ih); // Down-Right
     }
 
-    RebuildMap(ipos {hex.x, hex.y});
+    RebuildMap(ipos {corrected_hex.x, corrected_hex.y});
 }
 
 void MapView::SetShootBorders(bool enabled, uint dist)
