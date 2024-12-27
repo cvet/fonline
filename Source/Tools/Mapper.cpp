@@ -115,7 +115,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         if (Tabs[i].empty()) {
             Tabs[i][DEFAULT_SUB_TAB].Scroll = 0;
         }
-        TabsActive[i] = &(*Tabs[i].begin()).second;
+        TabsActive[i] = &Tabs[i].begin()->second;
     }
 
     // Initialize tabs scroll and names
@@ -641,9 +641,7 @@ void FOMapper::ProcessMapperInput()
                 else {
                     TabsScroll[SubTabsActiveTab] -= step;
                 }
-                if (TabsScroll[SubTabsActiveTab] < 0) {
-                    TabsScroll[SubTabsActiveTab] = 0;
-                }
+                TabsScroll[SubTabsActiveTab] = std::max(TabsScroll[SubTabsActiveTab], 0);
             }
             else if (IntVisible && IsCurInRect(IntWWork, IntX, IntY) && (IsItemMode() || IsCritMode())) {
                 int step = 1;
@@ -660,31 +658,25 @@ void FOMapper::ProcessMapperInput()
                 if (ev.MouseWheel.Delta > 0) {
                     if (IsItemMode() || IsCritMode()) {
                         (*CurProtoScroll) -= step;
-                        if (*CurProtoScroll < 0) {
-                            *CurProtoScroll = 0;
-                        }
+                        *CurProtoScroll = std::max(*CurProtoScroll, 0);
                     }
                     else if (IntMode == INT_MODE_INCONT) {
                         InContScroll -= step;
-                        if (InContScroll < 0) {
-                            InContScroll = 0;
-                        }
+                        InContScroll = std::max(InContScroll, 0);
                     }
                     else if (IntMode == INT_MODE_LIST) {
                         ListScroll -= step;
-                        if (ListScroll < 0) {
-                            ListScroll = 0;
-                        }
+                        ListScroll = std::max(ListScroll, 0);
                     }
                 }
                 else {
-                    if (IsItemMode() && CurItemProtos->size()) {
+                    if (IsItemMode() && !CurItemProtos->empty()) {
                         (*CurProtoScroll) += step;
                         if (*CurProtoScroll >= static_cast<int>(CurItemProtos->size())) {
                             *CurProtoScroll = static_cast<int>(CurItemProtos->size()) - 1;
                         }
                     }
-                    else if (IsCritMode() && CurNpcProtos->size()) {
+                    else if (IsCritMode() && !CurNpcProtos->empty()) {
                         (*CurProtoScroll) += step;
                         if (*CurProtoScroll >= static_cast<int>(CurNpcProtos->size())) {
                             *CurProtoScroll = static_cast<int>(CurNpcProtos->size()) - 1;
@@ -901,9 +893,7 @@ void FOMapper::IntDraw()
     if (IsItemMode()) {
         auto i = *CurProtoScroll;
         int j = static_cast<int>(static_cast<size_t>(i) + ProtosOnScreen);
-        if (j > static_cast<int>(CurItemProtos->size())) {
-            j = static_cast<int>(CurItemProtos->size());
-        }
+        j = std::min(j, static_cast<int>(CurItemProtos->size()));
 
         for (; i < j; i++, x += w) {
             const auto* proto_item = (*CurItemProtos)[i];
@@ -940,6 +930,7 @@ void FOMapper::IntDraw()
 
             auto model_name = proto->GetModelName();
             const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+
             if (anim == nullptr) {
                 continue;
             }
@@ -1143,14 +1134,17 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
     const auto w = r.Width();
     const auto h = r.Height();
 
-    auto color = COLOR_TEXT;
+    ucolor color = COLOR_TEXT;
+
     if (is_const) {
         color = COLOR_TEXT_DWHITE;
     }
 
     auto result_text = text;
+
     if (ObjCurLine == (y - ObjWWork[1] - ObjY) / DRAW_NEXT_HEIGHT) {
         color = COLOR_TEXT_WHITE;
+
         if (!is_const && ObjCurLineValue != ObjCurLineInitValue) {
             color = COLOR_TEXT_RED;
             result_text = ObjCurLineValue;
@@ -1244,9 +1238,7 @@ void FOMapper::SelectEntityProp(int line)
     constexpr auto start_line = 3;
 
     ObjCurLine = line;
-    if (ObjCurLine < 0) {
-        ObjCurLine = 0;
-    }
+    ObjCurLine = std::max(ObjCurLine, 0);
     ObjCurLineInitValue = ObjCurLineValue = "";
     ObjCurLineIsConst = true;
 
@@ -1591,41 +1583,29 @@ void FOMapper::IntLMouseDown()
     else if (IsCurInRect(IntBScrBack, IntX, IntY)) {
         if (IsItemMode() || IsCritMode()) {
             (*CurProtoScroll)--;
-            if (*CurProtoScroll < 0) {
-                *CurProtoScroll = 0;
-            }
+            *CurProtoScroll = std::max(*CurProtoScroll, 0);
         }
         else if (IntMode == INT_MODE_INCONT) {
             InContScroll--;
-            if (InContScroll < 0) {
-                InContScroll = 0;
-            }
+            InContScroll = std::max(InContScroll, 0);
         }
         else if (IntMode == INT_MODE_LIST) {
             ListScroll--;
-            if (ListScroll < 0) {
-                ListScroll = 0;
-            }
+            ListScroll = std::max(ListScroll, 0);
         }
     }
     else if (IsCurInRect(IntBScrBackFst, IntX, IntY)) {
         if (IsItemMode() || IsCritMode()) {
             (*CurProtoScroll) -= static_cast<int>(ProtosOnScreen);
-            if (*CurProtoScroll < 0) {
-                *CurProtoScroll = 0;
-            }
+            *CurProtoScroll = std::max(*CurProtoScroll, 0);
         }
         else if (IntMode == INT_MODE_INCONT) {
             InContScroll -= static_cast<int>(ProtosOnScreen);
-            if (InContScroll < 0) {
-                InContScroll = 0;
-            }
+            InContScroll = std::max(InContScroll, 0);
         }
         else if (IntMode == INT_MODE_LIST) {
             ListScroll -= static_cast<int>(ProtosOnScreen);
-            if (ListScroll < 0) {
-                ListScroll = 0;
-            }
+            ListScroll = std::max(ListScroll, 0);
         }
     }
     else if (IsCurInRect(IntBScrFront, IntX, IntY)) {
@@ -1998,16 +1978,12 @@ void FOMapper::IntSetMode(int mode)
         SubTabsX += IntX - SubTabsRect.Width() / 2;
         SubTabsY += IntY - SubTabsRect.Height();
 
-        if (SubTabsX < 0) {
-            SubTabsX = 0;
-        }
+        SubTabsX = std::max(SubTabsX, 0);
         if (SubTabsX + SubTabsRect.Width() > Settings.ScreenWidth) {
             SubTabsX -= SubTabsX + SubTabsRect.Width() - Settings.ScreenWidth;
         }
 
-        if (SubTabsY < 0) {
-            SubTabsY = 0;
-        }
+        SubTabsY = std::max(SubTabsY, 0);
         if (SubTabsY + SubTabsRect.Height() > Settings.ScreenHeight) {
             SubTabsY -= SubTabsY + SubTabsRect.Height() - Settings.ScreenHeight;
         }
@@ -2442,7 +2418,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         auto* cr_clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
 
         for (const auto* inv_item : cr->GetConstInvItems()) {
-            auto* inv_item_clone = cr_clone->AddMapperInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
+            auto* inv_item_clone = cr_clone->AddMapperInvItem(CurMap->GetTempEntityId(), dynamic_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
             CloneInnerItems(inv_item_clone, inv_item);
         }
 
@@ -2465,7 +2441,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
     for (const auto* inner_item : from_item->GetConstInnerItems()) {
-        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
+        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GetTempEntityId(), dynamic_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
         CloneInnerItems(inner_item_clone, inner_item);
     }
 }
@@ -2563,7 +2539,7 @@ void FOMapper::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddMapperInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
+                auto* inner_item = item->AddMapperInnerItem(CurMap->GetTempEntityId(), dynamic_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
 
                 add_item_inner_items(child_buf, inner_item);
             }
