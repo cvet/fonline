@@ -4496,7 +4496,8 @@ void FOServer::Process_Dialog(Player* player)
 
     // Set dialogs
     auto* dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
-    auto* dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
+    auto* dialogs = dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr;
+
     if (dialogs == nullptr || dialogs->empty()) {
         WriteLog("No dialogs, npc '{}', client '{}'", talker->GetName(), cr->GetName());
         CrMngr.CloseTalk(cr);
@@ -4560,6 +4561,7 @@ void FOServer::Process_Dialog(Player* player)
 
         // Use result
         const uint force_dlg_id = DialogUseResult(talker, cr, *answer);
+
         if (force_dlg_id != 0) {
             next_dlg_id = force_dlg_id;
         }
@@ -4591,6 +4593,7 @@ void FOServer::Process_Dialog(Player* player)
     else {
         cr->Talk.Barter = false;
         next_dlg_id = cur_dialog->Id;
+
         if (talker != nullptr) {
             talker->OnBarter.Fire(cr, false, talker->GetBarterCritters() + 1);
             OnCritterBarter.Fire(cr, talker, false, talker->GetBarterCritters() + 1);
@@ -4599,6 +4602,7 @@ void FOServer::Process_Dialog(Player* player)
 
     // Find dialog
     const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
+
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
@@ -4620,8 +4624,9 @@ void FOServer::Process_Dialog(Player* player)
 
     // Get lexems
     cr->Talk.Lexems.clear();
+
     if (cr->Talk.CurDialog.DlgScriptFuncName) {
-        auto failed = false;
+        bool failed = false;
 
         cr->Talk.Locked = true;
         if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
@@ -4647,6 +4652,7 @@ void FOServer::Process_Dialog(Player* player)
         }
         else {
             auto* map = EntityMngr.GetMap(cr->GetMapId());
+
             if (map != nullptr) {
                 map->SetTextMsg(cr->Talk.TalkHex, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
             }
