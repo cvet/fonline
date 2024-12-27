@@ -45,7 +45,7 @@ DECLARE_EXCEPTION(DeferredCallException);
 struct DeferredCall
 {
     ident_t Id {};
-    tick_t FireFullSecond {};
+    tick_t FireTime {};
     tick_t Delay {};
     ScriptFunc<void> EmptyFunc {};
     ScriptFunc<void, any_t> AnyFunc {};

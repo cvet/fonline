@@ -677,7 +677,7 @@ FO_SCRIPT_API int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zone
 ///@ ExportMethod ExcludeInSingleplayer
 FO_SCRIPT_API tick_t Client_Game_GetFullSecond(FOClient* client)
 {
-    return client->GameTime.GetFullSecond();
+    return client->GameTime.GetServerTime();
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
@@ -708,7 +708,8 @@ FO_SCRIPT_API tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 yea
     }
 
     if (day_ != 0) {
-        const auto month_day = client->GameTime.GameTimeMonthDays(year, month_);
+        const auto month_day = Timer::GameTimeMonthDays(year, month_);
+
         if (day_ < month_day || day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
@@ -728,13 +729,13 @@ FO_SCRIPT_API tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 yea
         throw ScriptException("Invalid second", second);
     }
 
-    return client->GameTime.EvaluateFullSecond(year_, month_, day_, hour, minute, second);
+    return client->GameTime.DateToServerTime(year_, month_, day_, hour, minute, second);
 }
 
 ///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API void Client_Game_EvaluateGameTime(FOClient* client, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
+FO_SCRIPT_API void Client_Game_EvaluateGameTime(FOClient* client, tick_t serverTime, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
-    const auto dt = client->GameTime.EvaluateGameTime(fullSecond);
+    const auto dt = client->GameTime.ServerTimeToDate(serverTime);
     year = dt.Year;
     month = dt.Month;
     dayOfWeek = dt.DayOfWeek;

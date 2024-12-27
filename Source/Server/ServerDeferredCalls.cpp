@@ -89,8 +89,9 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
+
         if (time_mul != 0) {
-            call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+            call.FireTime = tick_t {_engine->GameTime.GetServerTime().underlying_value() + delay * time_mul / 1000};
         }
     }
 
@@ -119,7 +120,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     RUNTIME_ASSERT(call_doc.Contains("Script") && !call_doc["Script"].AsString().empty());
 
-    call_doc.Emplace("FireFullSecond", static_cast<int64>(call.FireFullSecond.underlying_value()));
+    call_doc.Emplace("FireTime", static_cast<int64>(call.FireTime.underlying_value()));
 
     _serverEngine->DbStorage.Insert(_serverEngine->DeferredCallsCollectionName, call.Id, call_doc);
 
@@ -166,7 +167,7 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         DeferredCall call;
 
         call.Id = call_id;
-        call.FireFullSecond = tick_t {static_cast<tick_t::underlying_type>(call_doc["FireFullSecond"].AsInt64())};
+        call.FireTime = tick_t {static_cast<tick_t::underlying_type>(call_doc["FireTime"].AsInt64())};
 
         const auto func_name = _serverEngine->ToHashedString(call_doc["Script"].AsString());
         call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);
