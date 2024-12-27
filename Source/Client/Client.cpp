@@ -940,13 +940,14 @@ void FOClient::Net_OnUpdateFilesResponse()
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
-    if (!outdated) {
-        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    }
-
     if (outdated) {
         throw ResourcesOutdatedException("Binary outdated");
     }
+
+    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+
+    RestoreData(_globalsPropertiesData);
+    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
 
     if (!data.empty()) {
         FileSystem resources;
@@ -980,8 +981,6 @@ void FOClient::Net_OnUpdateFilesResponse()
 
         reader.VerifyEnd();
     }
-
-    RestoreData(_globalsPropertiesData);
 }
 
 void FOClient::Net_OnWrongNetProto()
@@ -1015,6 +1014,7 @@ void FOClient::Net_OnLoginSuccess()
     _conn.InBuf.ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
+    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
 
     RUNTIME_ASSERT(_curPlayer);
     RUNTIME_ASSERT(!_curPlayer->GetId());
@@ -2346,8 +2346,6 @@ void FOClient::Net_OnTimeSync()
     const auto second = _conn.InBuf.Read<uint16>();
     const auto multiplier = _conn.InBuf.Read<uint16>();
 
-    GameTime.SetServerTime(year, month, day, hour, minute, second, multiplier);
-
     SetYear(year);
     SetMonth(month);
     SetDay(day);
@@ -2355,6 +2353,8 @@ void FOClient::Net_OnTimeSync()
     SetMinute(minute);
     SetSecond(second);
     SetTimeMultiplier(multiplier);
+
+    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
 }
 
 void FOClient::Net_OnLoadMap()
