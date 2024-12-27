@@ -1350,7 +1350,7 @@ void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, const 
     RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
     RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
 
-    const auto fire_time = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + duration.underlying_value()};
+    const auto fire_time = tick_t {_engine->GameTime.GetServerTime().underlying_value() + duration.underlying_value()};
 
     size_t index = 0;
 
@@ -1410,9 +1410,9 @@ void Critter::ProcessTimeEvents()
 
     RUNTIME_ASSERT(prop_raw_data.size() >= sizeof(tick_t));
     const auto& near_fire_time = *reinterpret_cast<const tick_t*>(prop_raw_data.data());
-    const auto full_second = _engine->GameTime.GetFullSecond();
+    const auto server_time = _engine->GameTime.GetServerTime();
 
-    if (full_second.underlying_value() < near_fire_time.underlying_value()) {
+    if (server_time.underlying_value() < near_fire_time.underlying_value()) {
         return;
     }
 

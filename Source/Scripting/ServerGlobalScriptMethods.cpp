@@ -569,7 +569,7 @@
 ///@ ExportMethod
 [[maybe_unused]] tick_t Server_Game_GetFullSecond(FOServer* server)
 {
-    return server->GameTime.GetFullSecond();
+    return server->GameTime.GetServerTime();
 }
 
 ///# ...
@@ -608,7 +608,8 @@
     }
 
     if (day_ != 0) {
-        const auto month_day = server->GameTime.GameTimeMonthDays(year, month_);
+        const auto month_day = Timer::GameTimeMonthDays(year, month_);
+
         if (day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
@@ -630,7 +631,7 @@
         throw ScriptException("Invalid second", second);
     }
 
-    return server->GameTime.EvaluateFullSecond(year_, month_, day_, hour, minute, second);
+    return server->GameTime.DateToServerTime(year_, month_, day_, hour, minute, second);
 }
 
 ///# ...
@@ -643,9 +644,9 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_EvaluateGameTime(FOServer* server, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
+[[maybe_unused]] void Server_Game_EvaluateGameTime(FOServer* server, tick_t serverTime, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
-    const auto dt = server->GameTime.EvaluateGameTime(fullSecond);
+    const auto dt = server->GameTime.ServerTimeToDate(serverTime);
 
     year = dt.Year;
     month = dt.Month;
