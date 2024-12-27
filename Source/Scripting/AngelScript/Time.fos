@@ -107,7 +107,7 @@ string DateTimeToString(uint gameTime)
     uint16 hour = 0;
     uint16 minute = 0;
     uint16 second = 0;
-    Game.EvaluateGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
+    Game.ServerToDateTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
 
     return "" + (day > 9 ? ("" + day) : ("0" + day)) + "." + (month > 9 ? ("" + month) : ("0" + month)) + "." + year + " " +
            (hour > 9 ? ("" + hour) : ("0" + hour)) + ":" + (minute > 9 ? ("" + minute) : ("0" + minute));
@@ -115,7 +115,7 @@ string DateTimeToString(uint gameTime)
 
 bool IsTimeoutActive(uint timeout)
 {
-    return timeout > Game.GetFullSecond();
+    return timeout > Game.GetServerTime();
 }
 
 }

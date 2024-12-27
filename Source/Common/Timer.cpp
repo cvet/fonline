@@ -171,7 +171,7 @@ auto GameTimer::DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 h
     return tick_t {static_cast<tick_t::underlying_type>(ft / 10000000ULL)};
 }
 
-auto GameTimer::ServerTimeToDate(tick_t server_time) const noexcept -> DateTimeStamp
+auto GameTimer::ServerToDateTime(tick_t server_time) const noexcept -> DateTimeStamp
 {
     NO_STACK_TRACE_ENTRY();
 

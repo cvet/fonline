@@ -323,12 +323,6 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Item* ite
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetTick(FOServer* server)
-{
-    return time_duration_to_ms<uint>(server->GameTime.FrameTime().time_since_epoch());
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Item* Server_Game_GetItem(FOServer* server, ident_t itemId)
 {
     if (!itemId) {
@@ -658,80 +652,6 @@ FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel,
 FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr, string_view lexems)
 {
     server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textPack, numStr, lexems);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API tick_t Server_Game_GetFullSecond(FOServer* server)
-{
-    return server->GameTime.GetServerTime();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API tick_t Server_Game_EvaluateFullSecond(FOServer* server, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
-{
-    if (year != 0 && year < server->Settings.StartYear) {
-        throw ScriptException("Invalid year", year);
-    }
-    if (year != 0 && year > server->Settings.StartYear + 100) {
-        throw ScriptException("Invalid year", year);
-    }
-    if (month != 0 && month < 1) {
-        throw ScriptException("Invalid month", month);
-    }
-    if (month != 0 && month > 12) {
-        throw ScriptException("Invalid month", month);
-    }
-
-    auto year_ = year;
-    auto month_ = month;
-    auto day_ = day;
-
-    if (year_ == 0) {
-        year_ = server->GetYear();
-    }
-    if (month_ == 0) {
-        month_ = server->GetMonth();
-    }
-
-    if (day_ != 0) {
-        const auto month_day = Timer::GameTimeMonthDays(year, month_);
-
-        if (day_ > month_day) {
-            throw ScriptException("Invalid day", day_, month_day);
-        }
-    }
-
-    if (day_ == 0) {
-        day_ = server->GetDay();
-    }
-
-    if (hour > 23) {
-        if (minute > 0 || second > 0) {
-            throw ScriptException("Invalid hour", hour);
-        }
-    }
-    if (minute > 59) {
-        throw ScriptException("Invalid minute", minute);
-    }
-    if (second > 59) {
-        throw ScriptException("Invalid second", second);
-    }
-
-    return server->GameTime.DateToServerTime(year_, month_, day_, hour, minute, second);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_EvaluateGameTime(FOServer* server, tick_t serverTime, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
-{
-    const auto dt = server->GameTime.ServerTimeToDate(serverTime);
-
-    year = dt.Year;
-    month = dt.Month;
-    dayOfWeek = dt.DayOfWeek;
-    day = dt.Day;
-    hour = dt.Hour;
-    minute = dt.Minute;
-    second = dt.Second;
 }
 
 ///@ ExportMethod
@@ -1176,25 +1096,9 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_GetTime(FOServer* server, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
+FO_SCRIPT_API void Server_Game_SetServerTime(FOServer* server, uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
-    UNUSED_VARIABLE(server);
-
-    const auto cur_time = Timer::GetCurrentDateTime();
-    year = cur_time.Year;
-    month = cur_time.Month;
-    dayOfWeek = cur_time.DayOfWeek;
-    day = cur_time.Day;
-    hour = cur_time.Hour;
-    minute = cur_time.Minute;
-    second = cur_time.Second;
-    milliseconds = cur_time.Milliseconds;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SetTime(FOServer* server, uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
-{
-    server->SetGameTime(multiplier, year, month, day, hour, minute, second);
+    server->SetServerTime(multiplier, year, month, day, hour, minute, second);
 }
 
 ///@ ExportMethod

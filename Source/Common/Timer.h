@@ -69,7 +69,7 @@ public:
 
     [[nodiscard]] auto GetServerTime() const noexcept -> tick_t;
     [[nodiscard]] auto DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
-    [[nodiscard]] auto ServerTimeToDate(tick_t server_time) const noexcept -> DateTimeStamp;
+    [[nodiscard]] auto ServerToDateTime(tick_t server_time) const noexcept -> DateTimeStamp;
 
 #if FO_SINGLEPLAYER
     [[nodiscard]] auto IsGameplayPaused() const noexcept -> bool;

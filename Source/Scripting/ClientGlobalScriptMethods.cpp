@@ -301,12 +301,6 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetTick(FOClient* client)
-{
-    return time_duration_to_ms<uint>(client->GameTime.FrameTime().time_since_epoch());
-}
-
-///@ ExportMethod
 FO_SCRIPT_API string Client_Game_CustomCall(FOClient* client, string_view command)
 {
     return client->CustomCall(command, " ");
@@ -674,77 +668,6 @@ FO_SCRIPT_API int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zone
     return client->GetGlobalMapFog().Get2Bit(zoneX, zoneY);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API tick_t Client_Game_GetFullSecond(FOClient* client)
-{
-    return client->GameTime.GetServerTime();
-}
-
-///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
-{
-    if (year != 0 && year < client->Settings.StartYear) {
-        throw ScriptException("Invalid year", year);
-    }
-    if (year != 0 && year > client->Settings.StartYear + 100) {
-        throw ScriptException("Invalid year", year);
-    }
-    if (month != 0 && month < 1) {
-        throw ScriptException("Invalid month", month);
-    }
-    if (month != 0 && month > 12) {
-        throw ScriptException("Invalid month", month);
-    }
-
-    auto year_ = year;
-    auto month_ = month;
-    auto day_ = day;
-
-    if (year_ == 0) {
-        year_ = client->GetYear();
-    }
-    if (month_ == 0) {
-        month_ = client->GetMonth();
-    }
-
-    if (day_ != 0) {
-        const auto month_day = Timer::GameTimeMonthDays(year, month_);
-
-        if (day_ < month_day || day_ > month_day) {
-            throw ScriptException("Invalid day", day_, month_day);
-        }
-    }
-
-    if (day_ == 0) {
-        day_ = client->GetDay();
-    }
-
-    if (hour > 23) {
-        throw ScriptException("Invalid hour", hour);
-    }
-    if (minute > 59) {
-        throw ScriptException("Invalid minute", minute);
-    }
-    if (second > 59) {
-        throw ScriptException("Invalid second", second);
-    }
-
-    return client->GameTime.DateToServerTime(year_, month_, day_, hour, minute, second);
-}
-
-///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API void Client_Game_EvaluateGameTime(FOClient* client, tick_t serverTime, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
-{
-    const auto dt = client->GameTime.ServerTimeToDate(serverTime);
-    year = dt.Year;
-    month = dt.Month;
-    dayOfWeek = dt.DayOfWeek;
-    day = dt.Day;
-    hour = dt.Hour;
-    minute = dt.Minute;
-    second = dt.Second;
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
@@ -931,22 +854,6 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode k
     if (key1 != KeyCode::None) {
         client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key1}});
     }
-}
-
-///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
-{
-    UNUSED_VARIABLE(client);
-
-    const auto cur_time = Timer::GetCurrentDateTime();
-    year = cur_time.Year;
-    month = cur_time.Month;
-    dayOfWeek = cur_time.DayOfWeek;
-    day = cur_time.Day;
-    hour = cur_time.Hour;
-    minute = cur_time.Minute;
-    second = cur_time.Second;
-    milliseconds = cur_time.Milliseconds;
 }
 
 ///@ ExportMethod

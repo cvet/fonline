@@ -2623,7 +2623,7 @@ class MessageBox : Text
         uint16 minute = 0;
         uint16 second = 0;
         uint16 milliseconds;
-        Game.GetTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
+        Game.GetCurDateTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
         string messageTime = (hour <= 9 ? "0" : "") + hour + ":" + (minute <= 9 ? "0" : "") + minute + ":" + (second <= 9 ? "0" : "") + second + " ";
         _MessageTimes.insertLast(messageTime);
 
