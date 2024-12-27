@@ -187,7 +187,7 @@ auto AnyData::ValueToString(const Value& value) -> string
 
     auto str = ValueToCodedString(value);
 
-    if (str.length() >= 3 && str.front() == '\"' && str.back() == '\"') {
+    if (str.length() >= 2 && str.front() == '\"' && str.back() == '\"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
             str = DecodeString(str);
         }
