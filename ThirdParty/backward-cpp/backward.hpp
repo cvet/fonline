@@ -4405,6 +4405,8 @@ private:
   }
 
   NOINLINE static void crash_handler(int skip, CONTEXT *ct = nullptr) {
+    extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
+    SetCrashStackTrace(); // (FOnline Patch)
 
     if (ct == nullptr) {
       RtlCaptureContext(ctx());
