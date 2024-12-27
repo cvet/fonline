@@ -56,7 +56,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
         props->ValidateForRawData(prop);
 
-        // Skip same as in base
+        // Skip same as in base or zero values
         if (base != nullptr) {
             const auto base_raw_data = base->GetRawData(prop);
             const auto raw_data = props->GetRawData(prop);
@@ -72,7 +72,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
                 const auto* pod_data = raw_data.data();
                 const auto* pod_data_end = pod_data + raw_data.size();
 
-                while (pod_data != pod_data_end && *pod_data != 0) {
+                while (pod_data != pod_data_end && *pod_data == 0) {
                     ++pod_data;
                 }
 
