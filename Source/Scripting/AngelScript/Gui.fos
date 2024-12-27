@@ -3972,8 +3972,8 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         // Callback
         if (!screen._ActiveSelf) {
             screen.SetActive(true);
-            screen._Show(params);
         }
+        screen._Show(params); // Params may change, so need call again
         screen._Appear();
     }
     else {
