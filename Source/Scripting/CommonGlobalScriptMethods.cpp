@@ -674,3 +674,96 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase*
 
     return result;
 }
+
+///@ ExportMethod
+FO_SCRIPT_API uint Common_Game_GetTick(FOEngineBase* engine)
+{
+    return time_duration_to_ms<uint>(engine->GameTime.FrameTime().time_since_epoch());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API tick_t Common_Game_GetServerTime(FOEngineBase* engine)
+{
+    return engine->GameTime.GetServerTime();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API tick_t Common_Game_DateToServerTime(FOEngineBase* engine, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+{
+    if (year != 0 && year < engine->Settings.StartYear) {
+        throw ScriptException("Invalid year", year);
+    }
+    if (year != 0 && year > engine->Settings.StartYear + 100) {
+        throw ScriptException("Invalid year", year);
+    }
+    if (month != 0 && month < 1) {
+        throw ScriptException("Invalid month", month);
+    }
+    if (month != 0 && month > 12) {
+        throw ScriptException("Invalid month", month);
+    }
+
+    auto year_ = year;
+    auto month_ = month;
+    auto day_ = day;
+
+    if (year_ == 0) {
+        year_ = engine->GetYear();
+    }
+    if (month_ == 0) {
+        month_ = engine->GetMonth();
+    }
+
+    if (day_ != 0) {
+        const auto month_day = Timer::GameTimeMonthDays(year, month_);
+
+        if (day_ < month_day || day_ > month_day) {
+            throw ScriptException("Invalid day", day_, month_day);
+        }
+    }
+
+    if (day_ == 0) {
+        day_ = engine->GetDay();
+    }
+
+    if (hour > 23) {
+        throw ScriptException("Invalid hour", hour);
+    }
+    if (minute > 59) {
+        throw ScriptException("Invalid minute", minute);
+    }
+    if (second > 59) {
+        throw ScriptException("Invalid second", second);
+    }
+
+    return engine->GameTime.DateToServerTime(year_, month_, day_, hour, minute, second);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_ServerToDateTime(FOEngineBase* engine, tick_t serverTime, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
+{
+    const auto dt = engine->GameTime.ServerToDateTime(serverTime);
+    year = dt.Year;
+    month = dt.Month;
+    dayOfWeek = dt.DayOfWeek;
+    day = dt.Day;
+    hour = dt.Hour;
+    minute = dt.Minute;
+    second = dt.Second;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_GetCurDateTime(FOEngineBase* engine, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
+{
+    UNUSED_VARIABLE(engine);
+
+    const auto cur_time = Timer::GetCurrentDateTime();
+    year = cur_time.Year;
+    month = cur_time.Month;
+    dayOfWeek = cur_time.DayOfWeek;
+    day = cur_time.Day;
+    hour = cur_time.Hour;
+    minute = cur_time.Minute;
+    second = cur_time.Second;
+    milliseconds = cur_time.Milliseconds;
+}

@@ -86,7 +86,7 @@ public:
     void Unlock();
     void DrawGui(string_view server_name);
 
-    void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
+    void SetServerTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);

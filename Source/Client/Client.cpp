@@ -451,7 +451,7 @@ void FOClient::MainLoop()
 
     // Game time
     if (time_changed) {
-        const auto st = GameTime.ServerTimeToDate(GameTime.GetServerTime());
+        const auto st = GameTime.ServerToDateTime(GameTime.GetServerTime());
 
         SetYear(st.Year);
         SetMonth(st.Month);

@@ -522,7 +522,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
 
             if (GameTime.FrameAdvance()) {
-                const auto st = GameTime.ServerTimeToDate(GameTime.GetServerTime());
+                const auto st = GameTime.ServerToDateTime(GameTime.GetServerTime());
                 SetYear(st.Year);
                 SetMonth(st.Month);
                 SetDay(st.Day);
@@ -973,7 +973,7 @@ auto FOServer::GetHealthInfo() const -> string
     string buf;
     buf.reserve(2048);
 
-    const auto st = GameTime.ServerTimeToDate(GameTime.GetServerTime());
+    const auto st = GameTime.ServerToDateTime(GameTime.GetServerTime());
     buf += strex("Cur time: {}\n", Timer::CurTime());
     buf += strex("Uptime: {}\n", _stats.Uptime);
     buf += strex("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
@@ -1760,7 +1760,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        SetGameTime(multiplier, year, month, day, hour, minute, second);
+        SetServerTime(multiplier, year, month, day, hour, minute, second);
         logcb("Time changed");
     } break;
     case CMD_LOG: {
@@ -1807,7 +1807,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 #undef CHECK_ADMIN_PANEL
 }
 
-void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second)
+void FOServer::SetServerTime(int multiplier, int year, int month, int day, int hour, int minute, int second)
 {
     STACK_TRACE_ENTRY();
 
