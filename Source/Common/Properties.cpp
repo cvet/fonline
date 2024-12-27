@@ -493,7 +493,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
             continue;
         }
 
-        // Skip same
+        // Skip same as in base or zero values
         if (base != nullptr) {
             if (prop->_podDataOffset != Property::INVALID_DATA_MARKER) {
                 const auto* pod_data = &_podData[prop->_podDataOffset];
@@ -520,7 +520,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 const auto* pod_data = &_podData[prop->_podDataOffset];
                 const auto* pod_data_end = pod_data + prop->_baseType.Size;
 
-                while (pod_data != pod_data_end && *pod_data != 0) {
+                while (pod_data != pod_data_end && *pod_data == 0) {
                     ++pod_data;
                 }
 
