@@ -1702,7 +1702,7 @@ def genDataRegistration(target, isASCompiler):
     #    restoreLines.append('')
     
     # Migration rules
-    if target in ['Server', 'Baker'] and not isASCompiler:
+    if target in ['Server', 'Baker', 'Mapper'] and not isASCompiler:
         registerLines.append('const auto to_hstring = [engine](string_view str) -> hstring { return engine->ToHashedString(str); };')
         registerLines.append('')
         registerLines.append('engine->RegisterMigrationRules({')
