@@ -72,6 +72,7 @@ FIXED_SETTING(vector<uint>, LookDir, 0, 20, 40, 60, 60);
 FIXED_SETTING(vector<uint>, LookSneakDir, 90, 60, 30, 0, 0);
 FIXED_SETTING(uint, LookMinimum, 6);
 FIXED_SETTING(bool, CritterBlockHex, false);
+FIXED_SETTING(uint, MaxAddUnstackableItems, 10);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

@@ -227,13 +227,11 @@ auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
-        _engine->CrMngr.AddItemToCritter(to_cr, item, true);
-        return item;
+        return _engine->CrMngr.AddItemToCritter(to_cr, item, true);
     }
     else {
         auto* splitted_item = SplitItem(item, count);
-        _engine->CrMngr.AddItemToCritter(to_cr, splitted_item, true);
-        return splitted_item;
+        return _engine->CrMngr.AddItemToCritter(to_cr, splitted_item, true);
     }
 }
 
@@ -271,13 +269,11 @@ auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemS
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
-        to_cont->AddItemToContainer(item, stack_id);
-        return item;
+        return to_cont->AddItemToContainer(item, stack_id);
     }
     else {
         auto* splitted_item = SplitItem(item, count);
-        to_cont->AddItemToContainer(splitted_item, stack_id);
-        return splitted_item;
+        return to_cont->AddItemToContainer(splitted_item, stack_id);
     }
 }
 
@@ -297,9 +293,8 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             result = item;
         }
         else {
-            if (count > MAX_ADDED_NOGROUP_ITEMS) {
-                count = MAX_ADDED_NOGROUP_ITEMS;
-            }
+            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
                 item = cont->AddItemToContainer(item, stack_id);
@@ -314,9 +309,8 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, Containe
             result = item;
         }
         else {
-            if (count > MAX_ADDED_NOGROUP_ITEMS) {
-                count = MAX_ADDED_NOGROUP_ITEMS;
-            }
+            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
                 item = cont->AddItemToContainer(item, stack_id);
@@ -349,9 +343,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
             result = item;
         }
         else {
-            if (count > MAX_ADDED_NOGROUP_ITEMS) {
-                count = MAX_ADDED_NOGROUP_ITEMS;
-            }
+            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
             for (uint i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
