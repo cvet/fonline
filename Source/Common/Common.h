@@ -1795,7 +1795,6 @@ DECLARE_TYPE_PARSER(frect, sstr >> value.x, sstr >> value.y, sstr >> value.width
 // Todo: convert all defines to constants and enums
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
-static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
 
