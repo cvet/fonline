@@ -555,99 +555,6 @@ void Player::Send_ChosenRemoveItem(const Item* item)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_GlobalInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_controlledCr);
-
-    const auto known_locs = _controlledCr->GetKnownLocations();
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-
-    uint16 loc_count = 0;
-
-    for (size_t i = 0; i < known_locs.size(); i++) {
-        const auto loc_id = known_locs[i];
-        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
-
-        if (loc != nullptr) {
-            loc_count++;
-        }
-        else {
-            _engine->MapMngr.RemoveKnownLoc(_controlledCr, loc_id);
-        }
-    }
-
-    Connection->OutBuf.Write(loc_count);
-
-    for (uint16 i = 0; i < loc_count; i++) {
-        const ident_t loc_id = known_locs[i];
-        const auto* loc = _engine->EntityMngr.GetLocation(loc_id);
-        Connection->OutBuf.Write(loc_id);
-        Connection->OutBuf.Write(loc->GetProtoId());
-        Connection->OutBuf.Write(loc->GetWorldPos());
-        Connection->OutBuf.Write(loc->GetRadius());
-        Connection->OutBuf.Write(loc->GetColor());
-        uint8 count = 0;
-        if (loc->IsNonEmptyMapEntrances()) {
-            count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
-        }
-        Connection->OutBuf.Write(count);
-    }
-
-    auto gmap_fog = _controlledCr->GetGlobalMapFog();
-    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-        gmap_fog.resize(GM_ZONES_FOG_SIZE);
-    }
-    Connection->OutBuf.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
-
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_GlobalLocation(const Location* loc, bool add)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_LOCATION);
-    Connection->OutBuf.Write(add);
-    Connection->OutBuf.Write(loc->GetId());
-    Connection->OutBuf.Write(loc->GetProtoId());
-    Connection->OutBuf.Write(loc->GetWorldPos());
-    Connection->OutBuf.Write(loc->GetRadius());
-    Connection->OutBuf.Write(loc->GetColor());
-    uint8 count = 0;
-    if (loc->IsNonEmptyMapEntrances()) {
-        count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
-    }
-    Connection->OutBuf.Write(count);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
-void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->OutBuf.StartMsg(NETMSG_GLOBAL_FOG);
-    Connection->OutBuf.Write(zx);
-    Connection->OutBuf.Write(zy);
-    Connection->OutBuf.Write(fog);
-    Connection->OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(Connection);
-}
-
 void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
@@ -696,7 +603,7 @@ void Player::Send_Talk()
         Connection->OutBuf.Write(_controlledCr->Talk.DialogPackId);
         Connection->OutBuf.Write(all_answers);
         Connection->OutBuf.Write(static_cast<uint16>(_controlledCr->Talk.Lexems.length()));
-        if (_controlledCr->Talk.Lexems.length() != 0) {
+        if (!_controlledCr->Talk.Lexems.empty()) {
             Connection->OutBuf.Push(_controlledCr->Talk.Lexems.c_str(), _controlledCr->Talk.Lexems.length());
         }
         Connection->OutBuf.Write(_controlledCr->Talk.CurDialog.TextId);

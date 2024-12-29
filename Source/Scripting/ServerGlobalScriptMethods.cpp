@@ -40,7 +40,6 @@
 #include "ScriptSystem.h"
 #include "Server.h"
 #include "StringUtils.h"
-#include "TwoBitMask.h"
 
 ///@ ExportMethod
 FO_SCRIPT_API ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
@@ -657,8 +656,8 @@ FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel,
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ipos wpos)
 {
-    // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
+
     if (loc == nullptr) {
         throw ScriptException("Unable to create location", locPid);
     }
@@ -669,36 +668,14 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring loc
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ipos wpos, const vector<Critter*>& critters)
 {
-    // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
+
     if (loc == nullptr) {
         throw ScriptException("Unable to create location", locPid);
     }
 
-    // Add known locations to critters
     for (auto* cr : critters) {
         server->MapMngr.AddKnownLoc(cr, loc->GetId());
-
-        if (!cr->GetMapId()) {
-            cr->Send_GlobalLocation(loc, true);
-        }
-
-        const auto zx = static_cast<uint16>(loc->GetWorldPos().x / server->Settings.GlobalMapZoneLength);
-        const auto zy = static_cast<uint16>(loc->GetWorldPos().y / server->Settings.GlobalMapZoneLength);
-
-        auto gmap_fog = cr->GetGlobalMapFog();
-        if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-            gmap_fog.resize(GM_ZONES_FOG_SIZE);
-        }
-
-        auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
-        if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
-            gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
-            cr->SetGlobalMapFog(gmap_fog);
-            if (!cr->GetMapId()) {
-                cr->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
-            }
-        }
     }
 
     return loc;
@@ -904,12 +881,6 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetVisibleLocations(FOServer* server
     }
 
     return locations;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetZoneLocations(FOServer* server, uint16 zx, uint16 zy, uint zoneRadius)
-{
-    return server->MapMngr.GetZoneLocations(zx, zy, static_cast<int>(zoneRadius));
 }
 
 ///@ ExportMethod

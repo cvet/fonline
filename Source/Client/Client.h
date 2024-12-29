@@ -61,7 +61,6 @@
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "TextPack.h"
-#include "TwoBitMask.h"
 #include "VideoClip.h"
 
 DECLARE_EXCEPTION(EngineDataNotFoundException);
@@ -148,7 +147,6 @@ public:
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> const vector<CritterView*>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
-    [[nodiscard]] auto GetGlobalMapFog() const noexcept -> const TwoBitMask& { return _globalMapFog; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
 
     void MainLoop();
@@ -309,16 +307,6 @@ protected:
         ucolor EndColor {};
     };
 
-    struct GmapLocation
-    {
-        ident_t LocId {};
-        hstring LocPid {};
-        upos16 LocPos {};
-        uint16 Radius {};
-        ucolor Color {};
-        uint8 Entrances {};
-    };
-
     void TryAutoLogin();
     void FlashGameWindow();
     void WaitDraw();
@@ -330,8 +318,8 @@ protected:
     void ProcessScreenEffectQuake();
     void ProcessVideo();
 
+    void UnloadMap();
     void LmapPrepareMap();
-    void GmapNullParams();
 
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
@@ -378,9 +366,6 @@ protected:
     void Net_OnChosenTalk();
     void Net_OnTimeSync();
     void Net_OnLoadMap();
-    void Net_OnGlobalInfo();
-    void Net_OnGlobalLocation();
-    void Net_OnGlobalFog();
     void Net_OnSomeItems();
     void Net_OnViewMap();
     void Net_OnRemoteCall();
@@ -422,9 +407,12 @@ protected:
     string _loginPassword {};
     bool _isAutoLogin {};
 
+    unordered_map<ident_t, ClientEntity*> _allEntities {};
+    vector<CritterView*> _globalMapCritters {};
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
     CritterView* _chosen {};
+
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
 
@@ -453,18 +441,6 @@ protected:
     int _screenModeMain {SCREEN_WAIT};
 
     shared_ptr<Sprite> _waitPic {};
-
-    uint8 _pupTransferType {};
-    uint _pupContId {};
-    hstring _pupContPid {};
-
-    unordered_map<ident_t, ClientEntity*> _allEntities {};
-
-    vector<CritterView*> _globalMapCritters {};
-    TwoBitMask _globalMapFog {};
-    vector<PrimitivePoint> _globalMapFogPix {};
-    vector<GmapLocation> _globalMapLocs {};
-    GmapLocation _globalMapTownLoc {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};

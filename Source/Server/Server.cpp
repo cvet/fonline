@@ -2222,8 +2222,6 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
                 cr->Send_AddCritter(group_cr);
             }
         }
-
-        cr->Send_GlobalInfo();
     }
     else {
         // Send current critters

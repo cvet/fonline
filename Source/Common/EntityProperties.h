@@ -346,8 +346,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty

@@ -36,7 +36,6 @@
 #include "GenericUtils.h"
 #include "Server.h"
 #include "StringUtils.h"
-#include "TwoBitMask.h"
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
@@ -780,31 +779,6 @@ FO_SCRIPT_API void Server_Critter_SetKnownLocation(Critter* self, ident_t locId)
     }
 
     self->GetEngine()->MapMngr.AddKnownLoc(self, loc->GetId());
-
-    if (!self->GetMapId()) {
-        self->Send_GlobalLocation(loc, true);
-    }
-
-    const auto zx = loc->GetWorldPos().x / self->GetEngine()->Settings.GlobalMapZoneLength;
-    const auto zy = loc->GetWorldPos().y / self->GetEngine()->Settings.GlobalMapZoneLength;
-
-    auto gmap_fog = self->GetGlobalMapFog();
-
-    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-        gmap_fog.resize(GM_ZONES_FOG_SIZE);
-        self->SetGlobalMapFog(gmap_fog);
-    }
-
-    auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
-
-    if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
-        gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
-        self->SetGlobalMapFog(gmap_fog);
-
-        if (!self->GetMapId()) {
-            self->Send_GlobalMapFog(static_cast<uint16>(zx), static_cast<uint16>(zy), GM_FOG_HALF);
-        }
-    }
 }
 
 ///@ ExportMethod
@@ -819,58 +793,6 @@ FO_SCRIPT_API void Server_Critter_RemoveKnownLocation(Critter* self, ident_t loc
     }
 
     self->GetEngine()->MapMngr.RemoveKnownLoc(self, locId);
-
-    if (!self->GetMapId()) {
-        if (const auto* loc = self->GetEngine()->EntityMngr.GetLocation(locId); loc != nullptr) {
-            self->Send_GlobalLocation(loc, false);
-        }
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetFog(Critter* self, uint16 zoneX, uint16 zoneY, int fog)
-{
-    if (fog < GM_FOG_FULL || fog > GM_FOG_NONE) {
-        throw ScriptException("Invalid fog arg");
-    }
-    if (zoneX >= self->GetEngine()->Settings.GlobalMapWidth || zoneY >= self->GetEngine()->Settings.GlobalMapHeight) {
-        return;
-    }
-
-    auto gmap_fog = self->GetGlobalMapFog();
-
-    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-        gmap_fog.resize(GM_ZONES_FOG_SIZE);
-        self->SetGlobalMapFog(gmap_fog);
-    }
-
-    auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
-
-    if (gmap_mask.Get2Bit(zoneX, zoneY) != fog) {
-        gmap_mask.Set2Bit(zoneX, zoneY, fog);
-        self->SetGlobalMapFog(gmap_fog);
-        if (!self->GetMapId()) {
-            self->Send_GlobalMapFog(zoneX, zoneY, static_cast<uint8>(fog));
-        }
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int Server_Critter_GetFog(Critter* self, uint16 zoneX, uint16 zoneY)
-{
-    if (zoneX >= self->GetEngine()->Settings.GlobalMapWidth || zoneY >= self->GetEngine()->Settings.GlobalMapHeight) {
-        return GM_FOG_FULL;
-    }
-
-    auto gmap_fog = self->GetGlobalMapFog();
-
-    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
-        gmap_fog.resize(GM_ZONES_FOG_SIZE);
-        self->SetGlobalMapFog(gmap_fog);
-    }
-
-    const auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
-    return gmap_mask.Get2Bit(zoneX, zoneY);
 }
 
 ///@ ExportMethod

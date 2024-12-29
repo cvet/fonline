@@ -658,21 +658,11 @@ FO_SCRIPT_API string Client_Game_FormatTags(FOClient* client, string_view text, 
     return text_copy;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
-FO_SCRIPT_API int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zoneY)
-{
-    if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
-        throw ScriptException("Invalid world map pos arg");
-    }
-
-    return client->GetGlobalMapFog().Get2Bit(zoneX, zoneY);
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
-    for (size_t i = 0; i < fnames.size(); i++) {
-        client->Preload3dFiles.push_back(fnames[i]);
+    for (const auto& fname : fnames) {
+        client->Preload3dFiles.push_back(fname);
     }
 }
 
@@ -904,7 +894,7 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos po
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
-        return 0;
+        return false;
     }
 
     return client->SprMngr.SpriteHitTest(spr, pos, false);
@@ -913,10 +903,6 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos po
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
 {
-    if (sprId == 0) {
-        return;
-    }
-
     auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -929,10 +915,6 @@ FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
 {
-    if (sprId == 0) {
-        return;
-    }
-
     auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -945,10 +927,6 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
 {
-    if (sprId == 0) {
-        return;
-    }
-
     auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -979,10 +957,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0) {
-        return;
-    }
-
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -999,10 +973,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0) {
-        return;
-    }
-
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -1017,10 +987,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    if (sprId == 0) {
-        return;
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
@@ -1047,10 +1013,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0) {
-        return;
-    }
-
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -1067,10 +1029,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0) {
-        return;
-    }
-
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
@@ -1085,10 +1043,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    if (sprId == 0) {
-        return;
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
@@ -1113,10 +1067,6 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, i
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    if (sprId == 0) {
-        return;
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
@@ -1337,6 +1287,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
 
     if (client->OffscreenSurfaces.empty()) {
         auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Screen, {0, 0}, false);
+
         if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");
         }
@@ -1512,6 +1463,7 @@ FO_SCRIPT_API void Client_Game_SaveText(FOClient* client, string_view filePath, 
     UNUSED_VARIABLE(client);
 
     auto file = DiskFileSystem::OpenFile(strex(filePath).formatPath(), true);
+
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }

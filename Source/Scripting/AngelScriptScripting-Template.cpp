@@ -681,6 +681,7 @@ template<typename T, typename T2 = T>
 
     vector<T> vec;
     vec.resize(as_array->GetSize());
+
     for (const auto i : xrange(as_array->GetSize())) {
         vec[i] = static_cast<T>(*static_cast<T2*>(as_array->At(i)));
 

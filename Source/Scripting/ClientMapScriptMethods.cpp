@@ -77,6 +77,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
     }
 
     const auto* anim = self->GetEngine()->AnimGetSpr(mapSpr->SprId);
+
     if (anim == nullptr) {
         return;
     }
