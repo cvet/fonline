@@ -1084,6 +1084,12 @@
     }
 }
 
+///@ ExportMethod
+[[maybe_unused]] int Client_Game_GetTextLines(FOClient* client, int w, int h, int font)
+{
+    return client->SprMngr.GetLinesCount(w, h, "", font);
+}
+
 ///# ...
 ///# param sprId ...
 ///# param x ...

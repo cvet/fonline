@@ -2654,9 +2654,7 @@ class MessageBox : Text
             return;
         }
 
-        int tw = 0, th = 0;
-        int maxLines = 0;
-        Game.GetTextInfo("", _Width, _Height, _TextFont, 0, tw, th, maxLines);
+        int maxLines = Game.GetTextLines(_Width, _Height, _TextFont);
         if (maxLines <= 0) {
             _MaxScroll = 0;
             _ScrollLines = 0;
@@ -2677,6 +2675,7 @@ class MessageBox : Text
 
             // Skip scrolled lines
             int curLines = lines;
+            int tw = 0, th = 0;
             int skipLines = 0;
             Game.GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
             lines += skipLines;
