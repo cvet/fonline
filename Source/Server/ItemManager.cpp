@@ -443,11 +443,11 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldPos(), text, unsafe_text, text_pack, str_num, "");
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), text, unsafe_text, text_pack, str_num, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, ipos from_wpos, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 

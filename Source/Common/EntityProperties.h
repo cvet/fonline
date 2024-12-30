@@ -342,8 +342,6 @@ public:
     ENTITY_PROPERTY(PrivateClient, bool, SexTagFemale);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, bool, ModelInCombatMode);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ipos, WorldPos);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
@@ -363,8 +361,6 @@ public:
     ENTITY_PROPERTY(Public, hstring, DialogId);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, string, Lexems);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, KnownLocations);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, InSneakMode);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
@@ -441,18 +437,4 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, MapIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
-
-    // Todo: exclude location properties from engine:
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances);
-    ///@ ExportProperty ScriptFuncType = LocationEntrance
-    ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ipos, WorldPos);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint16, Radius);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, Hidden);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ucolor, Color);
 };

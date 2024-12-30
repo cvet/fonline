@@ -199,8 +199,6 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
         return nullptr;
     }
 
-    loc->BindScript();
-
     RegisterEntity(loc);
 
     const auto map_ids = loc->GetMapIds();

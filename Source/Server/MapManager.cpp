@@ -389,13 +389,13 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     const auto& locations = _engine->EntityMngr.GetLocations();
     const auto& maps = _engine->EntityMngr.GetMaps();
 
-    string result = strex("Locations count: {}\n", static_cast<uint>(locations.size()));
-    result += strex("Maps count: {}\n", static_cast<uint>(maps.size()));
-    result += "Location             Id           X     Y     Radius Color    Hidden\n";
-    result += "          Map                 Id          Time Rain Script\n";
+    string result = strex("Locations count: {}\n", locations.size());
+    result += strex("Maps count: {}\n", maps.size());
+    result += "Location             Id\n";
+    result += "          Map                 Id          Time Script\n";
 
     for (auto&& [id, loc] : locations) {
-        result += strex("{:<20} {:<10}   {:<10} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldPos(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false");
+        result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
 
         uint map_index = 0;
 
@@ -408,20 +408,13 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     return result;
 }
 
-auto MapManager::CreateLocation(hstring proto_id, ipos wpos) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Location*
 {
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
-
-    if (wpos.x < 0 || wpos.y < 0 || wpos.x >= static_cast<int>(GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength) || wpos.y >= static_cast<int>(GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength)) {
-        throw MapManagerException("Invalid location coordinates", proto_id);
-    }
-
-    auto* loc = new Location(_engine, ident_t {}, proto);
+    auto* loc = new Location(_engine, ident_t {}, proto, props);
     auto loc_holder = RefCountHolder(loc);
-
-    loc->SetWorldPos(wpos);
 
     vector<ident_t> map_ids;
 
@@ -442,7 +435,6 @@ auto MapManager::CreateLocation(hstring proto_id, ipos wpos) -> Location*
     }
 
     loc->SetMapIds(map_ids);
-    loc->BindScript();
 
     _engine->EntityMngr.RegisterEntity(loc);
 
@@ -1467,7 +1459,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
         else {
             RUNTIME_ASSERT(global_cr->GlobalMapGroup);
 
-            cr->SetWorldPos(global_cr->GetWorldPos());
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
             for (auto* group_cr : *global_cr->GlobalMapGroup) {
@@ -1922,51 +1913,6 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
             if (allowed) {
                 view_cr->Send_AddItemOnMap(item);
             }
-        }
-    }
-}
-
-auto MapManager::CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    for (const auto known_loc_id : cr->GetKnownLocations()) {
-        if (known_loc_id == loc_id) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void MapManager::AddKnownLoc(Critter* cr, ident_t loc_id)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (CheckKnownLoc(cr, loc_id)) {
-        return;
-    }
-
-    auto known_locs = cr->GetKnownLocations();
-    known_locs.emplace_back(loc_id);
-    cr->SetKnownLocations(known_locs);
-}
-
-void MapManager::RemoveKnownLoc(Critter* cr, ident_t loc_id)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto known_locs = cr->GetKnownLocations();
-
-    for (size_t i = 0; i < known_locs.size(); i++) {
-        if (known_locs[i] == loc_id) {
-            known_locs.erase(known_locs.begin() + static_cast<ptrdiff_t>(i));
-            cr->SetKnownLocations(known_locs);
-            break;
         }
     }
 }

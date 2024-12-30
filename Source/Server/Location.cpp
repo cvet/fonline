@@ -47,33 +47,11 @@ Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, con
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
-void Location::BindScript()
-{
-    STACK_TRACE_ENTRY();
-
-    EntranceScriptBindId = 0;
-
-    if (const auto func_name = GetEntranceScript()) {
-        UNUSED_VARIABLE(func_name);
-        // Todo: EntranceScriptBindId
-        throw NotImplementedException(LINE_STR);
-        /*EntranceScriptBindId =
-            scriptSys.BindByFuncName(GetEntranceScript(), "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
-    }
-}
-
 auto Location::GetProtoLoc() const noexcept -> const ProtoLocation*
 {
     STACK_TRACE_ENTRY();
 
     return static_cast<const ProtoLocation*>(_proto);
-}
-
-auto Location::IsLocVisible() const noexcept -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return !GetHidden();
 }
 
 auto Location::GetMapsRaw() noexcept -> vector<Map*>&

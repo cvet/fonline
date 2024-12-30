@@ -1132,76 +1132,14 @@ void Properties::SetValueAsAnyProps(int property_index, const any_t& value)
     if (prop == nullptr) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
-    }
     if (prop->IsDisabled()) {
-        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
+        throw PropertiesException("Can't set any value to disabled property", prop->GetName());
     }
     if (prop->IsVirtual()) {
-        throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
+        throw PropertiesException("Can't set any value to virtual property", prop->GetName());
     }
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
-
-    if (base_type_info.IsHash) {
-        SetValue<hstring>(prop, _registrator->_hashResolver.ToHashedStringMustExists(value));
-    }
-    else if (base_type_info.IsEnum) {
-        if (base_type_info.Size == 1) {
-            SetValue<uint8>(prop, static_cast<uint8>(strex(value).toUInt()));
-        }
-        else if (base_type_info.Size == 2) {
-            SetValue<uint16>(prop, static_cast<uint16>(strex(value).toUInt()));
-        }
-        else if (base_type_info.Size == 4) {
-            if (base_type_info.IsEnumSigned) {
-                SetValue<int>(prop, strex(value).toInt());
-            }
-            else {
-                SetValue<uint>(prop, strex(value).toUInt());
-            }
-        }
-    }
-    else if (base_type_info.IsBool) {
-        SetValue<bool>(prop, strex(value).toBool());
-    }
-    else if (base_type_info.IsFloat) {
-        if (base_type_info.IsSingleFloat) {
-            SetValue<float>(prop, strex(value).toFloat());
-        }
-        else if (base_type_info.IsDoubleFloat) {
-            SetValue<double>(prop, strex(value).toDouble());
-        }
-    }
-    else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
-        if (base_type_info.Size == 1) {
-            SetValue<char>(prop, static_cast<char>(strex(value).toInt()));
-        }
-        else if (base_type_info.Size == 2) {
-            SetValue<int16>(prop, static_cast<int16>(strex(value).toInt()));
-        }
-        else if (base_type_info.Size == 4) {
-            SetValue<int>(prop, strex(value).toInt());
-        }
-        else if (base_type_info.Size == 8) {
-            SetValue<int64>(prop, strex(value).toInt64());
-        }
-    }
-    else if (base_type_info.IsInt && !base_type_info.IsSignedInt) {
-        if (base_type_info.Size == 1) {
-            SetValue<uint8>(prop, static_cast<uint8>(strex(value).toUInt()));
-        }
-        else if (base_type_info.Size == 2) {
-            SetValue<uint16>(prop, static_cast<uint16>(strex(value).toUInt()));
-        }
-        else if (base_type_info.Size == 4) {
-            SetValue<uint>(prop, strex(value).toUInt());
-        }
-    }
-    else {
-        throw PropertiesException("Invalid property for set as int props", prop->GetName());
-    }
+    ApplyPropertyFromText(prop, value);
 }
 
 auto Properties::ResolveHash(hstring::hash_t h) const -> hstring

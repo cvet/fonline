@@ -91,35 +91,6 @@ FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hstring& entrance)
-{
-    const auto map_entrances = self->GetMapEntrances();
-    const auto count = static_cast<uint>(map_entrances.size()) / 2u;
-    if (entranceIndex >= count) {
-        throw ScriptException("Invalid entrance");
-    }
-
-    mapIndex = self->GetMapIndex(map_entrances[entranceIndex * 2]);
-    entrance = map_entrances[entranceIndex * 2 + 1];
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hstring>& entrances)
-{
-    const auto map_entrances = self->GetMapEntrances();
-    const auto count = static_cast<uint>(map_entrances.size()) / 2u;
-
-    for (const auto i : xrange(count)) {
-        int index = self->GetMapIndex(map_entrances[i * 2]);
-        mapsIndex.push_back(index);
-        auto entrance = map_entrances[i * 2 + 1];
-        entrances.push_back(entrance);
-    }
-
-    return count;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
 {
     for (auto* map : self->GetMaps()) {

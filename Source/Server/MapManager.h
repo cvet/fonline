@@ -130,12 +130,11 @@ public:
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
-    [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, ipos wpos) -> NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, const Properties* props) -> NON_NULL Location*;
     void DestroyLocation(Location* loc);
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
@@ -147,8 +146,6 @@ public:
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir);
-    void AddKnownLoc(Critter* cr, ident_t loc_id);
-    void RemoveKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
     [[nodiscard]] FORCE_INLINE auto GridAt(mpos pos) -> int16&;

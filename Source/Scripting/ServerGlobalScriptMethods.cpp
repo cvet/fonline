@@ -638,50 +638,41 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(FOServer* server, const vector<id
 FO_SCRIPT_API void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
 {
     if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, text, false, TextPackName::None, 0, "");
+        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, text, false, TextPackName::None, 0, "");
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textPack, numStr, "");
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, "", false, textPack, numStr, "");
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr, string_view lexems)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, {}, "", false, textPack, numStr, lexems);
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, "", false, textPack, numStr, lexems);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ipos wpos)
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId)
 {
-    // Create and generate location
-    auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
-    if (loc == nullptr) {
-        throw ScriptException("Unable to create location", locPid);
-    }
-
+    auto* loc = server->MapMngr.CreateLocation(protoId, nullptr);
+    RUNTIME_ASSERT(loc);
     return loc;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ipos wpos, const vector<Critter*>& critters)
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const map<LocationProperty, any_t>& props)
 {
-    // Create and generate location
-    auto* loc = server->MapMngr.CreateLocation(locPid, wpos);
-    if (loc == nullptr) {
-        throw ScriptException("Unable to create location", locPid);
+    const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+    auto props_ = Properties(proto->GetProperties());
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int>(key), value);
     }
 
-    // Add known locations to critters
-    for (auto* cr : critters) {
-        server->MapMngr.AddKnownLoc(cr, loc->GetId());
-
-        if (!cr->GetMapId()) {
-            cr->Send_GlobalLocation(loc, true);
-        }
+    auto* loc = server->MapMngr.CreateLocation(protoId, &props_);
+    RUNTIME_ASSERT(loc);
 
         const auto zx = static_cast<uint16>(loc->GetWorldPos().x / server->Settings.GlobalMapZoneLength);
         const auto zy = static_cast<uint16>(loc->GetWorldPos().y / server->Settings.GlobalMapZoneLength);
@@ -802,7 +793,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server)
     maps.reserve(server->EntityMngr.GetLocationsCount());
 
     for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
-        maps.push_back(map);
+        maps.emplace_back(map);
     }
 
     return maps;
@@ -819,7 +810,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
 
     for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
-            maps.push_back(map);
+            maps.emplace_back(map);
         }
     }
 
@@ -845,65 +836,92 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server)
+FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationComponent component)
 {
-    vector<Location*> locations;
-    locations.reserve(server->EntityMngr.GetLocationsCount());
-
     for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
-        locations.push_back(loc);
+        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return loc;
+        }
     }
 
-    return locations;
+    return nullptr;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+        if (loc->GetValueAsInt(prop) == propertyValue) {
+            return loc;
+        }
+    }
+
+    return nullptr;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server)
+{
+    vector<Location*> locs;
+    locs.reserve(server->EntityMngr.GetLocationsCount());
+
+    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+        locs.emplace_back(loc);
+    }
+
+    return locs;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, hstring pid)
 {
-    vector<Location*> locations;
+    vector<Location*> locs;
 
     if (!pid) {
-        locations.reserve(server->EntityMngr.GetLocationsCount());
+        locs.reserve(server->EntityMngr.GetLocationsCount());
     }
 
     for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
         if (!pid || pid == loc->GetProtoId()) {
-            locations.push_back(loc);
+            locs.emplace_back(loc);
         }
     }
 
-    return locations;
+    return locs;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, ipos wpos, uint radius)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationComponent component)
 {
-    vector<Location*> locations;
-    locations.reserve(server->EntityMngr.GetLocationsCount());
+    vector<Location*> locs;
+    locs.reserve(server->EntityMngr.GetLocationsCount());
 
     for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wpos, loc->GetWorldPos()) <= radius + loc->GetRadius()) {
-            locations.push_back(loc);
+        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            locs.emplace_back(loc);
         }
     }
 
-    return locations;
+    return locs;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, ipos wpos, uint radius, Critter* cr)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationProperty property, int propertyValue)
 {
-    vector<Location*> locations;
-    locations.reserve(server->EntityMngr.GetLocationsCount());
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+
+    vector<Location*> locs;
+    locs.reserve(server->EntityMngr.GetLocationsCount());
 
     for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wpos, loc->GetWorldPos()) <= radius + loc->GetRadius() && //
-            (loc->IsLocVisible() || (cr != nullptr && cr->GetControlledByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
-            locations.push_back(loc);
+        if (loc->GetValueAsInt(prop) == propertyValue) {
+            locs.emplace_back(loc);
         }
     }
 
-    return locations;
+    return locs;
 }
 
 ///@ ExportMethod
@@ -1011,7 +1029,7 @@ FO_SCRIPT_API void Server_Game_AddTextListener(FOServer* server, int sayType, st
     tl.FirstStr = firstStr;
     tl.Parameter = parameter;
 
-    server->TextListeners.push_back(tl);*/
+    server->TextListeners.emplace_back(tl);*/
 }
 
 ///@ ExportMethod
@@ -1047,7 +1065,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
     for (auto&& [id, item] : server->EntityMngr.GetItems()) {
         RUNTIME_ASSERT(!item->IsDestroyed());
         if (!pid || pid == item->GetProtoId()) {
-            items.push_back(item);
+            items.emplace_back(item);
         }
     }
 
@@ -1063,7 +1081,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
     result.reserve(players.size());
 
     for (auto&& [id, player] : players) {
-        result.push_back(player);
+        result.emplace_back(player);
     }
 
     return result;
@@ -1088,7 +1106,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring p
 
     for (auto* npc_ : server->CrMngr.GetNonPlayerCritters()) {
         if (!npc_->IsDestroyed() && (!pid || pid == npc_->GetProtoId())) {
-            npcs.push_back(npc_);
+            npcs.emplace_back(npc_);
         }
     }
 

@@ -1182,7 +1182,6 @@ static unordered_map<string, std::function<bool(hstring, const ScriptSystem&)>> 
     {"CritterInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, bool>(func_name); }},
     {"MapInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Map*, bool>(func_name); }},
     {"LocationInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Location*, bool>(func_name); }},
-    {"LocationEntrance", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
 };
 
 auto Baker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem& script_sys, const unordered_set<hstring>& resource_hashes) const -> int

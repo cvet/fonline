@@ -54,7 +54,6 @@ public:
     ~Location() override = default;
 
     [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto IsLocVisible() const noexcept -> bool;
     [[nodiscard]] auto GetMapsRaw() noexcept -> vector<Map*>&;
     [[nodiscard]] auto GetMaps() noexcept -> const vector<Map*>&;
     [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
@@ -63,13 +62,8 @@ public:
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> uint;
 
-    void BindScript();
-
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
-
-    // Todo: encapsulate Location data
-    uint EntranceScriptBindId {};
 
 private:
     vector<Map*> _locMaps {};

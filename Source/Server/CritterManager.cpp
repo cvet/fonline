@@ -207,8 +207,6 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    cr->SetWorldPos(loc != nullptr ? loc->GetWorldPos() : ipos {});
-
     _engine->MapMngr.AddCritterToMap(cr, map, final_hex, final_dir, ident_t {});
 
     _engine->EntityMngr.CallInit(cr, true);
