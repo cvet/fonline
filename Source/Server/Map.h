@@ -121,7 +121,7 @@ public:
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
 
-    void SetLocation(Location* loc);
+    void SetLocation(Location* loc) noexcept;
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
     void SetText(mpos hex, ucolor color, string_view text, bool unsafe_text);

@@ -100,7 +100,7 @@ void Map::ProcessLoop(int index, uint time, uint tick)
     }
 }
 
-void Map::SetLocation(Location* loc)
+void Map::SetLocation(Location* loc) noexcept
 {
     STACK_TRACE_ENTRY();
 

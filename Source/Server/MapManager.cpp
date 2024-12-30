@@ -436,7 +436,7 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
 
     loc->SetMapIds(map_ids);
 
-    _engine->EntityMngr.RegisterEntity(loc);
+    _engine->EntityMngr.RegisterLocation(loc);
 
     for (auto* map : copy_hold_ref(loc->GetMaps())) {
         map->SetLocId(loc->GetId());
@@ -479,7 +479,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     map->SetLocMapIndex(static_cast<uint>(maps.size()));
     maps.emplace_back(map);
 
-    _engine->EntityMngr.RegisterEntity(map);
+    _engine->EntityMngr.RegisterMap(map);
 
     return map;
 }
@@ -628,10 +628,10 @@ void MapManager::DestroyLocation(Location* loc)
     loc->GetMapsRaw().clear();
 
     // Erase from main collections
-    _engine->EntityMngr.UnregisterEntity(loc);
+    _engine->EntityMngr.UnregisterLocation(loc);
 
     for (auto* map : maps) {
-        _engine->EntityMngr.UnregisterEntity(map);
+        _engine->EntityMngr.UnregisterMap(map);
     }
 
     // Invalidate

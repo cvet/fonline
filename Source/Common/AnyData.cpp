@@ -95,17 +95,53 @@ auto AnyData::Array::Copy() const -> Array
     return arr;
 }
 
+auto AnyData::Dict::operator[](const string& key) const -> const Value&
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_value) {
+        throw GenericException("Dict is empty");
+    }
+
+    return _value->at(key);
+}
+
 auto AnyData::Dict::Copy() const -> Dict
 {
     STACK_TRACE_ENTRY();
 
     Dict dict;
 
-    for (const auto& [key, value] : _value) {
+    for (const auto& [key, value] : *_value) {
         dict.Emplace(key, value.Copy());
     }
 
     return dict;
+}
+
+void AnyData::Dict::Emplace(string key, Value value)
+{
+    STACK_TRACE_ENTRY();
+
+    Allocate();
+    _value->emplace(std::move(key), std::move(value));
+}
+
+void AnyData::Dict::Assign(const string& key, Value value)
+{
+    STACK_TRACE_ENTRY();
+
+    Allocate();
+    _value->insert_or_assign(key, std::move(value));
+}
+
+void AnyData::Dict::Allocate()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_value) {
+        _value = std::make_unique<map<string, Value>>();
+    }
 }
 
 auto AnyData::Document::Copy() const -> Document

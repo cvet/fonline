@@ -202,7 +202,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     // Create critter
     auto* cr = new Critter(_engine, ident_t {}, proto, props);
 
-    _engine->EntityMngr.RegisterEntity(cr);
+    _engine->EntityMngr.RegisterCritter(cr);
 
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
@@ -268,7 +268,7 @@ void CritterManager::DestroyCritter(Critter* cr)
     }
 
     // Erase from main collection
-    _engine->EntityMngr.UnregisterEntity(cr);
+    _engine->EntityMngr.UnregisterCritter(cr);
 
     // Invalidate for use
     cr->MarkAsDestroyed();

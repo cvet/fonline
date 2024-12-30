@@ -1134,7 +1134,7 @@ void FOServer::ProcessPlayer(Player* player)
             cr->DetachPlayer();
         }
 
-        EntityMngr.UnregisterEntity(player);
+        EntityMngr.UnregisterPlayer(player);
 
         player->Release();
         return;
@@ -1941,7 +1941,7 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
     auto* cr = new Critter(this, ident_t {}, proto);
 
-    EntityMngr.RegisterEntity(cr);
+    EntityMngr.RegisterCritter(cr);
 
     if (for_player) {
         cr->MarkIsForPlayer();
@@ -1978,12 +1978,8 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     if (is_error) {
         if (cr != nullptr) {
             cr->MarkAsDestroying();
-
-            if (EntityMngr.GetCritter(cr_id) != nullptr) {
-                UnloadCritterInnerEntities(cr);
-                EntityMngr.UnregisterEntity(cr);
-            }
-
+            UnloadCritterInnerEntities(cr);
+            EntityMngr.UnregisterCritter(cr);
             cr->MarkAsDestroyed();
             cr->Release();
         }
@@ -2054,8 +2050,7 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     UnloadCritterInnerEntities(cr);
-
-    EntityMngr.UnregisterEntity(cr);
+    EntityMngr.UnregisterCritter(cr);
     cr->MarkAsDestroyed();
     cr->Release();
 }
@@ -2076,7 +2071,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
                 auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
                 RUNTIME_ASSERT(custom_entity);
 
-                EntityMngr.UnregisterEntity(custom_entity, false);
+                EntityMngr.UnregisterCustomEntity(custom_entity, false);
                 custom_entity->MarkAsDestroyed();
                 custom_entity->Release();
             }
@@ -2110,7 +2105,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
             ItemMngr.UnregisterRadio(item);
         }
 
-        EntityMngr.UnregisterEntity(item, false);
+        EntityMngr.UnregisterItem(item, false);
         item->MarkAsDestroyed();
         item->Release();
     };
@@ -2621,7 +2616,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         _unloginedPlayers.erase(it);
 
         player = unlogined_player;
-        EntityMngr.RegisterEntity(player, player_id);
+        EntityMngr.RegisterPlayer(player, player_id);
         player->SetName(name);
 
         WriteLog("Connected player {}", name);
