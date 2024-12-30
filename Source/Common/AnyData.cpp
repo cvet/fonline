@@ -112,7 +112,7 @@ auto AnyData::Dict::Copy() const -> Dict
 
     Dict dict;
 
-    for (const auto& [key, value] : *_value) {
+    for (const auto& [key, value] : *this) {
         dict.Emplace(key, value.Copy());
     }
 
