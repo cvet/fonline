@@ -272,7 +272,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
 
-    explicit EntityProperties(Properties& props);
+    explicit EntityProperties(Properties& props) noexcept;
 
 protected:
     Properties& _propsRef;

@@ -83,6 +83,7 @@ public:
         }
         // ReSharper restore CppNonExplicitConvertingConstructor
 
+        Value() = delete;
         Value(const Value&) = delete;
         Value(Value&&) noexcept = default;
         auto operator=(const Value&) = delete;
@@ -107,7 +108,7 @@ public:
     class Array
     {
     public:
-        Array() = default;
+        Array() noexcept = default;
         Array(const Array&) = delete;
         Array(Array&&) noexcept = default;
         auto operator=(const Array&) = delete;
@@ -121,8 +122,8 @@ public:
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
         [[nodiscard]] auto Copy() const -> Array;
 
-        [[nodiscard]] auto begin() const noexcept { return _value.begin(); }
-        [[nodiscard]] auto end() const noexcept { return _value.end(); }
+        [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
+        [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
         void Reserve(size_t size) { _value.reserve(size); }
         void EmplaceBack(Value value) { _value.emplace_back(std::move(value)); }
@@ -134,36 +135,38 @@ public:
     class Dict
     {
     public:
-        Dict() = default;
+        Dict() noexcept = default;
         Dict(const Dict&) = delete;
         Dict(Dict&&) noexcept = default;
         auto operator=(const Dict&) = delete;
         auto operator=(Dict&&) noexcept -> Dict& = default;
         ~Dict() = default;
 
-        [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
+        [[nodiscard]] auto operator==(const Dict& other) const -> bool { return (!_value && !other._value) || (!!_value && !!other._value && *_value == *other._value); }
         [[nodiscard]] auto operator!=(const Dict& other) const -> bool { return !(*this == other); }
-        [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
-        [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
-        [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
-        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value.count(key) != 0; }
-        [[nodiscard]] auto Find(const string& key) const { return _value.find(key); }
+        [[nodiscard]] auto operator[](const string& key) const -> const Value&;
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _value ? _value->size() : 0; }
+        [[nodiscard]] auto Empty() const noexcept -> bool { return !_value || _value->empty(); }
+        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value && _value->count(key) != 0; }
         [[nodiscard]] auto Copy() const -> Dict;
 
-        [[nodiscard]] auto begin() const noexcept { return _value.begin(); }
-        [[nodiscard]] auto end() const noexcept { return _value.end(); }
+        [[nodiscard]] auto begin() const noexcept { return _value ? _value->cbegin() : _emptyIterator; }
+        [[nodiscard]] auto end() const noexcept { return _value ? _value->cend() : _emptyIterator; }
 
-        void Emplace(string key, Value value) { _value.emplace(std::move(key), std::move(value)); }
-        void Assign(const string& key, Value value) { _value.insert_or_assign(key, std::move(value)); }
+        void Emplace(string key, Value value);
+        void Assign(const string& key, Value value);
 
     private:
-        map<string, Value> _value {};
+        void Allocate();
+
+        unique_ptr<map<string, Value>> _value {};
+        map<string, Value>::const_iterator _emptyIterator {};
     };
 
     class Document : public Dict
     {
     public:
-        Document() = default;
+        Document() noexcept = default;
         Document(const Document&) = delete;
         Document(Document&&) noexcept = default;
         auto operator=(const Document&) = delete;

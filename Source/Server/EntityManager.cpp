@@ -171,7 +171,7 @@ void EntityManager::LoadEntities()
     }
 }
 
-auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
+auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Location*
 {
     STACK_TRACE_ENTRY();
 
@@ -191,53 +191,76 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
         return nullptr;
     }
 
-    auto* loc = new Location(_engine, loc_id, loc_proto);
+    auto* loc = new (std::nothrow) Location(_engine, loc_id, loc_proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
-        WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
+    if (loc == nullptr) {
+        WriteLog("Failed to allocate location {} {}", loc_pid, loc_id);
         is_error = true;
         return nullptr;
     }
 
-    RegisterEntity(loc);
+    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
+        WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
+        is_error = true;
+        loc->Release();
+        return nullptr;
+    }
 
-    const auto map_ids = loc->GetMapIds();
-    bool map_ids_changed = false;
+    try {
+        RegisterLocation(loc);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to register location {} {}", loc_pid, loc_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+        loc->Release();
+        return nullptr;
+    }
 
-    for (const auto& map_id : map_ids) {
-        auto* map = LoadMap(map_id, is_error);
+    try {
+        const auto map_ids = loc->GetMapIds();
+        bool map_ids_changed = false;
 
-        if (map != nullptr) {
-            RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
+        for (const auto& map_id : map_ids) {
+            auto* map = LoadMap(map_id, is_error);
 
-            const auto loc_map_index = map->GetLocMapIndex();
+            if (map != nullptr) {
+                RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
 
-            auto& loc_maps = loc->GetMapsRaw();
-            if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
-                loc_maps.resize(loc_map_index + 1);
+                const auto loc_map_index = map->GetLocMapIndex();
+
+                auto& loc_maps = loc->GetMapsRaw();
+                if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
+                    loc_maps.resize(loc_map_index + 1);
+                }
+
+                loc_maps[loc_map_index] = map;
+
+                map->SetLocation(loc);
             }
-
-            loc_maps[loc_map_index] = map;
-
-            map->SetLocation(loc);
+            else {
+                map_ids_changed = true;
+            }
         }
-        else {
-            map_ids_changed = true;
+
+        if (map_ids_changed) {
+            const auto actual_map_ids = vec_transform(loc->GetMapsRaw(), [](const Map* map) -> ident_t { return map->GetId(); });
+            loc->SetMapIds(actual_map_ids);
         }
-    }
 
-    if (map_ids_changed) {
-        const auto actual_map_ids = vec_transform(loc->GetMapsRaw(), [](const Map* map) -> ident_t { return map->GetId(); });
-        loc->SetMapIds(actual_map_ids);
+        // Inner entities
+        LoadInnerEntities(loc, is_error);
     }
-
-    // Inner entities
-    LoadInnerEntities(loc, is_error);
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore location content {} {}", loc_pid, loc_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+    }
 
     return loc;
 }
 
-auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
+auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -258,76 +281,99 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     }
 
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    auto* map = new Map(_engine, map_id, map_proto, nullptr, static_map);
+    auto* map = new (std::nothrow) Map(_engine, map_id, map_proto, nullptr, static_map);
 
-    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
-        WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
+    if (map == nullptr) {
+        WriteLog("Failed to allocate map {} {}", map_pid, map_id);
         is_error = true;
         return nullptr;
     }
 
-    RegisterEntity(map);
+    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
+        WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
+        is_error = true;
+        map->Release();
+        return nullptr;
+    }
 
-    // Map critters
-    const auto cr_ids = map->GetCritterIds();
-    bool cr_ids_changed = false;
+    try {
+        RegisterMap(map);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to register map {} {}", map_pid, map_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+        map->Release();
+        return nullptr;
+    }
 
-    for (const auto& cr_id : cr_ids) {
-        auto* cr = LoadCritter(cr_id, is_error);
+    try {
+        // Map critters
+        const auto cr_ids = map->GetCritterIds();
+        bool cr_ids_changed = false;
 
-        if (cr != nullptr) {
-            RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        for (const auto& cr_id : cr_ids) {
+            auto* cr = LoadCritter(cr_id, is_error);
 
-            if (const auto hex = cr->GetHex(); !map->GetSize().IsValidPos(hex)) {
-                cr->SetHex(map->GetSize().ClampPos(hex));
+            if (cr != nullptr) {
+                RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+
+                if (const auto hex = cr->GetHex(); !map->GetSize().IsValidPos(hex)) {
+                    cr->SetHex(map->GetSize().ClampPos(hex));
+                }
+
+                map->AddCritter(cr);
             }
-
-            map->AddCritter(cr);
-        }
-        else {
-            cr_ids_changed = true;
-        }
-    }
-
-    if (cr_ids_changed) {
-        const auto actual_cr_ids = vec_transform(map->GetCritters(), [](const Critter* cr) -> ident_t { return cr->GetId(); });
-        map->SetCritterIds(actual_cr_ids);
-    }
-
-    // Map items
-    const auto item_ids = map->GetItemIds();
-    bool item_ids_changed = false;
-
-    for (const auto& item_id : item_ids) {
-        auto* item = LoadItem(item_id, is_error);
-
-        if (item != nullptr) {
-            RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-            RUNTIME_ASSERT(item->GetMapId() == map->GetId());
-
-            if (const auto hex = item->GetHex(); !map->GetSize().IsValidPos(hex)) {
-                item->SetHex(map->GetSize().ClampPos(hex));
+            else {
+                cr_ids_changed = true;
             }
-
-            map->SetItem(item);
         }
-        else {
-            item_ids_changed = true;
+
+        if (cr_ids_changed) {
+            const auto actual_cr_ids = vec_transform(map->GetCritters(), [](const Critter* cr) -> ident_t { return cr->GetId(); });
+            map->SetCritterIds(actual_cr_ids);
         }
-    }
 
-    if (item_ids_changed) {
-        const auto actual_item_ids = vec_transform(map->GetItems(), [](const Item* item) -> ident_t { return item->GetId(); });
-        map->SetItemIds(actual_item_ids);
-    }
+        // Map items
+        const auto item_ids = map->GetItemIds();
+        bool item_ids_changed = false;
 
-    // Inner entities
-    LoadInnerEntities(map, is_error);
+        for (const auto& item_id : item_ids) {
+            auto* item = LoadItem(item_id, is_error);
+
+            if (item != nullptr) {
+                RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+                RUNTIME_ASSERT(item->GetMapId() == map->GetId());
+
+                if (const auto hex = item->GetHex(); !map->GetSize().IsValidPos(hex)) {
+                    item->SetHex(map->GetSize().ClampPos(hex));
+                }
+
+                map->SetItem(item);
+            }
+            else {
+                item_ids_changed = true;
+            }
+        }
+
+        if (item_ids_changed) {
+            const auto actual_item_ids = vec_transform(map->GetItems(), [](const Item* item) -> ident_t { return item->GetId(); });
+            map->SetItemIds(actual_item_ids);
+        }
+
+        // Inner entities
+        LoadInnerEntities(map, is_error);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore map content {} {}", map_pid, map_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+    }
 
     return map;
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
+auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -347,46 +393,69 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) -> Critter*
         return nullptr;
     }
 
-    auto* cr = new Critter(_engine, cr_id, proto);
+    auto* cr = new (std::nothrow) Critter(_engine, cr_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
-        WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
+    if (cr == nullptr) {
+        WriteLog("Failed to allocate critter {} {}", cr_pid, cr_id);
         is_error = true;
         return nullptr;
     }
 
-    RegisterEntity(cr);
-
-    // Inventory
-    const auto item_ids = cr->GetItemIds();
-    bool item_ids_changed = false;
-
-    for (const auto& item_id : item_ids) {
-        auto* inv_item = LoadItem(item_id, is_error);
-
-        if (inv_item != nullptr) {
-            RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
-            RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
-
-            cr->SetItem(inv_item);
-        }
-        else {
-            item_ids_changed = true;
-        }
+    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
+        WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
+        is_error = true;
+        cr->Release();
+        return nullptr;
     }
 
-    if (item_ids_changed) {
-        const auto actual_item_ids = vec_transform(cr->GetInvItems(), [](const Item* item) -> ident_t { return item->GetId(); });
-        cr->SetItemIds(actual_item_ids);
+    try {
+        RegisterCritter(cr);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to register critter {} {}", cr_pid, cr_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+        cr->Release();
+        return nullptr;
     }
 
-    // Inner entities
-    LoadInnerEntities(cr, is_error);
+    try {
+        // Inventory
+        const auto item_ids = cr->GetItemIds();
+        bool item_ids_changed = false;
+
+        for (const auto& item_id : item_ids) {
+            auto* inv_item = LoadItem(item_id, is_error);
+
+            if (inv_item != nullptr) {
+                RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
+                RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
+
+                cr->SetItem(inv_item);
+            }
+            else {
+                item_ids_changed = true;
+            }
+        }
+
+        if (item_ids_changed) {
+            const auto actual_item_ids = vec_transform(cr->GetInvItems(), [](const Item* item) -> ident_t { return item->GetId(); });
+            cr->SetItemIds(actual_item_ids);
+        }
+
+        // Inner entities
+        LoadInnerEntities(cr, is_error);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore critter content {} {}", cr_pid, cr_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+    }
 
     return cr;
 }
 
-auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
+auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -406,151 +475,189 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         return nullptr;
     }
 
-    auto* item = new Item(_engine, item_id, proto);
+    auto* item = new (std::nothrow) Item(_engine, item_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
-        WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
+    if (item == nullptr) {
+        WriteLog("Failed to allocate item {} {}", item_pid, item_id);
         is_error = true;
         return nullptr;
     }
 
-    item->SetStatic(false);
-
-    if (item->GetIsRadio()) {
-        _engine->ItemMngr.RegisterRadio(item);
+    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
+        WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
+        is_error = true;
+        item->Release();
+        return nullptr;
     }
 
-    RegisterEntity(item);
+    try {
+        item->SetStatic(false);
 
-    // Inner items
-    const auto inner_item_ids = item->GetInnerItemIds();
-    bool inner_item_ids_changed = false;
-
-    for (const auto& inner_item_id : inner_item_ids) {
-        auto* inner_item = LoadItem(inner_item_id, is_error);
-
-        if (inner_item != nullptr) {
-            RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
-            RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
-
-            item->SetItemToContainer(inner_item);
+        if (item->GetIsRadio()) {
+            _engine->ItemMngr.RegisterRadio(item);
         }
-        else {
-            inner_item_ids_changed = true;
-        }
+
+        RegisterItem(item);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to register item {} {}", item_pid, item_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+        item->Release();
+        return nullptr;
     }
 
-    if (inner_item_ids_changed) {
-        if (item->HasInnerItems()) {
-            const auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](const Item* inner_item) -> ident_t { return inner_item->GetId(); });
-            item->SetInnerItemIds(actual_inner_item_ids);
-        }
-        else {
-            item->SetInnerItemIds({});
-        }
-    }
+    try {
+        // Inner items
+        const auto inner_item_ids = item->GetInnerItemIds();
+        bool inner_item_ids_changed = false;
 
-    // Inner entities
-    LoadInnerEntities(item, is_error);
+        for (const auto& inner_item_id : inner_item_ids) {
+            auto* inner_item = LoadItem(inner_item_id, is_error);
+
+            if (inner_item != nullptr) {
+                RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
+                RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
+
+                item->SetItemToContainer(inner_item);
+            }
+            else {
+                inner_item_ids_changed = true;
+            }
+        }
+
+        if (inner_item_ids_changed) {
+            if (item->HasInnerItems()) {
+                const auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](const Item* inner_item) -> ident_t { return inner_item->GetId(); });
+                item->SetInnerItemIds(actual_inner_item_ids);
+            }
+            else {
+                item->SetInnerItemIds({});
+            }
+        }
+
+        // Inner entities
+        LoadInnerEntities(item, is_error);
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore item content {} {}", item_pid, item_id);
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+    }
 
     return item;
 }
 
-void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error)
+void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
 {
     STACK_TRACE_ENTRY();
 
-    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
-    auto&& inner_entity_ids = holder_props.GetInnerEntityIds();
+    try {
+        auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
+        auto&& inner_entity_ids = holder_props.GetInnerEntityIds();
 
-    if (inner_entity_ids.empty()) {
-        return;
-    }
-
-    bool inner_entity_ids_changed = false;
-    ident_t holder_id = {};
-
-    if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder)) {
-        holder_id = holder_with_id->GetId();
-    }
-
-    for (const auto& id : inner_entity_ids) {
-        auto* custom_entity = LoadCustomEntity(id, is_error);
-
-        if (custom_entity != nullptr) {
-            RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
-
-            holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
-
-            // Inner entities
-            LoadInnerEntities(custom_entity, is_error);
+        if (inner_entity_ids.empty()) {
+            return;
         }
-        else {
-            inner_entity_ids_changed = true;
+
+        bool inner_entity_ids_changed = false;
+        ident_t holder_id = {};
+
+        if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder)) {
+            holder_id = holder_with_id->GetId();
         }
-    }
 
-    if (inner_entity_ids_changed) {
-        vector<ident_t> actual_inner_entity_ids;
+        for (const auto& id : inner_entity_ids) {
+            auto* custom_entity = LoadCustomEntity(id, is_error);
 
-        if (holder->HasInnerEntities()) {
-            for (auto&& [entry, inner_entities] : holder->GetRawInnerEntities()) {
-                for (const auto* inner_entity : inner_entities) {
-                    actual_inner_entity_ids.emplace_back(static_cast<const CustomEntity*>(inner_entity)->GetId()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-                }
+            if (custom_entity != nullptr) {
+                RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
+
+                holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+
+                // Inner entities
+                LoadInnerEntities(custom_entity, is_error);
+            }
+            else {
+                inner_entity_ids_changed = true;
             }
         }
 
-        holder_props.SetInnerEntityIds(actual_inner_entity_ids);
+        if (inner_entity_ids_changed) {
+            vector<ident_t> actual_inner_entity_ids;
+
+            if (holder->HasInnerEntities()) {
+                for (auto&& [entry, inner_entities] : holder->GetRawInnerEntities()) {
+                    for (const auto* inner_entity : inner_entities) {
+                        actual_inner_entity_ids.emplace_back(static_cast<const CustomEntity*>(inner_entity)->GetId()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                    }
+                }
+            }
+
+            holder_props.SetInnerEntityIds(actual_inner_entity_ids);
+        }
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore inner entities for {}", holder->GetTypeName());
+        ReportExceptionAndContinue(ex);
+        is_error = true;
     }
 }
 
-auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>
+auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id.underlying_value() != 0);
+    try {
+        RUNTIME_ASSERT(id.underlying_value() != 0);
 
-    auto doc = _engine->DbStorage.Get(collection_name, id);
+        auto doc = _engine->DbStorage.Get(collection_name, id);
 
-    if (doc.Empty()) {
-        WriteLog("{} document {} not found", collection_name, id);
-        is_error = true;
-        return {};
-    }
-
-    const auto proto_it = doc.Find("_Proto");
-
-    if (proto_it == doc.end()) {
-        if (expect_proto) {
-            WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
+        if (doc.Empty()) {
+            WriteLog("{} document {} not found", collection_name, id);
             is_error = true;
+            return {};
         }
 
-        return {std::move(doc), hstring()};
-    }
+        if (!doc.Contains("_Proto")) {
+            if (expect_proto) {
+                WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
+                is_error = true;
+            }
 
-    if (proto_it->second.Type() != AnyData::ValueType::String) {
-        WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.Type());
+            return {std::move(doc), hstring()};
+        }
+
+        const auto& proto_value = doc["_Proto"];
+
+        if (proto_value.Type() != AnyData::ValueType::String) {
+            WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
+            is_error = true;
+            return {};
+        }
+
+        const auto& proto_name = proto_value.AsString();
+
+        if (proto_name.empty()) {
+            WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
+            is_error = true;
+            return {};
+        }
+
+        auto proto_id = _engine->ToHashedString(proto_name);
+
+        if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id).has_value()) {
+            return {};
+        }
+
+        return {std::move(doc), proto_id};
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during load document {} {}", collection_name, id);
+        ReportExceptionAndContinue(ex);
         is_error = true;
         return {};
     }
-
-    const auto& proto_name = proto_it->second.AsString();
-
-    if (proto_name.empty()) {
-        WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
-        is_error = true;
-        return {};
-    }
-
-    auto proto_id = _engine->ToHashedString(proto_name);
-
-    if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id).has_value()) {
-        return {};
-    }
-
-    return {std::move(doc), proto_id};
 }
 
 void EntityManager::CallInit(Location* loc, bool first_time)
@@ -677,118 +784,125 @@ void EntityManager::CallInit(Item* item, bool first_time)
     }
 }
 
-void EntityManager::RegisterEntity(Player* entity, ident_t id)
+void EntityManager::RegisterPlayer(Player* player, ident_t id)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(id);
-    entity->SetId(id);
-    RegisterEntityEx(entity);
-    const auto [it, inserted] = _allPlayers.emplace(entity->GetId(), entity);
+    player->SetId(id);
+    RegisterEntity(player);
+    const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Player* entity)
+void EntityManager::UnregisterPlayer(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _allPlayers.find(entity->GetId());
+    const auto it = _allPlayers.find(player->GetId());
     RUNTIME_ASSERT(it != _allPlayers.end());
     _allPlayers.erase(it);
-    UnregisterEntityEx(entity, false);
+    UnregisterEntity(player, false);
 }
 
-void EntityManager::RegisterEntity(Location* entity)
+void EntityManager::RegisterLocation(Location* loc)
 {
     STACK_TRACE_ENTRY();
 
-    RegisterEntityEx(entity);
-    const auto [it, inserted] = _allLocations.emplace(entity->GetId(), entity);
+    RegisterEntity(loc);
+    const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Location* entity)
+void EntityManager::UnregisterLocation(Location* loc)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _allLocations.find(entity->GetId());
+    const auto it = _allLocations.find(loc->GetId());
     RUNTIME_ASSERT(it != _allLocations.end());
     _allLocations.erase(it);
-    UnregisterEntityEx(entity, true);
+    UnregisterEntity(loc, true);
 }
 
-void EntityManager::RegisterEntity(Map* entity)
+void EntityManager::RegisterMap(Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    RegisterEntityEx(entity);
-    const auto [it, inserted] = _allMaps.emplace(entity->GetId(), entity);
+    RegisterEntity(map);
+    const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Map* entity)
+void EntityManager::UnregisterMap(Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _allMaps.find(entity->GetId());
+    const auto it = _allMaps.find(map->GetId());
     RUNTIME_ASSERT(it != _allMaps.end());
     _allMaps.erase(it);
-    UnregisterEntityEx(entity, true);
+    UnregisterEntity(map, true);
 }
 
-void EntityManager::RegisterEntity(Critter* entity)
+void EntityManager::RegisterCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    RegisterEntityEx(entity);
-    const auto [it, inserted] = _allCritters.emplace(entity->GetId(), entity);
+    RegisterEntity(cr);
+    const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Critter* entity)
+void EntityManager::UnregisterCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _allCritters.find(entity->GetId());
+    const auto it = _allCritters.find(cr->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
-    UnregisterEntityEx(entity, !entity->GetControlledByPlayer());
+    UnregisterEntity(cr, !cr->GetControlledByPlayer());
 }
 
-void EntityManager::RegisterEntity(Item* entity)
+void EntityManager::RegisterItem(Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    RegisterEntityEx(entity);
-    const auto [it, inserted] = _allItems.emplace(entity->GetId(), entity);
+    RegisterEntity(item);
+    const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Item* entity, bool delete_from_db)
+void EntityManager::UnregisterItem(Item* item, bool delete_from_db)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _allItems.find(entity->GetId());
+    const auto it = _allItems.find(item->GetId());
     RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
-    UnregisterEntityEx(entity, delete_from_db);
+    UnregisterEntity(item, delete_from_db);
 }
 
-void EntityManager::RegisterEntity(CustomEntity* entity)
+void EntityManager::RegisterCustomEntity(CustomEntity* custom_entity)
 {
     STACK_TRACE_ENTRY();
 
-    RegisterEntityEx(entity);
+    RegisterEntity(custom_entity);
+    auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
+    const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
+    RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(CustomEntity* entity, bool delete_from_db)
+void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db)
 {
     STACK_TRACE_ENTRY();
 
-    UnregisterEntityEx(entity, delete_from_db);
+    auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
+    const auto it = custom_entities.find(custom_entity->GetId());
+    RUNTIME_ASSERT(it != custom_entities.end());
+    custom_entities.erase(it);
+    UnregisterEntity(custom_entity, delete_from_db);
 }
 
-void EntityManager::RegisterEntityEx(ServerEntity* entity)
+void EntityManager::RegisterEntity(ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();
 
@@ -804,12 +918,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
     const auto id = ident_t {id_num};
     const auto collection_name = entity->GetTypeNamePlural();
 
+    RUNTIME_ASSERT(_allEntities.count(id) == 0);
     _engine->SetLastEntityId(id);
-
-    entity->SetId(id);
-
-    const auto [it, inserted] = _allEntities.emplace(id, entity);
-    RUNTIME_ASSERT(inserted);
 
     if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
         const auto* proto = entity_with_proto->GetProto();
@@ -831,9 +941,14 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
         _engine->DbStorage.Insert(_entityTypeMapCollection, id, type_map_id);
     }
+
+    const auto [it, inserted] = _allEntities.emplace(id, entity);
+    RUNTIME_ASSERT(inserted);
+
+    entity->SetId(id);
 }
 
-void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db)
+void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 {
     STACK_TRACE_ENTRY();
 
@@ -979,106 +1094,112 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
         entity = new CustomEntity(_engine, {}, registrator, nullptr);
     }
 
-    RegisterEntity(entity);
-
-    auto& custom_entities = _allCustomEntities[type_name];
-    const auto [it, inserted] = custom_entities.emplace(entity->GetId(), entity);
-    RUNTIME_ASSERT(inserted);
+    RegisterCustomEntity(entity);
 
     return entity;
 }
 
-auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity*
+auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) noexcept -> CustomEntity*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id.underlying_value() != 0);
+    try {
+        RUNTIME_ASSERT(id.underlying_value() != 0);
 
-    const auto type_doc = _engine->DbStorage.Get(_entityTypeMapCollection, id);
+        const auto type_doc = _engine->DbStorage.Get(_entityTypeMapCollection, id);
 
-    if (type_doc.Empty()) {
-        WriteLog("Custom entity id {} type not mapped", id);
-        is_error = true;
-        return nullptr;
-    }
-
-    const auto it_type = type_doc.Find("Type");
-
-    if (it_type == type_doc.end()) {
-        WriteLog("Custom entity {} mapped type section 'Type' not found", id);
-        is_error = true;
-        return nullptr;
-    }
-
-    if (it_type->second.Type() != AnyData::ValueType::String) {
-        WriteLog("Custom entity {} mapped type section 'Type' is not string but {}", id, it_type->second.Type());
-        is_error = true;
-        return nullptr;
-    }
-
-    const auto& type_name_str = it_type->second.AsString();
-    const auto type_name = _engine->ToHashedString(type_name_str);
-
-    if (!_engine->IsValidEntityType(type_name)) {
-        WriteLog("Custom entity {} mapped type not valid {}", id, type_name);
-        is_error = true;
-        return nullptr;
-    }
-
-    RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
-
-    const auto collection_name = _engine->ToHashedString(strex("{}s", type_name));
-    auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
-
-    if (doc.Empty()) {
-        WriteLog("Custom entity {} with type {} invalid document", id, type_name);
-        is_error = true;
-        return nullptr;
-    }
-
-    const bool has_protos = _engine->GetEntityTypeInfo(type_name).HasProtos;
-    const ProtoEntity* proto = nullptr;
-
-    if (has_protos) {
-        if (pid) {
-            proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
-        }
-        else {
-            proto = _engine->ProtoMngr.GetProtoEntity(type_name, _engine->ToHashedString("Default"));
-        }
-
-        if (proto == nullptr) {
-            WriteLog("Proto {} for custom entity {} with type {} not found", pid, id, type_name);
+        if (type_doc.Empty()) {
+            WriteLog("Custom entity id {} type not mapped", id);
             is_error = true;
             return nullptr;
         }
+
+        if (!type_doc.Contains("Type")) {
+            WriteLog("Custom entity {} mapped type section 'Type' not found", id);
+            is_error = true;
+            return nullptr;
+        }
+
+        const auto& type_value = type_doc["Type"];
+
+        if (type_value.Type() != AnyData::ValueType::String) {
+            WriteLog("Custom entity {} mapped type section 'Type' is not string but {}", id, type_value.Type());
+            is_error = true;
+            return nullptr;
+        }
+
+        const auto& type_name_str = type_value.AsString();
+        const auto type_name = _engine->ToHashedString(type_name_str);
+
+        if (!_engine->IsValidEntityType(type_name)) {
+            WriteLog("Custom entity {} mapped type not valid {}", id, type_name);
+            is_error = true;
+            return nullptr;
+        }
+
+        RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
+
+        const auto collection_name = _engine->ToHashedString(strex("{}s", type_name));
+        auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
+
+        if (doc.Empty()) {
+            WriteLog("Custom entity {} with type {} invalid document", id, type_name);
+            is_error = true;
+            return nullptr;
+        }
+
+        const bool has_protos = _engine->GetEntityTypeInfo(type_name).HasProtos;
+        const ProtoEntity* proto = nullptr;
+
+        if (has_protos) {
+            if (pid) {
+                proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
+            }
+            else {
+                proto = _engine->ProtoMngr.GetProtoEntity(type_name, _engine->ToHashedString("Default"));
+            }
+
+            if (proto == nullptr) {
+                WriteLog("Proto {} for custom entity {} with type {} not found", pid, id, type_name);
+                is_error = true;
+                return nullptr;
+            }
+        }
+
+        const auto* registrator = _engine->GetPropertyRegistrator(type_name);
+        auto props = Properties(registrator);
+
+        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine, *_engine)) {
+            WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
+            is_error = true;
+            return nullptr;
+        }
+
+        CustomEntity* entity;
+
+        if (proto != nullptr) {
+            entity = new CustomEntityWithProto(_engine, id, registrator, &props, proto);
+        }
+        else {
+            entity = new CustomEntity(_engine, id, registrator, &props);
+        }
+
+        try {
+            RegisterCustomEntity(entity);
+        }
+        catch (...) {
+            entity->Release();
+            throw;
+        }
+
+        return entity;
     }
-
-    const auto* registrator = _engine->GetPropertyRegistrator(type_name);
-    auto props = Properties(registrator);
-
-    if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine, *_engine)) {
-        WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
+    catch (const std::exception& ex) {
+        WriteLog("Failed during load custom entity {}", id);
+        ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
     }
-
-    CustomEntity* entity;
-
-    if (proto != nullptr) {
-        entity = new CustomEntityWithProto(_engine, id, registrator, &props, proto);
-    }
-    else {
-        entity = new CustomEntity(_engine, id, registrator, &props);
-    }
-
-    RegisterEntityEx(entity);
-
-    auto& custom_entities = _allCustomEntities[type_name];
-    const auto [it, inserted] = custom_entities.emplace(entity->GetId(), entity);
-    RUNTIME_ASSERT(inserted);
-
-    return entity;
 }
 
 auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*
@@ -1127,12 +1248,7 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
     holder_props.SetInnerEntityIds(inner_entity_ids);
 
-    auto& custom_entities = _allCustomEntities[entity->GetTypeName()];
-    const auto it = custom_entities.find(entity->GetId());
-    RUNTIME_ASSERT(it != custom_entities.end());
-    custom_entities.erase(it);
-
-    UnregisterEntity(entity, true);
+    UnregisterCustomEntity(entity, true);
 
     entity->MarkAsDestroyed();
     entity->Release();

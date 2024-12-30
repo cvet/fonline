@@ -129,7 +129,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetInnerItemIds({});
     }
 
-    _engine->EntityMngr.RegisterEntity(item);
+    _engine->EntityMngr.RegisterItem(item);
 
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
@@ -191,7 +191,7 @@ void ItemManager::DestroyItem(Item* item)
     }
 
     // Erase from main collection
-    _engine->EntityMngr.UnregisterEntity(item, true);
+    _engine->EntityMngr.UnregisterItem(item, true);
 
     // Invalidate for use
     item->MarkAsDestroyed();

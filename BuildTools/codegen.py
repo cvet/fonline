@@ -1478,7 +1478,7 @@ def genGenericCode():
     # Engine properties
     globalLines.append('// Engine property indices')
     globalLines.append('#include "EntityProperties.h"')
-    globalLines.append('EntityProperties::EntityProperties(Properties& props) : _propsRef(props) { }')
+    globalLines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(props) { }')
     commonParsed = set()
     for entity in gameEntities:
         index = 0

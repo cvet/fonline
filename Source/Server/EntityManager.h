@@ -90,32 +90,32 @@ public:
     }
 
     void LoadEntities();
-    auto LoadLocation(ident_t loc_id, bool& is_error) -> Location*;
-    auto LoadMap(ident_t map_id, bool& is_error) -> Map*;
-    auto LoadCritter(ident_t cr_id, bool& is_error) -> Critter*;
-    auto LoadItem(ident_t item_id, bool& is_error) -> Item*;
+    auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Location*;
+    auto LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*;
+    auto LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critter*;
+    auto LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*;
 
     void CallInit(Location* loc, bool first_time);
     void CallInit(Map* map, bool first_time);
     void CallInit(Critter* cr, bool first_time);
     void CallInit(Item* item, bool first_time);
 
-    void RegisterEntity(Player* entity, ident_t id);
-    void UnregisterEntity(Player* entity);
-    void RegisterEntity(Location* entity);
-    void UnregisterEntity(Location* entity);
-    void RegisterEntity(Map* entity);
-    void UnregisterEntity(Map* entity);
-    void RegisterEntity(Critter* entity);
-    void UnregisterEntity(Critter* entity);
-    void RegisterEntity(Item* entity);
-    void UnregisterEntity(Item* entity, bool delete_from_db);
-    void RegisterEntity(CustomEntity* entity);
-    void UnregisterEntity(CustomEntity* entity, bool delete_from_db);
+    void RegisterPlayer(Player* player, ident_t id);
+    void UnregisterPlayer(Player* player);
+    void RegisterLocation(Location* loc);
+    void UnregisterLocation(Location* loc);
+    void RegisterMap(Map* map);
+    void UnregisterMap(Map* map);
+    void RegisterCritter(Critter* cr);
+    void UnregisterCritter(Critter* cr);
+    void RegisterItem(Item* item);
+    void UnregisterItem(Item* item, bool delete_from_db);
+    void RegisterCustomEntity(CustomEntity* custom_entity);
+    void UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db);
 
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
-    auto LoadCustomEntity(ident_t id, bool& is_error) -> CustomEntity*;
+    auto LoadCustomEntity(ident_t id, bool& is_error) noexcept -> CustomEntity*;
     auto GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*;
     void DestroyCustomEntity(CustomEntity* entity);
     void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
@@ -125,11 +125,11 @@ public:
     void DestroyAllEntities();
 
 private:
-    void LoadInnerEntities(Entity* holder, bool& is_error);
-    auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+    void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
+    auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
 
-    void RegisterEntityEx(ServerEntity* entity);
-    void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
+    void RegisterEntity(ServerEntity* entity);
+    void UnregisterEntity(ServerEntity* entity, bool delete_from_db);
 
     FOServer* _engine;
 
