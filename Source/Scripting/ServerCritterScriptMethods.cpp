@@ -119,19 +119,12 @@ FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex
     }
 
     auto corrected_dir = dir;
+
     if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
         corrected_dir = self->GetDir();
     }
 
     self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
-
-    const auto* loc = map->GetLocation();
-    const auto wpos1 = ipos {self->GetWorldPos().x, self->GetWorldPos().y};
-    const auto wpos2 = ipos {loc->GetWorldPos().x, loc->GetWorldPos().y};
-
-    if (loc != nullptr && GenericUtils::DistSqrt(wpos1, wpos2) > loc->GetRadius()) {
-        self->SetWorldPos(loc->GetWorldPos());
-    }
 }
 
 ///@ ExportMethod
@@ -145,6 +138,7 @@ FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex
     }
 
     auto corrected_dir = dir;
+
     if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
         corrected_dir = self->GetDir();
     }
@@ -154,14 +148,6 @@ FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex
     }
     else {
         self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
-    }
-
-    const auto* loc = map->GetLocation();
-    const auto loc_pos = loc->GetWorldPos();
-    const auto cr_pos = self->GetWorldPos();
-
-    if (GenericUtils::DistSqrt(ipos {loc_pos.x, loc_pos.y}, ipos {cr_pos.x, cr_pos.y}) > loc->GetRadius()) {
-        self->SetWorldPos(loc->GetWorldPos());
     }
 }
 
@@ -749,50 +735,6 @@ FO_SCRIPT_API void Server_Critter_PlaySound(Critter* self, string_view soundName
         auto* cr_ = *it;
         cr_->Send_PlaySound(self->GetId(), soundName);
     }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsKnownLocation(Critter* self, ident_t locId)
-{
-    if (!locId) {
-        throw ScriptException("Invalid location id");
-    }
-
-    return self->GetEngine()->MapMngr.CheckKnownLoc(self, locId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetKnownLocation(Critter* self, ident_t locId)
-{
-    if (!locId) {
-        throw ScriptException("Invalid location id");
-    }
-
-    if (self->GetEngine()->MapMngr.CheckKnownLoc(self, locId)) {
-        return;
-    }
-
-    const auto* loc = self->GetEngine()->EntityMngr.GetLocation(locId);
-
-    if (loc == nullptr) {
-        throw ScriptException("Location not found");
-    }
-
-    self->GetEngine()->MapMngr.AddKnownLoc(self, loc->GetId());
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_RemoveKnownLocation(Critter* self, ident_t locId)
-{
-    if (!locId) {
-        throw ScriptException("Invalid location id");
-    }
-
-    if (!self->GetEngine()->MapMngr.CheckKnownLoc(self, locId)) {
-        return;
-    }
-
-    self->GetEngine()->MapMngr.RemoveKnownLoc(self, locId);
 }
 
 ///@ ExportMethod

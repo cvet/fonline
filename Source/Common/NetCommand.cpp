@@ -245,11 +245,9 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_ADDLOCATION: {
-        uint16 wx = 0;
-        uint16 wy = 0;
         string proto_name;
-        if (!(args_str >> wx >> wy >> proto_name)) {
-            logcb("Invalid arguments. Example: addloc wx wy name");
+        if (!(args_str >> proto_name)) {
+            logcb("Invalid arguments. Example: addloc name");
             break;
         }
 
@@ -257,7 +255,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(upos16 {wx, wy});
         buf.Write(pid);
         buf.EndMsg();
     } break;

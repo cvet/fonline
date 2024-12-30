@@ -1007,10 +1007,10 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     for (auto&& [id, player] : players) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
-        const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
+        const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), cr->GetWorldPos(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
+        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -1666,12 +1666,11 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
-        const auto wpos = buf.Read<ipos>();
         const auto pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
 
-        auto* loc = MapMngr.CreateLocation(pid, wpos);
+        auto* loc = MapMngr.CreateLocation(pid, nullptr);
 
         if (loc == nullptr) {
             logcb("Location not created");
