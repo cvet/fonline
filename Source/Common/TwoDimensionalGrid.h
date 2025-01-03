@@ -39,19 +39,19 @@ template<typename TCell, typename TPos, typename TSize>
 class TwoDimensionalGrid
 {
 public:
-    explicit TwoDimensionalGrid(TSize size)
+    explicit TwoDimensionalGrid(TSize size) noexcept
     {
         STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(size.width >= 0);
-        RUNTIME_ASSERT(size.height >= 0);
+        RUNTIME_VERIFY(size.width >= 0);
+        RUNTIME_VERIFY(size.height >= 0);
 
         _size = size;
     }
 
-    TwoDimensionalGrid(const TwoDimensionalGrid&) = default;
+    TwoDimensionalGrid(const TwoDimensionalGrid&) = delete;
     TwoDimensionalGrid(TwoDimensionalGrid&&) noexcept = default;
-    auto operator=(const TwoDimensionalGrid&) -> TwoDimensionalGrid& = default;
+    auto operator=(const TwoDimensionalGrid&) -> TwoDimensionalGrid& = delete;
     auto operator=(TwoDimensionalGrid&&) noexcept -> TwoDimensionalGrid& = default;
     virtual ~TwoDimensionalGrid() = default;
 
@@ -71,7 +71,7 @@ class DynamicTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, T
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
 
 public:
-    explicit DynamicTwoDimensionalGrid(TSize size) :
+    explicit DynamicTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
         STACK_TRACE_ENTRY();
@@ -145,13 +145,10 @@ class StaticTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TS
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
 
 public:
-    explicit StaticTwoDimensionalGrid(TSize size) :
+    explicit StaticTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
         STACK_TRACE_ENTRY();
-
-        RUNTIME_ASSERT(size.width >= 0);
-        RUNTIME_ASSERT(size.height >= 0);
 
         _preallocatedCells.resize(static_cast<int64>(base::_size.width) * base::_size.height);
     }
@@ -180,7 +177,7 @@ public:
         auto& cell = _preallocatedCells[static_cast<int64>(pos.y) * base::_size.width + pos.x];
 
         if (!cell) {
-            cell = std::make_unique<TCell>();
+            cell = SafeAlloc::MakeUnique<TCell>();
         }
 
         return *cell;

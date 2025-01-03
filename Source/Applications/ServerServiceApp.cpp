@@ -65,7 +65,7 @@ static void ServerEntry()
     STACK_TRACE_ENTRY();
 
     try {
-        Data->Server = std::make_unique<FOServer>(App->Settings);
+        Data->Server = SafeAlloc::MakeUnique<FOServer>(App->Settings);
 
         App->WaitForRequestedQuit();
 

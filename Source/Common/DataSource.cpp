@@ -142,7 +142,7 @@ public:
     FalloutDat(FalloutDat&&) noexcept = default;
     auto operator=(const FalloutDat&) = delete;
     auto operator=(FalloutDat&&) noexcept = delete;
-    ~FalloutDat() override;
+    ~FalloutDat() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
@@ -159,7 +159,7 @@ private:
     IndexMap _filesTree {};
     FileNameVec _filesTreeNames {};
     string _fileName {};
-    uint8* _memTree {};
+    unique_ptr<uint8[]> _memTree {};
     uint64 _writeTime {};
     mutable vector<uint8> _readBuf {};
 };
@@ -238,13 +238,13 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
         RUNTIME_ASSERT(type == DataSourceType::Default);
 
         if (path == "@Disabled") {
-            return std::make_unique<DummySpace>();
+            return SafeAlloc::MakeUnique<DummySpace>();
         }
         else if (path == "@Embedded") {
-            return std::make_unique<ZipFile>(path);
+            return SafeAlloc::MakeUnique<ZipFile>(path);
         }
         else if (path == "@AndroidAssets") {
-            return std::make_unique<AndroidAssets>();
+            return SafeAlloc::MakeUnique<AndroidAssets>();
         }
 
         throw DataSourceException("Invalid magic path", path, type);
@@ -257,16 +257,16 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
         }
 
         if (type == DataSourceType::DirRoot) {
-            return std::make_unique<CachedDir>(path, false);
+            return SafeAlloc::MakeUnique<CachedDir>(path, false);
         }
         else {
-            return std::make_unique<NonCachedDir>(path);
+            return SafeAlloc::MakeUnique<NonCachedDir>(path);
         }
     }
 
     // Raw view
     if (DiskFileSystem::IsDir(path)) {
-        return std::make_unique<CachedDir>(path, true);
+        return SafeAlloc::MakeUnique<CachedDir>(path, true);
     }
 
     // Packed view
@@ -278,26 +278,26 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     if (is_file_present(path)) {
         const string ext = strex(path).getFileExtension();
         if (ext == "dat") {
-            return std::make_unique<FalloutDat>(path);
+            return SafeAlloc::MakeUnique<FalloutDat>(path);
         }
         else if (ext == "zip" || ext == "bos") {
-            return std::make_unique<ZipFile>(path);
+            return SafeAlloc::MakeUnique<ZipFile>(path);
         }
 
         throw DataSourceException("Unknown file extension", ext, path, type);
     }
     else if (is_file_present(strex("{}.zip", path))) {
-        return std::make_unique<ZipFile>(strex("{}.zip", path));
+        return SafeAlloc::MakeUnique<ZipFile>(strex("{}.zip", path));
     }
     else if (is_file_present(strex("{}.bos", path))) {
-        return std::make_unique<ZipFile>(strex("{}.bos", path));
+        return SafeAlloc::MakeUnique<ZipFile>(strex("{}.bos", path));
     }
     else if (is_file_present(strex("{}.dat", path))) {
-        return std::make_unique<FalloutDat>(strex("{}.dat", path));
+        return SafeAlloc::MakeUnique<FalloutDat>(strex("{}.dat", path));
     }
 
     if (type == DataSourceType::MaybeNotAvailable) {
-        return std::make_unique<DummySpace>();
+        return SafeAlloc::MakeUnique<DummySpace>();
     }
     else {
         throw DataSourceException("Data pack not found", path, type);
@@ -384,7 +384,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     }
 
     size = file.GetSize();
-    auto buf = std::make_unique<uint8[]>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
 
     if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file from non cached dir", _basePath, path);
@@ -462,7 +462,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     size = fe.FileSize;
-    auto buf = std::make_unique<uint8[]>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
 
     if (!file.Read(buf.get(), size)) {
         return nullptr;
@@ -499,18 +499,12 @@ FalloutDat::FalloutDat(string_view fname) :
     }
 }
 
-FalloutDat::~FalloutDat()
-{
-    STACK_TRACE_ENTRY();
-
-    delete[] _memTree;
-}
-
 auto FalloutDat::ReadTree() -> bool
 {
     STACK_TRACE_ENTRY();
 
     uint version = 0;
+
     if (!_datFile.SetReadPos(-12, DiskFileSeek::End)) {
         return false;
     }
@@ -525,6 +519,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         uint tree_size = 0;
+
         if (!_datFile.Read(&tree_size, 4)) {
             return false;
         }
@@ -535,20 +530,22 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         uint files_total = 0;
+
         if (!_datFile.Read(&files_total, 4)) {
             return false;
         }
 
         tree_size -= 28 + 4; // Subtract information block and files total
-        _memTree = new uint8[tree_size];
-        std::memset(_memTree, 0, tree_size);
-        if (!_datFile.Read(_memTree, tree_size)) {
+        _memTree = SafeAlloc::MakeUniqueArr<uint8>(tree_size);
+        std::memset(_memTree.get(), 0, tree_size);
+
+        if (!_datFile.Read(_memTree.get(), tree_size)) {
             return false;
         }
 
         // Indexing tree
-        auto* ptr = _memTree;
-        const auto* end_ptr = _memTree + tree_size;
+        auto* ptr = _memTree.get();
+        const auto* end_ptr = _memTree.get() + tree_size;
 
         while (ptr < end_ptr) {
             uint fnsz = 0;
@@ -619,14 +616,15 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     tree_size -= 4;
-    _memTree = new uint8[tree_size];
-    if (!_datFile.Read(_memTree, tree_size)) {
+    _memTree = SafeAlloc::MakeUniqueArr<uint8>(tree_size);
+
+    if (!_datFile.Read(_memTree.get(), tree_size)) {
         return false;
     }
 
     // Indexing tree
-    auto* ptr = _memTree;
-    const auto* end_ptr = _memTree + tree_size;
+    auto* ptr = _memTree.get();
+    const auto* end_ptr = _memTree.get() + tree_size;
 
     while (ptr < end_ptr) {
         uint name_len = 0;
@@ -696,7 +694,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     size = real_size;
-    auto buf = std::make_unique<uint8[]>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
 
     if (type == 0) {
         // Plane data
@@ -707,8 +705,14 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     else {
         // Packed data
         z_stream stream = {};
-        stream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
-        stream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+        stream.zalloc = [](voidpf, uInt items, uInt size_) -> void* {
+            constexpr SafeAllocator<uint8> allocator;
+            return allocator.allocate(static_cast<size_t>(items) * size_);
+        };
+        stream.zfree = [](voidpf, voidpf address) {
+            constexpr SafeAllocator<uint8> allocator;
+            allocator.deallocate(static_cast<uint8*>(address), 0);
+        };
 
         if (inflateInit(&stream) != Z_OK) {
             throw DataSourceException("Can't read file from fallout dat (3)", path);
@@ -761,9 +765,9 @@ ZipFile::ZipFile(string_view fname)
 
     zlib_filefunc_def ffunc;
     if (fname[0] != '@') {
-        auto* p_file = new DiskFile {DiskFileSystem::OpenFile(fname, false)};
+        auto p_file = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(fname, false));
+
         if (!*p_file) {
-            delete p_file;
             throw DataSourceException("Can't open zip file", fname);
         }
 
@@ -807,7 +811,8 @@ ZipFile::ZipFile(string_view fname)
             }
             return 0;
         };
-        ffunc.opaque = p_file;
+
+        ffunc.opaque = p_file.release();
     }
     else {
         _writeTime = 0;
@@ -834,7 +839,7 @@ ZipFile::ZipFile(string_view fname)
                     throw DataSourceException("Embedded resources not really embed");
                 }
 
-                auto* mem_stream = new MemStream();
+                auto* mem_stream = SafeAlloc::MakeRaw<MemStream>();
                 mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint);
                 mem_stream->Length = *reinterpret_cast<volatile const uint*>(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
@@ -981,7 +986,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         throw DataSourceException("Can't read file from zip (2)", path);
     }
 
-    auto buf = std::make_unique<uint8[]>(static_cast<size_t>(info.UncompressedSize) + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(static_cast<size_t>(info.UncompressedSize) + 1);
     const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
@@ -1001,27 +1006,25 @@ AndroidAssets::AndroidAssets()
     _filesTree.clear();
     _filesTreeNames.clear();
 
-    // Read tree
     auto file_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
+
     if (!file_tree) {
         throw DataSourceException("Can't open 'FilesTree.txt' in android assets");
     }
 
     const auto len = file_tree.GetSize() + 1;
-    auto* buf = new char[len];
-    buf[len - 1] = 0;
+    string str;
+    str.resize(len);
 
-    if (!file_tree.Read(buf, len)) {
-        delete[] buf;
+    if (!file_tree.Read(str.data(), len)) {
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    const auto names = strex(buf).normalizeLineEndings().split('\n');
-    delete[] buf;
+    const auto names = strex(str).normalizeLineEndings().split('\n');
 
-    // Parse
     for (const auto& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);
+
         if (!file) {
             throw DataSourceException("Can't open file in android assets", name);
         }
@@ -1069,7 +1072,7 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     }
 
     size = fe.FileSize;
-    auto buf = std::make_unique<uint8[]>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
 
     if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file in android assets", path);

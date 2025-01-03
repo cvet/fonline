@@ -453,7 +453,7 @@ void DataBaseImpl::CommitChanges()
         }
     }
 
-    auto&& commit_job_data = std::make_shared<CommitJobData>();
+    auto&& commit_job_data = shared_ptr(SafeAlloc::MakeUnique<CommitJobData>());
     commit_job_data->RecordChanges = std::move(_recordChanges);
     commit_job_data->NewRecords = std::move(_newRecords);
     commit_job_data->DeletedRecords = std::move(_deletedRecords);
@@ -554,14 +554,13 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        size_t length;
-        char* json;
+        string json;
 
         if (auto f = DiskFileSystem::OpenFile(path, false)) {
-            length = f.GetSize();
-            json = new char[length];
+            const size_t length = f.GetSize();
+            json.resize(length);
 
-            if (!f.Read(json, length)) {
+            if (!f.Read(json.data(), length)) {
                 throw DataBaseException("DbJson Can't read file", path);
             }
         }
@@ -572,11 +571,9 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
-
-        delete[] json;
 
         AnyData::Document doc;
         BsonToDocument(&bson, doc);
@@ -632,14 +629,13 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        size_t length;
-        char* json;
+        string json;
 
         if (auto f_read = DiskFileSystem::OpenFile(path, false)) {
-            length = f_read.GetSize();
-            json = new char[length];
+            const size_t length = f_read.GetSize();
+            json.resize(length);
 
-            if (!f_read.Read(json, length)) {
+            if (!f_read.Read(json.data(), length)) {
                 throw DataBaseException("DbJson Can't read file", path);
             }
         }
@@ -650,11 +646,9 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
-
-        delete[] json;
 
         DocumentToBson(doc, &bson);
 
@@ -1407,21 +1401,21 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 
 #if FO_HAVE_JSON
         if (options.front() == "JSON" && options.size() == 2) {
-            return DataBase(new DbJson(settings, options[1]));
+            return DataBase(SafeAlloc::MakeRaw<DbJson>(settings, options[1]));
         }
 #endif
 #if FO_HAVE_UNQLITE
         if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return DataBase(new DbUnQLite(settings, options[1]));
+            return DataBase(SafeAlloc::MakeRaw<DbUnQLite>(settings, options[1]));
         }
 #endif
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
         if (options.front() == "Mongo" && options.size() == 3) {
-            return DataBase(new DbMongo(settings, options[1], options[2]));
+            return DataBase(SafeAlloc::MakeRaw<DbMongo>(settings, options[1], options[2]));
         }
 #endif
         if (options.front() == "Memory" && options.size() == 1) {
-            return DataBase(new DbMemory(settings));
+            return DataBase(SafeAlloc::MakeRaw<DbMemory>(settings));
         }
     }
 

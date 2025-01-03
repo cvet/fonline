@@ -64,7 +64,7 @@ auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* ref_item = new ItemView(_engine, {}, dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
+    auto* ref_item = SafeAlloc::MakeRaw<ItemView>(_engine, ident_t {}, dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
 
     ref_item->SetId(GetId(), false);
 
@@ -75,7 +75,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, ContainerI
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto, props);
+    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
@@ -89,7 +89,7 @@ auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, Containe
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto, nullptr);
+    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);

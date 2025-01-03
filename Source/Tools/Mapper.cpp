@@ -63,7 +63,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
-    ScriptSys = new MapperScriptSystem(this);
+    ScriptSys = SafeAlloc::MakeRaw<MapperScriptSystem>(this);
     ScriptSys->InitSubsystems();
 
     _curLang = LanguagePack {Settings.Language, *this};
@@ -175,7 +175,7 @@ void FOMapper::InitIface()
 
     const auto config_content = Resources.ReadFileText("mapper_default.ini");
 
-    IfaceIni.reset(new ConfigFile("mapper_default.ini", config_content));
+    IfaceIni = SafeAlloc::MakeUnique<ConfigFile>("mapper_default.ini", config_content);
     const auto& ini = *IfaceIni;
 
     // Interface
@@ -1726,7 +1726,7 @@ void FOMapper::IntLMouseUp()
 
                     for (int i = fx; i <= tx; i++) {
                         for (int j = fy; j <= ty; j++) {
-                            hexes.emplace_back(i, j);
+                            hexes.emplace_back(static_cast<uint16>(i), static_cast<uint16>(j));
                         }
                     }
                 }
@@ -2485,10 +2485,10 @@ void FOMapper::BufferCopy()
         entity_buf->IsCritter = dynamic_cast<CritterHexView*>(entity) != nullptr;
         entity_buf->IsItem = dynamic_cast<ItemHexView*>(entity) != nullptr;
         entity_buf->Proto = dynamic_cast<EntityWithProto*>(entity)->GetProto();
-        entity_buf->Props = new Properties(entity->GetProperties());
+        entity_buf->Props = SafeAlloc::MakeRaw<Properties>(entity->GetProperties().Copy());
 
         for (auto* child : GetEntityInnerItems(entity)) {
-            auto* child_buf = new EntityBuf();
+            auto* child_buf = SafeAlloc::MakeRaw<EntityBuf>();
             add_entity(child_buf, child);
             entity_buf->Children.push_back(child_buf);
         }
@@ -2976,7 +2976,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+            auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
 
             pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
 
@@ -2989,7 +2989,7 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayTime(arr);
             pmap->SetDayColor(arr2);
 
-            auto* map = new MapView(this, ident_t {}, pmap);
+            auto* map = SafeAlloc::MakeRaw<MapView>(this, ident_t {}, pmap);
 
             map->EnableMapperMode();
             map->FindSetCenter({MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2});
@@ -3055,10 +3055,10 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
-    auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
+    auto&& new_map_holder = SafeAlloc::MakeUnique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
 
     new_map->EnableMapperMode();

@@ -379,7 +379,7 @@ auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_tex = std::make_unique<OpenGL_Texture>(size, linear_filtered, with_depth);
+    auto&& opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -421,7 +421,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_dbuf = std::make_unique<OpenGL_DrawBuffer>(is_static);
+    auto&& opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static);
 
     return opengl_dbuf.release();
 }
@@ -430,7 +430,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_effect = std::make_unique<OpenGL_Effect>(usage, name, loader);
+    auto&& opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -467,11 +467,11 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
-                auto* str = new GLchar[len];
+                vector<GLchar> buf;
+                buf.resize(len);
                 int chars = 0;
-                GL(glGetShaderInfoLog(shader, len, &chars, str));
-                result.assign(str, len);
-                delete[] str;
+                GL(glGetShaderInfoLog(shader, len, &chars, buf.data()));
+                result.assign(buf.data(), len);
             }
 
             return result;
@@ -483,11 +483,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
-                auto* str = new GLchar[len];
+                vector<GLchar> buf;
                 int chars = 0;
-                GL(glGetProgramInfoLog(program, len, &chars, str));
-                result.assign(str, len);
-                delete[] str;
+                GL(glGetProgramInfoLog(program, len, &chars, buf.data()));
+                result.assign(buf.data(), len);
             }
 
             return result;

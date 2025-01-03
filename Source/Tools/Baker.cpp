@@ -125,10 +125,10 @@ auto BaseBaker::SetupBakers(const BakerSettings& settings, BakeCheckerCallback b
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    bakers.emplace_back(std::make_unique<ImageBaker>(settings, bake_checker, write_data));
-    bakers.emplace_back(std::make_unique<EffectBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(settings, bake_checker, write_data));
 #if FO_ENABLE_3D
-    bakers.emplace_back(std::make_unique<ModelBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(settings, bake_checker, write_data));
 #endif
 
     extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&);
@@ -773,7 +773,7 @@ void Baker::BakeAll()
                     MapLoader::Load(
                         proto_map->GetName(), map_file.GetStr(), server_proto_mngr, hash_resolver,
                         [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
-                            auto props = copy(proto->GetProperties());
+                            auto props = proto->GetProperties().Copy();
                             props.ApplyFromText(kv);
 
                             map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
@@ -786,7 +786,7 @@ void Baker::BakeAll()
                             map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
                         },
                         [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
-                            auto props = copy(proto->GetProperties());
+                            auto props = proto->GetProperties().Copy();
                             props.ApplyFromText(kv);
 
                             map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
@@ -803,7 +803,7 @@ void Baker::BakeAll()
 
                             if (is_static && !is_hidden) {
                                 const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
-                                auto client_props = copy(client_proto->GetProperties());
+                                auto client_props = client_proto->GetProperties().Copy();
                                 client_props.ApplyFromText(kv);
 
                                 map_client_item_count++;
@@ -1272,7 +1272,7 @@ void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_
     STACK_TRACE_ENTRY();
 
     auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
-    _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
+    _bakedFiles[string(baked_path)] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
 }
 
 auto BakerDataSource::FindFile(const string& path) const -> File*
@@ -1296,7 +1296,7 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
         }
 
         if (!file_baked) {
-            _bakedFiles[path] = std::make_unique<File>(std::move(file));
+            _bakedFiles[path] = SafeAlloc::MakeUnique<File>(std::move(file));
         }
     }
 

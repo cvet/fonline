@@ -119,7 +119,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSett
 {
     STACK_TRACE_ENTRY();
 
-    _particleMngr = std::make_unique<ParticleManager>(settings, effect_mngr, spr_mngr.GetResources(), game_time, //
+    _particleMngr = SafeAlloc::MakeUnique<ParticleManager>(settings, effect_mngr, spr_mngr.GetResources(), game_time, //
         [this, &hash_resolver](string_view path) { return LoadTexture(hash_resolver.ToHashedString(path)); });
 }
 

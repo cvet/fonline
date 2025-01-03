@@ -148,7 +148,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     uint multihex;
 
     if (props != nullptr) {
-        auto props_copy = copy(*props);
+        auto props_copy = props->Copy();
         const auto cr_props = CritterProperties(props_copy);
         multihex = cr_props.GetMultihex();
     }
@@ -200,7 +200,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     }
 
     // Create critter
-    auto* cr = new Critter(_engine, ident_t {}, proto, props);
+    auto* cr = SafeAlloc::MakeRaw<Critter>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterCritter(cr);
 

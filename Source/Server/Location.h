@@ -46,13 +46,14 @@ class Location final : public ServerEntity, public EntityWithProto, public Locat
 {
 public:
     Location() = delete;
-    Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr);
+    Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr) noexcept;
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
     auto operator=(Location&&) noexcept = delete;
     ~Location() override = default;
 
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
     [[nodiscard]] auto GetMapsRaw() noexcept -> vector<Map*>&;
     [[nodiscard]] auto GetMaps() noexcept -> const vector<Map*>&;

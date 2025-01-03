@@ -42,7 +42,7 @@ class GameProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Game";
 
-    explicit GameProperties(Properties& props) :
+    explicit GameProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }
@@ -76,7 +76,7 @@ class PlayerProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Player";
 
-    explicit PlayerProperties(Properties& props) :
+    explicit PlayerProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }
@@ -98,7 +98,7 @@ class ItemProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Item";
 
-    explicit ItemProperties(Properties& props) :
+    explicit ItemProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }
@@ -255,7 +255,7 @@ class CritterProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Critter";
 
-    explicit CritterProperties(Properties& props) :
+    explicit CritterProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }
@@ -377,7 +377,7 @@ class MapProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Map";
 
-    explicit MapProperties(Properties& props) :
+    explicit MapProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }
@@ -424,7 +424,7 @@ class LocationProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_TYPE_NAME = "Location";
 
-    explicit LocationProperties(Properties& props) :
+    explicit LocationProperties(Properties& props) noexcept :
         EntityProperties(props)
     {
     }

@@ -69,16 +69,16 @@ static _CrtMemState CrtMemState;
 static ImGuiKey KeycodeToImGuiKey(int keycode);
 
 // Todo: move all these statics to App class fields
-static Renderer* ActiveRenderer {};
+static unique_ptr<Renderer> ActiveRenderer {};
 static RenderType ActiveRendererType {};
 static RenderTexture* RenderTargetTex {};
 
-static vector<InputEvent>* EventsQueue {};
-static vector<InputEvent>* NextFrameEventsQueue {};
+static unique_ptr<vector<InputEvent>> EventsQueue {};
+static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
 
 static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
-static AppAudio::AudioStreamCallback* AudioStreamWriter {};
+static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
 
 static int MaxAtlasWidth {};
 static int MaxAtlasHeight {};
@@ -160,7 +160,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     WriteLog("Starting {}", FO_GAME_NAME);
 
-    App = new Application(argc, argv, client_mode);
+    App = SafeAlloc::MakeRaw<Application>(argc, argv, client_mode);
 }
 
 void ExitApp(bool success) noexcept
@@ -191,8 +191,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return true;
 }
 
-static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
-static unordered_map<int, MouseButton>* MouseButtonsMap {};
+static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
+static unique_ptr<unordered_map<int, MouseButton>> MouseButtonsMap {};
 
 Application::Application(int argc, char** argv, bool client_mode) :
     Settings(argc, argv, client_mode)
@@ -222,10 +222,10 @@ Application::Application(int argc, char** argv, bool client_mode) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
-    EventsQueue = new vector<InputEvent>();
-    NextFrameEventsQueue = new vector<InputEvent>();
+    EventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
+    NextFrameEventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
 
-    KeysMap = new unordered_map<SDL_Keycode, KeyCode> {
+    KeysMap = SafeAlloc::MakeUnique<unordered_map<SDL_Keycode, KeyCode>>(unordered_map<SDL_Keycode, KeyCode> {
         {0, KeyCode::None},
         {SDL_SCANCODE_ESCAPE, KeyCode::Escape},
         {SDL_SCANCODE_1, KeyCode::C1},
@@ -331,9 +331,9 @@ Application::Application(int argc, char** argv, bool client_mode) :
         {SDL_SCANCODE_LGUI, KeyCode::Lwin},
         {SDL_SCANCODE_RGUI, KeyCode::Rwin},
         {510, KeyCode::Text},
-    };
+    });
 
-    MouseButtonsMap = new unordered_map<int, MouseButton> {
+    MouseButtonsMap = SafeAlloc::MakeUnique<unordered_map<int, MouseButton>>(unordered_map<int, MouseButton> {
         {SDL_BUTTON_LEFT, MouseButton::Left},
         {SDL_BUTTON_RIGHT, MouseButton::Right},
         {SDL_BUTTON_MIDDLE, MouseButton::Middle},
@@ -342,12 +342,12 @@ Application::Application(int argc, char** argv, bool client_mode) :
         {SDL_BUTTON(6), MouseButton::Ext2},
         {SDL_BUTTON(7), MouseButton::Ext3},
         {SDL_BUTTON(8), MouseButton::Ext4},
-    };
+    });
 
     // Initialize audio
     if (!Settings.DisableAudio) {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
-            AudioStreamWriter = new AppAudio::AudioStreamCallback();
+            AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
 
             SDL_AudioSpec desired = {};
 #if FO_WEB
@@ -360,12 +360,14 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #endif
             desired.callback = [](void*, Uint8* stream, int) {
                 std::memset(stream, AudioSpec.silence, AudioSpec.size);
+
                 if (*AudioStreamWriter) {
                     (*AudioStreamWriter)(stream);
                 }
             };
 
             AudioDeviceId = SDL_OpenAudioDevice(nullptr, 0, &desired, &AudioSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+
             if (AudioDeviceId >= 2) {
                 SDL_PauseAudioDevice(AudioDeviceId, 0);
             }
@@ -381,18 +383,18 @@ Application::Application(int argc, char** argv, bool client_mode) :
     // First choose render type by user preference
     if (Settings.NullRenderer) {
         ActiveRendererType = RenderType::Null;
-        ActiveRenderer = new Null_Renderer();
+        ActiveRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
     }
 #if FO_HAVE_OPENGL
     else if (Settings.ForceOpenGL) {
         ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = new OpenGL_Renderer();
+        ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 #if FO_HAVE_DIRECT_3D
     else if (Settings.ForceDirect3D) {
         ActiveRendererType = RenderType::Direct3D;
-        ActiveRenderer = new Direct3D_Renderer();
+        ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
@@ -412,7 +414,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #if FO_HAVE_DIRECT_3D
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Direct3D;
-        ActiveRenderer = new Direct3D_Renderer();
+        ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
@@ -428,7 +430,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 #if FO_HAVE_OPENGL
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = new OpenGL_Renderer();
+        ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 
@@ -622,7 +624,7 @@ auto Application::CreateChildWindow(isize size) -> AppWindow*
     throw NotImplementedException(LINE_STR);
 
     /*auto* sdl_window = CreateInternalWindow(width, height);
-    auto* window = new AppWindow();
+    auto* window = SafeAlloc::MakeRaw<AppWindow>();
     window->_windowHandle = sdl_window;
     _allWindows.emplace_back(window);
     return window;*/
@@ -636,7 +638,7 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 
     // Dummy window pointer
     if (Settings.NullRenderer) {
-        return new int(42);
+        return SafeAlloc::MakeRaw<int>(42);
     }
 
     // Initialize window
@@ -1006,6 +1008,7 @@ void Application::EndFrame()
 
             _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
             _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
+
             for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
                 auto& v = _imguiDrawBuf->Vertices[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
@@ -1018,6 +1021,7 @@ void Application::EndFrame()
 
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
             _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
+
             for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
                 _imguiDrawBuf->Indices[i] = static_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
@@ -1499,23 +1503,25 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
     RUNTIME_ASSERT(IsEnabled());
 
     auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
-        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](AudioConverter* c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
+        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](const unique_ptr<AudioConverter>& c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
 
         if (it == _converters.end()) {
             SDL_AudioCVT cvt;
             const auto r = SDL_BuildAudioCVT(&cvt, static_cast<SDL_AudioFormat>(format), static_cast<Uint8>(channels), rate, AudioSpec.format, AudioSpec.channels, AudioSpec.freq);
+
             if (r == -1) {
                 return nullptr;
             }
 
-            _converters.push_back(new AudioConverter {format, channels, rate, cvt, r == 1});
-            return _converters.back();
+            _converters.push_back(SafeAlloc::MakeUnique<AudioConverter>(AudioConverter {format, channels, rate, cvt, r == 1}));
+            return _converters.back().get();
         }
 
-        return *it;
+        return it->get();
     };
 
     auto* converter = get_converter();
+
     if (converter == nullptr) {
         return false;
     }

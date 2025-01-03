@@ -90,11 +90,11 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
-    SprMngr.RegisterSpriteFactory(std::make_unique<DefaultSpriteFactory>(SprMngr));
-    SprMngr.RegisterSpriteFactory(std::make_unique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this));
 
 #if FO_ENABLE_3D
-    auto&& model_spr_factory = std::make_unique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this);
+    auto&& model_spr_factory = SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this);
 
     if (!Preload3dFiles.empty()) {
         WriteLog("Preload 3d files...");
@@ -128,7 +128,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         throw EngineDataNotFoundException(LINE_STR);
     }
 
-    ScriptSys = new ClientScriptSystem(this);
+    ScriptSys = SafeAlloc::MakeRaw<ClientScriptSystem>(this);
     ScriptSys->InitSubsystems();
 #endif
 
@@ -714,7 +714,7 @@ void FOClient::Net_OnConnect(bool success)
         }
 
         RUNTIME_ASSERT(!_curPlayer);
-        _curPlayer = new PlayerView(this, ident_t {});
+        _curPlayer = SafeAlloc::MakeRaw<PlayerView>(this, ident_t {});
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
@@ -1075,7 +1075,7 @@ void FOClient::Net_OnAddCritter()
             _globalMapCritters.erase(it);
         }
 
-        cr = new CritterView(this, cr_id, proto);
+        cr = SafeAlloc::MakeRaw<CritterView>(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
         _globalMapCritters.emplace_back(cr);
 
@@ -1524,7 +1524,7 @@ void FOClient::Net_OnCritterAction()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        context_item = new ItemView(this, item_id, proto);
+        context_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(context_item);
@@ -1570,7 +1570,7 @@ void FOClient::Net_OnCritterMoveItem()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        moved_item = new ItemView(this, item_id, proto);
+        moved_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(moved_item);
@@ -1667,7 +1667,7 @@ void FOClient::Net_OnCritterAnimate()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        context_item = new ItemView(this, item_id, proto);
+        context_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(context_item);
@@ -2396,11 +2396,11 @@ void FOClient::Net_OnLoadMap()
 
     if (map_pid) {
         const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
-        _curLocation = new LocationView(this, loc_id, loc_proto);
+        _curLocation = SafeAlloc::MakeRaw<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
         const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
-        CurMap = new MapView(this, map_id, map_proto);
+        CurMap = SafeAlloc::MakeRaw<MapView>(this, map_id, map_proto);
         CurMap->RestoreData(_tempPropertiesData);
         CurMap->LoadStaticData();
 
@@ -2506,7 +2506,7 @@ void FOClient::Net_OnSomeItems()
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
-        auto* item = new ItemView(this, item_id, proto);
+        auto* item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(item);
@@ -2683,10 +2683,10 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
     CustomEntityView* entity;
 
     if (proto != nullptr) {
-        entity = new CustomEntityWithProtoView(this, id, registrator, nullptr, proto);
+        entity = SafeAlloc::MakeRaw<CustomEntityWithProtoView>(this, id, registrator, nullptr, proto);
     }
     else {
-        entity = new CustomEntityView(this, id, registrator, nullptr);
+        entity = SafeAlloc::MakeRaw<CustomEntityView>(this, id, registrator, nullptr);
     }
 
     entity->RestoreData(data);
@@ -2770,7 +2770,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
 
     anim->PlayDefault();
 
-    auto&& iface_anim = std::make_unique<IfaceAnim>();
+    auto&& iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
 
     iface_anim->Name = name;
     iface_anim->Anim = anim;
@@ -3506,7 +3506,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     // Parse command
     vector<string> args;
     const auto command_str = string(command);
-    std::istringstream ss(command_str);
+    istringstream ss(command_str);
 
     if (!separator.empty()) {
         string arg;
@@ -3837,7 +3837,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         return;
     }
 
-    _video = std::make_unique<VideoClip>(file.GetData());
+    _video = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
     _videoTex = unique_ptr<RenderTexture> {App->Render.CreateTexture(_video->GetSize(), true, false)};
 
     if (names.size() > 1) {

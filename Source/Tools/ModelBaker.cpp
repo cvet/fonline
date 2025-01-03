@@ -43,20 +43,21 @@
 
 extern "C" void* ufbx_malloc(size_t size)
 {
-    return new uint8[size];
+    constexpr SafeAllocator<uint8> allocator;
+    return allocator.allocate(size);
 }
 
 extern "C" void* ufbx_realloc(void* ptr, size_t old_size, size_t new_size)
 {
-    UNUSED_VARIABLE(old_size);
-    delete[] static_cast<uint8*>(ptr);
-    return new uint8[new_size];
+    constexpr SafeAllocator<uint8> allocator;
+    allocator.deallocate(static_cast<uint8*>(ptr), old_size);
+    return allocator.allocate(new_size);
 }
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
-    UNUSED_VARIABLE(old_size);
-    delete[] static_cast<uint8*>(ptr);
+    constexpr SafeAllocator<uint8> allocator;
+    allocator.deallocate(static_cast<uint8*>(ptr), old_size);
 }
 
 struct BakerMeshData
@@ -324,7 +325,7 @@ static auto ConvertFbxHierarchy(const ufbx_node* fbx_node) -> unique_ptr<BakerBo
 {
     STACK_TRACE_ENTRY();
 
-    auto bone = std::make_unique<BakerBone>();
+    auto bone = SafeAlloc::MakeUnique<BakerBone>();
 
     bone->Name = fbx_node->name.data;
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent);
@@ -344,7 +345,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
     STACK_TRACE_ENTRY();
 
     if (fbx_node->mesh != nullptr && fbx_node->mesh->num_faces != 0) {
-        bone->AttachedMesh = std::make_unique<BakerMeshData>();
+        bone->AttachedMesh = SafeAlloc::MakeUnique<BakerMeshData>();
         BakerMeshData* mesh = bone->AttachedMesh.get();
         const auto* fbx_mesh = fbx_node->mesh;
         RUNTIME_ASSERT(fbx_mesh->num_faces == fbx_mesh->num_triangles);
@@ -511,7 +512,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
 
         auto fbx_baked_anim_cleanup = ScopeCallback([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
 
-        auto anim_set = std::make_unique<BakerAnimSet>();
+        auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;
         anim_set->AnimName = fbx_anim_stack->name.data;
         anim_set->Duration = static_cast<float>(fbx_baked_anim->playback_duration);

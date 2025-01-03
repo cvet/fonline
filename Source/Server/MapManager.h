@@ -41,9 +41,6 @@
 #include "Location.h"
 #include "Map.h"
 
-// Todo: make dynamic path growth and move max value to settings
-static constexpr auto FPATH_MAX_PATH = 400;
-
 DECLARE_EXCEPTION(MapManagerException);
 
 class FOServer;
@@ -123,7 +120,7 @@ public:
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
     auto operator=(MapManager&&) noexcept = delete;
-    ~MapManager();
+    ~MapManager() = default;
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> NON_NULL const StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
@@ -159,7 +156,7 @@ private:
 
     FOServer* _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
+    vector<int16> _mapGrid {};
     mpos _mapGridOffset {};
-    int16* _mapGrid {};
     bool _nonConstHelper {};
 };

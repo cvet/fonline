@@ -75,7 +75,7 @@ struct ServerConnection::Impl
 
 ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
     _settings {settings},
-    _impl {std::make_unique<Impl>()},
+    _impl {SafeAlloc::MakeUnique<Impl>()},
     _netIn(_settings.NetBufferSize),
     _netOut(_settings.NetBufferSize)
 {
@@ -307,8 +307,14 @@ void ServerConnection::ConnectToHost()
     // Init Zlib
     if (!_impl->ZStreamActive) {
         _impl->ZStream = {};
-        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
-        _impl->ZStream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
+            constexpr SafeAllocator<uint8> allocator;
+            return allocator.allocate(static_cast<size_t>(items) * size);
+        };
+        _impl->ZStream.zfree = [](voidpf, voidpf address) {
+            constexpr SafeAllocator<uint8> allocator;
+            allocator.deallocate(static_cast<uint8*>(address), 0);
+        };
 
         const auto inf_init = inflateInit(&_impl->ZStream);
         RUNTIME_ASSERT(inf_init == Z_OK);

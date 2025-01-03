@@ -81,7 +81,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 
             if (health_file) {
-                _healthFile = std::make_unique<DiskFile>(std::move(health_file));
+                _healthFile = SafeAlloc::MakeUnique<DiskFile>(std::move(health_file));
                 _healthFile->Write("Starting...");
 
                 _mainWorker.AddJob([this] {
@@ -149,7 +149,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         extern void Server_RegisterData(FOEngineBase*);
         Server_RegisterData(this);
 
-        ScriptSys = new ServerScriptSystem(this);
+        ScriptSys = SafeAlloc::MakeRaw<ServerScriptSystem>(this);
         ScriptSys->InitSubsystems();
 #endif
 
@@ -552,7 +552,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
                 if (!_newConnections.empty()) {
                     for (auto* conn : _newConnections) {
-                        _unloginedPlayers.emplace_back(new Player(this, ident_t {}, conn));
+                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, conn));
                     }
                     _newConnections.clear();
                 }
@@ -1026,7 +1026,7 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
 
     std::scoped_lock locker(_newConnectionsLocker);
 
-    _newConnections.emplace_back(new ClientConnection(net_connection));
+    _newConnections.emplace_back(SafeAlloc::MakeRaw<ClientConnection>(net_connection));
 }
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
@@ -1939,7 +1939,7 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
     WriteLog(LogType::Info, "Create critter {}", pid);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
-    auto* cr = new Critter(this, ident_t {}, proto);
+    auto* cr = SafeAlloc::MakeRaw<Critter>(this, ident_t {}, proto);
 
     EntityMngr.RegisterCritter(cr);
 

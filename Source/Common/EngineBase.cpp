@@ -37,7 +37,7 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(new PropertyRegistrator(ENTITY_TYPE_NAME, props_relation, *this, *this), nullptr),
+    Entity(SafeAlloc::MakeRaw<PropertyRegistrator>(ENTITY_TYPE_NAME, props_relation, *this, *this), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),
@@ -59,7 +59,7 @@ auto FOEngineBase::RegisterEntityType(string_view type_name, bool exported, bool
     const auto it = _entityTypesInfo.find(ToHashedString(type_name));
     RUNTIME_ASSERT(it == _entityTypesInfo.end());
 
-    auto* registrator = new PropertyRegistrator(type_name, _propsRelation, *this, *this);
+    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(type_name, _propsRelation, *this, *this);
 
     _entityTypesInfo.emplace(ToHashedString(type_name), EntityTypeInfo {registrator, exported, has_protos});
 
@@ -141,14 +141,20 @@ auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> c
     return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
 }
 
-auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*
+auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
-    const auto type_name_hashed = ToHashedStringMustExists(type_name);
-    const auto it = _entityTypesInfo.find(type_name_hashed);
+    hstring type_name_hashed;
 
-    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+    try {
+        type_name_hashed = ToHashedStringMustExists(type_name);
+    }
+    catch (...) {
+        return nullptr;
+    }
+
+    return GetPropertyRegistrator(type_name_hashed);
 }
 
 auto FOEngineBase::GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*

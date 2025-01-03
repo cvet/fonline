@@ -39,24 +39,6 @@ GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     STACK_TRACE_ENTRY();
 }
 
-GeometryHelper::~GeometryHelper()
-{
-    STACK_TRACE_ENTRY();
-
-    if (_sxEven != nullptr) {
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            delete[] _sxEven;
-            delete[] _syEven;
-            delete[] _sxOdd;
-            delete[] _syOdd;
-        }
-        else {
-            delete[] _sxEven;
-            delete[] _syEven;
-        }
-    }
-}
-
 void GeometryHelper::InitializeHexOffsets() const
 {
     STACK_TRACE_ENTRY();
@@ -64,10 +46,10 @@ void GeometryHelper::InitializeHexOffsets() const
     constexpr auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        _sxEven = new int16[size];
-        _syEven = new int16[size];
-        _sxOdd = new int16[size];
-        _syOdd = new int16[size];
+        _sxEven = SafeAlloc::MakeUniqueArr<int16>(size);
+        _syEven = SafeAlloc::MakeUniqueArr<int16>(size);
+        _sxOdd = SafeAlloc::MakeUniqueArr<int16>(size);
+        _syOdd = SafeAlloc::MakeUniqueArr<int16>(size);
 
         size_t iter = 0;
         ipos pos1 = {0, 0};
@@ -95,8 +77,10 @@ void GeometryHelper::InitializeHexOffsets() const
         }
     }
     else {
-        _sxEven = _sxOdd = new int16[size];
-        _syEven = _syOdd = new int16[size];
+        _sxEven = SafeAlloc::MakeUniqueArr<int16>(size);
+        _syEven = SafeAlloc::MakeUniqueArr<int16>(size);
+        _sxOdd = SafeAlloc::MakeUniqueArr<int16>(size);
+        _syOdd = SafeAlloc::MakeUniqueArr<int16>(size);
 
         size_t iter = 0;
         ipos pos;
@@ -672,8 +656,8 @@ auto GeometryHelper::GetHexOffsets(mpos hex) const -> tuple<const int16*, const 
     }
 
     const auto odd = (hex.x % 2) != 0;
-    const auto* sx = odd ? _sxOdd : _sxEven;
-    const auto* sy = odd ? _syOdd : _syEven;
+    const auto* sx = odd ? _sxOdd.get() : _sxEven.get();
+    const auto* sy = odd ? _syOdd.get() : _syEven.get();
 
     return {sx, sy};
 }

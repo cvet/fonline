@@ -67,7 +67,7 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                Data->Mapper = std::make_unique<FOMapper>(App->Settings, &App->MainWindow);
+                Data->Mapper = SafeAlloc::MakeUnique<FOMapper>(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

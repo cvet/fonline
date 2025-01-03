@@ -358,13 +358,14 @@ private:
     AppAudio() = default;
 
     struct AudioConverter;
-    vector<AudioConverter*> _converters {};
+    vector<unique_ptr<AudioConverter>> _converters {};
     int _nonConstHelper {};
 };
 
 class Application final
 {
     friend void InitApp(int argc, char** argv, bool client_mode);
+    friend class SafeAlloc;
 
     Application(int argc, char** argv, bool client_mode);
 

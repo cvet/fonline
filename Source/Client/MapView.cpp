@@ -108,9 +108,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     _mapSize = GetSize();
 
-    _findPathGrid.resize((static_cast<size_t>(MAX_FIND_PATH) * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
     _hexLight.resize(static_cast<size_t>(_mapSize.GetSquare()) * 3);
-    _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
+    _hexField = SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
 
     _lightPoints.resize(1);
     _lightSoftPoints.resize(1);
@@ -187,10 +186,10 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_crittersMap.count(id) == 0);
 
-            auto props = copy(proto->GetProperties());
+            auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
 
-            auto* cr = new CritterHexView(this, id, proto, &props);
+            auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, id, proto, &props);
 
             if (const auto hex = cr->GetHex(); !_mapSize.IsValidPos(hex)) {
                 cr->SetHex(_mapSize.ClampPos(hex));
@@ -202,10 +201,10 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_itemsMap.count(id) == 0);
 
-            auto props = copy(proto->GetProperties());
+            auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
 
-            auto* item = new ItemHexView(this, id, proto, &props);
+            auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, id, proto, &props);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
                 if (const auto hex = item->GetHex(); !_mapSize.IsValidPos(hex)) {
@@ -294,7 +293,7 @@ void MapView::LoadStaticData()
             reader.ReadPtr<uint8>(props_data.data(), props_data_size);
             item_props.RestoreAllData(props_data);
 
-            auto* static_item = new ItemHexView(this, static_id, item_proto, &item_props);
+            auto* static_item = SafeAlloc::MakeRaw<ItemHexView>(this, static_id, item_proto, &item_props);
 
             static_item->SetStatic(true);
 
@@ -544,7 +543,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = new ItemHexView(this, id, proto);
+    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
     item->SetHex(hex);
@@ -564,7 +563,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = new ItemHexView(this, GetTempEntityId(), proto, props);
+    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GetTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -579,7 +578,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = new ItemHexView(this, GetTempEntityId(), proto);
+    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GetTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -876,7 +875,7 @@ void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
     RUNTIME_ASSERT(_mapSize.IsValidPos(to_hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
-    auto* effect_item = new ItemHexView(this, ident_t {}, proto);
+    auto* effect_item = SafeAlloc::MakeRaw<ItemHexView>(this, ident_t {}, proto);
 
     effect_item->SetHex(from_hex);
     effect_item->SetEffect(to_hex);
@@ -896,7 +895,7 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     spr->Prewarm();
     spr->PlayDefault();
 
-    auto&& pattern = unique_release_ptr<SpritePattern>(new SpritePattern());
+    auto&& pattern = SafeAlloc::MakeUniqueReleasable<SpritePattern>();
 
     pattern->SprName = name;
     pattern->SprCount = count;
@@ -1716,7 +1715,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, uint distanc
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, std::make_unique<LightSource>(LightSource {id, hex, color, distance, flags, intensity, offset})).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(LightSource {id, hex, color, distance, flags, intensity, offset})).first->second.get();
     }
     else {
         ls = it->second.get();
@@ -3499,7 +3498,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto* cr = new CritterHexView(this, id, proto);
+    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
     cr->SetHex(hex);
@@ -3516,7 +3515,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto* cr = new CritterHexView(this, GetTempEntityId(), proto, props);
+    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, GetTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
@@ -3918,20 +3917,22 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
     RUNTIME_ASSERT(!cr || cr->GetMap() == this);
 
-#define GRID_AT(pos) _findPathGrid[((MAX_FIND_PATH + 1) + (pos.y) - grid_pos.y) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (pos.x) - grid_pos.x)]
-
     if (start_hex == target_hex) {
         return FindPathResult();
     }
 
-    int16 numindex = 1;
+    const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
+    _findPathGrid.resize((static_cast<size_t>(max_path_find_len) * 2 + 2) * (max_path_find_len * 2 + 2));
     std::memset(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
 
-    const auto grid_pos = start_hex;
-    GRID_AT(start_hex) = numindex;
+    const auto grid_offset = start_hex;
+    const auto grid_at = [&](mpos hex) -> short& { return _findPathGrid[((max_path_find_len + 1) + (hex.y) - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + (hex.x) - grid_offset.x)]; };
+
+    int16 numindex = 1;
+    grid_at(start_hex) = numindex;
 
     vector<mpos> coords;
-    coords.reserve(MAX_FIND_PATH);
+    coords.reserve(max_path_find_len);
     coords.emplace_back(start_hex);
 
     const auto multihex = cr != nullptr ? cr->GetMultihex() : 0;
@@ -3939,7 +3940,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     auto find_ok = false;
 
     while (!find_ok) {
-        if (++numindex > MAX_FIND_PATH) {
+        if (++numindex > max_path_find_len) {
             return std::nullopt;
         }
 
@@ -3957,11 +3958,15 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
             for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
                 const auto raw_next_hex = ipos {hex.x + sx[j], hex.y + sy[j]};
 
-                if (!_mapSize.IsValidPos(raw_next_hex) || GRID_AT(raw_next_hex)) {
+                if (!_mapSize.IsValidPos(raw_next_hex)) {
                     continue;
                 }
 
                 const auto next_hex = _mapSize.FromRawPos(raw_next_hex);
+
+                if (grid_at(next_hex) != 0) {
+                    continue;
+                }
 
                 if (multihex == 0) {
                     if (_hexField->GetCellForReading(next_hex).Flags.MoveBlocked) {
@@ -4035,7 +4040,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                     }
                 }
 
-                GRID_AT(next_hex) = numindex;
+                grid_at(next_hex) = numindex;
                 coords.emplace_back(next_hex);
 
                 if (cut >= 0 && GeometryHelper::CheckDist(next_hex, target_hex, cut)) {
@@ -4069,19 +4074,23 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         int best_step_dir = -1;
         float best_step_angle_diff = 0.0f;
 
-        const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, grid_pos, start_hex, base_angle, this](uint8 dir, ipos raw_step_hex) {
-            if (_mapSize.IsValidPos(raw_step_hex) && GRID_AT(raw_step_hex) == numindex) {
-                const float angle = GeometryHelper::GetDirAngle(_mapSize.FromRawPos(raw_step_hex), start_hex);
-                const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+        const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, &grid_at, start_hex, base_angle, this](uint8 dir, ipos raw_step_hex) {
+            if (_mapSize.IsValidPos(raw_step_hex)) {
+                const auto step_hex = _mapSize.FromRawPos(raw_step_hex);
 
-                if (best_step_dir == -1 || numindex == 0) {
-                    best_step_dir = dir;
-                    best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
-                }
-                else {
-                    if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
+                if (grid_at(step_hex) == numindex) {
+                    const float angle = GeometryHelper::GetDirAngle(step_hex, start_hex);
+                    const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+
+                    if (best_step_dir == -1 || numindex == 0) {
                         best_step_dir = dir;
-                        best_step_angle_diff = angle_diff;
+                        best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+                    }
+                    else {
+                        if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
+                            best_step_dir = dir;
+                            best_step_angle_diff = angle_diff;
+                        }
                     }
                 }
             }
@@ -4195,7 +4204,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                         break;
                     }
 
-                    if (GRID_AT(next_hex) <= 0) {
+                    if (grid_at(next_hex) <= 0) {
                         failed = true;
                         break;
                     }
@@ -4245,8 +4254,6 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     RUNTIME_ASSERT(!result.ControlSteps.empty());
 
     return {result};
-
-#undef GRID_AT
 }
 
 bool MapView::CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut)

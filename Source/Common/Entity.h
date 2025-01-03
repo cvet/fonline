@@ -51,7 +51,7 @@
     { \
         return _propsRef.GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
-    inline auto Get##prop() const noexcept(noexcept(std::declval<Properties>().GetValueFast<prop_type>(GetProperty##prop()))) \
+    inline auto Get##prop() const noexcept \
     { \
         return _propsRef.GetValueFast<prop_type>(GetProperty##prop()); \
     } \
@@ -368,11 +368,11 @@ public:
     void AddRef() const noexcept;
     void Release() const noexcept;
 
-    void MarkAsDestroying();
-    void MarkAsDestroyed();
+    void MarkAsDestroying() noexcept;
+    void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(const PropertyRegistrator* registrator, const Properties* props);
+    Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept;
     virtual ~Entity() = default;
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
@@ -407,7 +407,7 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props);
+    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
 
     const hstring _protoId;
     unordered_set<hstring> _components {};
@@ -427,7 +427,7 @@ public:
     [[nodiscard]] auto GetProto() const noexcept -> const ProtoEntity*;
 
 protected:
-    explicit EntityWithProto(const ProtoEntity* proto);
+    explicit EntityWithProto(const ProtoEntity* proto) noexcept;
     virtual ~EntityWithProto();
 
     const ProtoEntity* _proto;
@@ -441,7 +441,7 @@ public:
     void UnsubscribeAll() noexcept;
 
 protected:
-    EntityEventBase(Entity* entity, const char* callback_name);
+    EntityEventBase(Entity* entity, const char* callback_name) noexcept;
 
     [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const noexcept -> bool
     {
@@ -459,7 +459,7 @@ template<typename... Args>
 class EntityEvent final : public EntityEventBase
 {
 public:
-    EntityEvent(Entity* entity, const char* callback_name) :
+    EntityEvent(Entity* entity, const char* callback_name) noexcept :
         EntityEventBase(entity, callback_name)
     {
     }

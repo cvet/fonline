@@ -531,12 +531,12 @@ FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, s
         throw ScriptException("Video file not found", videoName);
     }
 
-    auto&& clip = std::make_unique<VideoClip>(file.GetData());
+    auto&& clip = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
     auto&& tex = unique_ptr<RenderTexture> {App->Render.CreateTexture(clip->GetSize(), true, false)};
 
     clip->SetLooped(looped);
 
-    auto* video = new VideoPlayback();
+    auto* video = SafeAlloc::MakeRaw<VideoPlayback>();
     video->Clip = std::move(clip);
     video->Tex = std::move(tex);
 

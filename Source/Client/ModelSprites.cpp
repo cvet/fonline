@@ -172,7 +172,7 @@ ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& 
 {
     STACK_TRACE_ENTRY();
 
-    _modelMngr = std::make_unique<ModelManager>(settings, spr_mngr.GetResources(), effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver, //
+    _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr.GetResources(), effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver, //
         [this, &hash_resolver](string_view path) { return LoadTexture(hash_resolver.ToHashedString(path)); });
 }
 

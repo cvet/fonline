@@ -130,7 +130,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     WriteLog("Starting {}", FO_GAME_NAME);
 
-    App = new Application(argc, argv, client_mode);
+    App = SafeAlloc::MakeRaw<Application>(argc, argv, client_mode);
 
 #if FO_LINUX || FO_MAC
     signal(SIGINT, SignalHandler);
@@ -594,6 +594,10 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
     RUNTIME_ASSERT(IsEnabled());
 }
+
+struct AppAudio::AudioConverter
+{
+};
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {

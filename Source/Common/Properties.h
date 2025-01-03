@@ -75,24 +75,24 @@ public:
     }
 
     template<typename T>
-    [[nodiscard]] auto GetAs() -> T
+    [[nodiscard]] auto GetAs() noexcept -> T
     {
-        RUNTIME_ASSERT(sizeof(T) == _dataSize);
+        STRONG_ASSERT(sizeof(T) == _dataSize);
         return *static_cast<T*>(GetPtr());
     }
 
-    auto Alloc(size_t size) -> uint8*;
-    void Set(const void* value, size_t size) { std::memcpy(Alloc(size), value, size); }
+    auto Alloc(size_t size) noexcept -> uint8*;
+    void Set(const void* value, size_t size) noexcept { std::memcpy(Alloc(size), value, size); }
 
     template<typename T>
-    void SetAs(T value)
+    void SetAs(T value) noexcept
     {
         std::memcpy(Alloc(sizeof(T)), &value, sizeof(T));
     }
 
-    void Pass(const_span<uint8> value);
-    void Pass(const void* value, size_t size);
-    void StoreIfPassed();
+    void Pass(const_span<uint8> value) noexcept;
+    void Pass(const void* value, size_t size) noexcept;
+    void StoreIfPassed() noexcept;
 
 private:
     size_t _dataSize {};
@@ -110,6 +110,7 @@ class Property final
 {
     friend class PropertyRegistrator;
     friend class Properties;
+    friend class SafeAlloc;
 
 public:
     static constexpr size_t INVALID_DATA_MARKER = static_cast<size_t>(-1);
@@ -267,15 +268,16 @@ class Properties final
 
 public:
     Properties() = delete;
-    explicit Properties(const PropertyRegistrator* registrator);
-    Properties(const Properties& other);
+    explicit Properties(const PropertyRegistrator* registrator) noexcept;
+    Properties(const Properties& other) = delete;
     Properties(Properties&&) noexcept = default;
-    auto operator=(const Properties& other) -> Properties&;
+    auto operator=(const Properties& other) noexcept = delete;
     auto operator=(Properties&&) noexcept = delete;
     ~Properties() = default;
 
     [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetEntity() noexcept -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
+    [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
     [[nodiscard]] auto GetRawData(const Property* prop) noexcept -> span<uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
@@ -286,8 +288,9 @@ public:
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
 
-    void AllocData();
-    void SetEntity(Entity* entity) { _entity = entity; }
+    void AllocData() noexcept;
+    void SetEntity(Entity* entity) noexcept { _entity = entity; }
+    void CopyFrom(const Properties& other) noexcept;
     void ValidateForRawData(const Property* prop) const noexcept(false);
     void ApplyFromText(const map<string, string>& key_values);
     void ApplyPropertyFromText(const Property* prop, string_view text);
@@ -296,7 +299,7 @@ public:
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
-    void SetRawData(const Property* prop, const_span<uint8> raw_data);
+    void SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetPlainDataValueAsAny(const Property* prop, const any_t& value);
@@ -387,7 +390,7 @@ public:
 
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
+        auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
     }
 
@@ -411,7 +414,7 @@ public:
         else {
             RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
             const auto& complex_data = _complexData[prop->_complexDataIndex];
-            prop_data.Pass(complex_data);
+            prop_data.Pass({complex_data.first.get(), complex_data.second});
         }
 
         const auto* data = prop_data.GetPtrAs<uint8>();
@@ -509,24 +512,24 @@ public:
 
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        const auto result = !complex_data.empty() ? string_view(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string_view();
+        const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
     }
 
     template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
-    [[nodiscard]] auto GetValueFast(const Property* prop) const -> T
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsArray());
-        RUNTIME_ASSERT(!prop->IsVirtual());
+        STRONG_ASSERT(!prop->IsDisabled());
+        STRONG_ASSERT(prop->IsArray());
+        STRONG_ASSERT(!prop->IsVirtual());
 
         PropertyRawData prop_data;
 
-        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        prop_data.Pass(complex_data);
+        prop_data.Pass({complex_data.first.get(), complex_data.second});
 
         const auto* data = prop_data.GetPtrAs<uint8>();
         const auto data_size = prop_data.GetSize();
@@ -535,7 +538,7 @@ public:
 
         if (data_size != 0) {
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
-                RUNTIME_ASSERT(prop->IsArrayOfString());
+                STRONG_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
@@ -558,20 +561,20 @@ public:
                 }
             }
             else if constexpr (std::is_same_v<T, vector<hstring>>) {
-                RUNTIME_ASSERT(prop->IsBaseTypeHash());
-                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+                STRONG_ASSERT(prop->IsBaseTypeHash());
+                STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
                 result.resize(arr_size);
 
                 for (const auto i : xrange(arr_size)) {
-                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
+                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
                     result[i] = hvalue;
                     data += sizeof(hstring::hash_t);
                 }
             }
             else {
-                RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+                STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
                 result.resize(data_size / prop->GetBaseSize());
                 std::memcpy(result.data(), data, data_size);
             }
@@ -813,8 +816,9 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    small_vector<uint8, 0> _podData {};
-    small_vector<small_vector<uint8, 0>, 0> _complexData {};
+    unique_ptr<uint8[]> _podData {};
+    unique_ptr<pair<unique_ptr<uint8[]>, size_t>[]> _complexData {};
+
     mutable unique_ptr<vector<const uint8*>> _storeData {};
     mutable unique_ptr<vector<uint>> _storeDataSizes {};
     mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};

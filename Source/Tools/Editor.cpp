@@ -154,7 +154,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
         InputResources.AddDataSource(res_splitted[1]);
     }
 
-    BakedResources.AddDataSource(std::make_unique<BakerDataSource>(InputResources, settings));
+    BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
 
     auto* imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
         const auto file = BakedResources.ReadFile(path);
@@ -164,7 +164,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
     RUNTIME_ASSERT(imgui_effect);
     App->SetImGuiEffect(imgui_effect);
 
-    _newViews.emplace_back(std::make_unique<AssetExplorer>(*this));
+    _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(*this));
 }
 
 auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
@@ -198,7 +198,7 @@ void FOEditor::OpenAsset(string_view path)
     const string ext = strex(path).getFileExtension();
 
     if (ext == "fopts") {
-        _newViews.emplace_back(std::make_unique<ParticleEditor>(path, *this));
+        _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, *this));
     }
 }
 

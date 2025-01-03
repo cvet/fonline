@@ -49,7 +49,7 @@ int main(int argc, char** argv)
         InitApp(argc, argv);
 
         {
-            auto server = std::make_unique<FOServer>(App->Settings);
+            auto server = SafeAlloc::MakeUnique<FOServer>(App->Settings);
 
             App->WaitForRequestedQuit();
         }

@@ -132,8 +132,8 @@ ModelAnimationController::ModelAnimationController(uint track_count)
     STACK_TRACE_ENTRY();
 
     if (track_count != 0u) {
-        _sets = new vector<ModelAnimation*>();
-        _outputs = new vector<Output>();
+        _sets = SafeAlloc::MakeRaw<vector<ModelAnimation*>>();
+        _outputs = SafeAlloc::MakeRaw<vector<Output>>();
         _tracks.resize(track_count);
     }
 }
@@ -152,7 +152,7 @@ auto ModelAnimationController::Clone() const -> ModelAnimationController*
 {
     STACK_TRACE_ENTRY();
 
-    auto* clone = new ModelAnimationController(0);
+    auto* clone = SafeAlloc::MakeRaw<ModelAnimationController>(0);
     clone->_cloned = true;
     clone->_sets = _sets;
     clone->_outputs = _outputs;

@@ -112,7 +112,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = new Item(_engine, ident_t {}, proto, props);
+    auto* item = SafeAlloc::MakeRaw<Item>(_engine, ident_t {}, proto, props);
     auto self_destroy_fuse = RefCountHolder(item);
 
     item->SetStatic(false);

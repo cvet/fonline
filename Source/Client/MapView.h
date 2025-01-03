@@ -48,8 +48,6 @@
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
-static constexpr auto MAX_FIND_PATH = 600;
-
 class FOClient;
 class ItemHexView;
 class CritterHexView;

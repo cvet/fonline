@@ -50,13 +50,14 @@ class Item final : public ServerEntity, public EntityWithProto, public ItemPrope
 
 public:
     Item() = delete;
-    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
+    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto RadioIsSendActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }

@@ -48,7 +48,7 @@ public:
     GeometryHelper(GeometryHelper&&) = default;
     auto operator=(const GeometryHelper&) -> GeometryHelper& = delete;
     auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
-    ~GeometryHelper();
+    ~GeometryHelper() = default;
 
     // Todo: move all geometry helper methods to static
     [[nodiscard]] auto GetYProj() const -> float;
@@ -84,8 +84,8 @@ private:
     void InitializeHexOffsets() const;
 
     GeometrySettings& _settings;
-    mutable int16* _sxEven {};
-    mutable int16* _syEven {};
-    mutable int16* _sxOdd {};
-    mutable int16* _syOdd {};
+    mutable unique_ptr<int16[]> _sxEven {};
+    mutable unique_ptr<int16[]> _syEven {};
+    mutable unique_ptr<int16[]> _sxOdd {};
+    mutable unique_ptr<int16[]> _syOdd {};
 };

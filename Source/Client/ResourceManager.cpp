@@ -73,7 +73,7 @@ void ResourceManager::IndexFiles()
 
     auto&& spr = dynamic_pointer_cast<AtlasSprite>(_sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites));
     RUNTIME_ASSERT(spr);
-    _critterDummyAnimFrames = std::make_unique<SpriteSheet>(_sprMngr, 1, 100, 1);
+    _critterDummyAnimFrames = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->Size = spr->Size;
     _critterDummyAnimFrames->Spr[0] = std::move(spr);
     RUNTIME_ASSERT(_critterDummyAnimFrames);
@@ -291,7 +291,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 return nullptr;
             }
 
-            auto&& anim_merge_base = std::make_unique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
+            auto&& anim_merge_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
 
             for (uint d = 0; d < anim->DirCount; d++) {
                 auto* anim_merge = anim_merge_base->GetDir(d);
@@ -323,7 +323,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
         // Clone
         if (anim != nullptr) {
-            auto&& anim_clone_base = std::make_unique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
+            auto&& anim_clone_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
 
             for (uint d = 0; d < anim->DirCount; d++) {
                 auto* anim_clone = anim_clone_base->GetDir(d);

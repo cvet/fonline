@@ -50,7 +50,7 @@ struct ParticleSystem::Impl
 
 ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
     _settings {settings},
-    _impl {std::make_unique<Impl>()},
+    _impl {SafeAlloc::MakeUnique<Impl>()},
     _effectMngr {effect_mngr},
     _resources {resources},
     _gameTime {game_time},
@@ -104,7 +104,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
     auto&& system = SPK::SPKObject::copy(base_system);
     system->initialize();
 
-    auto particles = unique_ptr<ParticleSystem>(new ParticleSystem(*this));
+    auto particles = SafeAlloc::MakeUnique<ParticleSystem>(*this);
     particles->_impl->System = system;
     particles->_impl->BaseSystem = base_system;
 
@@ -112,7 +112,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 }
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
-    _impl {std::make_unique<Impl>()},
+    _impl {SafeAlloc::MakeUnique<Impl>()},
     _particleMngr {particle_mngr}
 {
     STACK_TRACE_ENTRY();

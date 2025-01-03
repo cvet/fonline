@@ -72,13 +72,14 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 
 public:
     Critter() = delete;
-    Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
+    Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr) noexcept;
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player; }
     [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> time_duration;

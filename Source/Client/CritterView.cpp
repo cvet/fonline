@@ -74,7 +74,7 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto, props);
+    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
@@ -88,7 +88,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto, nullptr);
+    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetStatic(false);

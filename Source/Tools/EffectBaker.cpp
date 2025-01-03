@@ -206,7 +206,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
                 CHECK_TEX("EggTex");
 #if FO_ENABLE_3D
                 for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
-                    CHECK_TEX(strex("ModelTex{}", j).str());
+                    CHECK_TEX(strex("ModelTex{}", j).strv());
                 }
 #endif
 #undef CHECK_TEX

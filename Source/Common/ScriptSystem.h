@@ -163,11 +163,13 @@ public:
     [[nodiscard]] auto FindFunc(hstring func_name) -> ScriptFunc<TRet, Args...>
     {
         const auto range = _funcMap.equal_range(func_name);
+
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second, {std::type_index(typeid(Args))...}, std::type_index(typeid(TRet)))) {
                 return ScriptFunc<TRet, Args...>(&it->second);
             }
         }
+
         return {};
     }
 
@@ -175,11 +177,13 @@ public:
     [[nodiscard]] auto CheckFunc(hstring func_name) const -> bool
     {
         const auto range = _funcMap.equal_range(func_name);
+
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second, {std::type_index(typeid(Args))...}, std::type_index(typeid(TRet)))) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -187,10 +191,12 @@ public:
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
+
         if (func && func(args...)) {
             ret = func.GetResult();
             return true;
         }
+
         return false;
     }
 

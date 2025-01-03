@@ -75,7 +75,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         const auto start_server = [] {
             // Server actually started in separate thread
-            Data->Server = std::make_unique<FOServer>(App->Settings);
+            Data->Server = SafeAlloc::MakeUnique<FOServer>(App->Settings);
         };
 
         const auto stop_server = [] { Data->Server.reset(); };
@@ -129,7 +129,7 @@ int main(int argc, char** argv) // Handled by SDL
                         auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                         try {
-                            auto&& client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
+                            auto&& client = SafeAlloc::MakeUnique<FOClient>(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }
