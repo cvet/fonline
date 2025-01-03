@@ -93,7 +93,6 @@ class Sprite
             Game.DrawSpritePattern(Id, pos, size, Size, color);
             break;
         case SpriteLayout::Center:
-            Game.DrawSpritePattern(Id, pos, size, Size, color);
             Game.DrawSprite(Id, ipos(pos.x + size.width / 2 - Size.width / 2, pos.y + size.height / 2 - Size.height / 2), color, false);
             break;
         case SpriteLayout::Stretch:
