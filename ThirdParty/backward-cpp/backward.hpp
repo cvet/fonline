@@ -3724,7 +3724,7 @@ public:
 
     _file->clear();
     _file->seekg(0);
-    string line;
+    std::string line; // (FOnline Patch) string -> std::string
     unsigned line_idx;
 
     for (line_idx = 1; line_idx < line_start; ++line_idx) {

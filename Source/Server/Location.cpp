@@ -37,14 +37,12 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
+Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
-
-    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 auto Location::GetProtoLoc() const noexcept -> const ProtoLocation*

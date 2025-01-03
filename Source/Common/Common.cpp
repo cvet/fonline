@@ -89,6 +89,82 @@ extern void SetCrashStackTrace() noexcept // Called in backward.hpp
     CrashStackTrace = &StackTrace;
 }
 
+template<typename T>
+static char* ItoA(T num, char buf[64], int base) noexcept
+{
+    static_assert(std::is_integral_v<T>);
+    static_assert(sizeof(T) <= 16);
+
+    int i = 0;
+    [[maybe_unused]] bool is_negative = false;
+
+    if (num == 0) {
+        buf[i++] = '0';
+        buf[i] = '\0';
+        return buf;
+    }
+
+    if constexpr (std::is_signed_v<T>) {
+        if (num < 0 && base == 10) {
+            is_negative = true;
+            num = -num;
+        }
+    }
+
+    while (num != 0) {
+        const int rem = num % base;
+        buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
+        num = num / base;
+    }
+
+    if (is_negative) {
+        buf[i++] = '-';
+    }
+
+    buf[i] = '\0';
+
+    int start = 0;
+    int end = i - 1;
+
+    while (start < end) {
+        const char ch = buf[start];
+        buf[start] = buf[end];
+        buf[end] = ch;
+        end--;
+        start++;
+    }
+
+    return buf;
+}
+
+static void SafeWriteStackTrace(const StackTraceData* st) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    WriteLogFatalMessage("Stack trace (most recent call first):\n");
+
+    char itoa_buf[64] = {};
+
+    for (int i = std::min(static_cast<int>(st->CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto& entry = st->CallTree[i];
+        WriteLogFatalMessage("- ");
+        WriteLogFatalMessage(entry->function);
+        WriteLogFatalMessage(" (");
+        WriteLogFatalMessage(strex(entry->file).extractFileName());
+        WriteLogFatalMessage(" line ");
+        WriteLogFatalMessage(ItoA(entry->line, itoa_buf, 10));
+        WriteLogFatalMessage(")\n");
+    }
+
+    if (st->CallsCount > STACK_TRACE_MAX_SIZE) {
+        WriteLogFatalMessage("- ...and ");
+        WriteLogFatalMessage(ItoA(st->CallsCount - STACK_TRACE_MAX_SIZE, itoa_buf, 10));
+        WriteLogFatalMessage(" more entries\n");
+    }
+
+    WriteLogFatalMessage("\n");
+}
+
 class BackwardOStreamBuffer : public std::streambuf
 {
 public:
@@ -129,26 +205,7 @@ private:
         WriteLogFatalMessage("\nFATAL ERROR!\n\n");
 
         if (CrashStackTrace != nullptr) {
-            WriteLogFatalMessage("Stack trace (most recent call first):\n");
-
-            for (int i = std::min(static_cast<int>(CrashStackTrace->CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
-                const auto& entry = CrashStackTrace->CallTree[i];
-                WriteLogFatalMessage("- ");
-                WriteLogFatalMessage(entry->function);
-                WriteLogFatalMessage(" (");
-                WriteLogFatalMessage(strex(entry->file).extractFileName());
-                WriteLogFatalMessage(" line ");
-                WriteLogFatalMessage(strex(strex::safe_format_tag {}, "{}", entry->line));
-                WriteLogFatalMessage(")\n");
-            }
-
-            if (CrashStackTrace->CallsCount > STACK_TRACE_MAX_SIZE) {
-                WriteLogFatalMessage("- ...and ");
-                WriteLogFatalMessage(strex(strex::safe_format_tag {}, "{}", CrashStackTrace->CallsCount - STACK_TRACE_MAX_SIZE));
-                WriteLogFatalMessage(" more entries\n");
-            }
-
-            WriteLogFatalMessage("\n");
+            SafeWriteStackTrace(CrashStackTrace);
         }
     }
 
@@ -166,6 +223,8 @@ void CreateGlobalData()
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         CreateGlobalDataCallbacks[i]();
     }
+
+    InitBackupMemoryChunks();
 }
 
 void DeleteGlobalData()
@@ -348,13 +407,13 @@ auto GetStackTrace() -> string
         ss << "- ...and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
     }
 
-    auto st_str = ss.str();
+    std::string st_str = ss.str();
 
     if (!st_str.empty() && st_str.back() == '\n') {
         st_str.pop_back();
     }
 
-    return st_str;
+    return string(st_str);
 
 #else
     return GetRealStackTrace();
@@ -402,7 +461,7 @@ auto GetRealStackTrace() -> string
     for (size_t i = 0; i < st.size(); ++i) {
         backward::ResolvedTrace trace = resolver.resolve(st[i]);
 
-        string obj_func = trace.object_function;
+        auto obj_func = string(trace.object_function);
 
         if (obj_func.length() > 100) {
             obj_func.resize(97);
@@ -420,13 +479,13 @@ auto GetRealStackTrace() -> string
         ss << "- " << obj_func << " (" << file_name << ")\n";
     }
 
-    auto st_str = ss.str();
+    std::string st_str = ss.str();
 
     if (!st_str.empty() && st_str.back() == '\n') {
         st_str.pop_back();
     }
 
-    return st_str;
+    return string(st_str);
 #else
 
     return "Stack trace not supported";
@@ -1099,3 +1158,72 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 #undef CRTDECL
 
 #endif
+
+static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
+static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
+static unique_ptr<unique_ptr<uint8[]>[]> BackupMemoryChunks;
+static std::atomic_size_t BackupMemoryChunksCount;
+
+void InitBackupMemoryChunks()
+{
+    NO_STACK_TRACE_ENTRY();
+
+    BackupMemoryChunks = std::make_unique<unique_ptr<uint8[]>[]>(BACKUP_MEMORY_CHUNKS);
+
+    for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
+        BackupMemoryChunks[i] = std::make_unique<uint8[]>(BACKUP_MEMORY_CHUNK_SIZE);
+    }
+
+    BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
+}
+
+auto FreeBackupMemoryChunk() noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    while (true) {
+        size_t cur_size = BackupMemoryChunksCount.load();
+
+        if (cur_size == 0) {
+            return false;
+        }
+
+        if (BackupMemoryChunksCount.compare_exchange_strong(cur_size, cur_size - 1)) {
+            BackupMemoryChunks[cur_size].reset();
+            return true;
+        }
+    }
+}
+
+void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    char itoa_buf[64] = {};
+
+    WriteLogFatalMessage("\nBAD ALLOC!\n\n");
+    WriteLogFatalMessage(message);
+    WriteLogFatalMessage("\n");
+    WriteLogFatalMessage("Type: ");
+    WriteLogFatalMessage(type_str);
+    WriteLogFatalMessage("\n");
+    WriteLogFatalMessage("Count: ");
+    WriteLogFatalMessage(ItoA(count, itoa_buf, 10));
+    WriteLogFatalMessage("\n");
+    WriteLogFatalMessage("Size: ");
+    WriteLogFatalMessage(ItoA(size, itoa_buf, 10));
+    WriteLogFatalMessage("\n\n");
+    SafeWriteStackTrace(&StackTrace);
+
+    if (App != nullptr) {
+        App->RequestQuit();
+    }
+}
+
+void ReportAndExit(string_view message) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    WriteLogFatalMessage(message);
+    ExitApp(false);
+}

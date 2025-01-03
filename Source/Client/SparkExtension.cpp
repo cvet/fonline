@@ -404,6 +404,7 @@ namespace SPK::FO
 
         if (const auto* attrib = descriptor.getAttributeWithValue("draw size"); attrib != nullptr) {
             const auto tmpSize = attrib->getValues<int>();
+
             switch (tmpSize.size()) {
             case 1:
                 _drawWidth = tmpSize[0];
@@ -418,15 +419,16 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("effect"); attrib != nullptr) {
-            SetEffectName(attrib->getValue<string>());
+            SetEffectName(string(attrib->getValue<std::string>()));
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("texture"); attrib != nullptr) {
-            SetTextureName(attrib->getValue<string>());
+            SetTextureName(string(attrib->getValue<std::string>()));
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("scale"); attrib != nullptr) {
             const auto tmpScale = attrib->getValues<float>();
+
             switch (tmpScale.size()) {
             case 1:
                 setScale(tmpScale[0], scaleY);
@@ -441,6 +443,7 @@ namespace SPK::FO
 
         if (const auto* attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib != nullptr) {
             const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
+
             switch (tmpAtlasDimensions.size()) {
             case 1:
                 setAtlasDimensions(tmpAtlasDimensions[0], textureAtlasNbY);
@@ -454,7 +457,8 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("look orientation"); attrib != nullptr) {
-            const auto lookOrient = attrib->getValue<string>();
+            const auto lookOrient = attrib->getValue<std::string>();
+
             if (lookOrient == "LOOK_CAMERA_PLANE") {
                 lookOrientation = LOOK_CAMERA_PLANE;
             }
@@ -470,7 +474,8 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("up orientation"); attrib != nullptr) {
-            const auto upOrient = attrib->getValue<string>();
+            const auto upOrient = attrib->getValue<std::string>();
+
             if (upOrient == "UP_CAMERA") {
                 upOrientation = UP_CAMERA;
             }
@@ -486,7 +491,8 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("locked axis"); attrib != nullptr) {
-            const auto lockAx = attrib->getValue<string>();
+            const auto lockAx = attrib->getValue<std::string>();
+
             if (lockAx == "LOCK_LOOK") {
                 lockedAxis = LOCK_LOOK;
             }
@@ -515,9 +521,9 @@ namespace SPK::FO
             descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
         }
 
-        descriptor.getAttribute("effect")->setValue(_effectName);
+        descriptor.getAttribute("effect")->setValue(std::string(_effectName));
 
-        descriptor.getAttribute("texture")->setValue(_textureName);
+        descriptor.getAttribute("texture")->setValue(std::string(_textureName));
 
         const std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
@@ -526,36 +532,36 @@ namespace SPK::FO
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {
-            descriptor.getAttribute("look orientation")->setValue(string("LOOK_CAMERA_PLANE"));
+            descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_CAMERA_PLANE"));
         }
         else if (lookOrientation == LOOK_CAMERA_POINT) {
-            descriptor.getAttribute("look orientation")->setValue(string("LOOK_CAMERA_POINT"));
+            descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_CAMERA_POINT"));
         }
         else if (lookOrientation == LOOK_AXIS) {
-            descriptor.getAttribute("look orientation")->setValue(string("LOOK_AXIS"));
+            descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_AXIS"));
         }
         else if (lookOrientation == LOOK_POINT) {
-            descriptor.getAttribute("look orientation")->setValue(string("LOOK_POINT"));
+            descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_POINT"));
         }
 
         if (upOrientation == UP_CAMERA) {
-            descriptor.getAttribute("up orientation")->setValue(string("UP_CAMERA"));
+            descriptor.getAttribute("up orientation")->setValue(std::string("UP_CAMERA"));
         }
         else if (upOrientation == UP_DIRECTION) {
-            descriptor.getAttribute("up orientation")->setValue(string("UP_DIRECTION"));
+            descriptor.getAttribute("up orientation")->setValue(std::string("UP_DIRECTION"));
         }
         else if (upOrientation == UP_AXIS) {
-            descriptor.getAttribute("up orientation")->setValue(string("UP_AXIS"));
+            descriptor.getAttribute("up orientation")->setValue(std::string("UP_AXIS"));
         }
         else if (upOrientation == UP_POINT) {
-            descriptor.getAttribute("up orientation")->setValue(string("UP_POINT"));
+            descriptor.getAttribute("up orientation")->setValue(std::string("UP_POINT"));
         }
 
         if (lockedAxis == LOCK_LOOK) {
-            descriptor.getAttribute("locked axis")->setValue(string("LOCK_LOOK"));
+            descriptor.getAttribute("locked axis")->setValue(std::string("LOCK_LOOK"));
         }
         else if (lockedAxis == LOCK_UP) {
-            descriptor.getAttribute("locked axis")->setValue(string("LOCK_UP"));
+            descriptor.getAttribute("locked axis")->setValue(std::string("LOCK_UP"));
         }
 
         descriptor.getAttribute("locked look vector")->setValue(lookVector);

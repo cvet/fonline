@@ -101,8 +101,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, uin
     }
 
     if (!props.empty()) {
-        Properties props_(self->GetEngine()->GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME));
-        props_ = proto->GetProperties();
+        Properties props_ = proto->GetProperties().Copy();
 
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(static_cast<int>(key), value);
@@ -810,7 +809,7 @@ FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, u
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    Properties props_(proto->GetProperties());
+    Properties props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int>(key), value);
@@ -827,7 +826,7 @@ FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, u
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    Properties props_(proto->GetProperties());
+    Properties props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int>(key), value);

@@ -33,14 +33,12 @@
 
 #include "ServerEntity.h"
 
-ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _engine {engine},
     _id {id}
 {
     STACK_TRACE_ENTRY();
-
-    _name = GetTypeName();
 }
 
 void ServerEntity::SetId(ident_t id) noexcept

@@ -46,7 +46,8 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     UNUSED_VARIABLE(user_data);
 
-    return new uint8[sz];
+    constexpr SafeAllocator<uint8> allocator;
+    return allocator.allocate(sz);
 }
 
 static void ImGuiFree(void* ptr, void* user_data)
@@ -55,7 +56,8 @@ static void ImGuiFree(void* ptr, void* user_data)
 
     UNUSED_VARIABLE(user_data);
 
-    delete[] ptr;
+    constexpr SafeAllocator<uint8> allocator;
+    allocator.deallocate(static_cast<uint8*>(ptr), 0);
 }
 
 void ImGuiExt::Init()

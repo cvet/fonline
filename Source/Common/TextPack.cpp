@@ -298,10 +298,10 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
     STACK_TRACE_ENTRY();
 
     _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
-    _textPacks[static_cast<size_t>(TextPackName::Game)] = std::make_unique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Dialogs)] = std::make_unique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Items)] = std::make_unique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Locations)] = std::make_unique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Game)] = SafeAlloc::MakeUnique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Dialogs)] = SafeAlloc::MakeUnique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Items)] = SafeAlloc::MakeUnique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Locations)] = SafeAlloc::MakeUnique<TextPack>();
 }
 
 auto LanguagePack::GetName() const noexcept -> const string&
@@ -329,7 +329,7 @@ auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
     RUNTIME_ASSERT(pack_index < _textPacks.size());
 
     if (!_textPacks[pack_index]) {
-        _textPacks[pack_index] = std::make_unique<TextPack>();
+        _textPacks[pack_index] = SafeAlloc::MakeUnique<TextPack>();
     }
 
     return *_textPacks[pack_index];

@@ -53,16 +53,14 @@ public:
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
     [[nodiscard]] auto GetEngine() noexcept -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
 
 protected:
-    ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
+    ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
 
     FOServer* _engine;
-    string _name {};
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager
@@ -74,19 +72,23 @@ private:
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+    CustomEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
         ServerEntity(engine, id, registrator, props),
         EntityProperties(GetInitRef())
     {
     }
+
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _propsRef.GetRegistrator()->GetTypeName(); }
 };
 
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
-    CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) :
+    CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) noexcept :
         CustomEntity(engine, id, registrator, props != nullptr ? props : &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }
+
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
 };

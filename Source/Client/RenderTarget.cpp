@@ -59,7 +59,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::Size
 
     _flush();
 
-    auto&& rt = std::make_unique<RenderTarget>();
+    auto&& rt = SafeAlloc::MakeUnique<RenderTarget>();
     rt->SizeKind = size_kind;
     rt->BaseSize = base_size;
     rt->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);

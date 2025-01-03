@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "Application.h"
 
-Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) :
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
     _props {registrator}
 {
     STACK_TRACE_ENTRY();
@@ -42,7 +42,7 @@ Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) 
     _props.SetEntity(this);
 
     if (props != nullptr) {
-        _props = *props;
+        _props.CopyFrom(*props);
     }
 }
 
@@ -223,21 +223,21 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
     return true;
 }
 
-void Entity::MarkAsDestroying()
+void Entity::MarkAsDestroying() noexcept
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_isDestroying);
-    RUNTIME_ASSERT(!_isDestroyed);
+    RUNTIME_VERIFY(!_isDestroying);
+    RUNTIME_VERIFY(!_isDestroyed);
 
     _isDestroying = true;
 }
 
-void Entity::MarkAsDestroyed()
+void Entity::MarkAsDestroyed() noexcept
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_isDestroyed);
+    RUNTIME_VERIFY(!_isDestroyed);
 
     _isDestroying = true;
     _isDestroyed = true;
@@ -379,13 +379,13 @@ void Entity::ClearInnerEntities()
     _innerEntities.reset();
 }
 
-ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _protoId {proto_id}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_protoId);
+    STRONG_ASSERT(_protoId);
 }
 
 auto ProtoEntity::GetName() const noexcept -> string_view
@@ -424,12 +424,12 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const noexcept -> bool
     return _componentHashes.find(hash) != _componentHashes.end();
 }
 
-EntityWithProto::EntityWithProto(const ProtoEntity* proto) :
+EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
     _proto {proto}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_proto);
+    STRONG_ASSERT(_proto);
 
     _proto->AddRef();
 }
@@ -455,7 +455,7 @@ auto EntityWithProto::GetProto() const noexcept -> const ProtoEntity*
     return _proto;
 }
 
-EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) :
+EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) noexcept :
     _entity {entity},
     _callbackName {callback_name}
 {

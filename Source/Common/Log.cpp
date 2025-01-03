@@ -85,7 +85,7 @@ void LogToFile(string_view fname)
     auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
 
     if (log_file) {
-        Data->LogFileHandle = std::make_unique<DiskFile>(std::move(log_file));
+        Data->LogFileHandle = SafeAlloc::MakeUnique<DiskFile>(std::move(log_file));
     }
     else {
         const string log_err_msg = strex("Can't create log file '{}'", fname).str();

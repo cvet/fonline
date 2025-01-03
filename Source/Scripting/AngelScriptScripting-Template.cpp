@@ -282,6 +282,27 @@ public:
 #define PTR_OR_DUMMY(ptr) PASS_AS_PVOID(&dummy)
 #endif
 
+struct AngelscriptAllocator
+{
+    static auto Alloc(size_t size) -> void*
+    {
+        constexpr SafeAllocator<uint8> allocator;
+        return allocator.allocate(size);
+    }
+
+    static void Free(void* ptr)
+    {
+        constexpr SafeAllocator<uint8> allocator;
+        allocator.deallocate(static_cast<uint8*>(ptr), 0);
+    }
+
+    AngelscriptAllocator()
+    {
+        // Setup AS allocators on startup
+        asSetGlobalMemoryFunctions(&AngelscriptAllocator::Alloc, &AngelscriptAllocator::Free);
+    }
+} static AngelscriptAllocator_;
+
 #if !COMPILER_MODE
 #define GET_CONTEXT_EXT(ctx) *static_cast<asCContext*>(ctx)->Ext
 #define GET_CONTEXT_EXT2(ctx) static_cast<asCContext*>(ctx)->Ext2
@@ -332,14 +353,14 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         auto* ctx = Engine->CreateContext();
         RUNTIME_ASSERT(ctx);
 
-        static_cast<asCContext*>(ctx)->Ext = new ASContextExtendedData();
-        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+        static_cast<asCContext*>(ctx)->Ext = SafeAlloc::MakeRaw<ASContextExtendedData>();
+        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.ScriptCallCacheEntries = &ScriptCallCacheEntries;
 #if FO_TRACY
         ctx_ext.TracyExecutionCalls.reserve(64);
 #endif
 
-        auto&& ctx_ext2 = GET_CONTEXT_EXT2(ctx);
+        auto& ctx_ext2 = GET_CONTEXT_EXT2(ctx);
 #if !FO_NO_MANUAL_STACK_TRACE
         ctx_ext2.BeginScriptCall = AngelScriptBeginCall;
         ctx_ext2.EndScriptCall = AngelScriptEndCall;
@@ -359,6 +380,8 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         RUNTIME_ASSERT(it != FreeContexts.end());
         FreeContexts.erase(it);
 
+        delete static_cast<asCContext*>(ctx)->Ext;
+        static_cast<asCContext*>(ctx)->Ext = nullptr;
         ctx->Release();
     }
 
@@ -387,7 +410,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         BusyContexts.erase(it);
         FreeContexts.push_back(ctx);
 
-        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = nullptr;
         ctx_ext.Info.clear();
         ctx_ext.SuspendEndTime = {};
@@ -416,7 +439,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     {
         STACK_TRACE_ENTRY();
 
-        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = asGetActiveContext();
 
         int exec_result = 0;
@@ -508,7 +531,8 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         const auto time = GameEngine->GameTime.FrameTime();
 
         for (auto* ctx : BusyContexts) {
-            auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+            const auto& ctx_ext = GET_CONTEXT_EXT(ctx);
+
             if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && time >= ctx_ext.SuspendEndTime) {
                 if (ctx_ext.ValidCheck != nullptr && ctx_ext.ValidCheck->IsDestroyed()) {
                     finish_contexts.emplace_back(ctx);
@@ -546,16 +570,20 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     string ExceptionStackTrace {};
     std::unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
     unordered_set<hstring> HashedStrings {};
+    std::unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
 };
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {
-    auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+    auto& ctx_ext = GET_CONTEXT_EXT(ctx);
+
     if (!ctx_ext.ExecutionActive) {
         return;
     }
 
-    if (const auto it = ctx_ext.ScriptCallCacheEntries->find(program_pos); it == ctx_ext.ScriptCallCacheEntries->end()) {
+    const auto it = ctx_ext.ScriptCallCacheEntries->find(program_pos);
+
+    if (it == ctx_ext.ScriptCallCacheEntries->end()) {
         int ctx_line = ctx->GetLineNumber();
 
         auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
@@ -570,7 +598,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
             to[len] = 0;
         };
 
-        auto&& storage = ctx_ext.ScriptCallCacheEntries->emplace(program_pos, StackTraceEntryStorage {}).first->second;
+        auto& storage = ctx_ext.ScriptCallCacheEntries->emplace(program_pos, StackTraceEntryStorage {}).first->second;
 
         safe_copy(storage.FuncBuf, storage.FuncBufLen, func_decl);
         safe_copy(storage.FileBuf, storage.FileBufLen, orig_file);
@@ -589,7 +617,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 #endif
     }
     else {
-        auto&& storage = it->second;
+        const auto& storage = it->second;
 
         PushStackTrace(storage.SrcLoc);
 
@@ -605,7 +633,8 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
 static void AngelScriptEndCall(asIScriptContext* ctx)
 {
-    auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+    auto& ctx_ext = GET_CONTEXT_EXT(ctx);
+
     if (!ctx_ext.ExecutionActive) {
         return;
     }
@@ -649,7 +678,7 @@ static T* ScriptableObject_Factory()
 {
     STACK_TRACE_ENTRY();
 
-    return new T();
+    return SafeAlloc::MakeRaw<T>();
 }
 
 #if !COMPILER_MODE
@@ -1040,17 +1069,27 @@ template<typename TRet, typename... Args>
 {
     STACK_TRACE_ENTRY();
 
-    // Todo: free ScriptFuncDesc instances
-    auto* func_desc = new ScriptFuncDesc();
-    func_desc->Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
-    func_desc->CallSupported = true;
-    func_desc->RetType = std::type_index(typeid(TRet));
-    func_desc->ArgsType = {std::type_index(typeid(Args))...};
-    func_desc->Delegate = func->GetDelegateObject() != nullptr;
-    func_desc->Call = [script_sys, func_desc, func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
-        return AngelScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
-    };
-    return ScriptFunc<TRet, Args...>(func_desc);
+    const auto it = script_sys->FuncMap.find(func);
+
+    if (it == script_sys->FuncMap.end()) {
+        const auto [it_inserted, inserted] = script_sys->FuncMap.emplace(func, ScriptFuncDesc());
+        RUNTIME_ASSERT(inserted);
+
+        auto& func_desc = it_inserted->second;
+        func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
+        func_desc.CallSupported = true;
+        func_desc.RetType = std::type_index(typeid(TRet));
+        func_desc.ArgsType = {std::type_index(typeid(Args))...};
+        func_desc.Delegate = func->GetDelegateObject() != nullptr;
+        func_desc.Call = [script_sys, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
+            return AngelScriptFuncCall(script_sys, &func_desc, as_func.get(), args, ret);
+        };
+
+        return ScriptFunc<TRet, Args...>(&func_desc);
+    }
+    else {
+        return ScriptFunc<TRet, Args...>(&it->second);
+    }
 }
 #endif
 
@@ -2201,7 +2240,7 @@ static void Global_Yield(uint time)
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
     auto* game_engine = static_cast<FOEngine*>(ctx->GetEngine()->GetUserData());
-    auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+    auto& ctx_ext = GET_CONTEXT_EXT(ctx);
     ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 
@@ -2372,7 +2411,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         ENTITY_VERIFY(entity);
 
         auto* ctx = script_sys->PrepareContext(func);
-        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
 
         ctx_ext.ValidCheck = entity;
 
@@ -3651,7 +3690,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     FOEngine* game_engine = _engine;
     game_engine->AddRef();
 #else
-    FOEngine* game_engine = new FOEngine();
+    FOEngine* game_engine = SafeAlloc::MakeRaw<FOEngine>();
     game_engine->ScriptSys = this;
 #endif
 
@@ -3667,7 +3706,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     engine->SetUserData(game_engine);
 
 #if !COMPILER_MODE
-    AngelScriptData = std::make_unique<AngelScriptImpl>();
+    AngelScriptData = SafeAlloc::MakeUnique<AngelScriptImpl>();
     AngelScriptData->GameEngine = game_engine;
     AngelScriptData->Engine = engine;
 #endif
@@ -4382,7 +4421,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
-            func_desc.CallSupported = (func_desc.RetType != typeid(UnsupportedScriptFuncType) && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), typeid(UnsupportedScriptFuncType)) == func_desc.ArgsType.end());
+            func_desc.CallSupported = func_desc.RetType != typeid(UnsupportedScriptFuncType) && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), typeid(UnsupportedScriptFuncType)) == func_desc.ArgsType.end();
 
             // Check for special module init function
             if (func_desc.ArgsType.empty() && func_desc.RetType == typeid(void)) {
@@ -4469,7 +4508,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
             //
         }
 
-        auto LoadFile(const string& dir, const string& file_name, std::vector<char>& data, string& file_path) -> bool override
+        auto LoadFile(const std::string& dir, const std::string& file_name, std::vector<char>& data, std::string& file_path) -> bool override
         {
             STACK_TRACE_ENTRY();
 
@@ -4487,7 +4526,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
             data.resize(0);
 
             if (_includeDeep == 1) {
-                const auto it = _scriptFiles->find(file_name);
+                const auto it = _scriptFiles->find(string(file_name));
                 RUNTIME_ASSERT(it != _scriptFiles->end());
 
                 data.resize(it->second.size());

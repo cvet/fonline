@@ -64,7 +64,7 @@ public:
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetPropertiesRelation() const noexcept -> PropertiesRelationType { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
-    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
     [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
     [[nodiscard]] auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool override;

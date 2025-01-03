@@ -129,9 +129,9 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
     STACK_TRACE_ENTRY();
 
     if (make_copy) {
-        auto* buf_copy = new uint8[buf.size()];
-        std::memcpy(buf_copy, buf.data(), buf.size());
-        _fileBuf = {buf_copy, [](const auto* p) { delete[] p; }};
+        auto buf_copy = SafeAlloc::MakeUniqueArr<uint8>(buf.size());
+        std::memcpy(buf_copy.get(), buf.data(), buf.size());
+        _fileBuf = {buf_copy.release(), [](const auto* p) { delete[] p; }};
     }
     else {
         _fileBuf = {buf.data(), [](const auto* p) { UNUSED_VARIABLE(p); }};

@@ -37,14 +37,12 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
+Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
-
-    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)

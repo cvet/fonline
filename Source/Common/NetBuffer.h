@@ -54,7 +54,7 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return _bufData.get(); }
+    [[nodiscard]] auto GetData() noexcept -> uint8* { return _bufData.data(); }
     [[nodiscard]] auto GetEndPos() const noexcept -> size_t { return _bufEndPos; }
 
     static auto GenerateEncryptKey() -> uint;
@@ -64,16 +64,14 @@ public:
 
 protected:
     auto EncryptKey(int move) noexcept -> uint8;
-    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
+    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const;
 
-    unique_ptr<uint8[]> _bufData {};
+    vector<uint8> _bufData {};
     size_t _defaultBufLen {};
-    size_t _bufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
     int _encryptKeyPos {};
     uint8 _encryptKeys[CRYPT_KEYS_COUNT] {};
-    bool _nonConstHelper {};
 };
 
 class NetOutBuffer final : public NetBuffer
@@ -142,7 +140,7 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufLen - _bufEndPos; }
+    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufData.size() - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void AddData(const void* buf, size_t len);

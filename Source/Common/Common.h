@@ -96,7 +96,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <deque>
-#include <forward_list>
 #include <functional>
 #include <future>
 #include <iostream>
@@ -199,38 +198,17 @@ static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
 using std::array;
-using std::deque;
-using std::forward_list;
 using std::initializer_list;
-using std::istringstream;
-using std::list;
 using std::optional;
 using std::pair;
-using std::set;
-using std::shared_ptr;
-using std::string;
 using std::string_view;
 using std::tuple;
-using std::unique_ptr;
-using std::unordered_map;
-using std::unordered_multimap;
-using std::unordered_set;
 using std::variant;
+
+// Smart pointers
+using std::shared_ptr;
+using std::unique_ptr;
 using std::weak_ptr;
-
-template<typename K, typename V>
-using map = std::map<K, V, std::less<>>;
-template<typename K, typename V>
-using multimap = std::multimap<K, V, std::less<>>;
-
-#if !FO_DEBUG
-template<typename T>
-using vector = gch::small_vector<T>;
-#else
-template<typename T>
-using vector = std::vector<T>; // To see vector entries in debugger
-#endif
-using gch::small_vector;
 
 template<typename T>
 using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
@@ -239,7 +217,7 @@ template<class T>
 struct release_delete
 {
     constexpr release_delete() noexcept = default;
-    void operator()(T* p) const noexcept
+    constexpr void operator()(T* p) const noexcept
     {
         if (p != nullptr) {
             p->Release();
@@ -250,6 +228,177 @@ struct release_delete
 template<typename T>
 using unique_release_ptr = unique_ptr<T, release_delete<T>>;
 
+// Safe memory allocation
+extern void InitBackupMemoryChunks();
+extern auto FreeBackupMemoryChunk() noexcept -> bool;
+extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
+[[noreturn]] extern void ReportAndExit(string_view message) noexcept;
+
+template<class T>
+class SafeAllocator
+{
+public:
+    using value_type = T;
+
+    SafeAllocator() noexcept = default;
+    template<class U>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    constexpr SafeAllocator(const SafeAllocator<U>& other) noexcept
+    {
+        (void)other;
+    }
+    template<class U>
+    auto operator==(const SafeAllocator<U>& other) const noexcept -> bool
+    {
+        (void)other;
+        return true;
+    }
+    template<class U>
+    auto operator!=(const SafeAllocator<U>& other) const noexcept -> bool
+    {
+        (void)other;
+        return false;
+    }
+
+    // ReSharper disable once CppInconsistentNaming
+    [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
+    {
+        if (count == 0) {
+            return nullptr;
+        }
+
+        if (count > static_cast<size_t>(-1) / sizeof(T)) {
+            ReportBadAlloc("Safe allocator bad size", typeid(T).name(), count, count * sizeof(T));
+            ReportAndExit("Alloc size overflow");
+        }
+
+        auto* ptr = ::operator new(sizeof(T) * count, std::nothrow);
+
+        if (ptr == nullptr) {
+            ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, count * sizeof(T));
+
+            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+                ptr = ::operator new(sizeof(T) * count, std::nothrow);
+            }
+
+            if (ptr == nullptr) {
+                ReportAndExit("Failed to allocate from backup pool");
+            }
+        }
+
+        return static_cast<T*>(ptr);
+    }
+
+    // ReSharper disable once CppInconsistentNaming
+    void deallocate(T* ptr, size_t count) const noexcept
+    {
+        (void)count;
+        ::operator delete(ptr);
+    }
+};
+
+class SafeAlloc
+{
+public:
+    SafeAlloc() = delete;
+
+    template<typename T, typename... Args>
+    static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
+    {
+        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+
+        if (ptr == nullptr) {
+            ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
+
+            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+            }
+
+            if (ptr == nullptr) {
+                ReportAndExit("Failed to allocate from backup pool");
+            }
+        }
+
+        return ptr;
+    }
+
+    template<typename T, typename... Args>
+    static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
+    {
+        return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+    }
+
+    template<typename T, typename... Args>
+    static auto MakeUniqueReleasable(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_release_ptr<T>
+    {
+        return unique_release_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+    }
+
+    template<typename T>
+    static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
+    {
+        if (count == 0) {
+            return nullptr;
+        }
+
+        if (count > static_cast<size_t>(-1) / sizeof(T)) {
+            ReportBadAlloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
+            ReportAndExit("Alloc size overflow");
+        }
+
+        auto* ptr = new (std::nothrow) T[count]();
+
+        if (ptr == nullptr) {
+            ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));
+
+            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+                ptr = new (std::nothrow) T[count]();
+            }
+
+            if (ptr == nullptr) {
+                ReportAndExit("Failed to allocate from backup pool");
+            }
+        }
+
+        return ptr;
+    }
+
+    template<typename T>
+    static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_ptr<T[]>
+    {
+        return unique_ptr<T[]>(MakeRawArr<T>(count));
+    }
+};
+
+// Basic types with safe allocator
+using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
+using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
+
+template<typename T>
+using list = std::list<T, SafeAllocator<T>>;
+template<typename T>
+using deque = std::deque<T, SafeAllocator<T>>;
+
+template<typename K, typename V>
+using map = std::map<K, V, std::less<>, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename V>
+using multimap = std::multimap<K, V, std::less<>, SafeAllocator<pair<const K, V>>>;
+template<typename K>
+using set = std::set<K, std::less<>, SafeAllocator<K>>;
+
+template<typename K, typename V, typename H = std::hash<K>>
+using unordered_map = std::unordered_map<K, V, H, std::equal_to<K>, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename V, typename H = std::hash<K>>
+using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<K>, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename H = std::hash<K>>
+using unordered_set = std::unordered_set<K, H, std::equal_to<K>, SafeAllocator<K>>;
+
+template<typename T, unsigned InlineCapacity>
+using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
+template<typename T>
+using vector = std::vector<T, SafeAllocator<T>>;
+
+// Smart pointer helpers
 template<typename T, typename U>
 std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
 {
@@ -264,7 +413,7 @@ template<typename T>
 inline constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 {
     if (!ptr) {
-        ptr = std::make_unique<T>();
+        ptr = SafeAlloc::MakeUnique<T>();
     }
 }
 
@@ -276,6 +425,7 @@ inline constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
     }
 }
 
+// Hashing
 inline auto hash_combine(size_t h1, size_t h2) -> size_t
 {
     return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
@@ -290,6 +440,7 @@ struct pair_hash
     }
 };
 
+// Enum formatter
 // Todo: improve named enums
 template<typename T>
 struct FMTNS::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
@@ -318,9 +469,9 @@ struct strong_type
         _value {v}
     {
     }
-    strong_type(const strong_type&) = default;
+    strong_type(const strong_type&) noexcept = default;
     strong_type(strong_type&&) noexcept = default;
-    auto operator=(const strong_type&) -> strong_type& = default;
+    auto operator=(const strong_type&) noexcept -> strong_type& = default;
     auto operator=(strong_type&&) noexcept -> strong_type& = default;
     ~strong_type() = default;
 
@@ -740,7 +891,7 @@ public:
             _message.append(": ");
             _message.append(message);
 
-            const vector<string> params = {FMTNS::format("{}", std::forward<Args>(args))...};
+            const vector<string> params = {string(FMTNS::format("{}", std::forward<Args>(args)))...};
 
             for (const auto& param : params) {
                 _message.append("\n- ");
@@ -854,14 +1005,14 @@ class EventUnsubscriberCallback final
 public:
     EventUnsubscriberCallback() = delete;
     EventUnsubscriberCallback(const EventUnsubscriberCallback&) = delete;
-    EventUnsubscriberCallback(EventUnsubscriberCallback&&) = default;
+    EventUnsubscriberCallback(EventUnsubscriberCallback&&) noexcept = default;
     auto operator=(const EventUnsubscriberCallback&) = delete;
     auto operator=(EventUnsubscriberCallback&&) noexcept -> EventUnsubscriberCallback& = default;
     ~EventUnsubscriberCallback() = default;
 
 private:
     using Callback = std::function<void()>;
-    explicit EventUnsubscriberCallback(Callback cb) :
+    explicit EventUnsubscriberCallback(Callback cb) noexcept :
         _unsubscribeCallback {std::move(cb)}
     {
     }
@@ -874,16 +1025,16 @@ class EventUnsubscriber final
     friend class EventObserver;
 
 public:
-    EventUnsubscriber() = default;
+    EventUnsubscriber() noexcept = default;
     EventUnsubscriber(const EventUnsubscriber&) = delete;
-    EventUnsubscriber(EventUnsubscriber&&) = default;
+    EventUnsubscriber(EventUnsubscriber&&) noexcept = default;
     auto operator=(const EventUnsubscriber&) = delete;
     auto operator=(EventUnsubscriber&&) noexcept -> EventUnsubscriber& = default;
     ~EventUnsubscriber() { Unsubscribe(); }
 
-    auto operator+=(EventUnsubscriberCallback&& cb) -> EventUnsubscriber&
+    auto operator+=(EventUnsubscriberCallback&& cb) noexcept -> EventUnsubscriber&
     {
-        _unsubscribeCallbacks.push_back(std::move(cb));
+        _unsubscribeCallbacks.emplace_back(std::move(cb));
         return *this;
     }
 
@@ -907,7 +1058,7 @@ public:
 
 private:
     using Callback = std::function<void()>;
-    explicit EventUnsubscriber(EventUnsubscriberCallback cb) { _unsubscribeCallbacks.push_back(std::move(cb)); }
+    explicit EventUnsubscriber(EventUnsubscriberCallback cb) noexcept { _unsubscribeCallbacks.emplace_back(std::move(cb)); }
     vector<EventUnsubscriberCallback> _unsubscribeCallbacks {};
 };
 
@@ -930,7 +1081,7 @@ public:
     {
         if (!_subscriberCallbacks.empty()) {
             try {
-                throw GenericException("Some of subscriber still alive", _subscriberCallbacks.size());
+                throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -941,7 +1092,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto operator+=(Callback cb) -> EventUnsubscriberCallback
+    [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
         auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
         return EventUnsubscriberCallback([this, it]() { _subscriberCallbacks.erase(it); });
@@ -1147,8 +1298,7 @@ public:
             throw DataReadingException("Unexpected end of buffer");
         }
 
-        T data;
-        std::memcpy(&data, &_dataBuf[_readPos], sizeof(T));
+        T data = *reinterpret_cast<const T*>(&_dataBuf[_readPos]);
         _readPos += sizeof(T);
         return data;
     }
@@ -1156,23 +1306,40 @@ public:
     template<typename T>
     auto ReadPtr(size_t size) -> const T*
     {
-        _readPos += size;
-        return size != 0u ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
+        if (_readPos + size > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        if (size != 0) {
+            const T* ptr = reinterpret_cast<const T*>(&_dataBuf[_readPos]);
+            _readPos += size;
+            return ptr;
+        }
+
+        return nullptr;
     }
 
     template<typename T>
     void ReadPtr(T* ptr)
     {
+        if (_readPos + sizeof(T) > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        std::memcpy(ptr, &_dataBuf[_readPos], sizeof(T));
         _readPos += sizeof(T);
-        std::memcpy(ptr, &_dataBuf[_readPos - sizeof(T)], sizeof(T));
     }
 
     template<typename T>
     void ReadPtr(T* ptr, size_t size)
     {
-        if (size != 0u) {
+        if (_readPos + size > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        if (size != 0) {
+            std::memcpy(ptr, &_dataBuf[_readPos], size);
             _readPos += size;
-            std::memcpy(ptr, &_dataBuf[_readPos - size], size);
         }
     }
 
@@ -1193,43 +1360,45 @@ class DataWriter
 public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    explicit DataWriter(vector<uint8>& buf) :
+    explicit DataWriter(vector<uint8>& buf) noexcept :
         _dataBuf {buf}
     {
-        if (_dataBuf.capacity() < BUF_RESERVE_SIZE) {
-            _dataBuf.reserve(BUF_RESERVE_SIZE);
-        }
+        _dataBuf.reserve(BUF_RESERVE_SIZE);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-    void Write(std::enable_if_t<true, T> data)
+    void Write(std::enable_if_t<true, T> data) noexcept
     {
-        const auto cur = _dataBuf.size();
-        _dataBuf.resize(cur + sizeof(data));
-        std::memcpy(&_dataBuf[cur], &data, sizeof(data));
+        ResizeBuf(sizeof(T));
+        *reinterpret_cast<T*>(_dataBuf.data() + _dataBuf.size() - sizeof(T)) = data;
     }
 
     template<typename T>
-    void WritePtr(const T* data)
+    void WritePtr(const T* data) noexcept
     {
-        const auto cur = _dataBuf.size();
-        _dataBuf.resize(cur + sizeof(T));
-        std::memcpy(&_dataBuf[cur], data, sizeof(T));
+        ResizeBuf(sizeof(T));
+        std::memcpy(_dataBuf.data() + _dataBuf.size() - sizeof(T), data, sizeof(T));
     }
 
     template<typename T>
-    void WritePtr(const T* data, size_t size)
+    void WritePtr(const T* data, size_t size) noexcept
     {
-        if (size == 0u) {
-            return;
+        if (size != 0) {
+            ResizeBuf(size);
+            std::memcpy(_dataBuf.data() + _dataBuf.size() - size, data, size);
         }
-
-        const auto cur = _dataBuf.size();
-        _dataBuf.resize(cur + size);
-        std::memcpy(&_dataBuf[cur], data, size);
     }
 
 private:
+    void ResizeBuf(size_t size) noexcept
+    {
+        while (size > _dataBuf.capacity() - _dataBuf.size()) {
+            _dataBuf.reserve(_dataBuf.capacity() * 2);
+        }
+
+        _dataBuf.resize(_dataBuf.size() + size);
+    }
+
     vector<uint8>& _dataBuf;
 };
 
@@ -2070,7 +2239,7 @@ class ref_hold_vector : public vector<T>
 {
 public:
     static_assert(!std::is_polymorphic_v<vector<T>>);
-    ref_hold_vector() = default;
+    ref_hold_vector() noexcept = default;
     ref_hold_vector(const ref_hold_vector&) = delete;
     ref_hold_vector(ref_hold_vector&&) noexcept = default;
     auto operator=(const ref_hold_vector&) -> ref_hold_vector& = delete;
@@ -2096,8 +2265,8 @@ constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
     return ref_vec;
 }
 
-template<typename T, typename U, typename... Args>
-constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_hold_vector<U>
+template<typename T, typename U>
+constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vector<U>
 {
     ref_hold_vector<U> ref_vec;
     ref_vec.reserve(value.size());

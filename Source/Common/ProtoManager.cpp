@@ -295,31 +295,27 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
         RUNTIME_ASSERT(registrator);
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            auto* proto = new ProtoLocation(pid, registrator, props);
+            auto* proto = SafeAlloc::MakeRaw<ProtoLocation>(pid, registrator, props);
             _locProtos.emplace(pid, proto);
-
             return proto;
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            auto* proto = new ProtoMap(pid, registrator, props);
+            auto* proto = SafeAlloc::MakeRaw<ProtoMap>(pid, registrator, props);
             _mapProtos.emplace(pid, proto);
-
             return proto;
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            auto* proto = new ProtoCritter(pid, registrator, props);
+            auto* proto = SafeAlloc::MakeRaw<ProtoCritter>(pid, registrator, props);
             _crProtos.emplace(pid, proto);
-
             return proto;
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            auto* proto = new ProtoItem(pid, registrator, props);
+            auto* proto = SafeAlloc::MakeRaw<ProtoItem>(pid, registrator, props);
             _itemProtos.emplace(pid, proto);
-
             return proto;
         }
         else {
-            return new ProtoCustomEntity(pid, registrator, props);
+            return SafeAlloc::MakeRaw<ProtoCustomEntity>(pid, registrator, props);
         }
     };
 

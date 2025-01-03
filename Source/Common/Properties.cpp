@@ -47,7 +47,7 @@ auto PropertyRawData::GetPtr() noexcept -> void*
     return _useDynamic ? _dynamicBuf.get() : _localBuf;
 }
 
-auto PropertyRawData::Alloc(size_t size) -> uint8*
+auto PropertyRawData::Alloc(size_t size) noexcept -> uint8*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -56,7 +56,7 @@ auto PropertyRawData::Alloc(size_t size) -> uint8*
 
     if (size > LOCAL_BUF_SIZE) {
         _useDynamic = true;
-        _dynamicBuf.reset(new uint8[size]);
+        _dynamicBuf = SafeAlloc::MakeUniqueArr<uint8>(size);
     }
     else {
         _useDynamic = false;
@@ -65,7 +65,7 @@ auto PropertyRawData::Alloc(size_t size) -> uint8*
     return static_cast<uint8*>(GetPtr());
 }
 
-void PropertyRawData::Pass(const_span<uint8> value)
+void PropertyRawData::Pass(const_span<uint8> value) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -74,7 +74,7 @@ void PropertyRawData::Pass(const_span<uint8> value)
     _useDynamic = false;
 }
 
-void PropertyRawData::Pass(const void* value, size_t size)
+void PropertyRawData::Pass(const void* value, size_t size) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -83,7 +83,7 @@ void PropertyRawData::Pass(const void* value, size_t size)
     _useDynamic = false;
 }
 
-void PropertyRawData::StoreIfPassed()
+void PropertyRawData::StoreIfPassed() noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -121,67 +121,63 @@ void Property::AddPostSetter(PropertyPostSetCallback setter) const
     _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
-Properties::Properties(const PropertyRegistrator* registrator) :
+Properties::Properties(const PropertyRegistrator* registrator) noexcept :
     _registrator {registrator}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_registrator);
+    STRONG_ASSERT(_registrator);
 
     if (!_registrator->_registeredProperties.empty()) {
         AllocData();
     }
 }
 
-Properties::Properties(const Properties& other) :
-    Properties(other._registrator)
+void Properties::AllocData() noexcept
 {
     STACK_TRACE_ENTRY();
 
-    std::memcpy(_podData.data(), other._podData.data(), _registrator->_wholePodDataSize);
+    STRONG_ASSERT(!_podData);
+    STRONG_ASSERT(!_registrator->_registeredProperties.empty());
 
-    for (size_t i = 0; i < other._complexData.size(); i++) {
-        if (!other._complexData[i].empty()) {
-            _complexData[i].reserve(other._complexData[i].size());
-            _complexData[i].resize(other._complexData[i].size());
-            std::memcpy(_complexData[i].data(), other._complexData[i].data(), other._complexData[i].size());
-        }
-    }
+    _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
+    std::memset(_podData.get(), 0, _registrator->_wholePodDataSize);
+
+    _complexData = SafeAlloc::MakeUniqueArr<pair<unique_ptr<uint8[]>, size_t>>(_registrator->_complexProperties.size());
 }
 
-auto Properties::operator=(const Properties& other) -> Properties&
+auto Properties::Copy() const noexcept -> Properties
 {
     STACK_TRACE_ENTRY();
 
-    if (this == &other) {
-        return *this;
+    Properties props(_registrator);
+
+    std::memcpy(props._podData.get(), _podData.get(), _registrator->_wholePodDataSize);
+
+    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
+        if (_complexData[i].first) {
+            props._complexData[i].first = SafeAlloc::MakeUniqueArr<uint8>(_complexData[i].second);
+            props._complexData[i].second = _complexData[i].second;
+            std::memcpy(props._complexData[i].first.get(), _complexData[i].first.get(), _complexData[i].second);
+        }
     }
 
-    RUNTIME_ASSERT(_registrator == other._registrator);
+    return props;
+}
+
+void Properties::CopyFrom(const Properties& other) noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    STRONG_ASSERT(_registrator == other._registrator);
 
     // Copy PlainData data
-    std::memcpy(_podData.data(), other._podData.data(), _registrator->_wholePodDataSize);
+    std::memcpy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
 
     // Copy complex data
     for (const auto* prop : _registrator->_complexProperties) {
-        SetRawData(prop, {other._complexData[prop->_complexDataIndex].data(), other._complexData[prop->_complexDataIndex].size()});
+        SetRawData(prop, {other._complexData[prop->_complexDataIndex].first.get(), other._complexData[prop->_complexDataIndex].second});
     }
-
-    return *this;
-}
-
-void Properties::AllocData()
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_podData.empty());
-    RUNTIME_ASSERT(!_registrator->_registeredProperties.empty());
-
-    _podData.reserve(_registrator->_wholePodDataSize);
-    _podData.resize(_registrator->_wholePodDataSize);
-
-    _complexData.reserve(_registrator->_complexProperties.size());
-    _complexData.resize(_registrator->_complexProperties.size());
 }
 
 void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const
@@ -210,7 +206,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 const size_t len = i - start_pos;
                 writer.Write<uint>(static_cast<uint>(start_pos));
                 writer.Write<uint>(static_cast<uint>(len));
-                writer.WritePtr(_podData.data() + start_pos, len);
+                writer.WritePtr(_podData.get() + start_pos, len);
 
                 start_pos = -1;
             }
@@ -221,7 +217,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         const size_t len = _registrator->_wholePodDataSize - start_pos;
         writer.Write<uint>(static_cast<uint>(start_pos));
         writer.Write<uint>(static_cast<uint>(len));
-        writer.WritePtr(_podData.data() + start_pos, len);
+        writer.WritePtr(_podData.get() + start_pos, len);
     }
 
     writer.Write<uint>(0);
@@ -232,8 +228,8 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
 
     for (const auto* prop : _registrator->_complexProperties) {
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-        writer.Write<uint>(static_cast<uint>(_complexData[prop->_complexDataIndex].size()));
-        writer.WritePtr(_complexData[prop->_complexDataIndex].data(), _complexData[prop->_complexDataIndex].size());
+        writer.Write<uint>(static_cast<uint>(_complexData[prop->_complexDataIndex].second));
+        writer.WritePtr(_complexData[prop->_complexDataIndex].first.get(), _complexData[prop->_complexDataIndex].second);
     }
 
     // Store hashes
@@ -307,7 +303,7 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
             break;
         }
 
-        std::memcpy(_podData.data() + start_pos, reader.ReadPtr<uint8>(len), len);
+        std::memcpy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
     }
 
     // Read complex properties
@@ -343,7 +339,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
     _storeDataSizes->reserve(preserve_size);
 
     // Store plain properties data
-    _storeData->push_back(_podData.data());
+    _storeData->push_back(_podData.get());
     _storeDataSizes->push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
 
     // Filter complex data to send
@@ -351,7 +347,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
         const auto& prop = _registrator->_registeredProperties[(*_storeDataComplexIndices)[i]];
         RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
 
-        if (_complexData[prop->_complexDataIndex].empty()) {
+        if (!_complexData[prop->_complexDataIndex].first) {
             _storeDataComplexIndices->erase(_storeDataComplexIndices->begin() + static_cast<int>(i));
         }
         else {
@@ -366,8 +362,8 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
 
         for (const auto index : *_storeDataComplexIndices) {
             const auto& prop = _registrator->_registeredProperties[index];
-            _storeData->push_back(_complexData[prop->_complexDataIndex].data());
-            _storeDataSizes->push_back(static_cast<uint>(_complexData[prop->_complexDataIndex].size()));
+            _storeData->push_back(_complexData[prop->_complexDataIndex].first.get());
+            _storeDataSizes->push_back(static_cast<uint>(_complexData[prop->_complexDataIndex].second));
         }
     }
 }
@@ -385,7 +381,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
 
     if (all_data_sizes[0] != 0) {
-        std::memcpy(_podData.data(), all_data[0], all_data_sizes[0]);
+        std::memcpy(_podData.get(), all_data[0], all_data_sizes[0]);
     }
 
     // Restore complex data
@@ -412,10 +408,12 @@ void Properties::RestoreData(const vector<vector<uint8>>& all_data)
 
     vector<const uint8*> all_data_ext(all_data.size());
     vector<uint> all_data_sizes(all_data.size());
+
     for (size_t i = 0; i < all_data.size(); i++) {
         all_data_ext[i] = !all_data[i].empty() ? all_data[i].data() : nullptr;
         all_data_sizes[i] = static_cast<uint>(all_data[i].size());
     }
+
     RestoreData(all_data_ext, all_data_sizes);
 }
 
@@ -507,10 +505,10 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 const auto& complex_data = _complexData[prop->_complexDataIndex];
                 const auto& base_complex_data = base->_complexData[prop->_complexDataIndex];
 
-                if (complex_data.empty() && base_complex_data.empty()) {
+                if (!complex_data.first && !base_complex_data.first) {
                     continue;
                 }
-                if (complex_data.size() == base_complex_data.size() && std::memcmp(complex_data.data(), base_complex_data.data(), complex_data.size()) == 0) {
+                if (complex_data.second == base_complex_data.second && std::memcmp(complex_data.first.get(), base_complex_data.first.get(), complex_data.second) == 0) {
                     continue;
                 }
             }
@@ -529,7 +527,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 }
             }
             else {
-                if (_complexData[prop->_complexDataIndex].empty()) {
+                if (!_complexData[prop->_complexDataIndex].first) {
                     continue;
                 }
             }
@@ -620,7 +618,7 @@ auto Properties::GetRawData(const Property* prop) const noexcept -> const_span<u
     else {
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        return {complex_data.data(), complex_data.size()};
+        return {complex_data.first.get(), complex_data.second};
     }
 }
 
@@ -637,7 +635,7 @@ auto Properties::GetRawData(const Property* prop) noexcept -> span<uint8>
     else {
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         auto& complex_data = _complexData[prop->_complexDataIndex];
-        return {complex_data.data(), complex_data.size()};
+        return {complex_data.first.get(), complex_data.second};
     }
 }
 
@@ -654,26 +652,27 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
     else {
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
-        return static_cast<uint>(complex_data.size());
+        return complex_data.second;
     }
 }
 
-void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data)
+void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_registrator == prop->_registrator);
+    STRONG_ASSERT(_registrator == prop->_registrator);
 
     if (prop->IsPlainData()) {
-        RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        RUNTIME_ASSERT(prop->GetBaseSize() == raw_data.size());
-        std::memcpy(_podData.data() + prop->_podDataOffset, raw_data.data(), raw_data.size());
+        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
+        std::memcpy(_podData.get() + prop->_podDataOffset, raw_data.data(), raw_data.size());
     }
     else {
-        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         auto& complex_data = _complexData[prop->_complexDataIndex];
-        complex_data.resize(raw_data.size()); // Todo: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
-        std::memcpy(complex_data.data(), raw_data.data(), raw_data.size());
+        complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
+        complex_data.second = raw_data.size();
+        std::memcpy(complex_data.first.get(), raw_data.data(), raw_data.size());
     }
 }
 
@@ -1265,7 +1264,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     RUNTIME_ASSERT(flags.size() >= 3);
 
-    auto prop = unique_ptr<Property> {new Property(this)};
+    auto&& prop = SafeAlloc::MakeUnique<Property>(this);
 
     prop->_propName = flags[0];
     RUNTIME_ASSERT(_accessMap.count(flags[1]) != 0);
@@ -1501,7 +1500,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
         new_size += 8u - new_size % 8u;
 
-        if (new_size > static_cast<uint>(space.size())) {
+        if (new_size > space.size()) {
             space.resize(new_size);
         }
 
@@ -1511,7 +1510,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
         pod_data_base_offset = space_pos;
 
-        _wholePodDataSize = static_cast<uint>(_publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size());
+        _wholePodDataSize = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size();
         RUNTIME_ASSERT((_wholePodDataSize % 8u) == 0);
     }
 
@@ -1519,7 +1518,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     auto complex_data_index = Property::INVALID_DATA_MARKER;
 
     if (!prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
-        complex_data_index = static_cast<uint>(_complexProperties.size());
+        complex_data_index = _complexProperties.size();
         _complexProperties.emplace_back(prop.get());
 
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
@@ -1544,10 +1543,10 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     // Fix plain data data offsets
     if (prop->_podDataOffset != Property::INVALID_DATA_MARKER) {
         if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+            prop->_podDataOffset += _publicPodDataSpace.size();
         }
         else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+            prop->_podDataOffset += _publicPodDataSpace.size() + _protectedPodDataSpace.size();
         }
     }
 
@@ -1557,12 +1556,12 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
 
         if (IsEnumSet(other_prop->_accessType, Property::AccessType::ProtectedMask)) {
-            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
-            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+            other_prop->_podDataOffset -= prev_public_space_size;
+            other_prop->_podDataOffset += _publicPodDataSpace.size();
         }
         else if (IsEnumSet(other_prop->_accessType, Property::AccessType::PrivateMask)) {
-            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size) + static_cast<uint>(prev_protected_space_size);
-            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+            other_prop->_podDataOffset -= prev_public_space_size + prev_protected_space_size;
+            other_prop->_podDataOffset += _publicPodDataSpace.size() + _protectedPodDataSpace.size();
         }
     }
 

@@ -132,7 +132,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
         return;
     }
 
-    _impl = std::make_unique<Impl>();
+    _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->FileHandle = h;
     _openedForWriting = write;
 }
@@ -291,7 +291,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
     RUNTIME_ASSERT(ops->type == SDL_RWOPS_STDFILE);
 
-    _impl = std::make_unique<Impl>();
+    _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->Ops = ops;
     _impl->WriteThrough = write_through;
     _openedForWriting = write;
@@ -448,7 +448,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
         return;
     }
 
-    _impl = std::make_unique<Impl>();
+    _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->File = f;
     _impl->WriteThrough = write_through;
     _openedForWriting = write;
@@ -615,7 +615,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
         return;
     }
 
-    _impl = std::make_unique<Impl>();
+    _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->FindHandle = h;
     _impl->FindData = fd;
 
@@ -724,7 +724,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
         return;
     }
 
-    _impl = std::make_unique<Impl>();
+    _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->Dir = d;
     _impl->Path = path;
     _impl->Ext = ext;

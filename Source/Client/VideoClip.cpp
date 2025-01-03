@@ -70,7 +70,7 @@ struct VideoClip::Impl
 };
 
 VideoClip::VideoClip(vector<uint8> video_data) :
-    _impl {std::make_unique<Impl>()}
+    _impl {SafeAlloc::MakeUnique<Impl>()}
 {
     STACK_TRACE_ENTRY();
 

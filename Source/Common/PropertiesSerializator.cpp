@@ -610,7 +610,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 data_size += sizeof(uint) + str.length();
             }
 
-            auto&& data = std::make_unique<uint8[]>(data_size);
+            auto&& data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
             auto* pdata = data.get();
 
             *reinterpret_cast<uint*>(pdata) = static_cast<uint>(arr.Size());
@@ -629,7 +629,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         }
         else {
             const size_t data_size = arr.Size() * base_type_info.Size;
-            auto&& data = std::make_unique<uint8[]>(data_size);
+            auto&& data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
             auto* pdata = data.get();
 
             for (const auto& arr_entry : arr) {
@@ -693,7 +693,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         }
 
         // Write data
-        auto&& data = std::make_unique<uint8[]>(data_size);
+        auto&& data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
         auto* pdata = data.get();
 
         for (auto&& [dict_key, dict_value] : dict) {

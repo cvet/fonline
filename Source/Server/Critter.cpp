@@ -41,14 +41,12 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
+Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
-
-    _name = strex("{}_{}", proto->GetName(), id);
 }
 
 Critter::~Critter()
@@ -136,8 +134,6 @@ void Critter::AttachPlayer(Player* player)
     _player->SetControlledCritterId(GetId());
     _player->SetLastControlledCritterId(GetId());
     _player->SetControlledCritter(this);
-
-    _name = _player->GetName();
 }
 
 void Critter::DetachPlayer()

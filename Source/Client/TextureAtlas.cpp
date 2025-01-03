@@ -79,16 +79,16 @@ auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
         Busy = true;
 
         if (Size.width == size.width && Size.height > size.height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
             Size.height = size.height;
         }
         else if (Size.height == size.height && Size.width > size.width) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, Size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, Size.height}));
             Size.width = size.width;
         }
         else if (Size.width > size.width && Size.height > size.height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, size.height}));
-            Children.emplace_back(std::make_unique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
             Size.width = size.width;
             Size.height = size.height;
         }
@@ -162,7 +162,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     RUNTIME_ASSERT(request_size.width > 0);
     RUNTIME_ASSERT(request_size.height > 0);
 
-    auto&& atlas = std::make_unique<TextureAtlas>();
+    auto&& atlas = SafeAlloc::MakeUnique<TextureAtlas>();
     atlas->Type = atlas_type;
 
     isize result_size;
@@ -192,7 +192,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     atlas->MainTex = atlas->RTarg->MainTex.get();
     atlas->MainTex->FlippedHeight = false;
     atlas->Size = result_size;
-    atlas->RootNode = std::make_unique<TextureAtlas::SpaceNode>(nullptr, ipos {0, 0}, result_size);
+    atlas->RootNode = SafeAlloc::MakeUnique<TextureAtlas::SpaceNode>(nullptr, ipos {0, 0}, result_size);
 
     _allAtlases.push_back(std::move(atlas));
     return _allAtlases.back().get();

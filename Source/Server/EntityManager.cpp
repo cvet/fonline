@@ -191,13 +191,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         return nullptr;
     }
 
-    auto* loc = new (std::nothrow) Location(_engine, loc_id, loc_proto);
-
-    if (loc == nullptr) {
-        WriteLog("Failed to allocate location {} {}", loc_pid, loc_id);
-        is_error = true;
-        return nullptr;
-    }
+    auto* loc = SafeAlloc::MakeRaw<Location>(_engine, loc_id, loc_proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
@@ -281,13 +275,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     }
 
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    auto* map = new (std::nothrow) Map(_engine, map_id, map_proto, nullptr, static_map);
-
-    if (map == nullptr) {
-        WriteLog("Failed to allocate map {} {}", map_pid, map_id);
-        is_error = true;
-        return nullptr;
-    }
+    auto* map = SafeAlloc::MakeRaw<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
@@ -393,13 +381,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         return nullptr;
     }
 
-    auto* cr = new (std::nothrow) Critter(_engine, cr_id, proto);
-
-    if (cr == nullptr) {
-        WriteLog("Failed to allocate critter {} {}", cr_pid, cr_id);
-        is_error = true;
-        return nullptr;
-    }
+    auto* cr = SafeAlloc::MakeRaw<Critter>(_engine, cr_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
@@ -475,13 +457,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         return nullptr;
     }
 
-    auto* item = new (std::nothrow) Item(_engine, item_id, proto);
-
-    if (item == nullptr) {
-        WriteLog("Failed to allocate item {} {}", item_pid, item_id);
-        is_error = true;
-        return nullptr;
-    }
+    auto* item = SafeAlloc::MakeRaw<Item>(_engine, item_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
@@ -908,44 +884,40 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
     NON_CONST_METHOD_HINT();
 
-    if (entity->GetId()) {
-        const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
-        RUNTIME_ASSERT(inserted);
-        return;
+    if (!entity->GetId()) {
+        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
+        const auto id = ident_t {id_num};
+        const auto collection_name = entity->GetTypeNamePlural();
+
+        RUNTIME_ASSERT(_allEntities.count(id) == 0);
+        _engine->SetLastEntityId(id);
+
+        if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
+            const auto* proto = entity_with_proto->GetProto();
+            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
+
+            doc.Emplace("_Proto", string(proto->GetName()));
+
+            _engine->DbStorage.Insert(collection_name, id, doc);
+        }
+        else {
+            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
+
+            _engine->DbStorage.Insert(collection_name, id, doc);
+        }
+
+        {
+            AnyData::Document type_map_id;
+            type_map_id.Emplace("Type", string(entity->GetTypeName()));
+
+            _engine->DbStorage.Insert(_entityTypeMapCollection, id, type_map_id);
+        }
+
+        entity->SetId(id);
     }
 
-    const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
-    const auto id = ident_t {id_num};
-    const auto collection_name = entity->GetTypeNamePlural();
-
-    RUNTIME_ASSERT(_allEntities.count(id) == 0);
-    _engine->SetLastEntityId(id);
-
-    if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
-        const auto* proto = entity_with_proto->GetProto();
-        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
-
-        doc.Emplace("_Proto", string(proto->GetName()));
-
-        _engine->DbStorage.Insert(collection_name, id, doc);
-    }
-    else {
-        const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
-
-        _engine->DbStorage.Insert(collection_name, id, doc);
-    }
-
-    {
-        AnyData::Document type_map_id;
-        type_map_id.Emplace("Type", string(entity->GetTypeName()));
-
-        _engine->DbStorage.Insert(_entityTypeMapCollection, id, type_map_id);
-    }
-
-    const auto [it, inserted] = _allEntities.emplace(id, entity);
+    const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
-
-    entity->SetId(id);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
@@ -1088,10 +1060,10 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     CustomEntity* entity;
 
     if (proto != nullptr) {
-        entity = new CustomEntityWithProto(_engine, {}, registrator, nullptr, proto);
+        entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, ident_t {}, registrator, nullptr, proto);
     }
     else {
-        entity = new CustomEntity(_engine, {}, registrator, nullptr);
+        entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
     }
 
     RegisterCustomEntity(entity);
@@ -1178,10 +1150,10 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) noexcept -> Cus
         CustomEntity* entity;
 
         if (proto != nullptr) {
-            entity = new CustomEntityWithProto(_engine, id, registrator, &props, proto);
+            entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, id, registrator, &props, proto);
         }
         else {
-            entity = new CustomEntity(_engine, id, registrator, &props);
+            entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, id, registrator, &props);
         }
 
         try {

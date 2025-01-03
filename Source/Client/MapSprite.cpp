@@ -275,7 +275,7 @@ void MapSpriteList::GrowPool()
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
     for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
-        _spritesPool.push_back(new MapSprite());
+        _spritesPool.emplace_back(SafeAlloc::MakeRaw<MapSprite>());
     }
 }
 
@@ -341,6 +341,7 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
         // Recalculate indices
         auto index = mspr->ChainParent != nullptr ? mspr->ChainParent->TreeIndex + 1 : 0;
         auto* mspr_ = mspr;
+
         while (mspr_ != nullptr) {
             mspr_->TreeIndex = index;
             mspr_ = mspr_->ChainChild;
@@ -447,6 +448,7 @@ void MapSpriteList::Sort()
     _sortSprites.reserve(_spriteCount);
 
     auto* mspr = _rootSprite;
+
     while (mspr != nullptr) {
         _sortSprites.emplace_back(mspr);
         mspr = mspr->ChainChild;

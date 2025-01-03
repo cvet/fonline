@@ -187,8 +187,7 @@ NetBuffer::NetBuffer(size_t buf_len)
     STACK_TRACE_ENTRY();
 
     _defaultBufLen = buf_len;
-    _bufLen = buf_len;
-    _bufData = std::make_unique<uint8[]>(_bufLen);
+    _bufData.resize(buf_len);
 }
 
 auto NetBuffer::GenerateEncryptKey() -> uint
@@ -249,13 +248,9 @@ void NetBuffer::ResetBuf() noexcept
 
     _bufEndPos = 0;
 
-    if (_bufLen > _defaultBufLen) {
-        auto* new_buf = new (std::nothrow) uint8[_defaultBufLen];
-
-        if (new_buf != nullptr) {
-            _bufLen = _defaultBufLen;
-            _bufData = unique_ptr<uint8[]>(new_buf);
-        }
+    if (_bufData.size() > _defaultBufLen) {
+        _bufData.resize(_defaultBufLen);
+        _bufData.shrink_to_fit();
     }
 }
 
@@ -263,24 +258,22 @@ void NetBuffer::GrowBuf(size_t len)
 {
     STACK_TRACE_ENTRY();
 
-    if (_bufEndPos + len < _bufLen) {
+    if (_bufEndPos + len <= _bufData.size()) {
         return;
     }
 
-    while (_bufEndPos + len >= _bufLen) {
-        _bufLen <<= 1;
+    auto new_len = _bufData.size();
+
+    while (_bufEndPos + len > new_len) {
+        new_len *= 2;
     }
 
-    auto* new_buf = new uint8[_bufLen];
-    std::memcpy(new_buf, _bufData.get(), _bufEndPos);
-    _bufData.reset(new_buf);
+    _bufData.resize(new_len);
 }
 
-void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len)
+void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto* from_ = static_cast<const uint8*>(from);
     auto* to_ = static_cast<uint8*>(to);
@@ -298,11 +291,8 @@ void NetOutBuffer::Push(const void* buf, size_t len)
         return;
     }
 
-    if (_bufEndPos + len >= _bufLen) {
-        GrowBuf(len);
-    }
-
-    CopyBuf(buf, _bufData.get() + _bufEndPos, EncryptKey(static_cast<int>(len)), len);
+    GrowBuf(len);
+    CopyBuf(buf, _bufData.data() + _bufEndPos, EncryptKey(static_cast<int>(len)), len);
     _bufEndPos += len;
 }
 
@@ -314,11 +304,8 @@ void NetOutBuffer::Push(const_span<uint8> buf)
         return;
     }
 
-    if (_bufEndPos + buf.size() >= _bufLen) {
-        GrowBuf(buf.size());
-    }
-
-    CopyBuf(buf.data(), _bufData.get() + _bufEndPos, EncryptKey(static_cast<int>(buf.size())), buf.size());
+    GrowBuf(buf.size());
+    CopyBuf(buf.data(), _bufData.data() + _bufEndPos, EncryptKey(static_cast<int>(buf.size())), buf.size());
     _bufEndPos += buf.size();
 }
 
@@ -335,7 +322,7 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
         throw NetBufferException("Invalid discard length", len, _bufEndPos);
     }
 
-    auto* buf = _bufData.get();
+    auto* buf = _bufData.data();
 
     for (size_t i = 0; i + len < _bufEndPos; i++) {
         buf[i] = buf[i + len];
@@ -393,7 +380,7 @@ void NetOutBuffer::EndMsg()
     EncryptKey(-static_cast<int>(actual_msg_len));
 
     uint msg = 0;
-    CopyBuf(_bufData.get() + _startedBufPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
+    CopyBuf(_bufData.data() + _startedBufPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
     RUNTIME_ASSERT(msg == _startedMsg);
 
     uint intended_msg_len = GetMsgSize(msg);
@@ -401,7 +388,7 @@ void NetOutBuffer::EndMsg()
 
     if (intended_msg_len == static_cast<uint>(-1)) {
         intended_msg_len = actual_msg_len;
-        CopyBuf(&actual_msg_len, _bufData.get() + _startedBufPos + sizeof(uint), EncryptKey(0), sizeof(actual_msg_len));
+        CopyBuf(&actual_msg_len, _bufData.data() + _startedBufPos + sizeof(uint), EncryptKey(0), sizeof(actual_msg_len));
     }
 
     EncryptKey(static_cast<int>(actual_msg_len - sizeof(msg)));
@@ -425,11 +412,8 @@ void NetInBuffer::AddData(const void* buf, size_t len)
         return;
     }
 
-    if (_bufEndPos + len >= _bufLen) {
-        GrowBuf(len);
-    }
-
-    CopyBuf(buf, _bufData.get() + _bufEndPos, 0, len);
+    GrowBuf(len);
+    CopyBuf(buf, _bufData.data() + _bufEndPos, 0, len);
     _bufEndPos += len;
 }
 
@@ -437,8 +421,8 @@ void NetInBuffer::SetEndPos(size_t pos)
 {
     STACK_TRACE_ENTRY();
 
-    if (pos > _bufLen) {
-        throw NetBufferException("Invalid set end pos", pos, _bufLen, _bufEndPos);
+    if (pos > _bufData.size()) {
+        throw NetBufferException("Invalid set end pos", pos, _bufData.size(), _bufEndPos);
     }
 
     _bufEndPos = pos;
@@ -457,7 +441,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
         throw NetBufferException("Invalid read length", len, _bufReadPos, _bufEndPos);
     }
 
-    CopyBuf(_bufData.get() + _bufReadPos, buf, EncryptKey(static_cast<int>(len)), len);
+    CopyBuf(_bufData.data() + _bufReadPos, buf, EncryptKey(static_cast<int>(len)), len);
     _bufReadPos += len;
 }
 
@@ -526,7 +510,7 @@ auto NetInBuffer::NeedProcess() -> bool
         return false;
     }
 
-    CopyBuf(_bufData.get() + _bufReadPos, &msg, EncryptKey(0), sizeof(msg));
+    CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(0), sizeof(msg));
 
     uint msg_len = GetMsgSize(msg);
 
@@ -547,7 +531,7 @@ auto NetInBuffer::NeedProcess() -> bool
     }
 
     EncryptKey(sizeof(msg));
-    CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
+    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
     EncryptKey(-static_cast<int>(sizeof(msg)));
 
     return _bufReadPos + msg_len <= _bufEndPos;
@@ -571,7 +555,7 @@ void NetInBuffer::SkipMsg(uint msg)
     // Variadic size
     if (msg_len == static_cast<uint>(-1)) {
         EncryptKey(sizeof(msg));
-        CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
+        CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
         EncryptKey(-static_cast<int>(sizeof(msg)));
     }
 

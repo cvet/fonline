@@ -74,11 +74,11 @@ public:
         {
         }
         Value(Array&& value) :
-            _value(std::make_unique<Array>(std::move(value)))
+            _value(SafeAlloc::MakeUnique<Array>(std::move(value)))
         {
         }
         Value(Dict&& value) :
-            _value(std::make_unique<Dict>(std::move(value)))
+            _value(SafeAlloc::MakeUnique<Dict>(std::move(value)))
         {
         }
         // ReSharper restore CppNonExplicitConvertingConstructor
@@ -92,7 +92,7 @@ public:
 
         [[nodiscard]] auto operator==(const Value& other) const -> bool;
         [[nodiscard]] auto operator!=(const Value& other) const -> bool { return !(*this == other); }
-        [[nodiscard]] auto Type() const -> ValueType { return static_cast<ValueType>(_value.index()); }
+        [[nodiscard]] auto Type() const noexcept -> ValueType { return static_cast<ValueType>(_value.index()); }
         [[nodiscard]] auto AsInt64() const -> int64 { return std::get<int64>(_value); }
         [[nodiscard]] auto AsDouble() const -> double { return std::get<double>(_value); }
         [[nodiscard]] auto AsBool() const -> bool { return std::get<bool>(_value); }
@@ -125,8 +125,8 @@ public:
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
         [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
-        void Reserve(size_t size) { _value.reserve(size); }
-        void EmplaceBack(Value value) { _value.emplace_back(std::move(value)); }
+        void Reserve(size_t size) noexcept { _value.reserve(size); }
+        void EmplaceBack(Value value) noexcept { _value.emplace_back(std::move(value)); }
 
     private:
         vector<Value> _value {};
@@ -142,25 +142,22 @@ public:
         auto operator=(Dict&&) noexcept -> Dict& = default;
         ~Dict() = default;
 
-        [[nodiscard]] auto operator==(const Dict& other) const -> bool { return (!_value && !other._value) || (!!_value && !!other._value && *_value == *other._value); }
+        [[nodiscard]] auto operator==(const Dict& other) const -> bool { return _value == other._value; }
         [[nodiscard]] auto operator!=(const Dict& other) const -> bool { return !(*this == other); }
-        [[nodiscard]] auto operator[](const string& key) const -> const Value&;
-        [[nodiscard]] auto Size() const noexcept -> size_t { return _value ? _value->size() : 0; }
-        [[nodiscard]] auto Empty() const noexcept -> bool { return !_value || _value->empty(); }
-        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value && _value->count(key) != 0; }
+        [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
+        [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
+        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value.count(key) != 0; }
         [[nodiscard]] auto Copy() const -> Dict;
 
-        [[nodiscard]] auto begin() const noexcept { return _value ? _value->cbegin() : _emptyIterator; }
-        [[nodiscard]] auto end() const noexcept { return _value ? _value->cend() : _emptyIterator; }
+        [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
+        [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
-        void Emplace(string key, Value value);
-        void Assign(const string& key, Value value);
+        void Emplace(string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
+        void Assign(const string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
 
     private:
-        void Allocate();
-
-        unique_ptr<map<string, Value>> _value {};
-        map<string, Value>::const_iterator _emptyIterator {};
+        map<string, Value> _value {};
     };
 
     class Document : public Dict

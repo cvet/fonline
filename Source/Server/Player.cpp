@@ -41,15 +41,13 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) :
+Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
     Connection {connection},
     _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
 {
     STACK_TRACE_ENTRY();
-
-    _name = "(Unlogined)";
 }
 
 Player::~Player()

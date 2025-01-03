@@ -157,7 +157,7 @@ static void AdminManager(FOServer* server, uint16 port)
 
                 // Add new session
                 if (!refuse) {
-                    auto* s = new Session();
+                    auto* s = SafeAlloc::MakeRaw<Session>();
                     s->RefCount = 2;
                     s->Sock = sock;
                     s->From = from;
@@ -212,7 +212,7 @@ static void AdminWork(FOServer* server, Session* session)
 {
     STACK_TRACE_ENTRY();
 
-    auto* event_unsubscriber = new EventUnsubscriber();
+    auto* event_unsubscriber = SafeAlloc::MakeRaw<EventUnsubscriber>();
     *event_unsubscriber += server->OnWillFinish += [&server, &event_unsubscriber]() {
         server = nullptr;
         event_unsubscriber->Unsubscribe();

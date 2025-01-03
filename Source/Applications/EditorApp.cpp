@@ -55,7 +55,7 @@ int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv);
 
-        auto&& editor = std::make_unique<FOEditor>(App->Settings);
+        auto&& editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);
 
         while (!App->IsQuitRequested()) {
             App->BeginFrame();

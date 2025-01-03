@@ -50,17 +50,17 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props = nullptr);
+    Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto GetIp() const noexcept -> uint;
     [[nodiscard]] auto GetHost() const noexcept -> string_view;
     [[nodiscard]] auto GetPort() const noexcept -> uint16;
-
     [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr; }
     [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr; }
 
@@ -125,6 +125,7 @@ private:
     void SendItem(const Item* item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(const Entity* holder, bool owned);
 
+    string _name {"(Unlogined)"};
     Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
     time_point _talkNextTime {};
 };

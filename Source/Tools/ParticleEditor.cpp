@@ -117,15 +117,15 @@ struct ParticleEditor::Impl
 
 ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     EditorAssetView("Particle Editor", editor, asset_path),
-    _impl {std::make_unique<Impl>()}
+    _impl {SafeAlloc::MakeUnique<Impl>()}
 {
     STACK_TRACE_ENTRY();
 
-    _impl->EffectMngr = std::make_unique<EffectManager>(_editor.Settings, _editor.BakedResources);
+    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor.Settings, _editor.BakedResources);
 
-    _impl->GameTime = std::make_unique<GameTimer>(_editor.Settings);
+    _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor.Settings);
 
-    _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
+    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
         auto file = editor.BakedResources.ReadFile(path);
         RUNTIME_ASSERT(file);
 
@@ -211,7 +211,7 @@ void ParticleEditor::OnDraw()
                 const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
                 RUNTIME_ASSERT(saver);
 
-                const auto path = file.GetFullPath();
+                const auto path = std::string(file.GetFullPath());
 
                 if (saver->save(path, _impl->Particle->GetBaseSystem(), path)) {
                     _changed = _impl->Changed = false;
@@ -1275,7 +1275,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
         for (size_t i = 0; i < get_size(); i++) {
             auto&& obj = get(i);
 
-            const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : obj->getName(), obj->getClassName());
+            const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
 
             if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);

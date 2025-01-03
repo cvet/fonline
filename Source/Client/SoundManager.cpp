@@ -213,7 +213,7 @@ auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_t
         fixed_fname += "." + ext;
     }
 
-    auto&& sound = std::make_unique<Sound>();
+    auto&& sound = SafeAlloc::MakeUnique<Sound>();
 
     if (ext == "wav" && !LoadWav(sound.get(), fixed_fname)) {
         return false;
@@ -351,7 +351,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto&& acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -422,22 +422,20 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     callbacks.close_func = [](void* datasource) -> int {
         const auto* file2 = static_cast<File*>(datasource);
         delete file2;
-
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
         const auto* file2 = static_cast<File*>(datasource);
-
         return static_cast<long>(file2->GetCurPos());
     };
 
-    sound->OggStream = unique_del_ptr<OggVorbis_File>(new OggVorbis_File(), [](auto* vf) {
+    sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) {
         ov_clear(vf);
         delete vf;
     });
 
-    const auto error = ov_open_callbacks(new File {std::move(file)}, sound->OggStream.get(), nullptr, 0, callbacks);
+    const auto error = ov_open_callbacks(SafeAlloc::MakeRaw<File>(std::move(file)), sound->OggStream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);
@@ -541,6 +539,8 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 auto SoundManager::ConvertData(Sound* sound) -> bool
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);

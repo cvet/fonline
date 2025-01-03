@@ -104,8 +104,14 @@ public:
 
         if (!settings.DisableZlibCompression) {
             _zStream = {};
-            _zStream.zalloc = [](voidpf, uInt items, uInt size) -> void* { return new uint8[static_cast<size_t>(items) * size]; };
-            _zStream.zfree = [](voidpf, voidpf address) { delete[] static_cast<uint8*>(address); };
+            _zStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
+                constexpr SafeAllocator<uint8> allocator;
+                return allocator.allocate(static_cast<size_t>(items) * size);
+            };
+            _zStream.zfree = [](voidpf, voidpf address) {
+                constexpr SafeAllocator<uint8> allocator;
+                allocator.deallocate(static_cast<uint8*>(address), 0);
+            };
 
             const auto result = deflateInit(&_zStream, Z_BEST_SPEED);
             RUNTIME_ASSERT(result == Z_OK);
@@ -665,7 +671,7 @@ void NetTcpServer::AcceptNext()
 {
     STACK_TRACE_ENTRY();
 
-    auto* socket = new asio::ip::tcp::socket(_ioService);
+    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_ioService);
     _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
 }
 
@@ -674,7 +680,7 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
     STACK_TRACE_ENTRY();
 
     if (!error) {
-        _connectionCallback(new NetConnectionAsio(_settings, socket));
+        _connectionCallback(SafeAlloc::MakeRaw<NetConnectionAsio>(_settings, socket));
     }
     else {
         WriteLog("Accept error: {}", error.message());
@@ -728,7 +734,7 @@ void NetNoTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
     STACK_TRACE_ENTRY();
 
     const auto connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(new NetConnectionWebSocket<web_sockets_no_tls>(_settings, &_server, connection));
+    _connectionCallback(SafeAlloc::MakeRaw<NetConnectionWebSocket<web_sockets_no_tls>>(_settings, &_server, connection));
 }
 
 auto NetNoTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
@@ -793,7 +799,7 @@ void NetTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
     STACK_TRACE_ENTRY();
 
     const auto connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(new NetConnectionWebSocket<web_sockets_tls>(_settings, &_server, connection));
+    _connectionCallback(SafeAlloc::MakeRaw<NetConnectionWebSocket<web_sockets_tls>>(_settings, &_server, connection));
 }
 
 auto NetTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
@@ -812,10 +818,10 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& hdl) c
 
     UNUSED_VARIABLE(hdl);
 
-    shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
+    shared_ptr<ssl_context> ctx(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
-    ctx->use_certificate_chain_file(_settings.WssCertificate);
-    ctx->use_private_key_file(_settings.WssPrivateKey, ssl_context::pem);
+    ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
+    ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
     return ctx;
 }
 #endif // FO_HAVE_ASIO
@@ -827,7 +833,7 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCa
 #if FO_HAVE_ASIO
     WriteLog("Listen TCP connections on port {}", settings.ServerPort);
 
-    return new NetTcpServer(settings, std::move(callback));
+    return SafeAlloc::MakeRaw<NetTcpServer>(settings, std::move(callback));
 #else
     throw NotSupportedException("NetServerBase::StartTcpServer");
 #endif
@@ -841,12 +847,12 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
     if (settings.SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
 
-        return new NetTlsWebSocketsServer(settings, std::move(callback));
+        return SafeAlloc::MakeRaw<NetTlsWebSocketsServer>(settings, std::move(callback));
     }
     else {
         WriteLog("Listen WebSockets (no TLS) connections on port {}", settings.ServerPort + 1);
 
-        return new NetNoTlsWebSocketsServer(settings, std::move(callback));
+        return SafeAlloc::MakeRaw<NetNoTlsWebSocketsServer>(settings, std::move(callback));
     }
 #else
     throw NotSupportedException("NetServerBase::StartWebSocketsServer");
@@ -943,7 +949,7 @@ public:
         }
 
         InterthreadListeners.emplace(_virtualPort, [&settings, callback = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
-            auto* conn = new InterthreadConnection(settings, std::move(client_send));
+            auto* conn = SafeAlloc::MakeRaw<InterthreadConnection>(settings, std::move(client_send));
             callback(conn);
             return [conn](const_span<uint8> buf) { conn->Receive(buf); };
         });
@@ -965,5 +971,5 @@ auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, Conn
 {
     STACK_TRACE_ENTRY();
 
-    return new InterthreadServer(settings, std::move(callback));
+    return SafeAlloc::MakeRaw<InterthreadServer>(settings, std::move(callback));
 }

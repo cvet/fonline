@@ -73,13 +73,14 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 
 public:
     Map() = delete;
-    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr);
+    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr) noexcept;
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
     auto operator=(Map&&) noexcept = delete;
     ~Map() override;
 
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap* { return _staticMap; }
     [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto); }
     [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation; }

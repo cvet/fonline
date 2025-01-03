@@ -666,7 +666,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring pro
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const map<LocationProperty, any_t>& props)
 {
     const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
-    auto props_ = Properties(proto->GetProperties());
+    auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int>(key), value);
@@ -728,9 +728,9 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
     }
 
     // Load from db
-    auto* dummy_net_conn = new DummyNetConnection(server->Settings);
+    auto* dummy_net_conn = SafeAlloc::MakeRaw<DummyNetConnection>(server->Settings);
 
-    player = new Player(server, id, new ClientConnection(dummy_net_conn));
+    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeRaw<ClientConnection>(dummy_net_conn));
     player->SetName(name);
 
     dummy_net_conn->Release();

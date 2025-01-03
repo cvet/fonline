@@ -63,7 +63,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _effectMngr.LoadMinimalEffects();
 
-    _sprMngr.RegisterSpriteFactory(std::make_unique<DefaultSpriteFactory>(_sprMngr));
+    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(_sprMngr));
 
     // Wait screen
     if (!_settings.DefaultSplash.empty()) {
@@ -357,7 +357,7 @@ void Updater::GetNextFile()
         _conn.OutBuf.EndMsg();
 
         DiskFileSystem::DeleteFile(MakeWritePath(strex("~{}", next_update_file.Name)));
-        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(strex("~{}", next_update_file.Name)), true));
+        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(strex("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");

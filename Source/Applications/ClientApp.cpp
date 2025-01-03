@@ -79,7 +79,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     if (!Data->ResourceUpdater) {
-                        Data->ResourceUpdater = std::make_unique<Updater>(App->Settings, &App->MainWindow);
+                        Data->ResourceUpdater = SafeAlloc::MakeUnique<Updater>(App->Settings, &App->MainWindow);
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
@@ -92,7 +92,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
+                Data->Client = SafeAlloc::MakeUnique<FOClient>(App->Settings, &App->MainWindow, false);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

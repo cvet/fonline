@@ -41,7 +41,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) :
+Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
@@ -50,17 +50,15 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_staticMap);
-
-    _name = strex("{}_{}", proto->GetName(), id);
+    STRONG_ASSERT(_staticMap);
 
     _mapSize = GetSize();
 
     if (engine->Settings.MapInstanceStaticGrid) {
-        _hexField = std::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
+        _hexField = SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
     else {
-        _hexField = std::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
+        _hexField = SafeAlloc::MakeUnique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
 }
 

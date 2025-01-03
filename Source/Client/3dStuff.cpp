@@ -82,7 +82,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
     if (reader.Read<uint8>() != 0) {
-        AttachedMesh = std::make_unique<MeshData>();
+        AttachedMesh = SafeAlloc::MakeUnique<MeshData>();
         AttachedMesh->Load(reader, hash_resolver);
         AttachedMesh->Owner = this;
     }
@@ -91,7 +91,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     }
     reader.ReadPtr(&len, sizeof(len));
     for (uint i = 0; i < len; i++) {
-        auto child = std::make_unique<ModelBone>();
+        auto child = SafeAlloc::MakeUnique<ModelBone>();
         child->Load(reader, hash_resolver);
         Children.push_back(std::move(child));
     }
@@ -199,7 +199,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     }
 
     // Load bones
-    auto root_bone = std::make_unique<ModelBone>();
+    auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
     auto reader = DataReader({file.GetBuf(), file.GetSize()});
 
     root_bone->Load(reader, _hashResolver);
@@ -208,7 +208,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     // Load animations
     const auto anim_sets_count = reader.Read<uint>();
     for (uint i = 0; i < anim_sets_count; i++) {
-        auto anim_set = std::make_unique<ModelAnimation>();
+        auto anim_set = SafeAlloc::MakeUnique<ModelAnimation>();
         anim_set->Load(reader, _hashResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
@@ -266,7 +266,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
         return nullptr;
     }
 
-    auto* mesh_tex = new MeshTexture();
+    auto* mesh_tex = SafeAlloc::MakeRaw<MeshTexture>();
     mesh_tex->Name = _hashResolver.ToHashedString(texture_name);
     mesh_tex->MainTex = tex;
     mesh_tex->AtlasOffsetData[0] = tex_data[0];
@@ -295,7 +295,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
     model->_allMeshes.resize(model_info->_hierarchy->_allDrawBones.size());
     model->_allMeshesDisabled.resize(model->_allMeshes.size());
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto* mesh_instance = model->_allMeshes[i] = new MeshInstance();
+        auto* mesh_instance = model->_allMeshes[i] = SafeAlloc::MakeRaw<MeshInstance>();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         mesh_instance->Mesh = mesh;
         const auto* tex_name = (mesh->DiffuseTexture.length() != 0 ? mesh->DiffuseTexture.c_str() : nullptr);
@@ -329,7 +329,7 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
     }
 
     // Create new instance
-    auto model_info = std::make_unique<ModelInformation>(*this);
+    auto model_info = SafeAlloc::MakeUnique<ModelInformation>(*this);
     if (!model_info->Load(name)) {
         return nullptr;
     }
@@ -355,7 +355,7 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
         return nullptr;
     }
 
-    auto model_hierarchy = std::make_unique<ModelHierarchy>(*this);
+    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(*this);
     model_hierarchy->_fileName = name;
     model_hierarchy->_rootBone = root_bone;
     model_hierarchy->SetupBones();
@@ -1374,7 +1374,7 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_laye
 
     // Create new combined mesh
     if (_combinedMeshesSize >= _combinedMeshes.size()) {
-        auto* combined_mesh = new CombinedMesh();
+        auto* combined_mesh = SafeAlloc::MakeRaw<CombinedMesh>();
         combined_mesh->MeshBuf = App->Render.CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
@@ -2151,7 +2151,7 @@ auto ModelInformation::Load(string_view name) -> bool
         auto* link = &_animDataDefault;
         static uint link_id = 0;
 
-        auto* istr = new istringstream(file_buf);
+        auto istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
         auto closed = false;
         string token;
         string buf;
@@ -2234,8 +2234,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 file_buf = strex("{}\n{}", new_content, !istr->eof() ? file_buf.substr(static_cast<size_t>(istr->tellg())) : "");
 
                 // Reinitialize stream
-                delete istr;
-                istr = new istringstream(file_buf);
+                istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
             }
             else if (token == "Mesh") {
                 *istr >> buf;
@@ -2324,7 +2323,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
                     // Add cut
-                    auto* cut = new ModelCutData();
+                    auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
                     link->CutInfo.push_back(cut);
 
                     // Layers
@@ -2707,7 +2706,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Create animation controller
         if (!anims.empty()) {
-            _animController = std::make_unique<ModelAnimationController>(2);
+            _animController = SafeAlloc::MakeUnique<ModelAnimationController>(2);
         }
 
         // Parse animations
@@ -2747,7 +2746,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         for (size_t b = 1; b < bone_hierarchy.size(); b++) {
                             auto* child = bone->Find(bone_hierarchy[b]);
                             if (child == nullptr) {
-                                child = new ModelBone();
+                                child = SafeAlloc::MakeRaw<ModelBone>();
                                 child->Name = bone_hierarchy[b];
                                 bone->Children.push_back(unique_ptr<ModelBone>(child));
                             }
@@ -2868,7 +2867,7 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     STACK_TRACE_ENTRY();
 
-    auto* model = new ModelInstance(_modelMngr, this);
+    auto* model = SafeAlloc::MakeRaw<ModelInstance>(_modelMngr, this);
 
     if (_animController) {
         model->_bodyAnimController = _animController->Clone();

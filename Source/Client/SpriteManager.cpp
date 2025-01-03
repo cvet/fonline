@@ -1593,7 +1593,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
         return false;
     }
 
-    auto&& font = std::make_unique<FontData>();
+    auto&& font = SafeAlloc::MakeUnique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
     string image_name;
@@ -1750,7 +1750,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
         return false;
     }
 
-    auto&& font = std::make_unique<FontData>();
+    auto&& font = SafeAlloc::MakeUnique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
     auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));

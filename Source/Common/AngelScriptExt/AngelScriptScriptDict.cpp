@@ -64,7 +64,7 @@ struct SDictCache
     {
         SDictCache* cache = reinterpret_cast<SDictCache*>(engine->GetUserData(DICT_CACHE));
         if (cache == 0) {
-            cache = new SDictCache();
+            cache = SafeAlloc::MakeRaw<SDictCache>();
             engine->SetUserData(cache, DICT_CACHE);
             engine->SetEngineUserDataCleanupCallback(SDictCache::Cleanup, DICT_CACHE);
 
@@ -375,7 +375,7 @@ CScriptDict::CScriptDict(asITypeInfo* ot)
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
     cache = SDictCache::GetOrCreate(objType->GetEngine());
-    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
+    dictMap = SafeAlloc::MakeRaw<DictMap>(DictMapComparator(cache, keyTypeId));
 
     // Notify the GC of the successful creation
     if (objType->GetFlags() & asOBJ_GC) {
@@ -392,7 +392,7 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
     cache = SDictCache::GetOrCreate(objType->GetEngine());
-    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
+    dictMap = SafeAlloc::MakeRaw<DictMap>(DictMapComparator(cache, keyTypeId));
 
     const asIScriptEngine* engine = ot->GetEngine();
     asBYTE* buffer = static_cast<asBYTE*>(listBuffer);
@@ -462,7 +462,7 @@ CScriptDict::CScriptDict(const CScriptDict& other)
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
     cache = SDictCache::GetOrCreate(objType->GetEngine());
-    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
+    dictMap = SafeAlloc::MakeRaw<DictMap>(DictMapComparator(cache, keyTypeId));
 
     DictMap* dict = static_cast<DictMap*>(other.dictMap);
     for (auto it = dict->begin(); it != dict->end(); ++it) {

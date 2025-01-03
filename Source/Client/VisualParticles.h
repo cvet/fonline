@@ -86,6 +86,7 @@ private:
 class ParticleSystem final
 {
     friend class ParticleManager;
+    friend class SafeAlloc;
 
 public:
     static constexpr float PREWARM_STEP = 0.5f;

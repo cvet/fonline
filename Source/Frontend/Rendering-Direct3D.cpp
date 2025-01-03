@@ -484,7 +484,7 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_tex = std::make_unique<Direct3D_Texture>(size, linear_filtered, with_depth);
+    auto&& d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
     tex_desc.Width = size.width;
@@ -546,7 +546,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_dbuf = std::make_unique<Direct3D_DrawBuffer>(is_static);
+    auto&& d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static);
 
     return d3d_dbuf.release();
 }
@@ -555,7 +555,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, loader);
+    auto&& d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
