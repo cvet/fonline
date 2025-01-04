@@ -50,8 +50,10 @@ extern "C" void* ufbx_malloc(size_t size)
 extern "C" void* ufbx_realloc(void* ptr, size_t old_size, size_t new_size)
 {
     constexpr SafeAllocator<uint8> allocator;
+    auto* new_ptr = allocator.allocate(new_size);
+    std::memcpy(new_ptr, ptr, std::min(old_size, new_size));
     allocator.deallocate(static_cast<uint8*>(ptr), old_size);
-    return allocator.allocate(new_size);
+    return new_ptr;
 }
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
