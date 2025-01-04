@@ -2078,9 +2078,14 @@ auto Entity_ProtoId(const Entity* self) -> hstring
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
+
+    if (const auto* self_proto = dynamic_cast<const ProtoEntity*>(self)) {
+        return self_proto->GetProtoId();
+    }
     if (const auto* self_with_proto = dynamic_cast<const EntityWithProto*>(self)) {
         return self_with_proto->GetProtoId();
     }
+
     return {};
 
 #else
@@ -2097,6 +2102,7 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
+
     return self->GetProto();
 
 #else
@@ -2640,14 +2646,20 @@ static void Property_GetComponent(asIScriptGeneric* gen)
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
 
-    if (auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
-        if (!entity_with_proto->GetProto()->HasComponent(component)) {
-            *(T**)gen->GetAddressOfReturnLocation() = nullptr;
+    if (auto* proto_entity = dynamic_cast<const ProtoEntity*>(entity); proto_entity != nullptr) {
+        if (proto_entity->HasComponent(component)) {
+            *(T**)gen->GetAddressOfReturnLocation() = entity;
+            return;
+        }
+    }
+    if (auto* entity_with_proto = dynamic_cast<const EntityWithProto*>(entity); entity_with_proto != nullptr) {
+        if (entity_with_proto->GetProto()->HasComponent(component)) {
+            *(T**)gen->GetAddressOfReturnLocation() = entity;
             return;
         }
     }
 
-    *(T**)gen->GetAddressOfReturnLocation() = entity;
+    *(T**)gen->GetAddressOfReturnLocation() = nullptr;
 
 #else
     UNUSED_VARIABLE(gen);
