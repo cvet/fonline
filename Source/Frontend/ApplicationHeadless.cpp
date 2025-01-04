@@ -89,6 +89,7 @@ void InitApp(int argc, char** argv, bool client_mode)
     static std::once_flag once;
     auto first_call = false;
     std::call_once(once, [&first_call] { first_call = true; });
+
     if (!first_call) {
         throw AppInitException("InitApp must be called only once");
     }
