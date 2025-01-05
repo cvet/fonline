@@ -321,7 +321,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
 
     ProtoEntity* proto = create_proto();
 
-    const auto inserted = _protos[type_name].emplace(pid, proto).second;
+    const auto inserted = _protos[type_name].emplace(pid, unique_release_ptr<const ProtoEntity>(proto)).second;
     RUNTIME_ASSERT(inserted);
 
     return proto;
@@ -537,7 +537,7 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noe
     }
 
     if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     throw ProtoManagerException("Entity proto not exists", type_name, proto_id);
@@ -608,13 +608,13 @@ auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) const
     }
 
     if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
 }
 
-auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&
+auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, unique_release_ptr<const ProtoEntity>>&
 {
     STACK_TRACE_ENTRY();
 
