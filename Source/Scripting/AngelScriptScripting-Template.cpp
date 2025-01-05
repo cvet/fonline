@@ -3407,13 +3407,13 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
 
 #if !COMPILER_MODE
     const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
-    const auto protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+    const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
 
     vector<const ProtoCustomEntity*> result;
     result.reserve(protos.size());
 
     for (auto&& [pid, proto] : protos) {
-        const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
+        const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto.get());
         RUNTIME_ASSERT(casted_proto);
         result.emplace_back(casted_proto);
     }

@@ -72,7 +72,7 @@ public:
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const unordered_map<hstring, const ProtoCritter*>& { return _crProtos; }
     [[nodiscard]] auto GetProtoMaps() const noexcept -> const unordered_map<hstring, const ProtoMap*>& { return _mapProtos; }
     [[nodiscard]] auto GetProtoLocations() const noexcept -> const unordered_map<hstring, const ProtoLocation*>& { return _locProtos; }
-    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, const ProtoEntity*>&;
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, unique_release_ptr<const ProtoEntity>>&;
 
     void ParseProtos(const FileSystem& resources);
     void LoadFromResources();
@@ -90,7 +90,7 @@ private:
     unordered_map<hstring, const ProtoCritter*> _crProtos {};
     unordered_map<hstring, const ProtoMap*> _mapProtos {};
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
-    unordered_map<hstring, unordered_map<hstring, const ProtoEntity*>> _protos {};
-    const unordered_map<hstring, const ProtoEntity*> _emptyProtos {};
+    unordered_map<hstring, unordered_map<hstring, unique_release_ptr<const ProtoEntity>>> _protos {};
+    const unordered_map<hstring, unique_release_ptr<const ProtoEntity>> _emptyProtos {};
     unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };
