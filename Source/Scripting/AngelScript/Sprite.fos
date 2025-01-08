@@ -33,12 +33,12 @@ class Sprite
         Unload();
     }
 
-    bool Load(string name)
+    bool Load(string name, bool separateLoad = false)
     {
-        return Load(hstring(name));
+        return Load(hstring(name), separateLoad);
     }
 
-    bool Load(hstring name)
+    bool Load(hstring name, bool separateLoad = false)
     {
         if (name == LoadedName) {
             return true;
@@ -46,8 +46,15 @@ class Sprite
 
         Unload();
         LoadedName = name;
-        Id = LoadedName != EMPTY_HSTRING ? Game.LoadSprite(LoadedName) : 0;
-        RefreshData();
+
+        if (LoadedName != EMPTY_HSTRING) {
+            Id = separateLoad ? Game.LoadSeparateSprite(LoadedName) : Game.LoadSprite(LoadedName);
+
+            if (Id != 0) {
+                Size = Game.GetSpriteSize(Id);
+            }
+        }
+
         return Id != 0;
     }
 
@@ -55,9 +62,9 @@ class Sprite
     {
         if (Id != 0) {
             Game.FreeSprite(Id);
+            Id = 0;
+            Size = isize();
         }
-        Id = 0;
-        RefreshData();
     }
 
     // alignX/Y = -1 left / top, 0 center, 1 right / bottom

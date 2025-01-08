@@ -3,6 +3,8 @@ namespace Gui
 
 #if CLIENT
 
+///@ Enum GuiScreen None = 0
+
 ///@ Enum CursorType Default = 0
 
 ///@ Setting Client CursorType Cursor
@@ -23,6 +25,8 @@ namespace Gui
 ///@ Enum DockStyle Top = 3
 ///@ Enum DockStyle Bottom = 4
 ///@ Enum DockStyle Fill = 5
+
+///@ Event Client Game OnScreenChange(bool show, GuiScreen screenNum, string=>any params)
 
 interface IDropMenu
 {
@@ -199,8 +203,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetChecked(bool checked)
 // RadioButton : CheckBox : Button : Panel : Object
 // Screen : Panel : Object
-//   int Index
-//   bool IsMain
+//   GuiScreen Num
 //   bool IsModal
 //   bool IsMultiinstance
 //   bool IsCloseOnMiss
@@ -1982,13 +1985,9 @@ class RadioButton : CheckBox
 
 class Screen : Panel
 {
-    int get_Index() final
+    GuiScreen get_Num() final
     {
-        return _Index;
-    }
-    bool get_IsMain() final
-    {
-        return _Index >= CLIENT_MAIN_SCREEN_LOGIN && _Index <= CLIENT_MAIN_SCREEN_WAIT;
+        return _Num;
     }
     bool get_IsModal() final
     {
@@ -2023,7 +2022,7 @@ class Screen : Panel
         return _IsOnTop;
     }
 
-    int _Index;
+    GuiScreen _Num;
     bool _IsRegistered;
     bool _IsModal;
     bool _IsMultiinstance;
@@ -3154,7 +3153,7 @@ class ItemView : Grid
 
 // Implementation
 
-dict<int, CreateScreenFunc> ScreenCreators = {};
+dict<GuiScreen, CreateScreenFunc> ScreenCreators = {};
 
 Screen[] Screens = {};
 Screen CursorScreen;
@@ -3175,51 +3174,116 @@ Console CurConsole;
 // Public API
 //
 
-void RegisterScreen(int screenIndex, CreateScreenFunc screenFunc)
+void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
 {
-    UnregisterScreen(screenIndex);
+    UnregisterScreen(screenNum);
 
-    if (screenIndex == CLIENT_SCREEN_NONE) {
+    if (screenNum == GuiScreen::None) {
         return;
     }
 
-    @ScreenCreators[screenIndex] = screenFunc;
+    @ScreenCreators[screenNum] = screenFunc;
 
     // Precache
-    Screen screen = CreateScreen(screenIndex);
+    Screen screen = CreateScreen(screenNum);
+
     if (screen.IsMultiinstance) {
         screen._Remove();
         Screens.removeAt(Screens.findByRef(screen));
     }
 }
 
-void ShowScreen(int screenIndex)
+void ShowScreen(GuiScreen screenNum)
 {
-    Game.ShowScreen(screenIndex);
+    ShowScreen(screenNum, dict<string, any> = {});
 }
 
-void ShowScreen(int screenIndex, dict<string, any> params)
+void ShowScreen(GuiScreen screenNum, dict<string, any> params)
 {
-    Game.ShowScreen(screenIndex, params);
+    Settings.ScrollMouseUp = false;
+    Settings.ScrollMouseRight = false;
+    Settings.ScrollMouseDown = false;
+    Settings.ScrollMouseLeft = false;
+    Settings.ScrollKeybUp = false;
+    Settings.ScrollKeybRight = false;
+    Settings.ScrollKeybDown = false;
+    Settings.ScrollKeybLeft = false;
+
+    // Manage multiinstance
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        // Find instance
+        Screen screen = Screens[i];
+        if (screen.Num != screenNum) {
+            continue;
+        }
+
+        // Move to top created instance
+        if (!screen.IsMultiinstance) {
+            ShowHideScreen(screen, params, true);
+            return;
+        }
+    }
+
+    // Create new instance
+    Screen screen = CreateScreen(screenNum);
+    ShowHideScreen(screen, params, true);
 }
 
 void HideScreen()
 {
-    Game.HideScreen();
+    Screen screen = GetActiveScreen();
+
+    if (screen != null) {
+        HideScreen(screen.Num);
+    }
 }
 
-void HideScreen(int screenIndex)
+void HideScreen(GuiScreen screenNum)
 {
-    Game.HideScreen(screenIndex);
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        // Find instance
+        Screen screen = Screens[i];
+
+        if (!screen.Active || screen.Num != screenNum) {
+            continue;
+        }
+
+        HideScreen(screen);
+
+        // Hide only one screen per call
+        break;
+    }
 }
 
-Screen GetScreen(int screenIndex)
+void HideScreen(Screen screen)
+{
+    if (screen.Active) {
+        ShowHideScreen(screen, null, false);
+    }
+}
+
+void HideAllScreens()
+{
+    while (true) {
+        Screen screen = GetActiveScreen();
+
+        if (screen != null) {
+            HideScreen(screen);
+        }
+        else {
+            break;
+        }
+    }
+}
+
+Screen GetScreen(GuiScreen screenNum)
 {
     Screen firstMultiinstanceScreen = null;
 
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
-        if (screen.Index == screenIndex) {
+
+        if (screen.Num == screenNum) {
             if (!screen.IsMultiinstance) {
                 return screen;
             }
@@ -3232,22 +3296,11 @@ Screen GetScreen(int screenIndex)
     return firstMultiinstanceScreen;
 }
 
-Screen GetActiveMainScreen()
-{
-    for (uint i = 0; i < Screens.length(); i++) {
-        Screen screen = Screens[i];
-        if (screen.Active && screen.IsMain) {
-            return screen;
-        }
-    }
-
-    return null;
-}
-
 Screen GetActiveScreen()
 {
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
+
         if (screen.Active) {
             return screen;
         }
@@ -3256,11 +3309,12 @@ Screen GetActiveScreen()
     return null;
 }
 
-Screen GetActiveScreen(int screenIndex)
+Screen GetActiveScreen(GuiScreen screenNum)
 {
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
-        if (screen.Index == screenIndex && screen.Active) {
+
+        if (screen.Num == screenNum && screen.Active) {
             return screen;
         }
     }
@@ -3268,9 +3322,9 @@ Screen GetActiveScreen(int screenIndex)
     return null;
 }
 
-bool IsScreenActive(int screenIndex)
+bool IsScreenActive(GuiScreen screenNum)
 {
-    return GetActiveScreen(screenIndex) != null;
+    return GetActiveScreen(screenNum) != null;
 }
 
 Screen[] GetActiveScreens()
@@ -3465,7 +3519,7 @@ void SetDropMenu(IDropMenu dropMenu)
 bool CheckHit(ipos pos)
 {
     for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf && Screens[i].FindHit(pos) != null) {
+        if (Screens[i].Active && Screens[i].FindHit(pos) != null) {
             return true;
         }
     }
@@ -3480,73 +3534,14 @@ void EngineCallback_Start()
 {
     // Register custom screens
     GuiScreens::InitializeScreens();
-
-    // Register hardcoded screens
-    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_LOGIN);
-    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_GAME);
-    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_GLOBAL_MAP);
-    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_WAIT);
-    CreateHardcodedScreen(CLIENT_SCREEN_DIALOG);
-    CreateHardcodedScreen(CLIENT_SCREEN_DIALOGBOX);
-    CreateHardcodedScreen(CLIENT_SCREEN_TOWN_VIEW);
-}
-
-void EngineCallback_ShowScreen(int screenIndex, dict<string, any> params)
-{
-    Settings.ScrollMouseUp = false;
-    Settings.ScrollMouseRight = false;
-    Settings.ScrollMouseDown = false;
-    Settings.ScrollMouseLeft = false;
-    Settings.ScrollKeybUp = false;
-    Settings.ScrollKeybRight = false;
-    Settings.ScrollKeybDown = false;
-    Settings.ScrollKeybLeft = false;
-
-    // Manage multiinstance
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        // Find instance
-        Screen screen = Screens[i];
-        if (screen.Index != screenIndex) {
-            continue;
-        }
-
-        // Move to top created instance
-        if (!screen.IsMultiinstance) {
-            ShowHideScreen(screen, params, true);
-            return;
-        }
-    }
-
-    // Create new instance
-    Screen screen = CreateScreen(screenIndex);
-    ShowHideScreen(screen, params, true);
-}
-
-void EngineCallback_HideScreen(int screenIndex)
-{
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        // Find instance
-        Screen screen = Screens[i];
-        if (!screen.ActiveSelf || screen.Index != screenIndex) {
-            continue;
-        }
-
-        // Hide
-        ShowHideScreen(screen, null, false);
-
-        // Hide only one screen per call
-        break;
-    }
 }
 
 void EngineCallback_Draw()
 {
     for (uint i = 0; i < Screens.length(); i++) {
         Screen screen = Screens[i];
-        if (screen.ActiveSelf) {
-            if (screen.Index == CLIENT_MAIN_SCREEN_WAIT) {
-                Game.CustomCall("DrawWait");
-            }
+
+        if (screen.Active) {
             screen._Draw(true);
         }
     }
@@ -3631,9 +3626,10 @@ void EngineCallback_MouseDown(MouseButton button)
     // Switch to another screen
     if (button == MouseButton::Left && !screen.IsModal) {
         int screenIndex = Screens.findByRef(screen);
+
         for (int i = screenIndex - 1; i >= 0; i--) {
             Screen nextScreen = Screens[i];
-            if (!nextScreen.ActiveSelf) {
+            if (!nextScreen.Active) {
                 continue;
             }
 
@@ -3734,7 +3730,7 @@ void EngineCallback_KeyDown(KeyCode key, string text)
 {
     // Global input handler
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        if (Screens[i]._ActiveSelf) {
+        if (Screens[i].Active) {
             Screens[i]._GlobalInput(key, text);
         }
     }
@@ -3809,15 +3805,6 @@ void EngineCallback_Loop()
     }
 }
 
-void EngineCallback_GetActiveScreens(int[] result)
-{
-    for (uint i = 0; i < Screens.length(); i++) {
-        if (Screens[i].ActiveSelf) {
-            result.insertLast(Screens[i].Index);
-        }
-    }
-}
-
 void EngineCallback_ItemChanged(bool onMap)
 {
     if (!onMap) {
@@ -3871,34 +3858,19 @@ void Callback_OnLanguageChanged()
 // Internal
 //
 
-Screen CreateEmptyScreen()
+Screen CreateScreen(GuiScreen screenNum)
 {
-    Screen screen = Screen();
-    screen.Init(null);
-    return screen;
-}
-
-void CreateHardcodedScreen(int screenIndex)
-{
-    if (GetScreen(screenIndex) == null) {
-        RegisterScreen(screenIndex, CreateEmptyScreen);
-        CreateScreen(screenIndex);
-    }
-}
-
-Screen CreateScreen(int screenIndex)
-{
-    Assert(ScreenCreators.exists(screenIndex), screenIndex);
-    CreateScreenFunc screenFunc = ScreenCreators[screenIndex];
+    Assert(ScreenCreators.exists(screenNum), screenNum);
+    CreateScreenFunc screenFunc = ScreenCreators[screenNum];
     Screen screen = screenFunc();
-    Assert(screen != null, screenIndex);
-    screen._Index = screenIndex;
+    Assert(screen != null, screenNum);
+    screen._Num = screenNum;
     screen._ActiveSelf = false;
     screen._IsRegistered = true;
     screen._InputKeyPressed = Input::GetKeyPressed();
     screen._InputMousePressed = Input::GetMousePressed();
 
-    if (screenIndex != CLIENT_SCREEN_CURSOR) {
+    if (screenNum != GuiScreen::Cursor) {
         Screens.insertLast(screen);
     }
     else {
@@ -3910,18 +3882,21 @@ Screen CreateScreen(int screenIndex)
     return screen;
 }
 
-void UnregisterScreen(int screenIndex)
+void UnregisterScreen(GuiScreen screenNum)
 {
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         Screen screen = Screens[i];
-        if (screen.Index == screenIndex) {
-            if (screen.ActiveSelf) {
+
+        if (screen.Num == screenNum) {
+            if (screen.Active) {
                 ShowHideScreen(screen, null, false);
             }
+
             if (!screen.IsMultiinstance) {
                 screen._Remove();
                 Screens.removeAt(i);
             }
+
             screen._IsRegistered = false;
         }
     }
@@ -3949,6 +3924,7 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
     if (show) {
         // Hide active screen
         Screen activeScreen = GetActiveScreen();
+
         if (activeScreen != null && activeScreen !is screen) {
             activeScreen._Disappear();
         }
@@ -3970,15 +3946,18 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         }
 
         // Callback
-        if (!screen._ActiveSelf) {
+        if (!screen.Active) {
             screen.SetActive(true);
         }
+
         screen._Show(params); // Params may change, so need call again
         screen._Appear();
+
+        Game.OnScreenChange.Fire(true, screen.Num, params);
     }
     else {
         // Ignore redundant hide
-        if (!screen._ActiveSelf) {
+        if (!screen.Active) {
             return;
         }
 
@@ -3987,35 +3966,39 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         screen._Hide();
         screen.SetActive(false);
 
+        Game.OnScreenChange.Fire(false, screen.Num, params);
+
         // Remove multiinstance
         if (screen.IsMultiinstance) {
             screen._Remove();
             Screens.removeAt(Screens.findByRef(screen));
         }
 
-        // Appear active screen
-        Screen appearScreen = GetActiveScreen();
+        // Appear behind screen
+        if (screen.IsMultiinstance || screen is Screens.last()) {
+            Screen appearScreen = GetActiveScreen();
 
-        if (appearScreen != null) {
             // Move to top
-            if (Screens.last() !is appearScreen) {
+            if (appearScreen != null) {
                 Screens.removeAt(Screens.findByRef(appearScreen));
                 Screens.insertLast(appearScreen);
-            }
 
-            appearScreen._Appear();
+                appearScreen._Appear();
+            }
         }
     }
 }
 
-uint GetScreenCount(int screenIndex)
+uint GetScreenCount(GuiScreen screenNum)
 {
     uint count = 0;
+
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
-        if (Screens[i].Index == screenIndex) {
+        if (Screens[i].Num == screenNum) {
             count++;
         }
     }
+
     return count;
 }
 

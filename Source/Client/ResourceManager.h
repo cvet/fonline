@@ -55,7 +55,6 @@ public:
     [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*;
-    [[nodiscard]] auto GetRandomSplash() -> shared_ptr<Sprite>;
     [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
@@ -77,7 +76,6 @@ private:
     unordered_map<uint, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
-    vector<string> _splashNames {};
     map<string, string> _soundNames {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D

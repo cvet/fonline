@@ -106,15 +106,6 @@ enum class EffectType : uint
     Offscreen = 0x40000000,
 };
 
-// Screens
-constexpr int SCREEN_NONE = 0;
-constexpr int SCREEN_LOGIN = 1; // Primary screens
-constexpr int SCREEN_GAME = 2;
-constexpr int SCREEN_GLOBAL_MAP = 3;
-constexpr int SCREEN_WAIT = 4;
-constexpr int SCREEN_DIALOG = 6; // Secondary screens
-constexpr int SCREEN_TOWN_VIEW = 9;
-
 // Connection reason
 constexpr int INIT_NET_REASON_NONE = 0;
 constexpr int INIT_NET_REASON_LOGIN = 1;
@@ -156,8 +147,6 @@ public:
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}, false); }
-    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}, false); }
     void ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
@@ -165,15 +154,6 @@ public:
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
     void AnimFree(uint anim_id);
     auto AnimGetSpr(uint anim_id) -> Sprite*;
-
-    void ShowMainScreen(int new_screen, const map<string, any_t>& params);
-    auto GetMainScreen() const -> int { return _screenModeMain; }
-    auto IsMainScreen(int check_screen) const -> bool { return check_screen == _screenModeMain; }
-    void ShowScreen(int screen, const map<string, any_t>& params);
-    void HideScreen(int screen);
-    auto GetActiveScreen(vector<int>* screens) -> int;
-    auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, const map<string, any_t>& params);
 
     void Connect(string_view login, string_view password, int reason);
     void Disconnect();
@@ -194,15 +174,19 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnAutoLogin, string /*login*/, string /*password*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnConnecting);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnConnectingFailed);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnConnected);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnDisconnected);
+    ///@ ExportEvent
     ENTITY_EVENT(OnRegistrationSuccess);
     ///@ ExportEvent
     ENTITY_EVENT(OnLoginSuccess);
     ///@ ExportEvent
     ENTITY_EVENT(OnLoop);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnGetActiveScreens, vector<int>& /*screens*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, any_t> /*data*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
     ///@ ExportEvent
@@ -244,6 +228,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
+    ENTITY_EVENT(OnMapLoaded);
+    ///@ ExportEvent
     ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
@@ -267,6 +253,10 @@ public:
     ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, tick_t /*dialogTime*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -321,13 +311,12 @@ protected:
 
     void TryAutoLogin();
     void FlashGameWindow();
-    void WaitDraw();
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
     void ProcessInputEvents();
-    void ProcessScreenEffectFading();
-    void ProcessScreenEffectQuake();
+    void ProcessScreenEffectFading(); // Todo: move screen fading to scripts
+    void ProcessScreenEffectQuake(); // Todo: move screen quake effect to scripts
     void ProcessVideo();
 
     void LmapPrepareMap();
@@ -427,6 +416,7 @@ protected:
     CritterView* _chosen {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
+    bool _mapLoaded {};
 
     int _initNetReason {INIT_NET_REASON_NONE};
 
@@ -449,10 +439,6 @@ protected:
     float _quakeScreenOffsY {};
     float _quakeScreenOffsStep {};
     time_point _quakeScreenOffsNextTime {};
-
-    int _screenModeMain {SCREEN_WAIT};
-
-    shared_ptr<Sprite> _waitPic {};
 
     uint8 _pupTransferType {};
     uint _pupContId {};

@@ -53,16 +53,6 @@ void ResourceManager::IndexFiles()
 {
     STACK_TRACE_ENTRY();
 
-    for (const auto* splash_ext : {"rix", "png", "jpg"}) {
-        auto splashes = _resources.FilterFiles(splash_ext, "Splash/", true);
-        while (splashes.MoveNext()) {
-            auto file_header = splashes.GetCurFileHeader();
-            if (std::find(_splashNames.begin(), _splashNames.end(), file_header.GetPath()) == _splashNames.end()) {
-                _splashNames.emplace_back(file_header.GetPath());
-            }
-        }
-    }
-
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
         auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
@@ -606,27 +596,6 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
     return _critterModels.emplace(model_name, std::move(model_spr)).first->second.get();
 }
 #endif
-
-auto ResourceManager::GetRandomSplash() -> shared_ptr<Sprite>
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_splashNames.empty()) {
-        return nullptr;
-    }
-
-    const auto rnd = GenericUtils::Random(0, static_cast<int>(_splashNames.size()) - 1);
-
-    auto&& splash = _sprMngr.LoadSprite(_splashNames[rnd], AtlasType::OneImage);
-
-    if (splash) {
-        splash->PlayDefault();
-    }
-
-    return splash;
-}
 
 auto ResourceManager::GetSoundNames() const -> const map<string, string>&
 {
