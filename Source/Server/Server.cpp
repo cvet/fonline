@@ -32,7 +32,6 @@
 //
 
 #include "Server.h"
-
 #include "AdminPanel.h"
 #include "AnyData.h"
 #include "Application.h"
@@ -197,7 +196,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Setup engine data");
 
-        // Properties that saving to data base
+        // Properties that saving to database
         for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
             const auto* registrator = entity_info.PropRegistrator;
 
@@ -479,13 +478,13 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
         }
         catch (...) {
-            // Don't change data base
+            // Don't change database
             DbStorage.ClearChanges();
 
             throw;
         }
 
-        // Commit initial data base changes
+        // Commit initial database changes
         DbStorage.CommitChanges(true);
 
         // Advance time after initialization
@@ -3846,12 +3845,8 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
         cr->Moving.EndHex = hex;
     }
 
-    if (cr->Moving.WholeTime < 0.0001f) {
-        cr->Moving.WholeTime = 0.0001f;
-    }
-    if (cr->Moving.WholeDist < 0.0001f) {
-        cr->Moving.WholeDist = 0.0001f;
-    }
+    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
     RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
@@ -3887,13 +3882,10 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
     const auto elapsed_time = time_duration_to_ms<float>(cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime);
 
     cr->Moving.WholeTime /= diff;
+    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
     cr->Moving.StartTime = cur_time;
     cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
     cr->Moving.Speed = speed;
-
-    if (cr->Moving.WholeTime < 0.0001f) {
-        cr->Moving.WholeTime = 0.0001f;
-    }
 
     cr->SetMovingSpeed(speed);
 
@@ -4205,12 +4197,12 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 continue;
             }
 
-            if (need_count < 0) {
-                need_count = 0;
-            }
+            need_count = std::max(need_count, 0);
+
             if (cur_count == need_count) {
                 continue;
             }
+
             ItemMngr.SetItemCritter(master, pid, need_count);
         }
             continue;
@@ -4263,6 +4255,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
             auto talk_distance = npc->GetTalkDistance();
             talk_distance = (talk_distance != 0 ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
+
             if (!GeometryHelper::CheckDist(cl->GetHex(), npc->GetHex(), talk_distance)) {
                 cl->Send_Moving(cl);
                 cl->Send_Moving(npc);
@@ -4344,10 +4337,11 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     // Predialogue installations
     auto it_d = dialogs->begin();
     auto go_dialog = static_cast<uint>(-1);
-    auto it_a = (*it_d).Answers.begin();
-    for (; it_a != (*it_d).Answers.end(); ++it_a) {
+    auto it_a = it_d->Answers.begin();
+
+    for (; it_a != it_d->Answers.end(); ++it_a) {
         if (DialogCheckDemand(npc, cl, *it_a, false)) {
-            go_dialog = (*it_a).Link;
+            go_dialog = it_a->Link;
         }
         if (go_dialog != static_cast<uint>(-1)) {
             break;
@@ -4359,16 +4353,19 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     }
 
     // Use result
-    const auto force_dialog = DialogUseResult(npc, cl, (*it_a));
+    const auto force_dialog = DialogUseResult(npc, cl, *it_a);
+
     if (force_dialog != 0) {
         if (force_dialog == static_cast<uint>(-1)) {
             return;
         }
+
         go_dialog = force_dialog;
     }
 
     // Find dialog
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
+
     if (it_d == dialogs->end()) {
         cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
         WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", go_dialog, cl->GetName(), dialog_pack->PackId);
@@ -4693,10 +4690,9 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Prop
 
     // Non-stacked items
     if (item != nullptr && !proto->GetStackable() && count > 1) {
-        // Todo: maybe prohibit bulk creation of non-stacked items
-        RUNTIME_ASSERT(count < 1000);
+        const uint fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
 
-        for (uint i = 0; i < count; i++) {
+        for (uint i = 0; i < fixed_count; i++) {
             if (add_item() == nullptr) {
                 break;
             }
