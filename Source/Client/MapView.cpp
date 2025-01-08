@@ -145,23 +145,33 @@ void MapView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* cr : copy(_critters)) {
-        DestroyCritter(cr);
+    _hexField.reset();
+    _lightSources.clear();
+
+    for (auto* cr : _critters) {
+        if (cr->IsSpriteValid()) {
+            cr->InvalidateSprite();
+        }
+
+        cr->DestroySelf();
     }
 
-    RUNTIME_ASSERT(_critters.empty());
-    RUNTIME_ASSERT(_crittersMap.empty());
+    for (auto* item : _allItems) {
+        if (item->IsSpriteValid()) {
+            item->InvalidateSprite();
+        }
 
-    for (auto* item : copy(_allItems)) {
-        DestroyItem(item);
+        item->DestroySelf();
     }
 
-    RUNTIME_ASSERT(_allItems.empty());
-    RUNTIME_ASSERT(_staticItems.empty());
-    RUNTIME_ASSERT(_dynamicItems.empty());
-    RUNTIME_ASSERT(_nonTileItems.empty());
-    RUNTIME_ASSERT(_processingItems.empty());
-    RUNTIME_ASSERT(_itemsMap.empty());
+    _critters.clear();
+    _crittersMap.clear();
+    _allItems.clear();
+    _staticItems.clear();
+    _dynamicItems.clear();
+    _nonTileItems.clear();
+    _processingItems.clear();
+    _itemsMap.clear();
 }
 
 void MapView::EnableMapperMode()
