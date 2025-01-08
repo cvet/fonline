@@ -26,16 +26,6 @@ namespace ClientCore // Sort -9
 #define FT_SKIPLINES     #(l)(0x0400 | ((l) << 16))
 #define FT_SKIPLINES_END #(l)(0x0800 | ((l) << 16))
 
-// Client screen types
-#define CLIENT_SCREEN_NONE            (0)
-#define CLIENT_MAIN_SCREEN_LOGIN      (1)
-#define CLIENT_MAIN_SCREEN_GAME       (2)
-#define CLIENT_MAIN_SCREEN_GLOBAL_MAP (3)
-#define CLIENT_MAIN_SCREEN_WAIT       (4)
-#define CLIENT_SCREEN_CURSOR          (5)
-#define CLIENT_SCREEN_DIALOG          (6)
-#define CLIENT_SCREEN_TOWN_VIEW       (9)
-
 // Draw primitive types
 #define DRAW_PRIMITIVE_POINTLIST     (0)
 #define DRAW_PRIMITIVE_LINELIST      (1)

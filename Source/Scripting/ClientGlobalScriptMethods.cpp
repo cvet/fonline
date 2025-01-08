@@ -483,9 +483,15 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
+    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, false);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration, bool appendEffect)
+{
+    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, appendEffect);
 }
 
 ///@ ExportMethod
@@ -868,6 +874,18 @@ FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, string_view sprNa
 FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::MapSprites);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint Client_Game_LoadSeparateSprite(FOClient* client, string_view sprName)
+{
+    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::OneImage);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint Client_Game_LoadSeparateSprite(FOClient* client, hstring nameHash)
+{
+    return client->AnimLoad(nameHash, AtlasType::OneImage);
 }
 
 ///@ ExportMethod
@@ -1404,46 +1422,6 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
         std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_ShowScreen(FOClient* client, int screen)
-{
-    if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
-        client->ShowMainScreen(screen, {});
-    }
-    else if (screen != SCREEN_NONE) {
-        client->ShowScreen(screen, {});
-    }
-    else {
-        client->HideScreen(screen);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, any_t>& data)
-{
-    if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
-        client->ShowMainScreen(screen, data);
-    }
-    else if (screen != SCREEN_NONE) {
-        client->ShowScreen(screen, data);
-    }
-    else {
-        client->HideScreen(screen);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_HideScreen(FOClient* client)
-{
-    client->HideScreen(SCREEN_NONE);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_HideScreen(FOClient* client, int screen)
-{
-    client->HideScreen(screen);
 }
 
 ///@ ExportMethod

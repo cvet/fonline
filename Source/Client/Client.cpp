@@ -259,8 +259,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
 
-    ScreenFadeOut();
-
     // Auto login
     TryAutoLogin();
 }
@@ -403,6 +401,7 @@ void FOClient::TryAutoLogin()
     }
 
     const auto auto_login_args = strex(auto_login).split(' ');
+
     if (auto_login_args.size() != 2) {
         return;
     }
@@ -439,16 +438,12 @@ void FOClient::MainLoop()
 #endif
 
     // Network
-    if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting()) {
+    if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting() && !_conn.IsConnected()) {
+        OnConnecting.Fire();
         _conn.Connect();
     }
 
     _conn.Process();
-
-    // Exit in Login screen if net disconnect
-    if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
-        ShowMainScreen(SCREEN_LOGIN, {});
-    }
 
     // Input
     ProcessInputEvents();
@@ -700,30 +695,29 @@ void FOClient::Net_OnConnect(bool success)
     STACK_TRACE_ENTRY();
 
     if (success) {
-        // Reason
-        const auto reason = _initNetReason;
-        _initNetReason = INIT_NET_REASON_NONE;
-
         // After connect things
-        if (reason == INIT_NET_REASON_LOGIN) {
+        if (_initNetReason == INIT_NET_REASON_LOGIN) {
             Net_SendLogIn();
         }
-        else if (reason == INIT_NET_REASON_REG) {
+        else if (_initNetReason == INIT_NET_REASON_REG) {
             Net_SendCreatePlayer();
         }
-        else if (reason == INIT_NET_REASON_LOAD) {
+        else if (_initNetReason == INIT_NET_REASON_LOAD) {
             // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         }
-        else if (reason != INIT_NET_REASON_CUSTOM) {
+        else if (_initNetReason != INIT_NET_REASON_CUSTOM) {
             UNREACHABLE_PLACE();
         }
 
         RUNTIME_ASSERT(!_curPlayer);
         _curPlayer = SafeAlloc::MakeRaw<PlayerView>(this, ident_t {});
+
+        OnConnected.Fire();
     }
     else {
-        ShowMainScreen(SCREEN_LOGIN, {});
         AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_FAIL));
+
+        OnConnectingFailed.Fire();
     }
 }
 
@@ -739,6 +733,10 @@ void FOClient::Net_OnDisconnect()
     }
 
     DestroyInnerEntities();
+
+    OnDisconnected.Fire();
+
+    _initNetReason = INIT_NET_REASON_NONE;
 
     TryAutoLogin();
 }
@@ -1058,7 +1056,7 @@ void FOClient::Net_OnAddCritter()
         hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
         RUNTIME_ASSERT(hex_cr);
 
-        if (_screenModeMain != SCREEN_WAIT) {
+        if (_mapLoaded) {
             hex_cr->FadeUp();
         }
 
@@ -1965,7 +1963,7 @@ void FOClient::Net_OnAddItemOnMap()
 
     ReceiveCustomEntities(item);
 
-    if (_screenModeMain != SCREEN_WAIT) {
+    if (_mapLoaded) {
         item->FadeUp();
     }
 
@@ -2097,37 +2095,22 @@ void FOClient::Net_OnPlaceToGameComplete()
 {
     STACK_TRACE_ENTRY();
 
+    _mapLoaded = true;
+
     auto* chosen = GetChosen();
 
-    if (chosen == nullptr) {
-        BreakIntoDebugger();
-        WriteLog("Chosen is not created in end place to game");
-        return;
-    }
-
-    int target_screen;
-
-    if (CurMap != nullptr) {
+    if (CurMap != nullptr && chosen != nullptr) {
         CurMap->FindSetCenter(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->AnimateStay();
             CurMap->UpdateCritterLightSource(hex_chosen);
         }
-
-        target_screen = SCREEN_GAME;
-    }
-    else {
-        target_screen = SCREEN_GLOBAL_MAP;
     }
 
-    if (target_screen != GetMainScreen()) {
-        FlashGameWindow();
-        ScreenFadeOut();
-        ShowMainScreen(target_screen, {});
-    }
+    OnMapLoaded.Fire();
 
-    WriteLog("Entering to game complete");
+    WriteLog("Map loaded");
 }
 
 void FOClient::Net_OnProperty(uint data_size)
@@ -2278,52 +2261,35 @@ void FOClient::Net_OnChosenTalk()
     const auto count_answ = _conn.InBuf.Read<uint8>();
 
     if (count_answ == 0) {
-        if (IsScreenPresent(SCREEN_DIALOG)) {
-            HideScreen(SCREEN_DIALOG);
-        }
-
+        OnDialogData.Fire({}, {}, {}, {}, {});
         return;
     }
 
     const auto lexems = _conn.InBuf.Read<string>();
-
-    if (CurMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
     auto* npc = is_npc ? CurMap->GetCritter(talk_cr_id) : nullptr;
-
     const auto text_id = _conn.InBuf.Read<uint>();
 
-    vector<uint> answers_texts;
+    vector<uint> answer_ids;
+
     for (auto i = 0; i < count_answ; i++) {
         const auto answ_text_id = _conn.InBuf.Read<uint>();
-        answers_texts.push_back(answ_text_id);
+        answer_ids.push_back(answ_text_id);
     }
 
-    auto str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
+    string text = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
+    FormatTags(text, GetChosen(), npc, lexems);
 
-    FormatTags(str, GetChosen(), npc, lexems);
+    vector<string> answers;
 
-    const auto text_to_script = str;
-    string answers_to_script;
-
-    for (const auto answers_text : answers_texts) {
-        str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answers_text));
+    for (const auto answer_id : answer_ids) {
+        string str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answer_id));
         FormatTags(str, GetChosen(), npc, lexems);
-        answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
+        answers.emplace_back(std::move(str));
     }
 
-    const auto talk_time = _conn.InBuf.Read<uint>();
+    const auto talk_time = _conn.InBuf.Read<tick_t>();
 
-    map<string, any_t> params;
-    params["TalkerIsNpc"] = any_t {strex("{}", is_npc ? 1 : 0)};
-    params["TalkerId"] = any_t {strex("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint())};
-    params["Text"] = any_t {strex("{}", text_to_script)};
-    params["Answers"] = any_t {strex("{}", answers_to_script)};
-    params["TalkTime"] = any_t {strex("{}", talk_time)};
-    ShowScreen(SCREEN_DIALOG, params);
+    OnDialogData.Fire(talk_cr_id, talk_dlg_id, text, answers, talk_time);
 }
 
 void FOClient::Net_OnTimeSync()
@@ -2369,7 +2335,6 @@ void FOClient::Net_OnLoadMap()
 
     OnMapUnload.Fire();
     UnloadMap();
-    ShowMainScreen(SCREEN_WAIT, {});
 
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
@@ -2387,10 +2352,10 @@ void FOClient::Net_OnLoadMap()
         ReceiveCustomEntities(_curLocation);
         ReceiveCustomEntities(CurMap);
 
-        WriteLog("Local map loaded");
+        WriteLog("Start load map");
     }
     else {
-        WriteLog("Global map loaded");
+        WriteLog("Start load global map");
     }
 
     OnMapLoad.Fire();
@@ -2434,22 +2399,13 @@ void FOClient::Net_OnViewMap()
     STACK_TRACE_ENTRY();
 
     const auto hex = _conn.InBuf.Read<mpos>();
-    const auto loc_id = _conn.InBuf.Read<ident_t>();
-    const auto loc_ent = _conn.InBuf.Read<uint>();
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    CurMap->FindSetCenter(hex);
-    ShowMainScreen(SCREEN_GAME, {});
-    ScreenFadeOut();
-
-    map<string, any_t> params;
-    params["LocationId"] = any_t {strex("{}", loc_id)};
-    params["LocationEntrance"] = any_t {strex("{}", loc_ent)};
-    ShowScreen(SCREEN_TOWN_VIEW, params);
+    OnMapView.Fire(hex);
 }
 
 void FOClient::Net_OnRemoteCall()
@@ -3188,103 +3144,6 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, const map<string, any_t>& params)
-{
-    STACK_TRACE_ENTRY();
-
-    while (GetActiveScreen(nullptr) != SCREEN_NONE) {
-        HideScreen(SCREEN_NONE);
-    }
-
-    if (_screenModeMain == new_screen) {
-        return;
-    }
-    if (_isAutoLogin && new_screen == SCREEN_LOGIN) {
-        return;
-    }
-
-    const auto prev_main_screen = _screenModeMain;
-    if (_screenModeMain != 0) {
-        RunScreenScript(false, _screenModeMain, {});
-    }
-
-    _screenModeMain = new_screen;
-    RunScreenScript(true, new_screen, params);
-
-    switch (GetMainScreen()) {
-    case SCREEN_LOGIN:
-        ScreenFadeOut();
-        break;
-    case SCREEN_GAME:
-        break;
-    case SCREEN_GLOBAL_MAP:
-        break;
-    case SCREEN_WAIT:
-        if (prev_main_screen != SCREEN_WAIT) {
-            _screenFadingEffects.clear();
-            _waitPic = ResMngr.GetRandomSplash();
-        }
-        break;
-    default:
-        break;
-    }
-}
-
-auto FOClient::GetActiveScreen(vector<int>* screens) -> int
-{
-    STACK_TRACE_ENTRY();
-
-    vector<int> active_screens;
-    OnGetActiveScreens.Fire(active_screens);
-
-    if (screens != nullptr) {
-        *screens = active_screens;
-    }
-
-    auto active = (!active_screens.empty() ? active_screens.back() : SCREEN_NONE);
-    if (active >= SCREEN_LOGIN && active <= SCREEN_WAIT) {
-        active = SCREEN_NONE;
-    }
-    return active;
-}
-
-auto FOClient::IsScreenPresent(int screen) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    vector<int> active_screens;
-    GetActiveScreen(&active_screens);
-    return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
-}
-
-void FOClient::ShowScreen(int screen, const map<string, any_t>& params)
-{
-    STACK_TRACE_ENTRY();
-
-    RunScreenScript(true, screen, params);
-}
-
-void FOClient::HideScreen(int screen)
-{
-    STACK_TRACE_ENTRY();
-
-    if (screen == SCREEN_NONE) {
-        screen = GetActiveScreen(nullptr);
-    }
-    if (screen == SCREEN_NONE) {
-        return;
-    }
-
-    RunScreenScript(false, screen, {});
-}
-
-void FOClient::RunScreenScript(bool show, int screen, const map<string, any_t>& params)
-{
-    STACK_TRACE_ENTRY();
-
-    OnScreenChange.Fire(show, screen, params);
-}
-
 void FOClient::UnloadMap()
 {
     STACK_TRACE_ENTRY();
@@ -3308,6 +3167,8 @@ void FOClient::UnloadMap()
     _globalMapCritters.clear();
 
     SndMngr.StopSounds();
+
+    _mapLoaded = false;
 }
 
 void FOClient::LmapPrepareMap()
@@ -3386,16 +3247,6 @@ void FOClient::LmapPrepareMap()
     }
 
     _lmapPrepareNextTime = GameTime.FrameTime() + std::chrono::milliseconds {1000};
-}
-
-void FOClient::WaitDraw()
-{
-    STACK_TRACE_ENTRY();
-
-    if (_waitPic) {
-        SprMngr.DrawSpriteSize(_waitPic.get(), {0, 0}, {Settings.ScreenWidth, Settings.ScreenHeight}, true, true, COLOR_SPRITE);
-        SprMngr.Flush();
-    }
 }
 
 void FOClient::CleanupSpriteCache()
@@ -3551,9 +3402,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
-    else if (cmd == "DrawWait") {
-        WaitDraw();
-    }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {
             const auto hx = strex(args[1]).toUInt();
@@ -3574,17 +3422,19 @@ void FOClient::Connect(string_view login, string_view password, int reason)
 
     RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
 
+    if (reason == _initNetReason) {
+        return;
+    }
+
     _loginName = login;
     _loginPassword = password;
+    _initNetReason = reason;
 
-    if (!_conn.IsConnected()) {
-        _initNetReason = reason;
-    }
-    else {
-        if (reason == INIT_NET_REASON_LOGIN) {
+    if (_conn.IsConnected()) {
+        if (_initNetReason == INIT_NET_REASON_LOGIN) {
             Net_SendLogIn();
         }
-        else if (reason == INIT_NET_REASON_REG) {
+        else if (_initNetReason == INIT_NET_REASON_REG) {
             Net_SendCreatePlayer();
         }
     }
@@ -3595,10 +3445,6 @@ void FOClient::Disconnect()
     STACK_TRACE_ENTRY();
 
     _conn.Disconnect();
-
-    if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
-        ShowMainScreen(SCREEN_LOGIN, {});
-    }
 }
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
@@ -3786,7 +3632,6 @@ void FOClient::ProcessVideo()
             _video.reset();
             _videoTex.reset();
             SndMngr.StopMusic();
-            ScreenFadeOut();
         }
     }
 
