@@ -1496,6 +1496,8 @@ void FOClient::Net_OnCritterMoveSpeed()
     cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
     cr->Moving.Speed = speed;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+
+    cr->AnimateStay();
 }
 
 void FOClient::Net_OnCritterAction()
