@@ -3854,8 +3854,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod(name, strex("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
     }
 
-#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) \
-    AS_VERIFY(engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0))
+#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) AS_VERIFY(engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0));
 
     unordered_set<string> strong_type_registered;
 
