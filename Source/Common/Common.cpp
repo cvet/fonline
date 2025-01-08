@@ -1164,7 +1164,9 @@ extern auto MemMalloc(size_t size) -> void*
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    return tracy::rpmalloc(size);
+    void* p = tracy::rpmalloc(size);
+    TracyAlloc(p, size);
+    return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpmalloc(size);
 #else
@@ -1178,7 +1180,9 @@ extern auto MemCalloc(size_t num, size_t size) -> void*
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    return tracy::rpcalloc(num, size);
+    void* p = tracy::rpcalloc(num, size);
+    TracyAlloc(p, num * size);
+    return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpcalloc(num, size);
 #else
@@ -1192,7 +1196,10 @@ extern auto MemRealloc(void* ptr, size_t size) -> void*
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    return tracy::rprealloc(ptr, size);
+    TracyFree(ptr);
+    void* p = tracy::rprealloc(ptr, size);
+    TracyAlloc(p, size);
+    return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rprealloc(ptr, size);
 #else
@@ -1205,6 +1212,7 @@ extern void MemFree(void* ptr)
     NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
+    TracyFree(ptr);
     tracy::rpfree(ptr);
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     rpfree(ptr);
