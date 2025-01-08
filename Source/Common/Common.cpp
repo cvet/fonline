@@ -213,10 +213,9 @@ private:
 };
 
 static BackwardOStreamBuffer BackwardOStreamBuf;
-extern std::ostream BackwardOStream;
-std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
+extern std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
 
-void CreateGlobalData()
+extern void CreateGlobalData()
 {
     STACK_TRACE_ENTRY();
 
@@ -227,7 +226,7 @@ void CreateGlobalData()
     InitBackupMemoryChunks();
 }
 
-void DeleteGlobalData()
+extern void DeleteGlobalData()
 {
     STACK_TRACE_ENTRY();
 
@@ -261,7 +260,7 @@ static auto InsertCatchedMark(const string& st) -> string
     return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
 }
 
-void ReportExceptionAndExit(const std::exception& ex) noexcept
+extern void ReportExceptionAndExit(const std::exception& ex) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -295,7 +294,7 @@ void ReportExceptionAndExit(const std::exception& ex) noexcept
     ExitApp(false);
 }
 
-void ReportExceptionAndContinue(const std::exception& ex) noexcept
+extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -327,14 +326,14 @@ void ReportExceptionAndContinue(const std::exception& ex) noexcept
     }
 }
 
-void ShowExceptionMessageBox(bool enabled) noexcept
+extern void ShowExceptionMessageBox(bool enabled) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
     ExceptionMessageBox = enabled;
 }
 
-void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
+extern void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -346,7 +345,7 @@ void ReportStrongAssertAndExit(string_view message, const char* file, int line) 
     }
 }
 
-void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
+extern void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -358,7 +357,7 @@ void ReportVerifyFailed(string_view message, const char* file, int line) noexcep
     }
 }
 
-void PushStackTrace(const SourceLocationData& loc) noexcept
+extern void PushStackTrace(const SourceLocationData& loc) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -373,7 +372,7 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
 #endif
 }
 
-void PopStackTrace() noexcept
+extern void PopStackTrace() noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -386,7 +385,7 @@ void PopStackTrace() noexcept
 #endif
 }
 
-auto GetStackTrace() -> string
+extern auto GetStackTrace() -> string
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -420,7 +419,7 @@ auto GetStackTrace() -> string
 #endif
 }
 
-auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
+extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -440,7 +439,7 @@ auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
 #endif
 }
 
-auto GetRealStackTrace() -> string
+extern auto GetRealStackTrace() -> string
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -495,7 +494,7 @@ auto GetRealStackTrace() -> string
 static bool RunInDebugger = false;
 static std::once_flag RunInDebuggerOnce;
 
-auto IsRunInDebugger() noexcept -> bool
+extern auto IsRunInDebugger() noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -540,7 +539,7 @@ auto IsRunInDebugger() noexcept -> bool
     return RunInDebugger;
 }
 
-auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
+extern auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -568,7 +567,7 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> b
     return false;
 }
 
-void CreateDumpMessage(string_view appendix, string_view message)
+extern void CreateDumpMessage(string_view appendix, string_view message)
 {
     STACK_TRACE_ENTRY();
 
@@ -880,7 +879,7 @@ void WorkThread::ThreadEntry() noexcept
 
 static thread_local string ThreadName;
 
-void SetThisThreadName(const string& name)
+extern void SetThisThreadName(const string& name)
 {
     STACK_TRACE_ENTRY();
 
@@ -893,7 +892,7 @@ void SetThisThreadName(const string& name)
 #endif
 }
 
-auto GetThisThreadName() -> const string&
+extern auto GetThisThreadName() -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -1159,12 +1158,67 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 
 #endif
 
+extern auto MemMalloc(size_t size) -> void*
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    tracy::InitRpmalloc();
+    return tracy::rpmalloc(size);
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    return rpmalloc(size);
+#else
+    return malloc(size);
+#endif
+}
+
+extern auto MemCalloc(size_t num, size_t size) -> void*
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    tracy::InitRpmalloc();
+    return tracy::rpcalloc(num, size);
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    return rpcalloc(num, size);
+#else
+    return calloc(num, size);
+#endif
+}
+
+extern auto MemRealloc(void* ptr, size_t size) -> void*
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    tracy::InitRpmalloc();
+    return tracy::rprealloc(ptr, size);
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    return rprealloc(ptr, size);
+#else
+    return realloc(ptr, size);
+#endif
+}
+
+extern void MemFree(void* ptr)
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    tracy::rpfree(ptr);
+#elif FO_HAVE_RPMALLOC && !FO_TRACY
+    rpfree(ptr);
+#else
+    free(ptr);
+#endif
+}
+
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
 static unique_ptr<unique_ptr<uint8[]>[]> BackupMemoryChunks;
 static std::atomic_size_t BackupMemoryChunksCount;
 
-void InitBackupMemoryChunks()
+extern void InitBackupMemoryChunks()
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1177,7 +1231,7 @@ void InitBackupMemoryChunks()
     BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
 }
 
-auto FreeBackupMemoryChunk() noexcept -> bool
+extern auto FreeBackupMemoryChunk() noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1195,7 +1249,7 @@ auto FreeBackupMemoryChunk() noexcept -> bool
     }
 }
 
-void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
+extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1220,7 +1274,7 @@ void ReportBadAlloc(string_view message, string_view type_str, size_t count, siz
     }
 }
 
-void ReportAndExit(string_view message) noexcept
+extern void ReportAndExit(string_view message) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 

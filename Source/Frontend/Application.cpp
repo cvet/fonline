@@ -58,14 +58,6 @@
 #include "backward.hpp"
 #endif
 
-#if FO_HAVE_RPMALLOC
-#if FO_TRACY
-#include "client/tracy_rpmalloc.hpp"
-#else
-#include "rpmalloc.h"
-#endif
-#endif
-
 #include "WinApiUndef-Include.h"
 
 Application* App;
@@ -208,9 +200,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 {
     STACK_TRACE_ENTRY();
 
-#if FO_HAVE_RPMALLOC
-    SDL_SetMemoryFunctions(&rpmalloc, &rpcalloc, &rprealloc, &rpfree);
-#endif
+    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
     SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_NAME);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");

@@ -370,6 +370,12 @@ public:
     }
 };
 
+// Custom C allocators
+extern auto MemMalloc(size_t size) -> void*;
+extern auto MemCalloc(size_t num, size_t size) -> void*;
+extern auto MemRealloc(void* ptr, size_t size) -> void*;
+extern void MemFree(void* ptr);
+
 // Basic types with safe allocator
 using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
 using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
