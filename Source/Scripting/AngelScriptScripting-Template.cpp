@@ -3189,35 +3189,6 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 }
 
 template<typename T>
-static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
-{
-    NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    return self.underlying_value();
-
-#else
-    UNUSED_VARIABLE(self);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename T>
-static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
-{
-    NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    self.underlying_value() = value;
-
-#else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(value);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename T>
 static auto StrongType_GetStr(const T& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
@@ -3884,9 +3855,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod(name, strex("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
     }
 
-#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) \
-    AS_VERIFY(engine->RegisterObjectMethod(name, strex("{} get_value() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(name, strex("void set_value({})", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS(StrongType_SetUnderlying<type>), SCRIPT_FUNC_THIS_CONV));
+#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) AS_VERIFY(engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0));
 
     unordered_set<string> strong_type_registered;
 
