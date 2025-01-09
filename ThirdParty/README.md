@@ -25,6 +25,7 @@
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
 * ufbx - [ufbx-0.15.0](https://github.com/ufbx/ufbx)
+* unordered_dense - [unordered_dense-4.5.0](https://github.com/martinus/unordered_dense)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib-1.3.1](https://www.zlib.net/)

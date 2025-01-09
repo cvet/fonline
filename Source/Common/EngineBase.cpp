@@ -84,7 +84,7 @@ void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_t
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
-    RUNTIME_ASSERT(_enums.count(string(name)) == 0);
+    RUNTIME_ASSERT(_enums.count(name) == 0);
 
     unordered_map<int, string> key_values_rev;
 
@@ -96,12 +96,12 @@ void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_t
         _enumsFull[full_key] = value;
     }
 
-    _enums[string(name)] = std::move(key_values);
-    _enumsRev[string(name)] = std::move(key_values_rev);
-    _enumTypes[string(name)] = std::move(underlying_type);
+    _enums[name] = std::move(key_values);
+    _enumsRev[name] = std::move(key_values_rev);
+    _enumTypes[name] = std::move(underlying_type);
 }
 
-void FOEngineBase::RegisterValueType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
+void FOEngineBase::RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
 {
     STACK_TRACE_ENTRY();
 
@@ -318,7 +318,7 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     return info;
 }
 
-auto FOEngineBase::GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool
+auto FOEngineBase::GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -335,7 +335,7 @@ auto FOEngineBase::GetEnumInfo(const string& enum_name, const BaseTypeInfo** und
     return true;
 }
 
-auto FOEngineBase::GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
+auto FOEngineBase::GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -354,11 +354,12 @@ auto FOEngineBase::GetValueTypeInfo(const string& type_name, size_t& size, const
     return true;
 }
 
-auto FOEngineBase::ResolveEnumValue(const string& enum_value_name, bool* failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
     const auto it = _enumsFull.find(enum_value_name);
+
     if (it == _enumsFull.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum full value {}", enum_value_name);
@@ -372,11 +373,12 @@ auto FOEngineBase::ResolveEnumValue(const string& enum_value_name, bool* failed)
     return it->second;
 }
 
-auto FOEngineBase::ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
     const auto enum_it = _enums.find(enum_name);
+
     if (enum_it == _enums.end()) {
         if (failed != nullptr) {
             WriteLog("Invalid enum {}", enum_name);
@@ -388,6 +390,7 @@ auto FOEngineBase::ResolveEnumValue(const string& enum_name, const string& value
     }
 
     const auto value_it = enum_it->second.find(value_name);
+
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
             WriteLog("Can't resolve {} for enum {}", value_name, enum_name);
@@ -401,7 +404,7 @@ auto FOEngineBase::ResolveEnumValue(const string& enum_name, const string& value
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool* failed) const -> const string&
+auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -432,7 +435,7 @@ auto FOEngineBase::ResolveEnumValueName(const string& enum_name, int value, bool
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
+auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -444,10 +447,10 @@ auto FOEngineBase::ResolveGenericValue(const string& str, bool* failed) -> int
     }
 
     if (str[0] == '@') {
-        return ToHashedString(string_view(str).substr(1)).as_int();
+        return ToHashedString(str.substr(1)).as_int();
     }
     else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
-        return ToHashedString(string_view(str).substr(str.rfind(':') + 1)).as_int();
+        return ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
     }
     else if (strex(str).isNumber()) {
         return strex(str).toInt();

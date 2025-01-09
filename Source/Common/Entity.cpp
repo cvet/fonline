@@ -90,7 +90,7 @@ auto Entity::GetPropertiesForEdit() noexcept -> Properties&
     return _props;
 }
 
-auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>&
+auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&
 {
     STACK_TRACE_ENTRY();
 
@@ -103,14 +103,14 @@ auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallback
     return _events->emplace(event_name, vector<EventCallbackData>()).first->second;
 }
 
-void Entity::SubscribeEvent(const string& event_name, EventCallbackData&& callback)
+void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback)
 {
     STACK_TRACE_ENTRY();
 
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
 
-void Entity::UnsubscribeEvent(const string& event_name, const void* subscription_ptr) noexcept
+void Entity::UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -121,7 +121,7 @@ void Entity::UnsubscribeEvent(const string& event_name, const void* subscription
     }
 }
 
-void Entity::UnsubscribeAllEvent(const string& event_name) noexcept
+void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -134,7 +134,7 @@ void Entity::UnsubscribeAllEvent(const string& event_name) noexcept
     }
 }
 
-auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& args) noexcept -> bool
+auto Entity::FireEvent(string_view event_name, const initializer_list<void*>& args) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 

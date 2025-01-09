@@ -121,9 +121,14 @@
 #include <variant>
 #include <vector>
 
+// Small vector
 #define GCH_SMALL_VECTOR_DEFAULT_SIZE 64
 #define GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
-#include <small_vector.hpp>
+#include "small_vector.hpp"
+
+// Custom hashmaps
+#include "ankerl/unordered_dense.h"
+#define HASHNS ankerl::unordered_dense
 
 // OS specific API
 #if FO_MAC || FO_IOS
@@ -162,7 +167,7 @@ DISABLE_WARNINGS_POP()
 #include <span>
 using std::span;
 #else
-#include <span.hpp>
+#include "span.hpp"
 using tcb::span;
 #endif
 
@@ -248,13 +253,13 @@ public:
         (void)other;
     }
     template<class U>
-    auto operator==(const SafeAllocator<U>& other) const noexcept -> bool
+    [[nodiscard]] auto operator==(const SafeAllocator<U>& other) const noexcept -> bool
     {
         (void)other;
         return true;
     }
     template<class U>
-    auto operator!=(const SafeAllocator<U>& other) const noexcept -> bool
+    [[nodiscard]] auto operator!=(const SafeAllocator<U>& other) const noexcept -> bool
     {
         (void)other;
         return false;
@@ -392,12 +397,12 @@ using multimap = std::multimap<K, V, std::less<>, SafeAllocator<pair<const K, V>
 template<typename K>
 using set = std::set<K, std::less<>, SafeAllocator<K>>;
 
-template<typename K, typename V, typename H = std::hash<K>>
-using unordered_map = std::unordered_map<K, V, H, std::equal_to<K>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename V, typename H = std::hash<K>>
+template<typename K, typename V, typename H = HASHNS::hash<K>>
+using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
+template<typename K, typename V, typename H = HASHNS::hash<K>>
 using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<K>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename H = std::hash<K>>
-using unordered_set = std::unordered_set<K, H, std::equal_to<K>, SafeAllocator<K>>;
+template<typename K, typename H = HASHNS::hash<K>>
+using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<K>, SafeAllocator<K>>;
 
 template<typename T, unsigned InlineCapacity>
 using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
@@ -430,21 +435,6 @@ inline constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
         ptr.reset();
     }
 }
-
-// Hashing
-inline auto hash_combine(size_t h1, size_t h2) -> size_t
-{
-    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-}
-
-struct pair_hash
-{
-    template<typename T, typename U>
-    auto operator()(const std::pair<T, U>& v) const noexcept -> size_t
-    {
-        return hash_combine(std::hash<T> {}(v.first), std::hash<U> {}(v.second));
-    }
-};
 
 // Enum formatter
 // Todo: improve named enums
@@ -504,9 +494,14 @@ template<typename T>
 constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 template<typename T>
-struct std::hash<strong_type<T>>
+struct HASHNS::hash<strong_type<T>>
 {
-    auto operator()(const strong_type<T>& v) const noexcept -> size_t { return std::hash<typename strong_type<T>::underlying_type> {}(v.underlying_value()); }
+    using is_avalanching = void;
+    auto operator()(const strong_type<T>& v) const noexcept -> size_t
+    {
+        static_assert(std::has_unique_object_representations_v<strong_type<T>>);
+        return detail::wyhash::hash(v.underlying_value());
+    }
 };
 
 template<typename T>
@@ -1248,6 +1243,11 @@ template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 }
 
 // Generic helpers
+template<typename...>
+struct always_false : std::false_type
+{
+};
+
 template<typename... T>
 FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 {
@@ -1285,6 +1285,71 @@ constexpr bool IsEnumSet(T value, T check) noexcept
 {
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
+
+// Formatters
+template<typename T>
+inline auto parse_from_string(const string& str) -> T;
+
+template<typename T>
+inline auto parse_from_string(const string& str) -> T
+{
+    static_assert(always_false<T>::value, "No specialization exists for parse_from_string");
+}
+
+#define DECLARE_FORMATTER(type, ...) \
+    template<> \
+    struct FMTNS::formatter<type> : formatter<string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            string buf; \
+            FMTNS::format_to(std::back_inserter(buf), __VA_ARGS__); \
+            return formatter<string_view>::format(buf, ctx); \
+        } \
+    }
+
+#define DECLARE_TYPE_PARSER(type, ...) \
+    template<> \
+    inline auto parse_from_string<type>(const string& str) -> type \
+    { \
+        type value = {}; \
+        istringstream sstr {str}; \
+        __VA_ARGS__; \
+        return value; \
+    }
+
+#define DECLARE_TYPE_HASHER(type) \
+    template<> \
+    struct HASHNS::hash<type> \
+    { \
+        using is_avalanching = void; \
+        auto operator()(const type& v) const noexcept \
+        { \
+            static_assert(std::has_unique_object_representations_v<type>); \
+            return detail::wyhash::hash(&v, sizeof(v)); \
+        } \
+    }
+
+#define DECLARE_TYPE_HASHER_EXT(type, ...) \
+    template<> \
+    struct HASHNS::hash<type> \
+    { \
+        using is_avalanching = void; \
+        auto operator()(const type& v) const noexcept \
+        { \
+            static_assert(std::has_unique_object_representations_v<type>); \
+            return detail::wyhash::hash(__VA_ARGS__); \
+        } \
+    }
+
+template<>
+struct HASHNS::hash<string>
+{
+    using is_transparent = void;
+    using is_avalanching = void;
+    auto operator()(std::string_view str) const noexcept -> uint64_t { return hash<std::string_view> {}(str); }
+};
 
 // Data serialization helpers
 DECLARE_EXCEPTION(DataReadingException);
@@ -1571,12 +1636,7 @@ struct ucolor
 };
 static_assert(sizeof(ucolor) == sizeof(uint));
 static_assert(std::is_standard_layout_v<ucolor>);
-
-template<>
-struct std::hash<ucolor>
-{
-    auto operator()(const ucolor& v) const noexcept -> size_t { return std::hash<uint> {}(v.rgba); }
-};
+DECLARE_TYPE_HASHER_EXT(ucolor, v.underlying_value());
 
 template<>
 struct FMTNS::formatter<ucolor> : formatter<string_view>
@@ -1629,12 +1689,7 @@ private:
 };
 static_assert(sizeof(hstring::hash_t) == 4);
 static_assert(std::is_standard_layout_v<hstring>);
-
-template<>
-struct std::hash<hstring>
-{
-    auto operator()(const hstring& v) const noexcept -> size_t { return std::hash<hstring::hash_t> {}(v.as_hash()); }
-};
+DECLARE_TYPE_HASHER_EXT(hstring, v.as_hash());
 
 template<>
 struct FMTNS::formatter<hstring> : formatter<string_view>
@@ -1651,43 +1706,6 @@ template<typename T>
 constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_type_v<T> && !std::is_same_v<T, any_t> && //
     !std::is_same_v<T, string> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && //
     !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value && !is_vector_v<T> && !is_map_v<T>;
-
-template<typename T>
-inline auto parse_from_string(const string& str) -> T;
-
-template<typename...>
-struct always_false : std::false_type
-{
-};
-
-template<typename T>
-inline auto parse_from_string(const string& str) -> T
-{
-    static_assert(always_false<T>::value, "No specialization exists for parse_from_string");
-}
-
-#define DECLARE_FORMATTER(type, ...) \
-    template<> \
-    struct FMTNS::formatter<type> : formatter<string_view> \
-    { \
-        template<typename FormatContext> \
-        auto format(const type& value, FormatContext& ctx) const \
-        { \
-            string buf; \
-            FMTNS::format_to(std::back_inserter(buf), __VA_ARGS__); \
-            return formatter<string_view>::format(buf, ctx); \
-        } \
-    }
-
-#define DECLARE_TYPE_PARSER(type, ...) \
-    template<> \
-    inline auto parse_from_string<type>(const string& str) -> type \
-    { \
-        type value = {}; \
-        istringstream sstr {str}; \
-        __VA_ARGS__; \
-        return value; \
-    }
 
 // Position types
 ///@ ExportValueType isize isize HardStrong Layout = int-width+int-height
@@ -1716,6 +1734,7 @@ static_assert(std::is_standard_layout_v<isize>);
 static_assert(sizeof(isize) == 8);
 DECLARE_FORMATTER(isize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
+DECLARE_TYPE_HASHER(isize);
 
 ///@ ExportValueType ipos ipos HardStrong Layout = int-x+int-y
 struct ipos
@@ -1741,12 +1760,7 @@ static_assert(std::is_standard_layout_v<ipos>);
 static_assert(sizeof(ipos) == 8);
 DECLARE_FORMATTER(ipos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos, sstr >> value.x, sstr >> value.y);
-
-template<>
-struct std::hash<ipos>
-{
-    auto operator()(const ipos& v) const noexcept -> size_t { return hash_combine(std::hash<int> {}(v.x), std::hash<int> {}(v.y)); }
-};
+DECLARE_TYPE_HASHER(ipos);
 
 ///@ ExportValueType irect irect HardStrong Layout = int-x+int-y+int-width+int-height
 struct irect
@@ -1792,6 +1806,7 @@ static_assert(std::is_standard_layout_v<irect>);
 static_assert(sizeof(irect) == 16);
 DECLARE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
 DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
+DECLARE_TYPE_HASHER(irect);
 
 ///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
 struct ipos16
@@ -1817,6 +1832,7 @@ static_assert(std::is_standard_layout_v<ipos16>);
 static_assert(sizeof(ipos16) == 4);
 DECLARE_FORMATTER(ipos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
+DECLARE_TYPE_HASHER(ipos16);
 
 ///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-x+uint16-y
 struct upos16
@@ -1842,6 +1858,7 @@ static_assert(std::is_standard_layout_v<upos16>);
 static_assert(sizeof(upos16) == 4);
 DECLARE_FORMATTER(upos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
+DECLARE_TYPE_HASHER(upos16);
 
 ///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-x+int8-y
 struct ipos8
@@ -1867,6 +1884,7 @@ static_assert(std::is_standard_layout_v<ipos8>);
 static_assert(sizeof(ipos8) == 2);
 DECLARE_FORMATTER(ipos8, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
+DECLARE_TYPE_HASHER(ipos8);
 
 ///@ ExportValueType fsize fsize HardStrong Layout = float-width+float-height
 struct fsize
@@ -2569,14 +2587,13 @@ class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
-    // Todo: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
     [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
-    [[nodiscard]] virtual auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
-    [[nodiscard]] virtual auto GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int = 0;
+    [[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
+    [[nodiscard]] virtual auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
 };
 

@@ -145,25 +145,22 @@ void MapView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    _hexField.reset();
-    _lightSources.clear();
-
     for (auto* cr : _critters) {
-        if (cr->IsSpriteValid()) {
-            cr->InvalidateSprite();
-        }
-
         cr->DestroySelf();
     }
-
     for (auto* item : _allItems) {
-        if (item->IsSpriteValid()) {
-            item->InvalidateSprite();
-        }
-
         item->DestroySelf();
     }
 
+    _mapSprites.Invalidate();
+    _hexField.reset();
+    _viewField.clear();
+    _fogLookPoints.clear();
+    _fogShootPoints.clear();
+    _visibleLightSources.clear();
+    _lightPoints.clear();
+    _lightSoftPoints.clear();
+    _lightSources.clear();
     _critters.clear();
     _crittersMap.clear();
     _allItems.clear();
@@ -172,6 +169,7 @@ void MapView::OnDestroySelf()
     _nonTileItems.clear();
     _processingItems.clear();
     _itemsMap.clear();
+    _spritePatterns.clear();
 }
 
 void MapView::EnableMapperMode()

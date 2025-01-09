@@ -243,7 +243,7 @@ private:
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
     unordered_map<string, SpriteFactory*> _spriteFactoryMap {};
     unordered_set<hstring> _nonFoundSprites {};
-    unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>, pair_hash> _copyableSpriteCache {};
+    unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
 
     RenderTarget* _rtMain {};

@@ -201,12 +201,7 @@ static_assert(std::is_standard_layout_v<mpos>);
 static_assert(sizeof(mpos) == 4);
 DECLARE_FORMATTER(mpos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(mpos, sstr >> value.x, sstr >> value.y);
-
-template<>
-struct std::hash<mpos>
-{
-    auto operator()(const mpos& v) const noexcept -> size_t { return hash_combine(std::hash<uint16> {}(v.x), std::hash<uint16> {}(v.y)); }
-};
+DECLARE_TYPE_HASHER(mpos);
 
 ///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
 struct msize
@@ -252,6 +247,7 @@ static_assert(std::is_standard_layout_v<msize>);
 static_assert(sizeof(msize) == 4);
 DECLARE_FORMATTER(msize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(msize, sstr >> value.width, sstr >> value.height);
+DECLARE_TYPE_HASHER(msize);
 
 class AnimationResolver
 {
@@ -357,10 +353,10 @@ public:
     void SetValueAsInt(int prop_index, int value);
     void SetValueAsAny(const Property* prop, const any_t& value);
     void SetValueAsAny(int prop_index, const any_t& value);
-    void SubscribeEvent(const string& event_name, EventCallbackData&& callback);
-    void UnsubscribeEvent(const string& event_name, const void* subscription_ptr) noexcept;
-    void UnsubscribeAllEvent(const string& event_name) noexcept;
-    auto FireEvent(const string& event_name, const initializer_list<void*>& args) noexcept -> bool;
+    void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
+    void UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept;
+    void UnsubscribeAllEvent(string_view event_name) noexcept;
+    auto FireEvent(string_view event_name, const initializer_list<void*>& args) noexcept -> bool;
     void AddInnerEntity(hstring entry, Entity* entity);
     void RemoveInnerEntity(hstring entry, Entity* entity);
     void ClearInnerEntities();
@@ -380,14 +376,14 @@ protected:
     bool _nonConstHelper {};
 
 private:
-    auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>&;
+    auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
     void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
     void UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept;
     auto FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool;
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
-    unique_ptr<unordered_map<hstring, vector<Entity*>>> _innerEntities {};
+    unique_ptr<map<hstring, vector<Entity*>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};

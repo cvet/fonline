@@ -127,9 +127,8 @@ private:
         size_t FileSize {};
         uint64 WriteTime {};
     };
-    using IndexMap = unordered_map<string, FileEntry>;
 
-    IndexMap _filesTree {};
+    unordered_map<string, FileEntry> _filesTree {};
     FileNameVec _filesTreeNames {};
     string _basePath {};
 };
@@ -151,12 +150,10 @@ public:
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
-    using IndexMap = unordered_map<string, uint8*>;
-
     auto ReadTree() -> bool;
 
     mutable DiskFile _datFile;
-    IndexMap _filesTree {};
+    unordered_map<string, uint8*> _filesTree {};
     FileNameVec _filesTreeNames {};
     string _fileName {};
     unique_ptr<uint8[]> _memTree {};
@@ -186,11 +183,10 @@ private:
         unz_file_pos Pos {};
         int UncompressedSize {};
     };
-    using IndexMap = unordered_map<string, ZipFileInfo>;
 
     auto ReadTree() -> bool;
 
-    IndexMap _filesTree {};
+    unordered_map<string, ZipFileInfo> _filesTree {};
     FileNameVec _filesTreeNames {};
     string _fileName {};
     unzFile _zipHandle {};
@@ -220,10 +216,9 @@ private:
         size_t FileSize {};
         uint64 WriteTime {};
     };
-    using IndexMap = unordered_map<string, FileEntry>;
 
     string _packName {"@AndroidAssets"};
-    IndexMap _filesTree {};
+    unordered_map<string, FileEntry> _filesTree {};
     FileNameVec _filesTreeNames {};
 };
 
@@ -277,6 +272,7 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
 
     if (is_file_present(path)) {
         const string ext = strex(path).getFileExtension();
+
         if (ext == "dat") {
             return SafeAlloc::MakeUnique<FalloutDat>(path);
         }
@@ -365,6 +361,7 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
     STACK_TRACE_ENTRY();
 
     const auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
+
     if (!file) {
         return false;
     }
@@ -379,6 +376,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     STACK_TRACE_ENTRY();
 
     auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
+
     if (!file) {
         return nullptr;
     }
@@ -424,7 +422,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
-        _filesTree.insert(std::make_pair(string(path), fe));
+        _filesTree.emplace(path, std::move(fe));
         _filesTreeNames.emplace_back(path);
     });
 }
@@ -435,7 +433,8 @@ auto CachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time
 
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return false;
     }
@@ -450,13 +449,15 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return nullptr;
     }
 
     const auto& fe = it->second;
     auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+
     if (!file) {
         throw DataSourceException("Can't read file from cached dir", _basePath, path);
     }
@@ -560,8 +561,8 @@ auto FalloutDat::ReadTree() -> bool
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
                 }
 
-                _filesTree.insert(std::make_pair(name, ptr + 4 + fnsz + 7));
-                _filesTreeNames.push_back(name);
+                _filesTree.emplace(name, ptr + 4 + fnsz + 7);
+                _filesTreeNames.emplace_back(std::move(name));
             }
 
             ptr += static_cast<size_t>(fnsz) + 24;
@@ -637,8 +638,8 @@ auto FalloutDat::ReadTree() -> bool
         if (name_len != 0) {
             string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
 
-            _filesTree.insert(std::make_pair(name, ptr + 4 + name_len));
-            _filesTreeNames.push_back(name);
+            _filesTree.emplace(name, ptr + 4 + name_len);
+            _filesTreeNames.emplace_back(std::move(name));
         }
 
         ptr += static_cast<size_t>(4) + name_len + 13;
@@ -657,7 +658,8 @@ auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_tim
         return false;
     }
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return false;
     }
@@ -674,7 +676,8 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return nullptr;
     }
@@ -892,6 +895,7 @@ ZipFile::ZipFile(string_view fname)
     }
 
     _zipHandle = unzOpen2(string(fname).c_str(), &ffunc);
+
     if (_zipHandle == nullptr) {
         throw DataSourceException("Can't read zip file", fname);
     }
@@ -915,6 +919,7 @@ auto ZipFile::ReadTree() -> bool
     STACK_TRACE_ENTRY();
 
     unz_global_info gi;
+
     if (unzGetGlobalInfo(_zipHandle, &gi) != UNZ_OK || gi.number_entry == 0) {
         return false;
     }
@@ -922,24 +927,25 @@ auto ZipFile::ReadTree() -> bool
     ZipFileInfo zip_info;
     unz_file_pos pos;
     unz_file_info info;
+
     for (uLong i = 0; i < gi.number_entry; i++) {
         if (unzGetFilePos(_zipHandle, &pos) != UNZ_OK) {
             return false;
         }
 
         char buf[4096];
+
         if (unzGetCurrentFileInfo(_zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             return false;
         }
 
-        if ((info.external_fa & 0x10) == 0) // Not folder
-        {
+        if ((info.external_fa & 0x10) == 0) { // Not folder
             string name = strex(buf).normalizePathSlashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
-            _filesTree.insert(std::make_pair(name, zip_info));
-            _filesTreeNames.push_back(name);
+            _filesTree.emplace(name, zip_info);
+            _filesTreeNames.emplace_back(std::move(name));
         }
 
         if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle) != UNZ_OK) {
@@ -956,7 +962,8 @@ auto ZipFile::IsFilePresent(string_view path, size_t& size, uint64& write_time) 
 
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return false;
     }
@@ -971,7 +978,8 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return nullptr;
     }
@@ -1020,9 +1028,9 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    const auto names = strex(str).normalizeLineEndings().split('\n');
+    auto names = strex(str).normalizeLineEndings().split('\n');
 
-    for (const auto& name : names) {
+    for (auto&& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);
 
         if (!file) {
@@ -1034,8 +1042,8 @@ AndroidAssets::AndroidAssets()
         fe.FileSize = file.GetSize();
         fe.WriteTime = file.GetWriteTime();
 
-        _filesTree.insert(std::make_pair(name, fe));
-        _filesTreeNames.push_back(name);
+        _filesTree.emplace(name, std::move(fe));
+        _filesTreeNames.emplace_back(std::move(name));
     }
 }
 
@@ -1045,7 +1053,8 @@ auto AndroidAssets::IsFilePresent(string_view path, size_t& size, uint64& write_
 
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return false;
     }
@@ -1060,13 +1069,15 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = _filesTree.find(string(path));
+    const auto it = _filesTree.find(path);
+
     if (it == _filesTree.end()) {
         return nullptr;
     }
 
     const auto& fe = it->second;
     auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+
     if (!file) {
         throw DataSourceException("Can't open file in android assets", path);
     }

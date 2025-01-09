@@ -1357,7 +1357,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             check_next_param();
 
             const auto& group = flags[i + 2];
-            if (const auto it = _propertyGroups.find(string(group)); it != _propertyGroups.end()) {
+            if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
                 it->second.push_back(prop.get());
             }
             else {

@@ -127,7 +127,7 @@ auto ImageBaker::IsExtSupported(string_view ext) const -> bool
 
     auto locker = std::unique_lock {_filesLocker};
 
-    if (const auto it = _fileLoaders.find(string(ext)); it != _fileLoaders.end() && it->second) {
+    if (const auto it = _fileLoaders.find(ext); it != _fileLoaders.end() && it->second) {
         return true;
     }
     else {
@@ -142,7 +142,7 @@ void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string_view>& fi
     auto locker = std::unique_lock {_filesLocker};
 
     for (const auto& ext : file_extensions) {
-        _fileLoaders[string(ext)] = loader;
+        _fileLoaders[ext] = loader;
     }
 }
 
