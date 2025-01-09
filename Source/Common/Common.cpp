@@ -213,7 +213,8 @@ private:
 };
 
 static BackwardOStreamBuffer BackwardOStreamBuf;
-extern std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
+extern std::ostream BackwardOStream;
+std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
 
 extern void CreateGlobalData()
 {
