@@ -3013,7 +3013,7 @@ rpfree(void* ptr) {
 	_rpmalloc_deallocate(ptr);
 }
 
-extern inline RPMALLOC_ALLOCATOR void*
+extern RPMALLOC_ALLOCATOR void*
 rpcalloc(size_t num, size_t size) {
 	size_t total;
 #if ENABLE_VALIDATE_ARGS
