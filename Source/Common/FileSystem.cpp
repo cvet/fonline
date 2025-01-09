@@ -461,7 +461,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
         }
     }
 
-    if (const auto it = _nameToIndex.find(string(name)); it != _nameToIndex.end()) {
+    if (const auto it = _nameToIndex.find(name); it != _nameToIndex.end()) {
         const auto& fh = _allFiles[it->second];
         auto fs = fh.GetSize();
         auto wt = fh.GetWriteTime();
@@ -489,7 +489,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
         }
     }
 
-    if (const auto it = _pathToIndex.find(string(path)); it != _pathToIndex.end()) {
+    if (const auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
         const auto& fh = _allFiles[it->second];
         auto fs = fh.GetSize();
         auto wt = fh.GetWriteTime();

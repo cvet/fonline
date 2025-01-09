@@ -139,6 +139,7 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
 * [rpmalloc](https://github.com/mjansson/rpmalloc) - general purpose memory allocator
 * [ufbx](https://github.com/ufbx/ufbx) - fbx file format loader
+* [unordered_dense](https://github.com/martinus/unordered_dense) - fast and densely stored hashmap and hashse
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library

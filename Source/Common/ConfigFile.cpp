@@ -55,6 +55,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
     }
 
     string section_content;
+
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
         section_content.reserve(str.length());
     }

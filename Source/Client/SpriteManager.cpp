@@ -394,26 +394,14 @@ void SpriteManager::RefreshScissor()
         _scissorRect.Bottom = _scissorStack[3];
 
         for (size_t i = 4; i < _scissorStack.size(); i += 4) {
-            if (_scissorStack[i + 0] > _scissorRect.Left) {
-                _scissorRect.Left = _scissorStack[i + 0];
-            }
-            if (_scissorStack[i + 1] > _scissorRect.Top) {
-                _scissorRect.Top = _scissorStack[i + 1];
-            }
-            if (_scissorStack[i + 2] < _scissorRect.Right) {
-                _scissorRect.Right = _scissorStack[i + 2];
-            }
-            if (_scissorStack[i + 3] < _scissorRect.Bottom) {
-                _scissorRect.Bottom = _scissorStack[i + 3];
-            }
+            _scissorRect.Left = std::max(_scissorStack[i + 0], _scissorRect.Left);
+            _scissorRect.Top = std::max(_scissorStack[i + 1], _scissorRect.Top);
+            _scissorRect.Right = std::min(_scissorStack[i + 2], _scissorRect.Right);
+            _scissorRect.Bottom = std::min(_scissorStack[i + 3], _scissorRect.Bottom);
         }
 
-        if (_scissorRect.Left > _scissorRect.Right) {
-            _scissorRect.Left = _scissorRect.Right;
-        }
-        if (_scissorRect.Top > _scissorRect.Bottom) {
-            _scissorRect.Top = _scissorRect.Bottom;
-        }
+        _scissorRect.Left = std::min(_scissorRect.Left, _scissorRect.Right);
+        _scissorRect.Top = std::min(_scissorRect.Top, _scissorRect.Bottom);
     }
 }
 
@@ -1198,11 +1186,9 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
             y += offset->y;
         }
 
-        const ucolor color = point.PPointColor != nullptr ? *point.PPointColor : point.PointColor;
-
         vbuf[i].PosX = x;
         vbuf[i].PosY = y;
-        vbuf[i].Color = point.PointColor;
+        vbuf[i].Color = point.PPointColor != nullptr ? *point.PPointColor : point.PointColor;
 
         ibuf[i] = static_cast<vindex_t>(i);
     }
@@ -1460,8 +1446,6 @@ void SpriteManager::BuildFont(int index)
 
     NON_CONST_METHOD_HINT();
 
-#define PIXEL_AT(tex_data, width, x, y) (*(reinterpret_cast<ucolor*>(tex_data.data()) + (y) * (width) + (x)))
-
     auto& font = *_allFonts[index];
 
     // Fix texture coordinates
@@ -1483,18 +1467,17 @@ void SpriteManager::BuildFont(int index)
         letter.TexPos[2] = (image_x + x + w + 1.0f) / tex_w;
         letter.TexPos[3] = (image_y + y + h + 1.0f) / tex_h;
 
-        if (letter.Size.height > max_h) {
-            max_h = letter.Size.height;
-        }
+        max_h = std::max(letter.Size.height, max_h);
     }
 
     // Fill data
     font.FontTex = atlas_spr->Atlas->MainTex;
+
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
-    if (font.Letters.count(' ') != 0) {
-        font.SpaceWidth = font.Letters[' '].XAdvance;
+    if (font.Letters.count(static_cast<uint>(' ')) != 0) {
+        font.SpaceWidth = font.Letters[static_cast<uint>(' ')].XAdvance;
     }
 
     const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
@@ -1506,9 +1489,10 @@ void SpriteManager::BuildFont(int index)
     const auto bordered_oy = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
 
     // Read texture data
+    const auto pixel_at = [](vector<ucolor>& tex_data, uint width, int x, int y) -> ucolor& { return tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->Size);
-
     vector<ucolor> data_bordered;
+
     if (si_bordered != nullptr) {
         data_bordered = si_bordered->Atlas->MainTex->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->Size);
     }
@@ -1517,17 +1501,20 @@ void SpriteManager::BuildFont(int index)
     if (font.MakeGray) {
         for (auto y = 0; y < atlas_spr->Size.height; y++) {
             for (auto x = 0; x < atlas_spr->Size.width; x++) {
-                const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, atlas_spr->Size.width, x, y))[3];
+                const auto a = pixel_at(data_normal, atlas_spr->Size.width, x, y).comp.a;
+
                 if (a != 0) {
-                    PIXEL_AT(data_normal, atlas_spr->Size.width, x, y) = ucolor {128, 128, 128, a};
+                    pixel_at(data_normal, atlas_spr->Size.width, x, y) = ucolor {128, 128, 128, a};
+
                     if (si_bordered != nullptr) {
-                        PIXEL_AT(data_bordered, si_bordered->Size.width, x, y) = ucolor {128, 128, 128, a};
+                        pixel_at(data_bordered, si_bordered->Size.width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
-                    PIXEL_AT(data_normal, atlas_spr->Size.width, x, y) = ucolor {0, 0, 0, 0};
+                    pixel_at(data_normal, atlas_spr->Size.width, x, y) = ucolor {0, 0, 0, 0};
+
                     if (si_bordered != nullptr) {
-                        PIXEL_AT(data_bordered, si_bordered->Size.width, x, y) = ucolor {0, 0, 0, 0};
+                        pixel_at(data_bordered, si_bordered->Size.width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
@@ -1540,13 +1527,14 @@ void SpriteManager::BuildFont(int index)
     if (si_bordered != nullptr) {
         for (auto y = 1; y < si_bordered->Size.height - 2; y++) {
             for (auto x = 1; x < si_bordered->Size.width - 2; x++) {
-                if (PIXEL_AT(data_normal, atlas_spr->Size.width, x, y) != ucolor::clear) {
+                if (pixel_at(data_normal, atlas_spr->Size.width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
-                            if (PIXEL_AT(data_bordered, si_bordered->Size.width, ox, oy) == ucolor::clear) {
-                                PIXEL_AT(data_bordered, si_bordered->Size.width, ox, oy) = ucolor {0, 0, 0, 255};
+
+                            if (pixel_at(data_bordered, si_bordered->Size.width, ox, oy) == ucolor::clear) {
+                                pixel_at(data_bordered, si_bordered->Size.width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -1561,6 +1549,7 @@ void SpriteManager::BuildFont(int index)
         tex_h = static_cast<float>(si_bordered->Atlas->Size.height);
         image_x = tex_w * si_bordered->AtlasRect.Left;
         image_y = tex_h * si_bordered->AtlasRect.Top;
+
         for (auto&& [letter_index, letter] : font.Letters) {
             const auto x = static_cast<float>(letter.Pos.x);
             const auto y = static_cast<float>(letter.Pos.y);
@@ -1572,8 +1561,6 @@ void SpriteManager::BuildFont(int index)
             letter.TexBorderedPos[3] = (image_y + y + h + 1.0f) / tex_h;
         }
     }
-
-#undef PIXEL_AT
 }
 
 auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
@@ -1826,7 +1813,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
         let.XAdvance = xa + 1;
     }
 
-    font->LineHeight = font->Letters.count('W') != 0 ? font->Letters['W'].Size.height : base_height;
+    font->LineHeight = font->Letters.count(static_cast<uint>('W')) != 0 ? font->Letters[static_cast<uint>('W')].Size.height : base_height;
     font->YAdvance = font->LineHeight / 2;
     font->MakeGray = true;
 
@@ -1870,7 +1857,7 @@ static void StrCopy(char* to, size_t size, string_view from)
     RUNTIME_ASSERT(to);
     RUNTIME_ASSERT(size > 0);
 
-    if (from.length() == 0) {
+    if (from.empty()) {
         to[0] = 0;
         return;
     }
@@ -2075,14 +2062,13 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         }
 
         if (!infinity_w && curx + x_advance > r.Right) {
-            if (curx > fi.MaxCurX) {
-                fi.MaxCurX = curx;
-            }
+            fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
             if (fmt_type == FORMAT_TYPE_DRAW && IsBitSet(flags, FT_NOBREAK)) {
                 str[i] = 0;
                 break;
             }
+
             if (IsBitSet(flags, FT_NOBREAK_LINE)) {
                 auto j = i;
                 for (; str[j] != 0; j++) {
@@ -2120,6 +2106,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                     letter = '\n';
                     i_advance = 1;
                     StrInsert(&str[i], "\n", 0);
+
                     if (fmt_type == FORMAT_TYPE_DRAW) {
                         for (auto k = FONT_BUF_LEN - 1; k > i; k--) {
                             fi.ColorDots[k] = fi.ColorDots[k - 1];
@@ -2129,13 +2116,16 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
                 if (IsBitSet(flags, FT_ALIGN) && skip_line == 0) {
                     fi.LineSpaceWidth[fi.LinesAll - 1] = 1;
+
                     // Erase next first spaces
                     auto ii = i + i_advance;
+
                     for (j = ii;; j++) {
                         if (str[j] != ' ') {
                             break;
                         }
                     }
+
                     if (j > ii) {
                         StrEraseInterval(&str[ii], j - ii);
                         if (fmt_type == FORMAT_TYPE_DRAW) {
@@ -2184,9 +2174,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 i_advance = 0;
             }
 
-            if (curx > fi.MaxCurX) {
-                fi.MaxCurX = curx;
-            }
+            fi.MaxCurX = std::max(curx, fi.MaxCurX);
             curx = r.Left;
             continue;
         case 0:
@@ -2200,12 +2188,12 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             break;
         }
     }
-    if (curx > fi.MaxCurX) {
-        fi.MaxCurX = curx;
-    }
+
+    fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
     if (skip_line_end != 0) {
         auto len = static_cast<int>(string_view(str).length());
+
         for (auto i = len - 2; i >= 0; i--) {
             if (str[i] == '\n') {
                 str[i] = 0;
@@ -2684,5 +2672,5 @@ auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
         return false;
     }
 
-    return font->Letters.count(letter) > 0;
+    return font->Letters.count(letter) != 0;
 }

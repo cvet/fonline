@@ -67,12 +67,12 @@ public:
     [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
     [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
-    [[nodiscard]] auto GetEnumInfo(const string& enum_name, const BaseTypeInfo** underlying_type) const -> bool override;
-    [[nodiscard]] auto GetValueTypeInfo(const string& type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool override;
-    [[nodiscard]] auto ResolveEnumValue(const string& enum_value_name, bool* failed = nullptr) const -> int override;
-    [[nodiscard]] auto ResolveEnumValue(const string& enum_name, const string& value_name, bool* failed = nullptr) const -> int override;
-    [[nodiscard]] auto ResolveEnumValueName(const string& enum_name, int value, bool* failed = nullptr) const -> const string& override;
-    [[nodiscard]] auto ResolveGenericValue(const string& str, bool* failed = nullptr) -> int override;
+    [[nodiscard]] auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool override;
+    [[nodiscard]] auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
     [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
@@ -82,7 +82,7 @@ public:
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
     void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values);
-    void RegisterValueType(const string& name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout);
+    void RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 

@@ -147,7 +147,7 @@ public:
         [[nodiscard]] auto operator[](const string& key) const -> const Value& { return _value.at(key); }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
-        [[nodiscard]] auto Contains(const string& key) const noexcept -> bool { return _value.count(key) != 0; }
+        [[nodiscard]] auto Contains(string_view key) const noexcept -> bool { return _value.count(key) != 0; }
         [[nodiscard]] auto Copy() const -> Dict;
 
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }

@@ -211,7 +211,7 @@ protected:
     [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const -> bool;
 
     vector<std::function<void()>> _loopCallbacks {};
-    std::unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
+    unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
     vector<ScriptFuncDesc*> _initFunc {};
     unordered_map<uint, std::function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};

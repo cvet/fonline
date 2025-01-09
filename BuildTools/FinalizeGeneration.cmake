@@ -513,6 +513,9 @@ include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gc
 # span
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")
 
+# unordered_dense
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
+
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
     # AngelScript

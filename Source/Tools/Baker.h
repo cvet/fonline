@@ -106,7 +106,7 @@ public:
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
-    [[nodiscard]] auto FindFile(const string& path) const -> File*;
+    [[nodiscard]] auto FindFile(string_view path) const -> File*;
 
     void WriteData(string_view baked_path, const_span<uint8> baked_data);
 

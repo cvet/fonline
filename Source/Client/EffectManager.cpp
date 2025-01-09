@@ -46,7 +46,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto it = _loadedEffects.find(string(path)); it != _loadedEffects.end()) {
+    if (const auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
         return it->second.get();
     }
 

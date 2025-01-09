@@ -1272,10 +1272,10 @@ void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_
     STACK_TRACE_ENTRY();
 
     auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
-    _bakedFiles[string(baked_path)] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
+    _bakedFiles[baked_path] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
 }
 
-auto BakerDataSource::FindFile(const string& path) const -> File*
+auto BakerDataSource::FindFile(string_view path) const -> File*
 {
     STACK_TRACE_ENTRY();
 
@@ -1317,7 +1317,7 @@ auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& writ
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto* file = FindFile(string(path)); file != nullptr) {
+    if (const auto* file = FindFile(path); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
         return true;
@@ -1330,7 +1330,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto* file = FindFile(string(path)); file != nullptr) {
+    if (const auto* file = FindFile(path); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
         return {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};

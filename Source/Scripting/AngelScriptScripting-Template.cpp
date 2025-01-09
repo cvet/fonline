@@ -324,7 +324,7 @@ struct ASContextExtendedData
 {
     bool ExecutionActive {};
     size_t ExecutionCalls {};
-    std::unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
+    unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
     std::string Info {};
     asIScriptContext* Parent {};
     time_point SuspendEndTime {};
@@ -568,9 +568,9 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
     string ExceptionStackTrace {};
-    std::unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
+    unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
     unordered_set<hstring> HashedStrings {};
-    std::unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
+    unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
 };
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
@@ -3618,7 +3618,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
         enum_value_name = strex("{}::{}", enum_info->EnumName, enum_value_name);
     }
 
-    new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
+    new (gen->GetAddressOfReturnLocation()) string(std::move(enum_value_name));
 
 #else
     UNUSED_VARIABLE(gen);
