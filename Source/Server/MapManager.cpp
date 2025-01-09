@@ -84,7 +84,7 @@ void MapManager::LoadFromResources()
         static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, map_file = std::move(map_file_0)]() {
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
-            auto&& static_map = SafeAlloc::MakeUnique<StaticMap>();
+            auto static_map = SafeAlloc::MakeUnique<StaticMap>();
             const auto map_size = map_proto->GetSize();
 
             if (_engine->Settings.ProtoMapStaticGrid) {

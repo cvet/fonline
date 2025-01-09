@@ -358,7 +358,7 @@ private:
     AppAudio() = default;
 
     struct AudioConverter;
-    vector<unique_ptr<AudioConverter>> _converters {};
+    vector<shared_ptr<AudioConverter>> _converters {};
     int _nonConstHelper {};
 };
 

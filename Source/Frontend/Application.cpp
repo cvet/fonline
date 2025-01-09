@@ -1506,7 +1506,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
     RUNTIME_ASSERT(IsEnabled());
 
     auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
-        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](const unique_ptr<AudioConverter>& c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
+        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](const shared_ptr<AudioConverter>& c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
 
         if (it == _converters.end()) {
             SDL_AudioCVT cvt;
