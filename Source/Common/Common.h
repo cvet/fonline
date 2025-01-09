@@ -1338,7 +1338,6 @@ inline auto parse_from_string(const string& str) -> T
         using is_avalanching = void; \
         auto operator()(const type& v) const noexcept \
         { \
-            static_assert(std::has_unique_object_representations_v<type>); \
             return detail::wyhash::hash(__VA_ARGS__); \
         } \
     }
