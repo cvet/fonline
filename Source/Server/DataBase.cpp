@@ -453,7 +453,7 @@ void DataBaseImpl::CommitChanges()
         }
     }
 
-    auto&& commit_job_data = shared_ptr(SafeAlloc::MakeUnique<CommitJobData>());
+    auto&& commit_job_data = shared_ptr<CommitJobData>(SafeAlloc::MakeUnique<CommitJobData>());
     commit_job_data->RecordChanges = std::move(_recordChanges);
     commit_job_data->NewRecords = std::move(_newRecords);
     commit_job_data->DeletedRecords = std::move(_deletedRecords);
