@@ -1296,7 +1296,7 @@ inline auto parse_from_string(const string& str) -> T
     static_assert(always_false<T>::value, "No specialization exists for parse_from_string");
 }
 
-#define DECLARE_FORMATTER(type, ...) \
+#define DECLARE_TYPE_FORMATTER(type, ...) \
     template<> \
     struct FMTNS::formatter<type> : formatter<string_view> \
     { \
@@ -1731,7 +1731,7 @@ struct isize
 };
 static_assert(std::is_standard_layout_v<isize>);
 static_assert(sizeof(isize) == 8);
-DECLARE_FORMATTER(isize, "{} {}", value.width, value.height);
+DECLARE_TYPE_FORMATTER(isize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(isize, sstr >> value.width, sstr >> value.height);
 DECLARE_TYPE_HASHER(isize);
 
@@ -1757,7 +1757,7 @@ struct ipos
 };
 static_assert(std::is_standard_layout_v<ipos>);
 static_assert(sizeof(ipos) == 8);
-DECLARE_FORMATTER(ipos, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(ipos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos, sstr >> value.x, sstr >> value.y);
 DECLARE_TYPE_HASHER(ipos);
 
@@ -1803,7 +1803,7 @@ struct irect
 };
 static_assert(std::is_standard_layout_v<irect>);
 static_assert(sizeof(irect) == 16);
-DECLARE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_FORMATTER(irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
 DECLARE_TYPE_PARSER(irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
 DECLARE_TYPE_HASHER(irect);
 
@@ -1829,7 +1829,7 @@ struct ipos16
 };
 static_assert(std::is_standard_layout_v<ipos16>);
 static_assert(sizeof(ipos16) == 4);
-DECLARE_FORMATTER(ipos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(ipos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos16, sstr >> value.x, sstr >> value.y);
 DECLARE_TYPE_HASHER(ipos16);
 
@@ -1855,7 +1855,7 @@ struct upos16
 };
 static_assert(std::is_standard_layout_v<upos16>);
 static_assert(sizeof(upos16) == 4);
-DECLARE_FORMATTER(upos16, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(upos16, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(upos16, sstr >> value.x, sstr >> value.y);
 DECLARE_TYPE_HASHER(upos16);
 
@@ -1881,7 +1881,7 @@ struct ipos8
 };
 static_assert(std::is_standard_layout_v<ipos8>);
 static_assert(sizeof(ipos8) == 2);
-DECLARE_FORMATTER(ipos8, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(ipos8, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(ipos8, sstr >> value.x, sstr >> value.y);
 DECLARE_TYPE_HASHER(ipos8);
 
@@ -1909,7 +1909,7 @@ struct fsize
 };
 static_assert(std::is_standard_layout_v<fsize>);
 static_assert(sizeof(fsize) == 8);
-DECLARE_FORMATTER(fsize, "{} {}", value.width, value.height);
+DECLARE_TYPE_FORMATTER(fsize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(fsize, sstr >> value.width, sstr >> value.height);
 
 ///@ ExportValueType fpos fpos HardStrong Layout = float-x+float-y
@@ -1934,7 +1934,7 @@ struct fpos
 };
 static_assert(std::is_standard_layout_v<fpos>);
 static_assert(sizeof(fpos) == 8);
-DECLARE_FORMATTER(fpos, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(fpos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(fpos, sstr >> value.x, sstr >> value.y);
 
 ///@ ExportValueType frect frect HardStrong Layout = float-x+float-y+float-width+float-height
@@ -1979,7 +1979,7 @@ struct frect
 };
 static_assert(std::is_standard_layout_v<frect>);
 static_assert(sizeof(frect) == 16);
-DECLARE_FORMATTER(frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
+DECLARE_TYPE_FORMATTER(frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
 DECLARE_TYPE_PARSER(frect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
 
 // Generic constants

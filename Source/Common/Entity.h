@@ -199,7 +199,7 @@ struct mpos
 };
 static_assert(std::is_standard_layout_v<mpos>);
 static_assert(sizeof(mpos) == 4);
-DECLARE_FORMATTER(mpos, "{} {}", value.x, value.y);
+DECLARE_TYPE_FORMATTER(mpos, "{} {}", value.x, value.y);
 DECLARE_TYPE_PARSER(mpos, sstr >> value.x, sstr >> value.y);
 DECLARE_TYPE_HASHER(mpos);
 
@@ -245,7 +245,7 @@ struct msize
 };
 static_assert(std::is_standard_layout_v<msize>);
 static_assert(sizeof(msize) == 4);
-DECLARE_FORMATTER(msize, "{} {}", value.width, value.height);
+DECLARE_TYPE_FORMATTER(msize, "{} {}", value.width, value.height);
 DECLARE_TYPE_PARSER(msize, sstr >> value.width, sstr >> value.height);
 DECLARE_TYPE_HASHER(msize);
 
