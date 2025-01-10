@@ -39,7 +39,7 @@
 
 struct ParticleManager::Impl
 {
-    std::unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
+    unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
 };
 
 struct ParticleSystem::Impl
@@ -77,7 +77,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 
     SPK::Ref<SPK::System> base_system;
 
-    if (const auto it = _impl->BaseSystems.find(string(name)); it == _impl->BaseSystems.end()) {
+    if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources.ReadFile(name)) {
             base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), static_cast<unsigned>(file.GetSize()));
         }

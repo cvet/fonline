@@ -738,9 +738,9 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 };
 
 template<typename T>
-static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value;
+static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value /*small_vector test*/;
 template<typename T>
-static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value;
+static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
 
 // Atomic formatter
 template<typename T>
