@@ -3631,35 +3631,6 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 }
 
 template<typename T>
-static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type
-{
-    NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    return self.underlying_value();
-
-#else
-    UNUSED_VARIABLE(self);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename T>
-static void StrongType_SetUnderlying(T& self, typename T::underlying_type value)
-{
-    NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    self.underlying_value() = value;
-
-#else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(value);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename T>
 static auto StrongType_GetStr(const T& self) -> string
 {
     NO_STACK_TRACE_ENTRY();
@@ -4175,8 +4146,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, #underlying_type " get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, "void set_value(" #underlying_type ")", SCRIPT_FUNC_THIS(StrongType_SetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectProperty(name, #underlying_type " value", 0)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
