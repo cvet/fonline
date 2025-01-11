@@ -122,7 +122,7 @@ void MapManager::LoadFromResources()
                     for (const auto i : xrange(cr_count)) {
                         UNUSED_VARIABLE(i);
 
-                        const auto cr_id = reader.Read<uint>();
+                        const auto cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         const auto cr_pid_hash = reader.Read<hstring::hash_t>();
                         const auto cr_pid = _engine->ResolveHash(cr_pid_hash);
@@ -158,7 +158,7 @@ void MapManager::LoadFromResources()
                     for (const auto i : xrange(item_count)) {
                         UNUSED_VARIABLE(i);
 
-                        const auto item_id = reader.Read<uint>();
+                        const auto item_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         const auto item_pid_hash = reader.Read<hstring::hash_t>();
                         const auto item_pid = _engine->ResolveHash(item_pid_hash);

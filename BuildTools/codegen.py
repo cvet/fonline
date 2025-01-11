@@ -776,6 +776,7 @@ def parseTags():
                 assert not gameEntitiesInfo[entity]['Exported'], 'Entity can\'t be exported ' + entity
                 
                 codeGenTags['EntityHolder'].append((holder, access, entity, entry, flags, comment))
+                codeGenTags['Property'].append((holder, 'PrivateServer', 'arr.ident', entry + 'Ids', ['ReadOnly'], []))
                 
             except Exception as ex:
                 showError('Invalid tag EntityHolder', absPath + ' (' + str(lineIndex + 1) + ')', ex)

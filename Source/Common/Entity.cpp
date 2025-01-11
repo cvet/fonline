@@ -62,34 +62,6 @@ void Entity::Release() const noexcept
     }
 }
 
-auto Entity::GetTypeName() const noexcept -> hstring
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _props.GetRegistrator()->GetTypeName();
-}
-
-auto Entity::GetTypeNamePlural() const noexcept -> hstring
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _props.GetRegistrator()->GetTypeNamePlural();
-}
-
-auto Entity::GetProperties() const noexcept -> const Properties&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _props;
-}
-
-auto Entity::GetPropertiesForEdit() noexcept -> Properties&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _props;
-}
-
 auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&
 {
     STACK_TRACE_ENTRY();

@@ -40,10 +40,10 @@
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
-///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract
-///@ ExportEntity Critter Critter CritterView HasProtos
-///@ ExportEntity Map Map MapView HasProtos
 ///@ ExportEntity Location Location LocationView HasProtos
+///@ ExportEntity Map Map MapView HasProtos
+///@ ExportEntity Critter Critter CritterView HasProtos
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
@@ -265,8 +265,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerEntityIds);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -332,10 +330,10 @@ public:
 
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
-    [[nodiscard]] auto GetTypeName() const noexcept -> hstring;
-    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring;
-    [[nodiscard]] auto GetProperties() const noexcept -> const Properties&;
-    [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties&;
+    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
+    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
+    [[nodiscard]] auto GetProperties() const noexcept -> const Properties& { return _props; }
+    [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties& { return _props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
     [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;

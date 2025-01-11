@@ -43,7 +43,6 @@
 
 EntityManager::EntityManager(FOServer* engine) :
     _engine {engine},
-    _entityTypeMapCollection {engine->ToHashedString("EntityTypeMap")},
     _playerTypeName {engine->ToHashedString(Player::ENTITY_TYPE_NAME)},
     _locationTypeName {engine->ToHashedString(Location::ENTITY_TYPE_NAME)},
     _mapTypeName {engine->ToHashedString(Map::ENTITY_TYPE_NAME)},
@@ -529,8 +528,27 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
     STACK_TRACE_ENTRY();
 
     try {
-        auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
-        auto&& inner_entity_ids = holder_props.GetInnerEntityIds();
+        const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
+
+        for (const auto& [entry, entry_info] : holder_type_info.HolderEntries) {
+            LoadInnerEntitiesEntry(holder, entry, is_error);
+        }
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed during restore inner entities for {}", holder->GetTypeName());
+        ReportExceptionAndContinue(ex);
+        is_error = true;
+    }
+}
+
+void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
+        auto& holder_props = holder->GetPropertiesForEdit();
+        const auto inner_entity_ids = holder_props.GetValueFast<vector<ident_t>>(holder_prop);
 
         if (inner_entity_ids.empty()) {
             return;
@@ -543,8 +561,11 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
             holder_id = holder_with_id->GetId();
         }
 
+        const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
+        const auto inner_entity_type_name = std::get<0>(holder_type_info.HolderEntries.at(entry));
+
         for (const auto& id : inner_entity_ids) {
-            auto* custom_entity = LoadCustomEntity(id, is_error);
+            auto* custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
             if (custom_entity != nullptr) {
                 RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
@@ -561,16 +582,15 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
 
         if (inner_entity_ids_changed) {
             vector<ident_t> actual_inner_entity_ids;
+            const auto* inner_entities = holder->GetInnerEntities(entry);
 
-            if (holder->HasInnerEntities()) {
-                for (auto&& [entry, inner_entities] : holder->GetRawInnerEntities()) {
-                    for (const auto* inner_entity : inner_entities) {
-                        actual_inner_entity_ids.emplace_back(static_cast<const CustomEntity*>(inner_entity)->GetId()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-                    }
-                }
+            if (inner_entities != nullptr) {
+                actual_inner_entity_ids = vec_transform(*inner_entities, [](const Entity* entity) -> ident_t {
+                    return static_cast<const CustomEntity*>(entity)->GetId(); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                });
             }
 
-            holder_props.SetInnerEntityIds(actual_inner_entity_ids);
+            holder_props.SetValue(holder_prop, actual_inner_entity_ids);
         }
     }
     catch (const std::exception& ex) {
@@ -885,11 +905,12 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     NON_CONST_METHOD_HINT();
 
     if (!entity->GetId()) {
-        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
+        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
         const auto id = ident_t {id_num};
         const auto collection_name = entity->GetTypeNamePlural();
 
         RUNTIME_ASSERT(_allEntities.count(id) == 0);
+
         _engine->SetLastEntityId(id);
 
         if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
@@ -904,13 +925,6 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
             const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
 
             _engine->DbStorage.Insert(collection_name, id, doc);
-        }
-
-        {
-            AnyData::Document type_map_id;
-            type_map_id.Emplace("Type", string(entity->GetTypeName()));
-
-            _engine->DbStorage.Insert(_entityTypeMapCollection, id, type_map_id);
         }
 
         entity->SetId(id);
@@ -934,7 +948,6 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 
     if (delete_from_db) {
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
-        _engine->DbStorage.Delete(_entityTypeMapCollection, entity->GetId());
     }
 
     entity->SetId({});
@@ -1027,10 +1040,11 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
 
     holder->AddInnerEntity(entry, entity);
 
-    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
-    auto inner_entity_ids = holder_props.GetInnerEntityIds();
+    const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
+    auto& holder_props = holder->GetPropertiesForEdit();
+    auto inner_entity_ids = holder_props.GetValueFast<vector<ident_t>>(holder_prop);
     vec_add_unique_value(inner_entity_ids, entity->GetId());
-    holder_props.SetInnerEntityIds(inner_entity_ids);
+    holder_props.SetValue(holder_prop, inner_entity_ids);
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
 
@@ -1060,7 +1074,7 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     CustomEntity* entity;
 
     if (proto != nullptr) {
-        entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, ident_t {}, registrator, nullptr, proto);
+        entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
     }
     else {
         entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
@@ -1071,40 +1085,15 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     return entity;
 }
 
-auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) noexcept -> CustomEntity*
+auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*
 {
     STACK_TRACE_ENTRY();
 
     try {
         RUNTIME_ASSERT(id.underlying_value() != 0);
 
-        const auto type_doc = _engine->DbStorage.Get(_entityTypeMapCollection, id);
-
-        if (type_doc.Empty()) {
-            WriteLog("Custom entity id {} type not mapped", id);
-            is_error = true;
-            return nullptr;
-        }
-
-        if (!type_doc.Contains("Type")) {
-            WriteLog("Custom entity {} mapped type section 'Type' not found", id);
-            is_error = true;
-            return nullptr;
-        }
-
-        const auto& type_value = type_doc["Type"];
-
-        if (type_value.Type() != AnyData::ValueType::String) {
-            WriteLog("Custom entity {} mapped type section 'Type' is not string but {}", id, type_value.Type());
-            is_error = true;
-            return nullptr;
-        }
-
-        const auto& type_name_str = type_value.AsString();
-        const auto type_name = _engine->ToHashedString(type_name_str);
-
         if (!_engine->IsValidEntityType(type_name)) {
-            WriteLog("Custom entity {} mapped type not valid {}", id, type_name);
+            WriteLog("Custom entity {} type {} not valid", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1139,21 +1128,20 @@ auto EntityManager::LoadCustomEntity(ident_t id, bool& is_error) noexcept -> Cus
         }
 
         const auto* registrator = _engine->GetPropertyRegistrator(type_name);
-        auto props = Properties(registrator);
-
-        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine, *_engine)) {
-            WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
-            is_error = true;
-            return nullptr;
-        }
-
         CustomEntity* entity;
 
         if (proto != nullptr) {
-            entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, id, registrator, &props, proto);
+            entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, id, registrator, proto);
         }
         else {
-            entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, id, registrator, &props);
+            entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, id, registrator, nullptr);
+        }
+
+        if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, *_engine, *_engine)) {
+            WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
+            is_error = true;
+            entity->Release();
+            return nullptr;
         }
 
         try {
@@ -1213,12 +1201,14 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
         player->Send_RemoveCustomEntity(entity->GetId());
     });
 
-    holder->RemoveInnerEntity(entity->GetCustomHolderEntry(), entity);
+    const auto entry = entity->GetCustomHolderEntry();
+    holder->RemoveInnerEntity(entry, entity);
 
-    auto&& holder_props = EntityProperties(holder->GetPropertiesForEdit());
-    auto inner_entity_ids = holder_props.GetInnerEntityIds();
+    const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
+    auto& holder_props = holder->GetPropertiesForEdit();
+    auto inner_entity_ids = holder_props.GetValueFast<vector<ident_t>>(holder_prop);
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
-    holder_props.SetInnerEntityIds(inner_entity_ids);
+    holder_props.SetValue(holder_prop, inner_entity_ids);
 
     UnregisterCustomEntity(entity, true);
 

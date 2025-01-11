@@ -534,8 +534,10 @@ public:
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
 
+            static_assert(sizeof(ident_t) == sizeof(int64));
+
             const string id_str = strex(path).extractFileName().eraseFileExtension();
-            const auto id = strex(id_str).toUInt();
+            const auto id = strex(id_str).toInt64();
 
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
@@ -775,8 +777,9 @@ public:
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
                 [](const void* output, unsigned int output_len, void* user_data) {
-                    RUNTIME_ASSERT(output_len == sizeof(uint));
-                    *static_cast<uint*>(user_data) = *static_cast<const uint*>(output);
+                    static_assert(sizeof(ident_t) == sizeof(int64));
+                    RUNTIME_ASSERT(output_len == sizeof(int64));
+                    *static_cast<int64*>(user_data) = *static_cast<const int64*>(output);
                     return UNQLITE_OK;
                 },
                 &id);
@@ -817,6 +820,7 @@ protected:
             db, &id, sizeof(id),
             [](const void* output, unsigned int output_len, void* user_data) {
                 bson_t bson;
+
                 if (!bson_init_static(&bson, static_cast<const uint8*>(output), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
@@ -1069,17 +1073,19 @@ public:
         while (mongoc_cursor_next(cursor, &document)) {
             bson_iter_t iter;
 
+            static_assert(sizeof(ident_t) == sizeof(int64));
+
             if (!bson_iter_init(&iter, document)) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
             }
             if (!bson_iter_next(&iter)) {
                 throw DataBaseException("DbMongo bson_iter_next", collection_name);
             }
-            if (bson_iter_type(&iter) != BSON_TYPE_INT32) {
+            if (bson_iter_type(&iter) != BSON_TYPE_INT64) {
                 throw DataBaseException("DbMongo bson_iter_type", collection_name, bson_iter_type(&iter));
             }
 
-            const auto id = static_cast<uint>(bson_iter_int32(&iter));
+            const auto id = bson_iter_int64(&iter);
             ids.emplace_back(id);
         }
 
@@ -1110,10 +1116,10 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        static_assert(sizeof(ident_t) == sizeof(uint));
+        static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+        if (!bson_append_int64(&filter, "_id", 3, id.underlying_value())) {
+            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
         bson_t opts;
@@ -1162,10 +1168,10 @@ protected:
         bson_t insert;
         bson_init(&insert);
 
-        static_assert(sizeof(ident_t) == sizeof(uint));
+        static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+        if (!bson_append_int64(&insert, "_id", 3, id.underlying_value())) {
+            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
         DocumentToBson(doc, &insert);
@@ -1194,10 +1200,10 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        static_assert(sizeof(ident_t) == sizeof(uint));
+        static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
+            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
         bson_t update;
@@ -1238,10 +1244,10 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        static_assert(sizeof(ident_t) == sizeof(uint));
+        static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
+            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
         bson_error_t error;

@@ -2342,7 +2342,6 @@ void FOClient::Net_OnLoadMap()
         _conn.InBuf.ReadPropsData(_tempPropertiesDataExt);
     }
 
-    OnMapUnload.Fire();
 
     if (CurMap != nullptr) {
         CurMap->DestroySelf();
@@ -3233,6 +3232,8 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
 void FOClient::UnloadMap()
 {
     STACK_TRACE_ENTRY();
+
+    OnMapUnload.Fire();
 
     if (CurMap != nullptr) {
         CurMap->DestroySelf();

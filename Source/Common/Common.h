@@ -37,7 +37,6 @@
 // Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
 // Todo: wrap fonline code to namespace
-// Todo: ident_t 8 byte integer
 // Todo: hash_t 8 byte integer
 // Todo: tick_t 8 byte integer
 // Todo: c-style arrays to std::array
@@ -454,8 +453,8 @@ struct strong_type
 {
     using underlying_type = typename T::underlying_type;
     static constexpr bool is_strong_type = true;
-    static constexpr const char* type_name = T::name;
-    static constexpr const char* underlying_type_name = T::underlying_type_name;
+    static constexpr string_view type_name = T::name;
+    static constexpr string_view underlying_type_name = T::underlying_type_name;
 
     constexpr strong_type() noexcept :
         _value {}
@@ -514,24 +513,24 @@ struct FMTNS::formatter<T, std::enable_if_t<is_strong_type_v<T>, char>> : format
     }
 };
 
-///@ ExportValueType ident ident_t HardStrong HasValueAccessor Layout = uint-value
+///@ ExportValueType ident ident_t HardStrong HasValueAccessor Layout = int64-value
 #define IDENT_T_NAME "ident"
 struct ident_t_traits
 {
-    static constexpr const char* name = IDENT_T_NAME;
-    static constexpr const char* underlying_type_name = "uint";
-    using underlying_type = uint;
+    static constexpr string_view name = IDENT_T_NAME;
+    static constexpr string_view underlying_type_name = "int64";
+    using underlying_type = int64;
 };
 using ident_t = strong_type<ident_t_traits>;
-static_assert(sizeof(ident_t) == sizeof(uint));
+static_assert(sizeof(ident_t) == sizeof(ident_t_traits::underlying_type));
 static_assert(std::is_standard_layout_v<ident_t>);
 
 ///@ ExportValueType tick_t tick_t RelaxedStrong HasValueAccessor Layout = uint-value
 #define TICK_T_NAME "tick_t"
 struct tick_t_traits
 {
-    static constexpr const char* name = TICK_T_NAME;
-    static constexpr const char* underlying_type_name = "uint";
+    static constexpr string_view name = TICK_T_NAME;
+    static constexpr string_view underlying_type_name = "uint";
     using underlying_type = uint;
 };
 using tick_t = strong_type<tick_t_traits>;
@@ -1585,8 +1584,8 @@ struct ucolor
 {
     using underlying_type = uint;
     static constexpr bool is_strong_type = true;
-    static constexpr const char* type_name = "ucolor";
-    static constexpr const char* underlying_type_name = "uint";
+    static constexpr string_view type_name = "ucolor";
+    static constexpr string_view underlying_type_name = "uint";
 
     constexpr ucolor() noexcept :
         rgba {}

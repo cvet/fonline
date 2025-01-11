@@ -115,7 +115,7 @@ public:
 
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
-    auto LoadCustomEntity(ident_t id, bool& is_error) noexcept -> CustomEntity*;
+    auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*;
     auto GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*;
     void DestroyCustomEntity(CustomEntity* entity);
     void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
@@ -126,6 +126,7 @@ public:
 
 private:
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
+    void LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntity(ServerEntity* entity);
@@ -141,7 +142,6 @@ private:
     unordered_map<hstring, unordered_map<ident_t, CustomEntity*>> _allCustomEntities {};
     unordered_map<ident_t, ServerEntity*> _allEntities {};
 
-    const hstring _entityTypeMapCollection {};
     const hstring _playerTypeName {};
     const hstring _locationTypeName {};
     const hstring _mapTypeName {};

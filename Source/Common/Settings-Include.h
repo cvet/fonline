@@ -335,6 +335,7 @@ FIXED_SETTING(uint, LoopAverageTimeInterval, 1000);
 FIXED_SETTING(bool, WriteHealthFile, false);
 FIXED_SETTING(bool, ProtoMapStaticGrid, false);
 FIXED_SETTING(bool, MapInstanceStaticGrid, false);
+FIXED_SETTING(int64, EntityStartId, 10000000001);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING
