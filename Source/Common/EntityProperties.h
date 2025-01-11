@@ -391,6 +391,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, msize, Size);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, ident_t, WorkEntityId);
 
     // Todo: exclude map properties from engine:
     ///@ ExportProperty

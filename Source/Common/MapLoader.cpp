@@ -60,21 +60,21 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
 
     // Automatic id fixier
     unordered_set<ident_t::underlying_type> busy_ids;
-    ident_t::underlying_type last_lowest_id = std::numeric_limits<ident_t::underlying_type>::max();
+    ident_t::underlying_type last_lowest_id = 1;
 
     const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
-        if (id < std::numeric_limits<ident_t::underlying_type>::max() / 2 || !busy_ids.emplace(id).second) {
-            auto new_id = last_lowest_id - 1;
+        if (id <= 0 || id >= std::numeric_limits<int>::max() || !busy_ids.emplace(id).second) {
+            auto new_id = last_lowest_id;
 
             while (!busy_ids.emplace(new_id).second) {
-                new_id--;
+                new_id++;
             }
 
             last_lowest_id = new_id;
             return ident_t {new_id};
         }
 
-        last_lowest_id = std::min(id, last_lowest_id);
+        last_lowest_id = std::max(id, last_lowest_id);
         return ident_t {id};
     };
 
@@ -88,7 +88,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toUInt() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toInt64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoCritterSafe(hashed_proto_name);
@@ -119,7 +119,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toUInt() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toInt64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoItemSafe(hashed_proto_name);

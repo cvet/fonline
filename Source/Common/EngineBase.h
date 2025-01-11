@@ -76,6 +76,7 @@ public:
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
     [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
+    [[nodiscard]] auto GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
 

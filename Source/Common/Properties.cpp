@@ -1270,6 +1270,9 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     RUNTIME_ASSERT(_accessMap.count(flags[1]) != 0);
     prop->_accessType = _accessMap[flags[1]];
 
+    const auto h = _hashResolver.ToHashedString(prop->_propName);
+    UNUSED_VARIABLE(h);
+
     const auto type_tok = strex(flags[2]).split('.');
     RUNTIME_ASSERT(!type_tok.empty());
 

@@ -271,7 +271,7 @@ public:
     void ClearIgnorePids();
     void MarkBlockedHexes();
 
-    auto GetTempEntityId() const -> ident_t;
+    auto GenTempEntityId() -> ident_t;
 
     auto ValidateForSave() const -> vector<string>;
     auto SaveToText() const -> string;

@@ -124,7 +124,7 @@ MapView::~MapView()
     STACK_TRACE_ENTRY();
 
     if (!_critters.empty() || !_crittersMap.empty() || !_allItems.empty() || !_staticItems.empty() || //
-        !_dynamicItems.empty() || !_nonTileItems.empty() || !_processingItems.empty() || !_itemsMap.empty()) {
+        !_dynamicItems.empty() || !_nonTileItems.empty() || !_processingItems.empty() || !_itemsMap.empty() || !_spritePatterns.empty()) {
         BreakIntoDebugger();
     }
 
@@ -133,12 +133,6 @@ MapView::~MapView()
     }
     _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight);
     _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtFog);
-
-    for (auto&& pattern : _spritePatterns) {
-        pattern->Sprites.clear();
-        pattern->FinishCallback = nullptr;
-        pattern->Finished = true;
-    }
 }
 
 void MapView::OnDestroySelf()
@@ -150,6 +144,12 @@ void MapView::OnDestroySelf()
     }
     for (auto* item : _allItems) {
         item->DestroySelf();
+    }
+
+    for (auto&& pattern : _spritePatterns) {
+        pattern->Sprites.clear();
+        pattern->FinishCallback = nullptr;
+        pattern->Finished = true;
     }
 
     _mapSprites.Invalidate();
@@ -169,7 +169,6 @@ void MapView::OnDestroySelf()
     _nonTileItems.clear();
     _processingItems.clear();
     _itemsMap.clear();
-    _spritePatterns.clear();
 }
 
 void MapView::EnableMapperMode()
@@ -187,12 +186,15 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
+    auto max_id = GetWorkEntityId().underlying_value();
 
     MapLoader::Load(
         map_name, str, _engine->ProtoMngr, *_engine,
-        [this](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
+        [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_crittersMap.count(id) == 0);
+
+            max_id = std::max(max_id, id.underlying_value());
 
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
@@ -205,9 +207,11 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             AddCritterInternal(cr);
         },
-        [this](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
+        [this, &max_id](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_itemsMap.count(id) == 0);
+
+            max_id = std::max(max_id, id.underlying_value());
 
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
@@ -244,6 +248,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             }
         });
 
+    SetWorkEntityId(ident_t {max_id});
     _mapLoading = false;
 
     ResizeView();
@@ -255,6 +260,7 @@ void MapView::LoadStaticData()
     STACK_TRACE_ENTRY();
 
     const auto file = _engine->Resources.ReadFile(strex("{}.fomapb2", GetProtoId()));
+
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
@@ -290,7 +296,7 @@ void MapView::LoadStaticData()
         vector<uint8> props_data;
 
         for (uint i = 0; i < items_count; i++) {
-            const auto static_id = ident_t {reader.Read<uint>()};
+            const auto static_id = ident_t {reader.Read<ident_t::underlying_type>()};
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
             const auto item_pid = _engine->ResolveHash(item_pid_hash);
             const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
@@ -571,7 +577,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GetTempEntityId(), proto, props);
+    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -586,7 +592,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GetTempEntityId(), proto);
+    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GenTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -896,6 +902,7 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     STACK_TRACE_ENTRY();
 
     auto&& spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+
     if (!spr) {
         return nullptr;
     }
@@ -2909,8 +2916,7 @@ void MapView::PrepareFogToDraw()
 
         CritterHexView* chosen;
 
-        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->GetIsChosen(); });
-        if (it != _critters.end()) {
+        if (const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
             chosen = *it;
         }
         else {
@@ -3523,7 +3529,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, GetTempEntityId(), proto, props);
+    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
@@ -4716,25 +4722,21 @@ void MapView::MarkBlockedHexes()
     RefreshMap();
 }
 
-auto MapView::GetTempEntityId() const -> ident_t
+auto MapView::GenTempEntityId() -> ident_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
-    auto max_id = static_cast<ident_t::underlying_type>(-1);
+    auto next_id = ident_t {(GetWorkEntityId().underlying_value() + 1)};
 
-    for (const auto* cr : _critters) {
-        RUNTIME_ASSERT(cr->GetId());
-        max_id = std::min(cr->GetId().underlying_value(), max_id);
-    }
-    for (const auto* item : _allItems) {
-        RUNTIME_ASSERT(item->GetId());
-        max_id = std::min(item->GetId().underlying_value(), max_id);
+    while (_itemsMap.count(next_id) != 0 || _crittersMap.count(next_id) != 0) {
+        next_id = ident_t {next_id.underlying_value() + 1};
     }
 
-    RUNTIME_ASSERT(max_id > std::numeric_limits<ident_t::underlying_type>::max() / 2);
-    return ident_t {max_id - 1};
+    SetWorkEntityId(next_id);
+
+    return next_id;
 }
 
 auto MapView::ValidateForSave() const -> vector<string>

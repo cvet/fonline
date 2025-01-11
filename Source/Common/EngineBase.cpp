@@ -193,6 +193,17 @@ auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hs
     return _entityTypesInfo;
 }
 
+auto FOEngineBase::GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*
+{
+    STACK_TRACE_ENTRY();
+
+    const auto prop_name = ToHashedStringMustExists(strex("{}Ids", entry));
+    const auto* holder_prop = holder->GetProperties().GetRegistrator()->FindProperty(prop_name);
+    RUNTIME_ASSERT(holder_prop);
+
+    return holder_prop;
+}
+
 auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 {
     STACK_TRACE_ENTRY();
