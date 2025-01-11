@@ -665,13 +665,25 @@ void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data) no
     if (prop->IsPlainData()) {
         STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
+
         std::memcpy(_podData.get() + prop->_podDataOffset, raw_data.data(), raw_data.size());
     }
     else {
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+
         auto& complex_data = _complexData[prop->_complexDataIndex];
-        complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
-        complex_data.second = raw_data.size();
+
+        if (raw_data.size() != complex_data.second) {
+            if (!raw_data.empty()) {
+                complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
+                complex_data.second = raw_data.size();
+            }
+            else {
+                complex_data.first.reset();
+                complex_data.second = 0;
+            }
+        }
+
         std::memcpy(complex_data.first.get(), raw_data.data(), raw_data.size());
     }
 }
