@@ -142,7 +142,7 @@ auto strex::startsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= r.length() && MemCompare(_sv.data(), r.data(), r.length()) == 0;
+    return _sv.length() >= r.length() && _sv.compare(0, r.length(), r) == 0;
 }
 
 auto strex::endsWith(char r) const noexcept -> bool
