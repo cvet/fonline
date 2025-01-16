@@ -811,7 +811,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
     int16 numindex = 1;
     _mapGrid.resize(static_cast<size_t>(_engine->Settings.MaxPathFindLength * 2 + 2) * (_engine->Settings.MaxPathFindLength * 2 + 2));
-    std::memset(_mapGrid.data(), 0, _mapGrid.size() * sizeof(int16));
+    MemFill(_mapGrid.data(), 0, _mapGrid.size() * sizeof(int16));
     GridAt(input.FromHex) = numindex;
 
     auto to_hex = input.ToHex;

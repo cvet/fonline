@@ -1863,11 +1863,11 @@ static void StrCopy(char* to, size_t size, string_view from)
     }
 
     if (from.length() >= size) {
-        std::memcpy(to, from.data(), size - 1);
+        MemCopy(to, from.data(), size - 1);
         to[size - 1] = 0;
     }
     else {
-        std::memcpy(to, from.data(), from.length());
+        MemCopy(to, from.data(), from.length());
         to[from.length()] = 0;
     }
 }

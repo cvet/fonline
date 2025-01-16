@@ -141,7 +141,7 @@ void Properties::AllocData() noexcept
     STRONG_ASSERT(!_registrator->_registeredProperties.empty());
 
     _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
-    std::memset(_podData.get(), 0, _registrator->_wholePodDataSize);
+    MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
 
     _complexData = SafeAlloc::MakeUniqueArr<pair<unique_ptr<uint8[]>, size_t>>(_registrator->_complexProperties.size());
 }
@@ -152,13 +152,13 @@ auto Properties::Copy() const noexcept -> Properties
 
     Properties props(_registrator);
 
-    std::memcpy(props._podData.get(), _podData.get(), _registrator->_wholePodDataSize);
+    MemCopy(props._podData.get(), _podData.get(), _registrator->_wholePodDataSize);
 
     for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
         if (_complexData[i].first) {
             props._complexData[i].first = SafeAlloc::MakeUniqueArr<uint8>(_complexData[i].second);
             props._complexData[i].second = _complexData[i].second;
-            std::memcpy(props._complexData[i].first.get(), _complexData[i].first.get(), _complexData[i].second);
+            MemCopy(props._complexData[i].first.get(), _complexData[i].first.get(), _complexData[i].second);
         }
     }
 
@@ -172,7 +172,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
     STRONG_ASSERT(_registrator == other._registrator);
 
     // Copy PlainData data
-    std::memcpy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
+    MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
 
     // Copy complex data
     for (const auto* prop : _registrator->_complexProperties) {
@@ -303,7 +303,7 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
             break;
         }
 
-        std::memcpy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
+        MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
     }
 
     // Read complex properties
@@ -381,7 +381,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
 
     if (all_data_sizes[0] != 0) {
-        std::memcpy(_podData.get(), all_data[0], all_data_sizes[0]);
+        MemCopy(_podData.get(), all_data[0], all_data_sizes[0]);
     }
 
     // Restore complex data
@@ -389,7 +389,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
         const uint comlplex_data_count = all_data_sizes[1] / sizeof(uint16);
         RUNTIME_ASSERT(comlplex_data_count > 0);
         vector<uint16> complex_indicies(comlplex_data_count);
-        std::memcpy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
+        MemCopy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
             RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
@@ -497,7 +497,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 const auto* pod_data = &_podData[prop->_podDataOffset];
                 const auto* base_pod_data = &base->_podData[prop->_podDataOffset];
 
-                if (std::memcmp(pod_data, base_pod_data, prop->_baseType.Size) == 0) {
+                if (MemCompare(pod_data, base_pod_data, prop->_baseType.Size)) {
                     continue;
                 }
             }
@@ -508,7 +508,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 if (!complex_data.first && !base_complex_data.first) {
                     continue;
                 }
-                if (complex_data.second == base_complex_data.second && std::memcmp(complex_data.first.get(), base_complex_data.first.get(), complex_data.second) == 0) {
+                if (complex_data.second == base_complex_data.second && MemCompare(complex_data.first.get(), base_complex_data.first.get(), complex_data.second)) {
                     continue;
                 }
             }
@@ -622,23 +622,6 @@ auto Properties::GetRawData(const Property* prop) const noexcept -> const_span<u
     }
 }
 
-auto Properties::GetRawData(const Property* prop) noexcept -> span<uint8>
-{
-    NO_STACK_TRACE_ENTRY();
-
-    STRONG_ASSERT(_registrator == prop->_registrator);
-
-    if (prop->IsPlainData()) {
-        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        return {&_podData[prop->_podDataOffset], prop->_baseType.Size};
-    }
-    else {
-        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-        auto& complex_data = _complexData[prop->_complexDataIndex];
-        return {complex_data.first.get(), complex_data.second};
-    }
-}
-
 auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
 {
     NO_STACK_TRACE_ENTRY();
@@ -666,7 +649,7 @@ void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data) no
         STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
 
-        std::memcpy(_podData.get() + prop->_podDataOffset, raw_data.data(), raw_data.size());
+        MemCopy(_podData.get() + prop->_podDataOffset, raw_data.data(), raw_data.size());
     }
     else {
         STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
@@ -684,7 +667,7 @@ void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data) no
             }
         }
 
-        std::memcpy(complex_data.first.get(), raw_data.data(), raw_data.size());
+        MemCopy(complex_data.first.get(), raw_data.data(), raw_data.size());
     }
 }
 

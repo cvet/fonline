@@ -1027,7 +1027,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
 
     for (int i = 0; i < size.height; i++) {
         const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
-        std::memcpy(&result[static_cast<size_t>(i) * size.width], src, static_cast<size_t>(size.width) * 4);
+        MemCopy(&result[static_cast<size_t>(i) * size.width], src, static_cast<size_t>(size.width) * 4);
     }
 
     D3DDeviceContext->Unmap(staging_tex, 0);
@@ -1125,13 +1125,13 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        std::memcpy(vertices_resource.pData, Vertices3D.data(), upload_vertices * vert_size);
+        MemCopy(vertices_resource.pData, Vertices3D.data(), upload_vertices * vert_size);
     }
     else {
-        std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
+        MemCopy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
     }
 #else
-    std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
+    MemCopy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
 #endif
 
     D3DDeviceContext->Unmap(VertexBuf, 0);
@@ -1162,7 +1162,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
     const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
 
-    std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(vindex_t));
+    MemCopy(indices_resource.pData, Indices.data(), upload_indices * sizeof(vindex_t));
 
     D3DDeviceContext->Unmap(IndexBuf, 0);
 }
@@ -1255,13 +1255,13 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #if FO_ENABLE_3D
         if constexpr (std::is_same_v<std::decay_t<decltype(buf)>, ModelBuffer>) {
             const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
-            std::memcpy(cbuffer_resource.pData, &buf, bind_size);
+            MemCopy(cbuffer_resource.pData, &buf, bind_size);
         }
         else
 #endif
         {
             UNUSED_VARIABLE(this);
-            std::memcpy(cbuffer_resource.pData, &buf, sizeof(buf));
+            MemCopy(cbuffer_resource.pData, &buf, sizeof(buf));
         }
 
         D3DDeviceContext->Unmap(buf_handle, 0);
@@ -1269,12 +1269,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 
     if (NeedProjBuf && !ProjBuf.has_value()) {
         auto&& proj_buf = ProjBuf = ProjBuffer();
-        std::memcpy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
+        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
     if (NeedMainTexBuf && !MainTexBuf.has_value()) {
         auto&& main_tex_buf = MainTexBuf = MainTexBuffer();
-        std::memcpy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
+        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
 #define CBUF_UPLOAD_BUFFER(buf) \

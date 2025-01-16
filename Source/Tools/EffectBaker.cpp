@@ -272,7 +272,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uint8> data(spirv.size() * sizeof(uint32_t));
-        std::memcpy(data.data(), spirv.data(), data.size());
+        MemCopy(data.data(), spirv.data(), data.size());
         _writeData(strex("{}.spv", fname_wo_ext), data);
     };
 

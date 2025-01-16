@@ -362,7 +362,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
             desired.freq = 44100;
 #endif
             desired.callback = [](void*, Uint8* stream, int) {
-                std::memset(stream, AudioSpec.silence, AudioSpec.size);
+                MemFill(stream, AudioSpec.silence, AudioSpec.size);
 
                 if (*AudioStreamWriter) {
                     (*AudioStreamWriter)(stream);

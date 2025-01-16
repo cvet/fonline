@@ -406,7 +406,7 @@ int VideoClip::DecodePacket()
             }
 
             auto* dest_buf = ogg_sync_buffer(&_impl->SyncState, read_bytes);
-            std::memcpy(dest_buf, _impl->RawVideoData.data() + _impl->ReadPos, read_bytes);
+            MemCopy(dest_buf, _impl->RawVideoData.data() + _impl->ReadPos, read_bytes);
             _impl->ReadPos += read_bytes;
             ogg_sync_wrote(&_impl->SyncState, read_bytes);
         }

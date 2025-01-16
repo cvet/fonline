@@ -2498,7 +2498,7 @@ void MapView::Resize(msize size)
     _mapSize = size;
 
     _hexTrack.resize(_mapSize.GetSquare());
-    std::memset(_hexTrack.data(), 0, _hexTrack.size());
+    MemFill(_hexTrack.data(), 0, _hexTrack.size());
     _hexLight.resize(static_cast<size_t>(_mapSize.GetSquare()) * 3);
     _hexField->Resize(_mapSize);
 
@@ -2526,7 +2526,7 @@ void MapView::ClearHexTrack()
 
     RUNTIME_ASSERT(_mapperMode);
 
-    std::memset(_hexTrack.data(), 0, _hexTrack.size() * sizeof(char));
+    MemFill(_hexTrack.data(), 0, _hexTrack.size() * sizeof(char));
 }
 
 void MapView::SwitchShowTrack()
@@ -3937,7 +3937,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
     const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
     _findPathGrid.resize((static_cast<size_t>(max_path_find_len) * 2 + 2) * (max_path_find_len * 2 + 2));
-    std::memset(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
+    MemFill(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
 
     const auto grid_offset = start_hex;
     const auto grid_at = [&](mpos hex) -> short& { return _findPathGrid[((max_path_find_len + 1) + (hex.y) - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + (hex.x) - grid_offset.x)]; };

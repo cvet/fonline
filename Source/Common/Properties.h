@@ -82,12 +82,12 @@ public:
     }
 
     auto Alloc(size_t size) noexcept -> uint8*;
-    void Set(const void* value, size_t size) noexcept { std::memcpy(Alloc(size), value, size); }
+    void Set(const void* value, size_t size) noexcept { MemCopy(Alloc(size), value, size); }
 
     template<typename T>
     void SetAs(T value) noexcept
     {
-        std::memcpy(Alloc(sizeof(T)), &value, sizeof(T));
+        MemCopy(Alloc(sizeof(T)), &value, sizeof(T));
     }
 
     void Pass(const_span<uint8> value) noexcept;
@@ -279,7 +279,6 @@ public:
     [[nodiscard]] auto GetEntity() noexcept -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
     [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
-    [[nodiscard]] auto GetRawData(const Property* prop) noexcept -> span<uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
@@ -427,13 +426,13 @@ public:
                 RUNTIME_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
-                std::memcpy(&arr_size, data, sizeof(arr_size));
+                MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
                 result.resize(arr_size);
 
                 for (const auto i : xrange(arr_size)) {
                     uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
+                    MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
                     if constexpr (std::is_same_v<T, vector<string>>) {
@@ -462,7 +461,7 @@ public:
             else {
                 RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
                 result.resize(data_size / prop->GetBaseSize());
-                std::memcpy(result.data(), data, data_size);
+                MemCopy(result.data(), data, data_size);
             }
         }
 
@@ -541,13 +540,13 @@ public:
                 STRONG_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
-                std::memcpy(&arr_size, data, sizeof(arr_size));
+                MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
                 result.resize(arr_size);
 
                 for (const auto i : xrange(arr_size)) {
                     uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
+                    MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
                     if constexpr (std::is_same_v<T, vector<string>>) {
@@ -576,7 +575,7 @@ public:
             else {
                 STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
                 result.resize(data_size / prop->GetBaseSize());
-                std::memcpy(result.data(), data, data_size);
+                MemCopy(result.data(), data, data_size);
             }
         }
 
@@ -744,16 +743,16 @@ public:
                 auto* buf = prop_data.Alloc(data_size);
 
                 const auto arr_size = static_cast<uint>(new_value.size());
-                std::memcpy(buf, &arr_size, sizeof(arr_size));
+                MemCopy(buf, &arr_size, sizeof(arr_size));
                 buf += sizeof(uint);
 
                 for (const auto& str : new_value) {
                     const auto str_size = static_cast<uint>(str.length());
-                    std::memcpy(buf, &str_size, sizeof(str_size));
+                    MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
                     if (str_size != 0) {
-                        std::memcpy(buf, str.c_str(), str_size);
+                        MemCopy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
                 }
@@ -767,7 +766,7 @@ public:
 
                 for (const auto& hstr : new_value) {
                     const auto hash = hstr.as_hash();
-                    std::memcpy(buf, &hash, sizeof(hstring::hash_t));
+                    MemCopy(buf, &hash, sizeof(hstring::hash_t));
                     buf += sizeof(hstring::hash_t);
                 }
             }

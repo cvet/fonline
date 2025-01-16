@@ -822,7 +822,7 @@ void ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, 
             throw ServerConnectionException("Can't resolve remote host", host, GetLastSocketError());
         }
 
-        std::memcpy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));
+        MemCopy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));
     }
 }
 

@@ -538,7 +538,7 @@ auto FalloutDat::ReadTree() -> bool
 
         tree_size -= 28 + 4; // Subtract information block and files total
         _memTree = SafeAlloc::MakeUniqueArr<uint8>(tree_size);
-        std::memset(_memTree.get(), 0, tree_size);
+        MemFill(_memTree.get(), 0, tree_size);
 
         if (!_datFile.Read(_memTree.get(), tree_size)) {
             return false;
@@ -550,9 +550,9 @@ auto FalloutDat::ReadTree() -> bool
 
         while (ptr < end_ptr) {
             uint fnsz = 0;
-            std::memcpy(&fnsz, ptr, sizeof(fnsz));
+            MemCopy(&fnsz, ptr, sizeof(fnsz));
             uint type = 0;
-            std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
+            MemCopy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
@@ -629,7 +629,7 @@ auto FalloutDat::ReadTree() -> bool
 
     while (ptr < end_ptr) {
         uint name_len = 0;
-        std::memcpy(&name_len, ptr, 4);
+        MemCopy(&name_len, ptr, 4);
 
         if (ptr + 4 + name_len > end_ptr) {
             return false;
@@ -665,7 +665,7 @@ auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_tim
     }
 
     uint real_size = 0;
-    std::memcpy(&real_size, it->second + 1, sizeof(real_size));
+    MemCopy(&real_size, it->second + 1, sizeof(real_size));
 
     size = real_size;
     write_time = _writeTime;
@@ -684,13 +684,13 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     const auto* ptr = it->second;
     uint8 type = 0;
-    std::memcpy(&type, ptr, sizeof(type));
+    MemCopy(&type, ptr, sizeof(type));
     uint real_size = 0;
-    std::memcpy(&real_size, ptr + 1, sizeof(real_size));
+    MemCopy(&real_size, ptr + 1, sizeof(real_size));
     uint packed_size = 0;
-    std::memcpy(&packed_size, ptr + 5, sizeof(packed_size));
+    MemCopy(&packed_size, ptr + 5, sizeof(packed_size));
     int offset = 0;
-    std::memcpy(&offset, ptr + 9, sizeof(offset));
+    MemCopy(&offset, ptr + 9, sizeof(offset));
 
     if (!_datFile.SetReadPos(offset, DiskFileSeek::Set)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);

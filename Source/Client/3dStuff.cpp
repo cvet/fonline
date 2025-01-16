@@ -504,10 +504,10 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     // Check animation changes
     int new_layers[MODEL_LAYERS_COUNT];
     if (layers != nullptr) {
-        std::memcpy(new_layers, layers, sizeof(int) * MODEL_LAYERS_COUNT);
+        MemCopy(new_layers, layers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
     else {
-        std::memcpy(new_layers, _currentLayers, sizeof(int) * MODEL_LAYERS_COUNT);
+        MemCopy(new_layers, _currentLayers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
 
     // Animation layers
@@ -533,7 +533,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         return false;
     }
 
-    std::memcpy(_currentLayers, new_layers, sizeof(int) * MODEL_LAYERS_COUNT);
+    MemCopy(_currentLayers, new_layers, sizeof(int) * MODEL_LAYERS_COUNT);
     _currentLayers[MODEL_LAYERS_COUNT] = static_cast<int>(anim_pair);
 
     auto mesh_changed = false;
@@ -1984,7 +1984,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
     auto&& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    std::memcpy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
+    MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -1995,15 +1995,15 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         m.Transpose(); // Convert to column major order
-        std::memcpy(wm, m[0], 16 * sizeof(float));
+        MemCopy(wm, m[0], 16 * sizeof(float));
         wm += 16;
     }
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
-    std::memcpy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float));
+    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float));
     model_buf->GroundPosition[3] = 0.0f;
 
-    std::memcpy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
+    MemCopy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
 
     if (effect->NeedModelTexBuf) {
         auto&& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2011,8 +2011,8 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i] != nullptr) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                std::memcpy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
-                std::memcpy(&custom_tex_buf->TexSize[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
+                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
             }
             else {
                 effect->ModelTex[i] = nullptr;

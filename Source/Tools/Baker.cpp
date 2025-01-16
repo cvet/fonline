@@ -1197,16 +1197,10 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
-                const auto hash_data = props.GetRawData(prop);
-                RUNTIME_ASSERT(hash_data.size() == sizeof(hstring::hash_t));
+                const auto res_name = props.GetValue<hstring>(prop);
 
-                if (*reinterpret_cast<const hstring::hash_t*>(hash_data.data()) == 0) {
-                    continue;
-                }
-
-                const auto h = props.GetValue<hstring>(prop);
-                if (h && resource_hashes.count(h) == 0) {
-                    WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
+                if (res_name && resource_hashes.count(res_name) == 0) {
+                    WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
                 }
             }
@@ -1215,10 +1209,11 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
                     continue;
                 }
 
-                const auto hashes = props.GetValue<vector<hstring>>(prop);
-                for (const auto h : hashes) {
-                    if (h && resource_hashes.count(h) == 0) {
-                        WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
+                const auto res_names = props.GetValue<vector<hstring>>(prop);
+
+                for (const auto res_name : res_names) {
+                    if (res_name && resource_hashes.count(res_name) == 0) {
+                        WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
                     }
                 }
@@ -1231,14 +1226,8 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
         if (!prop->GetBaseScriptFuncType().empty()) {
             if (prop->IsPlainData()) {
-                auto hash_data = props.GetRawData(prop);
-                RUNTIME_ASSERT(hash_data.size() == sizeof(hstring::hash_t));
-
-                if (*reinterpret_cast<const hstring::hash_t*>(hash_data.data()) == 0) {
-                    continue;
-                }
-
                 const auto func_name = props.GetValue<hstring>(prop);
+
                 if (ScriptFuncVerify.count(prop->GetBaseScriptFuncType()) == 0) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;

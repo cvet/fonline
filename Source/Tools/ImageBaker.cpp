@@ -1501,7 +1501,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         }
         else {
             data.resize(data_len);
-            std::memcpy(data.data(), file.GetCurBuf(), data_len);
+            MemCopy(data.data(), file.GetCurBuf(), data_len);
         }
 
         auto fm_images = File("", "", 0, nullptr, data, false);
@@ -2307,7 +2307,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) 
             static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
             {
                 auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
-                std::memcpy(png_data, *io_ptr, length);
+                MemCopy(png_data, *io_ptr, length);
                 *io_ptr += length;
             }
         };
@@ -2374,7 +2374,7 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
 
     const auto read_tga = [&](void* ptr, size_t len) {
         if (cur_pos + len <= data_size) {
-            std::memcpy(ptr, data + cur_pos, len);
+            MemCopy(ptr, data + cur_pos, len);
             cur_pos += (len);
         }
         else {

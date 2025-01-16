@@ -133,7 +133,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
         if (whole > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            std::memcpy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], offset);
+            MemCopy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -144,19 +144,19 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
                     write = whole - offset;
                 }
 
-                std::memcpy(output + offset, &sound->ConvertedBuf[sound->ConvertedBufCur], write);
+                MemCopy(output + offset, &sound->ConvertedBuf[sound->ConvertedBufCur], write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
 
             // Cut off end
             if (offset < whole) {
-                std::memset(output + offset, App->Audio.GetSilence(), whole - offset);
+                MemFill(output + offset, App->Audio.GetSilence(), whole - offset);
             }
         }
         else {
             // Copy
-            std::memcpy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], whole);
+            MemCopy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], whole);
             sound->ConvertedBufCur += whole;
         }
 
@@ -190,12 +190,12 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
         }
 
         // Give silent
-        std::memset(output, App->Audio.GetSilence(), whole);
+        MemFill(output, App->Audio.GetSilence(), whole);
         return true;
     }
 
     // Give silent
-    std::memset(output, App->Audio.GetSilence(), whole);
+    MemFill(output, App->Audio.GetSilence(), whole);
 
     return false;
 }
