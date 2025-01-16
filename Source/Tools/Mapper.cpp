@@ -239,7 +239,7 @@ void FOMapper::InitIface()
     SelectType = SELECT_TYPE_NEW;
     ProtoWidth = ini.GetInt("", "ProtoWidth", 50);
     ProtosOnScreen = (IntWWork[2] - IntWWork[0]) / ProtoWidth;
-    std::memset(TabIndex, 0, sizeof(TabIndex));
+    MemFill(TabIndex, 0, sizeof(TabIndex));
     NpcDir = 3;
     CurMode = CUR_MODE_DEFAULT;
     IsSelectItem = true;

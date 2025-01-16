@@ -242,7 +242,7 @@ namespace SPK::FO
         RUNTIME_ASSERT(_effect != nullptr);
         RUNTIME_ASSERT(_texture != nullptr);
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        std::memcpy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
+        MemCopy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect);

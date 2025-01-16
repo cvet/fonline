@@ -1092,12 +1092,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     // Uniforms
     if (NeedProjBuf && !ProjBuf.has_value()) {
         auto&& proj_buf = ProjBuf = ProjBuffer();
-        std::memcpy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
+        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
     if (NeedMainTexBuf && !MainTexBuf.has_value()) {
         auto&& main_tex_buf = MainTexBuf = MainTexBuffer();
-        std::memcpy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
+        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
     if (GL_HAS(uniform_buffer_object)) {

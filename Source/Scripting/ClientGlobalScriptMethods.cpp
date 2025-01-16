@@ -1294,7 +1294,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
         }
     });
 
-    std::memset(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+    MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
     }

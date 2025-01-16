@@ -1159,7 +1159,7 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 
 #endif
 
-extern auto MemMalloc(size_t size) -> void*
+extern auto MemMalloc(size_t size) noexcept -> void*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1175,7 +1175,7 @@ extern auto MemMalloc(size_t size) -> void*
 #endif
 }
 
-extern auto MemCalloc(size_t num, size_t size) -> void*
+extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1191,7 +1191,7 @@ extern auto MemCalloc(size_t num, size_t size) -> void*
 #endif
 }
 
-extern auto MemRealloc(void* ptr, size_t size) -> void*
+extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1208,7 +1208,7 @@ extern auto MemRealloc(void* ptr, size_t size) -> void*
 #endif
 }
 
-extern void MemFree(void* ptr)
+extern void MemFree(void* ptr) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -1220,6 +1220,37 @@ extern void MemFree(void* ptr)
 #else
     free(ptr);
 #endif
+}
+
+extern void MemCopy(void* dest, const void* src, size_t size) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
+    // So check size first
+    if (size != 0) {
+        std::memcpy(dest, src, size);
+    }
+}
+
+extern void MemFill(void* ptr, int value, size_t size) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (size != 0) {
+        std::memset(ptr, value, size);
+    }
+}
+
+extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    if (size != 0) {
+        return std::memcmp(ptr1, ptr2, size) == 0;
+    }
+
+    return true;
 }
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;

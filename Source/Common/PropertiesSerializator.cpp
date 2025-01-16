@@ -61,7 +61,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             const auto base_raw_data = base->GetRawData(prop);
             const auto raw_data = props->GetRawData(prop);
 
-            if (raw_data.size() == base_raw_data.size() && std::memcmp(raw_data.data(), base_raw_data.data(), raw_data.size()) == 0) {
+            if (raw_data.size() == base_raw_data.size() && MemCompare(raw_data.data(), base_raw_data.data(), raw_data.size()) == 0) {
                 continue;
             }
         }
@@ -164,7 +164,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
     }
     else if (base_type_info.IsEnum) {
         int enum_value = 0;
-        std::memcpy(&enum_value, pdata, base_type_info.Size);
+        MemCopy(&enum_value, pdata, base_type_info.Size);
         pdata += base_type_info.Size;
         return name_resolver.ResolveEnumValueName(base_type_info.TypeName, enum_value);
     }
@@ -254,7 +254,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
             uint arr_size;
 
             if (prop->IsArrayOfString()) {
-                std::memcpy(&arr_size, pdata, sizeof(arr_size));
+                MemCopy(&arr_size, pdata, sizeof(arr_size));
                 pdata += sizeof(uint);
             }
             else {
@@ -289,7 +289,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                 }
                 else if (dict_key_type_info.IsEnum) {
                     int enum_value = 0;
-                    std::memcpy(&enum_value, p, dict_key_type_info.Size);
+                    MemCopy(&enum_value, p, dict_key_type_info.Size);
                     return name_resolver.ResolveEnumValueName(dict_key_type_info.TypeName, enum_value);
                 }
                 else if (dict_key_type_info.IsInt8) {
@@ -344,7 +344,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                     string key_str = get_key_string(key_data);
 
                     uint arr_size;
-                    std::memcpy(&arr_size, pdata, sizeof(arr_size));
+                    MemCopy(&arr_size, pdata, sizeof(arr_size));
                     pdata += sizeof(uint);
 
                     AnyData::Array arr;
@@ -487,7 +487,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
             *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
         }
         else {
-            std::memcpy(pdata, &enum_value, base_type_info.Size);
+            MemCopy(pdata, &enum_value, base_type_info.Size);
         }
     }
     else if (base_type_info.IsPrimitive) {
@@ -620,7 +620,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 const auto& str = ConvertToString(arr_entry, str_buf);
                 *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
                 pdata += sizeof(uint);
-                std::memcpy(pdata, str.c_str(), str.length());
+                MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
             }
 
@@ -700,9 +700,9 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             // Key
             if (dickt_key_type_info.IsString) {
                 const uint key_len = static_cast<uint>(dict_key.length());
-                std::memcpy(pdata, &key_len, sizeof(key_len));
+                MemCopy(pdata, &key_len, sizeof(key_len));
                 pdata += sizeof(key_len);
-                std::memcpy(pdata, dict_key.c_str(), dict_key.length());
+                MemCopy(pdata, dict_key.c_str(), dict_key.length());
                 pdata += dict_key.length();
             }
             else if (dickt_key_type_info.IsHash) {
@@ -718,7 +718,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                     *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
                 }
                 else {
-                    std::memcpy(pdata, &enum_value, base_type_info.Size);
+                    MemCopy(pdata, &enum_value, base_type_info.Size);
                 }
             }
             else if (dickt_key_type_info.IsInt8) {
@@ -771,7 +771,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                         const auto& str = ConvertToString(arr_entry, str_buf);
                         *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
                         pdata += sizeof(uint);
-                        std::memcpy(pdata, str.c_str(), str.length());
+                        MemCopy(pdata, str.c_str(), str.length());
                         pdata += str.length();
                     }
                 }
@@ -785,7 +785,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 const auto& str = ConvertToString(dict_value, str_buf);
                 *reinterpret_cast<uint*>(pdata) = static_cast<uint>(str.length());
                 pdata += sizeof(uint);
-                std::memcpy(pdata, str.c_str(), str.length());
+                MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
             }
             else {

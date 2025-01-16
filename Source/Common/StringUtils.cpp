@@ -135,21 +135,21 @@ auto strex::startsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= 1 && _sv.front() == r;
+    return !_sv.empty() && _sv.front() == r;
 }
 
 auto strex::startsWith(string_view r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= r.length() && std::memcmp(_sv.data(), r.data(), r.length()) == 0;
+    return _sv.length() >= r.length() && MemCompare(_sv.data(), r.data(), r.length()) == 0;
 }
 
 auto strex::endsWith(char r) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= 1 && _sv.back() == r;
+    return !_sv.empty() && _sv.back() == r;
 }
 
 auto strex::endsWith(string_view r) const noexcept -> bool
@@ -555,7 +555,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
             if (*end_ptr != 0) {
                 const auto count = static_cast<size_t>(end_ptr - ptr);
                 array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
-                std::memcpy(str_nt.data(), ptr, count);
+                MemCopy(str_nt.data(), ptr, count);
                 str_nt[count] = 0;
 
                 char* result_end_ptr;
@@ -646,7 +646,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 if (*end_ptr != 0) {
                     const auto count = static_cast<size_t>(end_ptr - ptr);
                     array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
-                    std::memcpy(str_nt.data(), ptr, count);
+                    MemCopy(str_nt.data(), ptr, count);
                     str_nt[count] = 0;
 
                     char* result_end_ptr;

@@ -130,7 +130,7 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
 
     if (make_copy) {
         auto buf_copy = SafeAlloc::MakeUniqueArr<uint8>(buf.size());
-        std::memcpy(buf_copy.get(), buf.data(), buf.size());
+        MemCopy(buf_copy.get(), buf.data(), buf.size());
         _fileBuf = {buf_copy.release(), [](const auto* p) { delete[] p; }};
     }
     else {
@@ -157,7 +157,7 @@ auto File::GetData() const -> vector<uint8>
 
     vector<uint8> result;
     result.resize(_fileSize);
-    std::memcpy(result.data(), _fileBuf.get(), _fileSize);
+    MemCopy(result.data(), _fileBuf.get(), _fileSize);
     return result;
 }
 
@@ -268,7 +268,7 @@ void File::CopyData(void* ptr, size_t size)
         throw FileSystemExeption("Read file error", _fileName);
     }
 
-    std::memcpy(ptr, _fileBuf.get() + _curPos, size);
+    MemCopy(ptr, _fileBuf.get() + _curPos, size);
     _curPos += size;
 }
 

@@ -374,11 +374,14 @@ public:
     }
 };
 
-// Custom C allocators
-extern auto MemMalloc(size_t size) -> void*;
-extern auto MemCalloc(size_t num, size_t size) -> void*;
-extern auto MemRealloc(void* ptr, size_t size) -> void*;
-extern void MemFree(void* ptr);
+// Memory low level management
+extern auto MemMalloc(size_t size) noexcept -> void*;
+extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
+extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
+extern void MemFree(void* ptr) noexcept;
+extern void MemCopy(void* dest, const void* src, size_t size) noexcept;
+extern void MemFill(void* ptr, int value, size_t size) noexcept;
+extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool;
 
 // Basic types with safe allocator
 using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
@@ -1395,7 +1398,7 @@ public:
             throw DataReadingException("Unexpected end of buffer");
         }
 
-        std::memcpy(ptr, &_dataBuf[_readPos], sizeof(T));
+        MemCopy(ptr, &_dataBuf[_readPos], sizeof(T));
         _readPos += sizeof(T);
     }
 
@@ -1406,10 +1409,8 @@ public:
             throw DataReadingException("Unexpected end of buffer");
         }
 
-        if (size != 0) {
-            std::memcpy(ptr, &_dataBuf[_readPos], size);
-            _readPos += size;
-        }
+        MemCopy(ptr, _dataBuf.data() + _readPos, size);
+        _readPos += size;
     }
 
     void VerifyEnd() const
@@ -1446,7 +1447,7 @@ public:
     void WritePtr(const T* data) noexcept
     {
         ResizeBuf(sizeof(T));
-        std::memcpy(_dataBuf.data() + _dataBuf.size() - sizeof(T), data, sizeof(T));
+        MemCopy(_dataBuf.data() + _dataBuf.size() - sizeof(T), data, sizeof(T));
     }
 
     template<typename T>
@@ -1454,7 +1455,7 @@ public:
     {
         if (size != 0) {
             ResizeBuf(size);
-            std::memcpy(_dataBuf.data() + _dataBuf.size() - size, data, size);
+            MemCopy(_dataBuf.data() + _dataBuf.size() - size, data, size);
         }
     }
 

@@ -251,7 +251,7 @@ protected:
                 _outBuf.shrink_to_fit();
             }
 
-            std::memcpy(_outBuf.data(), OutBuf.GetData(), len);
+            MemCopy(_outBuf.data(), OutBuf.GetData(), len);
             out_len = len;
 
             OutBuf.DiscardWriteBuf(len);
