@@ -430,7 +430,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
-    const bool anim_pix = opt.find('a') != string::npos;
+    UNUSED_VARIABLE(opt);
 
     file.SetCurPos(0x4);
     auto frm_fps = file.GetBEUShort();
@@ -445,6 +445,17 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
     FrameCollection collection;
     collection.SequenceSize = frm_count;
     collection.AnimTicks = 1000 / frm_fps * frm_count;
+
+    // Animate pixels
+    // 0x00 - None
+    // 0x01 - Slime, 229 - 232, 4 frames
+    // 0x02 - Monitors, 233 - 237, 5 frames
+    // 0x04 - FireSlow, 238 - 242, 5 frames
+    // 0x08 - FireFast, 243 - 247, 5 frames
+    // 0x10 - Shoreline, 248 - 253, 6 frames
+    // 0x20 - BlinkingRed, 254, 15 frames
+    uint anim_pix_type = 0;
+    const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -502,18 +513,6 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
             custom_palette[0] = ucolor {0};
             palette = custom_palette;
         }
-
-        // Animate pixels
-        uint anim_pix_type = 0;
-
-        // 0x00 - None
-        // 0x01 - Slime, 229 - 232, 4 frames
-        // 0x02 - Monitors, 233 - 237, 5 frames
-        // 0x04 - FireSlow, 238 - 242, 5 frames
-        // 0x08 - FireFast, 243 - 247, 5 frames
-        // 0x10 - Shoreline, 248 - 253, 6 frames
-        // 0x20 - BlinkingRed, 254, 15 frames
-        const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
         for (auto frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
@@ -588,7 +587,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
             }
 
             // Check for animate pixels
-            if (frm == 0 && anim_pix && palette == reinterpret_cast<ucolor*>(FoPalette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette == reinterpret_cast<ucolor*>(FoPalette)) {
                 file.SetCurPos(offset + 12);
 
                 for (auto i = 0, j = w * h; i < j; i++) {
@@ -691,7 +690,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
-    const bool anim_pix = opt.find('a') != string::npos;
+    UNUSED_VARIABLE(opt);
 
     // Load from frm
     file.SetCurPos(0x4);
@@ -708,6 +707,17 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
     collection.SequenceSize = frm_count;
     collection.AnimTicks = 1000 / frm_fps * frm_count;
     collection.NewExtension = "frm";
+
+    // Animate pixels
+    // 0x00 - None
+    // 0x01 - Slime, 229 - 232, 4 frames
+    // 0x02 - Monitors, 233 - 237, 5 frames
+    // 0x04 - FireSlow, 238 - 242, 5 frames
+    // 0x08 - FireFast, 243 - 247, 5 frames
+    // 0x10 - Shoreline, 248 - 253, 6 frames
+    // 0x20 - BlinkingRed, 254, 15 frames
+    uint anim_pix_type = 0;
+    const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -774,18 +784,6 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
             custom_palette[0] = ucolor {0};
             palette = custom_palette;
         }
-
-        // Animate pixels
-        uint anim_pix_type = 0;
-
-        // 0x00 - None
-        // 0x01 - Slime, 229 - 232, 4 frames
-        // 0x02 - Monitors, 233 - 237, 5 frames
-        // 0x04 - FireSlow, 238 - 242, 5 frames
-        // 0x08 - FireFast, 243 - 247, 5 frames
-        // 0x10 - Shoreline, 248 - 253, 6 frames
-        // 0x20 - BlinkingRed, 254, 15 frames
-        const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
         for (auto frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
@@ -862,7 +860,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
             }
 
             // Check for animate pixels
-            if (frm == 0 && anim_pix && palette == reinterpret_cast<ucolor*>(FoPalette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette == reinterpret_cast<ucolor*>(FoPalette)) {
                 file.SetCurPos(offset + 12);
 
                 for (auto i = 0, j = w * h; i < j; i++) {
