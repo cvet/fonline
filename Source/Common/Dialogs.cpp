@@ -345,17 +345,17 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
 
     NON_CONST_METHOD_HINT();
 
-    char who = DR_WHO_PLAYER;
-    auto oper = '=';
+    uint8 who = DR_WHO_PLAYER;
+    uint8 oper = '=';
     int values_count = 0;
     string svalue;
-    auto ivalue = 0;
+    int ivalue = 0;
     uint id_index = 0;
     hstring id_hash;
     string type_str;
     string name;
     string script_name;
-    auto no_recheck = false;
+    bool no_recheck = false;
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
@@ -487,7 +487,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     return result;
 }
 
-auto DialogManager::GetDrType(string_view str) -> uint8
+auto DialogManager::GetDrType(string_view str) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -509,7 +509,7 @@ auto DialogManager::GetDrType(string_view str) -> uint8
     return DR_NONE;
 }
 
-auto DialogManager::GetWho(char who) -> uint8
+auto DialogManager::GetWho(uint8 who) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -517,12 +517,12 @@ auto DialogManager::GetWho(char who) -> uint8
         return DR_WHO_PLAYER;
     }
     if (who == 'N' || who == 'n') {
-        return DR_WHO_PLAYER;
+        return DR_WHO_NPC;
     }
     return DR_WHO_NONE;
 }
 
-auto DialogManager::CheckOper(char oper) -> bool
+auto DialogManager::CheckOper(uint8 oper) const -> bool
 {
     STACK_TRACE_ENTRY();
 

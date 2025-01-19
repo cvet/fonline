@@ -75,7 +75,7 @@ struct DialogAnswerReq
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};
-    char Op {};
+    uint8 Op {};
     uint8 ValuesCount {};
     int Value {};
     int ValueExt[5] {};
@@ -145,9 +145,9 @@ public:
     void LoadFromResources();
 
 private:
-    [[nodiscard]] auto GetDrType(string_view str) -> uint8;
-    [[nodiscard]] auto GetWho(char who) -> uint8;
-    [[nodiscard]] auto CheckOper(char oper) -> bool;
+    [[nodiscard]] auto GetDrType(string_view str) const -> uint8;
+    [[nodiscard]] auto GetWho(uint8 who) const -> uint8;
+    [[nodiscard]] auto CheckOper(uint8 oper) const -> bool;
 
     auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq;
