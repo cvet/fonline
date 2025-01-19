@@ -346,7 +346,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     NON_CONST_METHOD_HINT();
 
     uint8 who = DR_WHO_PLAYER;
-    char oper = '=';
+    uint8 oper = '=';
     int values_count = 0;
     string svalue;
     int ivalue = 0;
@@ -517,12 +517,12 @@ auto DialogManager::GetWho(uint8 who) const -> uint8
         return DR_WHO_PLAYER;
     }
     if (who == 'N' || who == 'n') {
-        return DR_WHO_PLAYER;
+        return DR_WHO_NPC;
     }
     return DR_WHO_NONE;
 }
 
-auto DialogManager::CheckOper(char oper) const -> bool
+auto DialogManager::CheckOper(uint8 oper) const -> bool
 {
     STACK_TRACE_ENTRY();
 
