@@ -2087,7 +2087,7 @@ void FOClient::Net_OnPlaySound()
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     // Todo: synchronize effects showing (for example shot and kill)
-    [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<uint>();
+    [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<ident_t>();
     const auto sound_name = _conn.InBuf.Read<string>();
 
     SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
