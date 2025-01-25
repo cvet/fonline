@@ -1288,6 +1288,9 @@ auto BakerDataSource::FindFile(string_view path) const -> File*
             _bakedFiles[path] = SafeAlloc::MakeUnique<File>(std::move(file));
         }
     }
+    else {
+        BreakIntoDebugger();
+    }
 
     if (!file_baked) {
         _bakedFiles[path] = nullptr;

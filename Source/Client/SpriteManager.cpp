@@ -229,6 +229,21 @@ void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory)
     _spriteFactories.emplace_back(std::move(factory));
 }
 
+auto SpriteManager::GetSpriteFactory(std::type_index ti) -> SpriteFactory*
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    for (const auto& factory : _spriteFactories) {
+        if (const auto& factory_ref = *factory; std::type_index(typeid(factory_ref)) == ti) {
+            return factory.get();
+        }
+    }
+
+    return nullptr;
+}
+
 void SpriteManager::BeginScene(ucolor clear_color)
 {
     STACK_TRACE_ENTRY();

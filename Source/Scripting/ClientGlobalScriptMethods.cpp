@@ -667,8 +667,11 @@ FO_SCRIPT_API string Client_Game_FormatTags(FOClient* client, string_view text, 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
+    auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
+    RUNTIME_ASSERT(model_spr_factory);
+
     for (const auto& fname : fnames) {
-        client->Preload3dFiles.push_back(fname);
+        model_spr_factory->GetModelMngr()->PreloadModel(fname);
     }
 }
 

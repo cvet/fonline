@@ -194,6 +194,7 @@ public:
     void SetAlwaysOnTop(bool enable);
 
     void RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory);
+    auto GetSpriteFactory(std::type_index ti) -> SpriteFactory*;
     void CleanupSpriteCache();
 
     void PushScissor(int l, int t, int r, int b);
