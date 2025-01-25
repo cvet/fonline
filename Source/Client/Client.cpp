@@ -92,19 +92,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     // Init sprite subsystems
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this));
-
 #if FO_ENABLE_3D
-    auto&& model_spr_factory = SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this);
-
-    if (!Preload3dFiles.empty()) {
-        WriteLog("Preload 3d files...");
-        for (const auto& name : Preload3dFiles) {
-            model_spr_factory->GetModelMngr()->PreloadModel(name);
-        }
-        WriteLog("Preload 3d files complete");
-    }
-
-    SprMngr.RegisterSpriteFactory(std::move(model_spr_factory));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this));
 #endif
 
     SprMngr.InitializeEgg(FOEngineBase::ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);

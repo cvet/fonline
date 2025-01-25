@@ -677,8 +677,11 @@ FO_SCRIPT_API int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zone
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
-    for (size_t i = 0; i < fnames.size(); i++) {
-        client->Preload3dFiles.push_back(fnames[i]);
+    auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
+    RUNTIME_ASSERT(model_spr_factory);
+
+    for (const auto& fname : fnames) {
+        model_spr_factory->GetModelMngr()->PreloadModel(fname);
     }
 }
 

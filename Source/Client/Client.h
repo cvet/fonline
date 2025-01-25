@@ -268,7 +268,6 @@ public:
 
     MapView* CurMap {};
     bool CanDrawInScripts {};
-    vector<string> Preload3dFiles {};
 
     vector<RenderEffect*> OffscreenEffects {};
     vector<RenderTarget*> OffscreenSurfaces {};
