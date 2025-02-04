@@ -3963,7 +3963,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
             const Entity* entity = nullptr;
 
             if (demand.Type == DR_PROP_GLOBAL) {
-                entity = master;
+                entity = this;
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
@@ -4125,7 +4125,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
             Entity* entity = nullptr;
 
             if (result.Type == DR_PROP_GLOBAL) {
-                entity = master;
+                entity = this;
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
