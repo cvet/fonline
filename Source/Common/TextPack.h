@@ -79,6 +79,7 @@ public:
     void AddStr(TextPackKey num, string&& str);
     void EraseStr(TextPackKey num);
     void Merge(const TextPack& other);
+    void FixStr(const TextPack& base_pack);
     void Clear();
 
 private:
@@ -106,6 +107,7 @@ public:
     void ParseTexts(FileSystem& resources, HashResolver& hash_resolver);
     void SaveTextsToDisk(string_view dir) const;
     void LoadTexts(FileSystem& resources);
+    void FixTexts(const LanguagePack& base_lang);
 
 private:
     string _langName {};

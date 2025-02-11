@@ -642,6 +642,13 @@ macro(AddToPackage package binary platform arch packType)
 	list(APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
 endmacro()
 
+macro(SetBakingOption opt)
+	foreach(arg ${ARGN})
+		StatusMessage("+ Baking option ${opt} = ${arg}")
+		list(APPEND FO_BAKING_OPTIONS "${opt},${arg}")
+	endforeach()
+endmacro()
+
 # Core contribution
 set(FO_CONTRIBUTION_DIR ${FO_ENGINE_ROOT})
 AddNativeIncludeDir("Source/Scripting/Native")

@@ -52,7 +52,7 @@ class BakerEngine : public FOEngineBase
 {
 public:
     explicit BakerEngine(PropertiesRelationType props_relation) :
-        FOEngineBase(_dummySettings, props_relation)
+        FOEngineBase(App->Settings, props_relation)
     {
         extern void Baker_RegisterData(FOEngineBase*);
         Baker_RegisterData(this);
@@ -63,11 +63,7 @@ public:
         extern auto Baker_GetRestoreInfo() -> vector<uint8>;
         return Baker_GetRestoreInfo();
     }
-
-private:
-    static GlobalSettings _dummySettings;
 };
-GlobalSettings BakerEngine::_dummySettings {};
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -196,8 +192,8 @@ void Baker::BakeAll()
         const auto bake_resource_pack = [ // clang-format off
             &thiz = std::as_const(*this),
             &settings = std::as_const(_settings),
-            &resource_names = resource_names,
-            &resource_names_locker = resource_names_locker // clang-format on
+            &resource_names_ = resource_names,
+            &resource_names_locker_ = resource_names_locker // clang-format on
         ](const string& pack_name, const vector<string>& paths) {
             FileSystem res_files;
 
@@ -237,8 +233,8 @@ void Baker::BakeAll()
                     const auto output_path = make_output_path(file_header.GetPath());
 
                     {
-                        auto locker = std::unique_lock {resource_names_locker};
-                        resource_names.emplace(output_path);
+                        auto locker = std::unique_lock {resource_names_locker_};
+                        resource_names_.emplace(output_path);
                     }
 
                     pack_resource_names.emplace(exclude_all_ext(output_path));
@@ -277,16 +273,15 @@ void Baker::BakeAll()
                 // Skip not necessary files
                 if (!is_raw_only) {
                     const string ext = strex(output_path).getFileExtension();
-                    const auto& base_exts = settings.BakeExtraFileExtensions;
 
-                    if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
+                    if (!vec_exists(settings.BakeBaseFileExtensions, ext) && !vec_exists(settings.BakeExtraFileExtensions, ext)) {
                         continue;
                     }
                 }
 
                 {
-                    auto locker = std::unique_lock {resource_names_locker};
-                    resource_names.emplace(output_path);
+                    auto locker = std::unique_lock {resource_names_locker_};
+                    resource_names_.emplace(output_path);
                 }
 
                 pack_resource_names.emplace(exclude_all_ext(output_path));
@@ -738,14 +733,14 @@ void Baker::BakeAll()
                 const auto bake_map = [ // clang-format off
                     &thiz = std::as_const(*this),
                     &settings = std::as_const(_settings),
-                    &baker_engine = std::as_const(baker_engine),
-                    &server_proto_mngr = std::as_const(server_proto_mngr),
-                    &client_proto_mngr = std::as_const(client_proto_mngr),
+                    &baker_engine_ = std::as_const(baker_engine),
+                    &server_proto_mngr_ = std::as_const(server_proto_mngr),
+                    &client_proto_mngr_ = std::as_const(client_proto_mngr),
                     &hash_resolver = static_cast<HashResolver&>(server_engine),
-                    &script_sys = std::as_const(compiler_script_sys),
-                    &resource_hashes = std::as_const(resource_hashes) // clang-format on
+                    &script_sys_ = std::as_const(compiler_script_sys),
+                    &resource_hashes_ = std::as_const(resource_hashes) // clang-format on
                 ](const ProtoMap* proto_map) {
-                    const auto fomap_files = baker_engine.Resources.FilterFiles("fomap");
+                    const auto fomap_files = baker_engine_.Resources.FilterFiles("fomap");
                     auto map_file = fomap_files.FindFileByName(proto_map->GetName());
                     RUNTIME_ASSERT(map_file);
 
@@ -771,12 +766,12 @@ void Baker::BakeAll()
                     int map_errors = 0;
 
                     MapLoader::Load(
-                        proto_map->GetName(), map_file.GetStr(), server_proto_mngr, hash_resolver,
+                        proto_map->GetName(), map_file.GetStr(), server_proto_mngr_, hash_resolver,
                         [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
                             auto props = proto->GetProperties().Copy();
                             props.ApplyFromText(kv);
 
-                            map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
+                            map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys_, resource_hashes_);
 
                             map_cr_count++;
                             map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -789,7 +784,7 @@ void Baker::BakeAll()
                             auto props = proto->GetProperties().Copy();
                             props.ApplyFromText(kv);
 
-                            map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys, resource_hashes);
+                            map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys_, resource_hashes_);
 
                             map_item_count++;
                             map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -802,7 +797,7 @@ void Baker::BakeAll()
                             const auto is_hidden = proto->GetHidden();
 
                             if (is_static && !is_hidden) {
-                                const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
+                                const auto* client_proto = client_proto_mngr_.GetProtoItem(proto->GetProtoId());
                                 auto client_props = client_proto->GetProperties().Copy();
                                 client_props.ApplyFromText(kv);
 
@@ -1029,12 +1024,19 @@ void Baker::BakeAll()
         try {
             WriteLog("Bake texts");
 
-            auto del_texts_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Texts"));
+            const auto del_texts_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Texts"));
             RUNTIME_ASSERT(del_texts_ok);
 
+            if (_settings.BakeLanguages.empty()) {
+                throw GenericException("No languages specified");
+            }
+
+            // Find languages
+            const auto& default_lang = _settings.BakeLanguages.front();
             set<string> languages;
-            auto txt_files = baker_engine.Resources.FilterFiles("fotxt");
-            while (txt_files.MoveNext()) {
+            set<string> all_languages;
+
+            for (auto txt_files = baker_engine.Resources.FilterFiles("fotxt"); txt_files.MoveNext();) {
                 const auto file = txt_files.GetCurFileHeader();
                 const auto& file_name = file.GetName();
 
@@ -1044,17 +1046,35 @@ void Baker::BakeAll()
                 string lang_name = file_name.substr(sep + 1);
                 RUNTIME_ASSERT(!lang_name.empty());
 
-                if (languages.emplace(lang_name).second) {
-                    WriteLog("Language: {}", lang_name);
+                if (all_languages.emplace(lang_name).second) {
+                    if (std::find(_settings.BakeLanguages.begin(), _settings.BakeLanguages.end(), lang_name) == _settings.BakeLanguages.end()) {
+                        WriteLog("Unsupported language: {}. Skip", lang_name);
+                    }
+                    else {
+                        WriteLog("Language: {}{}", lang_name, lang_name == default_lang ? " (default)" : "");
+                        languages.emplace(lang_name);
+                    }
                 }
             }
 
+            if (languages.count(default_lang) == 0) {
+                throw GenericException("Default language not found");
+            }
+
+            // Parse texts
             vector<LanguagePack> lang_packs;
 
             for (const auto& lang_name : languages) {
                 auto lang_pack = LanguagePack {lang_name, baker_engine};
                 lang_pack.ParseTexts(baker_engine.Resources, baker_engine);
-                lang_packs.emplace_back(std::move(lang_pack));
+
+                if (lang_name == default_lang) {
+                    // Default language should be first
+                    lang_packs.insert(lang_packs.begin(), std::move(lang_pack));
+                }
+                else {
+                    lang_packs.emplace_back(std::move(lang_pack));
+                }
             }
 
             // Dialog texts
@@ -1115,6 +1135,11 @@ void Baker::BakeAll()
 
             if (text_intersected) {
                 throw GenericException("Proto text intersection detected");
+            }
+
+            // Fix for missing texts in packs
+            for (size_t i = 1; i < lang_packs.size(); i++) {
+                lang_packs[i].FixTexts(lang_packs[0]);
             }
 
             // Save parsed packs

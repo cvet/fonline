@@ -1793,8 +1793,8 @@ struct irect
         height {height_}
     {
     }
-    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && width == other.width; }
-    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || height != other.height || height != other.height; }
+    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
 
     int x {};
     int y {};
@@ -2377,6 +2377,12 @@ constexpr auto vec_transform(const vector<T>& vec, const U& transfromer) -> auto
         result.emplace_back(transfromer(value));
     }
     return result;
+}
+
+template<typename T>
+constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
+{
+    return std::find(vec.begin(), vec.end(), value) != vec.end();
 }
 
 // Numeric cast

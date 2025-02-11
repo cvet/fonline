@@ -146,6 +146,28 @@ void TextPack::Merge(const TextPack& other)
     }
 }
 
+void TextPack::FixStr(const TextPack& base_pack)
+{
+    STACK_TRACE_ENTRY();
+
+    // Add keys that are in the base pack but not in this pack
+    for (auto&& [key, value] : base_pack._strData) {
+        if (_strData.count(key) == 0) {
+            AddStr(key, value);
+        }
+    }
+
+    // Remove keys that are not in the base pack
+    for (auto it = _strData.begin(); it != _strData.end();) {
+        if (base_pack._strData.count(it->first) == 0) {
+            it = _strData.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
 auto TextPack::GetSize() const noexcept -> size_t
 {
     STACK_TRACE_ENTRY();
@@ -435,5 +457,33 @@ void LanguagePack::LoadTexts(FileSystem& resources)
 
     if (GetTextPack(TextPackName::Game).GetSize() == 0) {
         throw LanguagePackException("Unable to load game texts from file", _langName);
+    }
+}
+
+void LanguagePack::FixTexts(const LanguagePack& base_lang)
+{
+    STACK_TRACE_ENTRY();
+
+    // Normalize texts to the base language
+    _textPacks.resize(base_lang._textPacks.size());
+
+    for (size_t i = 0; i < base_lang._textPacks.size(); i++) {
+        auto&& base_text_pack = base_lang._textPacks[i];
+        auto&& text_pack = _textPacks[i];
+
+        if (base_text_pack) {
+            if (!text_pack) {
+                text_pack = SafeAlloc::MakeUnique<TextPack>();
+                text_pack->Merge(*base_text_pack);
+            }
+            else {
+                text_pack->FixStr(*base_text_pack);
+            }
+        }
+        else {
+            if (text_pack) {
+                text_pack.reset();
+            }
+        }
     }
 }

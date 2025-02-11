@@ -68,6 +68,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Texts"));
     Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("StaticMaps"));
     Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientProtos"));
+
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
         Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientAngelScript"));
     }
