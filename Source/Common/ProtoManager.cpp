@@ -241,7 +241,8 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
             }
 
             // Texts
-            const string default_lang = !_engine->Settings.Languages.empty() ? _engine->Settings.Languages.front() : "";
+            RUNTIME_ASSERT(!_engine->Settings.BakeLanguages.empty());
+            const string& default_lang = _engine->Settings.BakeLanguages.front();
 
             _parsedTexts[type_name][pid] = {};
 

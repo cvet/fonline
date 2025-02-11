@@ -1086,6 +1086,10 @@ if(FO_DEBUGGING_CONFIG)
     foreach(entry ${FO_RESOURCES})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -config "BakeResourceEntries,+${entry}")
     endforeach()
+
+    foreach(entry ${FO_BAKING_OPTIONS})
+        list(APPEND FO_CODEGEN_COMMAND_ARGS -config "${entry}")
+    endforeach()
 endif()
 
 list(APPEND FO_CODEGEN_META_SOURCE
@@ -1508,6 +1512,13 @@ foreach(entry ${FO_RESOURCES})
     list(APPEND bakeResources -BakeResourceEntries "+${entry}")
 endforeach()
 
+foreach(entry ${FO_BAKING_OPTIONS})
+    string(REPLACE "," ";" entry ${entry})
+    list(GET entry 0 opt)
+    list(GET entry 1 value)
+    list(APPEND bakeResources "-${opt}" "${value}")
+endforeach()
+
 add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
@@ -1622,6 +1633,10 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
         list(GET entry 1 packEntry)
         cmake_path(RELATIVE_PATH packEntry BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE packEntry)
         set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-resource \"${packName},${packEntry}\"")
+    endforeach()
+
+    foreach(entry ${FO_BAKING_OPTIONS})
+        set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-config \"${entry}\"")
     endforeach()
 
     configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)

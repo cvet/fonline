@@ -62,7 +62,6 @@ SETTING_GROUP_END();
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
 FIXED_SETTING(uint, MinNameLength, 4);
 FIXED_SETTING(uint, MaxNameLength, 12);
-FIXED_SETTING(vector<string>, Languages, "engl");
 FIXED_SETTING(uint, TalkDistance, 3);
 FIXED_SETTING(uint, GlobalMapWidth, 28);
 FIXED_SETTING(uint, GlobalMapHeight, 30);
@@ -215,7 +214,9 @@ FIXED_SETTING(bool, SingleThreadBaking, false);
 FIXED_SETTING(string, BakeOutput);
 FIXED_SETTING(vector<string>, BakeResourceEntries);
 FIXED_SETTING(vector<string>, BakeContentEntries);
-FIXED_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+FIXED_SETTING(vector<string>, BakeBaseFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini");
+FIXED_SETTING(vector<string>, BakeExtraFileExtensions);
+FIXED_SETTING(vector<string>, BakeLanguages);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

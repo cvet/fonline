@@ -19,6 +19,7 @@ parser.add_argument('-defaultcfg', dest='defaultcfg', help='Game default config'
 parser.add_argument('-mappercfg', dest='mappercfg', help='Mapper default config')
 parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
+parser.add_argument('-config', dest='config', action='append', default=[], help='config option')
 args = parser.parse_args()
 
 assert platform.system() in ['Linux', 'Darwin', 'Windows'], 'Invalid OS'
@@ -155,6 +156,8 @@ try:
 					exeArgs += ['-BakeContentEntries', f'+{c}']
 				for r in args.resource:
 					exeArgs += ['-BakeResourceEntries', f'+{r}']
+			for entry in args.config:
+				exeArgs += ['-' + entry.split(',')[0], entry.split(',')[1]]
 			
 			needWait = binType in ['Baker', 'ASCompiler'] or 'San_' in buildType
 			

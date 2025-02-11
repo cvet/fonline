@@ -1153,3 +1153,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer
 
     return static_map->StaticItems;
 }
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName textPack, uint strNum)
+{
+    return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
+}

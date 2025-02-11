@@ -127,6 +127,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Maps"));
         Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ServerProtos"));
         Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Dialogs"));
+        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Texts"));
+
         if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
             Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ServerAngelScript"));
         }
@@ -326,6 +328,9 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Load protos data");
 
         ProtoMngr.LoadFromResources();
+
+        _defaultLang = LanguagePack {Settings.Language, *this};
+        _defaultLang.LoadTexts(Resources);
 
         return std::nullopt;
     });

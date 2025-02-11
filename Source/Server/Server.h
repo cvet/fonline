@@ -81,6 +81,7 @@ public:
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
+    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
 
     auto Lock(optional<time_duration> max_wait_time) -> bool;
     void Unlock();
@@ -310,6 +311,7 @@ private:
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
+    LanguagePack _defaultLang {};
     vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<ClientConnection*> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
