@@ -3452,7 +3452,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
         const auto is_cr = strex(args[1]).toBool();
-        const auto cr_id = is_cr ? ident_t {strex(args[2]).toUInt()} : ident_t {};
+        const auto cr_id = is_cr ? ident_t {strex(args[2]).toInt64()} : ident_t {};
         const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(strex(args[2]).toUInt());
         const auto answer_index = static_cast<uint8>(strex(args[3]).toUInt());
 
