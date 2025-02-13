@@ -59,6 +59,10 @@ FO_SCRIPT_API void Client_Map_DrawMapTexts(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_Message(MapView* self, string_view text, mpos hex, tick_t showTime, ucolor color, bool fade, ipos endOffset)
 {
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Hex is out of map bounds");
+    }
+
     self->AddMapText(text, hex, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOffset);
 }
 
