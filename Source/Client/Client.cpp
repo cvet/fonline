@@ -2152,7 +2152,7 @@ void FOClient::Net_OnProperty(uint data_size)
         _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
-        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
+        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(type) - additional_args * sizeof(ident_t) - sizeof(uint16);
 
         if (len != 0) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
