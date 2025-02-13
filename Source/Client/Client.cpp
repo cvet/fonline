@@ -1267,6 +1267,11 @@ void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
         return;
     }
 
+    if (!CurMap->GetSize().IsValidPos(hex)) {
+        BreakIntoDebugger();
+        return;
+    }
+
     uint show_time = 0;
     auto processed_str = strex(str).str();
 
@@ -1306,8 +1311,8 @@ void FOClient::Net_OnMapTextMsg()
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
 
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
-
     FormatTags(str, GetChosen(), nullptr, "");
+
     OnMapText(str, hex, color);
 }
 
@@ -1323,8 +1328,8 @@ void FOClient::Net_OnMapTextMsgLex()
     const auto lexems = _conn.InBuf.Read<string>();
 
     auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
-
     FormatTags(str, GetChosen(), nullptr, lexems);
+
     OnMapText(str, hex, color);
 }
 
