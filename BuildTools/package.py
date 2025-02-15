@@ -132,6 +132,7 @@ def build():
 			resourceEntries += [['ServerAngelScript', '*.fosb']]
 			resourceEntries += [['Dialogs', '*.fodlg']]
 			resourceEntries += [['Maps', '*.fomapb*']]
+			resourceEntries += [['Texts', '*.fotxtb']]
 			for pack in set(args.respack):
 				if 'Server' in pack:
 					resourceEntries += [[pack, '**']]
