@@ -190,7 +190,8 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
 #endif
         {
             const auto* anim = GetCurAnim();
-            _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
+            const auto duration = std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr && anim->AnimFrames->WholeTicks != 0 ? anim->AnimFrames->WholeTicks : 1000};
+            _resetTime = _engine->GameTime.GameplayTime() + duration;
             _needReset = true;
         }
     } break;
@@ -259,6 +260,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
     STACK_TRACE_ENTRY();
 
     const auto dir = GetDir();
+
     if (state_anim == CritterStateAnim::None) {
         state_anim = GetStateAnim();
     }
@@ -282,6 +284,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
     if (_model != nullptr) {
         if (_model->ResolveAnimation(state_anim, action_anim)) {
             _animSequence.push_back(CritterAnim {nullptr, time_duration {}, 0, 0, state_anim, action_anim, fixed_context_item});
+
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -298,7 +301,9 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
         const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, dir);
 
         if (frames != nullptr) {
-            _animSequence.push_back(CritterAnim {frames, std::chrono::milliseconds {frames->WholeTicks}, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, fixed_context_item});
+            const auto duration = std::chrono::milliseconds {frames->WholeTicks != 0 ? frames->WholeTicks : 100};
+            _animSequence.push_back(CritterAnim {frames, duration, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, fixed_context_item});
+
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -373,7 +378,7 @@ void CritterHexView::AnimateStay()
             _engine->OnCritterAnimationProcess.Fire(true, this, state_anim, action_anim, nullptr);
 
             _stayAnim.AnimFrames = frames;
-            _stayAnim.AnimDuration = std::chrono::milliseconds {frames->WholeTicks};
+            _stayAnim.AnimDuration = std::chrono::milliseconds {frames->WholeTicks != 0 ? frames->WholeTicks : 100};
             _stayAnim.BeginFrm = 0;
             _stayAnim.EndFrm = frames->CntFrm - 1;
 

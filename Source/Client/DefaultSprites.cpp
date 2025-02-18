@@ -153,7 +153,7 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
     Spr.resize(frames);
     SprOffset.resize(frames);
     CntFrm = frames;
-    WholeTicks = ticks != 0 ? ticks : frames * 100;
+    WholeTicks = ticks;
 
     DirCount = dirs;
 
@@ -264,6 +264,10 @@ void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(anim_name);
+
+    if (CntFrm == 1 || WholeTicks == 0) {
+        return;
+    }
 
     _playing = true;
     _looped = looped;
