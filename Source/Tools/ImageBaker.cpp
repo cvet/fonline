@@ -314,17 +314,9 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     // Load ini parser
     ConfigFile fofrm(file.GetPath(), file.GetStr());
 
-    int frm_fps = fofrm.GetInt("", "fps", 0);
-
-    if (frm_fps <= 0) {
-        frm_fps = 10;
-    }
-
-    int frm_count = fofrm.GetInt("", "count", 0);
-
-    if (frm_count <= 0) {
-        frm_count = 1;
-    }
+    int frm_fps = fofrm.GetInt("", "fps", 10);
+    int frm_count = fofrm.GetInt("", "count", 1);
+    RUNTIME_ASSERT(frm_count > 0);
 
     int ox = fofrm.GetInt("", "offs_x", 0);
     int oy = fofrm.GetInt("", "offs_y", 0);
@@ -390,7 +382,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         // Allocate animation storage
         if (dir == 0) {
             collection.SequenceSize = static_cast<uint16>(frames);
-            collection.AnimTicks = static_cast<uint16>(1000 * frm_count / frm_fps);
+            collection.AnimTicks = static_cast<uint16>(frm_fps != 0 ? 1000 * frm_count / frm_fps : 0);
         }
         else {
             collection.HaveDirs = true;
@@ -435,16 +427,13 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
     file.SetCurPos(0x4);
     auto frm_fps = file.GetBEUShort();
 
-    if (frm_fps == 0) {
-        frm_fps = 10;
-    }
-
     file.SetCurPos(0x8);
     auto frm_count = file.GetBEUShort();
+    RUNTIME_ASSERT(frm_count > 0);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
-    collection.AnimTicks = 1000 / frm_fps * frm_count;
+    collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
     // Animate pixels
     // 0x00 - None
@@ -696,16 +685,13 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
     file.SetCurPos(0x4);
     auto frm_fps = file.GetBEUShort();
 
-    if (frm_fps == 0) {
-        frm_fps = 10;
-    }
-
     file.SetCurPos(0x8);
     auto frm_count = file.GetBEUShort();
+    RUNTIME_ASSERT(frm_count > 0);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
-    collection.AnimTicks = 1000 / frm_fps * frm_count;
+    collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
     collection.NewExtension = "frm";
 
     // Animate pixels
@@ -1114,12 +1100,8 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     }
 
     auto frm_fps = header.FrameRate;
-
-    if (frm_fps == 0) {
-        frm_fps = 10;
-    }
-
     auto frm_count = header.FrameCount;
+    RUNTIME_ASSERT(frm_count > 0);
 
     if (frm_from >= frm_count) {
         frm_from = frm_count - 1;
@@ -1133,7 +1115,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     // Create animation
     FrameCollection collection;
     collection.SequenceSize = static_cast<uint16>(frm_count_target);
-    collection.AnimTicks = static_cast<uint16>(1000 / frm_fps * frm_count_target);
+    collection.AnimTicks = static_cast<uint16>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
     collection.HaveDirs = header.RotationCount == 8;
 
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
