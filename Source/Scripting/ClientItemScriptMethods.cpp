@@ -117,6 +117,30 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
     }
 }
 
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->GetAnim()->Play(animName, looped, reversed);
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_StopAnim(ItemView* self)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->GetAnim()->Stop();
+    }
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->GetAnim()->SetTime(normalizedTime);
+    }
+}
+
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
