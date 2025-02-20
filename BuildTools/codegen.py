@@ -1873,9 +1873,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         def metaTypeToASEngineType(t, ret = False):
             tt = t.split('.')
             if tt[0] == 'arr':
-                return 'CScriptArray*'
+                return 'CScriptArray*' if tt[-1] != 'ref' else 'CScriptArray*&'
             elif tt[0] == 'dict':
-                return 'CScriptDict*'
+                return 'CScriptDict*' if tt[-1] != 'ref' else 'CScriptDict*&'
             elif tt[0] in ['init', 'callback', 'predicate']:
                 return 'asIScriptFunction*'
             elif tt[0] == 'Entity':
