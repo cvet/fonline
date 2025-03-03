@@ -31,40 +31,23 @@
 // SOFTWARE.
 //
 
-// Todo: improve deferred calls
+#include "SingleScripting.h"
 
-#pragma once
+#if !FO_SINGLEPLAYER
 
-#include "Common.h"
-
-#include "DeferredCalls.h"
-#include "ScriptSystem.h"
-
-DECLARE_EXCEPTION(DeferredCallsLoadException);
-
-class FOServer;
-
-class ServerDeferredCallManager final : public DeferredCallManager
+SingleScriptSystem::SingleScriptSystem(FOSingle* engine) :
+    _engine {engine}
 {
-public:
-    ServerDeferredCallManager() = delete;
-    explicit ServerDeferredCallManager(FOServer* engine);
-    ServerDeferredCallManager(const ServerDeferredCallManager&) = delete;
-    ServerDeferredCallManager(ServerDeferredCallManager&&) noexcept = delete;
-    auto operator=(const ServerDeferredCallManager&) = delete;
-    auto operator=(ServerDeferredCallManager&&) noexcept = delete;
-    ~ServerDeferredCallManager() override = default;
+    STACK_TRACE_ENTRY();
+}
 
-    void LoadDeferredCalls();
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
+void SingleScriptSystem::InitSubsystems()
+{
+    STACK_TRACE_ENTRY();
 
-private:
-    auto GetNextCallId() -> ident_t override;
-    auto AddSavedDeferredCall(uint delay, DeferredCall& call) -> ident_t;
-    void OnDeferredCallRemoved(const DeferredCall& call) override;
+    InitNativeScripting();
+    InitAngelScriptScripting();
+    InitMonoScripting();
+}
 
-    FOServer* _serverEngine;
-    unordered_set<ident_t> _savedCalls {};
-};
+#endif

@@ -3,33 +3,54 @@ namespace Time
 
 // Some stuff for work with time
 
-uint RealMs(uint value)
+tick_t Asap()
+{
+    return 0;
+}
+tick_t RealMs(uint value)
 {
     return value * Game.TimeMultiplier / 1000;
 }
-uint RealSecond(uint value)
+tick_t RealSecond(uint value)
 {
     return value * Game.TimeMultiplier;
 }
-uint RealMinute(uint value)
+tick_t RealMinute(uint value)
 {
     return value * Game.TimeMultiplier * 60;
 }
-uint RealHour(uint value)
+tick_t RealHour(uint value)
 {
     return value * Game.TimeMultiplier * 3600;
 }
-uint RealDay(uint value)
+tick_t RealDay(uint value)
 {
     return value * Game.TimeMultiplier * 86400;
 }
-uint RealMonth(uint value)
+tick_t RealMonth(uint value)
 {
     return value * Game.TimeMultiplier * 2592000;
 }
-uint RealYear(uint value)
+tick_t RealYear(uint value)
 {
     return value * Game.TimeMultiplier * 31536000;
+}
+
+tick_t Sum(tick_t a, tick_t b)
+{
+    tick_t r;
+    r.value = a.value + b.value;
+    return r;
+}
+
+tick_t GetServerTime()
+{
+    return Game.GetServerTime();
+}
+
+tick_t GetServerTime(tick_t diff)
+{
+    return Sum(Game.GetServerTime(), diff);
 }
 
 uint SecondTicks(uint sec)

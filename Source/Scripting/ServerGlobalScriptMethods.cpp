@@ -43,6 +43,30 @@
 #include "TwoBitMask.h"
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, ScriptFuncName<void> func)
+{
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, ScriptFuncName<void, any_t> func, any_t data)
+{
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, tick_t repeat, ScriptFuncName<void> func)
+{
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, tick_t repeat, ScriptFuncName<void, any_t> func, any_t data)
+{
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {
     if (name.empty()) {
@@ -85,84 +109,6 @@ FO_SCRIPT_API void Server_Game_UnloadCritter(FOServer* server, Critter* cr)
 FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(FOServer* server, ident_t crId)
 {
     server->DestroyUnloadedCritter(crId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
-{
-    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, any_t> func, any_t value)
-{
-    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, std::move(value));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
-{
-    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, values);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void> func)
-{
-    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
-{
-    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, std::move(value));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
-{
-    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, values);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, any_t> func, any_t value)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, std::move(value));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, values);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsDeferredCallPending(FOServer* server, ident_t id)
-{
-    return server->ServerDeferredCalls.IsDeferredCallPending(id);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_CancelDeferredCall(FOServer* server, ident_t id)
-{
-    return server->ServerDeferredCalls.CancelDeferredCall(id);
 }
 
 ///@ ExportMethod

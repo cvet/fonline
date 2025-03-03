@@ -42,6 +42,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
+#include "TimeEventManager.h"
 #include "Timer.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
@@ -91,7 +92,8 @@ public:
     GeometryHelper Geometry;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
-    ScriptSystem* ScriptSys {};
+    TimeEventManager TimeEventMngr;
+    unique_ptr<ScriptSystem> ScriptSys {};
     FileSystem Resources {};
     unique_del_ptr<void> UserData {};
 

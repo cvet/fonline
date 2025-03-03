@@ -351,6 +351,13 @@ void Entity::ClearInnerEntities()
     _innerEntities.reset();
 }
 
+auto Entity::HasTimeEvents() const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return (_timeEvents && !_timeEvents->empty()) || (_persistentTimeEvents && !_persistentTimeEvents->empty());
+}
+
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _protoId {proto_id}

@@ -229,10 +229,10 @@ public:
 #if !COMPILER_MODE
 #define INIT_ARGS
 
-#define GET_AS_ENGINE_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData->Engine
-#define GET_AS_ENGINE_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys)->AngelScriptData->Engine
-#define GET_SCRIPT_SYS_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData.get()
-#define GET_SCRIPT_SYS_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys)->AngelScriptData.get()
+#define GET_AS_ENGINE_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys.get())->AngelScriptData->Engine
+#define GET_AS_ENGINE_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys.get())->AngelScriptData->Engine
+#define GET_SCRIPT_SYS_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys.get())->AngelScriptData.get()
+#define GET_SCRIPT_SYS_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys.get())->AngelScriptData.get()
 
 #define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
@@ -924,140 +924,77 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 
 #if !COMPILER_MODE
-static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
-    static unordered_map<std::type_index, std::function<void(asIScriptContext*, asUINT, void*)>> ctx_set_value_map = {
-        {typeid(bool), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
-        {typeid(int8), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<int8*>(ptr)); }},
-        {typeid(int16), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<int16*>(ptr)); }},
-        {typeid(int), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<int*>(ptr)); }},
-        {typeid(int64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<int64*>(ptr)); }},
-        {typeid(uint8), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uint8*>(ptr)); }},
-        {typeid(uint16), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<uint16*>(ptr)); }},
-        {typeid(uint), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<uint*>(ptr)); }},
-        {typeid(uint64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
-        {typeid(float), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
-        {typeid(double), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
-        {typeid(bool*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<bool**>(ptr)); }},
-        {typeid(int8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int8**>(ptr)); }},
-        {typeid(int16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int16**>(ptr)); }},
-        {typeid(int*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int**>(ptr)); }},
-        {typeid(int64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<int64**>(ptr)); }},
-        {typeid(uint8*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint8**>(ptr)); }},
-        {typeid(uint16*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint16**>(ptr)); }},
-        {typeid(uint*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint**>(ptr)); }},
-        {typeid(uint64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<uint64**>(ptr)); }},
-        {typeid(float*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<float**>(ptr)); }},
-        {typeid(double*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<double**>(ptr)); }},
-        {typeid(hstring), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
-        {typeid(string), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
-        {typeid(any_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
-        {typeid(ident_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
-        {typeid(tick_t), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
-        {typeid(hstring*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<hstring**>(ptr)); }},
-        {typeid(string*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<string**>(ptr)); }},
-        {typeid(any_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<any_t**>(ptr)); }},
-        {typeid(ident_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<ident_t**>(ptr)); }},
-        {typeid(tick_t*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, *static_cast<tick_t**>(ptr)); }},
-#if SERVER_SCRIPTING
-        {typeid(Player*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
-        {typeid(Item*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
-        {typeid(StaticItem*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<StaticItem**>(ptr)); }},
-        {typeid(Critter*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Critter**>(ptr)); }},
-        {typeid(Map*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Map**>(ptr)); }},
-        {typeid(Location*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Location**>(ptr)); }},
-        {typeid(vector<Player*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<Player*>*>(ptr))); }},
-        {typeid(vector<Item*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<Item*>*>(ptr))); }},
-        {typeid(vector<StaticItem*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "StaticItem[]", *static_cast<vector<StaticItem*>*>(ptr))); }},
-        {typeid(vector<Critter*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<Critter*>*>(ptr))); }},
-        {typeid(vector<Map*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<Map*>*>(ptr))); }},
-        {typeid(vector<Location*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<Location*>*>(ptr))); }},
-#else
-        {typeid(PlayerView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<PlayerView**>(ptr)); }},
-        {typeid(ItemView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<ItemView**>(ptr)); }},
-        {typeid(CritterView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<CritterView**>(ptr)); }},
-        {typeid(MapView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<MapView**>(ptr)); }},
-        {typeid(LocationView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<LocationView**>(ptr)); }},
-        {typeid(vector<PlayerView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<PlayerView*>*>(ptr))); }},
-        {typeid(vector<ItemView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<ItemView*>*>(ptr))); }},
-        {typeid(vector<CritterView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<CritterView*>*>(ptr))); }},
-        {typeid(vector<MapView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<MapView*>*>(ptr))); }},
-        {typeid(vector<LocationView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
-#endif
-        {typeid(vector<bool>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "bool[]", *static_cast<vector<bool>*>(ptr))); }},
-        {typeid(vector<int8>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<int8>*>(ptr))); }},
-        {typeid(vector<int16>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<int16>*>(ptr))); }},
-        {typeid(vector<int>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int[]", *static_cast<vector<int>*>(ptr))); }},
-        {typeid(vector<int64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int64[]", *static_cast<vector<int64>*>(ptr))); }},
-        {typeid(vector<uint8>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uint8>*>(ptr))); }},
-        {typeid(vector<uint16>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<uint16>*>(ptr))); }},
-        {typeid(vector<uint>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint[]", *static_cast<vector<uint>*>(ptr))); }},
-        {typeid(vector<uint64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
-        {typeid(vector<float>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
-        {typeid(vector<double>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
-        {typeid(vector<string>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
-        {typeid(vector<hstring>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
-        {typeid(vector<any_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "any[]", *static_cast<vector<any_t>*>(ptr))); }},
-        {typeid(vector<ident_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), IDENT_T_NAME "[]", *static_cast<vector<ident_t>*>(ptr))); }},
-        {typeid(vector<tick_t>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), TICK_T_NAME "[]", *static_cast<vector<tick_t>*>(ptr))); }},
-    };
-
-    static unordered_map<std::type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
-        {typeid(bool), [](asIScriptContext* ctx, void* ptr) { *static_cast<bool*>(ptr) = ctx->GetReturnByte() != 0; }},
-        {typeid(int8), [](asIScriptContext* ctx, void* ptr) { *static_cast<int8*>(ptr) = static_cast<int8>(ctx->GetReturnByte()); }},
-        {typeid(int16), [](asIScriptContext* ctx, void* ptr) { *static_cast<int16*>(ptr) = static_cast<int16>(ctx->GetReturnWord()); }},
-        {typeid(int), [](asIScriptContext* ctx, void* ptr) { *static_cast<int*>(ptr) = static_cast<int>(ctx->GetReturnDWord()); }},
-        {typeid(int64), [](asIScriptContext* ctx, void* ptr) { *static_cast<int64*>(ptr) = static_cast<int64>(ctx->GetReturnQWord()); }},
-        {typeid(uint8), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint8*>(ptr) = static_cast<uint8>(ctx->GetReturnByte()); }},
-        {typeid(uint16), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint16*>(ptr) = static_cast<uint16>(ctx->GetReturnWord()); }},
-        {typeid(uint), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint*>(ptr) = static_cast<uint>(ctx->GetReturnDWord()); }},
-        {typeid(uint64), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
-        {typeid(float), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
-        {typeid(double), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
-        {typeid(string), [](asIScriptContext* ctx, void* ptr) { *static_cast<string*>(ptr) = *static_cast<string*>(ctx->GetReturnObject()); }},
-        {typeid(hstring), [](asIScriptContext* ctx, void* ptr) { *static_cast<hstring*>(ptr) = *static_cast<hstring*>(ctx->GetReturnObject()); }},
-        {typeid(any_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<any_t*>(ptr) = *static_cast<any_t*>(ctx->GetReturnObject()); }},
-        {typeid(ident_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<ident_t*>(ptr) = *static_cast<ident_t*>(ctx->GetReturnObject()); }},
-        {typeid(tick_t), [](asIScriptContext* ctx, void* ptr) { *static_cast<tick_t*>(ptr) = *static_cast<tick_t*>(ctx->GetReturnObject()); }},
-    };
-
     try {
-        RUNTIME_ASSERT(func_desc);
         RUNTIME_ASSERT(func);
+        RUNTIME_ASSERT(func_desc);
+        RUNTIME_ASSERT(func_desc->CallSupported);
         RUNTIME_ASSERT(func_desc->ArgsType.size() == args.size());
         RUNTIME_ASSERT(func_desc->ArgsType.size() == func->GetParamCount());
 
         if (ret != nullptr) {
             RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-            RUNTIME_ASSERT(func_desc->RetType != typeid(void));
+            RUNTIME_ASSERT(func_desc->RetType->Accessor);
         }
         else {
             RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-            RUNTIME_ASSERT(func_desc->RetType == typeid(void));
+            RUNTIME_ASSERT(!func_desc->RetType->Accessor);
         }
 
         auto* ctx = script_sys->PrepareContext(func);
 
         if (args.size() != 0) {
             auto it = args.begin();
+
             for (asUINT i = 0; i < args.size(); i++, it++) {
-                ctx_set_value_map[func_desc->ArgsType[i]](ctx, i, *it);
+                auto* arg = *it;
+                const auto& arg_type = func_desc->ArgsType[i];
+
+                if (arg_type->Accessor->IsArray()) {
+                    CScriptArray* arr = CreateASArray(ctx->GetEngine(), strex("{}[]", arg_type->Name).c_str());
+
+                    for (size_t n = 0, m = arg_type->Accessor->GetArraySize(arg); n < m; n++) {
+                        auto* elem = arg_type->Accessor->GetArrayElement(arg, n);
+                        arr->InsertLast(elem);
+                    }
+
+                    ctx->SetArgObject(i, arr);
+                    arr->Release();
+                }
+                else if (arg_type->Accessor->IsReference()) {
+                    ctx->SetArgAddress(i, arg_type->Accessor->GetData(arg));
+                }
+                else if (arg_type->Accessor->IsObject() || arg_type->Accessor->IsEntity()) {
+                    ctx->SetArgObject(i, arg_type->Accessor->GetData(arg));
+                }
+                else if (arg_type->Accessor->IsPlainData()) {
+                    MemCopy(ctx->GetAddressOfArg(i), arg_type->Accessor->GetData(arg), arg_type->Accessor->GetDataSize());
+                }
+                else {
+                    UNREACHABLE_PLACE();
+                }
             }
         }
 
         if (script_sys->RunContext(ctx, ret == nullptr)) {
             if (ret != nullptr) {
-                CtxReturnValueMap[func_desc->RetType](ctx, ret);
+                RUNTIME_ASSERT(func_desc->RetType->Accessor->IsPlainData());
+                MemCopy(ret, ctx->GetAddressOfReturnValue(), func_desc->RetType->Accessor->GetDataSize());
             }
 
             script_sys->ReturnContext(ctx);
-            return true;
         }
+
+        return true;
     }
     catch (std::exception& ex) {
         ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
     }
 
     return false;
@@ -1077,10 +1014,10 @@ template<typename TRet, typename... Args>
         auto& func_desc = it_inserted->second;
         func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
         func_desc.CallSupported = true;
-        func_desc.RetType = std::type_index(typeid(TRet));
-        func_desc.ArgsType = {std::type_index(typeid(Args))...};
+        func_desc.RetType = script_sys->GameEngine->ScriptSys->ResolveScriptType(typeid(TRet));
+        func_desc.ArgsType = {script_sys->GameEngine->ScriptSys->ResolveScriptType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
-        func_desc.Call = [script_sys, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
+        func_desc.Call = [script_sys, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
             return AngelScriptFuncCall(script_sys, &func_desc, as_func.get(), args, ret);
         };
 
@@ -1089,6 +1026,18 @@ template<typename TRet, typename... Args>
     else {
         return ScriptFunc<TRet, Args...>(&it->second);
     }
+}
+
+template<typename TRet, typename... Args>
+[[maybe_unused]] static auto GetASScriptFuncName(asIScriptFunction* func, SCRIPTING_CLASS::AngelScriptImpl* script_sys) -> ScriptFuncName<TRet, Args...>
+{
+    STACK_TRACE_ENTRY();
+
+    if (func->GetDelegateObject() != nullptr) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return GetASFuncName(func, *script_sys->GameEngine);
 }
 #endif
 
@@ -3673,13 +3622,34 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     game_engine->AddRef();
 #else
     FOEngine* game_engine = SafeAlloc::MakeRaw<FOEngine>();
-    game_engine->ScriptSys = this;
+    game_engine->ScriptSys.reset(this);
 #endif
 
-    auto game_engine_releaser = ScopeCallback([game_engine]() noexcept { game_engine->Release(); });
+    auto game_engine_releaser = ScopeCallback([game_engine]() noexcept {
+#if COMPILER_MODE
+        game_engine->ScriptSys.release();
+#endif
+        game_engine->Release();
+    });
 
 #if COMPILER_MODE
     static int dummy = 0;
+#endif
+
+#if COMPILER_MODE
+#if SERVER_SCRIPTING
+    MapEngineEntityType<Player>("Player");
+    MapEngineEntityType<Item>("Item");
+    MapEngineEntityType<Critter>("Critter");
+    MapEngineEntityType<Map>("Map");
+    MapEngineEntityType<Location>("Location");
+#else
+    MapEngineEntityType<PlayerView>("Player");
+    MapEngineEntityType<ItemView>("Item");
+    MapEngineEntityType<CritterView>("Critter");
+    MapEngineEntityType<MapView>("Map");
+    MapEngineEntityType<LocationView>("Location");
+#endif
 #endif
 
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
@@ -4093,7 +4063,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
     if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, func.get()); }); \
+        _rpcReceivers.emplace(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4243,133 +4213,102 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         auto* mod = engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> std::type_index {
-#define CHECK_CLASS(class_name, real_class) \
-    if (string_view(as_type_info->GetName()) == class_name) { \
-        return typeid(real_class); \
-    } \
-    if (is_array && as_type_info->GetSubType() != nullptr && string_view(as_type_info->GetSubType()->GetName()) == class_name) { \
-        return typeid(vector<real_class>); \
-    }
-#define CHECK_POD_ARRAY(as_type, type) \
-    if (is_array && as_type_info->GetSubTypeId() == as_type) { \
-        return typeid(vector<type>); \
-    }
+        const auto as_type_to_type_info = [this, engine](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
             auto* as_type_info = engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
-            if (const auto is_ref = (flags & asTM_INOUTREF) != 0) {
-                if (is_ret) {
-                    return typeid(UnsupportedScriptFuncType);
-                }
-                if (is_array) {
-                    return typeid(UnsupportedScriptFuncType);
-                }
-
-                switch (type_id) {
+            const auto get_type_name = [engine](int tid) -> string_view {
+                switch (tid) {
+                case asTYPEID_VOID:
+                    return "void";
                 case asTYPEID_BOOL:
-                    return typeid(bool*);
+                    return "bool";
                 case asTYPEID_INT8:
-                    return typeid(int8*);
+                    return "int8";
                 case asTYPEID_INT16:
-                    return typeid(int16*);
+                    return "int16";
                 case asTYPEID_INT32:
-                    return typeid(int*);
+                    return "int";
                 case asTYPEID_INT64:
-                    return typeid(int64*);
+                    return "int64";
                 case asTYPEID_UINT8:
-                    return typeid(uint8*);
+                    return "uint8";
                 case asTYPEID_UINT16:
-                    return typeid(uint16*);
+                    return "uint16";
                 case asTYPEID_UINT32:
-                    return typeid(uint*);
+                    return "uint";
                 case asTYPEID_UINT64:
-                    return typeid(uint64*);
+                    return "uint64";
                 case asTYPEID_FLOAT:
-                    return typeid(float*);
+                    return "float";
                 case asTYPEID_DOUBLE:
-                    return typeid(double*);
+                    return "double";
                 default:
                     break;
                 }
 
-                CHECK_CLASS("string", string*);
-                CHECK_CLASS("hstring", hstring*);
-                CHECK_CLASS("any", any_t*);
-                CHECK_CLASS(IDENT_T_NAME, ident_t*);
-                CHECK_CLASS(TICK_T_NAME, tick_t*);
+                auto* ti = engine->GetTypeInfoById(tid);
+                RUNTIME_ASSERT(ti);
+                string_view name = ti->GetName();
 
-                return typeid(UnsupportedScriptFuncType);
+                if (name == "StaticItem") {
+                    return "Item";
+                }
+
+                return name;
+            };
+
+            if (const auto is_ref = (flags & asTM_INOUTREF) != 0; is_ref) {
+                if (is_ret) {
+                    return nullptr;
+                }
+                if (is_array) {
+                    return nullptr;
+                }
+                if ((type_id & asTYPEID_OBJHANDLE) != 0) {
+                    return nullptr;
+                }
+
+                const auto name = get_type_name(type_id);
+                const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                    return entry.second->Name == name && entry.second->Accessor->IsPlainData();
+                });
+
+                if (it != _engineToScriptType.end()) {
+                    return it->second;
+                }
+
+                return nullptr;
             }
 
-            switch (type_id) {
-            case asTYPEID_VOID:
+            if (type_id == asTYPEID_VOID) {
                 RUNTIME_ASSERT(is_ret);
-                return typeid(void);
-            case asTYPEID_BOOL:
-                return typeid(bool);
-            case asTYPEID_INT8:
-                return typeid(int8);
-            case asTYPEID_INT16:
-                return typeid(int16);
-            case asTYPEID_INT32:
-                return typeid(int);
-            case asTYPEID_INT64:
-                return typeid(int64);
-            case asTYPEID_UINT8:
-                return typeid(uint8);
-            case asTYPEID_UINT16:
-                return typeid(uint16);
-            case asTYPEID_UINT32:
-                return typeid(uint);
-            case asTYPEID_UINT64:
-                return typeid(uint64);
-            case asTYPEID_FLOAT:
-                return typeid(float);
-            case asTYPEID_DOUBLE:
-                return typeid(double);
-            default:
-                break;
+                return _engineToScriptType["void"];
             }
 
-            CHECK_CLASS("string", string);
-            CHECK_CLASS("hstring", hstring);
-            CHECK_CLASS("any", any_t);
-            CHECK_CLASS(IDENT_T_NAME, ident_t);
-            CHECK_CLASS(TICK_T_NAME, tick_t);
+            if (is_array) {
+                const auto name = get_type_name(as_type_info->GetSubTypeId());
+                const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                    return entry.second->Name == name && entry.second->Accessor->IsArray();
+                });
 
-            if ((type_id & asTYPEID_OBJHANDLE) != 0) {
-#if SERVER_SCRIPTING
-                CHECK_CLASS("Player", Player*);
-                CHECK_CLASS("Item", Item*);
-                CHECK_CLASS("StaticItem", StaticItem*);
-                CHECK_CLASS("Critter", Critter*);
-                CHECK_CLASS("Map", Map*);
-                CHECK_CLASS("Location", Location*);
-#else
-                CHECK_CLASS("Player", PlayerView*);
-                CHECK_CLASS("Item", ItemView*);
-                CHECK_CLASS("Critter", CritterView*);
-                CHECK_CLASS("Map", MapView*);
-                CHECK_CLASS("Location", LocationView*);
-#endif
-                CHECK_POD_ARRAY(asTYPEID_BOOL, bool);
-                CHECK_POD_ARRAY(asTYPEID_INT8, int8);
-                CHECK_POD_ARRAY(asTYPEID_INT16, int16);
-                CHECK_POD_ARRAY(asTYPEID_INT32, int);
-                CHECK_POD_ARRAY(asTYPEID_INT64, int64);
-                CHECK_POD_ARRAY(asTYPEID_UINT8, uint8);
-                CHECK_POD_ARRAY(asTYPEID_UINT16, uint16);
-                CHECK_POD_ARRAY(asTYPEID_UINT32, uint);
-                CHECK_POD_ARRAY(asTYPEID_UINT64, uint64);
-                CHECK_POD_ARRAY(asTYPEID_FLOAT, float);
-                CHECK_POD_ARRAY(asTYPEID_DOUBLE, double);
+                if (it != _engineToScriptType.end()) {
+                    return it->second;
+                }
+
+                return nullptr;
             }
 
-            return typeid(UnsupportedScriptFuncType);
+            const auto name = get_type_name(type_id);
+            const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                return entry.second->Name == name && !entry.second->Accessor->IsArray();
+            });
 
-#undef CHECK_CLASS
-#undef CHECK_POD_ARRAY
+            if (it != _engineToScriptType.end()) {
+                return it->second;
+            }
+
+            return nullptr;
         };
 
         for (asUINT i = 0; i < mod->GetFunctionCount(); i++) {
@@ -4384,7 +4323,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             func_desc.Declaration = func->GetDeclaration(true, true, true);
 
 #if !COMPILER_VALIDATION_MODE
-            func_desc.Call = [script_sys = AngelScriptData.get(), gen = &func_desc, func](initializer_list<void*> args, void* ret) { //
+            func_desc.Call = [script_sys = AngelScriptData.get(), gen = &func_desc, func](initializer_list<void*> args, void* ret) noexcept { //
                 return AngelScriptFuncCall(script_sys, gen, func, args, ret);
             };
 #endif
@@ -4401,10 +4340,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
-            func_desc.CallSupported = func_desc.RetType != typeid(UnsupportedScriptFuncType) && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), typeid(UnsupportedScriptFuncType)) == func_desc.ArgsType.end();
+            func_desc.CallSupported = func_desc.RetType && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), nullptr) == func_desc.ArgsType.end();
 
             // Check for special module init function
-            if (func_desc.ArgsType.empty() && func_desc.RetType == typeid(void)) {
+            if (func_desc.ArgsType.empty() && func_desc.RetType && func_desc.RetType->Name == "void") {
                 RUNTIME_ASSERT(func_desc.CallSupported);
                 const auto func_name_ex = strex(func->GetName());
 

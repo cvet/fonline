@@ -35,7 +35,54 @@
 #include "Application.h"
 #include "EngineBase.h"
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const -> bool
+ScriptSystem::ScriptSystem()
+{
+    STACK_TRACE_ENTRY();
+
+    _engineToScriptType.emplace(typeid(void).name(), SafeAlloc::MakeShared<ScriptTypeInfo>("void", nullptr));
+    MapEnginePlainType<bool>("bool");
+    MapEnginePlainType<int8>("int8");
+    MapEnginePlainType<int16>("int16");
+    MapEnginePlainType<int>("int");
+    MapEnginePlainType<int64>("int64");
+    MapEnginePlainType<uint8>("uint8");
+    MapEnginePlainType<uint16>("uint16");
+    MapEnginePlainType<uint>("uint");
+    MapEnginePlainType<uint64>("uint64");
+    MapEnginePlainType<float>("float");
+    MapEnginePlainType<double>("double");
+    MapEnginePlainType<ident_t>(IDENT_T_NAME);
+    MapEnginePlainType<tick_t>(TICK_T_NAME);
+    MapEnginePlainType<ucolor>("ucolor");
+    MapEnginePlainType<isize>("isize");
+    MapEnginePlainType<ipos>("ipos");
+    MapEnginePlainType<irect>("irect");
+    MapEnginePlainType<ipos16>("ipos16");
+    MapEnginePlainType<upos16>("upos16");
+    MapEnginePlainType<ipos8>("ipos8");
+    MapEnginePlainType<fsize>("fsize");
+    MapEnginePlainType<fpos>("fpos");
+    MapEnginePlainType<frect>("frect");
+    MapEnginePlainType<mpos>("mpos");
+    MapEnginePlainType<msize>("msize");
+    MapEngineObjectType<string>("string");
+    MapEngineObjectType<hstring>("hstring");
+    MapEngineObjectType<any_t>("any");
+    MapEngineEntityType<Entity>("Entity");
+}
+
+auto ScriptSystem::ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
+{
+    const auto it = _engineToScriptType.find(ti.name());
+
+    if (it == _engineToScriptType.end()) {
+        throw GenericException("Invalid script type", ti.name());
+    }
+
+    return it->second;
+}
+
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -47,14 +94,20 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
         return false;
     }
 
-    if (func_desc.RetType != ret_type && string_view(func_desc.RetType.name()) != string_view(ret_type.name())) {
+    const auto check_type = [this](const shared_ptr<ScriptTypeInfo>& left, const std::type_index& right) -> bool {
+        const auto it = _engineToScriptType.find(right.name());
+        RUNTIME_VERIFY(it != _engineToScriptType.end(), false);
+        return it->second == left;
+    };
+
+    if (!check_type(func_desc.RetType, ret_type)) {
         return false;
     }
 
     size_t index = 0;
 
     for (const auto& arg_type : args_type) {
-        if (arg_type != func_desc.ArgsType[index] && string_view(arg_type.name()) != string_view(func_desc.ArgsType[index].name())) {
+        if (!check_type(func_desc.ArgsType[index], arg_type)) {
             return false;
         }
 

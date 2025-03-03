@@ -187,12 +187,6 @@ public:
     void Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
 
-    void AddTimeEvent(hstring func_name, uint rate, tick_t duration, const any_t& identifier);
-    void RemoveTimeEvent(size_t index);
-    void ProcessTimeEvents();
-
-    ///@ ExportEvent
-    ENTITY_EVENT(OnIdle);
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
@@ -234,7 +228,6 @@ public:
     unordered_set<ident_t> VisCr3 {};
     unordered_set<ident_t> VisItem {};
 
-    time_point LastIdleCall {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
     TalkData Talk {};

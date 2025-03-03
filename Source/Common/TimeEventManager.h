@@ -31,58 +31,46 @@
 // SOFTWARE.
 //
 
-// Todo: improve deferred calls
-
 #pragma once
 
 #include "Common.h"
 
-#include "EngineBase.h"
-#include "ScriptSystem.h"
+#include "Entity.h"
 
-DECLARE_EXCEPTION(DeferredCallException);
+DECLARE_EXCEPTION(TimeEventException);
 
-struct DeferredCall
-{
-    ident_t Id {};
-    tick_t FireTime {};
-    tick_t Delay {};
-    ScriptFunc<void> EmptyFunc {};
-    ScriptFunc<void, any_t> AnyFunc {};
-    ScriptFunc<void, vector<any_t>> AnyArrayFunc {};
-    vector<any_t> FuncValue {};
-    bool Repeating {};
-};
+class FOEngineBase;
 
-class DeferredCallManager
+class TimeEventManager
 {
 public:
-    DeferredCallManager() = delete;
-    explicit DeferredCallManager(FOEngineBase* engine);
-    DeferredCallManager(const DeferredCallManager&) = delete;
-    DeferredCallManager(DeferredCallManager&&) noexcept = delete;
-    auto operator=(const DeferredCallManager&) = delete;
-    auto operator=(DeferredCallManager&&) noexcept = delete;
-    virtual ~DeferredCallManager() = default;
+    explicit TimeEventManager(FOEngineBase* engine);
+    TimeEventManager(const TimeEventManager&) = delete;
+    TimeEventManager(TimeEventManager&&) noexcept = delete;
+    auto operator=(const TimeEventManager&) = delete;
+    auto operator=(TimeEventManager&&) noexcept = delete;
+    ~TimeEventManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const noexcept -> bool;
+    [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity, _curTimeEvent}; }
+    [[nodiscard]] auto CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t;
 
-    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void> func) -> ident_t;
-    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
-    auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
-    auto CancelDeferredCall(ident_t id) -> bool;
-    void ProcessDeferredCalls();
-
-protected:
-    virtual auto GetNextCallId() -> ident_t;
-    virtual void OnDeferredCallRemoved(const DeferredCall& call);
-
-    FOEngineBase* _engine;
-    list<DeferredCall> _deferredCalls {};
+    void InitPersistentTimeEvents(Entity* entity);
+    auto StartTimeEvent(Entity* entity, bool persistent, hstring func_name, tick_t delay, tick_t repeat, vector<any_t> data) -> uint;
+    void ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<tick_t> repeat, optional<vector<any_t>> data);
+    void StopTimeEvent(Entity* entity, hstring func_name, uint id);
+    void ProcessTimeEvents();
 
 private:
-    auto AddDeferredCall(uint delay, DeferredCall& call) -> ident_t;
-    auto RunDeferredCall(DeferredCall& call) const -> bool;
+    void AddEntityTimeEventPolling(Entity* entity);
+    void RemoveEntityTimeEventPolling(Entity* entity);
+    void ProcessEntityTimeEvents(Entity* entity, tick_t time);
+    void FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te);
 
-    uint64 _idCounter {};
+    FOEngineBase* _engine;
+    unordered_set<Entity*> _timeEventEntities {};
+    Entity* _curTimeEventEntity {};
+    const Entity::TimeEventData* _curTimeEvent {};
+    uint _timeEventCounter {};
+    const any_t _emptyAnyValue {};
+    bool _nonConstHelper {};
 };

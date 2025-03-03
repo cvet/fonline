@@ -41,7 +41,6 @@
 #include "CacheStorage.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
-#include "DeferredCalls.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
@@ -264,7 +263,6 @@ public:
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
-    DeferredCallManager ClientDeferredCalls;
 
     MapView* CurMap {};
     bool CanDrawInScripts {};
