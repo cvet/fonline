@@ -49,6 +49,9 @@ examples/example_sdl2_opengl3/web/*
 .idea
 cmake-build-*
 
+## VS code artifacts
+.vscode
+
 ## Unix executables from our example Makefiles
 examples/example_glfw_metal/example_glfw_metal
 examples/example_glfw_opengl2/example_glfw_opengl2
@@ -59,3 +62,5 @@ examples/example_sdl2_metal/example_sdl2_metal
 examples/example_sdl2_opengl2/example_sdl2_opengl2
 examples/example_sdl2_opengl3/example_sdl2_opengl3
 examples/example_sdl2_sdlrenderer/example_sdl2_sdlrenderer
+
+.qodo
