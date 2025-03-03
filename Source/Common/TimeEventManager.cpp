@@ -533,14 +533,14 @@ void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     else {
         const auto cast_to_void = [](auto* ptr) -> void* { return const_cast<void*>(static_cast<const void*>(ptr)); };
 
-        if (const auto* func = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list {std::type_index(typeid(*entity))})) {
-            func->Call(initializer_list {cast_to_void(&entity)}, nullptr);
+        if (const auto* func = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity))})) {
+            func->Call(initializer_list<void*> {cast_to_void(&entity)}, nullptr);
         }
-        else if (const auto* func2 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list {std::type_index(typeid(*entity)), std::type_index(typeid(any_t))})) {
-            func2->Call(initializer_list {cast_to_void(&entity), cast_to_void(!te->Data.empty() ? &te->Data.front() : &_emptyAnyValue)}, nullptr);
+        else if (const auto* func2 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(any_t))})) {
+            func2->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(!te->Data.empty() ? &te->Data.front() : &_emptyAnyValue)}, nullptr);
         }
-        else if (const auto* func3 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list {std::type_index(typeid(*entity)), std::type_index(typeid(vector<any_t>))})) {
-            func3->Call(initializer_list {cast_to_void(&entity), cast_to_void(&te->Data)}, nullptr);
+        else if (const auto* func3 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(vector<any_t>))})) {
+            func3->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(&te->Data)}, nullptr);
         }
         else {
             throw TimeEventException("Time event func not found", te->FuncName);
