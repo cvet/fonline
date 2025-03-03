@@ -511,6 +511,8 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, tick_t time)
 
 void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) // NOLINT(performance-unnecessary-value-param)
 {
+    STACK_TRACE_ENTRY();
+
     _curTimeEventEntity = entity;
     auto revert_cur_entity = ScopeCallback([this]() noexcept { _curTimeEventEntity = nullptr; });
     _curTimeEvent = te.get();
