@@ -44,10 +44,7 @@ class FOServer;
 class ServerScriptSystem : public ScriptSystem
 {
 public:
-    explicit ServerScriptSystem(FOServer* engine) :
-        _engine {engine}
-    {
-    }
+    explicit ServerScriptSystem(FOServer* engine);
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};
@@ -57,12 +54,7 @@ public:
     shared_ptr<MonoImpl> MonoData {};
 
 private:
-    void InitSubsystems() override
-    {
-        InitNativeScripting();
-        InitAngelScriptScripting();
-        InitMonoScripting();
-    }
+    void InitSubsystems() override;
 
     void InitNativeScripting();
     void InitAngelScriptScripting();

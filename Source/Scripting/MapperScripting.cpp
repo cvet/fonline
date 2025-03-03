@@ -31,70 +31,30 @@
 // SOFTWARE.
 //
 
-#include "ClientEntity.h"
-#include "Client.h"
-#include "StringUtils.h"
+#include "MapperScripting.h"
+#include "Mapper.h"
 
-ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
-    Entity(registrator, props),
-    _engine {engine},
-    _id {id}
+#if !FO_SINGLEPLAYER
+
+MapperScriptSystem::MapperScriptSystem(FOMapper* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 
-    _name = GetTypeName();
-
-    if (_id) {
-        _engine->RegisterEntity(this);
-        _registered = true;
-    }
+    MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
+    MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
+    MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
+    MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
+    MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 }
 
-void ClientEntity::SetId(ident_t id, bool register_entity)
+void MapperScriptSystem::InitSubsystems()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_id);
-    RUNTIME_ASSERT(id);
-
-    _id = id;
-
-    if (register_entity) {
-        _engine->RegisterEntity(this);
-        _registered = true;
-    }
+    InitNativeScripting();
+    InitAngelScriptScripting();
+    InitMonoScripting();
 }
 
-void ClientEntity::DestroySelf()
-{
-    STACK_TRACE_ENTRY();
-
-    MarkAsDestroying();
-
-    OnDestroySelf();
-
-    if (_registered) {
-        _engine->UnregisterEntity(this);
-    }
-
-    if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetRawInnerEntities()) {
-            for (auto* entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
-                RUNTIME_ASSERT(custom_entity);
-
-                custom_entity->DestroySelf();
-            }
-        }
-
-        ClearInnerEntities();
-    }
-
-    MarkAsDestroyed();
-    Release();
-}
-
-void CustomEntityView::OnDestroySelf()
-{
-    STACK_TRACE_ENTRY();
-}
+#endif

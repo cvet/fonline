@@ -100,6 +100,7 @@ int main(int argc, char** argv) // Handled by SDL
                         Data->HideControls = false;
                     }
                 }
+
                 ImGui::End();
             }
 
@@ -109,6 +110,7 @@ int main(int argc, char** argv) // Handled by SDL
                 // Control panel
                 constexpr auto control_btn_size = ImVec2(250, 30);
                 ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, 50.0f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.0f));
+
                 if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
                     const auto imgui_progress_btn = [&control_btn_size](const char* title) {
                         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
@@ -171,6 +173,7 @@ int main(int argc, char** argv) // Handled by SDL
                         imgui_progress_btn("Quitting...");
                     }
                 }
+
                 ImGui::End();
             }
 
@@ -195,20 +198,25 @@ int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowCollapsed(App->Settings.CollapseLogOnStart, ImGuiCond_Once);
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
                     auto locker = std::unique_lock {log_buffer_locker};
+
                     for (auto&& lines : log_buffer) {
                         if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                             for (size_t i = 1; i < lines.size(); i++) {
                                 ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
                             }
+
                             ImGui::TreePop();
                         }
                     }
                 }
+
                 if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
                     ImGui::SetScrollHereY(1.0f);
                 }
+
                 ImGui::End();
             }
 

@@ -82,7 +82,6 @@ FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
-FIXED_SETTING(uint, CritterIdlePeriod, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

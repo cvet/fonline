@@ -158,7 +158,7 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
     DirCount = dirs;
 
     for (uint dir = 0; dir < dirs - 1; dir++) {
-        Dirs[dir] = std::make_shared<SpriteSheet>(_sprMngr, frames, ticks, 1);
+        Dirs[dir] = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames, ticks, 1);
     }
 }
 
@@ -196,7 +196,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& copy = std::make_shared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
+    auto&& copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
 
     copy->Size = Size;
     copy->Offset = Offset;
@@ -392,7 +392,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     RUNTIME_ASSERT(dirs != 0);
 
     if (frames_count > 1 || dirs > 1) {
-        auto&& anim = std::make_shared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
+        auto&& anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
 
         for (uint16 dir = 0; dir < dirs; dir++) {
             auto* dir_anim = anim->GetDir(dir);
@@ -411,7 +411,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto ny = file.GetLEShort();
                     const auto* data = file.GetCurBuf();
 
-                    auto&& spr = std::make_shared<AtlasSprite>(_sprMngr);
+                    auto&& spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
                     spr->Size.width = width;
                     spr->Size.height = height;
@@ -461,7 +461,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         UNUSED_VARIABLE(nx);
         UNUSED_VARIABLE(ny);
 
-        auto&& spr = std::make_shared<AtlasSprite>(_sprMngr);
+        auto&& spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
         spr->Size.width = width;
         spr->Size.height = height;

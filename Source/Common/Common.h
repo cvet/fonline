@@ -338,6 +338,29 @@ public:
         return unique_release_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
+    template<typename T, typename... Args>
+    static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
+    {
+        try {
+            return std::make_shared<T>(std::forward<Args>(args)...);
+        }
+        catch (const std::bad_alloc&) {
+            ReportBadAlloc("Make shared ptr failed", typeid(T).name(), 1, sizeof(T));
+
+            while (true) {
+                if (!FreeBackupMemoryChunk()) {
+                    ReportAndExit("Failed to allocate shared ptr from backup pool");
+                }
+
+                try {
+                    return std::make_shared<T>(std::forward<Args>(args)...);
+                }
+                catch (const std::bad_alloc&) {
+                }
+            }
+        }
+    }
+
     template<typename T>
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
@@ -2301,6 +2324,19 @@ constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vecto
     return ref_vec;
 }
 
+template<typename T>
+constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T>
+{
+    ref_hold_vector<T> ref_vec;
+    ref_vec.reserve(value.size());
+    for (auto&& ref : value) {
+        RUNTIME_ASSERT(ref);
+        ref->AddRef();
+        ref_vec.emplace_back(ref);
+    }
+    return ref_vec;
+}
+
 // Vector helpers
 template<typename T, typename T2>
 constexpr auto vec_static_cast(const vector<T2>& vec) -> vector<T>
@@ -2383,6 +2419,12 @@ template<typename T>
 constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
 {
     return std::find(vec.begin(), vec.end(), value) != vec.end();
+}
+
+template<typename T, typename U>
+constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> bool
+{
+    return std::find_if(vec.begin(), vec.end(), predicate) != vec.end();
 }
 
 // Numeric cast

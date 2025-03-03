@@ -88,19 +88,92 @@ class ProtoMap;
 class ProtoLocation;
 
 using AbstractItem = Entity;
+using ScriptSelfEntity = Entity;
 
-struct UnsupportedScriptFuncType
+template<typename... Args>
+struct hstring_variadic : hstring
 {
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    hstring_variadic(hstring s) :
+        hstring(s)
+    {
+    }
+};
+template<typename... Args>
+using ScriptFuncName = hstring_variadic<Args...>;
+
+struct ScriptTypeInfo
+{
+    struct DataAccessor
+    {
+        virtual ~DataAccessor() = default;
+        [[nodiscard]] virtual auto IsArray() const noexcept -> bool { return false; }
+        [[nodiscard]] virtual auto IsReference() const noexcept -> bool { return false; }
+        [[nodiscard]] virtual auto IsObject() const noexcept -> bool { return false; }
+        [[nodiscard]] virtual auto IsEntity() const noexcept -> bool { return false; }
+        [[nodiscard]] virtual auto IsPlainData() const noexcept -> bool { return false; }
+        [[nodiscard]] virtual auto GetData(void* /*data*/) -> void* { throw InvalidCallException(LINE_STR); }
+        [[nodiscard]] virtual auto GetDataSize() -> size_t { throw InvalidCallException(LINE_STR); }
+        [[nodiscard]] virtual auto GetArraySize(void* /*data*/) -> size_t { throw InvalidCallException(LINE_STR); }
+        [[nodiscard]] virtual auto GetArrayElement(void* /*data*/, size_t /*index*/) -> void* { throw InvalidCallException(LINE_STR); }
+    };
+
+    template<typename T>
+    struct ArrayDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto IsArray() const noexcept -> bool override { return true; }
+        [[nodiscard]] auto GetArraySize(void* data) -> size_t override { return static_cast<vector<T>*>(data)->size(); }
+        [[nodiscard]] auto GetArrayElement(void* data, size_t index) -> void* override { return static_cast<void*>(&(Element = static_cast<vector<T>*>(data)->operator[](index))); }
+        T Element {}; // For supporting vector of bool
+    };
+
+    template<typename T>
+    struct PlainDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto IsPlainData() const noexcept -> bool override { return true; }
+        [[nodiscard]] auto GetData(void* data) -> void* override { return static_cast<void*>(static_cast<T*>(data)); }
+        [[nodiscard]] auto GetDataSize() -> size_t override { return sizeof(T); }
+    };
+
+    template<typename T>
+    struct ReferenceDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto IsReference() const noexcept -> bool override { return true; }
+        [[nodiscard]] auto GetData(void* data) -> void* override { return static_cast<void*>(*static_cast<T**>(data)); }
+    };
+
+    template<typename T>
+    struct ObjectDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto IsObject() const noexcept -> bool override { return true; }
+        [[nodiscard]] auto GetData(void* data) -> void* override { return static_cast<void*>(static_cast<T*>(data)); }
+    };
+
+    template<typename T>
+    struct EntityDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto IsEntity() const noexcept -> bool override { return true; }
+        [[nodiscard]] auto GetData(void* data) -> void* override { return static_cast<void*>(*static_cast<T**>(data)); }
+    };
+
+    ScriptTypeInfo(string_view name_, shared_ptr<DataAccessor> accessor_) :
+        Name {name_},
+        Accessor {std::move(accessor_)}
+    {
+    }
+
+    string Name {};
+    shared_ptr<DataAccessor> Accessor {};
 };
 
 struct ScriptFuncDesc
 {
     hstring Name {};
     string Declaration {};
-    std::type_index RetType {typeid(UnsupportedScriptFuncType)};
-    vector<std::type_index> ArgsType {};
+    shared_ptr<ScriptTypeInfo> RetType {};
+    vector<shared_ptr<ScriptTypeInfo>> ArgsType {};
     bool CallSupported {};
-    std::function<bool(initializer_list<void*>, void*)> Call {};
+    std::function<bool(initializer_list<void*>, void*) /*noexcept*/> Call {};
     bool Delegate {};
 };
 
@@ -108,17 +181,17 @@ template<typename TRet, typename... Args>
 class ScriptFunc final
 {
 public:
-    ScriptFunc() = default;
-    explicit ScriptFunc(ScriptFuncDesc* f) :
+    ScriptFunc() noexcept = default;
+    explicit ScriptFunc(ScriptFuncDesc* f) noexcept :
         _func {f}
     {
     }
-    [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
-    [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
-    [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
-    [[nodiscard]] auto GetResult() -> TRet { return _ret; }
+    [[nodiscard]] explicit operator bool() const noexcept { return _func != nullptr; }
+    [[nodiscard]] auto GetName() const noexcept -> hstring { return _func != nullptr ? _func->Name : hstring(); }
+    [[nodiscard]] auto IsDelegate() const noexcept -> bool { return _func != nullptr && _func->Delegate; }
+    [[nodiscard]] auto GetResult() noexcept -> TRet { return _ret; }
 
-    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, &_ret) : false; }
+    auto operator()(const Args&... args) noexcept -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, &_ret) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -129,16 +202,16 @@ template<typename... Args>
 class ScriptFunc<void, Args...> final
 {
 public:
-    ScriptFunc() = default;
-    explicit ScriptFunc(ScriptFuncDesc* f) :
+    ScriptFunc() noexcept = default;
+    explicit ScriptFunc(ScriptFuncDesc* f) noexcept :
         _func {f}
     {
     }
-    [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
-    [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
-    [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
+    [[nodiscard]] explicit operator bool() const noexcept { return _func != nullptr; }
+    [[nodiscard]] auto GetName() const noexcept -> hstring { return _func != nullptr ? _func->Name : hstring(); }
+    [[nodiscard]] auto IsDelegate() const noexcept -> bool { return _func != nullptr && _func->Delegate; }
 
-    auto operator()(const Args&... args) -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, nullptr) : false; }
+    auto operator()(const Args&... args) noexcept -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, nullptr) : false; }
 
 private:
     ScriptFuncDesc* _func {};
@@ -147,7 +220,7 @@ private:
 class ScriptSystem
 {
 public:
-    ScriptSystem() = default;
+    ScriptSystem();
     ScriptSystem(const ScriptSystem&) = delete;
     ScriptSystem(ScriptSystem&&) noexcept = delete;
     auto operator=(const ScriptSystem&) = delete;
@@ -160,7 +233,7 @@ public:
     void Process();
 
     template<typename TRet, typename... Args>
-    [[nodiscard]] auto FindFunc(hstring func_name) -> ScriptFunc<TRet, Args...>
+    [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
     {
         const auto range = _funcMap.equal_range(func_name);
 
@@ -173,8 +246,21 @@ public:
         return {};
     }
 
+    [[nodiscard]] auto FindFunc(hstring func_name, initializer_list<std::type_index> args_type) noexcept -> ScriptFuncDesc*
+    {
+        const auto range = _funcMap.equal_range(func_name);
+
+        for (auto it = range.first; it != range.second; ++it) {
+            if (ValidateArgs(it->second, args_type, std::type_index(typeid(void)))) {
+                return &it->second;
+            }
+        }
+
+        return nullptr;
+    }
+
     template<typename TRet, typename... Args>
-    [[nodiscard]] auto CheckFunc(hstring func_name) const -> bool
+    [[nodiscard]] auto CheckFunc(hstring func_name) const noexcept -> bool
     {
         const auto range = _funcMap.equal_range(func_name);
 
@@ -188,7 +274,7 @@ public:
     }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
 
@@ -201,15 +287,66 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
     }
 
-protected:
-    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const -> bool;
+    [[nodiscard]] auto CallFunc(hstring func_name, initializer_list<std::type_index> args_type, initializer_list<void*> args) noexcept -> bool
+    {
+        const auto range = _funcMap.equal_range(func_name);
 
+        for (auto it = range.first; it != range.second; ++it) {
+            if (ValidateArgs(it->second, args_type, std::type_index(typeid(void)))) {
+                return it->second.Call(args, nullptr);
+            }
+        }
+
+        return false;
+    }
+
+    [[nodiscard]] auto ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>;
+
+protected:
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool;
+
+    template<typename T>
+    void MapEnginePlainType(string_view type_name)
+    {
+        static_assert(!std::is_pointer_v<T>);
+        auto&& raw_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::PlainDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(T).name(), raw_type);
+        auto&& ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(T*).name(), ref_type);
+        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(vector<T>).name(), arr_type);
+    }
+
+    template<typename T>
+    void MapEngineObjectType(string_view type_name)
+    {
+        static_assert(!std::is_pointer_v<T>);
+        auto&& obj_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ObjectDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(T).name(), obj_type);
+        auto&& ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(T*).name(), ref_type);
+        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(vector<T>).name(), arr_type);
+    }
+
+    template<typename T>
+    void MapEngineEntityType(string_view type_name)
+    {
+        static_assert(!std::is_pointer_v<T>);
+        auto&& ent_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::EntityDataAccessor<T>>());
+        _engineToScriptType.emplace(typeid(T*).name(), ent_type);
+        _engineToScriptType.emplace(typeid(T).name(), ent_type); // Access to entity by typeid(*entity)
+        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T*>>());
+        _engineToScriptType.emplace(typeid(vector<T*>).name(), arr_type);
+    }
+
+    unordered_map<string, shared_ptr<ScriptTypeInfo>> _engineToScriptType {};
     vector<std::function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
     vector<ScriptFuncDesc*> _initFunc {};

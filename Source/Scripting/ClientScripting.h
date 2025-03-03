@@ -44,10 +44,7 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    explicit ClientScriptSystem(FOClient* engine) :
-        _engine {engine}
-    {
-    }
+    explicit ClientScriptSystem(FOClient* engine);
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};
@@ -57,12 +54,7 @@ public:
     shared_ptr<MonoImpl> MonoData {};
 
 private:
-    void InitSubsystems() override
-    {
-        InitNativeScripting();
-        InitAngelScriptScripting();
-        InitMonoScripting();
-    }
+    void InitSubsystems() override;
 
     void InitNativeScripting();
     void InitAngelScriptScripting();

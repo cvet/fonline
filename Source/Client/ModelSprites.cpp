@@ -186,7 +186,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
         return nullptr;
     }
 
-    auto&& model_spr = std::make_shared<ModelSprite>(_sprMngr);
+    auto&& model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr);
     const auto draw_size = model->GetDrawSize();
 
     model_spr->_factory = this;

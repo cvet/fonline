@@ -673,7 +673,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
     _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), loc, loc->GetInitScript(), first_time);
     }
 
     if (!loc->IsDestroyed()) {
@@ -702,7 +702,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
     _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), map, map->GetInitScript(), first_time);
     }
 
     if (!map->IsDestroyed()) {
@@ -739,7 +739,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
     _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), cr, cr->GetInitScript(), first_time);
     }
 
     if (!cr->IsDestroyed()) {
@@ -768,7 +768,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), item, item->GetInitScript(), first_time);
     }
 
     if (!item->IsDestroyed() && item->HasInnerItems()) {
@@ -932,6 +932,8 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
+
+    _engine->TimeEventMngr.InitPersistentTimeEvents(entity);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)

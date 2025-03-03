@@ -123,8 +123,6 @@ public:
     [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc) noexcept;
-    void Process();
-    void ProcessLoop(int index, uint time, uint tick);
     void SetText(mpos hex, ucolor color, string_view text, bool unsafe_text);
     void SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num);
     void SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
@@ -186,5 +184,4 @@ private:
     vector<Item*> _items {};
     unordered_map<ident_t, Item*> _itemsMap {};
     Location* _mapLocation {};
-    uint _loopLastTick[5] {};
 };

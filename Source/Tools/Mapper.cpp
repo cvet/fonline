@@ -63,7 +63,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
-    ScriptSys = SafeAlloc::MakeRaw<MapperScriptSystem>(this);
+    ScriptSys = SafeAlloc::MakeUnique<MapperScriptSystem>(this);
     ScriptSys->InitSubsystems();
 
     _curLang = LanguagePack {Settings.Language, *this};

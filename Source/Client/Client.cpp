@@ -55,7 +55,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
     Cache(strex(Settings.ResourcesDir).combinePath("Cache.fobin")),
-    ClientDeferredCalls(this),
     _conn(Settings)
 {
     STACK_TRACE_ENTRY();
@@ -117,7 +116,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         throw EngineDataNotFoundException(LINE_STR);
     }
 
-    ScriptSys = SafeAlloc::MakeRaw<ClientScriptSystem>(this);
+    ScriptSys = SafeAlloc::MakeUnique<ClientScriptSystem>(this);
     ScriptSys->InitSubsystems();
 #endif
 
@@ -289,9 +288,6 @@ FOClient::~FOClient()
     _globalMapCritters.clear();
 
     safe_call([this] { DestroyInnerEntities(); });
-
-    delete ScriptSys;
-    ScriptSys = nullptr;
 }
 
 auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool
@@ -450,13 +446,12 @@ void FOClient::MainLoop()
         SetSecond(st.Second);
     }
 
-    // Script subsystems update
+    // Logic
     ScriptSys->Process();
 
-    ClientDeferredCalls.ProcessDeferredCalls();
+    TimeEventMngr.ProcessTimeEvents();
 
 #if !FO_SINGLEPLAYER
-    // Script loop
     OnLoop.Fire();
 #endif
 

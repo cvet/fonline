@@ -64,8 +64,6 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ident_t, LastDeferredCallId);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, HistoryRecordsId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
@@ -308,16 +306,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
-    ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
     ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateCommon, bool, ControlledByPlayer);
@@ -395,16 +383,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, WorkEntityId);
 
     // Todo: exclude map properties from engine:
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime1);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime2);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime3);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime4);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime5);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
     ///@ ExportProperty
