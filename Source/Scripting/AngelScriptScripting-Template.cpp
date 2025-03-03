@@ -4284,7 +4284,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (type_id == asTYPEID_VOID) {
                 RUNTIME_ASSERT(is_ret);
-                return _engineToScriptType["void"];
+                return _engineToScriptType[typeid(void).name()];
             }
 
             if (is_array) {
