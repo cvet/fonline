@@ -370,10 +370,11 @@ def parseTags():
             return 'predicate.' + unifiedTypeToMetaType(t[10:])
         if t.startswith('callback-'):
             return 'callback.' + unifiedTypeToMetaType(t[9:])
-        if t.startswith('ScriptFunc-'):
-            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFunc-'):].split('|') if a]
+        if t.startswith('ScriptFunc-') or t.startswith('ScriptFuncName-'):
+            name = 'ScriptFuncName' if t.startswith('ScriptFuncName-') else 'ScriptFunc'
+            fd = [unifiedTypeToMetaType(a) for a in t[len(name + '-'):].split('|') if a]
             genericFuncdefs.add('|'.join(fd))
-            return 'ScriptFunc.' + '|'.join(fd) + '|'
+            return name + '.' + '|'.join(fd) + '|'
         if t.endswith('&'):
             return unifiedTypeToMetaType(t[:-1]) + '.ref'
         if '=>' in t:
@@ -381,6 +382,8 @@ def parseTags():
             return 'dict.' + unifiedTypeToMetaType(tt[0]) + '.' + unifiedTypeToMetaType(tt[1])
         if t.endswith('[]'):
             return 'arr.' + unifiedTypeToMetaType(t[:-2])
+        if t == 'SELF_ENTITY':
+            return 'SELF_ENTITY'
         assert t in validTypes, 'Invalid type ' + t
         return t
 
@@ -406,9 +409,11 @@ def parseTags():
         elif t.startswith('PredicateFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'predicate-' + r
-        elif t.startswith('ScriptFunc<'):
+        elif t.startswith('ScriptFunc<') or t.startswith('ScriptFuncName<'):
             fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
-            return 'ScriptFunc-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
+            r = '-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
+            r = 'ScriptFunc' + r if t.startswith('ScriptFunc<') else 'ScriptFuncName' + r
+            return r
         elif t.find('map<') != -1:
             tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
             r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
@@ -439,6 +444,8 @@ def parseTags():
                     return ename
             if tt in ['ServerEntity', 'ClientEntity', 'Entity']:
                 return 'Entity'
+            if tt == 'ScriptSelfEntity':
+                return 'SELF_ENTITY'
             assert False, tt
         else:
             assert False, 'Invalid engine type ' + t
@@ -614,7 +621,8 @@ def parseTags():
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
                         'HasProtos': 'HasProtos' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags,
-                        'HasAbstract': 'HasAbstract' in exportFlags, 'Exported': True, 'Comment': comment}
+                        'HasAbstract': 'HasAbstract' in exportFlags, 'HasTimeEvents': 'HasTimeEvents' in exportFlags,
+                        'Exported': True, 'Comment': comment}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -664,7 +672,7 @@ def parseTags():
                 gameEntitiesInfo[name] = {'Server': 'CustomEntityWithProto' if 'HasProtos' in flags else 'CustomEntity',
                         'Client': ('CustomEntityWithProtoView' if 'HasProtos' in flags else 'CustomEntityView') if 'ServerOnly' not in flags else None,
                         'IsGlobal': 'Global' in flags, 'HasProtos': 'HasProtos' in flags, 'HasStatics': 'HasStatics' in flags,
-                        'HasAbstract': 'HasAbstract' in flags, 'Exported': False, 'Comment': comment}
+                        'HasAbstract': 'HasAbstract' in flags, 'HasTimeEvents': 'HasTimeEvents' in flags, 'Exported': False, 'Comment': comment}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -831,7 +839,7 @@ def parseTags():
                 target = funcTok[0].strip()
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
                 entity = funcTok[1]
-                assert entity in gameEntities, entity
+                assert entity in gameEntities + ['Entity'], entity
                 name = funcTok[2]
                 ret = engineTypeToMetaType(tagContext[tagContext.rfind(' ', 0, retSpace - 1):retSpace].strip())
                 
@@ -1374,8 +1382,9 @@ def metaTypeToUnifiedType(t):
         r = 'callback-' + metaTypeToUnifiedType(tt[1])
     elif tt[0] == 'predicate':
         r = 'predicate-' + metaTypeToUnifiedType(tt[1])
-    elif tt[0] == 'ScriptFunc':
-        return 'ScriptFunc-' + ', '.join([metaTypeToUnifiedType(a) for a in '.'.join(tt[1:]).split('|') if a])
+    elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
+        r = '-' + ', '.join([metaTypeToUnifiedType(a) for a in '.'.join(tt[1:]).split('|') if a])
+        r = 'ScriptFuncName' + r if tt[0] == 'ScriptFuncName' else 'ScriptFunc' + r
     elif tt[0] == 'Entity':
         r = tt[0]
     elif tt[0] in gameEntities:
@@ -1393,33 +1402,40 @@ def metaTypeToUnifiedType(t):
         r += '&'
     return r
 
-def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
+def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None):
+    def resolveEntity(e):
+        if target != 'Server':
+            if e == 'Game' and target == 'Mapper':
+                return 'FOMapper*'
+            else:
+                return gameEntitiesInfo[e]['Client'] + '*'
+        else:
+            return gameEntitiesInfo[e]['Server'] + '*'
     tt = t.split('.')
     if tt[0] == 'dict':
         d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-        r = 'map<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>'
+        r = 'map<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + '>'
     elif tt[0] == 'arr':
-        r = 'vector<' + metaTypeToEngineType(tt[1], target, False) + '>'
+        r = 'vector<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
     elif tt[0] == 'init':
         assert passIn
-        r = 'InitFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
+        r = 'InitFunc<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
     elif tt[0] == 'callback':
         assert passIn
-        r = 'CallbackFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
+        r = 'CallbackFunc<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
     elif tt[0] == 'predicate':
         assert passIn
-        r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
-    elif tt[0] == 'ScriptFunc':
-        return 'ScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
+        r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
+    elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
+        r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity=selfEntity) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
+        r = 'ScriptFuncName' + r if tt[0] == 'ScriptFuncName' else 'ScriptFunc' + r
     elif tt[0] == 'Entity':
-        return getEntityFromTarget(target)
+        r = getEntityFromTarget(target)
+    elif tt[0] == 'SELF_ENTITY':
+        assert selfEntity
+        r = resolveEntity(selfEntity) if selfEntity != 'Entity' else 'ScriptSelfEntity*'
     elif tt[0] in gameEntities:
-        if target != 'Server':
-            r = gameEntitiesInfo[tt[0]]['Client'] + '*'
-            if tt[0] == 'Game' and target == 'Mapper':
-                r = 'FOMapper*'
-        else:
-            r = gameEntitiesInfo[tt[0]]['Server'] + '*'
+        r = resolveEntity(tt[0])
     elif tt[0] in scriptEnums:
         for e in codeGenTags['Enum']:
             if e[0] == tt[0]:
@@ -1811,7 +1827,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
     writeCodeGenTemplate(lang)
 
     if lang == 'AngelScript':
-        def metaTypeToASEngineType(t, ret = False):
+        def metaTypeToASEngineType(t, ret=False):
             tt = t.split('.')
             if tt[0] == 'arr':
                 return 'CScriptArray*' if tt[-1] != 'ref' else 'CScriptArray*&'
@@ -1830,7 +1846,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return tt[0] + '*'
             elif tt[0] in scriptEnums or tt[0] in engineEnums:
                 r = 'int'
-            elif tt[0] == 'ScriptFunc':
+            elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
                 for e in codeGenTags['ExportValueType']:
@@ -1851,7 +1867,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r += '&'
             return r
         
-        def metaTypeToASType(t, noHandle = False, isRet = False, forceNoConst = False):
+        def metaTypeToASType(t, noHandle=False, isRet=False, forceNoConst=False, selfEntity=None):
             def getHandle():
                 if noHandle:
                     return ''
@@ -1862,45 +1878,52 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             noHandle = noHandle or tt[-1] == 'ref'
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                r = 'dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>' + getHandle()
+                r = 'dict<' + metaTypeToASType(tt[1], True, selfEntity=selfEntity) + ', ' + metaTypeToASType(d2, True, selfEntity=selfEntity) + '>' + getHandle()
                 r = 'const ' + r if not isRet and not noHandle and not forceNoConst else r
             elif tt[0] == 'arr':
-                r = metaTypeToASType(tt[1], True) + '[]' + getHandle()
+                r = metaTypeToASType(tt[1], True, selfEntity=selfEntity) + '[]' + getHandle()
                 r = 'const ' + r if not isRet and not noHandle and not forceNoConst else r
             elif tt[0] == 'init':
-                r = metaTypeToASType(tt[1], True) + 'InitFunc' + getHandle()
+                r = metaTypeToASType(tt[1], True, selfEntity=selfEntity) + 'InitFunc' + getHandle()
             elif tt[0] == 'callback':
-                r = metaTypeToASType(tt[1], True) + 'Callback' + getHandle()
+                r = metaTypeToASType(tt[1], True, selfEntity=selfEntity) + 'Callback' + getHandle()
             elif tt[0] == 'predicate':
-                r = metaTypeToASType(tt[1], True) + 'Predicate' + getHandle()
+                r = metaTypeToASType(tt[1], True, selfEntity=selfEntity) + 'Predicate' + getHandle()
             elif tt[0] == 'Entity':
                 r = 'Entity' + getHandle()
+            elif tt[0] == 'SELF_ENTITY':
+                assert selfEntity
+                r = selfEntity + getHandle()
             elif tt[0] in gameEntities:
                 r = tt[0] + getHandle()
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
                 r = tt[0]
             elif tt[0] in refTypes or tt[0] in entityRelatives:
                 r = tt[0] + getHandle()
-            elif tt[0] == 'ScriptFunc':
+            elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
                 assert not isRet
                 assert len(tt) > 1, 'Invalid generic function'
-                return 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + 'Func@+'
+                r = 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + 'Func@+'
+                if 'SELF_ENTITY' in r:
+                    assert selfEntity
+                    r = r.replace('SELF_ENTITY', selfEntity)
             else:
                 r = tt[0]
             return r + '&' if tt[-1] == 'ref' else r
         
-        def marshalIn(t, v):
+        def marshalIn(t, v, selfEntity=None):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + \
                         ', ' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
-                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] in ['init', 'predicate', 'callback']:
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
-            elif tt[0] == 'ScriptFunc':
-                return 'GetASScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
+            elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
+                r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity='Entity') for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
+                return 'GetASScriptFuncName' + r if tt[0] == 'ScriptFuncName' else 'GetASScriptFunc' + r
             elif tt[0] in engineEnums:
                 return 'static_cast<' + tt[0] + '>(' + v + ')'
             elif tt[0] in scriptEnums:
@@ -1911,21 +1934,21 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     assert False, 'Enum not found ' + tt[0]
             return v
             
-        def marshalBack(t, v):
+        def marshalBack(t, v, selfEntity=None):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalBackDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                return 'MarshalBackDict<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + \
                         ', ' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + \
-                        '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
+                        '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True, selfEntity=selfEntity) + ', ' + metaTypeToASType(d2, True, selfEntity=selfEntity) + '>", ' + v + ')'
             elif tt[0] == 'arr':
-                return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + \
-                        '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+                return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + \
+                        '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True, selfEntity=selfEntity) + '[]", ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
                 return 'static_cast<int>(' + v + ')'
             return v
         
-        def marshalBackRef(t, v, v2):
+        def marshalBackRef(t, v, v2, selfEntity=None):
             tt = t.split('.')
             if tt[-1] != 'ref':
                 return None
@@ -1934,12 +1957,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'AssignDict<' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(tt[1]) + ', ' + \
                         metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ', ' + v2 + ')'
             elif tt[0] == 'arr':
-                return 'AssignArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v2 + ', ' + v + ')'
+                return 'AssignArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v2 + ', ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
                 return v + ' = static_cast<int>(' + v2 + ')'
             return None
         
-        def marshalBackRef2(t, v, v2):
+        def marshalBackRef2(t, v, v2, selfEntity=None):
             tt = t.split('.')
             if tt[-1] != 'ref':
                 return None
@@ -1948,9 +1971,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return v2 + ' = MarshalDict<' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(tt[1]) + ', ' + \
                         metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
-                return v2 + ' = MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+                return v2 + ' = MarshalArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return v2 + ' = static_cast<' + metaTypeToEngineType(tt[0], target, False) + '>(' + v + ')'
+                return v2 + ' = static_cast<' + metaTypeToEngineType(tt[0], target, False, selfEntity=selfEntity) + '>(' + v + ')'
             return None
         
         def marshalBackRelease(t, v):
@@ -1961,7 +1984,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         
         def nameMangling(params):
             if len(params):
-                return ''.join([''.join([p2[0] + p2[-1] for p2 in p[0].split('.')]) for p in params]).replace('|', '')
+                return str(abs(int(getHash(''.join([''.join([p2 for p2 in p[0].split('.')]) for p in params])))))
             return '0'
         
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
@@ -2001,9 +2024,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if not gameEntitiesInfo[entity]['Exported']:
                     continue
                 engineEntityType = engineEntityType
-                globalLines.append('class ' + engineEntityType + ';')
+                globalLines.append('class ' + engineEntityType + ' : public Entity {};')
                 if gameEntitiesInfo[entity]['HasStatics']:
-                    globalLines.append('class Static' + entity + ';')
+                    globalLines.append('using Static' + entity + ' = ' + engineEntityType + ';')
             globalLines.append('')
             
             globalLines.append('// Scriptable objects')
@@ -2023,9 +2046,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('')
             
         # Marshalling functions
-        def writeMarshalingMethod(entity, targ, name, ret, params):
+        def writeMarshalingMethod(entity, targ, name, ret, params, isGeneric):
             engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
             engineEntityTypeExtern = engineEntityType
+            engineEntityTypeExtern2 = 'Entity' if isGeneric else entity
             
             if entity == 'Game':
                 if target == 'Mapper':
@@ -2034,6 +2058,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     engineEntityTypeExtern = 'FOEngineBase'
                 elif targ == 'Mapper':
                     engineEntityTypeExtern = 'FOMapper'
+            
+            if isGeneric:
+                engineEntityTypeExtern = 'ServerEntity' if targ == 'Server' else 'ClientEntity'
             
             globalLines.append('static ' + metaTypeToASEngineType(ret, True) +
                     ' AS_' + targ + '_' + entity + '_' + name + '_' + nameMangling(params) + '(' +
@@ -2049,17 +2076,17 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if p[0] in gameEntities:
                         globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
                 for p in params:
-                    globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                globalLines.append('    extern ' + metaTypeToEngineType(ret, target, False) + ' ' + targ + '_' + entity + '_' + name +
-                        '(' + engineEntityTypeExtern + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0], target, True) for p in params]) + ');')
-                globalLines.append('    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
+                    globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1], selfEntity=entity) + ';')
+                globalLines.append('    extern ' + metaTypeToEngineType(ret, targ, False, selfEntity='Entity') + ' ' + targ + '_' + engineEntityTypeExtern2 + '_' + name +
+                        '(' + engineEntityTypeExtern + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0], targ, True, selfEntity='Entity') for p in params]) + ');')
+                globalLines.append('    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + engineEntityTypeExtern2 + '_' + name +
                         '(self' + (', ' if params else '') + ', '.join(['in_' + p[1] for p in params]) + ');')
                 for p in params:
-                    mbr = marshalBackRef(p[0], p[1], 'in_' + p[1])
+                    mbr = marshalBackRef(p[0], p[1], 'in_' + p[1], selfEntity=entity)
                     if mbr:
                         globalLines.append('    ' + mbr + ';')
                 if ret != 'void':
-                    globalLines.append('    return ' + marshalBack(ret, 'out_result') + ';')
+                    globalLines.append('    return ' + marshalBack(ret, 'out_result', selfEntity=entity) + ';')
             else:
                 # Stub for compiler
                 globalLines.append('    UNUSED_VARIABLE(self);')
@@ -2074,8 +2101,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         for entity in gameEntities:
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ in allowedTargets and ent == entity:
-                    writeMarshalingMethod(entity, targ, name, ret, params)
+                if targ in allowedTargets:
+                    if 'TimeEventRelated' in exportFlags and not gameEntitiesInfo[entity]['HasTimeEvents']:
+                        continue
+                    if ent == entity:
+                        writeMarshalingMethod(entity, targ, name, ret, params, False)
+                    elif ent == 'Entity':
+                        writeMarshalingMethod(entity, targ, name, ret, params, True)
         
         # Marshal events
         def ctxSetArgs(args, setIndex=0):
@@ -2169,8 +2201,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
                         globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
-                        globalLines.append('    event_data.Callback = [self, func = RefCountHolder(func)](const initializer_list<void*>& args) {')
-                        globalLines.append('        return ' + funcEntry + '_Callback(self, func.get(), args);')
+                        globalLines.append('    event_data.Callback = [self, as_func = RefCountHolder(func)](const initializer_list<void*>& args) {')
+                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.get(), args);')
                         globalLines.append('    };')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')
@@ -2477,8 +2509,16 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         registerLines.append('// Generic funcdefs')
         for fd in sorted(genericFuncdefs):
             fdParams = fd.split('|')
-            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
-                    '_Func(' + ', '.join([metaTypeToASType(p, forceNoConst=True) for p in fdParams[1:]]) + ')"));')
+            if 'SELF_ENTITY' in fdParams:
+                for entity in gameEntities:
+                    if gameEntitiesInfo[entity]['Server' if target == 'Server' else 'Client']:
+                        entityClass = entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity
+                        funcdefName = ('Generic_' + '.'.join(fdParams).replace('.', '_') + '_Func').replace('SELF_ENTITY', entityClass)
+                        registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' ' + funcdefName +
+                            '(' + ', '.join([metaTypeToASType(p, forceNoConst=True, selfEntity=entityClass) for p in fdParams[1:]]) + ')"));')
+            else:
+                registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
+                        '_Func(' + ', '.join([metaTypeToASType(p, forceNoConst=True) for p in fdParams[1:]]) + ')"));')
         registerLines.append('')
         
         # Register entity methods and global functions
@@ -2486,7 +2526,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         for entity in gameEntities:
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ in allowedTargets and ent == entity:
+                if targ in allowedTargets and (ent == entity or ent == 'Entity'):
+                    if 'TimeEventRelated' in exportFlags and not gameEntitiesInfo[entity]['HasTimeEvents']:
+                        continue
                     def passOwnership(asRet):
                         if 'PassOwnership' in exportFlags:
                             assert asRet[-1] == '+'
@@ -2494,8 +2536,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         else:
                             return asRet
                     registerLines.append('REGISTER_ENTITY_METHOD("' + (entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity) +
-                            '", "' + passOwnership(metaTypeToASType(ret, isRet=True)) + ' ' + name + '(' +
-                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", AS_' + targ + '_' +
+                            '", "' + passOwnership(metaTypeToASType(ret, isRet=True, selfEntity=entity)) + ' ' + name + '(' +
+                            ', '.join([metaTypeToASType(p[0], selfEntity=entity) + ' ' + p[1] for p in params]) + ')", AS_' + targ + '_' +
                             entity + '_' + name + '_' + nameMangling(params) + ');')
         registerLines.append('')
         

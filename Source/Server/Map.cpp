@@ -67,37 +67,6 @@ Map::~Map()
     STACK_TRACE_ENTRY();
 }
 
-void Map::Process()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto time = _engine->GameTime.GameplayTime();
-
-    ProcessLoop(0, GetLoopTime1(), time_duration_to_ms<uint>(time.time_since_epoch()));
-    ProcessLoop(1, GetLoopTime2(), time_duration_to_ms<uint>(time.time_since_epoch()));
-    ProcessLoop(2, GetLoopTime3(), time_duration_to_ms<uint>(time.time_since_epoch()));
-    ProcessLoop(3, GetLoopTime4(), time_duration_to_ms<uint>(time.time_since_epoch()));
-    ProcessLoop(4, GetLoopTime5(), time_duration_to_ms<uint>(time.time_since_epoch()));
-}
-
-void Map::ProcessLoop(int index, uint time, uint tick)
-{
-    STACK_TRACE_ENTRY();
-
-    if (time != 0 && tick - _loopLastTick[index] >= time) {
-        _loopLastTick[index] = tick;
-
-        if (index == 0) {
-            OnLoop.Fire();
-            _engine->OnMapLoop.Fire(this);
-        }
-        else {
-            OnLoopEx.Fire(index);
-            _engine->OnMapLoopEx.Fire(this, index);
-        }
-    }
-}
-
 void Map::SetLocation(Location* loc) noexcept
 {
     STACK_TRACE_ENTRY();
@@ -116,9 +85,7 @@ auto Map::FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsa
         return std::nullopt;
     }
 
-    if (seek_radius > MAX_HEX_OFFSET) {
-        seek_radius = MAX_HEX_OFFSET;
-    }
+    seek_radius = std::min<uint>(seek_radius, MAX_HEX_OFFSET);
 
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
     const int max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);

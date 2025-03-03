@@ -142,7 +142,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     particle->Setup(proj, world, {}, {}, {});
 
-    auto&& particle_spr = std::make_shared<ParticleSprite>(_sprMngr);
+    auto&& particle_spr = SafeAlloc::MakeShared<ParticleSprite>(_sprMngr);
 
     particle_spr->_factory = this;
     particle_spr->_particle = std::move(particle);

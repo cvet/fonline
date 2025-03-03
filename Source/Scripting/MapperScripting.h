@@ -42,10 +42,7 @@ class FOMapper;
 class MapperScriptSystem : public ScriptSystem
 {
 public:
-    explicit MapperScriptSystem(FOMapper* engine) :
-        _engine {engine}
-    {
-    }
+    explicit MapperScriptSystem(FOMapper* engine);
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};
@@ -55,12 +52,7 @@ public:
     shared_ptr<MonoImpl> MonoData {};
 
 private:
-    void InitSubsystems() override
-    {
-        InitNativeScripting();
-        InitAngelScriptScripting();
-        InitMonoScripting();
-    }
+    void InitSubsystems() override;
 
     void InitNativeScripting();
     void InitAngelScriptScripting();

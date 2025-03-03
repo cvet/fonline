@@ -31,70 +31,30 @@
 // SOFTWARE.
 //
 
-#include "ClientEntity.h"
-#include "Client.h"
-#include "StringUtils.h"
+#include "ServerScripting.h"
+#include "Server.h"
 
-ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
-    Entity(registrator, props),
-    _engine {engine},
-    _id {id}
+#if !FO_SINGLEPLAYER
+
+ServerScriptSystem::ServerScriptSystem(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 
-    _name = GetTypeName();
-
-    if (_id) {
-        _engine->RegisterEntity(this);
-        _registered = true;
-    }
+    MapEngineEntityType<Player>(Player::ENTITY_TYPE_NAME);
+    MapEngineEntityType<Item>(Item::ENTITY_TYPE_NAME);
+    MapEngineEntityType<Critter>(Critter::ENTITY_TYPE_NAME);
+    MapEngineEntityType<Map>(Map::ENTITY_TYPE_NAME);
+    MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
 }
 
-void ClientEntity::SetId(ident_t id, bool register_entity)
+void ServerScriptSystem::InitSubsystems()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_id);
-    RUNTIME_ASSERT(id);
-
-    _id = id;
-
-    if (register_entity) {
-        _engine->RegisterEntity(this);
-        _registered = true;
-    }
+    InitNativeScripting();
+    InitAngelScriptScripting();
+    InitMonoScripting();
 }
 
-void ClientEntity::DestroySelf()
-{
-    STACK_TRACE_ENTRY();
-
-    MarkAsDestroying();
-
-    OnDestroySelf();
-
-    if (_registered) {
-        _engine->UnregisterEntity(this);
-    }
-
-    if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetRawInnerEntities()) {
-            for (auto* entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
-                RUNTIME_ASSERT(custom_entity);
-
-                custom_entity->DestroySelf();
-            }
-        }
-
-        ClearInnerEntities();
-    }
-
-    MarkAsDestroyed();
-    Release();
-}
-
-void CustomEntityView::OnDestroySelf()
-{
-    STACK_TRACE_ENTRY();
-}
+#endif

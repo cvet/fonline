@@ -50,7 +50,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
-    ServerDeferredCalls(this),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -150,7 +149,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         extern void Server_RegisterData(FOEngineBase*);
         Server_RegisterData(this);
 
-        ScriptSys = SafeAlloc::MakeRaw<ServerScriptSystem>(this);
+        ScriptSys = SafeAlloc::MakeUnique<ServerScriptSystem>(this);
         ScriptSys->InitSubsystems();
 #endif
 
@@ -360,6 +359,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
                 const auto file = client_resources.ReadFile(path);
+
                 if (!file) {
                     throw ServerInitException("Resource pack for client not found", path);
                 }
@@ -378,6 +378,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             add_sync_file("Texts.zip");
             add_sync_file("ClientProtos.zip");
             add_sync_file("StaticMaps.zip");
+
             if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
                 add_sync_file("ClientAngelScript.zip");
             }
@@ -428,6 +429,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             GameTime.FrameAdvance();
+            TimeEventMngr.InitPersistentTimeEvents(this);
 
             // Scripting
             WriteLog("Init script modules");
@@ -453,14 +455,6 @@ FOServer::FOServer(GlobalSettings& settings) :
                 WriteLog("Restore world");
 
                 int errors = 0;
-
-                try {
-                    ServerDeferredCalls.LoadDeferredCalls();
-                }
-                catch (std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                    errors++;
-                }
 
                 try {
                     EntityMngr.LoadEntities();
@@ -634,43 +628,11 @@ FOServer::FOServer(GlobalSettings& settings) :
             return std::chrono::milliseconds {0};
         });
 
-        // Process maps
+        // Time events
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("MapsJob");
+            STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
 
-            for (auto* map : copy_hold_ref(EntityMngr.GetMaps())) {
-                if (map->IsDestroyed()) {
-                    continue;
-                }
-
-                try {
-                    map->Process();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-                catch (...) {
-                    UNKNOWN_EXCEPTION();
-                }
-            }
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Deferred calls
-        _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("DeferredCallsJob");
-
-            ServerDeferredCalls.ProcessDeferredCalls();
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Script game loop
-        _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("ScriptLoopJob");
-
-            OnLoop.Fire();
+            TimeEventMngr.ProcessTimeEvents();
 
             return std::chrono::milliseconds {0};
         });
@@ -777,7 +739,7 @@ FOServer::~FOServer()
         }
 
         // Shutdown script system
-        delete ScriptSys;
+        ScriptSys.reset();
 
         // Shutdown servers
         for (auto* conn_server : _connectionServers) {
@@ -923,6 +885,7 @@ void FOServer::DrawGui(string_view server_name)
                 if (!Lock(max_wait_time)) {
                     ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
                     WriteLog("Server hanged (no response more than {})", max_wait_time);
+                    ImGui::End();
                     return;
                 }
             }
@@ -969,6 +932,7 @@ void FOServer::DrawGui(string_view server_name)
             }
         }
     }
+
     ImGui::End();
 }
 
@@ -1888,52 +1852,15 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 #endif
 
-    if (cr->IsDestroyed()) {
-        return;
-    }
-
     // Moving
-    ProcessCritterMoving(cr);
-
-    if (cr->IsDestroyed()) {
-        return;
-    }
-
-    // Idling
-    auto idle_period = cr->GetIdlePeriod();
-    if (idle_period == 0) {
-        idle_period = Settings.CritterIdlePeriod;
-    }
-
-    if (cr->LastIdleCall == time_point {}) {
-        cr->LastIdleCall = GameTime.GameplayTime() - std::chrono::milliseconds {GenericUtils::Random(0u, idle_period)};
-    }
-
-    if (GameTime.GameplayTime() - cr->LastIdleCall >= std::chrono::milliseconds {idle_period}) {
-        OnCritterIdle.Fire(cr);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
-
-        cr->OnIdle.Fire();
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
-
-        cr->LastIdleCall = GameTime.GameplayTime();
+    if (!cr->IsDestroyed()) {
+        ProcessCritterMoving(cr);
     }
 
     // Talking
-    CrMngr.ProcessTalk(cr, false);
-
-    if (cr->IsDestroyed()) {
-        return;
+    if (!cr->IsDestroyed()) {
+        CrMngr.ProcessTalk(cr, false);
     }
-
-    // Time events
-    cr->ProcessTimeEvents();
 }
 
 auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*

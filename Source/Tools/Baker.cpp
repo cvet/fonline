@@ -100,7 +100,7 @@ unordered_set<string> CompilerPassedMessages;
 #endif
 
 class Item;
-class StaticItem;
+using StaticItem = Item;
 class Critter;
 class Map;
 class Location;
@@ -443,6 +443,12 @@ void Baker::BakeAll()
         AngelScriptCompiler_SingleScriptSystem_Validation compiler_script_sys;
 #endif
 #endif
+        auto validation_engine_destroyer = ScopeCallback([&validation_engine]() noexcept {
+            if (validation_engine != nullptr) {
+                validation_engine->ScriptSys.release(); // NOLINT(bugprone-unused-return-value)
+                validation_engine->Release();
+            }
+        });
 
         try {
             WriteLog("Compile AngelScript scripts");

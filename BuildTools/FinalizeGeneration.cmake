@@ -667,8 +667,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.h"
-    "${FO_ENGINE_ROOT}/Source/Common/DeferredCalls.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/DeferredCalls.h"
     "${FO_ENGINE_ROOT}/Source/Common/Dialogs.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Dialogs.h"
     "${FO_ENGINE_ROOT}/Source/Common/DiskFileSystem.cpp"
@@ -714,6 +712,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/StringUtils.h"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
@@ -756,10 +756,9 @@ list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
-    "${FO_ENGINE_ROOT}/Source/Server/ServerDeferredCalls.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/ServerDeferredCalls.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerItemScriptMethods.cpp"
@@ -824,6 +823,7 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/VisualParticles.h"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientItemScriptMethods.cpp"
@@ -834,6 +834,7 @@ list(APPEND FO_CLIENT_BASE_SOURCE
 if(NOT FO_SINGLEPLAYER)
     list(APPEND FO_SERVER_SOURCE
         ${FO_SERVER_BASE_SOURCE}
+        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
@@ -842,6 +843,7 @@ if(NOT FO_SINGLEPLAYER)
 
     list(APPEND FO_CLIENT_SOURCE
         ${FO_CLIENT_BASE_SOURCE}
+        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
@@ -854,6 +856,7 @@ else()
         ${FO_CLIENT_BASE_SOURCE}
         "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.cpp"
         "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
@@ -883,6 +886,7 @@ list(APPEND FO_EDITOR_SOURCE
 list(APPEND FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
@@ -903,13 +907,16 @@ list(APPEND FO_BAKER_SOURCE
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
 
     if(NOT FO_SINGLEPLAYER)
         list(APPEND FO_ASCOMPILER_SOURCE
+            "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
             "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
+            "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
             "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
             "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
             "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
@@ -918,6 +925,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
             "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
     else()
         list(APPEND FO_ASCOMPILER_SOURCE
+            "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.cpp"
             "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
             "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
             "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
@@ -949,12 +957,14 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/AngelScriptScripting-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MonoScripting-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/NativeScripting-Template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerItemScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerCritterScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientItemScriptMethods.cpp"

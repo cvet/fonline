@@ -40,7 +40,7 @@
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys.get(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 
@@ -50,7 +50,7 @@ FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys.get(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 
@@ -886,170 +886,6 @@ FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 {
     return self->AttachedCritters;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, any_t, uint*> func, tick_t duration, any_t identifier)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    self->AddTimeEvent(func.GetName(), 0, duration, identifier);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, any_t, uint*> func, tick_t duration, any_t identifier, uint rate)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    self->AddTimeEvent(func.GetName(), rate, duration, identifier);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Critter_GetTimeEvents(Critter* self, any_t identifier)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-
-    uint count = 0;
-
-    for (const auto& te_identifier : te_identifiers) {
-        if (te_identifier == identifier) {
-            count++;
-        }
-    }
-
-    return count;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Critter_GetTimeEvents(Critter* self, any_t identifier, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-    auto&& te_fire_times = self->GetTE_FireTime();
-    auto&& te_rates = self->GetTE_Rate();
-    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
-    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
-
-    const auto server_time = self->GetEngine()->GameTime.GetServerTime();
-
-    uint count = 0;
-
-    for (size_t i = 0; i < te_identifiers.size(); i++) {
-        if (te_identifiers[i] == identifier) {
-            indexes.push_back(static_cast<uint>(i));
-            durations.emplace_back(te_fire_times[i].underlying_value() > server_time.underlying_value() ? te_fire_times[i].underlying_value() - server_time.underlying_value() : 0);
-            rates.push_back(te_rates[i]);
-            count++;
-        }
-    }
-
-    return count;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Critter_GetTimeEvents(Critter* self, const vector<any_t>& findIdentifiers, vector<any_t>& identifiers, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-    auto&& te_fire_times = self->GetTE_FireTime();
-    auto&& te_rates = self->GetTE_Rate();
-    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
-    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
-
-    const auto server_time = self->GetEngine()->GameTime.GetServerTime();
-
-    uint count = 0;
-
-    for (const auto& identifier : findIdentifiers) {
-        for (size_t i = 0; i < te_identifiers.size(); i++) {
-            if (te_identifiers[i] == identifier) {
-                identifiers.push_back(te_identifiers[i]);
-                indexes.push_back(static_cast<uint>(i));
-                durations.emplace_back(te_fire_times[i].underlying_value() > server_time.underlying_value() ? te_fire_times[i].underlying_value() - server_time.underlying_value() : 0);
-                rates.push_back(te_rates[i]);
-                count++;
-            }
-        }
-    }
-
-    return count;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ChangeTimeEvent(Critter* self, uint index, tick_t newDuration, uint newRate)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-    auto&& te_fire_times = self->GetTE_FireTime();
-    auto&& te_func_names = self->GetTE_FuncName();
-    auto&& te_rates = self->GetTE_Rate();
-    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
-    RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
-    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
-
-    if (index >= te_identifiers.size()) {
-        throw ScriptException("Index arg is greater than maximum time events");
-    }
-
-    self->RemoveTimeEvent(index);
-    self->AddTimeEvent(te_func_names[index], newRate, newDuration, te_identifiers[index]);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_RemoveTimeEvent(Critter* self, uint index)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-
-    if (index >= te_identifiers.size()) {
-        throw ScriptException("Index arg is greater than maximum time events");
-    }
-
-    self->RemoveTimeEvent(index);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Critter_RemoveTimeEvents(Critter* self, any_t identifier)
-{
-    auto&& te_identifiers = self->GetTE_Identifier();
-
-    uint count = 0;
-    size_t index = 0;
-
-    for (const auto& te_identifier : te_identifiers) {
-        if (te_identifier == identifier) {
-            self->RemoveTimeEvent(index);
-            count++;
-        }
-        else {
-            index++;
-        }
-    }
-
-    return count;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint Server_Critter_RemoveTimeEvents(Critter* self, const vector<any_t>& identifiers)
-{
-    uint count = 0;
-
-    for (const auto& identifier : identifiers) {
-        auto&& te_identifiers = self->GetTE_Identifier();
-        size_t index = 0;
-
-        for (const auto& te_identifier : te_identifiers) {
-            if (te_identifier == identifier) {
-                self->RemoveTimeEvent(index);
-                count++;
-            }
-            else {
-                index++;
-            }
-        }
-    }
-
-    return count;
 }
 
 ///@ ExportMethod

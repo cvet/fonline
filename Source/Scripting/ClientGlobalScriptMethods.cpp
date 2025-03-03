@@ -71,54 +71,6 @@ FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
     return client->IsConnected();
 }
 
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, std::move(value));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, values);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, std::move(value));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
-{
-    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, values);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsDeferredCallPending(FOClient* client, ident_t id)
-{
-    return client->ClientDeferredCalls.IsDeferredCallPending(id);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_CancelDeferredCall(FOClient* client, ident_t id)
-{
-    return client->ClientDeferredCalls.CancelDeferredCall(id);
-}
-
 ///@ ExportMethod ExcludeInSingleplayer
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {

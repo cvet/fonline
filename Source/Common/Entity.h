@@ -39,11 +39,11 @@
 #include "TextPack.h"
 
 ///@ ExportEntity Game FOServer FOClient Global
-///@ ExportEntity Player Player PlayerView
-///@ ExportEntity Location Location LocationView HasProtos
-///@ ExportEntity Map Map MapView HasProtos
-///@ ExportEntity Critter Critter CritterView HasProtos
-///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract
+///@ ExportEntity Player Player PlayerView HasTimeEvents
+///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents
+///@ ExportEntity Map Map MapView HasProtos HasTimeEvents
+///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
@@ -265,6 +265,14 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_RepeatDuration);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -322,6 +330,15 @@ public:
         bool Deferred {}; // Todo: improve entity event Deferred
     };
 
+    struct TimeEventData
+    {
+        uint Id {};
+        hstring FuncName {};
+        tick_t FireTime {};
+        tick_t RepeatDuration {};
+        vector<any_t> Data {};
+    };
+
     Entity() = delete;
     Entity(const Entity&) = delete;
     Entity(Entity&&) noexcept = delete;
@@ -343,6 +360,9 @@ public:
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
     [[nodiscard]] auto GetRawInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*;
+    [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
+    [[nodiscard]] auto GetRawPeristentTimeEvents() noexcept -> auto& { return _persistentTimeEvents; }
+    [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
@@ -381,6 +401,8 @@ private:
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
+    unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
+    unique_ptr<vector<shared_ptr<TimeEventData>>> _persistentTimeEvents {};
     unique_ptr<map<hstring, vector<Entity*>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};

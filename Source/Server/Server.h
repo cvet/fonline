@@ -54,7 +54,6 @@
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
-#include "ServerDeferredCalls.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ServerInitException);
@@ -111,8 +110,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLoop);
-    ///@ ExportEvent
     ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
@@ -147,10 +144,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapFinish, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapLoop, Map* /*map*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnMapLoopEx, Map* /*map*/, uint /*loopIndex*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
@@ -167,8 +160,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
@@ -181,8 +172,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
 
-    ServerDeferredCallManager ServerDeferredCalls;
-
     EntityManager EntityMngr;
     MapManager MapMngr;
     CritterManager CrMngr;
@@ -191,7 +180,6 @@ public:
 
     DataBase DbStorage {};
     const hstring GameCollectionName = ToHashedString("Game");
-    const hstring DeferredCallsCollectionName = ToHashedString("DeferredCalls");
     const hstring HistoryCollectionName = ToHashedString("History");
     const hstring PlayersCollectionName = ToHashedString("Players");
 
