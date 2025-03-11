@@ -493,6 +493,8 @@ void CritterHexView::RefreshModel()
 {
     STACK_TRACE_ENTRY();
 
+    auto&& animCallbacks = _model != nullptr ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
+
     Spr = nullptr;
 
     _modelSpr = nullptr;
@@ -511,10 +513,9 @@ void CritterHexView::RefreshModel()
             Spr = _modelSpr.get();
 
             _model = _modelSpr->GetModel();
-
+            _model->AnimationCallbacks = std::move(animCallbacks);
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
-
             _model->SetAnimation(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0);
             _model->PrewarmParticles();
 
