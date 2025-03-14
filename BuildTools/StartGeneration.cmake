@@ -223,13 +223,13 @@ if(WIN32)
 	add_compile_options_C_CXX(/GR)
 	add_compile_options_C_CXX(/bigobj)
 	add_compile_options_C_CXX(/fp:fast)
-	add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>)
+	# add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes, try uncomment later
 	add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
 
 	add_link_options(/INCREMENTAL:NO)
 	add_link_options(/OPT:REF)
 	add_link_options(/OPT:NOICF)
-	add_link_options($<${expr_FullOptimization}:/LTCG>)
+	# add_link_options($<${expr_FullOptimization}:/LTCG>)
 	add_link_options($<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
 	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
