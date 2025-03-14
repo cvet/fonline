@@ -40,7 +40,7 @@
 
 DECLARE_EXCEPTION(NetworkException);
 
-class NetConnection
+class NetConnection : public std::enable_shared_from_this<NetConnection>
 {
 public:
     explicit NetConnection(ServerNetworkSettings& settings);
@@ -61,16 +61,10 @@ public:
     virtual void Dispatch() = 0;
     virtual void Disconnect() = 0;
 
-    void AddRef() const noexcept;
-    void Release() const noexcept;
-
     NetInBuffer InBuf;
     std::mutex InBufLocker {};
     NetOutBuffer OutBuf;
     std::mutex OutBufLocker {};
-
-private:
-    mutable std::atomic_int _refCount {1};
 };
 
 class DummyNetConnection : public NetConnection
@@ -101,7 +95,7 @@ public:
 class NetServerBase
 {
 public:
-    using ConnectionCallback = std::function<void(NetConnection*)>;
+    using ConnectionCallback = std::function<void(shared_ptr<NetConnection>)>;
 
     NetServerBase() = default;
     NetServerBase(const NetServerBase&) = delete;
@@ -112,7 +106,7 @@ public:
 
     virtual void Shutdown() = 0;
 
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
+    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
+    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
 };

@@ -75,22 +75,6 @@ NetConnection::NetConnection(ServerNetworkSettings& settings) :
     STACK_TRACE_ENTRY();
 }
 
-void NetConnection::AddRef() const noexcept
-{
-    NO_STACK_TRACE_ENTRY();
-
-    ++_refCount;
-}
-
-void NetConnection::Release() const noexcept
-{
-    NO_STACK_TRACE_ENTRY();
-
-    if (--_refCount == 0) {
-        delete this;
-    }
-}
-
 class NetConnectionImpl : public NetConnection
 {
 public:
@@ -197,7 +181,8 @@ public:
     {
         STACK_TRACE_ENTRY();
 
-        auto expected = false;
+        bool expected = false;
+
         if (_isDisconnected.compare_exchange_strong(expected, true)) {
             DisconnectImpl();
         }
@@ -207,15 +192,17 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback(size_t& out_len) -> const uint8*
+    auto SendCallback() -> const_span<uint8>
     {
         STACK_TRACE_ENTRY();
 
         std::scoped_lock locker(OutBufLocker);
 
         if (OutBuf.IsEmpty()) {
-            return nullptr;
+            return {};
         }
+
+        size_t out_len;
 
         // Compress
         if (_zStreamActive) {
@@ -263,7 +250,7 @@ protected:
         }
 
         RUNTIME_ASSERT(out_len > 0);
-        return _outBuf.data();
+        return {_outBuf.data(), out_len};
     }
 
     void ReceiveCallback(const uint8* buf, size_t len)
@@ -310,7 +297,7 @@ public:
 private:
     void Run();
     void AcceptNext();
-    void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket);
+    void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
     ServerNetworkSettings& _settings;
     asio::io_context _ioService {};
@@ -371,24 +358,22 @@ private:
 class NetConnectionAsio final : public NetConnectionImpl
 {
 public:
-    NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) :
+    NetConnectionAsio(ServerNetworkSettings& settings, unique_ptr<asio::ip::tcp::socket> socket) :
         NetConnectionImpl(settings),
-        _socket {socket}
+        _socket {std::move(socket)}
     {
         STACK_TRACE_ENTRY();
 
-        const auto& address = socket->remote_endpoint().address();
+        const auto& address = _socket->remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
         _host = address.to_string();
-        _port = socket->remote_endpoint().port();
+        _port = _socket->remote_endpoint().port();
 
         if (settings.DisableTcpNagle) {
-            socket->set_option(asio::ip::tcp::no_delay(true), _dummyError);
+            _dummyError = _socket->set_option(asio::ip::tcp::no_delay(true), _dummyError);
         }
 
         _inBuf.resize(_settings.NetBufferSize);
-        _writePending = false;
-        NextAsyncRead();
     }
 
     NetConnectionAsio() = delete;
@@ -396,14 +381,12 @@ public:
     NetConnectionAsio(NetConnectionAsio&&) noexcept = delete;
     auto operator=(const NetConnectionAsio&) = delete;
     auto operator=(NetConnectionAsio&&) noexcept = delete;
+
     ~NetConnectionAsio() override
     {
         STACK_TRACE_ENTRY();
 
-        if (!_isDisconnected) {
-            _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
-            _socket->close(_dummyError);
-        }
+        CloseSocket();
     }
 
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
@@ -420,32 +403,40 @@ public:
         return false;
     }
 
+    void StartRead()
+    {
+        STACK_TRACE_ENTRY();
+
+        NextAsyncRead();
+    }
+
 private:
     void NextAsyncRead()
     {
         STACK_TRACE_ENTRY();
 
-        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this_ = this, socket = _socket](std::error_code error, size_t bytes) { AsyncRead(this_, socket, error, bytes); });
+        const auto read_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+            auto* thiz_ = static_cast<NetConnectionAsio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+            thiz_->AsyncReadComplete(error, bytes);
+        };
+
+        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), read_handler);
     }
 
-    static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
+    void AsyncReadComplete(std::error_code error, size_t bytes)
     {
         STACK_TRACE_ENTRY();
 
         if (!error) {
-            this_->ReceiveCallback(this_->_inBuf.data(), bytes);
-            this_->NextAsyncRead();
+            ReceiveCallback(_inBuf.data(), bytes);
+            NextAsyncRead();
         }
         else {
-            if (socket->is_open()) {
-                this_->Disconnect();
-            }
-
-            delete socket;
+            Disconnect();
         }
     }
 
-    void AsyncWrite(std::error_code error, size_t bytes)
+    void AsyncWriteComplete(std::error_code error, size_t bytes)
     {
         STACK_TRACE_ENTRY();
 
@@ -465,19 +456,20 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        auto expected = false;
+        bool expected = false;
+
         if (_writePending.compare_exchange_strong(expected, true)) {
-            size_t len = 0;
-            const auto* buf = SendCallback(len);
-            if (buf != nullptr) {
-                async_write(*_socket, asio::buffer(buf, len), [this](std::error_code error, size_t bytes) { AsyncWrite(error, bytes); });
+            const auto buf = SendCallback();
+
+            if (!buf.empty()) {
+                const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+                    auto* thiz_ = static_cast<NetConnectionAsio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                    thiz_->AsyncWriteComplete(error, bytes);
+                };
+
+                async_write(*_socket, asio::buffer(buf.data(), buf.size()), write_handler);
             }
             else {
-                if (_isDisconnected) {
-                    _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
-                    _socket->close(_dummyError);
-                }
-
                 _writePending = false;
             }
         }
@@ -487,11 +479,28 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
-        _socket->close(_dummyError);
+        CloseSocket();
     }
 
-    asio::ip::tcp::socket* _socket {};
+    void CloseSocket() noexcept
+    {
+        STACK_TRACE_ENTRY();
+
+        try {
+            if (_socket->is_open()) {
+                _dummyError = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
+                _dummyError = _socket->close(_dummyError);
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
+    }
+
+    unique_ptr<asio::ip::tcp::socket> _socket {};
     std::atomic_bool _writePending {};
     std::vector<uint8> _inBuf {};
     asio::error_code _dummyError {};
@@ -507,24 +516,24 @@ public:
     NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) :
         NetConnectionImpl(settings),
         _server {server},
-        _connection {connection}
+        _connection {std::move(connection)}
     {
         STACK_TRACE_ENTRY();
 
-        const auto& address = connection->get_raw_socket().remote_endpoint().address();
+        const auto& address = _connection->get_raw_socket().remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
         _host = address.to_string();
-        _port = connection->get_raw_socket().remote_endpoint().port();
+        _port = _connection->get_raw_socket().remote_endpoint().port();
 
         if (settings.DisableTcpNagle) {
             asio::error_code error;
-            connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
+            _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
         }
 
-        connection->set_message_handler([this](auto&&, message_ptr msg) { OnMessage(msg); });
-        connection->set_fail_handler([this](auto hdl) { OnFail(hdl); });
-        connection->set_close_handler([this](auto hdl) { OnClose(hdl); });
-        connection->set_http_handler([this](auto hdl) { OnHttp(hdl); });
+        _connection->set_message_handler([this](auto&&, auto&& msg) { OnMessage(msg); });
+        _connection->set_fail_handler([this](auto&& hdl) { OnFail(hdl); });
+        _connection->set_close_handler([this](auto&& hdl) { OnClose(hdl); });
+        _connection->set_http_handler([this](auto&& hdl) { OnHttp(hdl); });
     }
 
     NetConnectionWebSocket() = delete;
@@ -537,18 +546,7 @@ public:
     {
         STACK_TRACE_ENTRY();
 
-        if (_isDisconnected) {
-            try {
-                std::error_code error;
-                _connection->terminate(error);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-            catch (...) {
-                UNKNOWN_EXCEPTION();
-            }
-        }
+        CloseConnection();
     }
 
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
@@ -566,7 +564,7 @@ public:
     }
 
 private:
-    void OnMessage(message_ptr msg)
+    void OnMessage(const message_ptr& msg)
     {
         STACK_TRACE_ENTRY();
 
@@ -608,10 +606,11 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        size_t len = 0;
-        const auto* buf = SendCallback(len);
-        if (buf != nullptr) {
-            const std::error_code error = _connection->send(buf, len, websocketpp::frame::opcode::binary);
+        const auto buf = SendCallback();
+
+        if (!buf.empty()) {
+            const std::error_code error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+
             if (!error) {
                 DispatchImpl();
             }
@@ -625,8 +624,24 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        std::error_code error;
-        _connection->terminate(error);
+        CloseConnection();
+    }
+
+    void CloseConnection() noexcept
+    {
+        try {
+            if (_connection->get_state() == websocketpp::session::state::open) {
+                std::error_code error;
+                _connection->close(websocketpp::close::status::normal, "Disconnecting", error);
+                _connection->terminate(error);
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 
     WebSockets* _server {};
@@ -672,19 +687,20 @@ void NetTcpServer::AcceptNext()
     STACK_TRACE_ENTRY();
 
     auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_ioService);
-    _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
+    _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
 }
 
-void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
+void NetTcpServer::AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket)
 {
     STACK_TRACE_ENTRY();
 
     if (!error) {
-        _connectionCallback(SafeAlloc::MakeRaw<NetConnectionAsio>(_settings, socket));
+        auto&& connection = SafeAlloc::MakeShared<NetConnectionAsio>(_settings, std::move(socket));
+        connection->StartRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
+        _connectionCallback(std::move(connection));
     }
     else {
         WriteLog("Accept error: {}", error.message());
-        delete socket;
     }
 
     AcceptNext();
@@ -698,8 +714,8 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler([this](auto hdl) { OnOpen(hdl); });
-    _server.set_validate_handler([this](auto hdl) { return OnValidate(hdl); });
+    _server.set_open_handler([this](auto&& hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](auto&& hdl) { return OnValidate(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -734,7 +750,7 @@ void NetNoTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
     STACK_TRACE_ENTRY();
 
     const auto connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(SafeAlloc::MakeRaw<NetConnectionWebSocket<web_sockets_no_tls>>(_settings, &_server, connection));
+    _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_no_tls>>(_settings, &_server, connection));
 }
 
 auto NetNoTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
@@ -762,9 +778,9 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler([this](auto hdl) { OnOpen(hdl); });
-    _server.set_validate_handler([this](auto hdl) { return OnValidate(hdl); });
-    _server.set_tls_init_handler([this](auto hdl) { return OnTlsInit(hdl); });
+    _server.set_open_handler([this](auto&& hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](auto&& hdl) { return OnValidate(hdl); });
+    _server.set_tls_init_handler([this](auto&& hdl) { return OnTlsInit(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -798,8 +814,8 @@ void NetTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
 {
     STACK_TRACE_ENTRY();
 
-    const auto connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(SafeAlloc::MakeRaw<NetConnectionWebSocket<web_sockets_tls>>(_settings, &_server, connection));
+    auto&& connection = _server.get_con_from_hdl(hdl);
+    _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_tls>>(_settings, &_server, connection));
 }
 
 auto NetTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
@@ -818,7 +834,7 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& hdl) c
 
     UNUSED_VARIABLE(hdl);
 
-    shared_ptr<ssl_context> ctx(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
+    auto&& ctx = SafeAlloc::MakeShared<ssl_context>(ssl_context::tlsv1);
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
     ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
     ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
@@ -826,20 +842,20 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& hdl) c
 }
 #endif // FO_HAVE_ASIO
 
-auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
+auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>
 {
     STACK_TRACE_ENTRY();
 
 #if FO_HAVE_ASIO
     WriteLog("Listen TCP connections on port {}", settings.ServerPort);
 
-    return SafeAlloc::MakeRaw<NetTcpServer>(settings, std::move(callback));
+    return SafeAlloc::MakeUnique<NetTcpServer>(settings, std::move(callback));
 #else
     throw NotSupportedException("NetServerBase::StartTcpServer");
 #endif
 }
 
-auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
+auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>
 {
     STACK_TRACE_ENTRY();
 
@@ -847,12 +863,12 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
     if (settings.SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
 
-        return SafeAlloc::MakeRaw<NetTlsWebSocketsServer>(settings, std::move(callback));
+        return SafeAlloc::MakeUnique<NetTlsWebSocketsServer>(settings, std::move(callback));
     }
     else {
         WriteLog("Listen WebSockets (no TLS) connections on port {}", settings.ServerPort + 1);
 
-        return SafeAlloc::MakeRaw<NetNoTlsWebSocketsServer>(settings, std::move(callback));
+        return SafeAlloc::MakeUnique<NetNoTlsWebSocketsServer>(settings, std::move(callback));
     }
 #else
     throw NotSupportedException("NetServerBase::StartWebSocketsServer");
@@ -909,10 +925,10 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        size_t len = 0;
-        const auto* buf = SendCallback(len);
-        if (buf != nullptr) {
-            _send({buf, len});
+        const auto buf = SendCallback();
+
+        if (!buf.empty()) {
+            _send(buf);
         }
     }
 
@@ -948,9 +964,9 @@ public:
             throw NetworkException("Port is busy", _virtualPort);
         }
 
-        InterthreadListeners.emplace(_virtualPort, [&settings, callback = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
-            auto* conn = SafeAlloc::MakeRaw<InterthreadConnection>(settings, std::move(client_send));
-            callback(conn);
+        InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
+            auto conn = SafeAlloc::MakeShared<InterthreadConnection>(settings, std::move(client_send));
+            callback_(conn);
             return [conn](const_span<uint8> buf) { conn->Receive(buf); };
         });
     }
@@ -967,9 +983,9 @@ private:
     uint16 _virtualPort;
 };
 
-auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
+auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>
 {
     STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRaw<InterthreadServer>(settings, std::move(callback));
+    return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
 }

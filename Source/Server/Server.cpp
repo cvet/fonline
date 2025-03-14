@@ -163,16 +163,16 @@ FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
         WriteLog("Start networking");
 
-        if (auto* conn_server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto&& conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto* conn_server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto&& conn_server = NetServerBase::StartTcpServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto* conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto&& conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 #endif
 
@@ -549,16 +549,17 @@ FOServer::FOServer(GlobalSettings& settings) :
                 std::scoped_lock locker(_newConnectionsLocker);
 
                 if (!_newConnections.empty()) {
-                    for (auto* conn : _newConnections) {
-                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, conn));
+                    while (!_newConnections.empty()) {
+                        auto&& conn = std::move(_newConnections.back());
+                        _newConnections.pop_back();
+                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, std::move(conn)));
                     }
-                    _newConnections.clear();
                 }
             }
 
             for (auto* player : copy_hold_ref(_unloginedPlayers)) {
                 try {
-                    ProcessConnection(player->Connection);
+                    ProcessConnection(player->Connection.get());
                     ProcessUnloginedPlayer(player);
                 }
                 catch (const NetBufferException& ex) {
@@ -587,7 +588,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 try {
                     RUNTIME_ASSERT(!player->IsDestroyed());
 
-                    ProcessConnection(player->Connection);
+                    ProcessConnection(player->Connection.get());
                     ProcessPlayer(player);
                 }
                 catch (const NetBufferException& ex) {
@@ -742,9 +743,8 @@ FOServer::~FOServer()
         ScriptSys.reset();
 
         // Shutdown servers
-        for (auto* conn_server : _connectionServers) {
+        for (auto&& conn_server : _connectionServers) {
             conn_server->Shutdown();
-            delete conn_server;
         }
         _connectionServers.clear();
 
@@ -772,9 +772,8 @@ FOServer::~FOServer()
         {
             std::scoped_lock locker(_newConnectionsLocker);
 
-            for (auto* conn : _newConnections) {
+            for (auto&& conn : _newConnections) {
                 conn->HardDisconnect();
-                delete conn;
             }
             _newConnections.clear();
         }
@@ -983,7 +982,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     return result;
 }
 
-void FOServer::OnNewConnection(NetConnection* net_connection)
+void FOServer::OnNewConnection(shared_ptr<NetConnection> net_connection)
 {
     STACK_TRACE_ENTRY();
 
@@ -994,14 +993,14 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
 
     std::scoped_lock locker(_newConnectionsLocker);
 
-    _newConnections.emplace_back(SafeAlloc::MakeRaw<ClientConnection>(net_connection));
+    _newConnections.emplace_back(SafeAlloc::MakeUnique<ClientConnection>(std::move(net_connection)));
 }
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
-    auto* connection = unlogined_player->Connection;
+    auto* connection = unlogined_player->Connection.get();
 
     if (connection->IsHardDisconnected()) {
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
@@ -1130,7 +1129,7 @@ void FOServer::ProcessPlayer(Player* player)
 
         switch (msg) {
         case NETMSG_PING:
-            Process_Ping(player->Connection);
+            Process_Ping(player->Connection.get());
             break;
         case NETMSG_SEND_TEXT:
             Process_Text(player);

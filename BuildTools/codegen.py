@@ -2351,7 +2351,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         for p in rcArgs:
                             globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                         if target == 'Server':
-                            globalLines.append('    auto* conn = self->Connection;')
+                            globalLines.append('    auto* conn = self->Connection.get();')
                             globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
                             globalLines.append('    WriteRpcHeader(conn->OutBuf, rpc_num);')
                             for p in rcArgs:
@@ -2403,7 +2403,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if target == 'Server':
-                            globalLines.append('    [[maybe_unused]] auto* conn = self->Connection;')
+                            globalLines.append('    [[maybe_unused]] auto* conn = self->Connection.get();')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
                                 globalLines.append('    ReadNetBuf(conn->InBuf, arg_' + p[1] + ', *self->GetEngine());')

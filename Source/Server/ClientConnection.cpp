@@ -37,16 +37,14 @@
 #include "Networking.h"
 #include "TextPack.h"
 
-ClientConnection::ClientConnection(NetConnection* net_connection) :
+ClientConnection::ClientConnection(shared_ptr<NetConnection> net_connection) :
     InBuf {net_connection->InBuf},
     InBufLocker {net_connection->InBufLocker},
     OutBuf {net_connection->OutBuf},
     OutBufLocker {net_connection->OutBufLocker},
-    _netConnection {net_connection}
+    _netConnection {std::move(net_connection)}
 {
     STACK_TRACE_ENTRY();
-
-    _netConnection->AddRef();
 }
 
 ClientConnection::~ClientConnection()
@@ -54,7 +52,6 @@ ClientConnection::~ClientConnection()
     STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
-    _netConnection->Release();
 }
 
 auto ClientConnection::GetIp() const noexcept -> uint

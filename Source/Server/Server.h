@@ -225,7 +225,7 @@ private:
 
     void SyncPoint();
 
-    void OnNewConnection(NetConnection* net_connection);
+    void OnNewConnection(shared_ptr<NetConnection> net_connection);
 
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
@@ -300,8 +300,8 @@ private:
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
-    vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<ClientConnection*> _newConnections {};
+    vector<unique_ptr<NetServerBase>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<unique_ptr<ClientConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
     vector<Player*> _unloginedPlayers {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
