@@ -353,7 +353,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource(strex("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
+            client_resources.AddDataSource("ClientResources", DataSourceType::DirRoot);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -550,7 +550,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
                 if (!_newConnections.empty()) {
                     while (!_newConnections.empty()) {
-                        auto&& conn = std::move(_newConnections.back());
+                        auto conn = std::move(_newConnections.back());
                         _newConnections.pop_back();
                         _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, std::move(conn)));
                     }
