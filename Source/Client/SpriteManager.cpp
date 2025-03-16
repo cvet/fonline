@@ -368,7 +368,13 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
 {
     STACK_TRACE_ENTRY();
 
-    DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect);
+    if (region_to == nullptr && rt->SizeKind == RenderTarget::SizeKindType::Map) {
+        const IRect region_without_hud = {0, 0, _settings.ScreenWidth, _settings.ScreenHeight - _settings.ScreenHudHeight};
+        DrawTexture(rt->MainTex.get(), alpha_blend, region_from, &region_without_hud, rt->CustomDrawEffect);
+    }
+    else {
+        DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect);
+    }
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
