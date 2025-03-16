@@ -370,7 +370,8 @@ public:
         _port = _socket->remote_endpoint().port();
 
         if (settings.DisableTcpNagle) {
-            _dummyError = _socket->set_option(asio::ip::tcp::no_delay(true), _dummyError);
+            asio::error_code error;
+            error = _socket->set_option(asio::ip::tcp::no_delay(true), error);
         }
 
         _inBuf.resize(_settings.NetBufferSize);
@@ -386,7 +387,17 @@ public:
     {
         STACK_TRACE_ENTRY();
 
-        CloseSocket();
+        try {
+            asio::error_code error;
+            error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
+            error = _socket->close(error);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
@@ -479,31 +490,14 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        CloseSocket();
-    }
-
-    void CloseSocket() noexcept
-    {
-        STACK_TRACE_ENTRY();
-
-        try {
-            if (_socket->is_open()) {
-                _dummyError = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
-                _dummyError = _socket->close(_dummyError);
-            }
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
+        asio::error_code error;
+        error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
+        error = _socket->close(error);
     }
 
     unique_ptr<asio::ip::tcp::socket> _socket {};
     std::atomic_bool _writePending {};
     std::vector<uint8> _inBuf {};
-    asio::error_code _dummyError {};
 };
 
 template<typename WebSockets>
@@ -546,7 +540,16 @@ public:
     {
         STACK_TRACE_ENTRY();
 
-        CloseConnection();
+        try {
+            std::error_code error;
+            _connection->terminate(error);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            UNKNOWN_EXCEPTION();
+        }
     }
 
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
@@ -569,8 +572,10 @@ private:
         STACK_TRACE_ENTRY();
 
         const auto& payload = msg->get_payload();
-        RUNTIME_ASSERT(!payload.empty());
-        ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
+
+        if (!payload.empty()) {
+            ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
+        }
     }
 
     void OnFail(const websocketpp::connection_hdl& hdl)
@@ -624,24 +629,8 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        CloseConnection();
-    }
-
-    void CloseConnection() noexcept
-    {
-        try {
-            if (_connection->get_state() == websocketpp::session::state::open) {
-                std::error_code error;
-                _connection->close(websocketpp::close::status::normal, "Disconnecting", error);
-                _connection->terminate(error);
-            }
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
+        std::error_code error;
+        _connection->terminate(error);
     }
 
     WebSockets* _server {};
@@ -749,16 +738,25 @@ void NetNoTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
 {
     STACK_TRACE_ENTRY();
 
-    const auto connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_no_tls>>(_settings, &_server, connection));
+    std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (!error) {
+        _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_no_tls>>(_settings, &_server, std::move(connection)));
+    }
 }
 
 auto NetNoTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    auto&& connection = _server.get_con_from_hdl(hdl);
     std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (error) {
+        return false;
+    }
+
     connection->select_subprotocol("binary", error);
     return !error;
 }
@@ -814,16 +812,25 @@ void NetTlsWebSocketsServer::OnOpen(const websocketpp::connection_hdl& hdl)
 {
     STACK_TRACE_ENTRY();
 
-    auto&& connection = _server.get_con_from_hdl(hdl);
-    _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_tls>>(_settings, &_server, connection));
+    std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (!error) {
+        _connectionCallback(SafeAlloc::MakeShared<NetConnectionWebSocket<web_sockets_tls>>(_settings, &_server, std::move(connection)));
+    }
 }
 
 auto NetTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    auto&& connection = _server.get_con_from_hdl(hdl);
     std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (error) {
+        return false;
+    }
+
     connection->select_subprotocol("binary", error);
     return !error;
 }
