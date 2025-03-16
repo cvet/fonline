@@ -168,7 +168,6 @@ auto Updater::Process() -> bool
 
     {
         _sprMngr.BeginScene({0, 0, 0});
-        auto end_scene = ScopeCallback([this]() noexcept { safe_call([this] { _sprMngr.EndScene(); }); });
 
         if (_splashPic) {
             _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
@@ -185,6 +184,8 @@ auto Updater::Process() -> bool
                 _sprMngr.DrawText({0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
         }
+
+        _sprMngr.EndScene();
     }
 
     _conn.Process();

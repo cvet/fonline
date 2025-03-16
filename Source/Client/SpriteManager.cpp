@@ -248,6 +248,9 @@ void SpriteManager::BeginScene(ucolor clear_color)
 {
     STACK_TRACE_ENTRY();
 
+    _rtMngr.ClearStack();
+    _scissorStack.clear();
+
     if (_rtMain != nullptr) {
         _rtMngr.PushRenderTarget(_rtMain);
         _rtMngr.ClearCurrentRenderTarget(clear_color);
@@ -274,9 +277,13 @@ void SpriteManager::EndScene()
     Flush();
 
     if (_rtMain != nullptr) {
+        RUNTIME_ASSERT(_rtMngr.GetCurrentRenderTarget() == _rtMain);
         _rtMngr.PopRenderTarget();
         DrawRenderTarget(_rtMain, false);
     }
+
+    RUNTIME_ASSERT(_rtMngr.GetRenderTargetStack().empty());
+    RUNTIME_ASSERT(_scissorStack.empty());
 }
 
 void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from, const IRect* region_to, RenderEffect* custom_effect)
@@ -377,16 +384,13 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
     }
 }
 
-void SpriteManager::PushScissor(int l, int t, int r, int b)
+void SpriteManager::PushScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
     Flush();
 
-    _scissorStack.emplace_back(l);
-    _scissorStack.emplace_back(t);
-    _scissorStack.emplace_back(r);
-    _scissorStack.emplace_back(b);
+    _scissorStack.emplace_back(rect);
 
     RefreshScissor();
 }
@@ -398,7 +402,7 @@ void SpriteManager::PopScissor()
     if (!_scissorStack.empty()) {
         Flush();
 
-        _scissorStack.resize(_scissorStack.size() - 4);
+        _scissorStack.pop_back();
 
         RefreshScissor();
     }
@@ -409,20 +413,22 @@ void SpriteManager::RefreshScissor()
     STACK_TRACE_ENTRY();
 
     if (!_scissorStack.empty()) {
-        _scissorRect.Left = _scissorStack[0];
-        _scissorRect.Top = _scissorStack[1];
-        _scissorRect.Right = _scissorStack[2];
-        _scissorRect.Bottom = _scissorStack[3];
+        _scissorRect = _scissorStack.front();
+        int right = _scissorRect.x + _scissorRect.width;
+        int bottom = _scissorRect.y + _scissorRect.height;
 
-        for (size_t i = 4; i < _scissorStack.size(); i += 4) {
-            _scissorRect.Left = std::max(_scissorStack[i + 0], _scissorRect.Left);
-            _scissorRect.Top = std::max(_scissorStack[i + 1], _scissorRect.Top);
-            _scissorRect.Right = std::min(_scissorStack[i + 2], _scissorRect.Right);
-            _scissorRect.Bottom = std::min(_scissorStack[i + 3], _scissorRect.Bottom);
+        for (size_t i = 1; i < _scissorStack.size(); i++) {
+            _scissorRect.x = std::max(_scissorStack[i].x, _scissorRect.x);
+            _scissorRect.y = std::max(_scissorStack[i].y, _scissorRect.y);
+            right = std::min(_scissorStack[i].x + _scissorStack[i].width, right);
+            bottom = std::min(_scissorStack[i].y + _scissorStack[i].height, bottom);
         }
 
-        _scissorRect.Left = std::min(_scissorRect.Left, _scissorRect.Right);
-        _scissorRect.Top = std::min(_scissorRect.Top, _scissorRect.Bottom);
+        right = std::max(right, _scissorRect.x);
+        bottom = std::max(bottom, _scissorRect.y);
+
+        _scissorRect.width = right - _scissorRect.x;
+        _scissorRect.height = bottom - _scissorRect.y;
     }
 }
 
@@ -433,7 +439,7 @@ void SpriteManager::EnableScissor()
     const auto& rt_stack = _rtMngr.GetRenderTargetStack();
 
     if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
-        App->Render.EnableScissor({_scissorRect.Left, _scissorRect.Top}, {_scissorRect.Width(), _scissorRect.Height()});
+        App->Render.EnableScissor(_scissorRect);
     }
 }
 

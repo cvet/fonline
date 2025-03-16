@@ -1191,13 +1191,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
     const auto stb = count > 13 ? position[13] : 0.0f;
 
     if (count > 13) {
-        client->SprMngr.PushScissor(iround(stl), iround(stt), iround(str), iround(stb));
+        client->SprMngr.PushScissor({iround(stl), iround(stt), iround(str) - iround(stl), iround(stb) - iround(stt)});
     }
-    auto pop_scissor = ScopeCallback([&]() noexcept {
-        if (count > 13) {
-            safe_call([&] { client->SprMngr.PopScissor(); });
-        }
-    });
 
     MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
@@ -1226,6 +1221,10 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
 
     client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
 
+    if (count > 13) {
+        client->SprMngr.PopScissor();
+    }
+
 #else
     UNUSED_VARIABLE(client);
     UNUSED_VARIABLE(instance);
@@ -1243,7 +1242,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
 {
-    client->SprMngr.PushScissor(pos.x, pos.y, pos.x + size.width, pos.y + size.height);
+    client->SprMngr.PushScissor(irect {pos, size});
 }
 
 ///@ ExportMethod

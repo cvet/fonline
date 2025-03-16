@@ -300,7 +300,7 @@ public:
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
-    void EnableScissor(ipos pos, isize size);
+    void EnableScissor(irect rect);
     void DisableScissor();
 
 private:

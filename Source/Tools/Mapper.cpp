@@ -742,9 +742,11 @@ void FOMapper::MapperMainLoop()
         CurMap->Process();
     }
 
-    SprMngr.BeginScene({100, 100, 100});
     {
+        SprMngr.BeginScene({100, 100, 100});
+
         DrawIfaceLayer(0);
+
         if (CurMap != nullptr) {
             CurMap->DrawMap();
         }
@@ -759,8 +761,9 @@ void FOMapper::MapperMainLoop()
         DrawIfaceLayer(4);
         CurDraw();
         DrawIfaceLayer(5);
+
+        SprMngr.EndScene();
     }
-    SprMngr.EndScene();
 }
 
 void FOMapper::IntDraw()

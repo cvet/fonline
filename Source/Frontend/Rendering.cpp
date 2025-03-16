@@ -123,12 +123,11 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
     UNUSED_VARIABLE(stencil);
 }
 
-void Null_Renderer::EnableScissor(ipos pos, isize size)
+void Null_Renderer::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(pos);
-    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(rect);
 }
 
 void Null_Renderer::DisableScissor()

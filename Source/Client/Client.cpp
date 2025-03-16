@@ -466,7 +466,6 @@ void FOClient::MainLoop()
 
     {
         SprMngr.BeginScene({0, 0, 0});
-        auto end_scene = ScopeCallback([this]() noexcept { safe_call([this] { SprMngr.EndScene(); }); });
 
         // Quake effect
         ProcessScreenEffectQuake();
@@ -483,6 +482,8 @@ void FOClient::MainLoop()
 
         ProcessVideo();
         ProcessScreenEffectFading();
+
+        SprMngr.EndScene();
     }
 }
 

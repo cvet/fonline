@@ -71,12 +71,14 @@ public:
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
+    [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
 
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
     void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
 
+    void ClearStack();
     void DumpTextures() const;
 
 private:

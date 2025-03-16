@@ -871,7 +871,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     }
 }
 
-void Direct3D_Renderer::EnableScissor(ipos pos, isize size)
+void Direct3D_Renderer::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
@@ -879,16 +879,16 @@ void Direct3D_Renderer::EnableScissor(ipos pos, isize size)
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
+        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
-        ScissorRect.left = ViewPortRect.Left + pos.x;
-        ScissorRect.top = ViewPortRect.Top + pos.y;
-        ScissorRect.right = ViewPortRect.Left + pos.x + size.width;
-        ScissorRect.bottom = ViewPortRect.Top + pos.y + size.height;
+        ScissorRect.left = ViewPortRect.Left + rect.x;
+        ScissorRect.top = ViewPortRect.Top + rect.y;
+        ScissorRect.right = ViewPortRect.Left + rect.x + rect.width;
+        ScissorRect.bottom = ViewPortRect.Top + rect.y + rect.height;
     }
 
     ScissorEnabled = true;

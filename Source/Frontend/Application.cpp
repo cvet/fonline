@@ -1041,7 +1041,7 @@ void Application::EndFrame()
                 const auto clip_rect_b = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
-                    ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t}, {clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
+                    ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
@@ -1308,13 +1308,13 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void AppRender::EnableScissor(ipos pos, isize size)
+void AppRender::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    ActiveRenderer->EnableScissor(pos, size);
+    ActiveRenderer->EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()

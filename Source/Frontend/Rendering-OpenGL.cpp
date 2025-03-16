@@ -684,7 +684,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     }
 }
 
-void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
+void OpenGL_Renderer::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
@@ -697,16 +697,16 @@ void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
+        l = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
-        l = ViewPortRect.Left + pos.x;
-        t = ViewPortRect.Top + pos.y;
-        r = ViewPortRect.Left + pos.x + size.width;
-        b = ViewPortRect.Top + pos.y + size.height;
+        l = ViewPortRect.Left + rect.x;
+        t = ViewPortRect.Top + rect.y;
+        r = ViewPortRect.Left + rect.x + rect.width;
+        b = ViewPortRect.Top + rect.y + rect.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));

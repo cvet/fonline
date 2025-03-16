@@ -430,14 +430,13 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     UNUSED_VARIABLE(stencil);
 }
 
-void AppRender::EnableScissor(ipos pos, isize size)
+void AppRender::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(pos);
-    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(rect);
 }
 
 void AppRender::DisableScissor()

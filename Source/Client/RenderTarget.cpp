@@ -42,12 +42,25 @@ RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* wi
     _settings {settings},
     _flush {std::move(flush)}
 {
+    STACK_TRACE_ENTRY();
+
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
 auto RenderTargetManager::GetRenderTargetStack() -> const vector<RenderTarget*>&
 {
+    NO_STACK_TRACE_ENTRY();
+
     return _rtStack;
+}
+
+auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
+{
+    NO_STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    return !_rtStack.empty() ? _rtStack.back() : nullptr;
 }
 
 auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*
@@ -188,6 +201,8 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     App->Render.ClearRenderTarget(color, with_depth);
 }
 
@@ -198,6 +213,13 @@ void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
     const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
     RUNTIME_ASSERT(it != _rtAll.end());
     _rtAll.erase(it);
+}
+
+void RenderTargetManager::ClearStack()
+{
+    STACK_TRACE_ENTRY();
+
+    _rtStack.clear();
 }
 
 void RenderTargetManager::DumpTextures() const
