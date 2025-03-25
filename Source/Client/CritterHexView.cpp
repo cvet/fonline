@@ -493,7 +493,7 @@ void CritterHexView::RefreshModel()
 {
     STACK_TRACE_ENTRY();
 
-    auto&& animCallbacks = _model != nullptr ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
+    auto animCallbacks = _model != nullptr ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
 
     Spr = nullptr;
 
@@ -504,7 +504,7 @@ void CritterHexView::RefreshModel()
     const string ext = strex(model_name).getFileExtension();
 
     if (ext == "fo3d") {
-        _modelSpr = dynamic_pointer_cast<ModelSprite>(_engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites));
+        _modelSpr = dynamic_ptr_cast<ModelSprite>(_engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites));
 
         if (_modelSpr) {
             _modelSpr->UseGameplayTimer();

@@ -194,7 +194,7 @@ public:
 
     [[nodiscard]] auto CreateModel(string_view name) -> unique_ptr<ModelInstance>;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
-    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*;
+    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
 
     void PreloadModel(string_view name);
 
@@ -224,6 +224,7 @@ private:
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
+    bool _nonConstHelper {};
 };
 
 class ModelInstance final
@@ -241,7 +242,7 @@ public:
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
     auto operator=(ModelInstance&&) noexcept = delete;
-    ~ModelInstance();
+    ~ModelInstance() = default;
 
     [[nodiscard]] auto Convert2dTo3d(ipos pos) const noexcept -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> ipos;
@@ -286,7 +287,7 @@ private:
     struct CombinedMesh
     {
         RenderEffect* DrawEffect {};
-        RenderDrawBuffer* MeshBuf {};
+        unique_ptr<RenderDrawBuffer> MeshBuf {};
         size_t EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
         vector<uint> MeshVertices {};
@@ -310,7 +311,7 @@ private:
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float elapsed, ipos pos, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
-    void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
@@ -321,14 +322,14 @@ private:
     mat44 _frameProjColMaj {};
     CritterStateAnim _curStateAnim {};
     CritterActionAnim _curActionAnim {};
-    vector<CombinedMesh*> _combinedMeshes {};
-    size_t _combinedMeshesSize {};
+    vector<unique_ptr<CombinedMesh>> _combinedMeshes {};
+    size_t _actualCombinedMeshesCount {};
     bool _disableCulling {};
-    vector<MeshInstance*> _allMeshes {};
+    vector<unique_ptr<MeshInstance>> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
     ModelInformation* _modelInfo {};
-    ModelAnimationController* _bodyAnimController {};
-    ModelAnimationController* _moveAnimController {};
+    unique_ptr<ModelAnimationController> _bodyAnimController {};
+    unique_ptr<ModelAnimationController> _moveAnimController {};
     int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     time_point _lastDrawTime {};
@@ -408,7 +409,7 @@ private:
     string _pathName {};
     ModelHierarchy* _hierarchy {};
     unique_ptr<ModelAnimationController> _animController {};
-    uint _numAnimationSets {};
+    size_t _numAnimationSets {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
     unordered_map<uint, int> _animIndexes {};

@@ -107,8 +107,6 @@ void ClientConnection::DisableCompression()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _netConnection->Dispatch();
 }
 
@@ -116,16 +114,12 @@ void ClientConnection::Dispatch()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _netConnection->Dispatch();
 }
 
 void ClientConnection::HardDisconnect()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _netConnection->Disconnect();
 }

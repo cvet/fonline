@@ -56,7 +56,7 @@ namespace SPK::FO
         void Render(size_t vertices, RenderEffect* effect) const;
 
     private:
-        unique_ptr<RenderDrawBuffer> _renderBuf {};
+        mutable unique_ptr<RenderDrawBuffer> _renderBuf {};
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
     };

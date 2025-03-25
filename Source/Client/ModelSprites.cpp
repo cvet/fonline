@@ -162,8 +162,6 @@ void ModelSprite::DrawToAtlas()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _factory->DrawModelToAtlas(this);
 }
 
@@ -180,13 +178,13 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
 {
     STACK_TRACE_ENTRY();
 
-    auto&& model = _modelMngr->CreateModel(path);
+    auto model = _modelMngr->CreateModel(path);
 
     if (!model) {
         return nullptr;
     }
 
-    auto&& model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr);
+    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr);
     const auto draw_size = model->GetDrawSize();
 
     model_spr->_factory = this;
@@ -205,8 +203,8 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect
     auto result = pair<RenderTexture*, FRect>();
 
     if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        auto&& any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
-        auto&& atlas_spr = dynamic_pointer_cast<AtlasSprite>(any_spr);
+        auto any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
+        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;
@@ -214,18 +212,11 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect
         }
         else {
             BreakIntoDebugger();
-
-            if (any_spr) {
-                WriteLog("Texture '{}' is not atlas sprite", path);
-            }
-            else {
-                WriteLog("Texture '{}' not found", path);
-            }
-
+            WriteLog("Texture '{}' not found", path);
             _loadedMeshTextures[path] = nullptr;
         }
     }
-    else if (auto&& atlas_spr = it->second) {
+    else if (const auto& atlas_spr = it->second) {
         result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
     }
 

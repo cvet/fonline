@@ -56,7 +56,7 @@ auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
         return true;
     }
 
-    for (auto&& child : Children) {
+    for (const auto& child : Children) {
         if (child->IsBusyRecursively()) {
             return true;
         }
@@ -69,7 +69,7 @@ auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& child : Children) {
+    for (auto& child : Children) {
         if (auto* child_node = child->FindPosition(size); child_node != nullptr) {
             return child_node;
         }
@@ -109,7 +109,7 @@ void TextureAtlas::SpaceNode::Free() noexcept
     if (!Children.empty()) {
         bool all_children_free = true;
 
-        for (auto&& child : Children) {
+        for (const auto& child : Children) {
             if (child->IsBusyRecursively()) {
                 all_children_free = false;
                 break;
@@ -120,7 +120,7 @@ void TextureAtlas::SpaceNode::Free() noexcept
             int max_x = Pos.x + Size.width;
             int max_y = Pos.y + Size.height;
 
-            for (auto&& child : Children) {
+            for (const auto& child : Children) {
                 max_x = std::max(max_x, child->Pos.x + child->Size.width);
                 max_y = std::max(max_y, child->Pos.y + child->Size.height);
             }
@@ -162,7 +162,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     RUNTIME_ASSERT(request_size.width > 0);
     RUNTIME_ASSERT(request_size.height > 0);
 
-    auto&& atlas = SafeAlloc::MakeUnique<TextureAtlas>();
+    auto atlas = SafeAlloc::MakeUnique<TextureAtlas>();
     atlas->Type = atlas_type;
 
     isize result_size;
@@ -208,14 +208,15 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tu
     const isize size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
-        for (auto&& a : _allAtlases) {
-            if (a->Type != atlas_type) {
+        for (auto& check_atlas : _allAtlases) {
+            if (check_atlas->Type != atlas_type) {
                 continue;
             }
 
-            auto* node = a->RootNode->FindPosition(size_with_padding);
+            auto* node = check_atlas->RootNode->FindPosition(size_with_padding);
+
             if (node != nullptr) {
-                atlas = a.get();
+                atlas = check_atlas.get();
                 atlas_node = node;
                 break;
             }
@@ -238,8 +239,9 @@ void TextureAtlasManager::DumpAtlases() const
 {
     STACK_TRACE_ENTRY();
 
-    uint atlases_memory_size = 0;
-    for (auto&& atlas : _allAtlases) {
+    int atlases_memory_size = 0;
+
+    for (const auto& atlas : _allAtlases) {
         atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
     }
 
@@ -248,8 +250,9 @@ void TextureAtlasManager::DumpAtlases() const
         date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
-    auto cnt = 1;
-    for (auto&& atlas : _allAtlases) {
+    size_t count = 1;
+
+    for (const auto& atlas : _allAtlases) {
         string atlas_type_name;
         switch (atlas->Type) {
         case AtlasType::IfaceSprites:
@@ -266,9 +269,9 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Size.width, atlas->Size.height);
+        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->Size.width, atlas->Size.height);
         auto tex_data = atlas->MainTex->GetTextureRegion({0, 0}, atlas->Size);
         GenericUtils::WriteSimpleTga(fname, atlas->Size, std::move(tex_data));
-        cnt++;
+        count++;
     }
 }

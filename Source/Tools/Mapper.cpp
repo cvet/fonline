@@ -310,7 +310,7 @@ auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
         return it->second.get();
     }
 
-    auto&& spr = SprMngr.LoadSprite(fname, AtlasType::IfaceSprites);
+    auto spr = SprMngr.LoadSprite(fname, AtlasType::IfaceSprites);
 
     if (spr) {
         spr->PlayDefault();
@@ -1741,10 +1741,10 @@ void FOMapper::IntLMouseUp()
                 vector<CritterHexView*> critters;
                 for (const auto hex : hexes) {
                     // Items, critters
-                    auto&& hex_items = CurMap->GetItems(hex);
+                    const auto& hex_items = CurMap->GetItems(hex);
                     items.insert(items.end(), hex_items.begin(), hex_items.end());
 
-                    auto&& hex_critters = CurMap->GetCritters(hex, CritterFindType::Any);
+                    auto hex_critters = CurMap->GetCritters(hex, CritterFindType::Any);
                     critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
 
                     // Tile, roof
@@ -2087,8 +2087,8 @@ void FOMapper::SelectAddTile(mpos hex, bool is_roof)
 {
     STACK_TRACE_ENTRY();
 
-    auto&& field = CurMap->GetField(hex);
-    auto&& tiles = is_roof ? field.RoofTiles : field.GroundTiles;
+    const auto& field = CurMap->GetField(hex);
+    const auto& tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
     for (auto* tile : tiles) {
         SelectAdd(tile);
@@ -2163,8 +2163,6 @@ void FOMapper::SelectAll()
 auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (!hex_move && offs_x == 0 && offs_y == 0) {
         return false;
@@ -3065,7 +3063,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
-    auto&& new_map_holder = SafeAlloc::MakeUnique<MapView>(this, ident_t {}, pmap);
+    auto new_map_holder = SafeAlloc::MakeUnique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
 
     new_map->EnableMapperMode();

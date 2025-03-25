@@ -138,8 +138,6 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(map);
     RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
@@ -218,8 +216,6 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 void CritterManager::DestroyCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(!cr->GetControlledByPlayer());
 
@@ -383,8 +379,6 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
 void CritterManager::ProcessTalk(Critter* cr, bool force)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (cr->Talk.Type == TalkType::None) {
         return;

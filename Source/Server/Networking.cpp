@@ -347,7 +347,7 @@ private:
     void Run();
     void OnOpen(const websocketpp::connection_hdl& hdl);
     auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
-    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> shared_ptr<ssl_context>;
+    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
     ServerNetworkSettings& _settings;
     ConnectionCallback _connectionCallback {};
@@ -684,7 +684,7 @@ void NetTcpServer::AcceptConnection(std::error_code error, unique_ptr<asio::ip::
     STACK_TRACE_ENTRY();
 
     if (!error) {
-        auto&& connection = SafeAlloc::MakeShared<NetConnectionAsio>(_settings, std::move(socket));
+        auto connection = SafeAlloc::MakeShared<NetConnectionAsio>(_settings, std::move(socket));
         connection->StartRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
         _connectionCallback(std::move(connection));
     }
@@ -835,13 +835,13 @@ auto NetTlsWebSocketsServer::OnValidate(const websocketpp::connection_hdl& hdl) 
     return !error;
 }
 
-auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& hdl) const -> shared_ptr<ssl_context>
+auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>
 {
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(hdl);
 
-    auto&& ctx = SafeAlloc::MakeShared<ssl_context>(ssl_context::tlsv1);
+    auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
     ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
     ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
@@ -974,7 +974,7 @@ public:
         InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
             auto conn = SafeAlloc::MakeShared<InterthreadConnection>(settings, std::move(client_send));
             callback_(conn);
-            return [conn](const_span<uint8> buf) { conn->Receive(buf); };
+            return [conn_ = conn](const_span<uint8> buf) mutable { conn_->Receive(buf); };
         });
     }
 

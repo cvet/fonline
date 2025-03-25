@@ -147,16 +147,12 @@ void DataBase::Insert(hstring collection_name, ident_t id, const AnyData::Docume
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->Update(collection_name, id, key, value);
 }
@@ -165,16 +161,12 @@ void DataBase::Delete(hstring collection_name, ident_t id)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _impl->Delete(collection_name, id);
 }
 
 void DataBase::CommitChanges(bool wait_commit_complete)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->CommitChanges();
 
@@ -186,8 +178,6 @@ void DataBase::CommitChanges(bool wait_commit_complete)
 void DataBase::ClearChanges() noexcept
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->ClearChanges();
 }
@@ -297,7 +287,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         AnyData::Array arr;
 
         while (bson_iter_next(&arr_iter)) {
-            auto&& arr_entry = BsonToValue(&arr_iter);
+            auto arr_entry = BsonToValue(&arr_iter);
             arr.EmplaceBack(std::move(arr_entry));
         }
 
@@ -314,7 +304,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
-            auto&& dict_value = BsonToValue(&doc_iter);
+            auto dict_value = BsonToValue(&doc_iter);
             dict.Emplace(string(key), std::move(dict_value));
         }
 
@@ -342,7 +332,7 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
             continue;
         }
 
-        auto&& value = BsonToValue(&iter);
+        auto value = BsonToValue(&iter);
         doc.Emplace(string(key), std::move(value));
     }
 }
@@ -453,23 +443,23 @@ void DataBaseImpl::CommitChanges()
         }
     }
 
-    auto&& commit_job_data = shared_ptr<CommitJobData>(SafeAlloc::MakeUnique<CommitJobData>());
-    commit_job_data->RecordChanges = std::move(_recordChanges);
-    commit_job_data->NewRecords = std::move(_newRecords);
-    commit_job_data->DeletedRecords = std::move(_deletedRecords);
+    auto job_data = SafeAlloc::MakeShared<CommitJobData>();
+    job_data->RecordChanges = std::move(_recordChanges);
+    job_data->NewRecords = std::move(_newRecords);
+    job_data->DeletedRecords = std::move(_deletedRecords);
 
     _recordChanges.clear();
     _newRecords.clear();
     _deletedRecords.clear();
 
-    _commitThread.AddJob([this, job_data = std::move(commit_job_data)] {
+    _commitThread.AddJob([this, job_data_ = job_data] {
         STACK_TRACE_ENTRY_NAMED("CommitJob");
 
-        for (auto&& [key, value] : job_data->RecordChanges) {
+        for (auto&& [key, value] : job_data_->RecordChanges) {
             for (auto&& [key2, value2] : value) {
-                const auto it = job_data->NewRecords.find(key);
+                const auto it = job_data_->NewRecords.find(key);
 
-                if (it != job_data->NewRecords.end() && it->second.count(key2) != 0) {
+                if (it != job_data_->NewRecords.end() && it->second.count(key2) != 0) {
                     InsertRecord(key, key2, value2);
                 }
                 else {
@@ -478,7 +468,7 @@ void DataBaseImpl::CommitChanges()
             }
         }
 
-        for (auto&& [key, value] : job_data->DeletedRecords) {
+        for (auto&& [key, value] : job_data_->DeletedRecords) {
             for (const auto& id : value) {
                 DeleteRecord(key, id);
             }

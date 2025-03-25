@@ -252,10 +252,10 @@ private:
     RenderTarget* _rtContoursMid {};
 
     vector<DipData> _dipQueue {};
-    RenderDrawBuffer* _spritesDrawBuf {};
-    RenderDrawBuffer* _primitiveDrawBuf {};
-    RenderDrawBuffer* _flushDrawBuf {};
-    RenderDrawBuffer* _contourDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _primitiveDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _flushDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _contourDrawBuf {};
     size_t _flushVertCount {};
 
     vector<irect> _scissorStack {};

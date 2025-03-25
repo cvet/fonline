@@ -114,5 +114,4 @@ public:
 private:
     vector<unique_ptr<EditorView>> _newViews {};
     vector<unique_ptr<EditorView>> _views {};
-    bool _nonConstHelper {};
 };

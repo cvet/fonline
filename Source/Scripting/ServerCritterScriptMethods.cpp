@@ -756,7 +756,7 @@ FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
         throw ScriptException("Critter is not player");
     }
 
-    if (const auto* player = self->GetPlayer(); player != nullptr) {
+    if (auto* player = self->GetPlayer(); player != nullptr) {
         player->Connection->GracefulDisconnect();
     }
 }

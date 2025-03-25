@@ -115,7 +115,7 @@ BaseBaker::BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_c
     RUNTIME_ASSERT(_writeData);
 }
 
-auto BaseBaker::SetupBakers(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(const BakerSettings& settings, const BakeCheckerCallback& bake_checker, const WriteDataCallback& write_data) -> vector<unique_ptr<BaseBaker>>
 {
     STACK_TRACE_ENTRY();
 
@@ -260,7 +260,7 @@ void Baker::BakeAll()
 
                 auto bakers = BaseBaker::SetupBakers(settings, bake_checker, write_data);
 
-                for (auto&& baker : bakers) {
+                for (auto& baker : bakers) {
                     baker->BakeFiles(res_files.GetAllFiles());
                 }
             }
@@ -319,13 +319,13 @@ void Baker::BakeAll()
 
         vector<std::future<void>> res_bakings;
 
-        for (auto&& res_pack : res_packs) {
+        for (const auto& res_pack : res_packs) {
             WriteLog("Bake {}", res_pack.first);
             auto res_baking = std::async(async_mode, [&bake_resource_pack, res_pack] { bake_resource_pack(res_pack.first, res_pack.second); });
             res_bakings.emplace_back(std::move(res_baking));
         }
 
-        for (auto&& res_baking : res_bakings) {
+        for (auto& res_baking : res_bakings) {
             try {
                 res_baking.get();
             }
@@ -445,7 +445,7 @@ void Baker::BakeAll()
 #endif
         auto validation_engine_destroyer = ScopeCallback([&validation_engine]() noexcept {
             if (validation_engine != nullptr) {
-                validation_engine->ScriptSys.release(); // NOLINT(bugprone-unused-return-value)
+                (void)validation_engine->ScriptSys.release();
                 validation_engine->Release();
             }
         });
@@ -722,7 +722,7 @@ void Baker::BakeAll()
                 proto_bakings.emplace_back(std::async(async_mode, [&] { server_proto_mngr.ParseProtos(baker_engine.Resources); }));
                 proto_bakings.emplace_back(std::async(async_mode, [&] { client_proto_mngr.ParseProtos(baker_engine.Resources); }));
 
-                for (auto&& proto_baking : proto_bakings) {
+                for (auto& proto_baking : proto_bakings) {
                     proto_baking.get();
                 }
 
@@ -881,7 +881,7 @@ void Baker::BakeAll()
                     map_bakings.emplace_back(std::move(map_baking));
                 }
 
-                for (auto&& map_baking : map_bakings) {
+                for (auto& map_baking : map_bakings) {
                     try {
                         map_baking.get();
                     }
@@ -943,8 +943,8 @@ void Baker::BakeAll()
 
             int dlg_errors = 0;
 
-            for (auto* dlg_pack : dialog_mngr.GetDialogs()) {
-                for (auto&& dlg : dlg_pack->Dialogs) {
+            for (const auto* dlg_pack : dialog_mngr.GetDialogs()) {
+                for (const auto& dlg : dlg_pack->Dialogs) {
                     if (dlg.DlgScriptFuncName) {
                         if (!script_sys.CheckFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
                             !script_sys.CheckFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
@@ -953,8 +953,8 @@ void Baker::BakeAll()
                         }
                     }
 
-                    for (auto&& answer : dlg.Answers) {
-                        for (auto&& demand : answer.Demands) {
+                    for (const auto& answer : dlg.Answers) {
+                        for (const auto& demand : answer.Demands) {
                             if (demand.Type == DR_SCRIPT) {
                                 if ((demand.ValuesCount == 0 && !script_sys.CheckFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName)) || //
                                     (demand.ValuesCount == 1 && !script_sys.CheckFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName)) || //
@@ -968,7 +968,7 @@ void Baker::BakeAll()
                             }
                         }
 
-                        for (auto&& result : answer.Results) {
+                        for (const auto& result : answer.Results) {
                             if (result.Type == DR_SCRIPT) {
                                 int not_found_count = 0;
 
@@ -1284,12 +1284,14 @@ BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& set
 {
     STACK_TRACE_ENTRY();
 
-    _bakers = BaseBaker::SetupBakers(_settings, nullptr, std::bind(&BakerDataSource::WriteData, this, std::placeholders::_1, std::placeholders::_2));
+    _bakers = BaseBaker::SetupBakers(_settings, nullptr, [this](string_view baked_path, const_span<uint8> baked_data) { WriteData(baked_path, baked_data); });
 }
 
 void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_data)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
     _bakedFiles[baked_path] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
@@ -1308,7 +1310,7 @@ auto BakerDataSource::FindFile(string_view path) const -> File*
     if (auto file = _inputResources.ReadFile(path)) {
         const string ext = strex(path).getFileExtension();
 
-        for (auto&& baker : _bakers) {
+        for (auto& baker : _bakers) {
             if (baker->IsExtSupported(ext)) {
                 baker->BakeFiles(FileCollection({file.Duplicate()}));
                 file_baked = true;
@@ -1356,7 +1358,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
     if (const auto* file = FindFile(path); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
-        return {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};
+        return unique_del_ptr<const uint8> {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};
     }
 
     return nullptr;

@@ -136,7 +136,7 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent component)
 {
-    auto&& map_items = self->GetItems(hex);
+    const auto& map_items = self->GetItems(hex);
 
     for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
@@ -151,7 +151,7 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent compon
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    auto&& map_items = self->GetItems(hex);
+    const auto& map_items = self->GetItems(hex);
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -275,9 +275,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemCompone
         throw ScriptException("Invalid hexes args");
     }
 
-    vector<Item*> items;
-    auto&& map_items = self->GetItems(hex);
+    const auto& map_items = self->GetItems(hex);
 
+    vector<Item*> items;
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
@@ -298,9 +298,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
         throw ScriptException("Invalid hexes args");
     }
 
-    vector<Item*> items;
-    auto&& map_items = self->GetItems(hex);
+    const auto& map_items = self->GetItems(hex);
 
+    vector<Item*> items;
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {

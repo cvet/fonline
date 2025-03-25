@@ -54,31 +54,32 @@ static void SetEntry(T& entry, string_view value, bool append)
         if (append && !entry.empty()) {
             entry += " ";
         }
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
+
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         entry += any_value.AsString();
     }
     else if constexpr (std::is_same_v<T, bool>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
         entry |= any_value.AsBool();
     }
     else if constexpr (std::is_floating_point_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
         entry += static_cast<float>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = static_cast<T>(static_cast<int>(entry) | any_value.AsInt64());
     }
     else if constexpr (is_strong_type_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = T {static_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (is_valid_pod_type_v<T>) {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         entry = parse_from_string<T>(any_value.AsString());
     }
     else {
-        auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry += static_cast<T>(any_value.AsInt64());
     }
 }
@@ -93,36 +94,41 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
     }
 
     if constexpr (std::is_same_v<T, string>) {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
-        auto&& arr = arr_value.AsArray();
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
+        const auto& arr = arr_value.AsArray();
+
         for (const auto& arr_entry : arr) {
             entry.emplace_back(arr_entry.AsString());
         }
     }
     else if constexpr (std::is_same_v<T, bool>) {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
-        auto&& arr = arr_value.AsArray();
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
+        const auto& arr = arr_value.AsArray();
+
         for (const auto& arr_entry : arr) {
             entry.emplace_back(arr_entry.AsBool());
         }
     }
     else if constexpr (std::is_floating_point_v<T>) {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Double);
-        auto&& arr = arr_value.AsArray();
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Double);
+        const auto& arr = arr_value.AsArray();
+
         for (const auto& arr_entry : arr) {
             entry.emplace_back(static_cast<float>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
-        auto&& arr = arr_value.AsArray();
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
+        const auto& arr = arr_value.AsArray();
+
         for (const auto& arr_entry : arr) {
             entry.emplace_back(static_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
         }
     }
     else {
-        auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
-        auto&& arr = arr_value.AsArray();
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
+        const auto& arr = arr_value.AsArray();
+
         for (const auto& arr_entry : arr) {
             entry.emplace_back(static_cast<T>(arr_entry.AsInt64()));
         }
@@ -335,7 +341,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Local config
     if (ClientMode) {
-        auto&& cache = CacheStorage(strex(ResourcesDir).combinePath("Cache.fobin"));
+        const auto cache = CacheStorage(strex(ResourcesDir).combinePath("Cache.fobin"));
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             WriteLog("Load local config {}", LOCAL_CONFIG_NAME);

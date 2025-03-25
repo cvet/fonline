@@ -192,7 +192,7 @@ void Application::OpenLink(string_view link)
     UNUSED_VARIABLE(link);
 }
 
-void Application::SetImGuiEffect(RenderEffect* effect)
+void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
 {
     STACK_TRACE_ENTRY();
 
@@ -388,7 +388,7 @@ void AppWindow::Destroy()
     NON_CONST_METHOD_HINT();
 }
 
-auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     STACK_TRACE_ENTRY();
 
@@ -446,7 +446,7 @@ void AppRender::DisableScissor()
     NON_CONST_METHOD_HINT();
 }
 
-auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     STACK_TRACE_ENTRY();
 
@@ -457,7 +457,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return nullptr;
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
 {
     STACK_TRACE_ENTRY();
 

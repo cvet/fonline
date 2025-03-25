@@ -35,7 +35,7 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     STACK_TRACE_ENTRY();
 
@@ -46,7 +46,7 @@ auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_de
     return nullptr;
 }
 
-auto Null_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     STACK_TRACE_ENTRY();
 
@@ -55,7 +55,7 @@ auto Null_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return nullptr;
 }
 
-auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
+auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     STACK_TRACE_ENTRY();
 

@@ -125,7 +125,7 @@ auto MapSprite::GetViewRect() const -> IRect
     const auto* spr = PSpr != nullptr ? *PSpr : Spr;
     RUNTIME_ASSERT(spr);
 
-    if (auto&& view_rect = spr->GetViewSize(); view_rect.has_value()) {
+    if (const auto view_rect = spr->GetViewSize(); view_rect.has_value()) {
         const auto view_width = view_rect->Left;
         const auto view_height = view_rect->Top;
         const auto view_ox = view_rect->Right;
@@ -270,8 +270,6 @@ void MapSpriteList::GrowPool()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
     for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
@@ -295,6 +293,7 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
     _spriteCount++;
 
     MapSprite* mspr;
+
     if (!_invalidatedSprites.empty()) {
         mspr = _invalidatedSprites.back();
         _invalidatedSprites.pop_back();
@@ -412,6 +411,7 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
     }
 
     auto* parent = _rootSprite;
+
     while (parent != nullptr) {
         if (!parent->Valid) {
             continue;
@@ -419,6 +419,7 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
         if (order_pos < parent->DrawOrderPos) {
             break;
         }
+
         parent = parent->ChainChild;
     }
 
@@ -458,6 +459,7 @@ void MapSpriteList::Sort()
         if (mspr1->DrawOrderPos == mspr2->DrawOrderPos) {
             return mspr1->TreeIndex < mspr2->TreeIndex;
         }
+
         return mspr1->DrawOrderPos < mspr2->DrawOrderPos;
     });
 

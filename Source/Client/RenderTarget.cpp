@@ -72,7 +72,8 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::Size
 
     _flush();
 
-    auto&& rt = SafeAlloc::MakeUnique<RenderTarget>();
+    auto rt = SafeAlloc::MakeUnique<RenderTarget>();
+
     rt->SizeKind = size_kind;
     rt->BaseSize = base_size;
     rt->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
@@ -88,7 +89,7 @@ void RenderTargetManager::OnScreenSizeChanged()
     STACK_TRACE_ENTRY();
 
     // Reallocate fullscreen render targets
-    for (auto&& rt : _rtAll) {
+    for (auto& rt : _rtAll) {
         if (rt->SizeKind != RenderTarget::SizeKindType::Custom) {
             AllocateRenderTargetTexture(rt.get(), rt->MainTex->LinearFiltered, rt->MainTex->WithDepth);
         }
@@ -118,7 +119,7 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
     RUNTIME_ASSERT(tex_size.width > 0);
     RUNTIME_ASSERT(tex_size.height > 0);
 
-    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(tex_size, linear_filtered, with_depth));
+    rt->MainTex = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
 
     rt->MainTex->FlippedHeight = App->Render.IsRenderTargetFlipped();
 
@@ -227,7 +228,8 @@ void RenderTargetManager::DumpTextures() const
     STACK_TRACE_ENTRY();
 
     uint atlases_memory_size = 0;
-    for (auto&& rt : _rtAll) {
+
+    for (const auto& rt : _rtAll) {
         atlases_memory_size += rt->MainTex->Size.width * rt->MainTex->Size.height * 4;
     }
 
@@ -245,7 +247,8 @@ void RenderTargetManager::DumpTextures() const
     };
 
     int cnt = 1;
-    for (auto&& rt : _rtAll) {
+
+    for (const auto& rt : _rtAll) {
         write_rt(strex("All_{}", cnt), rt.get());
         cnt++;
     }

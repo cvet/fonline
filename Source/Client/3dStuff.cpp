@@ -48,22 +48,28 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
     reader.ReadPtr(Vertices.data(), len * sizeof(Vertex3D));
+
     reader.ReadPtr(&len, sizeof(len));
     Indices.resize(len);
     reader.ReadPtr(Indices.data(), len * sizeof(vindex_t));
+
     reader.ReadPtr(&len, sizeof(len));
     DiffuseTexture.resize(len);
     reader.ReadPtr(DiffuseTexture.data(), len);
+
     reader.ReadPtr(&len, sizeof(len));
     SkinBones.resize(len);
     SkinBoneNames.resize(len);
+
     string tmp;
+
     for (uint i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
         SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
     }
+
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
     reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(mat44));
@@ -79,8 +85,10 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     tmp.resize(len);
     reader.ReadPtr(tmp.data(), len);
     Name = hash_resolver.ToHashedString(tmp);
+
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+
     if (reader.Read<uint8>() != 0) {
         AttachedMesh = SafeAlloc::MakeUnique<MeshData>();
         AttachedMesh->Load(reader, hash_resolver);
@@ -89,12 +97,15 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     else {
         AttachedMesh = nullptr;
     }
+
     reader.ReadPtr(&len, sizeof(len));
+
     for (uint i = 0; i < len; i++) {
         auto child = SafeAlloc::MakeUnique<ModelBone>();
         child->Load(reader, hash_resolver);
-        Children.push_back(std::move(child));
+        Children.emplace_back(std::move(child));
     }
+
     CombinedTransformationMatrix = mat44();
 }
 
@@ -104,18 +115,17 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
     STACK_TRACE_ENTRY();
 
     if (AttachedMesh) {
-        auto* mesh = AttachedMesh.get();
-        for (size_t i = 0, j = mesh->SkinBoneNames.size(); i < j; i++) {
-            if (mesh->SkinBoneNames[i]) {
-                mesh->SkinBones[i] = root_bone->Find(mesh->SkinBoneNames[i]);
+        for (size_t i = 0; i < AttachedMesh->SkinBoneNames.size(); i++) {
+            if (AttachedMesh->SkinBoneNames[i]) {
+                AttachedMesh->SkinBones[i] = root_bone->Find(AttachedMesh->SkinBoneNames[i]);
             }
             else {
-                mesh->SkinBones[i] = mesh->Owner;
+                AttachedMesh->SkinBones[i] = AttachedMesh->Owner;
             }
         }
     }
 
-    for (auto&& child : Children) {
+    for (auto& child : Children) {
         child->FixAfterLoad(root_bone);
     }
 }
@@ -128,8 +138,9 @@ auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
         return this;
     }
 
-    for (auto&& child : Children) {
+    for (auto& child : Children) {
         auto* bone = child->Find(bone_name);
+
         if (bone != nullptr) {
             return bone;
         }
@@ -179,7 +190,8 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Find already loaded
     auto name_hashed = _hashResolver.ToHashedString(fname);
-    for (auto&& root_bone : _loadedModels) {
+
+    for (auto& root_bone : _loadedModels) {
         if (root_bone->Name == name_hashed) {
             return root_bone.get();
         }
@@ -189,10 +201,12 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     if (_processedFiles.count(name_hashed) != 0) {
         return nullptr;
     }
+
     _processedFiles.emplace(name_hashed);
 
     // Load file data
     const auto file = _resources.ReadFile(fname);
+
     if (!file) {
         WriteLog("3d file '{}' not found", fname);
         return nullptr;
@@ -207,6 +221,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Load animations
     const auto anim_sets_count = reader.Read<uint>();
+
     for (uint i = 0; i < anim_sets_count; i++) {
         auto anim_set = SafeAlloc::MakeUnique<ModelAnimation>();
         anim_set->Load(reader, _hashResolver);
@@ -228,7 +243,8 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     // Find in already loaded
     const auto take_first = anim_name == "Base";
     const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
-    for (auto&& anim_set : _loadedAnimSets) {
+
+    for (auto& anim_set : _loadedAnimSets) {
         if (strex(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || strex(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
         }
@@ -240,18 +256,21 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     }
 
     // File not processed, load and recheck animations
-    if (LoadModel(anim_fname) != nullptr) {
+    const auto* root_bone = LoadModel(anim_fname);
+
+    if (root_bone != nullptr) {
         return LoadAnimation(anim_fname, anim_name);
     }
 
     _processedFiles.emplace(name_hashed);
-
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*
+auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     // Skip empty
     if (texture_name.empty()) {
@@ -294,11 +313,13 @@ auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
     // Create mesh instances
     model->_allMeshes.resize(model_info->_hierarchy->_allDrawBones.size());
     model->_allMeshesDisabled.resize(model->_allMeshes.size());
+
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto* mesh_instance = model->_allMeshes[i] = SafeAlloc::MakeRaw<MeshInstance>();
+        model->_allMeshes[i] = SafeAlloc::MakeUnique<MeshInstance>();
+        auto* mesh_instance = model->_allMeshes[i].get();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         mesh_instance->Mesh = mesh;
-        const auto* tex_name = (mesh->DiffuseTexture.length() != 0 ? mesh->DiffuseTexture.c_str() : nullptr);
+        const auto* tex_name = !mesh->DiffuseTexture.empty() ? mesh->DiffuseTexture.c_str() : nullptr;
         mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
         mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
     }
@@ -322,7 +343,7 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
     STACK_TRACE_ENTRY();
 
     // Try to find instance
-    for (auto&& model_info : _allModelInfos) {
+    for (auto& model_info : _allModelInfos) {
         if (model_info->_fileName == name) {
             return model_info.get();
         }
@@ -330,6 +351,7 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 
     // Create new instance
     auto model_info = SafeAlloc::MakeUnique<ModelInformation>(*this);
+
     if (!model_info->Load(name)) {
         return nullptr;
     }
@@ -342,7 +364,7 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& model_hierarchy : _hierarchyFiles) {
+    for (auto& model_hierarchy : _hierarchyFiles) {
         if (model_hierarchy->_fileName == name) {
             return model_hierarchy.get();
         }
@@ -350,6 +372,7 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 
     // Load
     auto* root_bone = LoadModel(name);
+
     if (root_bone == nullptr) {
         WriteLog("Unable to load model hierarchy file '{}'", name);
         return nullptr;
@@ -382,22 +405,6 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _forceDraw = true;
     _lastDrawTime = GetTime();
     SetupFrame(_modelInfo->_drawSize);
-}
-
-ModelInstance::~ModelInstance()
-{
-    STACK_TRACE_ENTRY();
-
-    delete _bodyAnimController;
-    delete _moveAnimController;
-
-    for (const auto* mesh : _allMeshes) {
-        delete mesh;
-    }
-    for (const auto* mesh : _combinedMeshes) {
-        delete mesh->MeshBuf;
-        delete mesh;
-    }
 }
 
 void ModelInstance::SetupFrame(isize draw_size)
@@ -452,9 +459,7 @@ void ModelInstance::PrewarmParticles()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    for (auto&& model_particle : _modelParticles) {
+    for (auto& model_particle : _modelParticles) {
         model_particle.Particle->Prewarm();
     }
 }
@@ -557,7 +562,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         }
 
         // Mark animations as unused
-        for (auto&& child : _children) {
+        for (auto& child : _children) {
             child->_childChecker = false;
         }
 
@@ -574,7 +579,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                         unused_layers[j] = true;
                     }
                     for (const auto disabled_mesh_name : link.DisabledMesh) {
-                        for (auto* mesh : _allMeshes) {
+                        for (auto& mesh : _allMeshes) {
                             if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                                 mesh->Disabled = true;
                             }
@@ -589,7 +594,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                 unused_layers[j] = true;
             }
             for (auto disabled_mesh_name : _animLink.DisabledMesh) {
-                for (auto* mesh : _allMeshes) {
+                for (auto& mesh : _allMeshes) {
                     if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                         mesh->Disabled = true;
                     }
@@ -615,7 +620,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                     if (link.IsParticles) {
                         bool available = false;
 
-                        for (auto&& model_particle : _modelParticles) {
+                        for (const auto& model_particle : _modelParticles) {
                             if (model_particle.Id == link.Id) {
                                 available = true;
                                 break;
@@ -624,7 +629,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
                         if (!available) {
                             if (const auto* to_bone = FindBone(link.LinkBone)) {
-                                if (auto&& particle = _modelMngr._particleMngr.CreateParticle(link.ChildName)) {
+                                if (auto particle = _modelMngr._particleMngr.CreateParticle(link.ChildName)) {
                                     _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                                 }
                             }
@@ -635,7 +640,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                     else {
                         bool available = false;
 
-                        for (auto&& child : _children) {
+                        for (auto& child : _children) {
                             if (child->_animLink.Id == link.Id) {
                                 child->_childChecker = true;
                                 available = true;
@@ -647,31 +652,35 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                             // Link to main bone
                             if (link.LinkBone) {
                                 auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
+
                                 if (to_bone != nullptr) {
-                                    auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                    auto model = _modelMngr.CreateModel(link.ChildName);
+
                                     if (model) {
                                         mesh_changed = true;
                                         model->_parent = this;
                                         model->_parentBone = to_bone;
                                         model->_animLink = link;
                                         model->SetAnimData(link, false);
-                                        _children.push_back(std::move(model));
+                                        _children.emplace_back(std::move(model));
                                     }
 
                                     if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0) {
-                                        fast_transition_bones.push_back(link.LinkBone);
+                                        fast_transition_bones.emplace_back(link.LinkBone);
                                     }
                                 }
                             }
                             // Link all bones
                             else {
-                                auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                auto model = _modelMngr.CreateModel(link.ChildName);
+
                                 if (model) {
                                     for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
                                         auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
+
                                         if (root_bone != nullptr) {
-                                            model->_linkBones.push_back(root_bone);
-                                            model->_linkBones.push_back(child_bone);
+                                            model->_linkBones.emplace_back(root_bone);
+                                            model->_linkBones.emplace_back(child_bone);
                                         }
                                     }
 
@@ -680,7 +689,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
                                     model->_parentBone = _modelInfo->_hierarchy->_rootBone;
                                     model->_animLink = link;
                                     model->SetAnimData(link, false);
-                                    _children.push_back(std::move(model));
+                                    _children.emplace_back(std::move(model));
                                 }
                             }
                         }
@@ -691,7 +700,8 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
         // Erase unused animations
         for (auto it = _children.begin(); it != _children.end();) {
-            auto&& child = *it;
+            const auto& child = *it;
+
             if (!child->_childChecker) {
                 mesh_changed = true;
                 it = _children.erase(it);
@@ -713,7 +723,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         // Compare changed effect
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
-                mesh_changed = (_allMeshes[i]->LastEffect != _allMeshes[i]->CurEffect);
+                mesh_changed = _allMeshes[i]->LastEffect != _allMeshes[i]->CurEffect;
             }
         }
 
@@ -721,7 +731,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 for (size_t k = 0; k < MODEL_MAX_TEXTURES && !mesh_changed; k++) {
-                    mesh_changed = (_allMeshes[i]->LastTexures[k] != _allMeshes[i]->CurTexures[k]);
+                    mesh_changed = _allMeshes[i]->LastTexures[k] != _allMeshes[i]->CurTexures[k];
                 }
             }
         }
@@ -729,7 +739,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         // Compare disabled meshes
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
-                mesh_changed = (_allMeshesDisabled[i] != _allMeshes[i]->Disabled);
+                mesh_changed = _allMeshesDisabled[i] != _allMeshes[i]->Disabled;
             }
         }
 
@@ -741,7 +751,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     RefreshMoveAnimation();
 
-    if (_bodyAnimController != nullptr && index >= 0) {
+    if (_bodyAnimController && index >= 0) {
         // Get the animation set from the controller
         const auto* set = _bodyAnimController->GetAnimationSet(index);
 
@@ -787,7 +797,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
         _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
 
-        if ((_isMoving || _playTurnAnimation) && _moveAnimController != nullptr) {
+        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
             _moveAnimController->AdvanceTime(0.0001f);
         }
 
@@ -810,7 +820,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     // Set animation for children
-    for (auto&& child : _children) {
+    for (auto& child : _children) {
         if (child->SetAnimation(state_anim, action_anim, layers, flags)) {
             mesh_changed = true;
         }
@@ -874,7 +884,7 @@ void ModelInstance::RefreshMoveAnimation()
 {
     STACK_TRACE_ENTRY();
 
-    if (_moveAnimController == nullptr) {
+    if (!_moveAnimController) {
         return;
     }
 
@@ -1024,8 +1034,9 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 
     auto period = 0.0f;
 
-    if (_bodyAnimController != nullptr) {
+    if (_bodyAnimController) {
         const auto* anim_set = _bodyAnimController->GetAnimationSet(_modelInfo->_renderAnim);
+
         if (anim_set != nullptr) {
             period = anim_set->GetDuration();
         }
@@ -1125,7 +1136,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     // Textures
     if (clear) {
         // Enable all meshes, set default texture
-        for (auto* mesh : _allMeshes) {
+        for (auto& mesh : _allMeshes) {
             mesh->Disabled = false;
 
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1147,7 +1158,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                         parent_mesh_name++;
                     }
                     const auto parent_mesh_name_hashed = (*parent_mesh_name != 0 ? _modelMngr.GetBoneHashedString(parent_mesh_name) : hstring());
-                    for (const auto* mesh : _parent->_allMeshes) {
+                    for (const auto& mesh : _parent->_allMeshes) {
                         if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
                             texture = mesh->CurTexures[tex_num];
                             break;
@@ -1160,7 +1171,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             }
 
             // Assign it
-            for (auto* mesh : _allMeshes) {
+            for (auto& mesh : _allMeshes) {
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurTexures[tex_num] = texture;
                 }
@@ -1170,7 +1181,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
     // Effects
     if (clear) {
-        for (auto* mesh : _allMeshes) {
+        for (auto& mesh : _allMeshes) {
             mesh->LastEffect = mesh->CurEffect;
             mesh->CurEffect = mesh->DefaultEffect;
         }
@@ -1188,7 +1199,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                         mesh_name++;
                     }
                     const auto mesh_name_hashed = (*mesh_name != 0 ? _modelMngr.GetBoneHashedString(mesh_name) : hstring());
-                    for (const auto* mesh : _parent->_allMeshes) {
+                    for (const auto& mesh : _parent->_allMeshes) {
                         if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
                             effect = mesh->CurEffect;
                             break;
@@ -1202,7 +1213,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
             // Assign it
             const auto mesh_name = std::get<1>(eff_info);
-            for (auto* mesh : _allMeshes) {
+            for (auto& mesh : _allMeshes) {
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurEffect = effect;
                 }
@@ -1215,7 +1226,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
         _allCuts.clear();
     }
     for (auto& cut_info : data.CutInfo) {
-        _allCuts.push_back(cut_info);
+        _allCuts.emplace_back(cut_info);
     }
 }
 
@@ -1312,8 +1323,7 @@ void ModelInstance::GenerateCombinedMeshes()
     }
 
     // Clean up buffers
-    for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        auto* combined_mesh = _combinedMeshes[i];
+    for (auto& combined_mesh : _combinedMeshes) {
         combined_mesh->EncapsulatedMeshCount = 0;
         combined_mesh->CurBoneMatrix = 0;
         combined_mesh->Meshes.clear();
@@ -1325,7 +1335,8 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshBuf->Indices.clear();
         combined_mesh->MeshBuf->IndCount = 0;
     }
-    _combinedMeshesSize = 0;
+
+    _actualCombinedMeshesCount = 0;
 
     // Combine meshes recursively
     FillCombinedMeshes(this);
@@ -1335,7 +1346,7 @@ void ModelInstance::GenerateCombinedMeshes()
     CutCombinedMeshes(this);
 
     // Finalize meshes
-    for (size_t i = 0; i < _combinedMeshesSize; i++) {
+    for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
         _combinedMeshes[i]->MeshBuf->StaticDataChanged = true;
     }
 }
@@ -1345,12 +1356,12 @@ void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
     STACK_TRACE_ENTRY();
 
     // Combine meshes
-    for (const auto* mesh : cur->_allMeshes) {
-        CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
+    for (const auto& mesh : cur->_allMeshes) {
+        CombineMesh(mesh.get(), cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
-    for (auto&& child : cur->_children) {
+    for (const auto& child : cur->_children) {
         FillCombinedMeshes(child.get());
     }
 }
@@ -1364,24 +1375,25 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_laye
         return;
     }
 
-    // Try encapsulate mesh instance to current combined mesh
-    for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        if (CanBatchCombinedMesh(_combinedMeshes[i], mesh_instance)) {
-            BatchCombinedMesh(_combinedMeshes[i], mesh_instance, anim_layer);
+    // Try to encapsulate mesh instance to current combined mesh
+    for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
+        if (CanBatchCombinedMesh(_combinedMeshes[i].get(), mesh_instance)) {
+            BatchCombinedMesh(_combinedMeshes[i].get(), mesh_instance, anim_layer);
             return;
         }
     }
 
     // Create new combined mesh
-    if (_combinedMeshesSize >= _combinedMeshes.size()) {
-        auto* combined_mesh = SafeAlloc::MakeRaw<CombinedMesh>();
+    if (_actualCombinedMeshesCount >= _combinedMeshes.size()) {
+        auto combined_mesh = SafeAlloc::MakeUnique<CombinedMesh>();
         combined_mesh->MeshBuf = App->Render.CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
-        _combinedMeshes.emplace_back(combined_mesh);
+        _combinedMeshes.emplace_back(std::move(combined_mesh));
     }
-    BatchCombinedMesh(_combinedMeshes[_combinedMeshesSize], mesh_instance, anim_layer);
-    _combinedMeshesSize++;
+
+    BatchCombinedMesh(_combinedMeshes[_actualCombinedMeshesCount].get(), mesh_instance, anim_layer);
+    _actualCombinedMeshesCount++;
 }
 
 auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool
@@ -1445,10 +1457,10 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     }
 
     // Set mesh transform and anim layer
-    combined_mesh->Meshes.push_back(mesh_data);
-    combined_mesh->MeshVertices.push_back(static_cast<uint>(vertices.size() - vertices_old_size));
-    combined_mesh->MeshIndices.push_back(static_cast<uint>(indices.size() - indices_old_size));
-    combined_mesh->MeshAnimLayers.push_back(anim_layer);
+    combined_mesh->Meshes.emplace_back(mesh_data);
+    combined_mesh->MeshVertices.emplace_back(static_cast<uint>(vertices.size() - vertices_old_size));
+    combined_mesh->MeshIndices.emplace_back(static_cast<uint>(indices.size() - indices_old_size));
+    combined_mesh->MeshAnimLayers.emplace_back(anim_layer);
 
     // Add bones matrices
     for (size_t i = 0; i < mesh_data->SkinBones.size(); i++) {
@@ -1488,15 +1500,16 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
     // Cut meshes
     if (!cur->_allCuts.empty()) {
         for (const auto* cut : cur->_allCuts) {
-            for (size_t i = 0; i < _combinedMeshesSize; i++) {
-                CutCombinedMesh(_combinedMeshes[i], cut);
+            for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
+                CutCombinedMesh(_combinedMeshes[i].get(), cut);
             }
         }
+
         _disableCulling = true;
     }
 
     // Fill child
-    for (auto&& child : cur->_children) {
+    for (const auto& child : cur->_children) {
         CutCombinedMeshes(child.get());
     }
 }
@@ -1608,12 +1621,12 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
                 // Skip mesh
                 if (skip) {
-                    result_vertices.push_back(v1);
-                    result_vertices.push_back(v2);
-                    result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_vertices.emplace_back(v1);
+                    result_vertices.emplace_back(v2);
+                    result_vertices.emplace_back(v3);
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
                     continue;
                 }
 
@@ -1639,20 +1652,20 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         const Vertex3D& vv4 = (r1 == 0 ? i2 : (r2 == 0 ? i3 : i1));
 
                         // First face
-                        result_vertices.push_back(vv1);
-                        result_vertices.push_back(vv2);
-                        result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_vertices.emplace_back(vv1);
+                        result_vertices.emplace_back(vv2);
+                        result_vertices.emplace_back(vv3);
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
 
                         // Second face
-                        result_vertices.push_back(vv3);
-                        result_vertices.push_back(vv2);
-                        result_vertices.push_back(vv4);
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_vertices.emplace_back(vv3);
+                        result_vertices.emplace_back(vv2);
+                        result_vertices.emplace_back(vv4);
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
                     }
                     else if (!ignore && sum == 1) {
                         // 1 1 -1, corner out
@@ -1661,12 +1674,12 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         const Vertex3D& vv3 = (r1 == -1 ? v3 : (r2 == -1 ? i3 : i2));
 
                         // One face
-                        result_vertices.push_back(vv1);
-                        result_vertices.push_back(vv2);
-                        result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_vertices.emplace_back(vv1);
+                        result_vertices.emplace_back(vv2);
+                        result_vertices.emplace_back(vv3);
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
                     }
                     else if (ignore || outside) {
                         if (ignore && sum == 0) {
@@ -1674,12 +1687,12 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                             continue;
                         }
 
-                        result_vertices.push_back(v1);
-                        result_vertices.push_back(v2);
-                        result_vertices.push_back(v3);
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                        result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                        result_vertices.emplace_back(v1);
+                        result_vertices.emplace_back(v2);
+                        result_vertices.emplace_back(v3);
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                        result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
                     }
                 }
                 else {
@@ -1689,17 +1702,17 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         continue;
                     }
 
-                    result_vertices.push_back(v1);
-                    result_vertices.push_back(v2);
-                    result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
-                    result_indices.push_back(static_cast<vindex_t>(result_indices.size()));
+                    result_vertices.emplace_back(v1);
+                    result_vertices.emplace_back(v2);
+                    result_vertices.emplace_back(v3);
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
+                    result_indices.emplace_back(static_cast<vindex_t>(result_indices.size()));
                 }
             }
 
-            result_mesh_vertices.push_back(static_cast<uint>(result_vertices.size() - vertices_old_size));
-            result_mesh_indices.push_back(static_cast<uint>(result_indices.size() - indices_old_size));
+            result_mesh_vertices.emplace_back(static_cast<uint>(result_vertices.size() - vertices_old_size));
+            result_mesh_indices.emplace_back(static_cast<uint>(result_indices.size() - indices_old_size));
         }
 
         vertices = result_vertices;
@@ -1829,9 +1842,9 @@ void ModelInstance::Draw()
     const auto h = _frameSize.height / FRAME_SCALE;
     ProcessAnimation(dt, {w / 2, h - h / 4}, static_cast<float>(FRAME_SCALE));
 
-    if (_combinedMeshesSize != 0) {
-        for (size_t i = 0; i < _combinedMeshesSize; i++) {
-            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
+    if (_actualCombinedMeshesCount != 0) {
+        for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
+            DrawCombinedMesh(_combinedMeshes[i].get(), _shadowDisabled || _modelInfo->_shadowDisabled);
         }
     }
 
@@ -1868,12 +1881,12 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
     float prev_track_pos = 0.0f;
     float new_track_pos = 0.0f;
 
-    if (_bodyAnimController != nullptr && elapsed >= 0.0f) {
+    if (_bodyAnimController && elapsed >= 0.0f) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
 
         _bodyAnimController->AdvanceTime(elapsed * GetSpeed());
 
-        if ((_isMoving || _playTurnAnimation) && _moveAnimController != nullptr) {
+        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
             _moveAnimController->AdvanceTime(elapsed * GetSpeed());
 
             if (_playTurnAnimation && !_moveAnimController->GetTrackEnable(_currentMoveTrack)) {
@@ -1910,13 +1923,13 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
     }
 
     // Update world matrices for children
-    for (auto&& child : _children) {
+    for (auto& child : _children) {
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
     // Particles
-    for (auto&& model_particle : _modelParticles) {
+    for (auto& model_particle : _modelParticles) {
         if (model_particle.Id == 0) {
             model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
         }
@@ -1935,12 +1948,12 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
     }
 
     // Move child animations
-    for (auto&& child : _children) {
+    for (auto& child : _children) {
         child->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     // Animation callbacks
-    if (_bodyAnimController != nullptr && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
+    if (_bodyAnimController && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
@@ -1977,27 +1990,29 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
     }
 }
 
-void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
+void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled)
 {
     STACK_TRACE_ENTRY();
 
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
-    auto&& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
+    auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
     // Todo: merge all bones in one hierarchy and disable offset copying
-    auto&& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
+    auto& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
 
     auto* wm = model_buf->WorldMatrices;
+
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         m.Transpose(); // Convert to column major order
         MemCopy(wm, m[0], 16 * sizeof(float));
         wm += 16;
     }
+
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
     MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float));
@@ -2006,7 +2021,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     MemCopy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
 
     if (effect->NeedModelTexBuf) {
-        auto&& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
+        auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
 
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i] != nullptr) {
@@ -2021,7 +2036,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     }
 
     if (effect->NeedModelAnimBuf) {
-        auto&& anim_buf = effect->ModelAnimBuf = RenderEffect::ModelAnimBuffer();
+        auto& anim_buf = effect->ModelAnimBuf = RenderEffect::ModelAnimBuffer();
 
         anim_buf->AnimNormalizedTime[0] = _animPosProc;
         anim_buf->AnimAbsoluteTime[0] = _animPosTime;
@@ -2031,20 +2046,18 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     effect->DisableShadow = shadow_disabled;
 
     combined_mesh->MeshBuf->Upload(effect->Usage);
-    effect->DrawBuffer(combined_mesh->MeshBuf);
+    effect->DrawBuffer(combined_mesh->MeshBuf.get());
 }
 
 void ModelInstance::DrawAllParticles()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    for (auto&& model_particle : _modelParticles) {
+    for (auto& model_particle : _modelParticles) {
         model_particle.Particle->Draw();
     }
 
-    for (auto&& child : _children) {
+    for (auto& child : _children) {
         child->DrawAllParticles();
     }
 }
@@ -2056,8 +2069,9 @@ auto ModelInstance::FindBone(hstring bone_name) const noexcept -> const ModelBon
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
 
     if (bone == nullptr) {
-        for (auto&& child : _children) {
+        for (const auto& child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
+
             if (bone != nullptr) {
                 break;
             }
@@ -2100,8 +2114,8 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
     STACK_TRACE_ENTRY();
 
     if (const auto* to_bone = FindBone(bone_name)) {
-        if (auto&& particle = _modelMngr._particleMngr.CreateParticle(particle_name)) {
-            _modelParticles.push_back({0u, std::move(particle), to_bone, move, _lookDirAngle});
+        if (auto particle = _modelMngr._particleMngr.CreateParticle(particle_name)) {
+            _modelParticles.emplace_back(ModelParticleSystem {0, std::move(particle), to_bone, move, _lookDirAngle});
         }
     }
 }
@@ -2324,7 +2338,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 if (area != nullptr) {
                     // Add cut
                     auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
-                    link->CutInfo.push_back(cut);
+                    link->CutInfo.emplace_back(cut);
 
                     // Layers
                     *istr >> buf;
@@ -2333,12 +2347,12 @@ auto ModelInformation::Load(string_view name) -> bool
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
                             const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, &convert_value_fail);
-                            cut->Layers.push_back(cut_layer);
+                            cut->Layers.emplace_back(cut_layer);
                         }
                         else {
                             for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
                                 if (i != layer) {
-                                    cut->Layers.push_back(i);
+                                    cut->Layers.emplace_back(i);
                                 }
                             }
                         }
@@ -2377,7 +2391,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         }
                         for (auto* bone : area->_allDrawBones) {
                             if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
-                                cut->Shapes.push_back(CreateCutShape(bone->AttachedMesh.get()));
+                                cut->Shapes.emplace_back(CreateCutShape(bone->AttachedMesh.get()));
                             }
                         }
                     }
@@ -2524,7 +2538,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 for (const auto& disabled_layer_name : disabled_layers) {
                     const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
                     if (disabled_layer >= 0 && disabled_layer < static_cast<int>(MODEL_LAYERS_COUNT)) {
-                        link->DisabledLayer.push_back(disabled_layer);
+                        link->DisabledLayer.emplace_back(disabled_layer);
                     }
                 }
             }
@@ -2543,7 +2557,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         disabled_mesh = _modelMngr.GetBoneHashedString(disabled_mesh_name);
                     }
 
-                    link->DisabledMesh.push_back(disabled_mesh);
+                    link->DisabledMesh.emplace_back(disabled_mesh);
                 }
             }
             else if (token == "Texture") {
@@ -2573,11 +2587,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     string a1;
                     string a2;
                     *istr >> a1 >> a2;
-                    anims.push_back({(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
+                    anims.emplace_back(AnimEntry {(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
 
                     if (token == "AnimExt") {
                         *istr >> a1 >> a2;
-                        anims.push_back({(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
+                        anims.emplace_back(AnimEntry {(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
                     }
                 }
                 else {
@@ -2629,7 +2643,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
-                anims.push_back({0, render_fname, render_anim});
+                anims.emplace_back(AnimEntry {0, render_fname, render_anim});
 
                 *istr >> _renderAnimProcFrom;
 
@@ -2701,7 +2715,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.push_back({static_cast<uint>(-1), render_fname, render_anim});
+            anims.emplace_back(AnimEntry {static_cast<uint>(-1), render_fname, render_anim});
         }
 
         // Create animation controller
@@ -2713,6 +2727,7 @@ auto ModelInformation::Load(string_view name) -> bool
         if (_animController) {
             for (const auto& anim : anims) {
                 string anim_path;
+
                 if (anim.FileName == "ModelFile") {
                     anim_path = model;
                 }
@@ -2721,12 +2736,13 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);
+
                 if (set != nullptr) {
                     _animController->RegisterAnimationSet(set);
-                    auto set_index = _animController->GetNumAnimationSets() - 1;
+                    const auto set_index = numeric_cast<int>(_animController->GetAnimationSetCount() - 1);
 
                     if (anim.Index == static_cast<uint>(-1)) {
-                        _renderAnim = static_cast<int>(set_index);
+                        _renderAnim = set_index;
                     }
                     else if (anim.Index != 0) {
                         _animIndexes.emplace(anim.Index, set_index);
@@ -2734,22 +2750,28 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
 
-            _numAnimationSets = _animController->GetNumAnimationSets();
-            if (_numAnimationSets > 0) {
+            _numAnimationSets = _animController->GetAnimationSetCount();
+
+            if (_numAnimationSets != 0) {
                 // Add animation bones, not included to base hierarchy
                 // All bones linked with animation in SetupAnimationOutput
-                for (uint i = 0; i < _numAnimationSets; i++) {
+                for (size_t i = 0; i < _numAnimationSets; i++) {
                     const auto* set = _animController->GetAnimationSet(i);
                     const auto& bones_hierarchy = set->GetBonesHierarchy();
+
                     for (const auto& bone_hierarchy : bones_hierarchy) {
                         auto* bone = _hierarchy->_rootBone;
+
                         for (size_t b = 1; b < bone_hierarchy.size(); b++) {
                             auto* child = bone->Find(bone_hierarchy[b]);
+
                             if (child == nullptr) {
-                                child = SafeAlloc::MakeRaw<ModelBone>();
-                                child->Name = bone_hierarchy[b];
-                                bone->Children.push_back(unique_ptr<ModelBone>(child));
+                                auto new_child = SafeAlloc::MakeUnique<ModelBone>();
+                                child = new_child.get();
+                                new_child->Name = bone_hierarchy[b];
+                                bone->Children.emplace_back(std::move(new_child));
                             }
+
                             bone = child;
                         }
                     }
@@ -2965,7 +2987,7 @@ void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint dept
 
     bones.emplace(depth, bone);
 
-    for (auto&& child : bone->Children) {
+    for (auto& child : bone->Children) {
         SetupBonesExt(bones, child.get(), depth + 1);
     }
 }
@@ -2978,9 +3000,10 @@ void ModelHierarchy::SetupBones()
     SetupBonesExt(bones, _rootBone, 0);
 
     for (auto&& [id, bone] : bones) {
-        _allBones.push_back(bone);
+        _allBones.emplace_back(bone);
+
         if (bone->AttachedMesh) {
-            _allDrawBones.push_back(bone);
+            _allDrawBones.emplace_back(bone);
         }
     }
 }
@@ -3012,9 +3035,11 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
     NON_CONST_METHOD_HINT();
 
     auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
+
     if (texture == nullptr) {
         WriteLog("Can't load texture '{}'", tex_name);
     }
+
     return texture;
 }
 

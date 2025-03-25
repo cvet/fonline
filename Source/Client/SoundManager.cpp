@@ -110,7 +110,7 @@ void SoundManager::ProcessSounds(uint8* output)
     STACK_TRACE_ENTRY();
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
-        auto&& sound = *it;
+        auto& sound = *it;
 
         if (ProcessSound(sound.get(), _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
@@ -213,7 +213,7 @@ auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_t
         fixed_fname += "." + ext;
     }
 
-    auto&& sound = SafeAlloc::MakeUnique<Sound>();
+    auto sound = SafeAlloc::MakeUnique<Sound>();
 
     if (ext == "wav" && !LoadWav(sound.get(), fixed_fname)) {
         return false;
@@ -238,8 +238,6 @@ auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_t
 auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto file = _resources.ReadFile(fname);
 
@@ -340,8 +338,6 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto file = _resources.ReadFile(fname);
 
     if (!file) {
@@ -351,7 +347,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto&& acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -506,8 +502,6 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 auto SoundManager::StreamOgg(Sound* sound) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     long result;
     uint decoded = 0;

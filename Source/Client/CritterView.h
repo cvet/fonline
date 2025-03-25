@@ -59,7 +59,7 @@ public:
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> ItemView*;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> ItemView*;
-    [[nodiscard]] auto GetInvItems() noexcept -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetInvItems() noexcept -> const vector<ItemView*>& { return _invItems; }
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
 

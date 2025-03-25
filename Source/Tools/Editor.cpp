@@ -156,13 +156,13 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 
     BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
 
-    auto* imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
+    auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
         const auto file = BakedResources.ReadFile(path);
         RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
         return file.GetStr();
     });
-    RUNTIME_ASSERT(imgui_effect);
-    App->SetImGuiEffect(imgui_effect);
+
+    App->SetImGuiEffect(std::move(imgui_effect));
 
     _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(*this));
 }
@@ -171,11 +171,9 @@ auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     vector<EditorAssetView*> result;
 
-    for (auto&& view : _views) {
+    for (auto& view : _views) {
         if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr) {
             result.emplace_back(asset_view);
         }
@@ -188,7 +186,7 @@ void FOEditor::OpenAsset(string_view path)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& view : _views) {
+    for (auto& view : _views) {
         if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr && asset_view->GetAssetPath() == path) {
             asset_view->BringToFront();
             return;
@@ -206,7 +204,7 @@ void FOEditor::MainLoop()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& view : _newViews) {
+    for (auto& view : _newViews) {
         _views.emplace_back(std::move(view));
     }
     _newViews.clear();
@@ -224,7 +222,7 @@ void FOEditor::MainLoop()
         }
     }
 
-    for (auto&& view : _views) {
+    for (auto& view : _views) {
         try {
             view->Draw();
         }

@@ -108,8 +108,6 @@ void ParticleSprite::DrawToAtlas()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _factory->DrawParticleToAtlas(this);
 }
 
@@ -127,7 +125,8 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 {
     STACK_TRACE_ENTRY();
 
-    auto&& particle = _particleMngr->CreateParticle(path);
+    auto particle = _particleMngr->CreateParticle(path);
+
     if (!particle) {
         return nullptr;
     }
@@ -142,7 +141,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     particle->Setup(proj, world, {}, {}, {});
 
-    auto&& particle_spr = SafeAlloc::MakeShared<ParticleSprite>(_sprMngr);
+    auto particle_spr = SafeAlloc::MakeShared<ParticleSprite>(_sprMngr);
 
     particle_spr->_factory = this;
     particle_spr->_particle = std::move(particle);
@@ -169,8 +168,8 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FR
     auto result = pair<RenderTexture*, FRect>();
 
     if (const auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        auto&& any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
-        auto&& atlas_spr = dynamic_pointer_cast<AtlasSprite>(any_spr);
+        auto any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
+        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;
@@ -178,18 +177,11 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FR
         }
         else {
             BreakIntoDebugger();
-
-            if (any_spr) {
-                WriteLog("Texture '{}' is not atlas sprite", path);
-            }
-            else {
-                WriteLog("Texture '{}' not found", path);
-            }
-
+            WriteLog("Texture '{}' not found", path);
             _loadedParticleTextures[path] = nullptr;
         }
     }
-    else if (auto&& atlas_spr = it->second) {
+    else if (const auto& atlas_spr = it->second) {
         result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
     }
 

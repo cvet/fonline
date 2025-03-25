@@ -51,7 +51,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
+    auto effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
         if (const auto file = _resources.ReadFile(path2)) {
             return file.GetStr();
         }
@@ -61,8 +61,9 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
         return {};
     });
 
-    _loadedEffects.emplace(path, unique_ptr<RenderEffect>(effect));
-    return effect;
+    auto* effect_raw_ptr = effect.get();
+    _loadedEffects.emplace(path, std::move(effect));
+    return effect_raw_ptr;
 }
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
@@ -81,14 +82,14 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     NON_CONST_METHOD_HINT();
 
     if (effect->NeedTimeBuf) {
-        auto&& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
+        auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
         time_buf->FrameTime[0] = time_duration_to_ms<float>(game_time.FrameTime().time_since_epoch()) / 1000.0f;
         time_buf->GameTime[0] = time_duration_to_ms<float>(game_time.GameplayTime().time_since_epoch()) / 1000.0f;
     }
 
     if (effect->NeedRandomValueBuf) {
-        auto&& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
+        auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
         random_value_buf->RandomValue[0] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
         random_value_buf->RandomValue[1] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
@@ -97,7 +98,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     }
 
     if (effect->NeedScriptValueBuf) {
-        auto&& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
+        auto& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
 
         for (size_t i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
             script_value_buf->ScriptValue[i] = i < _settings.EffectValues.size() ? _settings.EffectValues[i] : 0.0f;

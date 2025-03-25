@@ -85,6 +85,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
         if (base_system) {
             for (size_t i = 0; i < base_system->getNbGroups(); i++) {
                 auto&& group = base_system->getGroup(i);
+
                 if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
                     renderer->Setup(name, *this);
                 }
@@ -144,16 +145,12 @@ auto ParticleSystem::GetBaseSystem() -> SPK::System*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     return _impl->BaseSystem.get();
 }
 
 void ParticleSystem::SetBaseSystem(SPK::System* system)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->BaseSystem = system;
 }
@@ -249,8 +246,6 @@ void ParticleSystem::Prewarm()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!_impl->System->isActive()) {
         return;
     }
@@ -269,8 +264,6 @@ void ParticleSystem::Prewarm()
 void ParticleSystem::Respawn()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->System = SPK::SPKObject::copy(_impl->BaseSystem);
     _impl->System->initialize();

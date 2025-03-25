@@ -412,7 +412,7 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
     STACK_TRACE_ENTRY();
 
     for (size_t i = 1; i < _textPacks.size(); i++) {
-        auto&& text_pack = _textPacks[i];
+        const auto& text_pack = _textPacks[i];
 
         if (text_pack) {
             const string& pack_name_str = _nameResolver->ResolveEnumValueName("TextPackName", static_cast<int>(i));
@@ -468,8 +468,8 @@ void LanguagePack::FixTexts(const LanguagePack& base_lang)
     _textPacks.resize(base_lang._textPacks.size());
 
     for (size_t i = 0; i < base_lang._textPacks.size(); i++) {
-        auto&& base_text_pack = base_lang._textPacks[i];
-        auto&& text_pack = _textPacks[i];
+        const auto& base_text_pack = base_lang._textPacks[i];
+        auto& text_pack = _textPacks[i];
 
         if (base_text_pack) {
             if (!text_pack) {

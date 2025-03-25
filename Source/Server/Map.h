@@ -108,12 +108,9 @@ public:
     [[nodiscard]] auto GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*;
     [[nodiscard]] auto GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>&;
-    [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>&;
-    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>&;
-    [[nodiscard]] auto GetCrittersCount() const noexcept -> uint;
-    [[nodiscard]] auto GetPlayerCrittersCount() const noexcept -> uint;
-    [[nodiscard]] auto GetNonPlayerCrittersCount() const noexcept -> uint;
+    [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>& { return _critters; }
+    [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>& { return _playerCritters; }
+    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>& { return _nonPlayerCritters; }
     [[nodiscard]] auto IsStaticItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*;

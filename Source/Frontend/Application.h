@@ -292,9 +292,9 @@ public:
     static const int& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
+    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
 
@@ -380,7 +380,7 @@ public:
     [[nodiscard]] auto CreateChildWindow(isize size) -> AppWindow*;
 
     void OpenLink(string_view link);
-    void SetImGuiEffect(RenderEffect* effect);
+    void SetImGuiEffect(unique_ptr<RenderEffect> effect);
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
 #endif
@@ -412,8 +412,8 @@ private:
     bool _mouseCanUseGlobalState {};
     int _pendingMouseLeaveFrame {};
     int _mouseButtonsDown {};
-    RenderDrawBuffer* _imguiDrawBuf {};
-    RenderEffect* _imguiEffect {};
+    unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
+    unique_ptr<RenderEffect> _imguiEffect {};
     vector<AppWindow*> _allWindows {};
     std::atomic_bool _quit {};
     std::condition_variable _quitEvent {};

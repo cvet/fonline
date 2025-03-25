@@ -53,8 +53,6 @@ auto MapManager::GridAt(mpos pos) -> int16&
 {
     NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
     return _mapGrid[((max_path_find_len + 1) + pos.y - _mapGridOffset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + pos.x - _mapGridOffset.x)];
 }
@@ -487,8 +485,6 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
     const auto* static_map = GetStaticMap(proto);
@@ -1511,8 +1507,6 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 void MapManager::ProcessVisibleCritters(Critter* cr)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (cr->IsDestroyed()) {
         return;

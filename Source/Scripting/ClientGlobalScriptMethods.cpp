@@ -345,7 +345,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, Cri
     vector<CritterView*> critters;
 
     if (client->CurMap != nullptr) {
-        auto&& map_critters = client->CurMap->GetCritters();
+        const auto& map_critters = client->CurMap->GetCritters();
         critters.reserve(map_critters.size());
 
         for (auto* cr : map_critters) {
@@ -485,16 +485,18 @@ FO_SCRIPT_API bool Client_Game_IsVideoPlaying(FOClient* client)
 FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, string_view videoName, bool looped)
 {
     const auto file = client->Resources.ReadFile(videoName);
+
     if (!file) {
         throw ScriptException("Video file not found", videoName);
     }
 
-    auto&& clip = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    auto&& tex = unique_ptr<RenderTexture> {App->Render.CreateTexture(clip->GetSize(), true, false)};
+    auto clip = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
+    auto tex = App->Render.CreateTexture(clip->GetSize(), true, false);
 
     clip->SetLooped(looped);
 
     auto* video = SafeAlloc::MakeRaw<VideoPlayback>();
+
     video->Clip = std::move(clip);
     video->Tex = std::move(tex);
 
@@ -1157,7 +1159,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
     auto& model_spr = client->DrawCritterModel[instance];
 
     if (!model_spr || client->DrawCritterModelCrType[instance] != modelName) {
-        model_spr = dynamic_pointer_cast<ModelSprite>(client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites));
+        model_spr = dynamic_ptr_cast<ModelSprite>(client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites));
 
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;

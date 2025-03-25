@@ -43,7 +43,7 @@ class FileHeader
 {
 public:
     FileHeader() = default;
-    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds);
+    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -56,7 +56,7 @@ public:
     [[nodiscard]] auto GetFullPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
-    [[nodiscard]] auto GetDataSource() const -> DataSource*;
+    [[nodiscard]] auto GetDataSource() const -> const DataSource*;
     [[nodiscard]] auto Duplicate() const -> FileHeader;
 
 protected:
@@ -65,15 +65,15 @@ protected:
     string _filePath {};
     size_t _fileSize {};
     uint64 _writeTime {};
-    DataSource* _dataSource {};
+    const DataSource* _dataSource {};
 };
 
 class File final : public FileHeader
 {
 public:
     File() = default;
-    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uint8>&& buf);
-    File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uint8> buf, bool make_copy);
+    File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf);
+    File(string_view name, string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;

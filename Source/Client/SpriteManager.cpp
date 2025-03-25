@@ -222,7 +222,7 @@ void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& ext : factory->GetExtensions()) {
+    for (const auto& ext : factory->GetExtensions()) {
         _spriteFactoryMap[ext] = factory.get();
     }
 
@@ -233,9 +233,7 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> SpriteFactory*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    for (const auto& factory : _spriteFactories) {
+    for (auto& factory : _spriteFactories) {
         if (const auto& factory_ref = *factory; std::type_index(typeid(factory_ref)) == ti) {
             return factory.get();
         }
@@ -256,12 +254,12 @@ void SpriteManager::BeginScene(ucolor clear_color)
         _rtMngr.ClearCurrentRenderTarget(clear_color);
     }
 
-    for (auto&& spr_factory : _spriteFactories) {
+    for (auto& spr_factory : _spriteFactories) {
         spr_factory->Update();
     }
 
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
-        if (auto&& spr = it->second.lock(); spr && spr->Update()) {
+        if (auto spr = it->second.lock(); spr && spr->Update()) {
             ++it;
         }
         else {
@@ -368,7 +366,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
     _flushDrawBuf->Upload(effect->Usage);
-    effect->DrawBuffer(_flushDrawBuf);
+    effect->DrawBuffer(_flushDrawBuf.get());
 }
 
 void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
@@ -478,6 +476,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     }
 
     const string ext = strex(path).getFileExtension();
+
     if (ext.empty()) {
         BreakIntoDebugger();
         WriteLog("Extension not found, file '{}'", path);
@@ -486,6 +485,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     }
 
     const auto it = _spriteFactoryMap.find(ext);
+
     if (it == _spriteFactoryMap.end()) {
         BreakIntoDebugger();
         WriteLog("Unknown extension, file '{}'", path);
@@ -493,7 +493,8 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    auto&& spr = it->second->LoadSprite(path, atlas_type);
+    auto spr = it->second->LoadSprite(path, atlas_type);
+
     if (!spr) {
         if (!no_warn_if_not_exists) {
             BreakIntoDebugger();
@@ -515,7 +516,7 @@ void SpriteManager::CleanupSpriteCache()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto&& spr_factory : _spriteFactories) {
+    for (auto& spr_factory : _spriteFactories) {
         spr_factory->ClenupCache();
     }
 
@@ -557,7 +558,7 @@ void SpriteManager::Flush()
             dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
         }
 
-        dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndCount, dip.MainTex);
+        dip.SourceEffect->DrawBuffer(_spritesDrawBuf.get(), ipos, dip.IndCount, dip.MainTex);
 
         ipos += dip.IndCount;
     }
@@ -581,7 +582,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf, IRect {pos.x, pos.y, pos.x + spr->Size.width, pos.y + spr->Size.height}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), IRect {pos.x, pos.y, pos.x + spr->Size.width, pos.y + spr->Size.height}, {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
@@ -644,7 +645,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, ipos pos, isize size, b
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, xf + wf, yf + hf}, {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
@@ -801,10 +802,10 @@ void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
     _eggHex = {};
     _eggOffset = {};
 
-    auto&& spr = LoadSprite(egg_name, atlas_type);
-    RUNTIME_ASSERT(spr);
+    auto any_spr = LoadSprite(egg_name, atlas_type);
+    RUNTIME_ASSERT(any_spr);
 
-    _sprEgg = dynamic_pointer_cast<AtlasSprite>(spr);
+    _sprEgg = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     RUNTIME_ASSERT(_sprEgg);
 
     const auto x = iround(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.Left);
@@ -966,7 +967,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         const auto wf = static_cast<float>(spr->Size.width) / zoom;
         const auto hf = static_cast<float>(spr->Size.height) / zoom;
 
-        const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
+        const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
 
         // Setup egg
         if (use_egg && ind_count == 6 && CheckEggAppearence(mspr->Hex, mspr->EggAppearence)) {
@@ -1225,7 +1226,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
     _primitiveDrawBuf->Upload(effect->Usage, count, count);
     EnableScissor();
-    effect->DrawBuffer(_primitiveDrawBuf, 0, count);
+    effect->DrawBuffer(_primitiveDrawBuf.get(), 0, count);
     DisableScissor();
 }
 
@@ -1345,7 +1346,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
         vbuf[vpos].EggTexU = 0.0f;
 
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
-        _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
+        _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf.get());
 
         _rtMngr.PopRenderTarget();
 
@@ -1399,7 +1400,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     vbuf[vpos].EggTexU = 0.0f;
     vbuf[vpos].Color = contour_color;
 
-    auto&& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
+    auto& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
 
     contour_buf->SpriteBorder[0] = sprite_border[0];
     contour_buf->SpriteBorder[1] = sprite_border[1];
@@ -1407,7 +1408,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     contour_buf->SpriteBorder[3] = sprite_border[3];
 
     _contourDrawBuf->Upload(contour_effect->Usage);
-    contour_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
+    contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, static_cast<size_t>(-1), texture);
 
     _rtMngr.PopRenderTarget();
     _contoursAdded = true;
@@ -1431,8 +1432,6 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 auto SpriteManager::GetFont(int num) -> FontData*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (num < 0) {
         num = _defFontIndex;
@@ -1470,8 +1469,6 @@ void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
 void SpriteManager::BuildFont(int index)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto& font = *_allFonts[index];
 
@@ -1607,7 +1604,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
         return false;
     }
 
-    auto&& font = SafeAlloc::MakeUnique<FontData>();
+    auto font = SafeAlloc::MakeUnique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
     string image_name;
@@ -1719,7 +1716,8 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     {
         image_name.insert(0, "Fonts/");
 
-        font->ImageNormal = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+
         if (!font->ImageNormal) {
             WriteLog("Image file '{}' not found", image_name);
             return false;
@@ -1730,7 +1728,8 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
 
     // Create bordered instance
     if (!not_bordered) {
-        font->ImageBordered = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+
         if (!font->ImageBordered) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
@@ -1764,7 +1763,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
         return false;
     }
 
-    auto&& font = SafeAlloc::MakeUnique<FontData>();
+    auto font = SafeAlloc::MakeUnique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
     auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));
@@ -1846,7 +1845,8 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
 
     // Load image
     {
-        font->ImageNormal = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+
         if (!font->ImageNormal) {
             WriteLog("Image file '{}' not found", image_name);
             return false;
@@ -1857,7 +1857,8 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
 
     // Create bordered instance
     {
-        font->ImageBordered = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+
         if (!font->ImageBordered) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;

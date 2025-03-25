@@ -41,6 +41,10 @@ class VideoClip
 {
 public:
     explicit VideoClip(vector<uint8> video_data);
+    VideoClip(const VideoClip&) = delete;
+    VideoClip(VideoClip&&) noexcept = default;
+    auto operator=(const VideoClip&) = delete;
+    auto operator=(VideoClip&&) noexcept = delete;
     ~VideoClip();
 
     [[nodiscard]] auto IsPlaying() const noexcept -> bool;
@@ -63,5 +67,4 @@ private:
     auto DecodePacket() -> int;
 
     unique_ptr<Impl> _impl;
-    bool _nonConstHelper {};
 };

@@ -191,7 +191,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 {
-    auto&& all_items = self->GetItems();
+    const auto& all_items = self->GetItems();
 
     vector<ItemView*> items;
     items.reserve(all_items.size());
@@ -208,7 +208,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, mpos hex)
 {
-    auto&& hex_items = self->GetItems(hex);
+    const auto& hex_items = self->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());

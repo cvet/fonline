@@ -80,6 +80,8 @@ static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
 static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
 
+static unique_ptr<RenderTexture> FontTex {};
+
 static int MaxAtlasWidth {};
 static int MaxAtlasHeight {};
 static int MaxBones {};
@@ -415,29 +417,29 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
     // If none of selected then evaluate automatic selection
 #if FO_HAVE_DIRECT_3D
-    if (ActiveRenderer == nullptr) {
+    if (!ActiveRenderer) {
         ActiveRendererType = RenderType::Direct3D;
         ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
-    if (ActiveRenderer == nullptr) {
+    if (!ActiveRenderer) {
         ActiveRendererType = RenderType::Metal;
     }
 #endif
 #if FO_HAVE_VULKAN
-    if (ActiveRenderer == nullptr) {
+    if (!ActiveRenderer) {
         ActiveRendererType = RenderType::Vulkan;
     }
 #endif
 #if FO_HAVE_OPENGL
-    if (ActiveRenderer == nullptr) {
+    if (!ActiveRenderer) {
         ActiveRendererType = RenderType::OpenGL;
         ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 
-    if (ActiveRenderer == nullptr) {
+    if (!ActiveRenderer) {
         throw AppInitException("No renderer selected");
     }
 
@@ -566,14 +568,16 @@ Application::Application(int argc, char** argv, bool client_mode) :
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
         RUNTIME_ASSERT(bytes_per_pixel == 4);
 
-        auto* font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
+        auto font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
         font_tex->UpdateTextureRegion({}, {width, height}, reinterpret_cast<const ucolor*>(pixels));
-        io.Fonts->TexID = font_tex;
+        io.Fonts->TexID = font_tex.get();
+        FontTex = std::move(font_tex);
 
         // Default effect
         if (Settings.EmbeddedResources != "@Disabled") {
             FileSystem base_fs;
             base_fs.AddDataSource(Settings.EmbeddedResources);
+
             if (base_fs.ReadFileHeader("Effects/ImGui_Default.fofx")) {
                 _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
                     const auto file = base_fs.ReadFile(path);
@@ -600,11 +604,11 @@ void Application::OpenLink(string_view link)
     SDL_OpenURL(string(link).c_str());
 }
 
-void Application::SetImGuiEffect(RenderEffect* effect)
+void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
 {
     STACK_TRACE_ENTRY();
 
-    _imguiEffect = effect;
+    _imguiEffect = std::move(effect);
 }
 
 #if FO_IOS
@@ -1000,7 +1004,7 @@ void Application::EndFrame()
     const auto fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
     const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
-    if (_imguiEffect != nullptr && _imguiDrawBuf != nullptr && fb_width > 0 && fb_height > 0) {
+    if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
         const auto clip_scale = draw_data->FramebufferScale;
@@ -1042,7 +1046,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
             }
@@ -1259,8 +1263,6 @@ void AppWindow::Destroy()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (ActiveRendererType == RenderType::Null) {
         return;
     }
@@ -1271,7 +1273,7 @@ void AppWindow::Destroy()
     }
 }
 
-auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     STACK_TRACE_ENTRY();
 
@@ -1326,7 +1328,7 @@ void AppRender::DisableScissor()
     ActiveRenderer->DisableScissor();
 }
 
-auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     STACK_TRACE_ENTRY();
 
@@ -1335,7 +1337,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     STACK_TRACE_ENTRY();
 
@@ -1516,7 +1518,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
                 return nullptr;
             }
 
-            _converters.push_back(SafeAlloc::MakeUnique<AudioConverter>(AudioConverter {format, channels, rate, cvt, r == 1}));
+            _converters.emplace_back(SafeAlloc::MakeUnique<AudioConverter>(AudioConverter {format, channels, rate, cvt, r == 1}));
             return _converters.back().get();
         }
 

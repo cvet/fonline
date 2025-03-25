@@ -74,7 +74,6 @@ private:
     explicit DataBase(DataBaseImpl* impl);
 
     unique_ptr<DataBaseImpl> _impl;
-    bool _nonConstHelper {};
 };
 
 extern auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;

@@ -45,7 +45,7 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
 {
     STACK_TRACE_ENTRY();
 
-    auto&& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
+    auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
     persistentTimeEvents.reset();
 
     const auto props = EntityProperties(entity->GetPropertiesForEdit());
@@ -81,7 +81,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
     STACK_TRACE_ENTRY();
 
     const auto fire_time = tick_t {_engine->GameTime.GetServerTime().underlying_value() + std::max(delay.underlying_value(), 1u)};
-    auto&& te = SafeAlloc::MakeShared<Entity::TimeEventData>(Entity::TimeEventData {++_timeEventCounter, func_name, fire_time, repeat, std::move(data)});
+    auto te = SafeAlloc::MakeShared<Entity::TimeEventData>(Entity::TimeEventData {++_timeEventCounter, func_name, fire_time, repeat, std::move(data)});
 
     if (persistent) {
         RUNTIME_ASSERT(te->Data.size() <= 1);
@@ -123,8 +123,8 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id
 {
     STACK_TRACE_ENTRY();
 
-    auto&& timeEvents = entity->GetRawTimeEvents();
-    auto&& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
+    const auto& timeEvents = entity->GetRawTimeEvents();
+    const auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
 
     if (id != 0) {
         RUNTIME_ASSERT(!func_name);
@@ -179,9 +179,9 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
 
     const auto fire_time = repeat.has_value() ? tick_t {_engine->GameTime.GetServerTime().underlying_value() + std::max(repeat.value().underlying_value(), 1u)} : tick_t {};
 
-    if (auto&& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
+    if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         for (size_t i = 0; i < timeEvents->size(); i++) {
-            const auto& te = (*timeEvents)[i];
+            auto& te = (*timeEvents)[i];
 
             if (func_name && te->FuncName != func_name) {
                 continue;
@@ -207,14 +207,14 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
         }
     }
 
-    if (auto&& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
+    if (auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
         bool te_loaded = false;
         vector<tick_t> te_fire_time;
         vector<tick_t> te_repeat_duration;
         vector<any_t> te_data;
 
         for (size_t i = 0; i < persistentTimeEvents->size(); i++) {
-            const auto& te = (*persistentTimeEvents)[i];
+            auto& te = (*persistentTimeEvents)[i];
 
             if (func_name && te->FuncName != func_name) {
                 continue;
@@ -270,9 +270,9 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
 
     NON_CONST_METHOD_HINT();
 
-    if (auto&& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
+    if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         for (size_t i = 0; i < timeEvents->size();) {
-            const auto& te = (*timeEvents)[i];
+            auto& te = (*timeEvents)[i];
 
             if (func_name && te->FuncName != func_name) {
                 i++;
@@ -293,7 +293,7 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
         }
     }
 
-    if (auto&& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
+    if (auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
         bool te_loaded = false;
         vector<hstring> te_func_name;
         vector<tick_t> te_fire_time;
@@ -302,7 +302,7 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
         vector<any_t> te_data;
 
         for (size_t i = 0; i < persistentTimeEvents->size();) {
-            const auto& te = (*persistentTimeEvents)[i];
+            auto& te = (*persistentTimeEvents)[i];
 
             if (func_name && te->FuncName != func_name) {
                 i++;
@@ -394,9 +394,9 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, tick_t time)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto&& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
+    if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         for (size_t i = 0; i < timeEvents->size(); i++) {
-            const auto te = copy((*timeEvents)[i]);
+            auto te = (*timeEvents)[i];
             const auto id = te->Id;
 
             if (te->FireTime.underlying_value() > time.underlying_value()) {
@@ -437,9 +437,9 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, tick_t time)
         }
     }
 
-    if (auto&& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
+    if (auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
         for (size_t i = 0; i < persistentTimeEvents->size(); i++) {
-            const auto te = copy((*persistentTimeEvents)[i]);
+            auto te = (*persistentTimeEvents)[i];
             const auto id = te->Id;
 
             if (te->FireTime.underlying_value() > time.underlying_value()) {

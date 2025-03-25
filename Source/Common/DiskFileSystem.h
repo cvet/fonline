@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-enum class DiskFileSeek
+enum class DiskFileSeek : uint8
 {
     Set = 0,
     Cur = 1,
@@ -72,7 +72,6 @@ private:
     struct Impl;
     unique_ptr<Impl> _impl;
     bool _openedForWriting {};
-    bool _nonConstHelper {};
 };
 
 class DiskFind final

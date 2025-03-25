@@ -390,7 +390,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 
     write_time = file.GetWriteTime();
     buf[size] = 0;
-    return {buf.release(), [](const auto* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
 auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -471,7 +471,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf.release(), [](const auto* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
 auto CachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -756,7 +756,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     write_time = _writeTime;
     buf[size] = 0;
-    return {buf.release(), [](const auto* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
 ZipFile::ZipFile(string_view fname)
@@ -1004,7 +1004,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
     write_time = _writeTime;
     size = info.UncompressedSize;
     buf[size] = 0;
-    return {buf.release(), [](const auto* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
 AndroidAssets::AndroidAssets()
@@ -1028,9 +1028,9 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    auto names = strex(str).normalizeLineEndings().split('\n');
+    const auto names = strex(str).normalizeLineEndings().split('\n');
 
-    for (auto&& name : names) {
+    for (const auto& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);
 
         if (!file) {
@@ -1091,7 +1091,7 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
 
     buf[size] = 0;
     write_time = fe.WriteTime;
-    return {buf.release(), [](const auto* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
 auto AndroidAssets::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>

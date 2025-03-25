@@ -51,7 +51,7 @@ public:
     auto operator=(ResourceManager&&) noexcept = delete;
     ~ResourceManager() = default;
 
-    [[nodiscard]] auto GetItemDefaultSpr() -> const shared_ptr<Sprite>&;
+    [[nodiscard]] auto GetItemDefaultSpr() -> shared_ptr<Sprite>;
     [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*;

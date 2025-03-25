@@ -163,7 +163,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 {
     STACK_TRACE_ENTRY();
 
-    auto&& pack = SafeAlloc::MakeUnique<DialogPack>();
+    auto pack = SafeAlloc::MakeUnique<DialogPack>();
 
     auto fodlg = ConfigFile(strex("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 

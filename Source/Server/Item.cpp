@@ -67,8 +67,6 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!_innerItems) {
         return nullptr;
     }
@@ -86,8 +84,6 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept 
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!_innerItems) {
         return nullptr;
     }
@@ -104,8 +100,6 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept 
 auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (!_innerItems) {
         return {};
@@ -127,8 +121,6 @@ auto Item::GetAllInnerItems() -> const vector<Item*>&
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
@@ -138,8 +130,6 @@ auto Item::GetRawInnerItems() -> vector<Item*>&
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
@@ -148,8 +138,6 @@ auto Item::GetRawInnerItems() -> vector<Item*>&
 void Item::SetItemToContainer(Item* item)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(item);
 
@@ -196,8 +184,6 @@ auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
 void Item::RemoveItemFromContainer(Item* item)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_innerItems);
     RUNTIME_ASSERT(item);

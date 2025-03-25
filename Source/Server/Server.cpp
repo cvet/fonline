@@ -163,15 +163,15 @@ FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
         WriteLog("Start networking");
 
-        if (auto&& conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto&& conn_server = NetServerBase::StartTcpServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetServerBase::StartTcpServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto&& conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 #endif
@@ -743,7 +743,7 @@ FOServer::~FOServer()
         ScriptSys.reset();
 
         // Shutdown servers
-        for (auto&& conn_server : _connectionServers) {
+        for (auto& conn_server : _connectionServers) {
             conn_server->Shutdown();
         }
         _connectionServers.clear();
@@ -772,7 +772,7 @@ FOServer::~FOServer()
         {
             std::scoped_lock locker(_newConnectionsLocker);
 
-            for (auto&& conn : _newConnections) {
+            for (auto& conn : _newConnections) {
                 conn->HardDisconnect();
             }
             _newConnections.clear();
@@ -862,8 +862,6 @@ void FOServer::SyncPoint()
 void FOServer::DrawGui(string_view server_name)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     constexpr auto default_buf_size = 1000000; // ~1mb
     string buf;
@@ -2256,8 +2254,6 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     // Net protocol
     const auto proto_ver = connection->InBuf.Read<uint>();
     const auto outdated = proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION);
@@ -2779,8 +2775,6 @@ void FOServer::Process_StopMove(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
 
@@ -2792,12 +2786,14 @@ void FOServer::Process_StopMove(Player* player)
     [[maybe_unused]] const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     auto* map = EntityMngr.GetMap(map_id);
+
     if (map == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
+
     if (cr == nullptr) {
         BreakIntoDebugger();
         return;
@@ -2811,6 +2807,7 @@ void FOServer::Process_StopMove(Player* player)
     }
 
     uint zero_speed = 0;
+
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
         player->Send_Moving(cr);
@@ -2825,23 +2822,24 @@ void FOServer::Process_Dir(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     auto* map = EntityMngr.GetMap(map_id);
+
     if (map == nullptr) {
         return;
     }
 
     auto* cr = map->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
 
     int16 checked_dir_angle = dir_angle;
+
     if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
         BreakIntoDebugger();
         player->Send_Dir(cr);
@@ -3047,8 +3045,6 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto* server_entity = dynamic_cast<ServerEntity*>(entity);
 
     ident_t entry_id;
@@ -3064,7 +3060,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         entry_id = ident_t {1};
     }
 
-    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
+    auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
 
     hstring collection_name;
 
@@ -4374,7 +4370,7 @@ void FOServer::Process_Dialog(Player* player)
 
     Critter* cr = player->GetControlledCritter();
 
-    auto&& bin = player->Connection->InBuf;
+    auto& bin = player->Connection->InBuf;
 
     const auto cr_id = bin.Read<ident_t>();
     const auto dlg_pack_id = bin.Read<hstring>(*this);
@@ -4591,8 +4587,6 @@ void FOServer::Process_RemoteCall(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
     const auto rpc_num = player->Connection->InBuf.Read<uint>();
 
@@ -4635,8 +4629,6 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     bool result = false;
 
     switch (demand.ValuesCount) {
@@ -4661,36 +4653,34 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     switch (result.ValuesCount) {
     case 0:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
             return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;

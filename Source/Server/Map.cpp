@@ -561,8 +561,6 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto& field = _hexField->GetCellForReading(hex);
 
     for (auto* item : field.Items) {
@@ -577,8 +575,6 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 auto Map::GetItemGag(mpos hex) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -595,16 +591,12 @@ auto Map::GetItems() noexcept -> const vector<Item*>&
 {
     NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     return _items;
 }
 
 auto Map::GetItems(mpos hex) noexcept -> const vector<Item*>&
 {
     NO_STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -649,8 +641,6 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 auto Map::GetItemsTrigger(mpos hex) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -809,8 +799,6 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 {
     NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (const auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
         return it->second;
     }
@@ -821,8 +809,6 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 auto Map::GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*
 {
     NO_STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -859,8 +845,6 @@ auto Map::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     vector<Critter*> critters;
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -881,54 +865,6 @@ auto Map::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>
     }
 
     return critters;
-}
-
-auto Map::GetCritters() noexcept -> const vector<Critter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _critters;
-}
-
-auto Map::GetPlayerCritters() noexcept -> const vector<Critter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _playerCritters;
-}
-
-auto Map::GetNonPlayerCritters() noexcept -> const vector<Critter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _nonPlayerCritters;
-}
-
-auto Map::GetCrittersCount() const noexcept -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_critters.size());
-}
-
-auto Map::GetPlayerCrittersCount() const noexcept -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_playerCritters.size());
-}
-
-auto Map::GetNonPlayerCrittersCount() const noexcept -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_nonPlayerCritters.size());
 }
 
 void Map::SendEffect(hstring eff_pid, mpos hex, uint16 radius)

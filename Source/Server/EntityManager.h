@@ -153,6 +153,4 @@ private:
     const hstring _critterCollectionName {};
     const hstring _itemCollectionName {};
     const hstring _removeMigrationRuleName {};
-
-    bool _nonConstHelper {};
 };

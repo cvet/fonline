@@ -44,7 +44,7 @@ namespace SPK::FO
         RUNTIME_ASSERT(vertices > 0);
         RUNTIME_ASSERT(vertices % 4 == 0);
 
-        _renderBuf.reset(App->Render.CreateDrawBuffer(false));
+        _renderBuf = App->Render.CreateDrawBuffer(false);
 
         auto& vbuf = _renderBuf->Vertices;
         auto& vpos = _renderBuf->VertCount;

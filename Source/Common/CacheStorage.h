@@ -60,5 +60,4 @@ public:
 
 private:
     unique_ptr<CacheStorageImpl> _impl;
-    bool _nonConstHelper {};
 };

@@ -93,7 +93,7 @@ void EffectBaker::BakeFiles(FileCollection&& files)
 
     int errors = 0;
 
-    for (auto&& file_baking : file_bakings) {
+    for (auto& file_baking : file_bakings) {
         try {
             file_baking.get();
         }
@@ -339,7 +339,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_mac));
     file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_ios));
 
-    for (auto&& file_baking : file_bakings) {
+    for (auto& file_baking : file_bakings) {
         file_baking.get();
     }
 }

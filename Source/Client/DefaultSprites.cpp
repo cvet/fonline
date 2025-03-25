@@ -38,6 +38,7 @@
 AtlasSprite::AtlasSprite(SpriteManager& spr_mngr) :
     Sprite(spr_mngr)
 {
+    STACK_TRACE_ENTRY();
 }
 
 AtlasSprite::~AtlasSprite()
@@ -86,6 +87,8 @@ auto AtlasSprite::IsHitTest(ipos pos) const -> bool
 
 auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
 {
+    STACK_TRACE_ENTRY();
+
     return const_cast<AtlasSprite*>(this)->shared_from_this();
 }
 
@@ -187,7 +190,7 @@ auto SpriteSheet::GetCurSpr() -> Sprite*
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto* dir_sheet = _curDir == 0 || !Dirs[_curDir - 1] ? this : Dirs[_curDir - 1].get();
+    auto* dir_sheet = _curDir == 0 || !Dirs[_curDir - 1] ? this : Dirs[_curDir - 1].get();
 
     return dir_sheet->Spr[_curIndex].get();
 }
@@ -196,7 +199,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
+    auto copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
 
     copy->Size = Size;
     copy->Offset = Offset;
@@ -210,7 +213,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
     for (uint i = 0; i < DirCount - 1; i++) {
         if (Dirs[i]) {
-            copy->Dirs[i] = dynamic_pointer_cast<SpriteSheet>(Dirs[i]->MakeCopy());
+            copy->Dirs[i] = dynamic_ptr_cast<SpriteSheet>(Dirs[i]->MakeCopy());
         }
     }
 
@@ -392,7 +395,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     RUNTIME_ASSERT(dirs != 0);
 
     if (frames_count > 1 || dirs > 1) {
-        auto&& anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
+        auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
 
         for (uint16 dir = 0; dir < dirs; dir++) {
             auto* dir_anim = anim->GetDir(dir);
@@ -411,7 +414,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto ny = file.GetLEShort();
                     const auto* data = file.GetCurBuf();
 
-                    auto&& spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
+                    auto spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
                     spr->Size.width = width;
                     spr->Size.height = height;
@@ -461,7 +464,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         UNUSED_VARIABLE(nx);
         UNUSED_VARIABLE(ny);
 
-        auto&& spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
+        auto spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
         spr->Size.width = width;
         spr->Size.height = height;

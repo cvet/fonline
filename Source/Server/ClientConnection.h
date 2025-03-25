@@ -87,5 +87,4 @@ public:
 private:
     shared_ptr<NetConnection> _netConnection;
     bool _gracefulDisconnected {};
-    bool _nonConstHelper {};
 };

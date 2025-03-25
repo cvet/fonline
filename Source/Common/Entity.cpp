@@ -97,8 +97,6 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
             it->second.clear();
@@ -295,8 +293,6 @@ void Entity::SetValueAsAny(int prop_index, const any_t& value)
 auto Entity::GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (!_innerEntities) {
         return nullptr;
