@@ -182,9 +182,6 @@ void ItemManager::DestroyItem(Item* item)
         }
     }
 
-    // Erase from statistics
-    ChangeItemStatistics(item->GetProtoId(), -static_cast<int>(item->GetCount()));
-
     // Erase from radio collection
     if (item->GetIsRadio()) {
         UnregisterRadio(item);

@@ -3239,14 +3239,8 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
-    const auto old_count = entity->GetProperties().GetValue<uint>(prop);
 
-    if (new_count > 0 && (item->GetStackable() || new_count == 1)) {
-        const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
-
-        ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
-    }
-    else {
+    if (new_count == 0 || (!item->GetStackable() && new_count != 1)) {
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
