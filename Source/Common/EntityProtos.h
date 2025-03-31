@@ -43,8 +43,6 @@ class ProtoItem final : public ProtoEntity, public ItemProperties
 {
 public:
     ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
-
-    mutable int64 InstanceCount {};
 };
 
 class ProtoCritter final : public ProtoEntity, public CritterProperties

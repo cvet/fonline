@@ -924,12 +924,6 @@ FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
-{
-    return server->ItemMngr.GetItemStatistics(pid);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFunc<void, Critter*, string> func)
 {
     UNUSED_VARIABLE(server);

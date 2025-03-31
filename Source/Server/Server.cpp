@@ -459,7 +459,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 try {
                     EntityMngr.LoadEntities();
                 }
-                catch (std::exception& ex) {
+                catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                     errors++;
                 }
@@ -910,13 +910,6 @@ void FOServer::DrawGui(string_view server_name)
             // Locations and maps
             if (ImGui::TreeNode("Locations and maps")) {
                 buf = MapMngr.GetLocationAndMapsStatistics();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-                ImGui::TreePop();
-            }
-
-            // Items count
-            if (ImGui::TreeNode("Items count")) {
-                buf = ItemMngr.GetItemsStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -1431,9 +1424,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         case 4:
             result = "WIP";
-            break;
-        case 5:
-            result = ItemMngr.GetItemsStatistics();
             break;
         default:
             break;
