@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 
         ExitApp(true);
     }
-    catch (std::exception& ex) {
+    catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
     catch (...) {

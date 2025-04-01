@@ -341,7 +341,7 @@ extern void ReportStrongAssertAndExit(string_view message, const char* file, int
     try {
         throw StrongAssertationException(message, file, line);
     }
-    catch (StrongAssertationException& ex) {
+    catch (const StrongAssertationException& ex) {
         ReportExceptionAndExit(ex);
     }
 }
@@ -353,7 +353,7 @@ extern void ReportVerifyFailed(string_view message, const char* file, int line) 
     try {
         throw VerifyFailedException(message, file, line);
     }
-    catch (VerifyFailedException& ex) {
+    catch (const VerifyFailedException& ex) {
         ReportExceptionAndContinue(ex);
     }
 }
