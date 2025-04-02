@@ -1433,8 +1433,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
             _engine->SetLastGlobalMapTripId(trip_id);
             cr->SetGlobalMapTripId(trip_id);
 
-            cr->GlobalMapGroup = SafeAlloc::MakeRaw<vector<Critter*>>();
-            cr->GlobalMapGroup->emplace_back(cr);
+            cr->GlobalMapGroup = SafeAlloc::MakeShared<vector<Critter*>>();
         }
         else {
             RUNTIME_ASSERT(global_cr->GlobalMapGroup);
@@ -1446,8 +1445,9 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
             }
 
             cr->GlobalMapGroup = global_cr->GlobalMapGroup;
-            cr->GlobalMapGroup->emplace_back(cr);
         }
+
+        vec_add_unique_value(*cr->GlobalMapGroup, cr);
 
         _engine->OnGlobalMapCritterIn.Fire(cr);
     }
@@ -1496,11 +1496,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
                 group_cr->Send_RemoveCritter(cr);
             }
         }
-        else {
-            delete cr->GlobalMapGroup;
-        }
 
-        cr->GlobalMapGroup = nullptr;
+        cr->GlobalMapGroup.reset();
     }
 }
 
