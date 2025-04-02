@@ -225,7 +225,7 @@ public:
     unordered_set<ident_t> VisCr3 {};
     unordered_set<ident_t> VisItem {};
 
-    vector<Critter*>* GlobalMapGroup {};
+    shared_ptr<vector<Critter*>> GlobalMapGroup {};
     uint RadioMessageSended {};
     TalkData Talk {};
 
