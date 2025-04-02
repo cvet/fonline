@@ -26,11 +26,4 @@ namespace ClientCore // Sort -9
 #define FT_SKIPLINES     #(l)(0x0400 | ((l) << 16))
 #define FT_SKIPLINES_END #(l)(0x0800 | ((l) << 16))
 
-// Draw primitive types
-#define DRAW_PRIMITIVE_POINTLIST     (0)
-#define DRAW_PRIMITIVE_LINELIST      (1)
-#define DRAW_PRIMITIVE_LINESTRIP     (2)
-#define DRAW_PRIMITIVE_TRIANGLELIST  (3)
-#define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
-
 }

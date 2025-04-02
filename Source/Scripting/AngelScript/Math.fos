@@ -61,6 +61,11 @@ float AbsF(float x)
     return x > 0 ? x : -x;
 }
 
+int Distance(int x, int y)
+{
+    return RoundToInt(math::sqrt(Pow2(x) + Pow2(y)));
+}
+
 int Distance(int x1, int y1, int x2, int y2)
 {
     return RoundToInt(math::sqrt(Pow2(x1 - x2) + Pow2(y1 - y2)));
@@ -71,12 +76,17 @@ int Distance(ipos pos1, ipos pos2)
     return RoundToInt(math::sqrt(Pow2(pos1.x - pos2.x) + Pow2(pos1.y - pos2.y)));
 }
 
+float DistanceF(float x, float y)
+{
+    return float(math::sqrt(Pow2F(x) + Pow2F(y)));
+}
+
 float DistanceF(float x1, float y1, float x2, float y2)
 {
     return float(math::sqrt(Pow2F(x1 - x2) + Pow2F(y1 - y2)));
 }
 
-float DistanceF(fpos pos1, fpos pos2)
+float Distance(fpos pos1, fpos pos2)
 {
     return RoundToInt(math::sqrt(Pow2F(pos1.x - pos2.x) + Pow2F(pos1.y - pos2.y)));
 }
@@ -117,6 +127,51 @@ int Fib(int n)
     }
 
     return y;
+}
+
+int Lerp(int v1, int v2, float t)
+{
+    return (t <= 0.0) ? v1 : ((t >= 1.0) ? v2 : v1 + int((v2 - v1) * t));
+}
+
+float LerpF(float v1, float v2, float t)
+{
+    return (t <= 0.0) ? v1 : ((t >= 1.0) ? v2 : v1 + (v2 - v1) * t);
+}
+
+ipos Lerp(ipos v1, ipos v2, float t)
+{
+    return ipos(Lerp(v1.x, v2.x, t), Lerp(v1.y, v2.y, t));
+}
+
+fpos Lerp(fpos v1, fpos v2, float t)
+{
+    return fpos(LerpF(v1.x, v2.x, t), LerpF(v1.y, v2.y, t));
+}
+
+float MoveTowards(float current, float target, float step)
+{
+    float delta = target - current;
+
+    if (math::abs(delta) <= step) {
+        return target;
+    }
+
+    return current + (delta > 0 ? step : -step);
+}
+
+fpos MoveTowards(fpos v1, fpos v2, float step)
+{
+    float dx = v2.x - v1.x;
+    float dy = v2.y - v1.y;
+    float distance = math::sqrt(dx * dx + dy * dy);
+
+    if (distance == 0 || step >= distance) {
+        return v2;
+    }
+    else {
+        return fpos(v1.x + (dx / distance) * step, v1.y + (dy / distance) * step);
+    }
 }
 
 }

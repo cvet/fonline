@@ -59,7 +59,7 @@ using vindex_t = uint16;
 
 using RenderEffectLoader = std::function<string(string_view)>;
 
-enum class RenderType
+enum class RenderType : uint8
 {
     Null,
 #if FO_HAVE_OPENGL
@@ -76,7 +76,7 @@ enum class RenderType
 #endif
 };
 
-enum class EffectUsage
+enum class EffectUsage : uint8
 {
     ImGui,
     QuadSprite,
@@ -86,7 +86,8 @@ enum class EffectUsage
 #endif
 };
 
-enum class RenderPrimitiveType
+///@ ExportEnum
+enum class RenderPrimitiveType : uint8
 {
     PointList,
     LineList,
@@ -95,7 +96,7 @@ enum class RenderPrimitiveType
     TriangleStrip,
 };
 
-enum class BlendFuncType
+enum class BlendFuncType : uint8
 {
     Zero,
     One,
@@ -112,7 +113,7 @@ enum class BlendFuncType
     SrcAlphaSaturate,
 };
 
-enum class BlendEquationType
+enum class BlendEquationType : uint8
 {
     FuncAdd,
     FuncSubtract,

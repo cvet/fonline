@@ -598,46 +598,46 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos pos, ucolor color)
     }
 }
 
-void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, ucolor color)
+void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
-    DrawSpriteSizeExt(spr, pos, size, zoom_up, center, false, color);
+    DrawSpriteSizeExt(spr, fpos(pos), fsize(size), fit, center, false, color);
 }
 
-void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, bool stretch, ucolor color)
+void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
-    auto xf = static_cast<float>(pos.x);
-    auto yf = static_cast<float>(pos.y);
+    auto xf = pos.x;
+    auto yf = pos.y;
     auto wf = static_cast<float>(spr->Size.width);
     auto hf = static_cast<float>(spr->Size.height);
-    const auto k = std::min(static_cast<float>(size.width) / wf, static_cast<float>(size.height) / hf);
+    const auto k = std::min(size.width / wf, size.height / hf);
 
     if (!stretch) {
-        if (k < 1.0f || (k > 1.0f && zoom_up)) {
+        if (k < 1.0f || (k > 1.0f && fit)) {
             wf = std::floor(wf * k + 0.5f);
             hf = std::floor(hf * k + 0.5f);
         }
 
         if (center) {
-            xf += std::floor((static_cast<float>(size.width) - wf) / 2.0f + 0.5f);
-            yf += std::floor((static_cast<float>(size.height) - hf) / 2.0f + 0.5f);
+            xf += std::floor((size.width - wf) / 2.0f + 0.5f);
+            yf += std::floor((size.height - hf) / 2.0f + 0.5f);
         }
     }
-    else if (zoom_up) {
+    else if (fit) {
         wf = std::floor(wf * k + 0.5f);
         hf = std::floor(hf * k + 0.5f);
 
         if (center) {
-            xf += std::floor((static_cast<float>(size.width) - wf) / 2.0f + 0.5f);
-            yf += std::floor((static_cast<float>(size.height) - hf) / 2.0f + 0.5f);
+            xf += std::floor((size.width - wf) / 2.0f + 0.5f);
+            yf += std::floor((size.height - hf) / 2.0f + 0.5f);
         }
     }
     else {
-        wf = static_cast<float>(size.width);
-        hf = static_cast<float>(size.height);
+        wf = size.width;
+        hf = size.height;
     }
 
     auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;

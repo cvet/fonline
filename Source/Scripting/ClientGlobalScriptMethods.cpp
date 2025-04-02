@@ -994,7 +994,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize(size), true, true, true, COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -1010,11 +1010,43 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize(size), true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool zoom, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos, ucolor color)
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    const auto* spr = client->AnimGetSpr(sprId);
+
+    if (spr == nullptr) {
+        return;
+    }
+
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize(spr->Size), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos, fsize size, ucolor color)
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    const auto* spr = client->AnimGetSpr(sprId);
+
+    if (spr == nullptr) {
+        return;
+    }
+
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool fit, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1034,7 +1066,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
         y += spr->Offset.y;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, size, zoom, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, fsize(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -1081,34 +1113,13 @@ FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
+FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveType primitiveType, const vector<int>& data)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
     if (data.empty()) {
         return;
-    }
-
-    RenderPrimitiveType prim;
-    switch (primitiveType) {
-    case 0:
-        prim = RenderPrimitiveType::PointList;
-        break;
-    case 1:
-        prim = RenderPrimitiveType::LineList;
-        break;
-    case 2:
-        prim = RenderPrimitiveType::LineStrip;
-        break;
-    case 3:
-        prim = RenderPrimitiveType::TriangleList;
-        break;
-    case 4:
-        prim = RenderPrimitiveType::TriangleStrip;
-        break;
-    default:
-        throw ScriptException("Invalid primitive type");
     }
 
     vector<PrimitivePoint> points;
@@ -1124,7 +1135,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, int primitiveType
         pp.PPointColor = nullptr;
     }
 
-    client->SprMngr.DrawPoints(points, prim);
+    client->SprMngr.DrawPoints(points, primitiveType);
 }
 
 ///@ ExportMethod

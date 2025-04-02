@@ -3526,6 +3526,16 @@ bool CheckHit(ipos pos)
     return false;
 }
 
+bool IsModalScreenActive()
+{
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        if (Screens[i].Active && Screens[i].IsModal) {
+            return true;
+        }
+    }
+    return false;
+}
+
 //
 // Engine callbacks
 //
