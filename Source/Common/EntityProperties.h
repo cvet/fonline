@@ -65,7 +65,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, HistoryRecordsId);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
 };
 
