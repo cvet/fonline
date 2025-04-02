@@ -209,8 +209,8 @@ public:
     void SetSpritesZoom(float zoom);
 
     void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
-    void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, ucolor color);
-    void DrawSpriteSizeExt(const Sprite* spr, ipos pos, isize size, bool zoom_up, bool center, bool stretch, ucolor color);
+    void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color);
+    void DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color);
     void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);

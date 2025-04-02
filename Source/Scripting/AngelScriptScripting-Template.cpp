@@ -991,7 +991,7 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 
         return true;
     }
-    catch (std::exception& ex) {
+    catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
@@ -3311,6 +3311,52 @@ static void Fpos_ConstructXandY(fpos* self, float x, float y)
     new (self) fpos {x, y};
 }
 
+static auto Fpos_AddAssignFpos(fpos& self, const fpos& pos) -> fpos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x += pos.x;
+    self.y += pos.y;
+    return self;
+}
+
+static auto Fpos_SubAssignFpos(fpos& self, const fpos& pos) -> fpos&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self.x -= pos.x;
+    self.y -= pos.y;
+    return self;
+}
+
+static auto Fpos_AddFpos(const fpos& self, const fpos& pos) -> fpos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return fpos {self.x + pos.x, self.y + pos.y};
+}
+
+static auto Fpos_SubFpos(const fpos& self, const fpos& pos) -> fpos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return fpos {self.x - pos.x, self.y - pos.y};
+}
+
+static auto Fpos_NegFpos(const fpos& self) -> fpos
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return fpos {-self.x, -self.y};
+}
+
+static void Fsize_ConstructWandH(isize* self, float width, float height)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    new (self) fsize {width, height};
+}
+
 static void Mpos_ConstructXandY(mpos* self, int x, int y)
 {
     NO_STACK_TRACE_ENTRY();
@@ -3874,6 +3920,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos, x)));
     AS_VERIFY(engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos, y)));
+    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos& opAddAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_AddAssignFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos& opSubAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_SubAssignFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opAdd(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_AddFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opSub(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_SubFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opNeg() const", SCRIPT_FUNC_THIS(Fpos_NegFpos), SCRIPT_FUNC_THIS_CONV));
+
+    // Register isize
+    REGISTER_HARD_STRONG_TYPE("fsize", fsize);
+    AS_VERIFY(engine->RegisterObjectBehaviour("fsize", asBEHAVE_CONSTRUCT, "void f(float width, float height)", SCRIPT_FUNC_THIS(Fsize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize, width)));
+    AS_VERIFY(engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize, height)));
 
     // Register mpos
     REGISTER_HARD_STRONG_TYPE("mpos", mpos);

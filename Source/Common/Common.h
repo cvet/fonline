@@ -304,6 +304,15 @@ public:
         _smartPtr = p._smartPtr;
         return *this;
     }
+#else
+    FORCE_INLINE propagate_const(const propagate_const& p) noexcept = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr propagate_const(const propagate_const<U>& p) noexcept = delete;
+    FORCE_INLINE auto operator=(const propagate_const& p) noexcept -> propagate_const& = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const propagate_const<U>& p) noexcept -> propagate_const& = delete;
+    [[nodiscard]] FORCE_INLINE auto copy() noexcept -> T { return propagate_const(_smartPtr); }
 #endif
 
 #if 0 // Implicit conversion to pointer
@@ -2046,6 +2055,16 @@ struct fsize
         height {height_}
     {
     }
+    constexpr fsize(int width_, int height_) noexcept :
+        width {static_cast<float>(width_)},
+        height {static_cast<float>(height_)}
+    {
+    }
+    constexpr explicit fsize(isize size) noexcept :
+        width {static_cast<float>(size.width)},
+        height {static_cast<float>(size.height)}
+    {
+    }
 
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
@@ -2071,6 +2090,16 @@ struct fpos
     constexpr fpos(float x_, float y_) noexcept :
         x {x_},
         y {y_}
+    {
+    }
+    constexpr fpos(int x_, int y_) noexcept :
+        x {static_cast<float>(x_)},
+        y {static_cast<float>(y_)}
+    {
+    }
+    constexpr explicit fpos(ipos pos) noexcept :
+        x {static_cast<float>(pos.x)},
+        y {static_cast<float>(pos.y)}
     {
     }
 
@@ -2492,11 +2521,11 @@ constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
 }
 
 template<typename T>
-constexpr auto vec_add_unique_value(vector<T>& vec, const T& value) -> vector<T>&
+constexpr auto vec_add_unique_value(vector<T>& vec, T value) -> vector<T>&
 {
     const auto it = std::find(vec.begin(), vec.end(), value);
     RUNTIME_ASSERT(it == vec.end());
-    vec.emplace_back(value);
+    vec.emplace_back(std::move(value));
     return vec;
 }
 
