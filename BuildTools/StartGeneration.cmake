@@ -167,7 +167,7 @@ add_compile_definitions($<$<CONFIG:San_DataFlow>:LLVM_USE_SANITIZER=DataFlow>)
 add_compile_definitions($<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
 
 set(expr_DebugBuild $<OR:$<CONFIG:Debug>,$<CONFIG:Debug_Profiling_Total>,$<CONFIG:Debug_Profiling_OnDemand>>)
-set(expr_FullOptimization $<OR:$<CONFIG:Release>,$<CONFIG:Release_Ext>,$<CONFIG:MinSizeRel>>)
+set(expr_FullOptimization $<CONFIG:Release_Ext>)
 set(expr_DebugInfo $<NOT:$<CONFIG:MinSizeRel>>)
 set(expr_PrefixConfig $<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>>)
 set(expr_TracyEnabled $<OR:$<CONFIG:Profiling_Total>,$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_Total>,$<CONFIG:Debug_Profiling_OnDemand>>)
@@ -223,13 +223,13 @@ if(WIN32)
 	add_compile_options_C_CXX(/GR)
 	add_compile_options_C_CXX(/bigobj)
 	add_compile_options_C_CXX(/fp:fast)
-	# add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes, try uncomment later
+	add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes
 	add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
 
 	add_link_options(/INCREMENTAL:NO)
 	add_link_options(/OPT:REF)
 	add_link_options(/OPT:NOICF)
-	# add_link_options($<${expr_FullOptimization}:/LTCG>)
+	add_link_options($<${expr_FullOptimization}:/LTCG>)
 	add_link_options($<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
 	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
