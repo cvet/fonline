@@ -16,8 +16,9 @@ set(SPARK_STATIC_BUILD OFF CACHE BOOL "Store whether SPARK is built as a static 
 # Sources
 # ###############################################
 set(SPARK_DIR ../../../spark) #!
-get_filename_component(SPARK_DIR ${SPARK_DIR}/void REALPATH)
-get_filename_component(SPARK_DIR ${SPARK_DIR} PATH)
+get_filename_component(SPARK_DIR ${SPARK_DIR} REALPATH) #!
+#! get_filename_component(SPARK_DIR ${SPARK_DIR}/void REALPATH)
+#! get_filename_component(SPARK_DIR ${SPARK_DIR} PATH)
 
 file(GLOB_RECURSE TMP_SRC_FILES
 	${SPARK_DIR}/include/Core/*.h
