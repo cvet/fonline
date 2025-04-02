@@ -682,6 +682,12 @@ FO_SCRIPT_API uint Common_Game_GetTick(FOEngineBase* engine)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API uint Common_Game_GetDeltaTick(FOEngineBase* engine)
+{
+    return time_duration_to_ms<uint>(engine->GameTime.FrameDeltaTime());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API tick_t Common_Game_GetServerTime(FOEngineBase* engine)
 {
     return engine->GameTime.GetServerTime();
