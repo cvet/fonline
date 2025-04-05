@@ -283,8 +283,8 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
                 continue;
             }
 
-            timeEvents->erase(timeEvents->begin() + static_cast<ptrdiff_t>(i));
             te->Id = 0;
+            timeEvents->erase(timeEvents->begin() + static_cast<ptrdiff_t>(i)); // te is not valid anymore
 
             // Identifier may be only one
             if (id != 0) {
@@ -333,8 +333,8 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
             te_name.erase(te_name.begin() + static_cast<ptrdiff_t>(i));
             te_data.erase(te_data.begin() + static_cast<ptrdiff_t>(i));
 
-            persistentTimeEvents->erase(persistentTimeEvents->begin() + static_cast<ptrdiff_t>(i));
             te->Id = 0;
+            persistentTimeEvents->erase(persistentTimeEvents->begin() + static_cast<ptrdiff_t>(i)); // te is not valid anymore
 
             // Identifier may be only one
             if (id != 0) {
