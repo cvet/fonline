@@ -63,6 +63,7 @@ class Sprite
         if (Id != 0) {
             Game.FreeSprite(Id);
             Id = 0;
+            LoadedName = EMPTY_HSTRING;
             Size = isize();
         }
     }
