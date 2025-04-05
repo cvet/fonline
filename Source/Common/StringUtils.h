@@ -49,7 +49,7 @@ public:
     {
     };
 
-    strex() = default;
+    strex() noexcept = default;
 
     explicit strex(const char* s) noexcept :
         _sv {s}
