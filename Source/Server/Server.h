@@ -160,6 +160,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnCritterSendInitialInfo, Critter* /*cr*/);
+    ///@ ExportEvent
     ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);

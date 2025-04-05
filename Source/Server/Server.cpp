@@ -2090,6 +2090,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     if (cr->ViewMapId) {
         auto* map = EntityMngr.GetMap(cr->ViewMapId);
         cr->ViewMapId = ident_t {};
+
         if (map != nullptr) {
             MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
             cr->Send_ViewMap();
@@ -2163,7 +2164,8 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         cr->Send_Talk();
     }
 
-    // Notify about end of placing
+    OnCritterSendInitialInfo.Fire(cr);
+
     cr->Send_PlaceToGameComplete();
 }
 
