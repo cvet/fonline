@@ -315,13 +315,18 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     ConfigFile fofrm(file.GetPath(), file.GetStr());
 
     int frm_fps = fofrm.GetInt("", "fps", 10);
+    frm_fps = fofrm.GetInt("", "Fps", frm_fps);
     int frm_count = fofrm.GetInt("", "count", 1);
+    frm_count = fofrm.GetInt("", "Count", frm_count);
     RUNTIME_ASSERT(frm_count > 0);
 
     int ox = fofrm.GetInt("", "offs_x", 0);
+    ox = fofrm.GetInt("", "OffsetX", ox);
     int oy = fofrm.GetInt("", "offs_y", 0);
+    oy = fofrm.GetInt("", "OffsetY", oy);
 
     collection.EffectName = fofrm.GetStr("", "effect");
+    collection.EffectName = fofrm.GetStr("", "Effect", collection.EffectName);
 
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         vector<tuple<FrameCollection, int, int>> sub_collections;
@@ -330,7 +335,11 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         string dir_str = strex("dir_{}", dir);
 
         if (!fofrm.HasSection(dir_str)) {
-            dir_str = "";
+            dir_str = strex("Dir_{}", dir);
+
+            if (!fofrm.HasSection(dir_str)) {
+                dir_str = "";
+            }
         }
 
         if (dir_str.empty()) {
@@ -344,7 +353,9 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         }
         else {
             ox = fofrm.GetInt(dir_str, "offs_x", ox);
+            ox = fofrm.GetInt(dir_str, "OffsetX", ox);
             oy = fofrm.GetInt(dir_str, "offs_y", oy);
+            oy = fofrm.GetInt(dir_str, "OffsetY", oy);
         }
 
         string frm_dir = strex(fname).extractDir();
@@ -354,9 +365,21 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         bool load_fail = false;
 
         for (int frm = 0; frm < frm_count; frm++) {
-            string frm_name;
+            string frm_name = fofrm.GetStr(dir_str, strex("frm_{}", frm));
 
-            if ((frm_name = fofrm.GetStr(dir_str, strex("frm_{}", frm))).empty() && (frm != 0 || (frm_name = fofrm.GetStr(dir_str, "frm")).empty())) {
+            if (frm_name.empty()) {
+                frm_name = fofrm.GetStr(dir_str, strex("Frm_{}", frm), frm_name);
+            }
+
+            if (frm_name.empty() && frm == 0) {
+                frm_name = fofrm.GetStr(dir_str, "frm");
+
+                if (frm_name.empty()) {
+                    frm_name = fofrm.GetStr(dir_str, "Frm");
+                }
+            }
+
+            if (frm_name.empty()) {
                 no_info = true;
                 break;
             }
@@ -365,7 +388,9 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
             frames += sub_collection.SequenceSize;
 
             int next_x = fofrm.GetInt(dir_str, strex("next_x_{}", frm), 0);
+            next_x = fofrm.GetInt(dir_str, strex("NextX_{}", frm), next_x);
             int next_y = fofrm.GetInt(dir_str, strex("next_y_{}", frm), 0);
+            next_y = fofrm.GetInt(dir_str, strex("NextY_{}", frm), next_y);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
