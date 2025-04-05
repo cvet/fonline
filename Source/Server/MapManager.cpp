@@ -1367,6 +1367,12 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<ui
             return;
         }
 
+        _engine->OnCritterSendInitialInfo.Fire(cr);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
         cr->Send_PlaceToGameComplete();
     }
 
