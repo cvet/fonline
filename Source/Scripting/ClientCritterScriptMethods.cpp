@@ -375,8 +375,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 #else
     UNUSED_VARIABLE(self);
     UNUSED_VARIABLE(boneName);
-    UNUSED_VARIABLE(boneX);
-    UNUSED_VARIABLE(boneY);
+    UNUSED_VARIABLE(boneOffset);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif

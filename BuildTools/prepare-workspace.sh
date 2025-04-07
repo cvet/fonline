@@ -56,6 +56,18 @@ function install_linux_packages()
     $PACKAGE_MANAGER install libc++abi-dev
     echo "Install libx11-dev"
     $PACKAGE_MANAGER install libx11-dev
+    echo "Install libxcursor-dev"
+    $PACKAGE_MANAGER install libxcursor-dev
+    echo "Install libxrandr-dev"
+    $PACKAGE_MANAGER install libxrandr-dev
+    echo "Install libxss-dev"
+    $PACKAGE_MANAGER install libxss-dev
+    echo "Install libjack-dev"
+    $PACKAGE_MANAGER install libjack-dev
+    echo "Install libpulse-dev"
+    $PACKAGE_MANAGER install libpulse-dev
+    echo "Install libasound-dev"
+    $PACKAGE_MANAGER install libasound-dev
     echo "Install freeglut3-dev"
     $PACKAGE_MANAGER install freeglut3-dev
     echo "Install libssl-dev"
@@ -64,6 +76,8 @@ function install_linux_packages()
     $PACKAGE_MANAGER install libevent-dev
     echo "Install libxi-dev"
     $PACKAGE_MANAGER install libxi-dev
+    echo "Install libzstd-dev"
+    $PACKAGE_MANAGER install libzstd-dev
 }
 
 function install_web_packages()
