@@ -2391,7 +2391,7 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
             item = cr->AddMapperInvItem(cr->GetMap()->GenTempEntityId(), proto, CritterItemSlot::Inventory, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddMapperInnerItem(cont->GetMap()->GenTempEntityId(), proto, ContainerItemStack::Root, nullptr);
+            item = cont->AddMapperInnerItem(cont->GetMap()->GenTempEntityId(), proto, {}, nullptr);
         }
     }
     else if (proto->GetIsTile()) {
@@ -2446,7 +2446,8 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
     for (const auto* inner_item : from_item->GetConstInnerItems()) {
-        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inner_item->GetProto()), inner_item->GetContainerStack(), &from_item->GetProperties());
+        const auto stack_id = any_t {string(inner_item->GetContainerStack())};
+        auto* inner_item_clone = to_item->AddMapperInnerItem(CurMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inner_item->GetProto()), stack_id, &from_item->GetProperties());
         CloneInnerItems(inner_item_clone, inner_item);
     }
 }
@@ -2544,7 +2545,7 @@ void FOMapper::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddMapperInnerItem(CurMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
+                auto* inner_item = item->AddMapperInnerItem(CurMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(child_buf->Proto), {}, child_buf->Props);
 
                 add_item_inner_items(child_buf, inner_item);
             }

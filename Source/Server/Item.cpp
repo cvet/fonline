@@ -80,7 +80,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
     return nullptr;
 }
 
-auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*
+auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -89,7 +89,7 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept 
     }
 
     for (auto* item : *_innerItems) {
-        if (item->GetProtoId() == pid && (stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id)) {
+        if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
             return item;
         }
     }
@@ -97,7 +97,7 @@ auto Item::GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept 
     return nullptr;
 }
 
-auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
+auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -105,9 +105,14 @@ auto Item::GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>
         return {};
     }
 
-    return vec_filter(*_innerItems, [stack_id](const Item* item) -> bool { //
-        return stack_id == ContainerItemStack::Any || item->GetContainerStack() == stack_id;
-    });
+    if (stack_id.empty()) {
+        return *_innerItems;
+    }
+    else {
+        return vec_filter(*_innerItems, [stack_id](const Item* item) -> bool { //
+            return item->GetContainerStack() == stack_id;
+        });
+    }
 }
 
 auto Item::HasInnerItems() const noexcept -> bool
@@ -148,12 +153,11 @@ void Item::SetItemToContainer(Item* item)
     item->SetContainerId(GetId());
 }
 
-auto Item::AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*
+auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
 
     if (item->GetStackable()) {
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
@@ -189,8 +193,8 @@ void Item::RemoveItemFromContainer(Item* item)
     RUNTIME_ASSERT(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetContainerId(ident_t {});
-    item->SetContainerStack(ContainerItemStack::Root);
+    item->SetContainerId({});
+    item->SetContainerStack({});
 
     vec_remove_unique_value(*_innerItems, item);
     destroy_if_empty(_innerItems);

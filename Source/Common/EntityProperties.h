@@ -127,7 +127,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, ContainerId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ContainerItemStack, ContainerStack);
+    ENTITY_PROPERTY(PrivateCommon, any_t, ContainerStack);
     ///@ MigrationRule Property Item SubItemIds InnerItemIds
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);

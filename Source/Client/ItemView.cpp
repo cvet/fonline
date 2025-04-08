@@ -71,7 +71,7 @@ auto ItemView::CreateRefClone() const -> ItemView*
     return ref_item;
 }
 
-auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*
+auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -85,7 +85,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, ContainerI
     return AddRawInnerItem(item);
 }
 
-auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
+auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 

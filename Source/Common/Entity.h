@@ -160,13 +160,6 @@ enum class ItemOwnership : uint8
 };
 
 ///@ ExportEnum
-enum class ContainerItemStack : uint
-{
-    Root = 0,
-    Any = 0xFFFFFFFF,
-};
-
-///@ ExportEnum
 enum class CornerType : uint8
 {
     NorthSouth = 0,
