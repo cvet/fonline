@@ -349,7 +349,20 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint coun
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, ContainerItemStack stackId)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
+    }
+
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -362,7 +375,24 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toC
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont)
+{
+    if (item == nullptr) {
+        throw ScriptException("Item arg is null");
+    }
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
+    }
+
+    if (count == 0) {
+        return nullptr;
+    }
+
+    return server->ItemMngr.MoveItem(item, count, toCont, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -414,7 +444,23 @@ FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId)
+FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont)
+{
+    if (toCont == nullptr) {
+        throw ScriptException("Container arg is null");
+    }
+
+    for (auto* item : items) {
+        if (item == nullptr || item->IsDestroyed()) {
+            continue;
+        }
+
+        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, {});
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, any_t stackId)
 {
     if (toCont == nullptr) {
         throw ScriptException("Container arg is null");

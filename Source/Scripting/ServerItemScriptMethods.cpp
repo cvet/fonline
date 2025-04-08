@@ -57,7 +57,17 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count)
+{
+    if (count == 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count, any_t stackId)
 {
     if (count == 0) {
         return nullptr;
@@ -67,7 +77,13 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count, Con
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
+FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self)
+{
+    return self->GetInnerItems({});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId)
 {
     return self->GetInnerItems(stackId);
 }

@@ -254,7 +254,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> 
     }
 }
 
-auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id) -> Item*
+auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -274,7 +274,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemS
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> Item*
+auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const any_t& stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 

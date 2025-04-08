@@ -375,7 +375,7 @@ void MapManager::GenerateMapContent(Map* map)
             auto* item_cont = map->GetItem(owner_id);
             RUNTIME_ASSERT(item_cont);
 
-            item_cont->AddItemToContainer(item, ContainerItemStack::Root);
+            item_cont->AddItemToContainer(item, {});
         }
         else {
             UNREACHABLE_PLACE();

@@ -62,14 +62,14 @@ public:
     [[nodiscard]] auto RadioIsRecvActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) noexcept -> Item*;
-    [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*;
+    [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<Item*>;
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
     [[nodiscard]] auto GetAllInnerItems() -> const vector<Item*>&;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
 
-    auto AddItemToContainer(Item* item, ContainerItemStack stack_id) -> Item*;
+    auto AddItemToContainer(Item* item, const any_t& stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);
     void SetItemToContainer(Item* item);
     void EvaluateSortValue(const vector<Item*>& items);
