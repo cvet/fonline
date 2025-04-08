@@ -570,7 +570,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
         auto font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
         font_tex->UpdateTextureRegion({}, {width, height}, reinterpret_cast<const ucolor*>(pixels));
-        io.Fonts->TexID = font_tex.get();
+        io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_tex.get());
         FontTex = std::move(font_tex);
 
         // Default effect
@@ -1046,7 +1046,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, reinterpret_cast<const RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
             }
