@@ -8,7 +8,7 @@ on:
 
 jobs:
   check-formatting:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - uses: DoozyX/clang-format-lint-action@v0.18
@@ -17,13 +17,13 @@ jobs:
         extensions: 'h,cpp,fos'
         clangFormatVersion: 18
   unit-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - run: BuildTools/prepare-workspace.sh packages linux
@@ -51,7 +51,7 @@ jobs:
     - uses: actions/checkout@v4
     - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:

@@ -44,7 +44,7 @@ FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
     extern void Single_RegisterData(FOEngineBase*);
     Single_RegisterData(this);
 
-    ScriptSys = new SingleScriptSystem(this);
+    ScriptSys = SafeAlloc::MakeUnique<SingleScriptSystem>(this);
     ScriptSys->InitSubsystems();
 }
 
