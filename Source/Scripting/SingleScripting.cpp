@@ -33,7 +33,7 @@
 
 #include "SingleScripting.h"
 
-#if !FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
 
 SingleScriptSystem::SingleScriptSystem(FOSingle* engine) :
     _engine {engine}
