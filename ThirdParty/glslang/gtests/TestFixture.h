@@ -262,6 +262,14 @@ public:
             shader.setAutoMapLocations(true);
             shader.setAutoMapBindings(true);
         }
+
+        if (enableDebug) {
+            shader.setDebugInfo(true);
+        }
+        if (enableNonSemanticShaderDebugInfo) {
+            assert(enableDebug && "Debug must be on for non-semantic debug info");
+        }
+
         shader.setTextureSamplerTransformMode(texSampTransMode);
 #ifdef ENABLE_HLSL
         shader.setFlattenUniformArrays(flattenUniformArrays);
@@ -324,7 +332,6 @@ public:
         }
 
         std::ostringstream disassembly_stream;
-        spv::Parameterize();
         spv::Disassemble(disassembly_stream, spirv_binary);
         bool validation_result = !options().validate || logger.getAllMessages().empty();
         return {{
@@ -384,7 +391,6 @@ public:
                                   spirv_binary, &logger, &options());
 
             std::ostringstream disassembly_stream;
-            spv::Parameterize();
             spv::Disassemble(disassembly_stream, spirv_binary);
             bool validation_result = !options().validate || logger.getAllMessages().empty();
             return {{{shaderName, shader.getInfoLog(), shader.getInfoDebugLog()},},
@@ -429,7 +435,6 @@ public:
             spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, whiteListStrings, remapOptions);
 
             std::ostringstream disassembly_stream;
-            spv::Parameterize();
             spv::Disassemble(disassembly_stream, spirv_binary);
             bool validation_result = !options().validate || logger.getAllMessages().empty();
             return {{{shaderName, shader.getInfoLog(), shader.getInfoDebugLog()},},
@@ -453,7 +458,6 @@ public:
             spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, whiteListStrings, remapOptions);
 
             std::ostringstream disassembly_stream;
-            spv::Parameterize();
             spv::Disassemble(disassembly_stream, spirv_binary);
 
             return {{{shaderName, "", ""},},
@@ -691,8 +695,8 @@ public:
         std::string ppShader;
         glslang::TShader::ForbidIncluder includer;
         const bool success = shader.preprocess(
-            GetDefaultResources(), defaultVersion, defaultProfile,
-            forceVersionProfile, isForwardCompatible, (EShMessages)(EShMsgOnlyPreprocessor | EShMsgCascadingErrors),
+            GetDefaultResources(), defaultVersion, defaultProfile, forceVersionProfile, isForwardCompatible,
+            (EShMessages)(EShMsgOnlyPreprocessor | EShMsgCascadingErrors),
             &ppShader, includer);
 
         std::string log = shader.getInfoLog();
