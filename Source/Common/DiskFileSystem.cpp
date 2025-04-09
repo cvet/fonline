@@ -47,7 +47,8 @@
 #include <unistd.h>
 #endif
 #if FO_ANDROID
-#include "SDL.h"
+#include "SDL3/SDL_filesystem.h"
+#include "SDL3/SDL_iostream.h"
 #endif
 
 #if FO_WINDOWS && FO_UWP
@@ -255,37 +256,38 @@ auto DiskFile::GetSize() const -> size_t
     return li.LowPart;
 }
 
-#elif FO_ANDROID
+#elif FO_ANDROID || 1
 
 struct DiskFile::Impl
 {
-    SDL_RWops* Ops {};
+    SDL_IOStream* Ops {};
     bool WriteThrough {};
+    string FileName {};
 };
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
     STACK_TRACE_ENTRY();
 
-    SDL_RWops* ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
+    auto fname_str = string(fname);
+    SDL_IOStream* ops = SDL_IOFromFile(fname_str.c_str(), write ? "wb" : "rb");
 
-    if (!ops) {
+    if (ops == nullptr) {
         if (write) {
             DiskFileSystem::MakeDirTree(strex(fname).extractDir());
         }
 
-        ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
+        ops = SDL_IOFromFile(fname_str.c_str(), write ? "wb" : "rb");
     }
 
-    if (!ops) {
+    if (ops == nullptr) {
         return;
     }
-
-    RUNTIME_ASSERT(ops->type == SDL_RWOPS_STDFILE);
 
     _impl = SafeAlloc::MakeUnique<Impl>();
     _impl->Ops = ops;
     _impl->WriteThrough = write_through;
+    _impl->FileName = std::move(fname_str);
     _openedForWriting = write;
 }
 
@@ -294,7 +296,7 @@ DiskFile::~DiskFile()
     STACK_TRACE_ENTRY();
 
     if (_impl) {
-        SDL_RWclose(_impl->Ops);
+        SDL_CloseIO(_impl->Ops);
     }
 }
 
@@ -318,7 +320,7 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
         return true;
     }
 
-    return SDL_RWread(_impl->Ops, buf, sizeof(char), len) == len;
+    return SDL_ReadIO(_impl->Ops, buf, len) == len;
 }
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
@@ -332,10 +334,10 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
         return true;
     }
 
-    const bool result = SDL_RWwrite(_impl->Ops, buf, len, 1) == 1;
+    const bool result = SDL_WriteIO(_impl->Ops, buf, len) == len;
 
     if (result && _impl->WriteThrough) {
-        ::fflush(_impl->Ops->hidden.stdio.fp);
+        SDL_FlushIO(_impl->Ops);
     }
 
     return result;
@@ -348,14 +350,14 @@ auto DiskFile::Clear() -> bool
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
 
-    if (SDL_RWseek(_impl->Ops, 0, RW_SEEK_SET) != 0) {
-        return false;
-    }
+    SDL_CloseIO(_impl->Ops);
+    _impl->Ops = SDL_IOFromFile(_impl->FileName.c_str(), "w");
+    RUNTIME_ASSERT(_impl->Ops);
+    SDL_CloseIO(_impl->Ops);
+    _impl->Ops = SDL_IOFromFile(_impl->FileName.c_str(), "wb");
+    RUNTIME_ASSERT(_impl->Ops);
 
-    const int fd = ::fileno(_impl->Ops->hidden.stdio.fp);
-    RUNTIME_ASSERT(fd != -1);
-
-    return ::ftruncate(fd, 0) == 0;
+    return true;
 }
 
 auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
@@ -365,7 +367,21 @@ auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return SDL_RWseek(_impl->Ops, offset, static_cast<int>(origin)) != -1;
+    SDL_IOWhence sdl_origin = SDL_IO_SEEK_SET;
+
+    switch (origin) {
+    case DiskFileSeek::Set:
+        sdl_origin = SDL_IO_SEEK_SET;
+        break;
+    case DiskFileSeek::Cur:
+        sdl_origin = SDL_IO_SEEK_CUR;
+        break;
+    case DiskFileSeek::End:
+        sdl_origin = SDL_IO_SEEK_END;
+        break;
+    }
+
+    return SDL_SeekIO(_impl->Ops, offset, sdl_origin) != -1;
 }
 
 auto DiskFile::GetReadPos() const -> size_t
@@ -375,7 +391,7 @@ auto DiskFile::GetReadPos() const -> size_t
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    const auto result = SDL_RWtell(_impl->Ops);
+    const auto result = SDL_TellIO(_impl->Ops);
     RUNTIME_ASSERT(result != -1);
 
     return static_cast<size_t>(result);
@@ -387,21 +403,18 @@ auto DiskFile::GetWriteTime() const -> uint64
 
     RUNTIME_ASSERT(_impl);
 
-    const int fd = ::fileno(_impl->Ops->hidden.stdio.fp);
-    RUNTIME_ASSERT(fd != -1);
+    SDL_PathInfo path_info;
+    const auto r = SDL_GetPathInfo(_impl->FileName.c_str(), &path_info);
+    RUNTIME_ASSERT(r);
 
-    struct stat st;
-    const int st_result = ::fstat(fd, &st);
-    RUNTIME_ASSERT(st_result != -1);
-
-    return static_cast<uint64>(st.st_mtime);
+    return static_cast<uint64>(path_info.modify_time);
 }
 
 auto DiskFile::GetSize() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    const Sint64 size = SDL_RWsize(_impl->Ops);
+    const Sint64 size = SDL_GetIOSize(_impl->Ops);
 
     return size == -1 ? 0 : static_cast<size_t>(size);
 }
