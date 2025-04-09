@@ -87,8 +87,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     _streamingPortion = 0x10000; // 64kb
 #endif
 
-    _outputBuf.resize(App->Audio.GetStreamSize());
-    App->Audio.SetSource([this](uint8* output) { ProcessSounds(output); });
+    App->Audio.SetSource([this](uint8 silence, span<uint8> output) { ProcessSounds(silence, output); });
     _isActive = true;
 }
 
@@ -105,16 +104,20 @@ SoundManager::~SoundManager()
     }
 }
 
-void SoundManager::ProcessSounds(uint8* output)
+void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 {
     STACK_TRACE_ENTRY();
+
+    if (output.size() > _outputBuf.size()) {
+        _outputBuf.resize(output.size());
+    }
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
         auto& sound = *it;
 
-        if (ProcessSound(sound.get(), _outputBuf.data())) {
+        if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output, _outputBuf.data(), static_cast<int>(volume));
+            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), static_cast<int>(volume));
             ++it;
         }
         else {
@@ -123,41 +126,40 @@ void SoundManager::ProcessSounds(uint8* output)
     }
 }
 
-auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
+auto SoundManager::ProcessSound(Sound* sound, uint8 silence, span<uint8> output) -> bool
 {
     STACK_TRACE_ENTRY();
 
     // Playing
-    const auto whole = _outputBuf.size();
     if (sound->ConvertedBufCur < sound->ConvertedBuf.size()) {
-        if (whole > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
+        if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            MemCopy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], offset);
+            MemCopy(output.data(), &sound->ConvertedBuf[sound->ConvertedBufCur], offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
-            while (offset < whole && sound->OggStream && StreamOgg(sound)) {
+            while (offset < output.size() && sound->OggStream && StreamOgg(sound)) {
                 auto write = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
 
-                if (offset + write > whole) {
-                    write = whole - offset;
+                if (offset + write > output.size()) {
+                    write = output.size() - offset;
                 }
 
-                MemCopy(output + offset, &sound->ConvertedBuf[sound->ConvertedBufCur], write);
+                MemCopy(output.data() + offset, &sound->ConvertedBuf[sound->ConvertedBufCur], write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
 
             // Cut off end
-            if (offset < whole) {
-                MemFill(output + offset, App->Audio.GetSilence(), whole - offset);
+            if (offset < output.size()) {
+                MemFill(output.data() + offset, silence, output.size() - offset);
             }
         }
         else {
             // Copy
-            MemCopy(output, &sound->ConvertedBuf[sound->ConvertedBufCur], whole);
-            sound->ConvertedBufCur += whole;
+            MemCopy(output.data(), &sound->ConvertedBuf[sound->ConvertedBufCur], output.size());
+            sound->ConvertedBufCur += output.size();
         }
 
         if (sound->OggStream && sound->ConvertedBufCur == sound->ConvertedBuf.size()) {
@@ -186,16 +188,16 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
             sound->NextPlayTime = time_point {};
 
             // Process without silent
-            return ProcessSound(sound, output);
+            return ProcessSound(sound, silence, output);
         }
 
         // Give silent
-        MemFill(output, App->Audio.GetSilence(), whole);
+        MemFill(output.data(), silence, output.size());
         return true;
     }
 
     // Give silent
-    MemFill(output, App->Audio.GetSilence(), whole);
+    MemFill(output.data(), silence, output.size());
 
     return false;
 }

@@ -61,8 +61,8 @@ private:
     auto LoadWav(Sound* sound, string_view fname) -> bool;
     auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
     auto LoadOgg(Sound* sound, string_view fname) -> bool;
-    void ProcessSounds(uint8* output);
-    auto ProcessSound(Sound* sound, uint8* output) -> bool;
+    void ProcessSounds(uint8 silence, span<uint8> output);
+    auto ProcessSound(Sound* sound, uint8 silence, span<uint8> output) -> bool;
     auto StreamOgg(Sound* sound) -> bool;
     auto ConvertData(Sound* sound) -> bool;
 

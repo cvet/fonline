@@ -41,11 +41,10 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
-#include "SDL.h"
-#include "SDL_audio.h"
-#include "SDL_events.h"
-#include "SDL_syswm.h"
-#include "SDL_video.h"
+#include "SDL3/SDL.h"
+#include "SDL3/SDL_audio.h"
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_video.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -66,7 +65,7 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-static ImGuiKey KeycodeToImGuiKey(int keycode);
+static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 
 // Todo: move all these statics to App class fields
 static unique_ptr<Renderer> ActiveRenderer {};
@@ -76,9 +75,10 @@ static RenderTexture* RenderTargetTex {};
 static unique_ptr<vector<InputEvent>> EventsQueue {};
 static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
 
-static SDL_AudioDeviceID AudioDeviceId {};
+static SDL_AudioStream* AudioStream {};
 static SDL_AudioSpec AudioSpec {};
 static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
+static unique_ptr<vector<uint8>> AudioStreamBuf {};
 
 static unique_ptr<RenderTexture> FontTex {};
 
@@ -88,8 +88,8 @@ static int MaxBones {};
 const int& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
 const int& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
 const int& AppRender::MAX_BONES {MaxBones};
-const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
-const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
+const int AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
+const int AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
@@ -211,19 +211,15 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
     if (Settings.NullRenderer) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
-        SDL_SetHint(SDL_HINT_VIDEODRIVER, "dummy");
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
     }
 
     if constexpr (FO_ANDROID) {
         SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
     }
 
-    if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0) {
-        throw AppInitException("SDL_InitSubSystem SDL_INIT_TIMER failed", SDL_GetError());
-    }
-
     // Initialize input events
-    if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
+    if (!SDL_InitSubSystem(SDL_INIT_EVENTS)) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
@@ -342,42 +338,56 @@ Application::Application(int argc, char** argv, bool client_mode) :
         {SDL_BUTTON_LEFT, MouseButton::Left},
         {SDL_BUTTON_RIGHT, MouseButton::Right},
         {SDL_BUTTON_MIDDLE, MouseButton::Middle},
-        {SDL_BUTTON(4), MouseButton::Ext0},
-        {SDL_BUTTON(5), MouseButton::Ext1},
-        {SDL_BUTTON(6), MouseButton::Ext2},
-        {SDL_BUTTON(7), MouseButton::Ext3},
-        {SDL_BUTTON(8), MouseButton::Ext4},
+        {SDL_BUTTON_MASK(4), MouseButton::Ext0},
+        {SDL_BUTTON_MASK(5), MouseButton::Ext1},
+        {SDL_BUTTON_MASK(6), MouseButton::Ext2},
+        {SDL_BUTTON_MASK(7), MouseButton::Ext3},
+        {SDL_BUTTON_MASK(8), MouseButton::Ext4},
     });
 
     // Initialize audio
     if (!Settings.DisableAudio) {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
-            AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+            const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
+                UNUSED_VARIABLE(userdata);
+                UNUSED_VARIABLE(total_amount);
 
-            SDL_AudioSpec desired = {};
-#if FO_WEB
-            desired.format = AUDIO_F32;
-            desired.freq = 48000;
-            desired.channels = 2;
-#else
-            desired.format = AUDIO_S16;
-            desired.freq = 44100;
-#endif
-            desired.callback = [](void*, Uint8* stream, int) {
-                MemFill(stream, AudioSpec.silence, AudioSpec.size);
+                if (additional_amount > 0) {
+                    if (static_cast<size_t>(additional_amount) > AudioStreamBuf->size()) {
+                        AudioStreamBuf->resize(static_cast<size_t>(additional_amount) * 2);
+                    }
 
-                if (*AudioStreamWriter) {
-                    (*AudioStreamWriter)(stream);
+                    const auto silence = static_cast<uint8>(SDL_GetSilenceValueForFormat(AudioSpec.format));
+
+                    MemFill(AudioStreamBuf->data(), silence, additional_amount);
+
+                    if (*AudioStreamWriter) {
+                        (*AudioStreamWriter)(silence, {AudioStreamBuf->data(), static_cast<size_t>(additional_amount)});
+                    }
+
+                    SDL_PutAudioStreamData(stream, AudioStreamBuf->data(), additional_amount);
                 }
             };
 
-            AudioDeviceId = SDL_OpenAudioDevice(nullptr, 0, &desired, &AudioSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+            auto* audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, nullptr);
 
-            if (AudioDeviceId >= 2) {
-                SDL_PauseAudioDevice(AudioDeviceId, 0);
+            if (audio_stream != nullptr) {
+                if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream), &AudioSpec, nullptr)) {
+                    if (SDL_ResumeAudioStreamDevice(audio_stream)) {
+                        AudioStream = audio_stream;
+                        AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
+                        AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
+                    }
+                    else {
+                        WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
+                    }
+                }
+                else {
+                    WriteLog("SDL get audio device format failed, error {}", SDL_GetError());
+                }
             }
             else {
-                WriteLog("SDL open audio device failed, error {}", SDL_GetError());
+                WriteLog("SDL open audio device stream failed, error {}", SDL_GetError());
             }
         }
         else {
@@ -453,29 +463,23 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
     // Initialize video system
     if (ActiveRendererType != RenderType::Null) {
-        if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+        if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
-
-        SDL_DisplayMode display_mode;
-        if (const auto r = SDL_GetCurrentDisplayMode(0, &display_mode); r != 0) {
-            throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
-        }
-
-        const_cast<int&>(Settings.MonitorWidth) = display_mode.w;
-        const_cast<int&>(Settings.MonitorHeight) = display_mode.h;
 
         if (Settings.ClientMode) {
             SDL_DisableScreenSaver();
         }
 
         if (Settings.ClientMode && Settings.HideNativeCursor) {
-            SDL_ShowCursor(SDL_DISABLE);
+            SDL_HideCursor();
         }
 
         if (_isTablet) {
-            Settings.ScreenWidth = std::max(display_mode.w, display_mode.h);
-            Settings.ScreenHeight = std::min(display_mode.w, display_mode.h);
+            const auto display_id = SDL_GetPrimaryDisplay();
+            const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display_id);
+            Settings.ScreenWidth = std::max(display_mode->w, display_mode->h);
+            Settings.ScreenHeight = std::min(display_mode->w, display_mode->h);
 
             const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
@@ -550,11 +554,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
 
 #if FO_WINDOWS
         if (ActiveRendererType != RenderType::Null) {
-            SDL_SysWMinfo info;
-            SDL_VERSION(&info.version);
-            if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(MainWindow._windowHandle), &info) != 0) {
-                ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<void*>(info.info.win.window);
-            }
+            const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle));
+            ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
         }
 #endif
 
@@ -616,7 +617,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 {
     STACK_TRACE_ENTRY();
 
-    SDL_iPhoneSetAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
+    SDL_SetiOSAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
 #endif
 
@@ -649,16 +650,18 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
     }
 
     // Initialize window
-    Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+    SDL_PropertiesID props = SDL_CreateProperties();
+
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, 1);
 
     if (!Settings.ClientMode || Settings.WindowResizable) {
-        window_create_flags |= SDL_WINDOW_RESIZABLE;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, 1);
     }
 
 #if FO_HAVE_OPENGL
     if (ActiveRendererType == RenderType::OpenGL) {
 #if !FO_WEB
-        window_create_flags |= SDL_WINDOW_OPENGL;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, 1);
 #endif
 
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -682,34 +685,48 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 
 #if FO_HAVE_METAL
     if (ActiveRendererType == RenderType::Metal) {
-        window_create_flags |= SDL_WINDOW_METAL;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN, 1);
     }
 #endif
 
 #if FO_HAVE_VULKAN
     if (ActiveRendererType == RenderType::Vulkan) {
-        window_create_flags |= SDL_WINDOW_VULKAN;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, 1);
     }
 #endif
 
-    if (Settings.Fullscreen) {
-        window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-    }
-
     if (_isTablet) {
-        window_create_flags |= SDL_WINDOW_FULLSCREEN;
-        window_create_flags |= SDL_WINDOW_BORDERLESS;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, 1);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, 1);
     }
 
-    int win_pos = SDL_WINDOWPOS_UNDEFINED;
     if (Settings.WindowCentered) {
-        win_pos = SDL_WINDOWPOS_CENTERED;
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_CENTERED);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
     }
 
-    auto* sdl_window = SDL_CreateWindow(FO_GAME_NAME, win_pos, win_pos, size.width, size.height, window_create_flags);
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, FO_GAME_NAME);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
+
+    auto* sdl_window = SDL_CreateWindowWithProperties(props);
+
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
+
+    if (!_isTablet) {
+        SDL_SetWindowFullscreenMode(sdl_window, nullptr);
+
+        if (Settings.Fullscreen) {
+            SDL_SetWindowFullscreen(sdl_window, true);
+        }
+    }
+
+    const auto display_id = SDL_GetDisplayForWindow(sdl_window);
+    const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display_id);
+    const_cast<int&>(Settings.MonitorWidth) = display_mode->w;
+    const_cast<int&>(Settings.MonitorHeight) = display_mode->h;
 
     return sdl_window;
 }
@@ -731,26 +748,27 @@ void Application::BeginFrame()
     SDL_PumpEvents();
 
     SDL_Event sdl_event;
-    while (SDL_PollEvent(&sdl_event) != 0) {
+
+    while (SDL_PollEvent(&sdl_event)) {
         switch (sdl_event.type) {
-        case SDL_MOUSEMOTION: {
+        case SDL_EVENT_MOUSE_MOTION: {
             InputEvent::MouseMoveEvent ev;
-            const auto screen_pos = WindowPosToScreenPos({sdl_event.motion.x, sdl_event.motion.y});
+            const auto screen_pos = WindowPosToScreenPos({iround(sdl_event.motion.x), iround(sdl_event.motion.y)});
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
             const auto x_ratio = static_cast<float>(App->Settings.ScreenWidth) / static_cast<float>(vp.Width());
             const auto y_ratio = static_cast<float>(App->Settings.ScreenHeight) / static_cast<float>(vp.Height());
-            ev.DeltaX = iround(static_cast<float>(sdl_event.motion.xrel) * x_ratio);
-            ev.DeltaY = iround(static_cast<float>(sdl_event.motion.yrel) * y_ratio);
+            ev.DeltaX = iround(sdl_event.motion.xrel * x_ratio);
+            ev.DeltaY = iround(sdl_event.motion.yrel * y_ratio);
             EventsQueue->emplace_back(ev);
 
             io.AddMousePosEvent(static_cast<float>(ev.MouseX), static_cast<float>(ev.MouseY));
         } break;
-        case SDL_MOUSEBUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             [[fallthrough]];
-        case SDL_MOUSEBUTTONDOWN: {
-            if (sdl_event.type == SDL_MOUSEBUTTONDOWN) {
+        case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+            if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 InputEvent::MouseDownEvent ev;
                 ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
                 EventsQueue->emplace_back(ev);
@@ -762,6 +780,7 @@ void Application::BeginFrame()
             }
 
             int mouse_button = -1;
+
             if (sdl_event.button.button == SDL_BUTTON_LEFT) {
                 mouse_button = 0;
             }
@@ -777,35 +796,36 @@ void Application::BeginFrame()
             else if (sdl_event.button.button == SDL_BUTTON_X2) {
                 mouse_button = 4;
             }
+
             if (mouse_button != -1) {
-                io.AddMouseButtonEvent(mouse_button, (sdl_event.type == SDL_MOUSEBUTTONDOWN));
-                _mouseButtonsDown = (sdl_event.type == SDL_MOUSEBUTTONDOWN) ? (_mouseButtonsDown | (1 << mouse_button)) : (_mouseButtonsDown & ~(1 << mouse_button));
+                io.AddMouseButtonEvent(mouse_button, (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN));
+                _mouseButtonsDown = sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? (_mouseButtonsDown | (1 << mouse_button)) : (_mouseButtonsDown & ~(1 << mouse_button));
             }
         } break;
-        case SDL_FINGERMOTION: {
+        case SDL_EVENT_FINGER_MOTION: {
             throw InvalidCallException("SDL_FINGERMOTION");
         }
-        case SDL_FINGERDOWN: {
+        case SDL_EVENT_FINGER_DOWN: {
             throw InvalidCallException("SDL_FINGERDOWN");
         }
-        case SDL_FINGERUP: {
+        case SDL_EVENT_FINGER_UP: {
             throw InvalidCallException("SDL_FINGERUP");
         }
-        case SDL_MOUSEWHEEL: {
+        case SDL_EVENT_MOUSE_WHEEL: {
             InputEvent::MouseWheelEvent ev;
-            ev.Delta = sdl_event.wheel.y;
+            ev.Delta = iround(sdl_event.wheel.y);
             EventsQueue->emplace_back(ev);
 
             float wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
             float wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
-        case SDL_KEYUP:
+        case SDL_EVENT_KEY_UP:
             [[fallthrough]];
-        case SDL_KEYDOWN: {
-            if (sdl_event.type == SDL_KEYDOWN) {
+        case SDL_EVENT_KEY_DOWN: {
+            if (sdl_event.type == SDL_EVENT_KEY_DOWN) {
                 InputEvent::KeyDownEvent ev;
-                ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
+                ev.Code = (*KeysMap)[sdl_event.key.scancode];
                 EventsQueue->emplace_back(ev);
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
@@ -814,21 +834,21 @@ void Application::BeginFrame()
             }
             else {
                 InputEvent::KeyUpEvent ev;
-                ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
+                ev.Code = (*KeysMap)[sdl_event.key.scancode];
                 EventsQueue->emplace_back(ev);
             }
 
-            const auto sdl_key_mods = static_cast<SDL_Keymod>(sdl_event.key.keysym.mod);
-            io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & KMOD_CTRL) != 0);
-            io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & KMOD_SHIFT) != 0);
-            io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & KMOD_ALT) != 0);
-            io.AddKeyEvent(ImGuiMod_Super, (sdl_key_mods & KMOD_GUI) != 0);
+            const auto sdl_key_mods = static_cast<SDL_Keymod>(sdl_event.key.mod);
+            io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & SDL_KMOD_CTRL) != 0);
+            io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & SDL_KMOD_SHIFT) != 0);
+            io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & SDL_KMOD_ALT) != 0);
+            io.AddKeyEvent(ImGuiMod_Super, (sdl_key_mods & SDL_KMOD_GUI) != 0);
 
-            ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.keysym.sym);
-            io.AddKeyEvent(key, sdl_event.type == SDL_KEYDOWN);
-            io.SetKeyEventNativeData(key, sdl_event.key.keysym.sym, sdl_event.key.keysym.scancode, sdl_event.key.keysym.scancode);
+            ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.key);
+            io.AddKeyEvent(key, sdl_event.type == SDL_EVENT_KEY_DOWN);
+            io.SetKeyEventNativeData(key, static_cast<int>(sdl_event.key.key), sdl_event.key.scancode, sdl_event.key.scancode);
         } break;
-        case SDL_TEXTINPUT: {
+        case SDL_EVENT_TEXT_INPUT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.text.text;
@@ -839,90 +859,92 @@ void Application::BeginFrame()
 
             io.AddInputCharactersUTF8(sdl_event.text.text);
         } break;
-        case SDL_DROPTEXT: {
+        case SDL_EVENT_DROP_TEXT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
-            ev1.Text = sdl_event.drop.file;
+            ev1.Text = sdl_event.drop.data;
             EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
             EventsQueue->emplace_back(ev2);
-            SDL_free(sdl_event.drop.file);
         } break;
-        case SDL_DROPFILE: {
-            if (auto file = DiskFileSystem::OpenFile(sdl_event.drop.file, false)) {
+        case SDL_EVENT_DROP_FILE: {
+            if (auto file = DiskFileSystem::OpenFile(sdl_event.drop.data, false)) {
                 auto stripped = false;
                 auto size = file.GetSize();
+
                 if (size > AppInput::DROP_FILE_STRIP_LENGHT) {
                     stripped = true;
                     size = AppInput::DROP_FILE_STRIP_LENGHT;
                 }
 
                 char buf[AppInput::DROP_FILE_STRIP_LENGHT + 1];
+
                 if (file.Read(buf, size)) {
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
-                    ev1.Text = strex("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
+                    ev1.Text = strex("{}\n{}{}", sdl_event.drop.data, buf, stripped ? "..." : "");
                     EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
                     EventsQueue->emplace_back(ev2);
                 }
             }
-            SDL_free(sdl_event.drop.file);
         } break;
-        case SDL_TEXTEDITING_EXT: {
-            SDL_free(sdl_event.editExt.text);
+        case SDL_EVENT_TEXT_EDITING: {
         } break;
-        case SDL_APP_DIDENTERFOREGROUND: {
+        case SDL_EVENT_DID_ENTER_FOREGROUND: {
             _onPauseDispatcher();
         } break;
-        case SDL_APP_DIDENTERBACKGROUND: {
+        case SDL_EVENT_DID_ENTER_BACKGROUND: {
             _onResumeDispatcher();
         } break;
-        case SDL_APP_LOWMEMORY: {
+        case SDL_EVENT_LOW_MEMORY: {
             _onLowMemoryDispatcher();
         } break;
-        case SDL_WINDOWEVENT: {
-            RUNTIME_ASSERT(ActiveRendererType != RenderType::Null);
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
+            RequestQuit();
+        } break;
+        case SDL_EVENT_WINDOW_MOUSE_ENTER: {
+            _pendingMouseLeaveFrame = 0;
+        } break;
+        case SDL_EVENT_WINDOW_MOUSE_LEAVE: {
+            _pendingMouseLeaveFrame = ImGui::GetFrameCount() + 1;
+        } break;
+        case SDL_EVENT_WINDOW_FOCUS_GAINED: {
+            io.AddFocusEvent(true);
+        } break;
+        case SDL_EVENT_WINDOW_FOCUS_LOST: {
+            io.AddFocusEvent(false);
+        } break;
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
+            auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
+            RUNTIME_ASSERT(resized_window);
 
-            Uint8 window_event = sdl_event.window.event;
-            if (window_event == SDL_WINDOWEVENT_CLOSE) {
-                RequestQuit();
-            }
-            else if (window_event == SDL_WINDOWEVENT_ENTER) {
-                _pendingMouseLeaveFrame = 0;
-            }
-            else if (window_event == SDL_WINDOWEVENT_LEAVE) {
-                _pendingMouseLeaveFrame = ImGui::GetFrameCount() + 1;
-            }
-            else if (window_event == SDL_WINDOWEVENT_FOCUS_GAINED) {
-                io.AddFocusEvent(true);
-            }
-            else if (window_event == SDL_WINDOWEVENT_FOCUS_LOST) {
-                io.AddFocusEvent(false);
-            }
-            else if (window_event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-                auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
-                RUNTIME_ASSERT(resized_window);
+            int width = 0;
+            int height = 0;
+            SDL_GetWindowSizeInPixels(resized_window, &width, &height);
+            ActiveRenderer->OnResizeWindow({width, height});
 
-                int width = 0;
-                int height = 0;
-                SDL_GetWindowSizeInPixels(resized_window, &width, &height);
-                ActiveRenderer->OnResizeWindow({width, height});
-
-                for (auto* window : copy(_allWindows)) {
-                    if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
-                        window->_onWindowSizeChangedDispatcher();
-                    }
+            for (auto* window : copy(_allWindows)) {
+                if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
+                    window->_onWindowSizeChangedDispatcher();
                 }
             }
         } break;
-        case SDL_QUIT: {
+        case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED: {
+            auto* window = SDL_GetWindowFromID(sdl_event.window.windowID);
+            const auto display_id = SDL_GetDisplayForWindow(window);
+            const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display_id);
+            const_cast<int&>(Settings.MonitorWidth) = display_mode->w;
+            const_cast<int&>(Settings.MonitorHeight) = display_mode->h;
+        } break;
+        case SDL_EVENT_QUIT: {
             RequestQuit();
         } break;
-        case SDL_APP_TERMINATING: {
+        case SDL_EVENT_TERMINATING: {
             _onQuitDispatcher();
 
 #if FO_WINDOWS && FO_DEBUG
@@ -955,28 +977,29 @@ void Application::BeginFrame()
             _pendingMouseLeaveFrame = 0;
         }
 
-        SDL_SetWindowGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed ? SDL_TRUE : SDL_FALSE);
+        SDL_SetWindowMouseGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed);
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
         const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
 #else
         const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
+
         if (is_app_focused) {
             if (io.WantSetMousePos) {
                 Input.SetMousePosition({iround(io.MousePos.x), iround(io.MousePos.y)}, &MainWindow);
             }
 
             if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
-                int mouse_x_global;
-                int mouse_y_global;
+                float mouse_x_global;
+                float mouse_y_global;
                 SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
 
                 int window_x;
                 int window_y;
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
 
-                const auto screen_pos = WindowPosToScreenPos({mouse_x_global - window_x, mouse_y_global - window_y});
+                const auto screen_pos = WindowPosToScreenPos({iround(mouse_x_global) - window_x, iround(mouse_y_global) - window_y});
                 io.AddMousePosEvent(static_cast<float>(screen_pos.x), static_cast<float>(screen_pos.y));
             }
         }
@@ -1181,7 +1204,7 @@ auto AppWindow::IsFullscreen() const -> bool
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
     return false;
@@ -1199,13 +1222,13 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
     const auto is_fullscreen = IsFullscreen();
     if (!is_fullscreen && enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), true)) {
             RUNTIME_ASSERT(IsFullscreen());
             return true;
         }
     }
     else if (is_fullscreen && !enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), 0) == 0) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), false)) {
             RUNTIME_ASSERT(!IsFullscreen());
             return true;
         }
@@ -1224,13 +1247,7 @@ void AppWindow::Blink()
         return;
     }
 
-#if FO_WINDOWS && !FO_UWP
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version)
-    if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(_windowHandle), &info) != 0) {
-        ::FlashWindow(info.info.win.window, 1);
-    }
-#endif
+    SDL_FlashWindow(static_cast<SDL_Window*>(_windowHandle), SDL_FLASH_UNTIL_FOCUSED);
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
@@ -1243,13 +1260,7 @@ void AppWindow::AlwaysOnTop(bool enable)
         return;
     }
 
-#if FO_WINDOWS && !FO_UWP
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version)
-    if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(_windowHandle), &info) != 0) {
-        ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-    }
-#endif
+    SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(_windowHandle), enable);
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -1368,14 +1379,14 @@ auto AppInput::GetMousePosition() const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    int x = 100;
-    int y = 100;
+    float x = 100;
+    float y = 100;
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
 
-    return WindowPosToScreenPos({x, y});
+    return WindowPosToScreenPos({iround(x), iround(y)});
 }
 
 void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
@@ -1387,18 +1398,18 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MousePos = pos;
 
-        SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+        SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
 
         if (relative_to != nullptr) {
             pos = ScreenPosToWindowPos(pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), pos.x, pos.y);
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), static_cast<float>(pos.x), static_cast<float>(pos.y));
         }
         else {
-            SDL_WarpMouseGlobal(pos.x, pos.y);
+            SDL_WarpMouseGlobal(static_cast<float>(pos.x), static_cast<float>(pos.y));
         }
 
-        SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
+        SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
     }
 }
 
@@ -1460,25 +1471,7 @@ auto AppAudio::IsEnabled() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return AudioDeviceId >= 2;
-}
-
-auto AppAudio::GetStreamSize() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(IsEnabled());
-
-    return AudioSpec.size;
-}
-
-auto AppAudio::GetSilence() const -> uint8
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(IsEnabled());
-
-    return AudioSpec.silence;
+    return AudioStream != nullptr;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
@@ -1492,61 +1485,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
-struct AppAudio::AudioConverter
-{
-    int Format {};
-    int Channels {};
-    int Rate {};
-    SDL_AudioCVT Cvt {};
-    bool NeedConvert {};
-};
-
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(IsEnabled());
-
-    auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
-        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](const shared_ptr<AudioConverter>& c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
-
-        if (it == _converters.end()) {
-            SDL_AudioCVT cvt;
-            const auto r = SDL_BuildAudioCVT(&cvt, static_cast<SDL_AudioFormat>(format), static_cast<Uint8>(channels), rate, AudioSpec.format, AudioSpec.channels, AudioSpec.freq);
-
-            if (r == -1) {
-                return nullptr;
-            }
-
-            _converters.emplace_back(SafeAlloc::MakeUnique<AudioConverter>(AudioConverter {format, channels, rate, cvt, r == 1}));
-            return _converters.back().get();
-        }
-
-        return it->get();
-    };
-
-    auto* converter = get_converter();
-
-    if (converter == nullptr) {
-        return false;
-    }
-
-    if (converter->NeedConvert) {
-        converter->Cvt.len = static_cast<int>(buf.size());
-        buf.resize(static_cast<size_t>(converter->Cvt.len) * converter->Cvt.len_mult);
-        converter->Cvt.buf = buf.data();
-
-        if (SDL_ConvertAudio(&converter->Cvt) != 0) {
-            return false;
-        }
-
-        buf.resize(converter->Cvt.len_cvt);
-    }
-
-    return true;
-}
-
-void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 
@@ -1554,8 +1493,36 @@ void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 
     RUNTIME_ASSERT(IsEnabled());
 
-    volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
-    SDL_MixAudioFormat(output, buf, AudioSpec.format, AudioSpec.size, volume);
+    SDL_AudioSpec spec;
+    spec.format = static_cast<SDL_AudioFormat>(format);
+    spec.channels = static_cast<Uint8>(channels);
+    spec.freq = rate;
+
+    if (spec.format != AudioSpec.format || spec.channels != AudioSpec.channels || spec.freq != rate) {
+        uint8* dst_data;
+        int dst_len;
+
+        if (!SDL_ConvertAudioSamples(&spec, buf.data(), static_cast<int>(buf.size()), &AudioSpec, &dst_data, &dst_len)) {
+            return false;
+        }
+
+        buf.resize(static_cast<size_t>(dst_len));
+        MemCopy(buf.data(), dst_data, buf.size());
+    }
+
+    return true;
+}
+
+void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(IsEnabled());
+
+    const float vlume_01 = static_cast<float>(std::clamp(volume, 0, 100)) / 100.0f;
+    SDL_MixAudio(output, buf, AudioSpec.format, static_cast<Uint32>(len), vlume_01);
 }
 
 void AppAudio::LockDevice()
@@ -1566,7 +1533,7 @@ void AppAudio::LockDevice()
 
     RUNTIME_ASSERT(IsEnabled());
 
-    SDL_LockAudioDevice(AudioDeviceId);
+    SDL_LockAudioStream(AudioStream);
 }
 
 void AppAudio::UnlockDevice()
@@ -1577,7 +1544,7 @@ void AppAudio::UnlockDevice()
 
     RUNTIME_ASSERT(IsEnabled());
 
-    SDL_UnlockAudioDevice(AudioDeviceId);
+    SDL_UnlockAudioStream(AudioStream);
 }
 
 void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
@@ -1608,24 +1575,24 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
 
     SDL_MessageBoxButtonData copy_button;
     SDL_zero(copy_button);
-    copy_button.buttonid = 0;
+    copy_button.buttonID = 0;
     copy_button.text = "Copy";
 
     SDL_MessageBoxButtonData ignore_all_button;
     SDL_zero(ignore_all_button);
-    ignore_all_button.buttonid = 1;
+    ignore_all_button.buttonID = 1;
     ignore_all_button.text = "Ignore All";
 
     SDL_MessageBoxButtonData ignore_button;
     SDL_zero(ignore_button);
-    ignore_button.buttonid = 2;
+    ignore_button.buttonID = 2;
     ignore_button.text = "Ignore";
     ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
     ignore_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
 
     SDL_MessageBoxButtonData exit_button;
     SDL_zero(exit_button);
-    exit_button.buttonid = 2;
+    exit_button.buttonID = 2;
     exit_button.text = "Exit";
     exit_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
     exit_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
@@ -1642,7 +1609,7 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
     data.buttons = fatal_error ? buttons_with_exit : buttons_with_ignore;
 
     int buttonid = 0;
-    while (SDL_ShowMessageBox(&data, &buttonid) == 0) {
+    while (SDL_ShowMessageBox(&data, &buttonid)) {
         if (buttonid == 0) {
             SDL_SetClipboardText(verb_message.c_str());
         }
@@ -1658,7 +1625,7 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
 #endif
 }
 
-static ImGuiKey KeycodeToImGuiKey(int keycode)
+static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
 {
     STACK_TRACE_ENTRY();
 
@@ -1693,7 +1660,7 @@ static ImGuiKey KeycodeToImGuiKey(int keycode)
         return ImGuiKey_Enter;
     case SDLK_ESCAPE:
         return ImGuiKey_Escape;
-    case SDLK_QUOTE:
+    case SDLK_APOSTROPHE:
         return ImGuiKey_Apostrophe;
     case SDLK_COMMA:
         return ImGuiKey_Comma;
@@ -1713,7 +1680,7 @@ static ImGuiKey KeycodeToImGuiKey(int keycode)
         return ImGuiKey_Backslash;
     case SDLK_RIGHTBRACKET:
         return ImGuiKey_RightBracket;
-    case SDLK_BACKQUOTE:
+    case SDLK_GRAVE:
         return ImGuiKey_GraveAccent;
     case SDLK_CAPSLOCK:
         return ImGuiKey_CapsLock;
@@ -1797,57 +1764,57 @@ static ImGuiKey KeycodeToImGuiKey(int keycode)
         return ImGuiKey_8;
     case SDLK_9:
         return ImGuiKey_9;
-    case SDLK_a:
+    case SDLK_A:
         return ImGuiKey_A;
-    case SDLK_b:
+    case SDLK_B:
         return ImGuiKey_B;
-    case SDLK_c:
+    case SDLK_C:
         return ImGuiKey_C;
-    case SDLK_d:
+    case SDLK_D:
         return ImGuiKey_D;
-    case SDLK_e:
+    case SDLK_E:
         return ImGuiKey_E;
-    case SDLK_f:
+    case SDLK_F:
         return ImGuiKey_F;
-    case SDLK_g:
+    case SDLK_G:
         return ImGuiKey_G;
-    case SDLK_h:
+    case SDLK_H:
         return ImGuiKey_H;
-    case SDLK_i:
+    case SDLK_I:
         return ImGuiKey_I;
-    case SDLK_j:
+    case SDLK_J:
         return ImGuiKey_J;
-    case SDLK_k:
+    case SDLK_K:
         return ImGuiKey_K;
-    case SDLK_l:
+    case SDLK_L:
         return ImGuiKey_L;
-    case SDLK_m:
+    case SDLK_M:
         return ImGuiKey_M;
-    case SDLK_n:
+    case SDLK_N:
         return ImGuiKey_N;
-    case SDLK_o:
+    case SDLK_O:
         return ImGuiKey_O;
-    case SDLK_p:
+    case SDLK_P:
         return ImGuiKey_P;
-    case SDLK_q:
+    case SDLK_Q:
         return ImGuiKey_Q;
-    case SDLK_r:
+    case SDLK_R:
         return ImGuiKey_R;
-    case SDLK_s:
+    case SDLK_S:
         return ImGuiKey_S;
-    case SDLK_t:
+    case SDLK_T:
         return ImGuiKey_T;
-    case SDLK_u:
+    case SDLK_U:
         return ImGuiKey_U;
-    case SDLK_v:
+    case SDLK_V:
         return ImGuiKey_V;
-    case SDLK_w:
+    case SDLK_W:
         return ImGuiKey_W;
-    case SDLK_x:
+    case SDLK_X:
         return ImGuiKey_X;
-    case SDLK_y:
+    case SDLK_Y:
         return ImGuiKey_Y;
-    case SDLK_z:
+    case SDLK_Z:
         return ImGuiKey_Z;
     case SDLK_F1:
         return ImGuiKey_F1;
@@ -1876,5 +1843,6 @@ static ImGuiKey KeycodeToImGuiKey(int keycode)
     default:
         break;
     }
+
     return ImGuiKey_None;
 }

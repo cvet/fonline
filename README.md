@@ -123,7 +123,7 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [SDL2](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
+* [SDL](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
 * [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20

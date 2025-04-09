@@ -341,24 +341,20 @@ public:
     static const int AUDIO_FORMAT_U8;
     static const int AUDIO_FORMAT_S16;
 
-    using AudioStreamCallback = std::function<void(uint8*)>;
+    using AudioStreamCallback = std::function<void(uint8, span<uint8>)>;
 
     [[nodiscard]] auto IsEnabled() const -> bool;
-    [[nodiscard]] auto GetStreamSize() const -> uint;
-    [[nodiscard]] auto GetSilence() const -> uint8;
 
     [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool;
 
     void SetSource(AudioStreamCallback stream_callback);
-    void MixAudio(uint8* output, uint8* buf, int volume);
+    void MixAudio(uint8* output, const uint8* buf, size_t len, int volume);
     void LockDevice();
     void UnlockDevice();
 
 private:
     AppAudio() = default;
 
-    struct AudioConverter;
-    vector<shared_ptr<AudioConverter>> _converters {};
     int _nonConstHelper {};
 };
 

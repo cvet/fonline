@@ -9,7 +9,7 @@
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-1.3.290.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
-* SDL2 - [SDL2-2.30.7](https://github.com/libsdl-org/SDL)
+* SDL - [SDL-3.2.10](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
 * small_vector - [small_vector](https://github.com/gharveymn/small_vector)
 * span - [span](https://github.com/tcbrindle/span)

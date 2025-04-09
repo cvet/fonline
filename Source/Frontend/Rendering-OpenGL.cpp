@@ -40,12 +40,12 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-#include "SDL.h"
-#include "SDL_video.h"
+#include "SDL3/SDL.h"
+#include "SDL3/SDL_video.h"
 
 #if !FO_OPENGL_ES
 #include "GL/glew.h"
-#include "SDL_opengl.h"
+#include "SDL3/SDL_opengl.h"
 #endif
 
 #if FO_OPENGL_ES
@@ -205,10 +205,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     RUNTIME_ASSERT_STR(GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
 
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
-    RUNTIME_ASSERT_STR(make_current >= 0, strex("Can't set current context, error '{}'", SDL_GetError()));
+    RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
 
     if (settings.ClientMode && settings.VSync) {
-        if (SDL_GL_SetSwapInterval(-1) == -1) {
+        if (!SDL_GL_SetSwapInterval(-1)) {
             SDL_GL_SetSwapInterval(1);
         }
     }
