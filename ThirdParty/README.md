@@ -19,7 +19,7 @@
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fmt - [fmt-11.0.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.91.9b](https://github.com/ocornut/imgui)
-* libpng - [libpng-1.6.44](https://github.com/pnggroup/libpng)
+* libpng - [libpng-1.6.47](https://github.com/pnggroup/libpng)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.24.4](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
