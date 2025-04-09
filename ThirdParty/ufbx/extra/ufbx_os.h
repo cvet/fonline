@@ -168,6 +168,15 @@ static uint32_t ufbxos_atomic_u32_inc(ufbxos_atomic_u32 *ptr) { (void)ptr; retur
 static bool ufbxos_atomic_u32_cas(ufbxos_atomic_u32 *ptr, uint32_t ref, uint32_t value) { (void)ptr; (void)ref; return __atomic_compare_exchange(ptr, &ref, &value, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); }
 
 #if defined(__i386__) || defined(__i386)
+
+#if defined(__clang__)
+	// No way to convince that the pointer is aligned, even with __builtin_assume_aligned()
+	#pragma clang diagnostic push
+	#if __has_warning("-Wsync-alignment")
+		#pragma clang diagnostic ignored "-Wsync-alignment"
+	#endif
+#endif
+
 typedef volatile uint64_t ufbxos_atomic_u64;
 static bool ufbxos_atomic_u64_cas(ufbxos_atomic_u64 *ptr, uint64_t *ref, uint64_t value) {
 	uint64_t prev = *ref;
@@ -184,6 +193,11 @@ static void ufbxos_atomic_u64_store(ufbxos_atomic_u64 *ptr, uint64_t value) {
 	uint64_t ref = ufbxos_atomic_u64_load(ptr);
 	while (!ufbxos_atomic_u64_cas(ptr, &ref, value)) { }
 }
+
+#if defined(__clang__)
+	#pragma clang diagnostic pop
+#endif
+
 #else
 typedef volatile uint64_t ufbxos_atomic_u64;
 static uint64_t ufbxos_atomic_u64_load(ufbxos_atomic_u64 *ptr) { uint64_t r; (void)ptr; __atomic_load(ptr, &r, __ATOMIC_SEQ_CST); return r; }
@@ -1073,7 +1087,7 @@ static bool ufbxos_ufbx_thread_pool_init(void *user, ufbx_thread_pool_context ct
 	return true;
 }
 
-static bool ufbxos_ufbx_thread_pool_run(void *user, ufbx_thread_pool_context ctx, uint32_t group, uint32_t start_index, uint32_t count)
+static void ufbxos_ufbx_thread_pool_run(void *user, ufbx_thread_pool_context ctx, uint32_t group, uint32_t start_index, uint32_t count)
 {
 	ufbx_os_thread_pool *pool = (ufbx_os_thread_pool*)user;
 	ufbxos_pool_ctx *up = (ufbxos_pool_ctx*)ufbx_thread_pool_get_user_ptr(ctx);
@@ -1082,11 +1096,9 @@ static bool ufbxos_ufbx_thread_pool_run(void *user, ufbx_thread_pool_context ctx
 	ug->start_index = start_index;
 	ug->ctx = ctx;
 	ug->task_id = ufbx_os_thread_pool_run(pool, &ufbxos_ufbx_task, ug, count);
-
-	return true;
 }
 
-static bool ufbxos_ufbx_thread_pool_wait(void *user, ufbx_thread_pool_context ctx, uint32_t group, uint32_t max_index)
+static void ufbxos_ufbx_thread_pool_wait(void *user, ufbx_thread_pool_context ctx, uint32_t group, uint32_t max_index)
 {
 	(void)max_index;
 	ufbx_os_thread_pool *pool = (ufbx_os_thread_pool*)user;
@@ -1094,8 +1106,6 @@ static bool ufbxos_ufbx_thread_pool_wait(void *user, ufbx_thread_pool_context ct
 	ufbxos_pool_group *ug = &up->groups[group].group;
 
 	ufbx_os_thread_pool_wait(pool, ug->task_id);
-
-	return true;
 }
 
 static void ufbxos_ufbx_thread_pool_free(void *user, ufbx_thread_pool_context ctx)
