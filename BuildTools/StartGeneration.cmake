@@ -457,14 +457,14 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	add_link_options(-sDISABLE_EXCEPTION_CATCHING=0)
 	add_compile_options_C_CXX(-sDISABLE_EXCEPTION_CATCHING=0)
 	add_link_options(-sWASM_BIGINT=1)
+	add_link_options(-sMAIN_MODULE=2)
+	add_compile_options_C_CXX(-sMAIN_MODULE=2)
 
 	add_link_options(-lhtml5)
 	add_link_options(-lGL)
 	add_link_options(-legl.js)
 	add_link_options(-lhtml5_webgl.js)
 	add_link_options(-lidbfs.js)
-
-	add_link_options(-Wl,-u,ntohs)
 
 else()
 	AbortMessage("Unknown OS")
