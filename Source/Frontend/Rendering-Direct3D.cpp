@@ -106,7 +106,7 @@ public:
     auto operator=(Direct3D_Effect&&) noexcept -> Direct3D_Effect& = delete;
     ~Direct3D_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex) override;
 
     ID3D11VertexShader* VertexShader[EFFECT_MAX_PASSES] {};
     ID3D11InputLayout* InputLayout[EFFECT_MAX_PASSES] {};
@@ -1197,7 +1197,7 @@ Direct3D_Effect::~Direct3D_Effect()
 #undef SAFE_RELEASE
 }
 
-void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
+void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
 {
     STACK_TRACE_ENTRY();
 

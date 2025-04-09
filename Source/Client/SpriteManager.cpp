@@ -1276,7 +1276,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     }
 
     auto borders = IRect(pos.x - 1, pos.y - 1, pos.x + as->Size.width + 1, pos.y + as->Size.height + 1);
-    auto* texture = as->Atlas->MainTex;
+    const auto* texture = as->Atlas->MainTex;
     FRect textureuv;
     FRect sprite_border;
 
