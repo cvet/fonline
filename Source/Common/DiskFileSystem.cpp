@@ -256,7 +256,7 @@ auto DiskFile::GetSize() const -> size_t
     return li.LowPart;
 }
 
-#elif FO_ANDROID || 1
+#elif FO_ANDROID
 
 struct DiskFile::Impl
 {
