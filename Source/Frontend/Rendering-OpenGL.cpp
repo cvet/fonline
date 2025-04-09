@@ -171,7 +171,7 @@ public:
     }
     ~OpenGL_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
@@ -1021,7 +1021,7 @@ OpenGL_Effect::~OpenGL_Effect()
     }
 }
 
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
+void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
 {
     STACK_TRACE_ENTRY();
 
