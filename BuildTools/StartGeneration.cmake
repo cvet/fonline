@@ -55,6 +55,7 @@ endif()
 
 # Global options
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
+set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)

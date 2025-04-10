@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.24.4)
 
 # Force some variables for internal debugging purposes
 if(NOT ${FO_FORCE_SINGLEPLAYER} STREQUAL "")
@@ -89,7 +89,9 @@ list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
 list(APPEND FO_DUMMY_TARGETS "zlib")
 DisableLibWarnings(zlibstatic zlibcontrib zlib)
 set(ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
-set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
+link_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}/$<CONFIG>")
+set(ZLIB_LIBRARY "zlibstatic.lib" CACHE STRING "Forced by FOnline" FORCE)
+set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "Forced by FOnline" FORCE)
 
 # LibPNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -442,6 +444,7 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(BUILD_EXTERNAL OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(BUILD_WERROR OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(SKIP_GLSLANG_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
+    set(ENABLE_SPIRV ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_HLSL OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_SPVREMAPPER OFF CACHE BOOL "Forced by FOnline" FORCE)
