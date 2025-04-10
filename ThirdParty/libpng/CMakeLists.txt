@@ -127,6 +127,7 @@ if(UNIX
   endif()
 else()
   # libm is not available or not needed.
+  set(M_LIBRARY "") #! (FOnline Patch)
 endif()
 
 if(PNG_HARDWARE_OPTIMIZATIONS)
