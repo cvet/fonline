@@ -227,7 +227,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
     NextFrameEventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
 
     KeysMap = SafeAlloc::MakeUnique<unordered_map<SDL_Keycode, KeyCode>>(unordered_map<SDL_Keycode, KeyCode> {
-        {0, KeyCode::None},
         {SDL_SCANCODE_ESCAPE, KeyCode::Escape},
         {SDL_SCANCODE_1, KeyCode::C1},
         {SDL_SCANCODE_2, KeyCode::C2},
@@ -331,7 +330,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
         {SDL_SCANCODE_DELETE, KeyCode::Delete},
         {SDL_SCANCODE_LGUI, KeyCode::Lwin},
         {SDL_SCANCODE_RGUI, KeyCode::Rwin},
-        {510, KeyCode::Text},
     });
 
     MouseButtonsMap = SafeAlloc::MakeUnique<unordered_map<int, MouseButton>>(unordered_map<int, MouseButton> {
@@ -516,6 +514,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (Settings.ClientMode && Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
+
+        SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle));
 
         // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
@@ -766,7 +766,6 @@ void Application::BeginFrame()
             io.AddMousePosEvent(static_cast<float>(ev.MouseX), static_cast<float>(ev.MouseY));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
-            [[fallthrough]];
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 InputEvent::MouseDownEvent ev;
@@ -821,7 +820,6 @@ void Application::BeginFrame()
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_EVENT_KEY_UP:
-            [[fallthrough]];
         case SDL_EVENT_KEY_DOWN: {
             if (sdl_event.type == SDL_EVENT_KEY_DOWN) {
                 InputEvent::KeyDownEvent ev;
@@ -838,7 +836,7 @@ void Application::BeginFrame()
                 EventsQueue->emplace_back(ev);
             }
 
-            const auto sdl_key_mods = static_cast<SDL_Keymod>(sdl_event.key.mod);
+            const auto sdl_key_mods = sdl_event.key.mod;
             io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & SDL_KMOD_CTRL) != 0);
             io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & SDL_KMOD_SHIFT) != 0);
             io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & SDL_KMOD_ALT) != 0);
