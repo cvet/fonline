@@ -89,9 +89,9 @@ list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
 list(APPEND FO_DUMMY_TARGETS "zlib")
 DisableLibWarnings(zlibstatic zlibcontrib zlib)
 set(ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
-link_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}/$<CONFIG>")
-set(ZLIB_LIBRARY "zlibstatic.lib" CACHE STRING "Forced by FOnline" FORCE)
+set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
 set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "Forced by FOnline" FORCE)
+add_library(ZLIB::ZLIB ALIAS zlibstatic)
 
 # LibPNG
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
