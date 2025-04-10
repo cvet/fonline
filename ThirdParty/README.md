@@ -17,7 +17,7 @@
 * tracy - [tracy-0.11.1](https://github.com/wolfpld/tracy)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
-* fmt - [fmt-11.0.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
+* fmt - [fmt-11.1.4](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.91.9b](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.47](https://github.com/pnggroup/libpng)
 * LibreSSL - [3.4.1](https://www.libressl.org/)

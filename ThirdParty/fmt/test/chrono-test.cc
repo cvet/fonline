@@ -539,6 +539,7 @@ TEST(chrono_test, format_specs) {
   EXPECT_EQ(fmt::format("{:%I}", std::chrono::hours(24)), "12");
   EXPECT_EQ(fmt::format("{:%I}", std::chrono::hours(4)), "04");
   EXPECT_EQ(fmt::format("{:%I}", std::chrono::hours(14)), "02");
+  EXPECT_EQ(fmt::format("{:%j}", days(12)), "12");
   EXPECT_EQ(fmt::format("{:%j}", days(12345)), "12345");
   EXPECT_EQ(fmt::format("{:%j}", std::chrono::hours(12345 * 24 + 12)), "12345");
   EXPECT_EQ(fmt::format("{:%H:%M:%S}", std::chrono::seconds(12345)),
@@ -753,7 +754,7 @@ TEST(chrono_test, weekday) {
   std::locale::global(loc);
 
   auto sat = fmt::weekday(6);
-  
+
   auto tm = std::tm();
   tm.tm_wday = static_cast<int>(sat.c_encoding());
 
@@ -763,7 +764,7 @@ TEST(chrono_test, weekday) {
   EXPECT_EQ(fmt::format("{:%a}", tm), "Sat");
 
   if (loc != std::locale::classic()) {
-    auto saturdays = std::vector<std::string>{"sáb", "sá."};
+    auto saturdays = std::vector<std::string>{"sáb", "sá.", "sáb."};
     EXPECT_THAT(saturdays, Contains(fmt::format(loc, "{:L}", sat)));
     EXPECT_THAT(saturdays, Contains(fmt::format(loc, "{:%a}", sat)));
     EXPECT_THAT(saturdays, Contains(fmt::format(loc, "{:%a}", tm)));
@@ -795,20 +796,14 @@ TEST(chrono_test, cpp20_duration_subsecond_support) {
             "01.234000");
   EXPECT_EQ(fmt::format("{:.6%S}", std::chrono::milliseconds{-1234}),
             "-01.234000");
-  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{12345}),
-            "12.34");
-  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{12375}),
-            "12.37");
+  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{12345}), "12.34");
+  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{12375}), "12.37");
   EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{-12375}),
             "-12.37");
-  EXPECT_EQ(fmt::format("{:.0%S}", std::chrono::milliseconds{12054}),
-            "12");
-  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{99999}),
-            "39.99");
-  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{1000}),
-            "01.00");
-  EXPECT_EQ(fmt::format("{:.3%S}", std::chrono::milliseconds{1}),
-            "00.001");
+  EXPECT_EQ(fmt::format("{:.0%S}", std::chrono::milliseconds{12054}), "12");
+  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{99999}), "39.99");
+  EXPECT_EQ(fmt::format("{:.2%S}", std::chrono::milliseconds{1000}), "01.00");
+  EXPECT_EQ(fmt::format("{:.3%S}", std::chrono::milliseconds{1}), "00.001");
   EXPECT_EQ(fmt::format("{:.3%S}", std::chrono::seconds{1234}), "34.000");
   EXPECT_EQ(fmt::format("{:.3%S}", std::chrono::hours{1234}), "00.000");
   EXPECT_EQ(fmt::format("{:.5%S}", dms(1.234)), "00.00123");
@@ -1011,6 +1006,10 @@ TEST(chrono_test, glibc_extensions) {
     EXPECT_EQ(fmt::format("{:%U,%W,%V}", t), "02,01,01");
     EXPECT_EQ(fmt::format("{:%_U,%_W,%_V}", t), " 2, 1, 1");
     EXPECT_EQ(fmt::format("{:%-U,%-W,%-V}", t), "2,1,1");
+
+    EXPECT_EQ(fmt::format("{:%j}", t), "008");
+    EXPECT_EQ(fmt::format("{:%_j}", t), "  8");
+    EXPECT_EQ(fmt::format("{:%-j}", t), "8");
   }
 
   {
@@ -1022,6 +1021,32 @@ TEST(chrono_test, glibc_extensions) {
 
     EXPECT_EQ(fmt::format("{:%e}", t), " 7");
   }
+
+  {
+    auto t = std::tm();
+    t.tm_year = 7 - 1900;
+    EXPECT_EQ(fmt::format("{:%Y}", t), "0007");
+    EXPECT_EQ(fmt::format("{:%_Y}", t), "   7");
+    EXPECT_EQ(fmt::format("{:%-Y}", t), "7");
+  }
+
+  {
+    auto t = std::tm();
+    t.tm_year = -5 - 1900;
+    EXPECT_EQ(fmt::format( "{:%Y}", t), "-005");
+    EXPECT_EQ(fmt::format("{:%_Y}", t), "  -5");
+    EXPECT_EQ(fmt::format("{:%-Y}", t), "-5");
+  }
+
+  {
+    auto t = std::tm();
+    t.tm_mon = 7 - 1;
+    EXPECT_EQ(fmt::format("{:%m}", t), "07");
+    EXPECT_EQ(fmt::format("{:%_m}", t), " 7");
+    EXPECT_EQ(fmt::format("{:%-m}", t), "7");
+  }
+
+
 }
 
 TEST(chrono_test, out_of_range) {
@@ -1032,7 +1057,7 @@ TEST(chrono_test, out_of_range) {
 TEST(chrono_test, year_month_day) {
   auto loc = get_locale("es_ES.UTF-8");
   std::locale::global(loc);
-  
+
   auto year = fmt::year(2024);
   auto month = fmt::month(1);
   auto day = fmt::day(1);

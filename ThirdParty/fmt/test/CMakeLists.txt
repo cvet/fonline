@@ -8,22 +8,6 @@ target_include_directories(test-main PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 target_link_libraries(test-main gtest fmt)
 
-function(add_fmt_executable name)
-  add_executable(${name} ${ARGN})
-  # (Wstringop-overflow) - [meta-bug] bogus/missing -Wstringop-overflow warnings
-  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88443
-  # Bogus -Wstringop-overflow warning
-  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100395
-  # [10 Regression] spurious -Wstringop-overflow writing to a trailing array plus offset
-  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95353
-  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND
-      NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
-    target_compile_options(${name} PRIVATE -Wno-stringop-overflow)
-    # The linker flag is needed for LTO.
-    target_link_libraries(${name} -Wno-stringop-overflow)
-  endif ()
-endfunction()
-
 # Adds a test.
 # Usage: add_fmt_test(name srcs...)
 function(add_fmt_test name)
@@ -42,7 +26,7 @@ function(add_fmt_test name)
   else ()
     set(libs test-main fmt)
   endif ()
-  add_fmt_executable(${name} ${sources})
+  add_executable(${name} ${sources})
   target_link_libraries(${name} ${libs})
 
   if (ADD_FMT_TEST_HEADER_ONLY AND NOT FMT_UNICODE)
@@ -78,13 +62,14 @@ if (NOT (MSVC AND BUILD_SHARED_LIBS))
 endif ()
 add_fmt_test(ostream-test)
 add_fmt_test(compile-test)
-add_fmt_test(compile-fp-test HEADER_ONLY)
+add_fmt_test(compile-fp-test)
 if (MSVC)
   # Without this option, MSVC returns 199711L for the __cplusplus macro.
   target_compile_options(compile-fp-test PRIVATE /Zc:__cplusplus)
 endif()
 add_fmt_test(printf-test)
 add_fmt_test(ranges-test ranges-odr-test.cc)
+add_fmt_test(no-builtin-types-test HEADER_ONLY)
 
 add_fmt_test(scan-test HEADER_ONLY)
 check_symbol_exists(strptime "time.h" HAVE_STRPTIME)
@@ -145,7 +130,7 @@ if (NOT DEFINED MSVC_STATIC_RUNTIME AND MSVC)
 endif()
 
 if (NOT MSVC_STATIC_RUNTIME)
-  add_fmt_executable(posix-mock-test
+  add_executable(posix-mock-test
     posix-mock-test.cc ../src/format.cc ${TEST_MAIN_SRC})
   target_include_directories(
     posix-mock-test PRIVATE ${PROJECT_SOURCE_DIR}/include)
