@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.22.0)
 project(FOnlineTest)
 
 include(BuildTools/Init.cmake)
