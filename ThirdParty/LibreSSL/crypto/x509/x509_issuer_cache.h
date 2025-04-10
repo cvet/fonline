@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_issuer_cache.h,v 1.1 2020/09/11 14:30:51 beck Exp $ */
+/* $OpenBSD: x509_issuer_cache.h,v 1.3 2023/12/30 18:06:59 tb Exp $ */
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -41,6 +41,7 @@ int x509_issuer_cache_set_max(size_t max);
 int x509_issuer_cache_find(unsigned char *parent_md, unsigned char *child_md);
 void x509_issuer_cache_add(unsigned char *parent_md, unsigned char *child_md,
     int valid);
+void x509_issuer_cache_free(void);
 
 __END_HIDDEN_DECLS
 

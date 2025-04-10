@@ -1,4 +1,4 @@
-/* $OpenBSD: p8_pkey.c,v 1.19 2018/08/24 20:17:33 tb Exp $ */
+/* $OpenBSD: p8_pkey.c,v 1.25 2024/07/08 14:48:49 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -62,6 +62,8 @@
 #include <openssl/asn1t.h>
 #include <openssl/x509.h>
 
+#include "x509_local.h"
+
 /* Minor tweak to operation: zero private key data */
 static int
 pkey_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
@@ -111,6 +113,7 @@ const ASN1_ITEM PKCS8_PRIV_KEY_INFO_it = {
 	.size = sizeof(PKCS8_PRIV_KEY_INFO),
 	.sname = "PKCS8_PRIV_KEY_INFO",
 };
+LCRYPTO_ALIAS(PKCS8_PRIV_KEY_INFO_it);
 
 
 PKCS8_PRIV_KEY_INFO *
@@ -119,24 +122,28 @@ d2i_PKCS8_PRIV_KEY_INFO(PKCS8_PRIV_KEY_INFO **a, const unsigned char **in, long 
 	return (PKCS8_PRIV_KEY_INFO *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS8_PRIV_KEY_INFO_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS8_PRIV_KEY_INFO);
 
 int
 i2d_PKCS8_PRIV_KEY_INFO(PKCS8_PRIV_KEY_INFO *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS8_PRIV_KEY_INFO_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS8_PRIV_KEY_INFO);
 
 PKCS8_PRIV_KEY_INFO *
 PKCS8_PRIV_KEY_INFO_new(void)
 {
 	return (PKCS8_PRIV_KEY_INFO *)ASN1_item_new(&PKCS8_PRIV_KEY_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS8_PRIV_KEY_INFO_new);
 
 void
 PKCS8_PRIV_KEY_INFO_free(PKCS8_PRIV_KEY_INFO *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS8_PRIV_KEY_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS8_PRIV_KEY_INFO_free);
 
 int
 PKCS8_pkey_set0(PKCS8_PRIV_KEY_INFO *priv, ASN1_OBJECT *aobj, int version,
@@ -152,6 +159,7 @@ PKCS8_pkey_set0(PKCS8_PRIV_KEY_INFO *priv, ASN1_OBJECT *aobj, int version,
 		ASN1_STRING_set0(priv->pkey, penc, penclen);
 	return 1;
 }
+LCRYPTO_ALIAS(PKCS8_pkey_set0);
 
 int
 PKCS8_pkey_get0(const ASN1_OBJECT **ppkalg, const unsigned char **pk,
@@ -167,12 +175,14 @@ PKCS8_pkey_get0(const ASN1_OBJECT **ppkalg, const unsigned char **pk,
 		*pa = p8->pkeyalg;
 	return 1;
 }
+LCRYPTO_ALIAS(PKCS8_pkey_get0);
 
 const STACK_OF(X509_ATTRIBUTE) *
 PKCS8_pkey_get0_attrs(const PKCS8_PRIV_KEY_INFO *p8)
 {
 	return p8->attributes;
 }
+LCRYPTO_ALIAS(PKCS8_pkey_get0_attrs);
 
 int
 PKCS8_pkey_add1_attr_by_NID(PKCS8_PRIV_KEY_INFO *p8, int nid, int type,
@@ -183,4 +193,4 @@ PKCS8_pkey_add1_attr_by_NID(PKCS8_PRIV_KEY_INFO *p8, int nid, int type,
 		return 1;
 	return 0;
 }
-
+LCRYPTO_ALIAS(PKCS8_pkey_add1_attr_by_NID);

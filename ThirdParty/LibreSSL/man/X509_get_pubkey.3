@@ -1,6 +1,5 @@
-.\" $OpenBSD: X509_get_pubkey.3,v 1.9 2021/06/30 10:06:43 schwarze Exp $
+.\" $OpenBSD: X509_get_pubkey.3,v 1.13 2022/03/31 17:27:17 naddy Exp $
 .\" selective merge up to: OpenSSL 99d63d46 Oct 26 13:56:48 2016 -0400
-.\" X509_REQ_get0_pubkey and X509_REQ_get_X509_PUBKEY not yet in LibreSSL
 .\"
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
@@ -66,7 +65,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: June 30 2021 $
+.Dd $Mdocdate: March 31 2022 $
 .Dt X509_GET_PUBKEY 3
 .Os
 .Sh NAME
@@ -76,6 +75,7 @@
 .Nm X509_get_X509_PUBKEY ,
 .Nm X509_get0_pubkey_bitstr ,
 .Nm X509_REQ_get_pubkey ,
+.Nm X509_REQ_get0_pubkey ,
 .Nm X509_REQ_set_pubkey ,
 .Nm X509_extract_key ,
 .Nm X509_REQ_extract_key
@@ -97,7 +97,7 @@
 .Fc
 .Ft X509_PUBKEY *
 .Fo X509_get_X509_PUBKEY
-.Fa "X509 *x"
+.Fa "const X509 *x"
 .Fc
 .Ft ASN1_BIT_STRING *
 .Fo X509_get0_pubkey_bitstr
@@ -105,6 +105,10 @@
 .Fc
 .Ft EVP_PKEY *
 .Fo X509_REQ_get_pubkey
+.Fa "X509_REQ *req"
+.Fc
+.Ft EVP_PKEY *
+.Fo X509_REQ_get0_pubkey
 .Fa "X509_REQ *req"
 .Fc
 .Ft int
@@ -124,7 +128,7 @@
 .Fn X509_get_pubkey
 attempts to decode the public key for certificate
 .Fa x .
-If successful it returns the public key as an
+If successful, it returns the public key as an
 .Vt EVP_PKEY
 pointer with its reference count incremented: this means the returned
 key must be freed up after use.
@@ -140,8 +144,6 @@ returns an internal pointer to the
 structure contained in
 .Fa x .
 The returned value must not be freed up after use.
-.Fn X509_get_X509_PUBKEY
-is implemented as a macro.
 .Pp
 .Fn X509_get0_pubkey_bitstr
 returns an internal pointer to just the public key contained in this
@@ -157,7 +159,8 @@ The key
 .Fa pkey
 should be freed up after use.
 .Pp
-.Fn X509_REQ_get_pubkey
+.Fn X509_REQ_get_pubkey ,
+.Fn X509_REQ_get0_pubkey ,
 and
 .Fn X509_REQ_set_pubkey
 are similar but operate on certificate request
@@ -183,6 +186,7 @@ respectively, implemented as macros.
 .Fn X509_get_X509_PUBKEY ,
 .Fn X509_get0_pubkey_bitstr ,
 .Fn X509_REQ_get_pubkey ,
+.Fn X509_REQ_get0_pubkey ,
 .Fn X509_extract_key ,
 and
 .Fn X509_REQ_extract_key
@@ -199,6 +203,7 @@ In some cases of failure of
 .Fn X509_get0_pubkey ,
 .Fn X509_set_pubkey ,
 .Fn X509_REQ_get_pubkey ,
+.Fn X509_REQ_get0_pubkey ,
 and
 .Fn X509_REQ_set_pubkey ,
 the reason can be determined with
@@ -286,3 +291,6 @@ first appeared in OpenSSL 0.9.7 and has been available since
 .Fn X509_get0_pubkey
 first appeared in OpenSSL 1.1.0 and has been available since
 .Ox 6.3 .
+.Fn X509_REQ_get0_pubkey
+first appeared in OpenSSL 1.1.0 and has been available since
+.Ox 7.1 .

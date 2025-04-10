@@ -46,7 +46,7 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID)
     add_compile_definitions(FO_HAVE_RPMALLOC=1)
     add_compile_definitions(ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
     target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    list(APPEND FO_COMMON_LIBS "rpmalloc")
+    list(APPEND FO_COMMON_LIBS rpmalloc)
     DisableLibWarnings(rpmalloc)
 else()
     add_compile_definitions(FO_HAVE_RPMALLOC=0)
@@ -58,7 +58,7 @@ set(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_SDL_DIR}" EXCLUDE_FROM_ALL)
 include_directories("${FO_SDL_DIR}/include")
-list(APPEND FO_RENDER_LIBS "SDL3-static" "SDL_uclibc")
+list(APPEND FO_RENDER_LIBS SDL3-static SDL_uclibc)
 DisableLibWarnings(SDL3-static SDL_uclibc)
 
 # Tracy profiler
@@ -70,7 +70,7 @@ add_compile_definitions(FO_TRACY=${expr_TracyEnabled})
 set(TRACY_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_TRACY_DIR}" EXCLUDE_FROM_ALL)
 include_directories("${FO_TRACY_DIR}/public")
-list(APPEND FO_COMMON_LIBS "TracyClient")
+list(APPEND FO_COMMON_LIBS TracyClient)
 DisableLibWarnings(TracyClient)
 
 # Zlib
@@ -85,8 +85,8 @@ set(FO_ZLIB_CONTRIB_SOURCE
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.c"
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
 add_library(zlibcontrib STATIC EXCLUDE_FROM_ALL ${FO_ZLIB_CONTRIB_SOURCE})
-list(APPEND FO_COMMON_LIBS "zlibstatic" "zlibcontrib")
-list(APPEND FO_DUMMY_TARGETS "zlib")
+list(APPEND FO_COMMON_LIBS zlibstatic zlibcontrib)
+list(APPEND FO_DUMMY_TARGETS zlib)
 DisableLibWarnings(zlibstatic zlibcontrib zlib)
 set(ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
 set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
@@ -110,8 +110,8 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_subdirectory("${FO_PNG_DIR}" EXCLUDE_FROM_ALL)
     include_directories("${FO_PNG_DIR}")
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
-    list(APPEND FO_BAKER_LIBS "png_static")
-    list(APPEND FO_DUMMY_TARGETS "png_genfiles")
+    list(APPEND FO_BAKER_LIBS png_static)
+    list(APPEND FO_DUMMY_TARGETS png_genfiles)
     DisableLibWarnings(png_static)
 endif()
 
@@ -123,7 +123,7 @@ set(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/framing.c")
 include_directories("${FO_OGG_DIR}/include")
 add_library(Ogg STATIC EXCLUDE_FROM_ALL ${FO_OGG_SOURCE})
-list(APPEND FO_CLIENT_LIBS "Ogg")
+list(APPEND FO_CLIENT_LIBS Ogg)
 DisableLibWarnings(Ogg)
 
 # Vorbis
@@ -156,7 +156,7 @@ include_directories("${FO_VORBIS_DIR}/include")
 include_directories("${FO_VORBIS_DIR}/lib")
 add_library(Vorbis STATIC EXCLUDE_FROM_ALL ${FO_VORBIS_SOURCE})
 target_link_libraries(Vorbis Ogg)
-list(APPEND FO_CLIENT_LIBS "Vorbis")
+list(APPEND FO_CLIENT_LIBS Vorbis)
 target_compile_definitions(Vorbis PRIVATE "_CRT_SECURE_NO_WARNINGS")
 DisableLibWarnings(Vorbis)
 
@@ -190,7 +190,7 @@ set(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/tokenize.c")
 include_directories("${FO_THEORA_DIR}/include")
 add_library(Theora STATIC EXCLUDE_FROM_ALL ${FO_THEORA_SOURCE})
-list(APPEND FO_CLIENT_LIBS "Theora")
+list(APPEND FO_CLIENT_LIBS Theora)
 DisableLibWarnings(Theora)
 
 # Acm
@@ -201,7 +201,7 @@ set(FO_ACM_SOURCE
     "${FO_ACM_DIR}/acmstrm.cpp"
     "${FO_ACM_DIR}/acmstrm.h")
 add_library(AcmDecoder STATIC EXCLUDE_FROM_ALL ${FO_ACM_SOURCE})
-list(APPEND FO_CLIENT_LIBS "AcmDecoder")
+list(APPEND FO_CLIENT_LIBS AcmDecoder)
 DisableLibWarnings(AcmDecoder)
 
 # SHA
@@ -214,7 +214,7 @@ set(FO_SHA_SOURCE
     "${FO_SHA_DIR}/sha2.h"
     "${FO_SHA_DIR}/sha2.c")
 add_library(SHA STATIC EXCLUDE_FROM_ALL ${FO_SHA_SOURCE})
-list(APPEND FO_COMMON_LIBS "SHA")
+list(APPEND FO_COMMON_LIBS SHA)
 DisableLibWarnings(SHA)
 
 # GLEW
@@ -230,7 +230,7 @@ if(FO_USE_GLEW)
     add_library(GLEW STATIC EXCLUDE_FROM_ALL ${FO_GLEW_SOURCE})
     add_compile_definitions(GLEW_STATIC)
     target_compile_definitions(GLEW PRIVATE "GLEW_STATIC")
-    list(APPEND FO_RENDER_LIBS "GLEW")
+    list(APPEND FO_RENDER_LIBS GLEW)
     DisableLibWarnings(GLEW)
 endif()
 
@@ -249,7 +249,7 @@ if(FO_ENABLE_3D AND(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_COD
     add_library(ufbx STATIC EXCLUDE_FROM_ALL ${FO_UFBX_SOURCE})
     target_compile_definitions(ufbx PUBLIC "UFBX_NO_STDIO")
     target_compile_definitions(ufbx PUBLIC "UFBX_EXTERNAL_MALLOC")
-    list(APPEND FO_BAKER_LIBS "ufbx")
+    list(APPEND FO_BAKER_LIBS ufbx)
     DisableLibWarnings(ufbx)
 endif()
 
@@ -265,7 +265,7 @@ set(FO_FMT_DIR "${FO_ENGINE_ROOT}/ThirdParty/fmt")
 set(FMT_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_FMT_DIR}" EXCLUDE_FROM_ALL)
 include_directories("${FO_FMT_DIR}/include")
-list(APPEND FO_COMMON_LIBS "fmt")
+list(APPEND FO_COMMON_LIBS fmt)
 DisableLibWarnings(fmt)
 
 # LibreSSL
@@ -279,7 +279,6 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(ENABLE_EXTRATESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(ENABLE_NC OFF CACHE BOOL "Forced by FOnline" FORCE)
     add_subdirectory("${FO_LIBRESSL_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_LIBRESSL_DIR}")
     include_directories("${FO_LIBRESSL_DIR}/include")
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto")
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
@@ -287,8 +286,9 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     set(LIBRESSL_LIBRARIES "ssl;crypto;tls" CACHE STRING "Forced by FOnline" FORCE)
     set(LIBRESSL_INCLUDE_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
     set(LIBRESSL_LIBRARY_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
-    list(APPEND FO_SERVER_LIBS "ssl" "crypto" "tls")
-    DisableLibWarnings(ssl crypto tls)
+    list(APPEND FO_SERVER_LIBS ssl crypto tls)
+    list(APPEND FO_DUMMY_TARGETS compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
+    DisableLibWarnings(ssl crypto tls compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
 endif()
 
 # Asio & Websockets
@@ -338,16 +338,16 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libbson/src")
     target_compile_definitions(bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
     add_compile_definitions(BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN)
-    list(APPEND FO_SERVER_LIBS "bson_static")
+    list(APPEND FO_SERVER_LIBS bson_static)
     DisableLibWarnings(bson_static)
 
     if(ENABLE_MONGOC)
         include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc")
         include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
         target_compile_definitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
-        list(APPEND FO_SERVER_LIBS "mongoc_static")
-        list(APPEND FO_DUMMY_TARGETS "utf8proc_obj")
-        DisableLibWarnings(mongoc_static)
+        list(APPEND FO_SERVER_LIBS mongoc_static)
+        list(APPEND FO_DUMMY_TARGETS utf8proc_obj)
+        DisableLibWarnings(mongoc_static utf8proc_obj)
     endif()
 endif()
 
@@ -357,7 +357,7 @@ if(NOT FO_WEB)
     set(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
     add_subdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
     include_directories("${FO_UNQLITE_DIR}")
-    list(APPEND FO_COMMON_LIBS "unqlite")
+    list(APPEND FO_COMMON_LIBS unqlite)
     DisableLibWarnings(unqlite)
     target_compile_definitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
     add_compile_definitions(FO_HAVE_UNQLITE=1)
@@ -388,7 +388,7 @@ include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(imgui STATIC EXCLUDE_FROM_ALL ${FO_IMGUI_SOURCE})
 target_compile_definitions(imgui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
 add_compile_definitions("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
-list(APPEND FO_COMMON_LIBS "imgui")
+list(APPEND FO_COMMON_LIBS imgui)
 DisableLibWarnings(imgui)
 
 # Catch2
@@ -400,7 +400,7 @@ set(FO_CATCH2_SOURCE
     "${FO_CATCH2_DIR}/catch_amalgamated.hpp")
 add_library(Catch2 STATIC EXCLUDE_FROM_ALL ${FO_CATCH2_SOURCE})
 target_compile_definitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
-list(APPEND FO_TESTING_LIBS "Catch2")
+list(APPEND FO_TESTING_LIBS Catch2)
 DisableLibWarnings(Catch2)
 
 # Backward-cpp
@@ -416,7 +416,7 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
             StatusMessage("+ Backward-cpp (with libunwind)")
         elseif(haveBFD)
             StatusMessage("+ Backward-cpp (with bfd)")
-            list(APPEND FO_COMMON_SYSTEM_LIBS "bfd")
+            list(APPEND FO_COMMON_SYSTEM_LIBS bfd)
         else()
             StatusMessage("+ Backward-cpp")
         endif()
@@ -433,7 +433,7 @@ add_subdirectory("${FO_SPARK_DIR}/projects/engine/core" EXCLUDE_FROM_ALL)
 add_subdirectory("${FO_SPARK_DIR}/projects/external/pugi" EXCLUDE_FROM_ALL)
 include_directories("${FO_SPARK_DIR}/spark/include")
 include_directories("${FO_SPARK_DIR}/thirdparty/PugiXML")
-list(APPEND FO_CLIENT_LIBS "SPARK_Core" "PugiXML")
+list(APPEND FO_CLIENT_LIBS SPARK_Core PugiXML)
 DisableLibWarnings(SPARK_Core PugiXML)
 
 # glslang & SPIRV-Cross
@@ -467,7 +467,7 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_subdirectory("${FO_GLSLANG_DIR}" EXCLUDE_FROM_ALL)
     include_directories("${FO_GLSLANG_DIR}/glslang/Public")
     include_directories("${FO_GLSLANG_DIR}/SPIRV")
-    list(APPEND FO_BAKER_LIBS "glslang" "glslang-default-resource-limits" "OSDependent" "SPIRV" "GenericCodeGen" "MachineIndependent")
+    list(APPEND FO_BAKER_LIBS glslang glslang-default-resource-limits OSDependent SPIRV GenericCodeGen MachineIndependent)
     DisableLibWarnings(glslang glslang-default-resource-limits OSDependent SPIRV GenericCodeGen MachineIndependent)
 
     StatusMessage("+ SPIRV-Cross")
@@ -488,7 +488,7 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_subdirectory("${FO_SPIRV_CROSS_DIR}" EXCLUDE_FROM_ALL)
     include_directories("${FO_SPIRV_CROSS_DIR}")
     include_directories("${FO_SPIRV_CROSS_DIR}/include")
-    list(APPEND FO_BAKER_LIBS "spirv-cross-core" "spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl")
+    list(APPEND FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
 endif()
 
@@ -516,7 +516,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     # set( CMAKE_ASM_MASMFLAGS_DEBUG "/gg4" CACHE STRING "Forced by FOnline" FORCE )
     add_subdirectory("${FO_ANGELSCRIPT_DIR}/sdk/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
     include_directories("${FO_ANGELSCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGELSCRIPT_DIR}/sdk/add_on")
-    list(APPEND FO_COMMON_LIBS "Angelscript")
+    list(APPEND FO_COMMON_LIBS Angelscript)
     DisableLibWarnings(Angelscript)
 
     # target_compile_options( Angelscript PRIVATE "/wdA4018" )
@@ -567,7 +567,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/scripthelper.h")
     add_library(AngelscriptExt STATIC EXCLUDE_FROM_ALL ${FO_ANGELSCRIPT_EXT_SOURCE})
     target_link_libraries(AngelscriptExt Angelscript)
-    list(APPEND FO_COMMON_LIBS "AngelscriptExt")
+    list(APPEND FO_COMMON_LIBS AngelscriptExt)
     target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS")
     DisableLibWarnings(AngelscriptExt)
 
@@ -1146,14 +1146,14 @@ add_custom_command(OUTPUT ${FO_CODEGEN_OUTPUT}
 add_custom_target(CodeGeneration
     DEPENDS ${FO_CODEGEN_OUTPUT}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-list(APPEND FO_COMMANDS_GROUP "CodeGeneration")
-list(APPEND FO_GEN_DEPENDENCIES "CodeGeneration")
+list(APPEND FO_COMMANDS_GROUP CodeGeneration)
+list(APPEND FO_GEN_DEPENDENCIES CodeGeneration)
 
 add_custom_target(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${CMAKE_COMMAND} -E touch ${FO_CODEGEN_OUTPUT}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-list(APPEND FO_COMMANDS_GROUP "ForceCodeGeneration")
+list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 
 # Core libs
 StatusMessage("Core libs:")
@@ -1166,7 +1166,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     add_dependencies(AppHeadless ${FO_GEN_DEPENDENCIES})
-    list(APPEND FO_CORE_LIBS_GROUP "AppHeadless")
+    list(APPEND FO_CORE_LIBS_GROUP AppHeadless)
 
     if(NOT FO_HEADLESS_ONLY)
         StatusMessage("+ AppFrontend")
@@ -1179,14 +1179,14 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
         add_dependencies(AppFrontend ${FO_GEN_DEPENDENCIES})
         target_link_libraries(AppFrontend ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
-        list(APPEND FO_CORE_LIBS_GROUP "AppFrontend")
+        list(APPEND FO_CORE_LIBS_GROUP AppFrontend)
     endif()
 
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP "CommonLib")
+    list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 endif()
 
 if(NOT FO_SINGLEPLAYER AND(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
@@ -1194,7 +1194,7 @@ if(NOT FO_SINGLEPLAYER AND(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER
     add_library(ClientLib STATIC EXCLUDE_FROM_ALL ${FO_CLIENT_SOURCE})
     add_dependencies(ClientLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ClientLib CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP "ClientLib")
+    list(APPEND FO_CORE_LIBS_GROUP ClientLib)
 endif()
 
 if(NOT FO_SINGLEPLAYER AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
@@ -1202,7 +1202,7 @@ if(NOT FO_SINGLEPLAYER AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS O
     add_library(ServerLib STATIC EXCLUDE_FROM_ALL ${FO_SERVER_SOURCE})
     add_dependencies(ServerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ServerLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP "ServerLib")
+    list(APPEND FO_CORE_LIBS_GROUP ServerLib)
 endif()
 
 if(FO_SINGLEPLAYER AND(FO_BUILD_SINGLE OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
@@ -1210,7 +1210,7 @@ if(FO_SINGLEPLAYER AND(FO_BUILD_SINGLE OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR 
     add_library(SingleLib STATIC EXCLUDE_FROM_ALL ${FO_SINGLE_SOURCE})
     add_dependencies(SingleLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(SingleLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP "SingleLib")
+    list(APPEND FO_CORE_LIBS_GROUP SingleLib)
 endif()
 
 if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1218,7 +1218,7 @@ if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
     add_dependencies(MapperLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(MapperLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP "MapperLib")
+    list(APPEND FO_CORE_LIBS_GROUP MapperLib)
 endif()
 
 if(FO_ANGELSCRIPT_SCRIPTING AND(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
@@ -1226,7 +1226,7 @@ if(FO_ANGELSCRIPT_SCRIPTING AND(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_BUIL
     add_library(ASCompilerLib STATIC EXCLUDE_FROM_ALL ${FO_ASCOMPILER_SOURCE})
     add_dependencies(ASCompilerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ASCompilerLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP "ASCompilerLib")
+    list(APPEND FO_CORE_LIBS_GROUP ASCompilerLib)
 endif()
 
 if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1234,7 +1234,7 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
     add_dependencies(BakerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP "BakerLib")
+    list(APPEND FO_CORE_LIBS_GROUP BakerLib)
 endif()
 
 if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1242,7 +1242,7 @@ if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     add_library(EditorLib STATIC EXCLUDE_FROM_ALL ${FO_EDITOR_SOURCE})
     add_dependencies(EditorLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(EditorLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP "EditorLib")
+    list(APPEND FO_CORE_LIBS_GROUP EditorLib)
 endif()
 
 # Applications
@@ -1458,7 +1458,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
     if(FO_ANGELSCRIPT_SCRIPTING)
         set(compileASScripts ${FO_DEV_NAME}_ASCompiler)
 
-        list(APPEND compileASScripts -BakeOutput "${FO_BACKED_RESOURCES_OUTPUT}")
+        list(APPEND compileASScripts -BakeOutput ${FO_BACKED_RESOURCES_OUTPUT})
 
         foreach(entry ${FO_CONTENT})
             list(APPEND compileASScripts -BakeContentEntries "+${entry}")
@@ -1471,7 +1471,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
         add_custom_target(CompileAngelScript
             COMMAND ${compileASScripts}
             COMMENT "Compile AngelScript scripts")
-        list(APPEND FO_COMMANDS_GROUP "CompileAngelScript")
+        list(APPEND FO_COMMANDS_GROUP CompileAngelScript)
     endif()
 
     # Compile Mono scripts
@@ -1488,7 +1488,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
             COMMAND ${compileMonoScripts}
             SOURCES ${FO_MONO_SOURCE}
             COMMENT "Compile Mono scripts")
-        list(APPEND FO_COMMANDS_GROUP "CompileMonoScripts")
+        list(APPEND FO_COMMANDS_GROUP CompileMonoScripts)
     endif()
 endif()
 
@@ -1516,13 +1516,13 @@ add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
-list(APPEND FO_COMMANDS_GROUP "BakeResources")
+list(APPEND FO_COMMANDS_GROUP BakeResources)
 
 add_custom_target(ForceBakeResources
     COMMAND ${bakeResources} -ForceBaking True
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
-list(APPEND FO_COMMANDS_GROUP "ForceBakeResources")
+list(APPEND FO_COMMANDS_GROUP ForceBakeResources)
 
 # Packaging
 StatusMessage("Packages:")

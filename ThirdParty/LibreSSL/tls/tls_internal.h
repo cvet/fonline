@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_internal.h,v 1.78 2021/01/21 19:09:10 eric Exp $ */
+/* $OpenBSD: tls_internal.h,v 1.85 2024/03/26 06:24:52 joshua Exp $ */
 /*
  * Copyright (c) 2014 Jeremie Courreges-Anglas <jca@openbsd.org>
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
@@ -29,7 +29,7 @@
 __BEGIN_HIDDEN_DECLS
 
 #ifndef TLS_DEFAULT_CA_FILE
-#define TLS_DEFAULT_CA_FILE 	"/etc/ssl/cert.pem"
+#define TLS_DEFAULT_CA_FILE	"/etc/ssl/cert.pem"
 #endif
 
 #define TLS_CIPHERS_DEFAULT	"TLSv1.3:TLSv1.2+AEAD+ECDHE:TLSv1.2+AEAD+DHE"
@@ -46,7 +46,8 @@ union tls_addr {
 
 struct tls_error {
 	char *msg;
-	int num;
+	int code;
+	int errno_value;
 	int tls;
 };
 
@@ -77,6 +78,10 @@ struct tls_ticket_key {
 	unsigned char	hmac_key[TLS_TICKET_HMAC_SIZE];
 	time_t		time;
 };
+
+typedef int (*tls_sign_cb)(void *_cb_arg, const char *_pubkey_hash,
+    const uint8_t *_input, size_t _input_len, int _padding_type,
+    uint8_t **_out_signature, size_t *_out_signature_len);
 
 struct tls_config {
 	struct tls_error error;
@@ -112,6 +117,8 @@ struct tls_config {
 	int verify_time;
 	int skip_private_key_check;
 	int use_fake_private_key;
+	tls_sign_cb sign_cb;
+	void *sign_cb_arg;
 };
 
 struct tls_conninfo {
@@ -252,27 +259,27 @@ int tls_set_cbs(struct tls *ctx,
     tls_read_cb read_cb, tls_write_cb write_cb, void *cb_arg);
 
 void tls_error_clear(struct tls_error *error);
-int tls_error_set(struct tls_error *error, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_error_setx(struct tls_error *error, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_config_set_error(struct tls_config *cfg, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_config_set_errorx(struct tls_config *cfg, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_set_error(struct tls *ctx, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_set_errorx(struct tls *ctx, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
-int tls_set_ssl_errorx(struct tls *ctx, const char *fmt, ...)
-    __attribute__((__format__ (printf, 2, 3)))
-    __attribute__((__nonnull__ (2)));
+int tls_error_set(struct tls_error *error, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_error_setx(struct tls_error *error, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_config_set_error(struct tls_config *cfg, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_config_set_errorx(struct tls_config *cfg, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_set_error(struct tls *ctx, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_set_errorx(struct tls *ctx, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
+int tls_set_ssl_errorx(struct tls *ctx, int code, const char *fmt, ...)
+    __attribute__((__format__ (printf, 3, 4)))
+    __attribute__((__nonnull__ (3)));
 
 int tls_ssl_error(struct tls *ctx, SSL *ssl_conn, int ssl_ret,
     const char *prefix);
@@ -290,6 +297,26 @@ int tls_cert_hash(X509 *_cert, char **_hash);
 int tls_cert_pubkey_hash(X509 *_cert, char **_hash);
 
 int tls_password_cb(char *_buf, int _size, int _rwflag, void *_u);
+
+RSA_METHOD *tls_signer_rsa_method(void);
+EC_KEY_METHOD *tls_signer_ecdsa_method(void);
+
+#define TLS_PADDING_NONE			0
+#define TLS_PADDING_RSA_PKCS1			1
+
+int tls_config_set_sign_cb(struct tls_config *_config, tls_sign_cb _cb,
+    void *_cb_arg);
+
+struct tls_signer* tls_signer_new(void);
+void tls_signer_free(struct tls_signer * _signer);
+const char *tls_signer_error(struct tls_signer * _signer);
+int tls_signer_add_keypair_file(struct tls_signer *_signer,
+    const char *_cert_file, const char *_key_file);
+int tls_signer_add_keypair_mem(struct tls_signer *_signer, const uint8_t *_cert,
+    size_t _cert_len, const uint8_t *_key, size_t _key_len);
+int tls_signer_sign(struct tls_signer *_signer, const char *_pubkey_hash,
+    const uint8_t *_input, size_t _input_len, int _padding_type,
+    uint8_t **_out_signature, size_t *_out_signature_len);
 
 __END_HIDDEN_DECLS
 

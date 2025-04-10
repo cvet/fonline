@@ -23,6 +23,7 @@ ssize_t pwrite(int d, const void *buf, size_t nbytes, off_t offset);
 #include <io.h>
 #include <process.h>
 
+#define STDIN_FILENO    0
 #define STDOUT_FILENO   1
 #define STDERR_FILENO   2
 
@@ -62,6 +63,10 @@ int getentropy(void *buf, size_t buflen);
 #if defined(__sun)
 #include <sys/random.h>
 #endif
+#endif
+
+#ifndef HAVE_GETOPT
+#include "getopt.h"
 #endif
 
 #ifndef HAVE_GETPAGESIZE

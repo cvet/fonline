@@ -1,4 +1,4 @@
-/* $OpenBSD: hmac.h,v 1.13 2018/02/17 14:53:59 jsing Exp $ */
+/* $OpenBSD: hmac.h,v 1.20 2024/08/31 10:42:21 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,45 +60,39 @@
 
 #include <openssl/opensslconf.h>
 
+#if !defined(HAVE_ATTRIBUTE__BOUNDED__) && !defined(__OpenBSD__)
+#define __bounded__(x, y, z)
+#endif
+
 #ifdef OPENSSL_NO_HMAC
 #error HMAC is disabled.
 #endif
 
 #include <openssl/evp.h>
 
-#define HMAC_MAX_MD_CBLOCK	128	/* largest known is SHA512 */
+#define HMAC_MAX_MD_CBLOCK	144	/* largest known is SHA3-224 */
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
-typedef struct hmac_ctx_st {
-	const EVP_MD *md;
-	EVP_MD_CTX md_ctx;
-	EVP_MD_CTX i_ctx;
-	EVP_MD_CTX o_ctx;
-	unsigned int key_length;
-	unsigned char key[HMAC_MAX_MD_CBLOCK];
-} HMAC_CTX;
-
-#define HMAC_size(e)	(EVP_MD_size((e)->md))
+#define HMAC_size(e)	(EVP_MD_size(HMAC_CTX_get_md((e))))
 
 HMAC_CTX *HMAC_CTX_new(void);
 void HMAC_CTX_free(HMAC_CTX *ctx);
-void HMAC_CTX_init(HMAC_CTX *ctx);
 int HMAC_CTX_reset(HMAC_CTX *ctx);
-void HMAC_CTX_cleanup(HMAC_CTX *ctx);
 
-#define HMAC_cleanup(ctx) HMAC_CTX_cleanup(ctx) /* deprecated */
-
-int HMAC_Init(HMAC_CTX *ctx, const void *key, int len,
-    const EVP_MD *md); /* deprecated */
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md,
-    ENGINE *impl);
-int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len);
+    ENGINE *impl)
+    __attribute__ ((__bounded__(__buffer__, 2, 3)));
+int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len)
+    __attribute__ ((__bounded__(__buffer__, 2, 3)));
 int HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
 unsigned char *HMAC(const EVP_MD *evp_md, const void *key, int key_len,
-    const unsigned char *d, size_t n, unsigned char *md, unsigned int *md_len);
+    const unsigned char *d, size_t n, unsigned char *md, unsigned int *md_len)
+    __attribute__ ((__bounded__(__buffer__, 2, 3)))
+    __attribute__ ((__bounded__(__buffer__, 4, 5)))
+    __attribute__((__nonnull__ (6)));
 int HMAC_CTX_copy(HMAC_CTX *dctx, HMAC_CTX *sctx);
 
 void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags);

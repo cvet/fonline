@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_asn1.c,v 1.59 2021/05/16 14:10:43 jsing Exp $ */
+/* $OpenBSD: ssl_asn1.c,v 1.69 2024/07/22 14:47:15 jsing Exp $ */
 /*
  * Copyright (c) 2016 Joel Sing <jsing@openbsd.org>
  *
@@ -21,7 +21,7 @@
 #include <openssl/x509.h>
 
 #include "bytestring.h"
-#include "ssl_locl.h"
+#include "ssl_local.h"
 
 #define SSLASN1_TAG	(CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC)
 #define SSLASN1_TIME_TAG		(SSLASN1_TAG | 1)
@@ -51,7 +51,6 @@ SSL_SESSION_encode(SSL_SESSION *s, unsigned char **out, size_t *out_len,
 	CBB peer_cert, sidctx, verify_result, hostname, lifetime, ticket, value;
 	unsigned char *peer_cert_bytes = NULL;
 	int len, rv = 0;
-	uint16_t cid;
 
 	if (!CBB_init(&cbb, 0))
 		goto err;
@@ -69,14 +68,10 @@ SSL_SESSION_encode(SSL_SESSION *s, unsigned char **out, size_t *out_len,
 	if (!CBB_add_asn1_uint64(&session, s->ssl_version))
 		goto err;
 
-	/* Cipher suite ID. */
-	/* XXX - require cipher to be non-NULL or always/only use cipher_id. */
-	cid = (uint16_t)(s->cipher_id & 0xffff);
-	if (s->cipher != NULL)
-		cid = ssl3_cipher_get_value(s->cipher);
+	/* Cipher suite value. */
 	if (!CBB_add_asn1(&session, &cipher_suite, CBS_ASN1_OCTETSTRING))
 		goto err;
-	if (!CBB_add_u16(&cipher_suite, cid))
+	if (!CBB_add_u16(&cipher_suite, s->cipher_value))
 		goto err;
 
 	/* Session ID - zero length for a ticket. */
@@ -113,8 +108,8 @@ SSL_SESSION_encode(SSL_SESSION *s, unsigned char **out, size_t *out_len,
 	}
 
 	/* Peer certificate [3]. */
-	if (s->peer != NULL) {
-		if ((len = i2d_X509(s->peer, &peer_cert_bytes)) <= 0)
+	if (s->peer_cert != NULL) {
+		if ((len = i2d_X509(s->peer_cert, &peer_cert_bytes)) <= 0)
 			goto err;
 		if (!CBB_add_asn1(&session, &peer_cert, SSLASN1_PEER_CERT_TAG))
 			goto err;
@@ -196,7 +191,7 @@ SSL_SESSION_ticket(SSL_SESSION *ss, unsigned char **out, size_t *out_len)
 	if (ss == NULL)
 		return 0;
 
-	if (ss->cipher == NULL && ss->cipher_id == 0)
+	if (ss->cipher_value == 0)
 		return 0;
 
 	return SSL_SESSION_encode(ss, out, out_len, 1);
@@ -212,7 +207,7 @@ i2d_SSL_SESSION(SSL_SESSION *ss, unsigned char **pp)
 	if (ss == NULL)
 		return 0;
 
-	if (ss->cipher == NULL && ss->cipher_id == 0)
+	if (ss->cipher_value == 0)
 		return 0;
 
 	if (!SSL_SESSION_encode(ss, &data, &data_len, 0))
@@ -238,6 +233,7 @@ i2d_SSL_SESSION(SSL_SESSION *ss, unsigned char **pp)
 
 	return rv;
 }
+LSSL_ALIAS(i2d_SSL_SESSION);
 
 SSL_SESSION *
 d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
@@ -246,7 +242,6 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 	CBS hostname, ticket;
 	uint64_t version, tls_version, stime, timeout, verify_result, lifetime;
 	const unsigned char *peer_cert_bytes;
-	uint16_t cipher_value;
 	SSL_SESSION *s = NULL;
 	size_t data_len;
 	int present;
@@ -279,37 +274,27 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		goto err;
 	s->ssl_version = (int)tls_version;
 
-	/* Cipher suite. */
+	/* Cipher suite value. */
 	if (!CBS_get_asn1(&session, &cipher_suite, CBS_ASN1_OCTETSTRING))
 		goto err;
-	if (!CBS_get_u16(&cipher_suite, &cipher_value))
+	if (!CBS_get_u16(&cipher_suite, &s->cipher_value))
 		goto err;
 	if (CBS_len(&cipher_suite) != 0)
 		goto err;
-
-	/* XXX - populate cipher instead? */
-	s->cipher = NULL;
-	s->cipher_id = SSL3_CK_ID | cipher_value;
 
 	/* Session ID. */
 	if (!CBS_get_asn1(&session, &session_id, CBS_ASN1_OCTETSTRING))
 		goto err;
 	if (!CBS_write_bytes(&session_id, s->session_id, sizeof(s->session_id),
-	    &data_len))
+	    &s->session_id_length))
 		goto err;
-	if (data_len > UINT_MAX)
-		goto err;
-	s->session_id_length = (unsigned int)data_len;
 
 	/* Master key. */
 	if (!CBS_get_asn1(&session, &master_key, CBS_ASN1_OCTETSTRING))
 		goto err;
 	if (!CBS_write_bytes(&master_key, s->master_key, sizeof(s->master_key),
-	    &data_len))
+	    &s->master_key_length))
 		goto err;
-	if (data_len > INT_MAX)
-		goto err;
-	s->master_key_length = (int)data_len;
 
 	/* Time [1]. */
 	s->time = time(NULL);
@@ -332,8 +317,8 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		s->timeout = (long)timeout;
 
 	/* Peer certificate [3]. */
-	X509_free(s->peer);
-	s->peer = NULL;
+	X509_free(s->peer_cert);
+	s->peer_cert = NULL;
 	if (!CBS_get_optional_asn1(&session, &peer_cert, &present,
 	    SSLASN1_PEER_CERT_TAG))
 		goto err;
@@ -342,7 +327,7 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		if (data_len > LONG_MAX)
 			goto err;
 		peer_cert_bytes = CBS_data(&peer_cert);
-		if (d2i_X509(&s->peer, &peer_cert_bytes,
+		if (d2i_X509(&s->peer_cert, &peer_cert_bytes,
 		    (long)data_len) == NULL)
 			goto err;
 	}
@@ -354,11 +339,8 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		goto err;
 	if (present) {
 		if (!CBS_write_bytes(&session_id, (uint8_t *)&s->sid_ctx,
-		    sizeof(s->sid_ctx), &data_len))
+		    sizeof(s->sid_ctx), &s->sid_ctx_length))
 			goto err;
-		if (data_len > UINT_MAX)
-			goto err;
-		s->sid_ctx_length = (unsigned int)data_len;
 	}
 
 	/* Verify result [5]. */
@@ -388,16 +370,13 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 
 	/* Ticket lifetime [9]. */
 	s->tlsext_tick_lifetime_hint = 0;
-	/* XXX - tlsext_ticklen is not yet set... */
-	if (s->tlsext_ticklen > 0 && s->session_id_length > 0)
-		s->tlsext_tick_lifetime_hint = -1;
 	if (!CBS_get_optional_asn1_uint64(&session, &lifetime,
 	    SSLASN1_LIFETIME_TAG, 0))
 		goto err;
-	if (lifetime > LONG_MAX)
+	if (lifetime > UINT32_MAX)
 		goto err;
 	if (lifetime > 0)
-		s->tlsext_tick_lifetime_hint = (long)lifetime;
+		s->tlsext_tick_lifetime_hint = (uint32_t)lifetime;
 
 	/* Ticket [10]. */
 	free(s->tlsext_tick);
@@ -428,3 +407,4 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 
 	return (NULL);
 }
+LSSL_ALIAS(d2i_SSL_SESSION);

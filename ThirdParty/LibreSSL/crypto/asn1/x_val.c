@@ -1,4 +1,4 @@
-/* $OpenBSD: x_val.c,v 1.11 2015/02/11 04:00:39 jsing Exp $ */
+/* $OpenBSD: x_val.c,v 1.16 2024/08/31 10:14:17 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -61,6 +61,8 @@
 #include <openssl/asn1t.h>
 #include <openssl/x509.h>
 
+#include "x509_local.h"
+
 static const ASN1_TEMPLATE X509_VAL_seq_tt[] = {
 	{
 		.offset = offsetof(X509_VAL, notBefore),
@@ -82,6 +84,7 @@ const ASN1_ITEM X509_VAL_it = {
 	.size = sizeof(X509_VAL),
 	.sname = "X509_VAL",
 };
+LCRYPTO_ALIAS(X509_VAL_it);
 
 
 X509_VAL *
@@ -90,21 +93,25 @@ d2i_X509_VAL(X509_VAL **a, const unsigned char **in, long len)
 	return (X509_VAL *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &X509_VAL_it);
 }
+LCRYPTO_ALIAS(d2i_X509_VAL);
 
 int
 i2d_X509_VAL(X509_VAL *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &X509_VAL_it);
 }
+LCRYPTO_ALIAS(i2d_X509_VAL);
 
 X509_VAL *
 X509_VAL_new(void)
 {
 	return (X509_VAL *)ASN1_item_new(&X509_VAL_it);
 }
+LCRYPTO_ALIAS(X509_VAL_new);
 
 void
 X509_VAL_free(X509_VAL *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &X509_VAL_it);
 }
+LCRYPTO_ALIAS(X509_VAL_free);

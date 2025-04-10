@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_cpols.c,v 1.2 2021/08/24 15:23:03 tb Exp $ */
+/* $OpenBSD: x509_cpols.c,v 1.13 2024/07/13 15:08:58 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -65,7 +65,7 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
-#include "pcy_int.h"
+#include "x509_local.h"
 
 /* Certificate policies extension support: this one is a bit complex... */
 
@@ -82,7 +82,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
     STACK_OF(CONF_VALUE) *unot, int ia5org);
 static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos);
 
-const X509V3_EXT_METHOD v3_cpols = {
+static const X509V3_EXT_METHOD x509v3_ext_certificate_policies = {
 	.ext_nid = NID_certificate_policies,
 	.ext_flags = 0,
 	.it = &CERTIFICATEPOLICIES_it,
@@ -98,6 +98,12 @@ const X509V3_EXT_METHOD v3_cpols = {
 	.r2i = (X509V3_EXT_R2I)r2i_certpol,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_certificate_policies(void)
+{
+	return &x509v3_ext_certificate_policies;
+}
 
 static const ASN1_TEMPLATE CERTIFICATEPOLICIES_item_tt = {
 	.flags = ASN1_TFLG_SEQUENCE_OF,
@@ -116,6 +122,7 @@ const ASN1_ITEM CERTIFICATEPOLICIES_it = {
 	.size = 0,
 	.sname = "CERTIFICATEPOLICIES",
 };
+LCRYPTO_ALIAS(CERTIFICATEPOLICIES_it);
 
 
 CERTIFICATEPOLICIES *
@@ -124,24 +131,28 @@ d2i_CERTIFICATEPOLICIES(CERTIFICATEPOLICIES **a, const unsigned char **in, long 
 	return (CERTIFICATEPOLICIES *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &CERTIFICATEPOLICIES_it);
 }
+LCRYPTO_ALIAS(d2i_CERTIFICATEPOLICIES);
 
 int
 i2d_CERTIFICATEPOLICIES(CERTIFICATEPOLICIES *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &CERTIFICATEPOLICIES_it);
 }
+LCRYPTO_ALIAS(i2d_CERTIFICATEPOLICIES);
 
 CERTIFICATEPOLICIES *
 CERTIFICATEPOLICIES_new(void)
 {
 	return (CERTIFICATEPOLICIES *)ASN1_item_new(&CERTIFICATEPOLICIES_it);
 }
+LCRYPTO_ALIAS(CERTIFICATEPOLICIES_new);
 
 void
 CERTIFICATEPOLICIES_free(CERTIFICATEPOLICIES *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &CERTIFICATEPOLICIES_it);
 }
+LCRYPTO_ALIAS(CERTIFICATEPOLICIES_free);
 
 static const ASN1_TEMPLATE POLICYINFO_seq_tt[] = {
 	{
@@ -169,6 +180,7 @@ const ASN1_ITEM POLICYINFO_it = {
 	.size = sizeof(POLICYINFO),
 	.sname = "POLICYINFO",
 };
+LCRYPTO_ALIAS(POLICYINFO_it);
 
 
 POLICYINFO *
@@ -177,24 +189,28 @@ d2i_POLICYINFO(POLICYINFO **a, const unsigned char **in, long len)
 	return (POLICYINFO *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &POLICYINFO_it);
 }
+LCRYPTO_ALIAS(d2i_POLICYINFO);
 
 int
 i2d_POLICYINFO(POLICYINFO *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &POLICYINFO_it);
 }
+LCRYPTO_ALIAS(i2d_POLICYINFO);
 
 POLICYINFO *
 POLICYINFO_new(void)
 {
 	return (POLICYINFO *)ASN1_item_new(&POLICYINFO_it);
 }
+LCRYPTO_ALIAS(POLICYINFO_new);
 
 void
 POLICYINFO_free(POLICYINFO *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &POLICYINFO_it);
 }
+LCRYPTO_ALIAS(POLICYINFO_free);
 
 static const ASN1_TEMPLATE policydefault_tt = {
 	.flags = 0,
@@ -214,7 +230,6 @@ static const ASN1_ADB_TABLE POLICYQUALINFO_adbtbl[] = {
 			.field_name = "d.cpsuri",
 			.item = &ASN1_IA5STRING_it,
 		},
-	
 	},
 	{
 		.value = NID_id_qt_unotice,
@@ -225,14 +240,12 @@ static const ASN1_ADB_TABLE POLICYQUALINFO_adbtbl[] = {
 			.field_name = "d.usernotice",
 			.item = &USERNOTICE_it,
 		},
-	
 	},
 };
 
 static const ASN1_ADB POLICYQUALINFO_adb = {
 	.flags = 0,
 	.offset = offsetof(POLICYQUALINFO, pqualid),
-	.app_items = 0,
 	.tbl = POLICYQUALINFO_adbtbl,
 	.tblcount = sizeof(POLICYQUALINFO_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &policydefault_tt,
@@ -265,6 +278,7 @@ const ASN1_ITEM POLICYQUALINFO_it = {
 	.size = sizeof(POLICYQUALINFO),
 	.sname = "POLICYQUALINFO",
 };
+LCRYPTO_ALIAS(POLICYQUALINFO_it);
 
 
 POLICYQUALINFO *
@@ -273,24 +287,28 @@ d2i_POLICYQUALINFO(POLICYQUALINFO **a, const unsigned char **in, long len)
 	return (POLICYQUALINFO *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &POLICYQUALINFO_it);
 }
+LCRYPTO_ALIAS(d2i_POLICYQUALINFO);
 
 int
 i2d_POLICYQUALINFO(POLICYQUALINFO *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &POLICYQUALINFO_it);
 }
+LCRYPTO_ALIAS(i2d_POLICYQUALINFO);
 
 POLICYQUALINFO *
 POLICYQUALINFO_new(void)
 {
 	return (POLICYQUALINFO *)ASN1_item_new(&POLICYQUALINFO_it);
 }
+LCRYPTO_ALIAS(POLICYQUALINFO_new);
 
 void
 POLICYQUALINFO_free(POLICYQUALINFO *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &POLICYQUALINFO_it);
 }
+LCRYPTO_ALIAS(POLICYQUALINFO_free);
 
 static const ASN1_TEMPLATE USERNOTICE_seq_tt[] = {
 	{
@@ -318,6 +336,7 @@ const ASN1_ITEM USERNOTICE_it = {
 	.size = sizeof(USERNOTICE),
 	.sname = "USERNOTICE",
 };
+LCRYPTO_ALIAS(USERNOTICE_it);
 
 
 USERNOTICE *
@@ -326,24 +345,28 @@ d2i_USERNOTICE(USERNOTICE **a, const unsigned char **in, long len)
 	return (USERNOTICE *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &USERNOTICE_it);
 }
+LCRYPTO_ALIAS(d2i_USERNOTICE);
 
 int
 i2d_USERNOTICE(USERNOTICE *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &USERNOTICE_it);
 }
+LCRYPTO_ALIAS(i2d_USERNOTICE);
 
 USERNOTICE *
 USERNOTICE_new(void)
 {
 	return (USERNOTICE *)ASN1_item_new(&USERNOTICE_it);
 }
+LCRYPTO_ALIAS(USERNOTICE_new);
 
 void
 USERNOTICE_free(USERNOTICE *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &USERNOTICE_it);
 }
+LCRYPTO_ALIAS(USERNOTICE_free);
 
 static const ASN1_TEMPLATE NOTICEREF_seq_tt[] = {
 	{
@@ -371,6 +394,7 @@ const ASN1_ITEM NOTICEREF_it = {
 	.size = sizeof(NOTICEREF),
 	.sname = "NOTICEREF",
 };
+LCRYPTO_ALIAS(NOTICEREF_it);
 
 
 NOTICEREF *
@@ -379,24 +403,28 @@ d2i_NOTICEREF(NOTICEREF **a, const unsigned char **in, long len)
 	return (NOTICEREF *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &NOTICEREF_it);
 }
+LCRYPTO_ALIAS(d2i_NOTICEREF);
 
 int
 i2d_NOTICEREF(NOTICEREF *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &NOTICEREF_it);
 }
+LCRYPTO_ALIAS(i2d_NOTICEREF);
 
 NOTICEREF *
 NOTICEREF_new(void)
 {
 	return (NOTICEREF *)ASN1_item_new(&NOTICEREF_it);
 }
+LCRYPTO_ALIAS(NOTICEREF_new);
 
 void
 NOTICEREF_free(NOTICEREF *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &NOTICEREF_it);
 }
+LCRYPTO_ALIAS(NOTICEREF_free);
 
 static STACK_OF(POLICYINFO) *
 r2i_certpol(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *value)
@@ -574,7 +602,7 @@ notice_section(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *unot, int ia5org)
 		cnf = sk_CONF_VALUE_value(unot, i);
 		if (!strcmp(cnf->name, "explicitText")) {
 			if (not->exptext == NULL) {
-				not->exptext = ASN1_VISIBLESTRING_new();
+				not->exptext = ASN1_UTF8STRING_new();
 				if (not->exptext == NULL)
 					goto merr;
 			}
@@ -744,21 +772,4 @@ print_notice(BIO *out, USERNOTICE *notice, int indent)
 	if (notice->exptext)
 		BIO_printf(out, "%*sExplicit Text: %.*s\n", indent, "",
 		    notice->exptext->length, notice->exptext->data);
-}
-
-void
-X509_POLICY_NODE_print(BIO *out, X509_POLICY_NODE *node, int indent)
-{
-	const X509_POLICY_DATA *dat = node->data;
-
-	BIO_printf(out, "%*sPolicy: ", indent, "");
-
-	i2a_ASN1_OBJECT(out, dat->valid_policy);
-	BIO_puts(out, "\n");
-	BIO_printf(out, "%*s%s\n", indent + 2, "",
-	    node_data_critical(dat) ? "Critical" : "Non Critical");
-	if (dat->qualifier_set)
-		print_qualifiers(out, dat->qualifier_set, indent + 2);
-	else
-		BIO_printf(out, "%*sNo Qualifiers\n", indent + 2, "");
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: dh_asn1.c,v 1.10 2016/12/30 15:26:49 jsing Exp $ */
+/* $OpenBSD: dh_asn1.c,v 1.13 2024/04/15 15:47:37 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -63,6 +63,8 @@
 #include <openssl/dh.h>
 #include <openssl/objects.h>
 
+#include "dh_local.h"
+
 /* Override the default free and new methods */
 static int
 dh_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
@@ -112,7 +114,7 @@ static const ASN1_TEMPLATE DHparams_seq_tt[] = {
 	},
 };
 
-const ASN1_ITEM DHparams_it = {
+static const ASN1_ITEM DHparams_it = {
 	.itype = ASN1_ITYPE_SEQUENCE,
 	.utype = V_ASN1_SEQUENCE,
 	.templates = DHparams_seq_tt,
@@ -129,39 +131,46 @@ d2i_DHparams(DH **a, const unsigned char **in, long len)
 	return (DH *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &DHparams_it);
 }
+LCRYPTO_ALIAS(d2i_DHparams);
 
 int
 i2d_DHparams(const DH *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &DHparams_it);
 }
+LCRYPTO_ALIAS(i2d_DHparams);
 
 DH *
 d2i_DHparams_bio(BIO *bp, DH **a)
 {
 	return ASN1_item_d2i_bio(&DHparams_it, bp, a);
 }
+LCRYPTO_ALIAS(d2i_DHparams_bio);
 
 int
 i2d_DHparams_bio(BIO *bp, DH *a)
 {
 	return ASN1_item_i2d_bio(&DHparams_it, bp, a);
 }
+LCRYPTO_ALIAS(i2d_DHparams_bio);
 
 DH *
 d2i_DHparams_fp(FILE *fp, DH **a)
 {
 	return ASN1_item_d2i_fp(&DHparams_it, fp, a);
 }
+LCRYPTO_ALIAS(d2i_DHparams_fp);
 
 int
 i2d_DHparams_fp(FILE *fp, DH *a)
 {
 	return ASN1_item_i2d_fp(&DHparams_it, fp, a);
 }
+LCRYPTO_ALIAS(i2d_DHparams_fp);
 
 DH *
 DHparams_dup(DH *dh)
 {
 	return ASN1_item_dup(&DHparams_it, dh);
 }
+LCRYPTO_ALIAS(DHparams_dup);

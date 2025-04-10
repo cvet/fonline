@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_info.c,v 1.1 2020/06/04 15:19:31 jsing Exp $ */
+/* $OpenBSD: x509_info.c,v 1.5 2024/07/13 15:08:58 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -71,7 +71,7 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
 static AUTHORITY_INFO_ACCESS *v2i_AUTHORITY_INFO_ACCESS(
     X509V3_EXT_METHOD *method, X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
 
-const X509V3_EXT_METHOD v3_info = {
+static const X509V3_EXT_METHOD x509v3_ext_info_access = {
 	.ext_nid = NID_info_access,
 	.ext_flags = X509V3_EXT_MULTILINE,
 	.it = &AUTHORITY_INFO_ACCESS_it,
@@ -88,7 +88,13 @@ const X509V3_EXT_METHOD v3_info = {
 	.usr_data = NULL,
 };
 
-const X509V3_EXT_METHOD v3_sinfo = {
+const X509V3_EXT_METHOD *
+x509v3_ext_method_info_access(void)
+{
+	return &x509v3_ext_info_access;
+}
+
+static const X509V3_EXT_METHOD x509v3_ext_sinfo_access = {
 	.ext_nid = NID_sinfo_access,
 	.ext_flags = X509V3_EXT_MULTILINE,
 	.it = &AUTHORITY_INFO_ACCESS_it,
@@ -104,6 +110,12 @@ const X509V3_EXT_METHOD v3_sinfo = {
 	.r2i = NULL,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_sinfo_access(void)
+{
+	return &x509v3_ext_sinfo_access;
+}
 
 static const ASN1_TEMPLATE ACCESS_DESCRIPTION_seq_tt[] = {
 	{
@@ -131,6 +143,7 @@ const ASN1_ITEM ACCESS_DESCRIPTION_it = {
 	.size = sizeof(ACCESS_DESCRIPTION),
 	.sname = "ACCESS_DESCRIPTION",
 };
+LCRYPTO_ALIAS(ACCESS_DESCRIPTION_it);
 
 
 ACCESS_DESCRIPTION *
@@ -139,24 +152,28 @@ d2i_ACCESS_DESCRIPTION(ACCESS_DESCRIPTION **a, const unsigned char **in, long le
 	return (ACCESS_DESCRIPTION *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ACCESS_DESCRIPTION_it);
 }
+LCRYPTO_ALIAS(d2i_ACCESS_DESCRIPTION);
 
 int
 i2d_ACCESS_DESCRIPTION(ACCESS_DESCRIPTION *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ACCESS_DESCRIPTION_it);
 }
+LCRYPTO_ALIAS(i2d_ACCESS_DESCRIPTION);
 
 ACCESS_DESCRIPTION *
 ACCESS_DESCRIPTION_new(void)
 {
 	return (ACCESS_DESCRIPTION *)ASN1_item_new(&ACCESS_DESCRIPTION_it);
 }
+LCRYPTO_ALIAS(ACCESS_DESCRIPTION_new);
 
 void
 ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ACCESS_DESCRIPTION_it);
 }
+LCRYPTO_ALIAS(ACCESS_DESCRIPTION_free);
 
 static const ASN1_TEMPLATE AUTHORITY_INFO_ACCESS_item_tt = {
 	.flags = ASN1_TFLG_SEQUENCE_OF,
@@ -175,6 +192,7 @@ const ASN1_ITEM AUTHORITY_INFO_ACCESS_it = {
 	.size = 0,
 	.sname = "AUTHORITY_INFO_ACCESS",
 };
+LCRYPTO_ALIAS(AUTHORITY_INFO_ACCESS_it);
 
 
 AUTHORITY_INFO_ACCESS *
@@ -183,24 +201,28 @@ d2i_AUTHORITY_INFO_ACCESS(AUTHORITY_INFO_ACCESS **a, const unsigned char **in, l
 	return (AUTHORITY_INFO_ACCESS *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &AUTHORITY_INFO_ACCESS_it);
 }
+LCRYPTO_ALIAS(d2i_AUTHORITY_INFO_ACCESS);
 
 int
 i2d_AUTHORITY_INFO_ACCESS(AUTHORITY_INFO_ACCESS *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &AUTHORITY_INFO_ACCESS_it);
 }
+LCRYPTO_ALIAS(i2d_AUTHORITY_INFO_ACCESS);
 
 AUTHORITY_INFO_ACCESS *
 AUTHORITY_INFO_ACCESS_new(void)
 {
 	return (AUTHORITY_INFO_ACCESS *)ASN1_item_new(&AUTHORITY_INFO_ACCESS_it);
 }
+LCRYPTO_ALIAS(AUTHORITY_INFO_ACCESS_new);
 
 void
 AUTHORITY_INFO_ACCESS_free(AUTHORITY_INFO_ACCESS *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &AUTHORITY_INFO_ACCESS_it);
 }
+LCRYPTO_ALIAS(AUTHORITY_INFO_ACCESS_free);
 
 static STACK_OF(CONF_VALUE) *
 i2v_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD *method,
@@ -306,3 +328,4 @@ i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION* a)
 	i2a_ASN1_OBJECT(bp, a->method);
 	return 2;
 }
+LCRYPTO_ALIAS(i2a_ACCESS_DESCRIPTION);

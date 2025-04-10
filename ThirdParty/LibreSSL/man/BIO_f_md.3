@@ -1,7 +1,24 @@
-.\"	$OpenBSD: BIO_f_md.3,v 1.11 2019/06/06 01:06:58 schwarze Exp $
-.\"	OpenSSL a528d4f0 Oct 27 13:40:11 2015 -0400
+.\" $OpenBSD: BIO_f_md.3,v 1.15 2023/04/28 16:20:01 schwarze Exp $
+.\" full merge up to: OpenSSL e9b77246 Jan 20 19:58:49 2017 +0100
 .\"
-.\" This file was written by Dr. Stephen Henson <steve@openssl.org>.
+.\" This file is a derived work.
+.\" The changes are covered by the following Copyright and license:
+.\"
+.\" Copyright (c) 2022, 2023 Ingo Schwarze <schwarze@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\" The original file was written by Dr. Stephen Henson <steve@openssl.org>.
 .\" Copyright (c) 2000, 2006, 2009, 2016 The OpenSSL Project.
 .\" All rights reserved.
 .\"
@@ -49,14 +66,15 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: June 6 2019 $
+.Dd $Mdocdate: April 28 2023 $
 .Dt BIO_F_MD 3
 .Os
 .Sh NAME
 .Nm BIO_f_md ,
 .Nm BIO_set_md ,
 .Nm BIO_get_md ,
-.Nm BIO_get_md_ctx
+.Nm BIO_get_md_ctx ,
+.Nm BIO_set_md_ctx
 .Nd message digest BIO filter
 .Sh SYNOPSIS
 .In openssl/bio.h
@@ -65,20 +83,25 @@
 .Fo BIO_f_md
 .Fa void
 .Fc
-.Ft int
+.Ft long
 .Fo BIO_set_md
 .Fa "BIO *b"
 .Fa "EVP_MD *md"
 .Fc
-.Ft int
+.Ft long
 .Fo BIO_get_md
 .Fa "BIO *b"
 .Fa "EVP_MD **mdp"
 .Fc
-.Ft int
+.Ft long
 .Fo BIO_get_md_ctx
 .Fa "BIO *b"
 .Fa "EVP_MD_CTX **mdcp"
+.Fc
+.Ft long
+.Fo BIO_set_md_ctx
+.Fa "BIO *b"
+.Fa "EVP_MD_CTX *mdc"
 .Fc
 .Sh DESCRIPTION
 .Fn BIO_f_md
@@ -89,6 +112,22 @@ It is a BIO wrapper for the digest routines
 .Xr EVP_DigestUpdate 3 ,
 and
 .Xr EVP_DigestFinal 3 .
+.Pp
+.Fn BIO_set_md
+sets the message digest of
+.Fa b
+to
+.Fa md
+and initializes it using
+.Xr EVP_DigestInit_ex 3 .
+Calling this function is required before any data is passed through
+.Fa b .
+.Pp
+.Fn BIO_get_md
+places a pointer to the digest method of
+.Fa b
+into
+.Pf * Fa mdp .
 .Pp
 Any data written or read through a digest BIO using
 .Xr BIO_read 3
@@ -104,31 +143,34 @@ finishes the digest calculation and returns the digest value.
 .Xr BIO_puts 3
 is
 not supported.
+If an application needs to call
+.Xr BIO_gets 3
+or
+.Xr BIO_puts 3
+through a chain containing digest BIOs,
+this can be done by prepending a buffering BIO.
 .Pp
+After the digest has been retrieved from a digest BIO, call
 .Xr BIO_reset 3
-reinitialises a digest BIO.
-.Pp
+to reinitialize it and any BIOs following it in its chain
+before passing any more data through it.
+If no subsequent BIOs require reinitialization,
 .Fn BIO_set_md
-sets the message digest of BIO
-.Fa b
-to
-.Fa md :
-this must be called to initialize a digest BIO
-before any data is passed through it.
-It is a
-.Xr BIO_ctrl 3
-macro.
-.Pp
-.Fn BIO_get_md
-places a pointer to the digest BIOs digest method in
-.Fa mdp .
-It is a
-.Xr BIO_ctrl 3
-macro.
+can be used instead of
+.Xr BIO_reset 3 .
 .Pp
 .Fn BIO_get_md_ctx
-returns the digest BIOs context in
-.Fa mdcp .
+places a pointer to the digest context of
+.Fa b
+into
+.Pf * Fa mdcp
+and marks the BIO as initialized without actually initializing it.
+Unless
+.Fn BIO_set_md
+was already called on
+.Fa b ,
+the caller becomes responsible for initializing the digest context with
+.Xr EVP_DigestInit_ex 3 .
 .Pp
 The context returned by
 .Fn BIO_get_md_ctx
@@ -145,38 +187,79 @@ is an internal context structure.
 Changes made to this context will affect the digest BIO itself, and
 the context pointer will become invalid when the digest BIO is freed.
 .Pp
-After the digest has been retrieved from a digest BIO,
-it must be reinitialized by calling
-.Xr BIO_reset 3
-or
+.Fn BIO_set_md_ctx
+replaces the digest context of
+.Fa b
+with
+.Fa mdc .
+Calling this function is usually not necessary
+because creating a digest BIO with
+.Xr BIO_new 3
+automatically creates a digest context and stores it internally.
+Before calling
+.Fn BIO_set_md_ctx ,
+the caller has to retrieve the old context using
+.Fn BIO_get_md_ctx ,
+and the caller also becomes responsible for calling
+.Xr EVP_MD_CTX_free 3
+on the old context.
+Unless
+.Fa mdc
+is already initialized, the caller needs to initialize it after calling
+.Fn BIO_set_md_ctx
+using either
 .Fn BIO_set_md
-before any more data is passed through it.
-.Pp
-If an application needs to call
-.Xr BIO_gets 3
 or
-.Xr BIO_puts 3
-through a chain containing digest BIOs,
-then this can be done by prepending a buffering BIO.
+.Xr EVP_DigestInit 3 .
 .Pp
-Calling
-.Fn BIO_get_md_ctx
-will return the context and initialize the
-.Vt BIO
-state.
-This allows applications to initialize the context externally
-if the standard calls such as
-.Fn BIO_set_md
-are not sufficiently flexible.
+When a chain containing a message digest BIO is copied with
+.Xr BIO_dup_chain 3 ,
+.Xr EVP_MD_CTX_copy_ex 3
+is called internally to automatically copy the message digest context
+from the existing BIO object to the new one,
+and the init flag that can be retrieved with
+.Xr BIO_get_init 3
+is set to 1.
+.Pp
+.Xr BIO_ctrl 3
+.Fa cmd
+arguments correspond to macros as follows:
+.Bl -column BIO_C_GET_MD_CTX "corresponding macro" -offset 3n
+.It Fa cmd No constant  Ta corresponding macro
+.It Dv BIO_C_GET_MD     Ta Fn BIO_get_md
+.It Dv BIO_C_GET_MD_CTX Ta Fn BIO_get_md_ctx
+.It Dv BIO_C_SET_MD     Ta Fn BIO_set_md
+.It Dv BIO_C_SET_MD_CTX Ta Fn BIO_set_md_ctx
+.It Dv BIO_CTRL_RESET   Ta Xr BIO_reset 3
+.El
 .Sh RETURN VALUES
 .Fn BIO_f_md
 returns the digest BIO method.
 .Pp
-.Fn BIO_set_md ,
-.Fn BIO_get_md ,
+When called on a message digest BIO object,
+.Xr BIO_method_type 3
+returns the constant
+.Dv BIO_TYPE_MD
 and
+.Xr BIO_method_name 3
+returns a pointer to the static string
+.Qq message digest .
+.Pp
+.Fn BIO_set_md
+returns 1 on success or 0 if
+.Xr EVP_DigestInit_ex 3
+fails.
+.Pp
+.Fn BIO_get_md
+and
+.Fn BIO_set_md_ctx
+return 1 on success or 0 if
+.Fa b
+is not initialized.
+.Pp
 .Fn BIO_get_md_ctx
-return 1 for success and 0 for failure.
+returns 1 on success or 0 on failure,
+but the current implementation cannot actually fail.
 .Sh EXAMPLES
 The following example creates a BIO chain containing a SHA-1 and MD5
 digest BIO and passes the string "Hello World" through it.
@@ -256,6 +339,10 @@ first appeared in SSLeay 0.6.0.
 first appeared in SSLeay 0.8.1.
 These functions have been available since
 .Ox 2.4 .
+.Pp
+.Fn BIO_set_md_ctx
+first appeared in OpenSSL 0.9.7e and has been available since
+.Ox 3.8 .
 .Pp
 Before OpenSSL 1.0.0, the call to
 .Fn BIO_get_md_ctx

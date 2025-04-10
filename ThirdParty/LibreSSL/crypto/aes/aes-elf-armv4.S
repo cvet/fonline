@@ -108,17 +108,17 @@ AES_Te:
 .word	0x1B000000, 0x36000000, 0, 0, 0, 0, 0, 0
 .size	AES_Te,.-AES_Te
 
-@ void AES_encrypt(const unsigned char *in, unsigned char *out,
-@ 		 const AES_KEY *key) {
-.global AES_encrypt
-.type   AES_encrypt,%function
+@ void aes_encrypt_internal(const unsigned char *in, unsigned char *out,
+@     const AES_KEY *key) {
+.global aes_encrypt_internal
+.type   aes_encrypt_internal,%function
 .align	5
-AES_encrypt:
-	sub	r3,pc,#8		@ AES_encrypt
+aes_encrypt_internal:
+	sub	r3,pc,#8		@ aes_encrypt_internal
 	stmdb   sp!,{r1,r4-r12,lr}
 	mov	r12,r0		@ inp
 	mov	r11,r2
-	sub	r10,r3,#AES_encrypt-AES_Te	@ Te
+	sub	r10,r3,#aes_encrypt_internal-AES_Te	@ Te
 #if __ARM_ARCH__<7 || defined(__STRICT_ALIGNMENT)
 	ldrb	r0,[r12,#3]	@ load input data in endian-neutral
 	ldrb	r4,[r12,#2]	@ manner...
@@ -212,7 +212,7 @@ AES_encrypt:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	.word	0xe12fff1e			@ interoperable with Thumb ISA:-)
 #endif
-.size	AES_encrypt,.-AES_encrypt
+.size	aes_encrypt_internal,.-aes_encrypt_internal
 
 .type   _armv4_AES_encrypt,%function
 .align	2
@@ -351,12 +351,12 @@ _armv4_AES_encrypt:
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
 
-.global AES_set_encrypt_key
-.type   AES_set_encrypt_key,%function
+.global aes_set_encrypt_key_internal
+.type   aes_set_encrypt_key_internal,%function
 .align	5
-AES_set_encrypt_key:
+aes_set_encrypt_key_internal:
 _armv4_AES_set_encrypt_key:
-	sub	r3,pc,#8		@ AES_set_encrypt_key
+	sub	r3,pc,#8		@ aes_set_encrypt_key_internal
 	teq	r0,#0
 	moveq	r0,#-1
 	beq	.Labrt
@@ -626,12 +626,12 @@ _armv4_AES_set_encrypt_key:
 .Labrt:	tst	lr,#1
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	.word	0xe12fff1e			@ interoperable with Thumb ISA:-)
-.size	AES_set_encrypt_key,.-AES_set_encrypt_key
+.size	aes_set_encrypt_key_internal,.-aes_set_encrypt_key_internal
 
-.global AES_set_decrypt_key
-.type   AES_set_decrypt_key,%function
+.global aes_set_decrypt_key_internal
+.type   aes_set_decrypt_key_internal,%function
 .align	5
-AES_set_decrypt_key:
+aes_set_decrypt_key_internal:
 	str	lr,[sp,#-4]!            @ push lr
 	bl	_armv4_AES_set_encrypt_key
 	teq	r0,#0
@@ -715,7 +715,7 @@ AES_set_decrypt_key:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	.word	0xe12fff1e			@ interoperable with Thumb ISA:-)
 #endif
-.size	AES_set_decrypt_key,.-AES_set_decrypt_key
+.size	aes_set_decrypt_key_internal,.-aes_set_decrypt_key_internal
 
 .type	AES_Td,%object
 .align	5
@@ -819,17 +819,17 @@ AES_Td:
 .byte	0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 .size	AES_Td,.-AES_Td
 
-@ void AES_decrypt(const unsigned char *in, unsigned char *out,
-@ 		 const AES_KEY *key) {
-.global AES_decrypt
-.type   AES_decrypt,%function
+@ void aes_decrypt_internal(const unsigned char *in, unsigned char *out,
+@     const AES_KEY *key) {
+.global aes_decrypt_internal
+.type   aes_decrypt_internal,%function
 .align	5
-AES_decrypt:
-	sub	r3,pc,#8		@ AES_decrypt
+aes_decrypt_internal:
+	sub	r3,pc,#8		@ aes_decrypt_internal
 	stmdb   sp!,{r1,r4-r12,lr}
 	mov	r12,r0		@ inp
 	mov	r11,r2
-	sub	r10,r3,#AES_decrypt-AES_Td		@ Td
+	sub	r10,r3,#aes_decrypt_internal-AES_Td		@ Td
 #if __ARM_ARCH__<7 || defined(__STRICT_ALIGNMENT)
 	ldrb	r0,[r12,#3]	@ load input data in endian-neutral
 	ldrb	r4,[r12,#2]	@ manner...
@@ -923,7 +923,7 @@ AES_decrypt:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	.word	0xe12fff1e			@ interoperable with Thumb ISA:-)
 #endif
-.size	AES_decrypt,.-AES_decrypt
+.size	aes_decrypt_internal,.-aes_decrypt_internal
 
 .type   _armv4_AES_decrypt,%function
 .align	2

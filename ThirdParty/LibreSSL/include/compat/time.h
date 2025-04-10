@@ -3,6 +3,14 @@
  * sys/time.h compatibility shim
  */
 
+#ifndef SIZEOF_TIME_T
+#ifdef SMALL_TIME_T
+#define SIZEOF_TIME_T 4
+#else
+#define SIZEOF_TIME_T 8
+#endif
+#endif
+
 #ifdef _MSC_VER
 #if _MSC_VER >= 1900
 #include <../ucrt/time.h>
@@ -15,15 +23,6 @@
 
 #ifndef LIBCRYPTOCOMPAT_TIME_H
 #define LIBCRYPTOCOMPAT_TIME_H
-
-#ifdef _WIN32
-struct tm *__gmtime_r(const time_t * t, struct tm * tm);
-#define gmtime_r(tp, tm) __gmtime_r(tp, tm)
-#endif
-
-#ifndef HAVE_TIMEGM
-time_t timegm(struct tm *tm);
-#endif
 
 #ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC CLOCK_REALTIME

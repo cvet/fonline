@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_methods.c,v 1.28 2021/07/26 03:17:38 jsing Exp $ */
+/* $OpenBSD: ssl_methods.c,v 1.32 2024/07/23 14:40:54 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,8 +56,8 @@
  * [including the GNU Public Licence.]
  */
 
-#include "dtls_locl.h"
-#include "ssl_locl.h"
+#include "dtls_local.h"
+#include "ssl_local.h"
 #include "tls13_internal.h"
 
 static const SSL_METHOD DTLS_method_data = {
@@ -77,7 +77,6 @@ static const SSL_METHOD DTLS_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
@@ -98,7 +97,6 @@ static const SSL_METHOD DTLS_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
@@ -119,7 +117,6 @@ static const SSL_METHOD DTLSv1_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_1_ENC_FLAGS,
 };
 
@@ -140,7 +137,6 @@ static const SSL_METHOD DTLSv1_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_1_ENC_FLAGS,
 };
 
@@ -161,7 +157,6 @@ static const SSL_METHOD DTLSv1_2_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
@@ -182,7 +177,6 @@ static const SSL_METHOD DTLSv1_2_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = dtls1_read_bytes,
 	.ssl_write_bytes = dtls1_write_app_data_bytes,
-	.get_cipher = dtls1_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
@@ -191,56 +185,64 @@ DTLSv1_client_method(void)
 {
 	return &DTLSv1_client_method_data;
 }
+LSSL_ALIAS(DTLSv1_client_method);
 
 const SSL_METHOD *
 DTLSv1_method(void)
 {
 	return &DTLSv1_method_data;
 }
+LSSL_ALIAS(DTLSv1_method);
 
 const SSL_METHOD *
 DTLSv1_server_method(void)
 {
 	return &DTLSv1_method_data;
 }
+LSSL_ALIAS(DTLSv1_server_method);
 
 const SSL_METHOD *
 DTLSv1_2_client_method(void)
 {
 	return &DTLSv1_2_client_method_data;
 }
+LSSL_ALIAS(DTLSv1_2_client_method);
 
 const SSL_METHOD *
 DTLSv1_2_method(void)
 {
 	return &DTLSv1_2_method_data;
 }
+LSSL_ALIAS(DTLSv1_2_method);
 
 const SSL_METHOD *
 DTLSv1_2_server_method(void)
 {
 	return &DTLSv1_2_method_data;
 }
+LSSL_ALIAS(DTLSv1_2_server_method);
 
 const SSL_METHOD *
 DTLS_client_method(void)
 {
 	return &DTLS_client_method_data;
 }
+LSSL_ALIAS(DTLS_client_method);
 
 const SSL_METHOD *
 DTLS_method(void)
 {
 	return &DTLS_method_data;
 }
+LSSL_ALIAS(DTLS_method);
 
 const SSL_METHOD *
 DTLS_server_method(void)
 {
 	return &DTLS_method_data;
 }
+LSSL_ALIAS(DTLS_server_method);
 
-#if defined(LIBRESSL_HAS_TLS1_3_CLIENT) && defined(LIBRESSL_HAS_TLS1_3_SERVER)
 static const SSL_METHOD TLS_method_data = {
 	.dtls = 0,
 	.server = 1,
@@ -258,10 +260,8 @@ static const SSL_METHOD TLS_method_data = {
 	.ssl_pending = tls13_legacy_pending,
 	.ssl_read_bytes = tls13_legacy_read_bytes,
 	.ssl_write_bytes = tls13_legacy_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_3_ENC_FLAGS,
 };
-#endif
 
 static const SSL_METHOD TLS_legacy_method_data = {
 	.dtls = 0,
@@ -280,11 +280,9 @@ static const SSL_METHOD TLS_legacy_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
-#if defined(LIBRESSL_HAS_TLS1_3_CLIENT)
 static const SSL_METHOD TLS_client_method_data = {
 	.dtls = 0,
 	.server = 0,
@@ -302,33 +300,8 @@ static const SSL_METHOD TLS_client_method_data = {
 	.ssl_pending = tls13_legacy_pending,
 	.ssl_read_bytes = tls13_legacy_read_bytes,
 	.ssl_write_bytes = tls13_legacy_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_3_ENC_FLAGS,
 };
-
-#else
-
-static const SSL_METHOD TLS_legacy_client_method_data = {
-	.dtls = 0,
-	.server = 0,
-	.version = TLS1_2_VERSION,
-	.min_tls_version = TLS1_VERSION,
-	.max_tls_version = TLS1_2_VERSION,
-	.ssl_new = tls1_new,
-	.ssl_clear = tls1_clear,
-	.ssl_free = tls1_free,
-	.ssl_accept = ssl3_accept,
-	.ssl_connect = ssl3_connect,
-	.ssl_shutdown = ssl3_shutdown,
-	.ssl_renegotiate = ssl_undefined_function,
-	.ssl_renegotiate_check = ssl_ok,
-	.ssl_pending = ssl3_pending,
-	.ssl_read_bytes = ssl3_read_bytes,
-	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
-	.enc_flags = TLSV1_2_ENC_FLAGS,
-};
-#endif
 
 static const SSL_METHOD TLSv1_method_data = {
 	.dtls = 0,
@@ -347,7 +320,6 @@ static const SSL_METHOD TLSv1_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_ENC_FLAGS,
 };
 
@@ -368,7 +340,6 @@ static const SSL_METHOD TLSv1_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_ENC_FLAGS,
 };
 
@@ -389,7 +360,6 @@ static const SSL_METHOD TLSv1_1_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_1_ENC_FLAGS,
 };
 
@@ -410,7 +380,6 @@ static const SSL_METHOD TLSv1_1_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_1_ENC_FLAGS,
 };
 
@@ -431,7 +400,6 @@ static const SSL_METHOD TLSv1_2_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
@@ -452,35 +420,29 @@ static const SSL_METHOD TLSv1_2_client_method_data = {
 	.ssl_pending = ssl3_pending,
 	.ssl_read_bytes = ssl3_read_bytes,
 	.ssl_write_bytes = ssl3_write_bytes,
-	.get_cipher = ssl3_get_cipher,
 	.enc_flags = TLSV1_2_ENC_FLAGS,
 };
 
 const SSL_METHOD *
 TLS_client_method(void)
 {
-#if defined(LIBRESSL_HAS_TLS1_3_CLIENT)
 	return (&TLS_client_method_data);
-#else
-	return (&TLS_legacy_client_method_data);
-#endif
 }
+LSSL_ALIAS(TLS_client_method);
 
 const SSL_METHOD *
 TLS_method(void)
 {
-#if defined(LIBRESSL_HAS_TLS1_3_CLIENT) && defined(LIBRESSL_HAS_TLS1_3_SERVER)
 	return (&TLS_method_data);
-#else
-	return tls_legacy_method();
-#endif
 }
+LSSL_ALIAS(TLS_method);
 
 const SSL_METHOD *
 TLS_server_method(void)
 {
 	return TLS_method();
 }
+LSSL_ALIAS(TLS_server_method);
 
 const SSL_METHOD *
 tls_legacy_method(void)
@@ -493,72 +455,84 @@ SSLv23_client_method(void)
 {
 	return TLS_client_method();
 }
+LSSL_ALIAS(SSLv23_client_method);
 
 const SSL_METHOD *
 SSLv23_method(void)
 {
 	return TLS_method();
 }
+LSSL_ALIAS(SSLv23_method);
 
 const SSL_METHOD *
 SSLv23_server_method(void)
 {
 	return TLS_method();
 }
+LSSL_ALIAS(SSLv23_server_method);
 
 const SSL_METHOD *
 TLSv1_client_method(void)
 {
 	return (&TLSv1_client_method_data);
 }
+LSSL_ALIAS(TLSv1_client_method);
 
 const SSL_METHOD *
 TLSv1_method(void)
 {
 	return (&TLSv1_method_data);
 }
+LSSL_ALIAS(TLSv1_method);
 
 const SSL_METHOD *
 TLSv1_server_method(void)
 {
 	return (&TLSv1_method_data);
 }
+LSSL_ALIAS(TLSv1_server_method);
 
 const SSL_METHOD *
 TLSv1_1_client_method(void)
 {
 	return (&TLSv1_1_client_method_data);
 }
+LSSL_ALIAS(TLSv1_1_client_method);
 
 const SSL_METHOD *
 TLSv1_1_method(void)
 {
 	return (&TLSv1_1_method_data);
 }
+LSSL_ALIAS(TLSv1_1_method);
 
 const SSL_METHOD *
 TLSv1_1_server_method(void)
 {
 	return (&TLSv1_1_method_data);
 }
+LSSL_ALIAS(TLSv1_1_server_method);
 
 const SSL_METHOD *
 TLSv1_2_client_method(void)
 {
 	return (&TLSv1_2_client_method_data);
 }
+LSSL_ALIAS(TLSv1_2_client_method);
 
 const SSL_METHOD *
 TLSv1_2_method(void)
 {
 	return (&TLSv1_2_method_data);
 }
+LSSL_ALIAS(TLSv1_2_method);
 
 const SSL_METHOD *
 TLSv1_2_server_method(void)
 {
 	return (&TLSv1_2_method_data);
 }
+LSSL_ALIAS(TLSv1_2_server_method);
 
 const SSL_METHOD *
 ssl_get_method(uint16_t version)

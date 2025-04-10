@@ -1,4 +1,4 @@
-/* $OpenBSD: rfc5280time.c,v 1.4 2015/10/30 15:52:55 miod Exp $ */
+/* $OpenBSD: rfc5280time.c,v 1.8 2024/04/08 19:57:40 beck Exp $ */
 /*
  * Copyright (c) 2015 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2015 Bob Beck <beck@opebsd.org>
@@ -91,7 +91,6 @@ struct rfc5280_time_test rfc5280_invtime_tests[] = {
 		.data = "20150923032700Z",
 		.time = 1442978820,
 	},
-#if SIZEOF_TIME_T == 8
 	{
 		/* (times before 2050 must be UTCTIME) Per RFC 5280 4.1.2.5 */
 		.str = "00000101000000Z",
@@ -104,7 +103,6 @@ struct rfc5280_time_test rfc5280_invtime_tests[] = {
 		.data = "20491231235959Z",
 		.time = 2524607999LL,
 	},
-#endif
 	{
 		/* (times before 2050 must be UTCTIME) Per RFC 5280 4.1.2.5 */
 		.str = "19500101000000Z",
@@ -114,7 +112,6 @@ struct rfc5280_time_test rfc5280_invtime_tests[] = {
 };
 
 struct rfc5280_time_test rfc5280_gentime_tests[] = {
-#if SIZEOF_TIME_T == 8
 	{
 		/* Biggest RFC 5280 time */
 		.str = "99991231235959Z",
@@ -132,7 +129,6 @@ struct rfc5280_time_test rfc5280_gentime_tests[] = {
 		.data = "20500101000000Z",
 		.time =  2524608000LL,
 	},
-#endif
 };
 struct rfc5280_time_test rfc5280_utctime_tests[] = {
 	{
@@ -145,13 +141,11 @@ struct rfc5280_time_test rfc5280_utctime_tests[] = {
 		.data = "540226230640Z",
 		.time = -500000000,
 	},
-#if SIZEOF_TIME_T == 8
 	{
 		.str = "491231235959Z",
 		.data = "491231235959Z",
 		.time = 2524607999LL,
 	},
-#endif
 	{
 		.str = "700101000000Z",
 		.data = "700101000000Z",
@@ -197,12 +191,12 @@ asn1_compare_str(int test_no, struct asn1_string_st *asn1str, const char *str)
 	int length = strlen(str);
 
 	if (asn1str->length != length) {
-		fprintf(stderr, "FAIL: test %i - string lengths differ "
-		    "(%i != %i)\n", test_no, asn1str->length, length);
+		fprintf(stderr, "FAIL: test %d - string lengths differ "
+		    "(%d != %d)\n", test_no, asn1str->length, length);
 		return (1);
 	}
 	if (strncmp(asn1str->data, str, length) != 0) {
-		fprintf(stderr, "FAIL: test %i - strings differ "
+		fprintf(stderr, "FAIL: test %d - strings differ "
 		    "('%s' != '%s')\n", test_no, asn1str->data, str);
 		return (1);
 	}
@@ -228,21 +222,14 @@ rfc5280_invtime_test(int test_no, struct rfc5280_time_test *att)
 
 	if (ASN1_GENERALIZEDTIME_set_string(gt, att->str) != 0) {
 		if (X509_cmp_time(gt, &now) != 0) {
-			fprintf(stderr, "FAIL: test %i - successfully parsed as GENTIME "
+			fprintf(stderr, "FAIL: test %d - successfully parsed as GENTIME "
 			    "string '%s'\n", test_no, att->str);
 			goto done;
 		}
 	}
 	if (ASN1_UTCTIME_set_string(ut, att->str) != 0) {
 		if (X509_cmp_time(ut, &now) != 0) {
-			fprintf(stderr, "FAIL: test %i - successfully parsed as UTCTIME "
-			    "string '%s'\n", test_no, att->str);
-			goto done;
-		}
-	}
-	if (ASN1_TIME_set_string(t, att->str) != 0) {
-		if (X509_cmp_time(t, &now) != 0) {
-			fprintf(stderr, "FAIL: test %i - successfully parsed as UTCTIME "
+			fprintf(stderr, "FAIL: test %d - successfully parsed as UTCTIME "
 			    "string '%s'\n", test_no, att->str);
 			goto done;
 		}
@@ -270,7 +257,7 @@ rfc5280_gentime_test(int test_no, struct rfc5280_time_test *att)
 		goto done;
 
 	if (ASN1_GENERALIZEDTIME_set_string(gt, att->str) != 1) {
-		fprintf(stderr, "FAIL: test %i - failed to set string '%s'\n",
+		fprintf(stderr, "FAIL: test %d - failed to set string '%s'\n",
 		    test_no, att->str);
 		goto done;
 	}
@@ -278,14 +265,14 @@ rfc5280_gentime_test(int test_no, struct rfc5280_time_test *att)
 		goto done;
 
 	if ((i = X509_cmp_time(gt, &att->time)) != -1) {
-		fprintf(stderr, "FAIL: test %i - X509_cmp_time failed - returned %d compared to %lld\n",
+		fprintf(stderr, "FAIL: test %d - X509_cmp_time failed - returned %d compared to %lld\n",
 		    test_no, i, (long long)att->time);
 		goto done;
 	}
 
 	att->time--;
 	if ((i = X509_cmp_time(gt, &att->time)) != 1) {
-		fprintf(stderr, "FAIL: test %i - X509_cmp_time failed - returned %d compared to %lld\n",
+		fprintf(stderr, "FAIL: test %d - X509_cmp_time failed - returned %d compared to %lld\n",
 		    test_no, i, (long long)att->time);
 		goto done;
 	}
@@ -294,7 +281,7 @@ rfc5280_gentime_test(int test_no, struct rfc5280_time_test *att)
 	ASN1_GENERALIZEDTIME_free(gt);
 
 	if ((gt = ASN1_GENERALIZEDTIME_set(NULL, att->time)) == NULL) {
-		fprintf(stderr, "FAIL: test %i - failed to set time %lli\n",
+		fprintf(stderr, "FAIL: test %d - failed to set time %lld\n",
 		    test_no, (long long)att->time);
 		goto done;
 	}
@@ -322,7 +309,7 @@ rfc5280_utctime_test(int test_no, struct rfc5280_time_test *att)
 		goto done;
 
 	if (ASN1_UTCTIME_set_string(ut, att->str) != 1) {
-		fprintf(stderr, "FAIL: test %i - failed to set string '%s'\n",
+		fprintf(stderr, "FAIL: test %d - failed to set string '%s'\n",
 		    test_no, att->str);
 		goto done;
 	}
@@ -330,14 +317,14 @@ rfc5280_utctime_test(int test_no, struct rfc5280_time_test *att)
 		goto done;
 
 	if ((i = X509_cmp_time(ut, &att->time)) != -1) {
-		fprintf(stderr, "FAIL: test %i - X509_cmp_time failed - returned %d compared to %lld\n",
+		fprintf(stderr, "FAIL: test %d - X509_cmp_time failed - returned %d compared to %lld\n",
 		    test_no, i, (long long)att->time);
 		goto done;
 	}
 
 	att->time--;
 	if ((i = X509_cmp_time(ut, &att->time)) != 1) {
-		fprintf(stderr, "FAIL: test %i - X509_cmp_time failed - returned %d compared to %lld\n",
+		fprintf(stderr, "FAIL: test %d - X509_cmp_time failed - returned %d compared to %lld\n",
 		    test_no, i, (long long)att->time);
 		goto done;
 	}
@@ -346,7 +333,7 @@ rfc5280_utctime_test(int test_no, struct rfc5280_time_test *att)
 	ASN1_UTCTIME_free(ut);
 
 	if ((ut = ASN1_UTCTIME_set(NULL, att->time)) == NULL) {
-		fprintf(stderr, "FAIL: test %i - failed to set time %lli\n",
+		fprintf(stderr, "FAIL: test %d - failed to set time %lld\n",
 		    test_no, (long long)att->time);
 		goto done;
 	}

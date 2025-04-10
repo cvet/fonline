@@ -1,4 +1,4 @@
-/* $OpenBSD: pk7_asn1.c,v 1.12 2015/07/25 15:33:06 jsing Exp $ */
+/* $OpenBSD: pk7_asn1.c,v 1.18 2024/07/08 16:23:27 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -146,7 +146,6 @@ static const ASN1_ADB_TABLE PKCS7_adbtbl[] = {
 static const ASN1_ADB PKCS7_adb = {
 	.flags = 0,
 	.offset = offsetof(PKCS7, type),
-	.app_items = 0,
 	.tbl = PKCS7_adbtbl,
 	.tblcount = sizeof(PKCS7_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &p7default_tt,
@@ -164,6 +163,7 @@ pk7_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
 	case ASN1_OP_STREAM_PRE:
 		if (PKCS7_stream(&sarg->boundary, *pp7) <= 0)
 			return 0;
+		/* FALLTHROUGH */
 
 	case ASN1_OP_DETACHED_PRE:
 		sarg->ndef_bio = PKCS7_dataInit(*pp7, sarg->out);
@@ -214,6 +214,7 @@ const ASN1_ITEM PKCS7_it = {
 	.size = sizeof(PKCS7),
 	.sname = "PKCS7",
 };
+LCRYPTO_ALIAS(PKCS7_it);
 
 
 PKCS7 *
@@ -222,36 +223,35 @@ d2i_PKCS7(PKCS7 **a, const unsigned char **in, long len)
 	return (PKCS7 *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7);
 
 int
 i2d_PKCS7(PKCS7 *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7);
 
 PKCS7 *
 PKCS7_new(void)
 {
 	return (PKCS7 *)ASN1_item_new(&PKCS7_it);
 }
+LCRYPTO_ALIAS(PKCS7_new);
 
 void
 PKCS7_free(PKCS7 *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_it);
 }
-
-int
-i2d_PKCS7_NDEF(PKCS7 *a, unsigned char **out)
-{
-	return ASN1_item_ndef_i2d((ASN1_VALUE *)a, out, &PKCS7_it);
-}
+LCRYPTO_ALIAS(PKCS7_free);
 
 PKCS7 *
 PKCS7_dup(PKCS7 *x)
 {
 	return ASN1_item_dup(&PKCS7_it, x);
 }
+LCRYPTO_ALIAS(PKCS7_dup);
 
 static const ASN1_TEMPLATE PKCS7_SIGNED_seq_tt[] = {
 	{
@@ -307,6 +307,7 @@ const ASN1_ITEM PKCS7_SIGNED_it = {
 	.size = sizeof(PKCS7_SIGNED),
 	.sname = "PKCS7_SIGNED",
 };
+LCRYPTO_ALIAS(PKCS7_SIGNED_it);
 
 
 PKCS7_SIGNED *
@@ -315,24 +316,28 @@ d2i_PKCS7_SIGNED(PKCS7_SIGNED **a, const unsigned char **in, long len)
 	return (PKCS7_SIGNED *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_SIGNED_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_SIGNED);
 
 int
 i2d_PKCS7_SIGNED(PKCS7_SIGNED *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_SIGNED_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_SIGNED);
 
 PKCS7_SIGNED *
 PKCS7_SIGNED_new(void)
 {
 	return (PKCS7_SIGNED *)ASN1_item_new(&PKCS7_SIGNED_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGNED_new);
 
 void
 PKCS7_SIGNED_free(PKCS7_SIGNED *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_SIGNED_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGNED_free);
 
 /* Minor tweak to operation: free up EVP_PKEY */
 static int
@@ -419,6 +424,7 @@ const ASN1_ITEM PKCS7_SIGNER_INFO_it = {
 	.size = sizeof(PKCS7_SIGNER_INFO),
 	.sname = "PKCS7_SIGNER_INFO",
 };
+LCRYPTO_ALIAS(PKCS7_SIGNER_INFO_it);
 
 
 PKCS7_SIGNER_INFO *
@@ -427,24 +433,28 @@ d2i_PKCS7_SIGNER_INFO(PKCS7_SIGNER_INFO **a, const unsigned char **in, long len)
 	return (PKCS7_SIGNER_INFO *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_SIGNER_INFO_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_SIGNER_INFO);
 
 int
 i2d_PKCS7_SIGNER_INFO(PKCS7_SIGNER_INFO *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_SIGNER_INFO_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_SIGNER_INFO);
 
 PKCS7_SIGNER_INFO *
 PKCS7_SIGNER_INFO_new(void)
 {
 	return (PKCS7_SIGNER_INFO *)ASN1_item_new(&PKCS7_SIGNER_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGNER_INFO_new);
 
 void
 PKCS7_SIGNER_INFO_free(PKCS7_SIGNER_INFO *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_SIGNER_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGNER_INFO_free);
 
 static const ASN1_TEMPLATE PKCS7_ISSUER_AND_SERIAL_seq_tt[] = {
 	{
@@ -472,6 +482,7 @@ const ASN1_ITEM PKCS7_ISSUER_AND_SERIAL_it = {
 	.size = sizeof(PKCS7_ISSUER_AND_SERIAL),
 	.sname = "PKCS7_ISSUER_AND_SERIAL",
 };
+LCRYPTO_ALIAS(PKCS7_ISSUER_AND_SERIAL_it);
 
 
 PKCS7_ISSUER_AND_SERIAL *
@@ -480,24 +491,28 @@ d2i_PKCS7_ISSUER_AND_SERIAL(PKCS7_ISSUER_AND_SERIAL **a, const unsigned char **i
 	return (PKCS7_ISSUER_AND_SERIAL *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_ISSUER_AND_SERIAL_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_ISSUER_AND_SERIAL);
 
 int
 i2d_PKCS7_ISSUER_AND_SERIAL(PKCS7_ISSUER_AND_SERIAL *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_ISSUER_AND_SERIAL_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_ISSUER_AND_SERIAL);
 
 PKCS7_ISSUER_AND_SERIAL *
 PKCS7_ISSUER_AND_SERIAL_new(void)
 {
 	return (PKCS7_ISSUER_AND_SERIAL *)ASN1_item_new(&PKCS7_ISSUER_AND_SERIAL_it);
 }
+LCRYPTO_ALIAS(PKCS7_ISSUER_AND_SERIAL_new);
 
 void
 PKCS7_ISSUER_AND_SERIAL_free(PKCS7_ISSUER_AND_SERIAL *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_ISSUER_AND_SERIAL_it);
 }
+LCRYPTO_ALIAS(PKCS7_ISSUER_AND_SERIAL_free);
 
 static const ASN1_TEMPLATE PKCS7_ENVELOPE_seq_tt[] = {
 	{
@@ -532,6 +547,7 @@ const ASN1_ITEM PKCS7_ENVELOPE_it = {
 	.size = sizeof(PKCS7_ENVELOPE),
 	.sname = "PKCS7_ENVELOPE",
 };
+LCRYPTO_ALIAS(PKCS7_ENVELOPE_it);
 
 
 PKCS7_ENVELOPE *
@@ -540,24 +556,28 @@ d2i_PKCS7_ENVELOPE(PKCS7_ENVELOPE **a, const unsigned char **in, long len)
 	return (PKCS7_ENVELOPE *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_ENVELOPE);
 
 int
 i2d_PKCS7_ENVELOPE(PKCS7_ENVELOPE *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_ENVELOPE);
 
 PKCS7_ENVELOPE *
 PKCS7_ENVELOPE_new(void)
 {
 	return (PKCS7_ENVELOPE *)ASN1_item_new(&PKCS7_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENVELOPE_new);
 
 void
 PKCS7_ENVELOPE_free(PKCS7_ENVELOPE *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENVELOPE_free);
 
 /* Minor tweak to operation: free up X509 */
 static int
@@ -618,6 +638,7 @@ const ASN1_ITEM PKCS7_RECIP_INFO_it = {
 	.size = sizeof(PKCS7_RECIP_INFO),
 	.sname = "PKCS7_RECIP_INFO",
 };
+LCRYPTO_ALIAS(PKCS7_RECIP_INFO_it);
 
 
 PKCS7_RECIP_INFO *
@@ -626,24 +647,28 @@ d2i_PKCS7_RECIP_INFO(PKCS7_RECIP_INFO **a, const unsigned char **in, long len)
 	return (PKCS7_RECIP_INFO *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_RECIP_INFO_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_RECIP_INFO);
 
 int
 i2d_PKCS7_RECIP_INFO(PKCS7_RECIP_INFO *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_RECIP_INFO_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_RECIP_INFO);
 
 PKCS7_RECIP_INFO *
 PKCS7_RECIP_INFO_new(void)
 {
 	return (PKCS7_RECIP_INFO *)ASN1_item_new(&PKCS7_RECIP_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS7_RECIP_INFO_new);
 
 void
 PKCS7_RECIP_INFO_free(PKCS7_RECIP_INFO *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_RECIP_INFO_it);
 }
+LCRYPTO_ALIAS(PKCS7_RECIP_INFO_free);
 
 static const ASN1_TEMPLATE PKCS7_ENC_CONTENT_seq_tt[] = {
 	{
@@ -678,6 +703,7 @@ const ASN1_ITEM PKCS7_ENC_CONTENT_it = {
 	.size = sizeof(PKCS7_ENC_CONTENT),
 	.sname = "PKCS7_ENC_CONTENT",
 };
+LCRYPTO_ALIAS(PKCS7_ENC_CONTENT_it);
 
 
 PKCS7_ENC_CONTENT *
@@ -686,24 +712,28 @@ d2i_PKCS7_ENC_CONTENT(PKCS7_ENC_CONTENT **a, const unsigned char **in, long len)
 	return (PKCS7_ENC_CONTENT *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_ENC_CONTENT_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_ENC_CONTENT);
 
 int
 i2d_PKCS7_ENC_CONTENT(PKCS7_ENC_CONTENT *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_ENC_CONTENT_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_ENC_CONTENT);
 
 PKCS7_ENC_CONTENT *
 PKCS7_ENC_CONTENT_new(void)
 {
 	return (PKCS7_ENC_CONTENT *)ASN1_item_new(&PKCS7_ENC_CONTENT_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENC_CONTENT_new);
 
 void
 PKCS7_ENC_CONTENT_free(PKCS7_ENC_CONTENT *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_ENC_CONTENT_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENC_CONTENT_free);
 
 static const ASN1_TEMPLATE PKCS7_SIGN_ENVELOPE_seq_tt[] = {
 	{
@@ -766,6 +796,7 @@ const ASN1_ITEM PKCS7_SIGN_ENVELOPE_it = {
 	.size = sizeof(PKCS7_SIGN_ENVELOPE),
 	.sname = "PKCS7_SIGN_ENVELOPE",
 };
+LCRYPTO_ALIAS(PKCS7_SIGN_ENVELOPE_it);
 
 
 PKCS7_SIGN_ENVELOPE *
@@ -774,24 +805,28 @@ d2i_PKCS7_SIGN_ENVELOPE(PKCS7_SIGN_ENVELOPE **a, const unsigned char **in, long 
 	return (PKCS7_SIGN_ENVELOPE *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_SIGN_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_SIGN_ENVELOPE);
 
 int
 i2d_PKCS7_SIGN_ENVELOPE(PKCS7_SIGN_ENVELOPE *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_SIGN_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_SIGN_ENVELOPE);
 
 PKCS7_SIGN_ENVELOPE *
 PKCS7_SIGN_ENVELOPE_new(void)
 {
 	return (PKCS7_SIGN_ENVELOPE *)ASN1_item_new(&PKCS7_SIGN_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGN_ENVELOPE_new);
 
 void
 PKCS7_SIGN_ENVELOPE_free(PKCS7_SIGN_ENVELOPE *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_SIGN_ENVELOPE_it);
 }
+LCRYPTO_ALIAS(PKCS7_SIGN_ENVELOPE_free);
 
 static const ASN1_TEMPLATE PKCS7_ENCRYPT_seq_tt[] = {
 	{
@@ -819,6 +854,7 @@ const ASN1_ITEM PKCS7_ENCRYPT_it = {
 	.size = sizeof(PKCS7_ENCRYPT),
 	.sname = "PKCS7_ENCRYPT",
 };
+LCRYPTO_ALIAS(PKCS7_ENCRYPT_it);
 
 
 PKCS7_ENCRYPT *
@@ -827,24 +863,28 @@ d2i_PKCS7_ENCRYPT(PKCS7_ENCRYPT **a, const unsigned char **in, long len)
 	return (PKCS7_ENCRYPT *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_ENCRYPT_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_ENCRYPT);
 
 int
 i2d_PKCS7_ENCRYPT(PKCS7_ENCRYPT *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_ENCRYPT_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_ENCRYPT);
 
 PKCS7_ENCRYPT *
 PKCS7_ENCRYPT_new(void)
 {
 	return (PKCS7_ENCRYPT *)ASN1_item_new(&PKCS7_ENCRYPT_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENCRYPT_new);
 
 void
 PKCS7_ENCRYPT_free(PKCS7_ENCRYPT *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_ENCRYPT_it);
 }
+LCRYPTO_ALIAS(PKCS7_ENCRYPT_free);
 
 static const ASN1_TEMPLATE PKCS7_DIGEST_seq_tt[] = {
 	{
@@ -886,6 +926,7 @@ const ASN1_ITEM PKCS7_DIGEST_it = {
 	.size = sizeof(PKCS7_DIGEST),
 	.sname = "PKCS7_DIGEST",
 };
+LCRYPTO_ALIAS(PKCS7_DIGEST_it);
 
 
 PKCS7_DIGEST *
@@ -894,24 +935,28 @@ d2i_PKCS7_DIGEST(PKCS7_DIGEST **a, const unsigned char **in, long len)
 	return (PKCS7_DIGEST *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS7_DIGEST_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS7_DIGEST);
 
 int
 i2d_PKCS7_DIGEST(PKCS7_DIGEST *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS7_DIGEST_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS7_DIGEST);
 
 PKCS7_DIGEST *
 PKCS7_DIGEST_new(void)
 {
 	return (PKCS7_DIGEST *)ASN1_item_new(&PKCS7_DIGEST_it);
 }
+LCRYPTO_ALIAS(PKCS7_DIGEST_new);
 
 void
 PKCS7_DIGEST_free(PKCS7_DIGEST *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS7_DIGEST_it);
 }
+LCRYPTO_ALIAS(PKCS7_DIGEST_free);
 
 /* Specials for authenticated attributes */
 
@@ -936,6 +981,7 @@ const ASN1_ITEM PKCS7_ATTR_SIGN_it = {
 	.size = 0,
 	.sname = "PKCS7_ATTR_SIGN",
 };
+LCRYPTO_ALIAS(PKCS7_ATTR_SIGN_it);
 
 /* When verifying attributes we need to use the received order. So
  * we use SEQUENCE OF and tag it to SET OF
@@ -958,6 +1004,7 @@ const ASN1_ITEM PKCS7_ATTR_VERIFY_it = {
 	.size = 0,
 	.sname = "PKCS7_ATTR_VERIFY",
 };
+LCRYPTO_ALIAS(PKCS7_ATTR_VERIFY_it);
 
 
 int
@@ -966,3 +1013,41 @@ PKCS7_print_ctx(BIO *out, PKCS7 *x, int indent, const ASN1_PCTX *pctx)
 	return ASN1_item_print(out, (ASN1_VALUE *)x, indent,
 	    &PKCS7_it, pctx);
 }
+LCRYPTO_ALIAS(PKCS7_print_ctx);
+
+PKCS7 *
+d2i_PKCS7_bio(BIO *bp, PKCS7 **p7)
+{
+	return ASN1_item_d2i_bio(&PKCS7_it, bp, p7);
+}
+LCRYPTO_ALIAS(d2i_PKCS7_bio);
+
+int
+i2d_PKCS7_bio(BIO *bp, PKCS7 *p7)
+{
+	return ASN1_item_i2d_bio(&PKCS7_it, bp, p7);
+}
+LCRYPTO_ALIAS(i2d_PKCS7_bio);
+
+PKCS7 *
+d2i_PKCS7_fp(FILE *fp, PKCS7 **p7)
+{
+	return ASN1_item_d2i_fp(&PKCS7_it, fp, p7);
+}
+LCRYPTO_ALIAS(d2i_PKCS7_fp);
+
+int
+i2d_PKCS7_fp(FILE *fp, PKCS7 *p7)
+{
+	return ASN1_item_i2d_fp(&PKCS7_it, fp, p7);
+}
+LCRYPTO_ALIAS(i2d_PKCS7_fp);
+
+int
+PKCS7_ISSUER_AND_SERIAL_digest(PKCS7_ISSUER_AND_SERIAL *data,
+    const EVP_MD *type, unsigned char *md, unsigned int *len)
+{
+	return(ASN1_item_digest(&PKCS7_ISSUER_AND_SERIAL_it, type,
+	    (char *)data, md, len));
+}
+LCRYPTO_ALIAS(PKCS7_ISSUER_AND_SERIAL_digest);

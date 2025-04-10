@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_rsp_sign.c,v 1.23 2019/07/03 03:24:04 deraadt Exp $ */
+/* $OpenBSD: ts_rsp_sign.c,v 1.35 2024/03/26 00:39:22 beck Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -65,6 +65,10 @@
 #include <openssl/pkcs7.h>
 #include <openssl/ts.h>
 
+#include "evp_local.h"
+#include "ts_local.h"
+#include "x509_local.h"
+
 /* Private function declarations. */
 
 static ASN1_INTEGER *def_serial_cb(struct TS_resp_ctx *, void *);
@@ -86,26 +90,26 @@ static ESS_CERT_ID *ESS_CERT_ID_new_init(X509 *cert, int issuer_needed);
 static int TS_TST_INFO_content_new(PKCS7 *p7);
 static int ESS_add_signing_cert(PKCS7_SIGNER_INFO *si, ESS_SIGNING_CERT *sc);
 
-static ASN1_GENERALIZEDTIME *TS_RESP_set_genTime_with_precision(
-    ASN1_GENERALIZEDTIME *, time_t, long, unsigned);
-
 /* Default callbacks for response generation. */
 
 static ASN1_INTEGER *
 def_serial_cb(struct TS_resp_ctx *ctx, void *data)
 {
-	ASN1_INTEGER *serial = ASN1_INTEGER_new();
+	ASN1_INTEGER *serial;
 
-	if (!serial)
+	if ((serial = ASN1_INTEGER_new()) == NULL)
 		goto err;
 	if (!ASN1_INTEGER_set(serial, 1))
 		goto err;
+
 	return serial;
 
-err:
+ err:
+	ASN1_INTEGER_free(serial);
 	TSerror(ERR_R_MALLOC_FAILURE);
 	TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
 	    "Error during serial number generation.");
+
 	return NULL;
 }
 
@@ -139,6 +143,14 @@ def_extension_cb(struct TS_resp_ctx *ctx, X509_EXTENSION *ext, void *data)
 	return 0;
 }
 
+void
+TS_RESP_CTX_set_time_cb(TS_RESP_CTX *ctx, TS_time_cb cb, void *data)
+{
+	ctx->time_cb = cb;
+	ctx->time_cb_data = data;
+}
+LCRYPTO_ALIAS(TS_RESP_CTX_set_time_cb);
+
 /* TS_RESP_CTX management functions. */
 
 TS_RESP_CTX *
@@ -158,6 +170,7 @@ TS_RESP_CTX_new(void)
 
 	return ctx;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_new);
 
 void
 TS_RESP_CTX_free(TS_RESP_CTX *ctx)
@@ -176,6 +189,7 @@ TS_RESP_CTX_free(TS_RESP_CTX *ctx)
 	ASN1_INTEGER_free(ctx->micros);
 	free(ctx);
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_free);
 
 int
 TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer)
@@ -189,6 +203,7 @@ TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer)
 	CRYPTO_add(&ctx->signer_cert->references, +1, CRYPTO_LOCK_X509);
 	return 1;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_signer_cert);
 
 int
 TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key)
@@ -199,6 +214,7 @@ TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key)
 
 	return 1;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_signer_key);
 
 int
 TS_RESP_CTX_set_def_policy(TS_RESP_CTX *ctx, const ASN1_OBJECT *def_policy)
@@ -213,6 +229,7 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_def_policy);
 
 int
 TS_RESP_CTX_set_certs(TS_RESP_CTX *ctx, STACK_OF(X509) *certs)
@@ -236,6 +253,7 @@ TS_RESP_CTX_set_certs(TS_RESP_CTX *ctx, STACK_OF(X509) *certs)
 
 	return 1;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_certs);
 
 int
 TS_RESP_CTX_add_policy(TS_RESP_CTX *ctx, const ASN1_OBJECT *policy)
@@ -257,6 +275,7 @@ err:
 	ASN1_OBJECT_free(copy);
 	return 0;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_add_policy);
 
 int
 TS_RESP_CTX_add_md(TS_RESP_CTX *ctx, const EVP_MD *md)
@@ -274,6 +293,7 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_add_md);
 
 #define TS_RESP_CTX_accuracy_free(ctx)		\
 	ASN1_INTEGER_free(ctx->seconds);	\
@@ -304,12 +324,14 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_accuracy);
 
 void
 TS_RESP_CTX_add_flags(TS_RESP_CTX *ctx, int flags)
 {
 	ctx->flags |= flags;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_add_flags);
 
 void
 TS_RESP_CTX_set_serial_cb(TS_RESP_CTX *ctx, TS_serial_cb cb, void *data)
@@ -317,6 +339,7 @@ TS_RESP_CTX_set_serial_cb(TS_RESP_CTX *ctx, TS_serial_cb cb, void *data)
 	ctx->serial_cb = cb;
 	ctx->serial_cb_data = data;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_serial_cb);
 
 void
 TS_RESP_CTX_set_extension_cb(TS_RESP_CTX *ctx, TS_extension_cb cb, void *data)
@@ -324,6 +347,7 @@ TS_RESP_CTX_set_extension_cb(TS_RESP_CTX *ctx, TS_extension_cb cb, void *data)
 	ctx->extension_cb = cb;
 	ctx->extension_cb_data = data;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_extension_cb);
 
 int
 TS_RESP_CTX_set_status_info(TS_RESP_CTX *ctx, int status, const char *text)
@@ -357,6 +381,7 @@ err:
 	ASN1_UTF8STRING_free(utf8_text);
 	return ret;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_status_info);
 
 int
 TS_RESP_CTX_set_status_info_cond(TS_RESP_CTX *ctx, int status, const char *text)
@@ -370,6 +395,7 @@ TS_RESP_CTX_set_status_info_cond(TS_RESP_CTX *ctx, int status, const char *text)
 	}
 	return ret;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_status_info_cond);
 
 int
 TS_RESP_CTX_add_failure_info(TS_RESP_CTX *ctx, int failure)
@@ -386,27 +412,31 @@ err:
 	TSerror(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_add_failure_info);
 
 TS_REQ *
 TS_RESP_CTX_get_request(TS_RESP_CTX *ctx)
 {
 	return ctx->request;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_get_request);
 
 TS_TST_INFO *
 TS_RESP_CTX_get_tst_info(TS_RESP_CTX *ctx)
 {
 	return ctx->tst_info;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_get_tst_info);
 
 int
 TS_RESP_CTX_set_clock_precision_digits(TS_RESP_CTX *ctx, unsigned precision)
 {
-	if (precision > TS_MAX_CLOCK_PRECISION_DIGITS)
+	if (precision > 0)
 		return 0;
 	ctx->clock_precision_digits = precision;
 	return 1;
 }
+LCRYPTO_ALIAS(TS_RESP_CTX_set_clock_precision_digits);
 
 /* Main entry method of the response generation. */
 TS_RESP *
@@ -477,6 +507,7 @@ end:
 	TS_RESP_CTX_cleanup(ctx);
 	return response;
 }
+LCRYPTO_ALIAS(TS_RESP_create_response);
 
 /* Initializes the variable part of the context. */
 static void
@@ -616,8 +647,7 @@ TS_RESP_create_tst_info(TS_RESP_CTX *ctx, ASN1_OBJECT *policy)
 	    !TS_TST_INFO_set_serial(tst_info, serial))
 		goto end;
 	if (!(*ctx->time_cb)(ctx, ctx->time_cb_data, &sec, &usec) ||
-	    !(asn1_time = TS_RESP_set_genTime_with_precision(NULL, sec, usec,
-	    ctx->clock_precision_digits)) ||
+	    ((asn1_time = ASN1_GENERALIZEDTIME_set(NULL, sec)) == NULL) ||
 	    !TS_TST_INFO_set_time(tst_info, asn1_time))
 		goto end;
 
@@ -651,7 +681,7 @@ TS_RESP_create_tst_info(TS_RESP_CTX *ctx, ASN1_OBJECT *policy)
 			goto end;
 		tsa_name->type = GEN_DIRNAME;
 		tsa_name->d.dirn =
-		    X509_NAME_dup(ctx->signer_cert->cert_info->subject);
+		    X509_NAME_dup(X509_get_subject_name(ctx->signer_cert));
 		if (!tsa_name->d.dirn)
 			goto end;
 		if (!TS_TST_INFO_set_tsa(tst_info, tsa_name))
@@ -847,14 +877,18 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 {
 	ESS_CERT_ID *cid = NULL;
 	GENERAL_NAME *name = NULL;
+	unsigned char cert_hash[TS_HASH_LEN];
 
 	/* Recompute SHA1 hash of certificate if necessary (side effect). */
 	X509_check_purpose(cert, -1, 0);
 
 	if (!(cid = ESS_CERT_ID_new()))
 		goto err;
-	if (!ASN1_OCTET_STRING_set(cid->hash, cert->sha1_hash,
-	    sizeof(cert->sha1_hash)))
+
+	if (!X509_digest(cert, TS_HASH_EVP, cert_hash, NULL))
+		goto err;
+
+	if (!ASN1_OCTET_STRING_set(cid->hash, cert_hash, sizeof(cert_hash)))
 		goto err;
 
 	/* Setting the issuer/serial if requested. */
@@ -867,7 +901,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		if (!(name = GENERAL_NAME_new()))
 			goto err;
 		name->type = GEN_DIRNAME;
-		if (!(name->d.dirn = X509_NAME_dup(cert->cert_info->issuer)))
+		if ((name->d.dirn = X509_NAME_dup(X509_get_issuer_name(cert))) == NULL)
 			goto err;
 		if (!sk_GENERAL_NAME_push(cid->issuer_serial->issuer, name))
 			goto err;
@@ -875,7 +909,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		/* Setting the serial number. */
 		ASN1_INTEGER_free(cid->issuer_serial->serial);
 		if (!(cid->issuer_serial->serial =
-		    ASN1_INTEGER_dup(cert->cert_info->serialNumber)))
+		    ASN1_INTEGER_dup(X509_get_serialNumber(cert))))
 			goto err;
 	}
 
@@ -945,76 +979,4 @@ err:
 	free(pp);
 
 	return 0;
-}
-
-
-static ASN1_GENERALIZEDTIME *
-TS_RESP_set_genTime_with_precision(ASN1_GENERALIZEDTIME *asn1_time,
-    time_t sec, long usec, unsigned precision)
-{
-	struct tm *tm = NULL;
-	char genTime_str[17 + TS_MAX_CLOCK_PRECISION_DIGITS];
-	char usecstr[TS_MAX_CLOCK_PRECISION_DIGITS + 2];
-	char *p;
-	int rv;
-
-	if (precision > TS_MAX_CLOCK_PRECISION_DIGITS)
-		goto err;
-
-	if (!(tm = gmtime(&sec)))
-		goto err;
-
-	/*
-	 * Put "genTime_str" in GeneralizedTime format.  We work around the
-	 * restrictions imposed by rfc3280 (i.e. "GeneralizedTime values MUST
-	 * NOT include fractional seconds") and OpenSSL related functions to
-	 * meet the rfc3161 requirement: "GeneralizedTime syntax can include
-	 * fraction-of-second details".
-	 */
-	if (precision > 0) {
-		/* To make things a bit harder, X.690 | ISO/IEC 8825-1 provides
-		   the following restrictions for a DER-encoding, which OpenSSL
-		   (specifically ASN1_GENERALIZEDTIME_check() function) doesn't
-		   support:
-		   "The encoding MUST terminate with a "Z" (which means "Zulu"
-		   time). The decimal point element, if present, MUST be the
-		   point option ".". The fractional-seconds elements,
-		   if present, MUST omit all trailing 0's;
-		   if the elements correspond to 0, they MUST be wholly
-		   omitted, and the decimal point element also MUST be
-		   omitted." */
-		(void) snprintf(usecstr, sizeof(usecstr), ".%06ld", usec);
-		/* truncate and trim trailing 0 */
-		usecstr[precision + 1] = '\0';
-		p = usecstr + strlen(usecstr) - 1;
-		while (p > usecstr && *p == '0')
-			*p-- = '\0';
-		/* if we've reached the beginning, delete the . too */
-		if (p == usecstr)
-			*p = '\0';
-
-	} else {
-		/* empty */
-		usecstr[0] = '\0';
-	}
-	rv = snprintf(genTime_str, sizeof(genTime_str),
-	    "%04d%02d%02d%02d%02d%02d%sZ",
-	    tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-	    tm->tm_hour, tm->tm_min, tm->tm_sec, usecstr);
-	if (rv < 0 || rv >= sizeof(genTime_str))
-		goto err;
-
-	/* Now call OpenSSL to check and set our genTime value */
-	if (!asn1_time && !(asn1_time = ASN1_GENERALIZEDTIME_new()))
-		goto err;
-	if (!ASN1_GENERALIZEDTIME_set_string(asn1_time, genTime_str)) {
-		ASN1_GENERALIZEDTIME_free(asn1_time);
-		goto err;
-	}
-
-	return asn1_time;
-
-err:
-	TSerror(TS_R_COULD_NOT_SET_TIME);
-	return NULL;
 }

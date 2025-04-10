@@ -1,4 +1,4 @@
-/* $OpenBSD: p5_pbev2.c,v 1.25 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: p5_pbev2.c,v 1.35 2024/03/26 07:03:10 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999-2004.
  */
@@ -63,6 +63,9 @@
 #include <openssl/asn1t.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
+
+#include "evp_local.h"
+#include "x509_local.h"
 
 /* PKCS#5 v2.0 password based encryption structures */
 
@@ -174,17 +177,17 @@ PBKDF2PARAM_free(PBKDF2PARAM *a)
 	ASN1_item_free((ASN1_VALUE *)a, &PBKDF2PARAM_it);
 }
 
-/* Return an algorithm identifier for a PKCS#5 v2.0 PBE algorithm:
+/*
+ * Return an algorithm identifier for a PKCS#5 v2.0 PBE algorithm:
  * yes I know this is horrible!
- *
- * Extended version to allow application supplied PRF NID and IV.
  */
 
 X509_ALGOR *
-PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
-    int saltlen, unsigned char *aiv, int prf_nid)
+PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
+    int saltlen)
 {
 	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
+	int prf_nid = NID_hmacWithSHA1;
 	int alg_nid, keylen;
 	EVP_CIPHER_CTX ctx;
 	unsigned char iv[EVP_MAX_IV_LENGTH];
@@ -209,14 +212,10 @@ PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
 		goto merr;
 
 	/* Create random IV */
-	if (EVP_CIPHER_iv_length(cipher)) {
-		if (aiv)
-			memcpy(iv, aiv, EVP_CIPHER_iv_length(cipher));
-		else
-			arc4random_buf(iv, EVP_CIPHER_iv_length(cipher));
-	}
+	if (EVP_CIPHER_iv_length(cipher) > 0)
+		arc4random_buf(iv, EVP_CIPHER_iv_length(cipher));
 
-	EVP_CIPHER_CTX_init(&ctx);
+	EVP_CIPHER_CTX_legacy_clear(&ctx);
 
 	/* Dummy cipherinit to just setup the IV, and PRF */
 	if (!EVP_CipherInit_ex(&ctx, cipher, NULL, NULL, iv, 0))
@@ -225,14 +224,6 @@ PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
 		ASN1error(ASN1_R_ERROR_SETTING_CIPHER_PARAMS);
 		EVP_CIPHER_CTX_cleanup(&ctx);
 		goto err;
-	}
-	/* If prf NID unspecified see if cipher has a preference.
-	 * An error is OK here: just means use default PRF.
-	 */
-	if ((prf_nid == -1) &&
-	    EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_PBE_PRF_NID, 0, &prf_nid) <= 0) {
-		ERR_clear_error();
-		prf_nid = NID_hmacWithSHA1;
 	}
 	EVP_CIPHER_CTX_cleanup(&ctx);
 
@@ -272,23 +263,16 @@ PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
 
 	return ret;
 
-merr:
+ merr:
 	ASN1error(ERR_R_MALLOC_FAILURE);
 
-err:
+ err:
 	PBE2PARAM_free(pbe2);
 	/* Note 'scheme' is freed as part of pbe2 */
 	X509_ALGOR_free(kalg);
 	X509_ALGOR_free(ret);
 
 	return NULL;
-}
-
-X509_ALGOR *
-PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
-    int saltlen)
-{
-	return PKCS5_pbe2_set_iv(cipher, iter, salt, saltlen, NULL, -1);
 }
 
 X509_ALGOR *
@@ -364,7 +348,7 @@ PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen, int prf_nid,
 	PBKDF2PARAM_free(kdf);
 	return keyfunc;
 
-merr:
+ merr:
 	ASN1error(ERR_R_MALLOC_FAILURE);
 	PBKDF2PARAM_free(kdf);
 	X509_ALGOR_free(keyfunc);

@@ -1,4 +1,4 @@
-/* $OpenBSD: ocspcheck.c,v 1.30 2021/07/12 15:09:21 beck Exp $ */
+/* $OpenBSD: ocspcheck.c,v 1.33 2024/03/24 11:30:12 beck Exp $ */
 
 /*
  * Copyright (c) 2017,2020 Bob Beck <beck@openbsd.org>
@@ -34,6 +34,7 @@
 
 #include <openssl/err.h>
 #include <openssl/ocsp.h>
+#include <openssl/posix_time.h>
 #include <openssl/ssl.h>
 
 #include "http.h"
@@ -189,10 +190,11 @@ parse_ocsp_time(ASN1_GENERALIZEDTIME *gt)
 	if (gt == NULL)
 		return -1;
 	/* RFC 6960 specifies that all times in OCSP must be GENERALIZEDTIME */
-	if (ASN1_time_parse(gt->data, gt->length, &tm,
-		V_ASN1_GENERALIZEDTIME) == -1)
+	if (!ASN1_GENERALIZEDTIME_check(gt))
 		return -1;
-	if ((rv = timegm(&tm)) == -1)
+	if (!ASN1_TIME_to_tm(gt, &tm))
+		return -1;
+	if (!OPENSSL_timegm(&tm, &rv))
 		return -1;
 	return rv;
 }
@@ -379,7 +381,7 @@ ocsp_request_new_from_cert(const char *cadir, char *file, int nonce)
 		goto err;
 	}
 	if (request->data == NULL) {
-		warnx("Unable to allocte memory");
+		warnx("Unable to allocate memory");
 		goto err;
 	}
 	return request;

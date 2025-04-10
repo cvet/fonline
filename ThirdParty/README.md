@@ -20,7 +20,7 @@
 * fmt - [fmt-11.1.4](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.91.9b](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.47](https://github.com/pnggroup/libpng)
-* LibreSSL - [3.4.1](https://www.libressl.org/)
+* LibreSSL - [4.0.0](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-2.0.0](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)

@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_akey.c,v 1.1 2020/06/04 15:19:31 jsing Exp $ */
+/* $OpenBSD: x509_akey.c,v 1.3 2024/08/31 10:03:03 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -65,12 +65,14 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "x509_local.h"
+
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_KEYID(X509V3_EXT_METHOD *method,
     AUTHORITY_KEYID *akeyid, STACK_OF(CONF_VALUE) *extlist);
 static AUTHORITY_KEYID *v2i_AUTHORITY_KEYID(X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *values);
 
-const X509V3_EXT_METHOD v3_akey_id = {
+static const X509V3_EXT_METHOD x509v3_ext_authority_key_identifier = {
 	.ext_nid = NID_authority_key_identifier,
 	.ext_flags = X509V3_EXT_MULTILINE,
 	.it = &AUTHORITY_KEYID_it,
@@ -86,6 +88,12 @@ const X509V3_EXT_METHOD v3_akey_id = {
 	.r2i = NULL,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_authority_key_identifier(void)
+{
+	return &x509v3_ext_authority_key_identifier;
+}
 
 static STACK_OF(CONF_VALUE) *
 i2v_AUTHORITY_KEYID(X509V3_EXT_METHOD *method, AUTHORITY_KEYID *akeyid,

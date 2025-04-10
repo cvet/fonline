@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_pmeth.c,v 1.12 2019/09/09 18:06:25 jsing Exp $ */
+/* $OpenBSD: ec_pmeth.c,v 1.22 2024/08/26 22:01:28 op Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -57,18 +57,18 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/asn1t.h>
 #include <openssl/ec.h>
-#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-#include "ec_lcl.h"
-#include "ech_locl.h"
-#include "evp_locl.h"
+#include "bn_local.h"
+#include "ec_local.h"
+#include "evp_local.h"
 
 /* EC pkey context structure */
 
@@ -92,8 +92,8 @@ typedef struct {
 	size_t kdf_outlen;
 } EC_PKEY_CTX;
 
-static int 
-pkey_ec_init(EVP_PKEY_CTX * ctx)
+static int
+pkey_ec_init(EVP_PKEY_CTX *ctx)
 {
 	EC_PKEY_CTX *dctx;
 
@@ -110,8 +110,8 @@ pkey_ec_init(EVP_PKEY_CTX * ctx)
 	return 1;
 }
 
-static int 
-pkey_ec_copy(EVP_PKEY_CTX * dst, EVP_PKEY_CTX * src)
+static int
+pkey_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 {
 	EC_PKEY_CTX *dctx, *sctx;
 	if (!pkey_ec_init(dst))
@@ -145,8 +145,8 @@ pkey_ec_copy(EVP_PKEY_CTX * dst, EVP_PKEY_CTX * src)
 	return 1;
 }
 
-static void 
-pkey_ec_cleanup(EVP_PKEY_CTX * ctx)
+static void
+pkey_ec_cleanup(EVP_PKEY_CTX *ctx)
 {
 	EC_PKEY_CTX *dctx = ctx->data;
 
@@ -159,8 +159,8 @@ pkey_ec_cleanup(EVP_PKEY_CTX * ctx)
 	}
 }
 
-static int 
-pkey_ec_sign(EVP_PKEY_CTX * ctx, unsigned char *sig, size_t * siglen,
+static int
+pkey_ec_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
     const unsigned char *tbs, size_t tbslen)
 {
 	int ret, type;
@@ -187,8 +187,8 @@ pkey_ec_sign(EVP_PKEY_CTX * ctx, unsigned char *sig, size_t * siglen,
 	return 1;
 }
 
-static int 
-pkey_ec_verify(EVP_PKEY_CTX * ctx,
+static int
+pkey_ec_verify(EVP_PKEY_CTX *ctx,
     const unsigned char *sig, size_t siglen,
     const unsigned char *tbs, size_t tbslen)
 {
@@ -206,8 +206,8 @@ pkey_ec_verify(EVP_PKEY_CTX * ctx,
 	return ret;
 }
 
-static int 
-pkey_ec_derive(EVP_PKEY_CTX * ctx, unsigned char *key, size_t * keylen)
+static int
+pkey_ec_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keylen)
 {
 	int ret;
 	size_t outlen;
@@ -282,8 +282,8 @@ pkey_ec_kdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keylen)
 	return rv;
 }
 
-static int 
-pkey_ec_ctrl(EVP_PKEY_CTX * ctx, int type, int p1, void *p2)
+static int
+pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 {
 	EC_PKEY_CTX *dctx = ctx->data;
 	EC_GROUP *group;
@@ -380,12 +380,17 @@ pkey_ec_ctrl(EVP_PKEY_CTX * ctx, int type, int p1, void *p2)
 		return dctx->kdf_ukmlen;
 
 	case EVP_PKEY_CTRL_MD:
+		/* RFC 3279, RFC 5758 and NIST CSOR. */
 		if (EVP_MD_type((const EVP_MD *) p2) != NID_sha1 &&
 		    EVP_MD_type((const EVP_MD *) p2) != NID_ecdsa_with_SHA1 &&
 		    EVP_MD_type((const EVP_MD *) p2) != NID_sha224 &&
 		    EVP_MD_type((const EVP_MD *) p2) != NID_sha256 &&
 		    EVP_MD_type((const EVP_MD *) p2) != NID_sha384 &&
-		    EVP_MD_type((const EVP_MD *) p2) != NID_sha512) {
+		    EVP_MD_type((const EVP_MD *) p2) != NID_sha512 &&
+		    EVP_MD_type((const EVP_MD *) p2) != NID_sha3_224 &&
+		    EVP_MD_type((const EVP_MD *) p2) != NID_sha3_256 &&
+		    EVP_MD_type((const EVP_MD *) p2) != NID_sha3_384 &&
+		    EVP_MD_type((const EVP_MD *) p2) != NID_sha3_512) {
 			ECerror(EC_R_INVALID_DIGEST_TYPE);
 			return 0;
 		}
@@ -409,8 +414,8 @@ pkey_ec_ctrl(EVP_PKEY_CTX * ctx, int type, int p1, void *p2)
 	}
 }
 
-static int 
-pkey_ec_ctrl_str(EVP_PKEY_CTX * ctx, const char *type, const char *value)
+static int
+pkey_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 {
 	if (!strcmp(type, "ec_paramgen_curve")) {
 		int nid;
@@ -441,61 +446,80 @@ pkey_ec_ctrl_str(EVP_PKEY_CTX * ctx, const char *type, const char *value)
 		}
 		return EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, md);
 	} else if (strcmp(type, "ecdh_cofactor_mode") == 0) {
-		int co_mode;
-		co_mode = atoi(value);
-		return EVP_PKEY_CTX_set_ecdh_cofactor_mode(ctx, co_mode);
+		int cofactor_mode;
+		const char *errstr;
+
+		cofactor_mode = strtonum(value, -1, 1, &errstr);
+		if (errstr != NULL)
+			return -2;
+		return EVP_PKEY_CTX_set_ecdh_cofactor_mode(ctx, cofactor_mode);
 	}
+
 	return -2;
 }
 
-static int 
-pkey_ec_paramgen(EVP_PKEY_CTX * ctx, EVP_PKEY * pkey)
+static int
+pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
 	EC_KEY *ec = NULL;
 	EC_PKEY_CTX *dctx = ctx->data;
 	int ret = 0;
+
 	if (dctx->gen_group == NULL) {
 		ECerror(EC_R_NO_PARAMETERS_SET);
-		return 0;
+		goto err;
 	}
-	ec = EC_KEY_new();
-	if (!ec)
-		return 0;
-	ret = EC_KEY_set_group(ec, dctx->gen_group);
-	if (ret)
-		EVP_PKEY_assign_EC_KEY(pkey, ec);
-	else
-		EC_KEY_free(ec);
+
+	if ((ec = EC_KEY_new()) == NULL)
+		goto err;
+	if (!EC_KEY_set_group(ec, dctx->gen_group))
+		goto err;
+	if (!EVP_PKEY_assign_EC_KEY(pkey, ec))
+		goto err;
+	ec = NULL;
+
+	ret = 1;
+
+ err:
+	EC_KEY_free(ec);
+
 	return ret;
 }
 
-static int 
-pkey_ec_keygen(EVP_PKEY_CTX * ctx, EVP_PKEY * pkey)
+static int
+pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
 	EC_KEY *ec = NULL;
 	EC_PKEY_CTX *dctx = ctx->data;
+	int ret = 0;
 
 	if (ctx->pkey == NULL && dctx->gen_group == NULL) {
 		ECerror(EC_R_NO_PARAMETERS_SET);
-		return 0;
-	}
-	ec = EC_KEY_new();
-	if (ec == NULL)
-		return 0;
-	if (!EVP_PKEY_assign_EC_KEY(pkey, ec)) {
-		EC_KEY_free(ec);
-		return 0;
-	}
-	/* Note: if error is returned, we count on caller to free pkey->pkey.ec */
-	if (ctx->pkey != NULL) {
-		if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey))
-			return 0;
-	} else {
-		if (!EC_KEY_set_group(ec, dctx->gen_group))
-			return 0;
+		goto err;
 	}
 
-	return EC_KEY_generate_key(ec);
+	if ((ec = EC_KEY_new()) == NULL)
+		goto err;
+	if (!EVP_PKEY_set1_EC_KEY(pkey, ec))
+		goto err;
+
+	if (ctx->pkey != NULL) {
+		if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey))
+			goto err;
+	} else {
+		if (!EC_KEY_set_group(ec, dctx->gen_group))
+			goto err;
+	}
+
+	if (!EC_KEY_generate_key(ec))
+		goto err;
+
+	ret = 1;
+
+ err:
+	EC_KEY_free(ec);
+
+	return ret;
 }
 
 const EVP_PKEY_METHOD ec_pkey_meth = {

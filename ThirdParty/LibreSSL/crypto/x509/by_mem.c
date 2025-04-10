@@ -1,4 +1,4 @@
-/* $OpenBSD: by_mem.c,v 1.4 2017/01/29 17:49:23 beck Exp $ */
+/* $OpenBSD: by_mem.c,v 1.10 2024/08/31 10:19:17 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -68,26 +68,24 @@
 #include <openssl/lhash.h>
 #include <openssl/x509.h>
 
+#include "x509_local.h"
+
 static int by_mem_ctrl(X509_LOOKUP *, int, const char *, long, char **);
 
-static X509_LOOKUP_METHOD x509_mem_lookup = {
+static const X509_LOOKUP_METHOD x509_mem_lookup = {
 	.name = "Load cert from memory",
 	.new_item = NULL,
 	.free = NULL,
-	.init = NULL,
-	.shutdown = NULL,
 	.ctrl = by_mem_ctrl,
 	.get_by_subject = NULL,
-	.get_by_issuer_serial = NULL,
-	.get_by_fingerprint = NULL,
-	.get_by_alias = NULL,
 };
 
-X509_LOOKUP_METHOD *
+const X509_LOOKUP_METHOD *
 X509_LOOKUP_mem(void)
 {
 	return (&x509_mem_lookup);
 }
+LCRYPTO_ALIAS(X509_LOOKUP_mem);
 
 static int
 by_mem_ctrl(X509_LOOKUP *lu, int cmd, const char *buf,

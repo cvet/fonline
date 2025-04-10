@@ -22,30 +22,25 @@ else()
 	set(NC_SRC ${NC_SRC} compat/accept4.c)
 endif()
 
-check_function_exists(readpassphrase HAVE_READPASSPHRASE)
+check_symbol_exists(readpassphrase "readpassphrase.h" HAVE_READPASSPHRASE)
 if(HAVE_READPASSPHRASE)
 	add_definitions(-DHAVE_READPASSPHRASE)
 else()
 	set(NC_SRC ${NC_SRC} compat/readpassphrase.c)
 endif()
 
-check_function_exists(strtonum HAVE_STRTONUM)
-if(HAVE_STRTONUM AND CMAKE_SYSTEM_NAME MATCHES "Darwin" AND
-    CMAKE_HOST_SYSTEM_VERSION VERSION_GREATER_EQUAL 20)
-	add_definitions(-DHAVE_STRTONUM)
-else()
-	set(NC_SRC ${NC_SRC} compat/strtonum.c)
-endif()
-
-if(NOT "${OPENSSLDIR}" STREQUAL "")
-	add_definitions(-DDEFAULT_CA_FILE=\"${OPENSSLDIR}/cert.pem\")
-else()
-	add_definitions(-DDEFAULT_CA_FILE=\"${CMAKE_INSTALL_PREFIX}/etc/ssl/cert.pem\")
-endif()
+add_definitions(-DDEFAULT_CA_FILE=\"${OPENSSLDIR}/cert.pem\")
 
 add_executable(nc ${NC_SRC})
-target_include_directories(nc PRIVATE . ./compat ../../include/compat)
-target_link_libraries(nc ${LIBTLS_LIBS})
+target_include_directories(nc
+	PRIVATE
+		.
+		./compat
+		../../include/compat
+	PUBLIC
+		../../include
+		${CMAKE_BINARY_DIR}/include)
+target_link_libraries(nc ${LIBTLS_LIBS} compat_obj)
 
 if(ENABLE_NC)
 	if(ENABLE_LIBRESSL_INSTALL)

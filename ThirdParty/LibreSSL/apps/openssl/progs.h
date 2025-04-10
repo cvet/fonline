@@ -1,4 +1,4 @@
-/* $OpenBSD: progs.h,v 1.9 2019/11/04 15:25:54 jsing Exp $ */
+/* $OpenBSD: progs.h,v 1.11 2024/07/08 05:59:10 tb Exp $ */
 /* Public domain */
 
 int asn1parse_main(int argc, char **argv);
@@ -21,7 +21,6 @@ int gendh_main(int argc, char **argv);
 int gendsa_main(int argc, char **argv);
 int genpkey_main(int argc, char **argv);
 int genrsa_main(int argc, char **argv);
-int nseq_main(int argc, char **argv);
 int ocsp_main(int argc, char **argv);
 int passwd_main(int argc, char **argv);
 int pkcs7_main(int argc, char **argv);
@@ -41,7 +40,6 @@ int s_time_main(int argc, char **argv);
 int sess_id_main(int argc, char **argv);
 int smime_main(int argc, char **argv);
 int speed_main(int argc, char **argv);
-int spkac_main(int argc, char **argv);
 int ts_main(int argc, char **argv);
 int verify_main(int argc, char **argv);
 int version_main(int argc, char **argv);

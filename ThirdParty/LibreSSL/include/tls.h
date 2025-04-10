@@ -1,4 +1,4 @@
-/* $OpenBSD: tls.h,v 1.58 2020/01/22 06:44:02 beck Exp $ */
+/* $OpenBSD: tls.h,v 1.67 2024/08/02 15:00:01 tb Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -36,14 +36,18 @@ typedef SSIZE_T ssize_t;
 
 #define TLS_API	20200120
 
+/*
+ * Deprecated versions of TLS. Using these effectively selects
+ * the minimum supported version.
+ */
 #define TLS_PROTOCOL_TLSv1_0	(1 << 1)
 #define TLS_PROTOCOL_TLSv1_1	(1 << 2)
+/* Supported versions of TLS */
 #define TLS_PROTOCOL_TLSv1_2	(1 << 3)
 #define TLS_PROTOCOL_TLSv1_3	(1 << 4)
 
 #define TLS_PROTOCOL_TLSv1 \
-	(TLS_PROTOCOL_TLSv1_0|TLS_PROTOCOL_TLSv1_1|\
-	 TLS_PROTOCOL_TLSv1_2|TLS_PROTOCOL_TLSv1_3)
+	(TLS_PROTOCOL_TLSv1_2|TLS_PROTOCOL_TLSv1_3)
 
 #define TLS_PROTOCOLS_ALL TLS_PROTOCOL_TLSv1
 #define TLS_PROTOCOLS_DEFAULT (TLS_PROTOCOL_TLSv1_2|TLS_PROTOCOL_TLSv1_3)
@@ -79,6 +83,14 @@ typedef SSIZE_T ssize_t;
 #define TLS_MAX_SESSION_ID_LENGTH		32
 #define TLS_TICKET_KEY_SIZE			48
 
+/* Error codes */
+#if defined(LIBRESSL_NEXT_API) || defined(LIBRESSL_INTERNAL)
+#define TLS_ERROR_UNKNOWN			0x0000
+#define TLS_ERROR_OUT_OF_MEMORY			0x1000
+#define TLS_ERROR_INVALID_CONTEXT		0x2000
+#define TLS_ERROR_INVALID_ARGUMENT		0x2001
+#endif
+
 struct tls;
 struct tls_config;
 
@@ -91,6 +103,10 @@ int tls_init(void);
 
 const char *tls_config_error(struct tls_config *_config);
 const char *tls_error(struct tls *_ctx);
+#if defined(LIBRESSL_NEXT_API) || defined(LIBRESSL_INTERNAL)
+int tls_config_error_code(struct tls_config *_config);
+int tls_error_code(struct tls *_ctx);
+#endif
 
 struct tls_config *tls_config_new(void);
 void tls_config_free(struct tls_config *_config);
