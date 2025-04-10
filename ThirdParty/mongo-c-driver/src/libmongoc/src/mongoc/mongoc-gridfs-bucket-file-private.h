@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_GRIDFS_BUCKET_FILE_PRIVATE_H
 #define MONGOC_GRIDFS_BUCKET_FILE_PRIVATE_H
 
-#include "bson/bson.h"
-#include "mongoc-collection.h"
-#include "mongoc-stream.h"
-#include "mongoc-gridfs-bucket.h"
+#include <bson/bson.h>
+#include <mongoc/mongoc-collection.h>
+#include <mongoc/mongoc-stream.h>
+#include <mongoc/mongoc-gridfs-bucket.h>
 
 BSON_BEGIN_DECLS
 
@@ -54,14 +54,10 @@ typedef struct {
 } mongoc_gridfs_bucket_file_t;
 
 ssize_t
-_mongoc_gridfs_bucket_file_writev (mongoc_gridfs_bucket_file_t *file,
-                                   const mongoc_iovec_t *iov,
-                                   size_t iovcnt);
+_mongoc_gridfs_bucket_file_writev (mongoc_gridfs_bucket_file_t *file, const mongoc_iovec_t *iov, size_t iovcnt);
 
 ssize_t
-_mongoc_gridfs_bucket_file_readv (mongoc_gridfs_bucket_file_t *file,
-                                  mongoc_iovec_t *iov,
-                                  size_t iovcnt);
+_mongoc_gridfs_bucket_file_readv (mongoc_gridfs_bucket_file_t *file, mongoc_iovec_t *iov, size_t iovcnt);
 
 bool
 _mongoc_gridfs_bucket_file_save (mongoc_gridfs_bucket_file_t *file);

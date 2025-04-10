@@ -41,7 +41,7 @@
 #include "Settings.h"
 
 #if !FO_TESTING_APP
-#include "SDL_main.h"
+#include "SDL3/SDL_main.h"
 #endif
 
 struct ServerAppData

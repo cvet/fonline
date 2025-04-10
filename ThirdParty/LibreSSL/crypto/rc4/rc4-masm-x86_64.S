@@ -1,26 +1,33 @@
 ; 1 "crypto/rc4/rc4-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 340 "<built-in>" 3
+; 371 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/rc4/rc4-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
+
+
+
+
+
+
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
+   
 
 
 
 
 
-
-
+   
 
 
 ; 40 "./crypto/x86_arch.h"
+   
 
 
 
@@ -65,24 +72,25 @@ OPTION	DOTNAME
 
 
 
-
-; 3 "crypto/rc4/rc4-masm-x86_64.S.tmp" 2
+; 9 "crypto/rc4/rc4-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 EXTERN	OPENSSL_ia32cap_P:NEAR
 
 
-PUBLIC	RC4
+PUBLIC	rc4_internal
 
 ALIGN	16
-RC4	PROC PUBLIC
+rc4_internal	PROC PUBLIC
 	mov	QWORD PTR[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD PTR[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_RC4::
+$L$SEH_begin_rc4_internal::
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 	mov	rcx,r9
+
+
 
 	or	rsi,rsi
 	jne	$L$entry
@@ -600,19 +608,20 @@ $L$epilogue::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 	DB	0F3h,0C3h		;repret
-$L$SEH_end_RC4::
-RC4	ENDP
-PUBLIC	RC4_set_key
+$L$SEH_end_rc4_internal::
+rc4_internal	ENDP
+PUBLIC	rc4_set_key_internal
 
 ALIGN	16
-RC4_set_key	PROC PUBLIC
+rc4_set_key_internal	PROC PUBLIC
 	mov	QWORD PTR[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD PTR[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_RC4_set_key::
+$L$SEH_begin_rc4_set_key_internal::
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
+
 
 
 	lea	rdi,QWORD PTR[8+rdi]
@@ -683,36 +692,8 @@ $L$exit_key::
 	mov	rdi,QWORD PTR[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD PTR[16+rsp]
 	DB	0F3h,0C3h		;repret
-$L$SEH_end_RC4_set_key::
-RC4_set_key	ENDP
-
-PUBLIC	RC4_options
-
-ALIGN	16
-RC4_options	PROC PUBLIC
-	lea	rax,QWORD PTR[$L$opts]
-	mov	edx,DWORD PTR[OPENSSL_ia32cap_P]
-	bt	edx,20
-	jc	$L$8xchar
-	bt	edx,30
-	jnc	$L$done
-	add	rax,25
-	DB	0F3h,0C3h		;repret
-$L$8xchar::
-	add	rax,12
-$L$done::
-	DB	0F3h,0C3h		;repret
-ALIGN	64
-$L$opts::
-DB	114,99,52,40,56,120,44,105,110,116,41,0
-DB	114,99,52,40,56,120,44,99,104,97,114,41,0
-DB	114,99,52,40,49,54,120,44,105,110,116,41,0
-DB	82,67,52,32,102,111,114,32,120,56,54,95,54,52,44,32
-DB	67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97
-DB	112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103
-DB	62,0
-ALIGN	64
-RC4_options	ENDP
+$L$SEH_end_rc4_set_key_internal::
+rc4_set_key_internal	ENDP
 
 .text$	ENDS
 END

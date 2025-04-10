@@ -2,9 +2,9 @@
 # Copyright 2016-2021 The Khronos Group Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-GLSLANG_REV=a7785ea1ff5b10bfc2d8ca77fdad5929562897b7
-SPIRV_TOOLS_REV=afaf8fda2ad0364655909b56c8b634ce89095bb5
-SPIRV_HEADERS_REV=e867c06631767a2d96424cbec530f9ee5e78180f
+GLSLANG_REV=b3a6aa7b03c51ba976e4f4e96b1e31f77f43f312
+SPIRV_TOOLS_REV=4d2f0b40bfe290dea6c6904dafdf7fd8328ba346
+SPIRV_HEADERS_REV=3f17b2af6784bfa2c5aa5dbb8e0e74a607dd8b3b
 PROTOCOL=https
 
 if [ -d external/glslang ]; then

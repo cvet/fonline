@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 
 #ifndef MONGOC_LINUX_DISTRO_SCANNER_PRIVATE_H
 #define MONGOC_LINUX_DISTRO_SCANNER_PRIVATE_H
 
-#include "mongoc-handshake-os-private.h"
+#include <mongoc/mongoc-handshake-os-private.h>
 
 #ifdef MONGOC_OS_IS_LINUX
 
@@ -39,14 +39,9 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char *path,
                                                   ssize_t version_key_len,
                                                   char **version);
 void
-_mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
-                                                        char **name,
-                                                        char **version);
+_mongoc_linux_distro_scanner_read_generic_release_file (const char **paths, char **name, char **version);
 void
-_mongoc_linux_distro_scanner_split_line_by_release (const char *line,
-                                                    ssize_t line_len,
-                                                    char **name,
-                                                    char **version);
+_mongoc_linux_distro_scanner_split_line_by_release (const char *line, ssize_t line_len, char **name, char **version);
 BSON_END_DECLS
 
 #endif

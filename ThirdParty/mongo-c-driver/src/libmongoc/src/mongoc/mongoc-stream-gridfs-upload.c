@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "mongoc-counters-private.h"
-#include "mongoc-gridfs-bucket-file-private.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-stream-gridfs-upload-private.h"
-#include "mongoc-stream-private.h"
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-gridfs-bucket-file-private.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-stream-gridfs-upload-private.h>
+#include <mongoc/mongoc-stream-private.h>
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-gridfs-upload"
@@ -26,8 +26,7 @@
 static void
 _mongoc_upload_stream_gridfs_destroy (mongoc_stream_t *stream)
 {
-   mongoc_gridfs_upload_stream_t *gridfs =
-      (mongoc_gridfs_upload_stream_t *) stream;
+   mongoc_gridfs_upload_stream_t *gridfs = (mongoc_gridfs_upload_stream_t *) stream;
 
    ENTRY;
 
@@ -57,8 +56,7 @@ _mongoc_upload_stream_gridfs_failed (mongoc_stream_t *stream)
 static int
 _mongoc_upload_stream_gridfs_close (mongoc_stream_t *stream)
 {
-   mongoc_gridfs_upload_stream_t *gridfs =
-      (mongoc_gridfs_upload_stream_t *) stream;
+   mongoc_gridfs_upload_stream_t *gridfs = (mongoc_gridfs_upload_stream_t *) stream;
    int ret = 0;
 
    ENTRY;
@@ -71,13 +69,9 @@ _mongoc_upload_stream_gridfs_close (mongoc_stream_t *stream)
 }
 
 static ssize_t
-_mongoc_upload_stream_gridfs_writev (mongoc_stream_t *stream,
-                                     mongoc_iovec_t *iov,
-                                     size_t iovcnt,
-                                     int32_t timeout_msec)
+_mongoc_upload_stream_gridfs_writev (mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, int32_t timeout_msec)
 {
-   mongoc_gridfs_upload_stream_t *gridfs =
-      (mongoc_gridfs_upload_stream_t *) stream;
+   mongoc_gridfs_upload_stream_t *gridfs = (mongoc_gridfs_upload_stream_t *) stream;
    ssize_t ret = 0;
 
    ENTRY;
@@ -101,8 +95,7 @@ _mongoc_upload_stream_gridfs_writev (mongoc_stream_t *stream,
 static bool
 _mongoc_upload_stream_gridfs_check_closed (mongoc_stream_t *stream) /* IN */
 {
-   mongoc_gridfs_upload_stream_t *gridfs =
-      (mongoc_gridfs_upload_stream_t *) stream;
+   mongoc_gridfs_upload_stream_t *gridfs = (mongoc_gridfs_upload_stream_t *) stream;
 
    ENTRY;
 

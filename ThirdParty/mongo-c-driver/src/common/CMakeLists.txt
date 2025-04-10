@@ -5,31 +5,24 @@ if (ENABLE_DEBUG_ASSERTIONS)
     set (MONGOC_ENABLE_DEBUG_ASSERTIONS 1)
 endif ()
 
-include (MongoC-Warnings)
-
 configure_file (
-        "${PROJECT_SOURCE_DIR}/src/common/common-config.h.in"
-        "${PROJECT_BINARY_DIR}/src/common/common-config.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/common-config.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/src/common-config.h"
 )
 
-set (src_common_DIST_noinst_hs
-   bson-dsl.h
-   common-b64-private.h
-   common-md5-private.h
-   common-prelude.h
-   common-thread-private.h
-   common-config.h.in
-   common-macros-private.h
-)
+add_library(mongo-mlib INTERFACE)
+add_library(mongo::mlib ALIAS mongo-mlib)
+target_include_directories(mongo-mlib INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>)
+set_property(TARGET mongo-mlib PROPERTY EXPORT_NAME mongo::mlib)
 
-set (src_common_DIST_cs
-   common-b64.c
-   common-md5.c
-   common-thread.c
-)
-
-set_dist_list (src_common_DIST
-   CMakeLists.txt
-   ${src_common_DIST_cs}
-   ${src_common_DIST_noinst_hs}
-)
+if(CMAKE_CXX_COMPILER)
+    add_executable(mlib-ckdint-test src/mlib/ckdint.test.cpp)
+    set_target_properties(mlib-ckdint-test PROPERTIES
+        COMPILE_FEATURES cxx_std_11
+        LINK_LIBRARIES mongo::mlib
+        # Enable -fPIC, required for some build configurations
+        POSITION_INDEPENDENT_CODE TRUE
+        )
+    add_test(NAME mongoc/mlib/ckdint COMMAND mlib-ckdint-test)
+    set_property(TEST mongoc/mlib/ckdint PROPERTY SKIP_REGULAR_EXPRESSION "@@ctest-skipped@@")
+endif()

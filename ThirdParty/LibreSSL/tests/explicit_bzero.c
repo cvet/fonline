@@ -1,4 +1,4 @@
-/*	$OpenBSD: explicit_bzero.c,v 1.7 2021/03/27 11:17:58 bcook Exp $	*/
+/*	$OpenBSD: explicit_bzero.c,v 1.9 2022/02/10 08:39:32 tb Exp $	*/
 /*
  * Copyright (c) 2014 Google Inc.
  *
@@ -25,6 +25,17 @@
 #define ASSERT_EQ(a, b) assert((a) == (b))
 #define ASSERT_NE(a, b) assert((a) != (b))
 #define ASSERT_GE(a, b) assert((a) >= (b))
+
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define __SANITIZE_ADDRESS__
+#endif
+#endif
+#ifdef __SANITIZE_ADDRESS__
+#define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#else
+#define ATTRIBUTE_NO_SANITIZE_ADDRESS
+#endif
 
 /* 128 bits of random data. */
 static const char secret[16] = {
@@ -138,8 +149,8 @@ count_secrets(const char *buf)
 	return (res);
 }
 
-static char *
-test_without_bzero()
+ATTRIBUTE_NO_SANITIZE_ADDRESS static char *
+test_without_bzero(void)
 {
 	char buf[SECRETBYTES];
 	assert_on_stack();
@@ -149,8 +160,8 @@ test_without_bzero()
 	return (res);
 }
 
-static char *
-test_with_bzero()
+ATTRIBUTE_NO_SANITIZE_ADDRESS static char *
+test_with_bzero(void)
 {
 	char buf[SECRETBYTES];
 	assert_on_stack();
@@ -161,14 +172,14 @@ test_with_bzero()
 	return (res);
 }
 
-static void 
+static void
 do_test_without_bzero(int signo)
 {
 	char *buf = test_without_bzero();
 	ASSERT_GE(count_secrets(buf), 1);
 }
 
-static void 
+static void
 do_test_with_bzero(int signo)
 {
 	char *buf = test_with_bzero();
@@ -176,7 +187,7 @@ do_test_with_bzero(int signo)
 }
 
 int
-main()
+main(void)
 {
 	setup_stack();
 

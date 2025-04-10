@@ -66,7 +66,9 @@ enum AccessChainFlagBits
 	ACCESS_CHAIN_SKIP_REGISTER_EXPRESSION_READ_BIT = 1 << 3,
 	ACCESS_CHAIN_LITERAL_MSB_FORCE_ID = 1 << 4,
 	ACCESS_CHAIN_FLATTEN_ALL_MEMBERS_BIT = 1 << 5,
-	ACCESS_CHAIN_FORCE_COMPOSITE_BIT = 1 << 6
+	ACCESS_CHAIN_FORCE_COMPOSITE_BIT = 1 << 6,
+	ACCESS_CHAIN_PTR_CHAIN_POINTER_ARITH_BIT = 1 << 7,
+	ACCESS_CHAIN_PTR_CHAIN_CAST_TO_SCALAR_BIT = 1 << 8
 };
 typedef uint32_t AccessChainFlags;
 
@@ -295,6 +297,9 @@ public:
 		float_formatter = formatter;
 	}
 
+	// Returns the macro name corresponding to constant id
+	std::string constant_value_macro_name(uint32_t id) const;
+
 protected:
 	struct ShaderSubgroupSupportHelper
 	{
@@ -448,6 +453,7 @@ protected:
 	virtual std::string variable_decl(const SPIRType &type, const std::string &name, uint32_t id = 0);
 	virtual bool variable_decl_is_remapped_storage(const SPIRVariable &var, spv::StorageClass storage) const;
 	virtual std::string to_func_call_arg(const SPIRFunction::Parameter &arg, uint32_t id);
+	virtual void emit_workgroup_initialization(const SPIRVariable &var);
 
 	struct TextureFunctionBaseArguments
 	{
@@ -620,6 +626,7 @@ protected:
 		const char *uint16_t_literal_suffix = "us";
 		const char *nonuniform_qualifier = "nonuniformEXT";
 		const char *boolean_mix_function = "mix";
+		std::string constant_null_initializer = "";
 		SPIRType::BaseType boolean_in_struct_remapped_type = SPIRType::Boolean;
 		bool swizzle_is_function = false;
 		bool shared_is_implied = false;
@@ -627,6 +634,7 @@ protected:
 		bool explicit_struct_type = false;
 		bool use_initializer_list = false;
 		bool use_typed_initializer_list = false;
+		bool requires_matching_array_initializer = false;
 		bool can_declare_struct_inline = true;
 		bool can_declare_arrays_inline = true;
 		bool native_row_major_matrix = true;
@@ -677,7 +685,6 @@ protected:
 	                                    const SmallVector<uint32_t> &indices);
 	void emit_block_chain(SPIRBlock &block);
 	void emit_hoisted_temporaries(SmallVector<std::pair<TypeID, ID>> &temporaries);
-	std::string constant_value_macro_name(uint32_t id);
 	int get_constant_mapping_to_workgroup_component(const SPIRConstant &constant) const;
 	void emit_constant(const SPIRConstant &constant);
 	void emit_specialization_constant_op(const SPIRConstantOp &constant);
@@ -693,6 +700,7 @@ protected:
 	void emit_variable_temporary_copies(const SPIRVariable &var);
 
 	bool should_dereference(uint32_t id);
+	bool should_dereference_caller_param(uint32_t id);
 	bool should_forward(uint32_t id) const;
 	bool should_suppress_usage_tracking(uint32_t id) const;
 	void emit_mix_op(uint32_t result_type, uint32_t id, uint32_t left, uint32_t right, uint32_t lerp);
@@ -753,6 +761,10 @@ protected:
 	std::string access_chain_internal(uint32_t base, const uint32_t *indices, uint32_t count, AccessChainFlags flags,
 	                                  AccessChainMeta *meta);
 
+	// Only meaningful on backends with physical pointer support ala MSL.
+	// Relevant for PtrAccessChain / BDA.
+	virtual uint32_t get_physical_type_stride(const SPIRType &type) const;
+
 	spv::StorageClass get_expression_effective_storage_class(uint32_t ptr);
 	virtual bool access_chain_needs_stage_io_builtin_translation(uint32_t base);
 
@@ -788,6 +800,7 @@ protected:
 	SPIRExpression &emit_uninitialized_temporary_expression(uint32_t type, uint32_t id);
 	void append_global_func_args(const SPIRFunction &func, uint32_t index, SmallVector<std::string> &arglist);
 	std::string to_non_uniform_aware_expression(uint32_t id);
+	std::string to_atomic_ptr_expression(uint32_t id);
 	std::string to_expression(uint32_t id, bool register_expression_read = true);
 	std::string to_composite_constructor_expression(const SPIRType &parent_type, uint32_t id, bool block_like_type);
 	std::string to_rerolled_array_expression(const SPIRType &parent_type, const std::string &expr, const SPIRType &type);

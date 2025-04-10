@@ -1,10 +1,10 @@
 #!/bin/sh
-set -e
-echo 1..2
-TEST=./rfc5280time
-if [ -e ./rfc5280time.exe ]; then
-	TEST=./rfc5280time.exe
+echo 1..1
+TEST=./rfc5280
+if [ -e ./rfc5280.exe ]; then
+	TEST=./rfc5280.exe
 fi
-$TEST
-echo "ok 1"
-echo "ok 2 - rfc5280time_64-bit # SKIP this system is unable to represent times past 2038"
+
+# map test failure to XFAIL and success to XPASS
+$TEST || echo -n "not "
+echo "ok # this system is unable to represent times past 2038"

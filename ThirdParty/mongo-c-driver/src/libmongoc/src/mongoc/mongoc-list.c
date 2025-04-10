@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 
-#include "mongoc-list-private.h"
+#include <mongoc/mongoc-list-private.h>
 
 
 /**
@@ -113,9 +113,7 @@ _mongoc_list_remove (mongoc_list_t *list, void *data)
  * Calls @func for each item in @list.
  */
 void
-_mongoc_list_foreach (mongoc_list_t *list,
-                      void (*func) (void *data, void *user_data),
-                      void *user_data)
+_mongoc_list_foreach (mongoc_list_t *list, void (*func) (void *data, void *user_data), void *user_data)
 {
    mongoc_list_t *iter;
 

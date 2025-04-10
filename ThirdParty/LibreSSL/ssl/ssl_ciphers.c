@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssl_ciphers.c,v 1.11 2021/03/11 17:14:46 jsing Exp $ */
+/*	$OpenBSD: ssl_ciphers.c,v 1.18 2024/07/22 14:47:15 jsing Exp $ */
 /*
  * Copyright (c) 2015-2017 Doug Hogan <doug@openbsd.org>
  * Copyright (c) 2015-2018, 2020 Joel Sing <jsing@openbsd.org>
@@ -20,7 +20,7 @@
 #include <openssl/safestack.h>
 
 #include "bytestring.h"
-#include "ssl_locl.h"
+#include "ssl_local.h"
 
 int
 ssl_cipher_in_list(STACK_OF(SSL_CIPHER) *ciphers, const SSL_CIPHER *cipher)
@@ -28,7 +28,7 @@ ssl_cipher_in_list(STACK_OF(SSL_CIPHER) *ciphers, const SSL_CIPHER *cipher)
 	int i;
 
 	for (i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
-		if (sk_SSL_CIPHER_value(ciphers, i)->id == cipher->id)
+		if (sk_SSL_CIPHER_value(ciphers, i)->value == cipher->value)
 			return 1;
 	}
 
@@ -70,14 +70,16 @@ ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *ciphers, CBB *cbb)
 		if (!ssl_cipher_allowed_in_tls_version_range(cipher, min_vers,
 		    max_vers))
 			continue;
-		if (!CBB_add_u16(cbb, ssl3_cipher_get_value(cipher)))
+		if (!ssl_security_cipher_check(s, cipher))
+			continue;
+		if (!CBB_add_u16(cbb, cipher->value))
 			return 0;
 
 		num_ciphers++;
 	}
 
 	/* Add SCSV if there are other ciphers and we're not renegotiating. */
-	if (num_ciphers > 0 && !s->internal->renegotiate) {
+	if (num_ciphers > 0 && !s->renegotiate) {
 		if (!CBB_add_u16(cbb, SSL3_CK_SCSV & SSL3_CK_VALUE_MASK))
 			return 0;
 	}
@@ -96,7 +98,7 @@ ssl_bytes_to_cipher_list(SSL *s, CBS *cbs)
 	uint16_t cipher_value;
 	unsigned long cipher_id;
 
-	S3I(s)->send_connection_binding = 0;
+	s->s3->send_connection_binding = 0;
 
 	if ((ciphers = sk_SSL_CIPHER_new_null()) == NULL) {
 		SSLerror(s, ERR_R_MALLOC_FAILURE);
@@ -116,14 +118,14 @@ ssl_bytes_to_cipher_list(SSL *s, CBS *cbs)
 			 * TLS_EMPTY_RENEGOTIATION_INFO_SCSV is fatal if
 			 * renegotiating.
 			 */
-			if (s->internal->renegotiate) {
+			if (s->renegotiate) {
 				SSLerror(s, SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING);
 				ssl3_send_alert(s, SSL3_AL_FATAL,
 				    SSL_AD_HANDSHAKE_FAILURE);
 
 				goto err;
 			}
-			S3I(s)->send_connection_binding = 1;
+			s->s3->send_connection_binding = 1;
 			continue;
 		}
 
@@ -134,8 +136,8 @@ ssl_bytes_to_cipher_list(SSL *s, CBS *cbs)
 			 * Fail if the current version is an unexpected
 			 * downgrade.
 			 */
-			if (S3I(s)->hs.negotiated_tls_version <
-			    S3I(s)->hs.our_max_tls_version) {
+			if (s->s3->hs.negotiated_tls_version <
+			    s->s3->hs.our_max_tls_version) {
 				SSLerror(s, SSL_R_INAPPROPRIATE_FALLBACK);
 				ssl3_send_alert(s, SSL3_AL_FATAL,
 					SSL_AD_INAPPROPRIATE_FALLBACK);
@@ -163,34 +165,34 @@ ssl_bytes_to_cipher_list(SSL *s, CBS *cbs)
 struct ssl_tls13_ciphersuite {
 	const char *name;
 	const char *alias;
-	unsigned long cid;
+	uint16_t value;
 };
 
 static const struct ssl_tls13_ciphersuite ssl_tls13_ciphersuites[] = {
 	{
-		.name = TLS1_3_TXT_AES_128_GCM_SHA256,
-		.alias = "TLS_AES_128_GCM_SHA256",
-		.cid = TLS1_3_CK_AES_128_GCM_SHA256,
+		.name = TLS1_3_RFC_AES_128_GCM_SHA256,
+		.alias = TLS1_3_TXT_AES_128_GCM_SHA256,
+		.value = 0x1301,
 	},
 	{
-		.name = TLS1_3_TXT_AES_256_GCM_SHA384,
-		.alias = "TLS_AES_256_GCM_SHA384",
-		.cid = TLS1_3_CK_AES_256_GCM_SHA384,
+		.name = TLS1_3_RFC_AES_256_GCM_SHA384,
+		.alias = TLS1_3_TXT_AES_256_GCM_SHA384,
+		.value = 0x1302,
 	},
 	{
-		.name = TLS1_3_TXT_CHACHA20_POLY1305_SHA256,
-		.alias = "TLS_CHACHA20_POLY1305_SHA256",
-		.cid = TLS1_3_CK_CHACHA20_POLY1305_SHA256,
+		.name = TLS1_3_RFC_CHACHA20_POLY1305_SHA256,
+		.alias = TLS1_3_TXT_CHACHA20_POLY1305_SHA256,
+		.value = 0x1303,
 	},
 	{
-		.name = TLS1_3_TXT_AES_128_CCM_SHA256,
-		.alias = "TLS_AES_128_CCM_SHA256",
-		.cid = TLS1_3_CK_AES_128_CCM_SHA256,
+		.name = TLS1_3_RFC_AES_128_CCM_SHA256,
+		.alias = TLS1_3_TXT_AES_128_CCM_SHA256,
+		.value = 0x1304,
 	},
 	{
-		.name = TLS1_3_TXT_AES_128_CCM_8_SHA256,
-		.alias = "TLS_AES_128_CCM_8_SHA256",
-		.cid = TLS1_3_CK_AES_128_CCM_8_SHA256,
+		.name = TLS1_3_RFC_AES_128_CCM_8_SHA256,
+		.alias = TLS1_3_TXT_AES_128_CCM_8_SHA256,
+		.value = 0x1305,
 	},
 	{
 		.name = NULL,
@@ -232,7 +234,7 @@ ssl_parse_ciphersuites(STACK_OF(SSL_CIPHER) **out_ciphers, const char *str)
 			goto err;
 
 		/* We know about the cipher suite, but it is not supported. */
-		if ((cipher = ssl3_get_cipher_by_id(ciphersuite->cid)) == NULL)
+		if ((cipher = ssl3_get_cipher_by_value(ciphersuite->value)) == NULL)
 			continue;
 
 		if (!sk_SSL_CIPHER_push(ciphers, cipher))

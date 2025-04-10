@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -14,6 +20,7 @@ sha512_block_data_order:
 	movq	%r8,%rdx
 	movq	%r9,%rcx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1769,6 +1776,7 @@ sha512_block_data_order:
 	movq	16(%rsp),%rsi
 	retq
 .LSEH_end_sha512_block_data_order:
+.section	.rodata
 .p2align	6
 
 K512:
@@ -1812,3 +1820,4 @@ K512:
 .quad	0x3c9ebe0a15c9bebc,0x431d67c49c100d4c
 .quad	0x4cc5d4becb3e42b6,0x597f299cfc657e2a
 .quad	0x5fcb6fab3ad6faec,0x6c44198c4a475817
+.text	

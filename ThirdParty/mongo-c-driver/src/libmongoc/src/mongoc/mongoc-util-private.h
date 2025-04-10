@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_UTIL_PRIVATE_H
 #define MONGOC_UTIL_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc.h"
+#include <mongoc/mongoc.h>
 
 #ifdef BSON_HAVE_STRINGS_H
 #include <strings.h>
@@ -32,21 +32,6 @@
 #ifdef _WIN32
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
-#endif
-
-#if BSON_GNUC_CHECK_VERSION(4, 6)
-#define BEGIN_IGNORE_DEPRECATIONS  \
-   _Pragma ("GCC diagnostic push") \
-      _Pragma ("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-#define END_IGNORE_DEPRECATIONS _Pragma ("GCC diagnostic pop")
-#elif defined(__clang__)
-#define BEGIN_IGNORE_DEPRECATIONS    \
-   _Pragma ("clang diagnostic push") \
-      _Pragma ("clang diagnostic ignored \"-Wdeprecated-declarations\"")
-#define END_IGNORE_DEPRECATIONS _Pragma ("clang diagnostic pop")
-#else
-#define BEGIN_IGNORE_DEPRECATIONS
-#define END_IGNORE_DEPRECATIONS
 #endif
 
 #ifndef _WIN32
@@ -84,9 +69,6 @@ _mongoc_get_real_time_ms (void);
 const char *
 _mongoc_get_command_name (const bson_t *command);
 
-const char *
-_mongoc_get_documents_field_name (const char *command_name);
-
 bool
 _mongoc_lookup_bool (const bson_t *bson, const char *key, bool default_value);
 
@@ -104,26 +86,16 @@ const char *
 _mongoc_wire_version_to_server_version (int32_t version);
 
 bool
-_mongoc_get_server_id_from_opts (const bson_t *opts,
-                                 mongoc_error_domain_t domain,
-                                 mongoc_error_code_t code,
-                                 uint32_t *server_id,
-                                 bson_error_t *error);
+_mongoc_validate_new_document (const bson_t *insert, bson_validate_flags_t vflags, bson_error_t *error);
 
 bool
-_mongoc_validate_new_document (const bson_t *insert,
-                               bson_validate_flags_t vflags,
-                               bson_error_t *error);
+_mongoc_validate_replace (const bson_t *insert, bson_validate_flags_t vflags, bson_error_t *error);
 
 bool
-_mongoc_validate_replace (const bson_t *insert,
-                          bson_validate_flags_t vflags,
-                          bson_error_t *error);
+_mongoc_validate_update (const bson_t *update, bson_validate_flags_t vflags, bson_error_t *error);
 
 bool
-_mongoc_validate_update (const bson_t *update,
-                         bson_validate_flags_t vflags,
-                         bson_error_t *error);
+mongoc_ends_with (const char *str, const char *suffix);
 
 void
 mongoc_lowercase (const char *src, char *buf /* OUT */);
@@ -138,8 +110,7 @@ void
 _mongoc_bson_array_copy_labels_to (const bson_t *reply, bson_t *dst);
 
 void
-_mongoc_add_transient_txn_error (const mongoc_client_session_t *cs,
-                                 bson_t *reply);
+_mongoc_add_transient_txn_error (const mongoc_client_session_t *cs, bson_t *reply);
 
 bool
 _mongoc_document_is_pipeline (const bson_t *document);
@@ -161,6 +132,28 @@ _mongoc_document_is_pipeline (const bson_t *document);
  */
 char *
 _mongoc_getenv (const char *name);
+
+/*
+ *--------------------------------------------------------------------------
+ *
+ * _mongoc_setenv --
+ *
+ *       Set or overwrite the value of an environment variable.
+ *
+ * Returns:
+ *       False if setting the variable was unsuccessful.
+ *
+ *--------------------------------------------------------------------------
+ */
+bool
+_mongoc_setenv (const char *name, const char *value);
+
+void
+bson_copy_to_including_noinit (const bson_t *src, bson_t *dst, const char *first_include, ...)
+   BSON_GNUC_NULL_TERMINATED;
+
+void
+bson_copy_to_including_noinit_va (const bson_t *src, bson_t *dst, const char *first_include, va_list args);
 
 /* Returns a uniformly-distributed uint32_t generated using
  * `_mongoc_rand_bytes()` if a source of cryptographic randomness is available
@@ -201,7 +194,8 @@ _mongoc_simple_rand_uint64_t (void);
 size_t
 _mongoc_simple_rand_size_t (void);
 
-/* Returns a uniformly-distributed random integer in the range [min, max].
+/* Returns a uniformly-distributed random integer in the range [min, max]
+ * using the provided `rand` generator.
  *
  * The size of the range [min, max] must not equal the size of the representable
  * range of uint32_t (`min == 0 && max == UINT32_MAX` must not be true).
@@ -212,7 +206,8 @@ _mongoc_simple_rand_size_t (void);
 uint32_t
 _mongoc_rand_uint32_t (uint32_t min, uint32_t max, uint32_t (*rand) (void));
 
-/* Returns a uniformly-distributed random integer in the range [min, max].
+/* Returns a uniformly-distributed random integer in the range [min, max]
+ * using the provided `rand` generator.
  *
  * The size of the range [min, max] must not equal the size of the representable
  * range of uint64_t (`min == 0 && max == UINT64_MAX` must not be true).
@@ -223,29 +218,30 @@ _mongoc_rand_uint32_t (uint32_t min, uint32_t max, uint32_t (*rand) (void));
 uint64_t
 _mongoc_rand_uint64_t (uint64_t min, uint64_t max, uint64_t (*rand) (void));
 
-/* Returns a uniformly-distributed random integer in the range [min, max].
+/* Returns a uniformly-distributed random integer in the range [min, max]
+ * using the `_mongoc_simple_rand_size_t()` generator.
  *
  * The size of the range [min, max] must not equal the size of the representable
  * range of size_t (`min == 0 && max == SIZE_MAX` must not be true).
- *
- * The generator `rand` must return a random integer uniformly distributed in
- * the full range of representable values of size_t.
  */
 size_t
-_mongoc_rand_size_t (size_t min, size_t max, size_t (*rand) (void));
+_mongoc_rand_size_t (size_t min, size_t max);
 
 /* _mongoc_iter_document_as_bson attempts to read the document from @iter into
  * @bson. */
 bool
-_mongoc_iter_document_as_bson (const bson_iter_t *iter,
-                               bson_t *bson,
-                               bson_error_t *error);
+_mongoc_iter_document_as_bson (const bson_iter_t *iter, bson_t *bson, bson_error_t *error);
 
 uint8_t *
 hex_to_bin (const char *hex, uint32_t *len);
 
 char *
 bin_to_hex (const uint8_t *bin, uint32_t len);
+
+typedef struct {
+   bool set;
+   uint64_t value;
+} mcd_optional_u64_t;
 
 BSON_END_DECLS
 

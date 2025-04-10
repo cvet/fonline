@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #ifndef MCD_INTEGER_H_INCLUDED
 #define MCD_INTEGER_H_INCLUDED
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #include <bson/bson.h>
 

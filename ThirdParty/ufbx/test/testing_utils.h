@@ -144,6 +144,7 @@ typedef struct {
 	bool bad_order;
 	bool bad_uvs;
 	bool bad_faces;
+	bool has_empty;
 	bool missing_uvs;
 	bool line_faces;
 	bool point_faces;
@@ -155,6 +156,7 @@ typedef struct {
 	bool bind_pose;
 	bool ignore_unskinned;
 	bool transform_skin;
+	bool no_bake;
 	ufbx_real tolerance;
 	ufbx_real uv_tolerance;
 	uint32_t allow_missing;
@@ -723,6 +725,9 @@ static ufbxt_noinline ufbxt_obj_file *ufbxt_load_obj(void *obj_data, size_t obj_
 			if (!strcmp(line, "ufbx:bad_faces")) {
 				obj->bad_faces = true;
 			}
+			if (!strcmp(line, "ufbx:has_empty")) {
+				obj->has_empty = true;
+			}
 			if (!strcmp(line, "ufbx:missing_uvs")) {
 				obj->missing_uvs = true;
 			}
@@ -758,6 +763,9 @@ static ufbxt_noinline ufbxt_obj_file *ufbxt_load_obj(void *obj_data, size_t obj_
 			}
 			if (!strcmp(line, "ufbx:transform_skin")) {
 				obj->transform_skin = true;
+			}
+			if (!strcmp(line, "ufbx:no_bake")) {
+				obj->no_bake = true;
 			}
 			if (!strcmp(line, "www.blender.org")) {
 				obj->exporter = UFBXT_OBJ_EXPORTER_BLENDER;
@@ -1381,7 +1389,17 @@ static ufbxt_noinline void ufbxt_diff_to_obj(ufbx_scene *scene, ufbxt_obj_file *
 		}
 
 		if (!node && obj_mesh->original_group && *obj_mesh->original_group) {
-			node = ufbx_find_node(scene, obj_mesh->original_group);
+			if (obj->has_empty && !strcmp(obj_mesh->original_group, "ufbx:empty")) {
+				for (size_t i = 1; i < scene->nodes.count; i++) {
+					ufbx_node *empty_node = scene->nodes.data[i];
+					if (empty_node->name.length == 0 && empty_node->mesh) {
+						node = empty_node;
+						break;
+					}
+				}
+			} else {
+				node = ufbx_find_node(scene, obj_mesh->original_group);
+			}
 		}
 
 		if (!node) {

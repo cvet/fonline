@@ -1,4 +1,4 @@
-/* $OpenBSD: pmeth_fn.c,v 1.6 2017/01/29 17:49:23 beck Exp $ */
+/* $OpenBSD: pmeth_fn.c,v 1.11 2024/04/12 09:41:39 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -63,7 +63,7 @@
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 
-#include "evp_locl.h"
+#include "evp_local.h"
 
 #define M_check_autoarg(ctx, arg, arglen, err) \
 	if (ctx->pmeth->flags & EVP_PKEY_FLAG_AUTOARGLEN) \
@@ -98,6 +98,7 @@ EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx)
 		ctx->operation = EVP_PKEY_OP_UNDEFINED;
 	return ret;
 }
+LCRYPTO_ALIAS(EVP_PKEY_sign_init);
 
 int
 EVP_PKEY_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
@@ -114,6 +115,7 @@ EVP_PKEY_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
 	M_check_autoarg(ctx, sig, siglen, EVP_F_EVP_PKEY_SIGN)
 	return ctx->pmeth->sign(ctx, sig, siglen, tbs, tbslen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_sign);
 
 int
 EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx)
@@ -132,6 +134,7 @@ EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx)
 		ctx->operation = EVP_PKEY_OP_UNDEFINED;
 	return ret;
 }
+LCRYPTO_ALIAS(EVP_PKEY_verify_init);
 
 int
 EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen,
@@ -147,24 +150,22 @@ EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen,
 	}
 	return ctx->pmeth->verify(ctx, sig, siglen, tbs, tbslen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_verify);
 
 int
 EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx)
 {
-	int ret;
-
-	if (!ctx || !ctx->pmeth || !ctx->pmeth->verify_recover) {
+	if (ctx == NULL || ctx->pmeth == NULL ||
+	    ctx->pmeth->verify_recover == NULL) {
 		EVPerror(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 		return -2;
 	}
+
 	ctx->operation = EVP_PKEY_OP_VERIFYRECOVER;
-	if (!ctx->pmeth->verify_recover_init)
-		return 1;
-	ret = ctx->pmeth->verify_recover_init(ctx);
-	if (ret <= 0)
-		ctx->operation = EVP_PKEY_OP_UNDEFINED;
-	return ret;
+
+	return 1;
 }
+LCRYPTO_ALIAS(EVP_PKEY_verify_recover_init);
 
 int
 EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, unsigned char *rout, size_t *routlen,
@@ -181,24 +182,21 @@ EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, unsigned char *rout, size_t *routlen,
 	M_check_autoarg(ctx, rout, routlen, EVP_F_EVP_PKEY_VERIFY_RECOVER)
 	return ctx->pmeth->verify_recover(ctx, rout, routlen, sig, siglen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_verify_recover);
 
 int
 EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx)
 {
-	int ret;
-
-	if (!ctx || !ctx->pmeth || !ctx->pmeth->encrypt) {
+	if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encrypt == NULL) {
 		EVPerror(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 		return -2;
 	}
+
 	ctx->operation = EVP_PKEY_OP_ENCRYPT;
-	if (!ctx->pmeth->encrypt_init)
-		return 1;
-	ret = ctx->pmeth->encrypt_init(ctx);
-	if (ret <= 0)
-		ctx->operation = EVP_PKEY_OP_UNDEFINED;
-	return ret;
+
+	return 1;
 }
+LCRYPTO_ALIAS(EVP_PKEY_encrypt_init);
 
 int
 EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
@@ -215,24 +213,21 @@ EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
 	M_check_autoarg(ctx, out, outlen, EVP_F_EVP_PKEY_ENCRYPT)
 	return ctx->pmeth->encrypt(ctx, out, outlen, in, inlen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_encrypt);
 
 int
 EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx)
 {
-	int ret;
-
-	if (!ctx || !ctx->pmeth || !ctx->pmeth->decrypt) {
+	if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decrypt == NULL) {
 		EVPerror(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 		return -2;
 	}
+
 	ctx->operation = EVP_PKEY_OP_DECRYPT;
-	if (!ctx->pmeth->decrypt_init)
-		return 1;
-	ret = ctx->pmeth->decrypt_init(ctx);
-	if (ret <= 0)
-		ctx->operation = EVP_PKEY_OP_UNDEFINED;
-	return ret;
+
+	return 1;
 }
+LCRYPTO_ALIAS(EVP_PKEY_decrypt_init);
 
 int
 EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
@@ -249,6 +244,7 @@ EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
 	M_check_autoarg(ctx, out, outlen, EVP_F_EVP_PKEY_DECRYPT)
 	return ctx->pmeth->decrypt(ctx, out, outlen, in, inlen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_decrypt);
 
 int
 EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx)
@@ -267,6 +263,7 @@ EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx)
 		ctx->operation = EVP_PKEY_OP_UNDEFINED;
 	return ret;
 }
+LCRYPTO_ALIAS(EVP_PKEY_derive_init);
 
 int
 EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer)
@@ -328,6 +325,7 @@ EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer)
 	CRYPTO_add(&peer->references, 1, CRYPTO_LOCK_EVP_PKEY);
 	return 1;
 }
+LCRYPTO_ALIAS(EVP_PKEY_derive_set_peer);
 
 int
 EVP_PKEY_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *pkeylen)
@@ -343,3 +341,4 @@ EVP_PKEY_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *pkeylen)
 	M_check_autoarg(ctx, key, pkeylen, EVP_F_EVP_PKEY_DERIVE)
 	return ctx->pmeth->derive(ctx, key, pkeylen);
 }
+LCRYPTO_ALIAS(EVP_PKEY_derive);

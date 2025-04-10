@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "mongoc.h"
-#include "mongoc-cursor-private.h"
-#include "mongoc-client-private.h"
+#include <mongoc/mongoc.h>
+#include <mongoc/mongoc-cursor-private.h>
+#include <mongoc/mongoc-client-private.h>
 
 typedef struct _data_find_t {
    bson_t filter;
@@ -37,7 +37,9 @@ _prime (mongoc_cursor_t *cursor)
    data_find_t *data = (data_find_t *) cursor->impl.data;
 
    /* determine if this should be a command or op_query cursor. */
-   server_stream = _mongoc_cursor_fetch_stream (cursor);
+   const mongoc_ss_log_context_t ss_log_context = {
+      .operation = "find", .has_operation_id = true, .operation_id = cursor->operation_id};
+   server_stream = _mongoc_cursor_fetch_stream (cursor, &ss_log_context);
    if (!server_stream) {
       return DONE;
    }
@@ -45,16 +47,11 @@ _prime (mongoc_cursor_t *cursor)
    mongoc_server_stream_cleanup (server_stream);
 
    /* set all mongoc_impl_t function pointers. */
-   if (
-      /* Server version 5.1 and newer do not support OP_QUERY. */
-      wire_version > WIRE_VERSION_5_0 ||
-      /* Fallback to legacy OP_QUERY wire protocol messages if exhaust cursor
-         requested. */
-      !_mongoc_cursor_get_opt_bool (cursor, MONGOC_CURSOR_EXHAUST)) {
+   /* CDRIVER-4722: always find_cmd when server >= 4.2 */
+   if (_mongoc_cursor_use_op_msg (cursor, wire_version)) {
       _mongoc_cursor_impl_find_cmd_init (cursor, &data->filter /* stolen */);
    } else {
-      _mongoc_cursor_impl_find_opquery_init (cursor,
-                                             &data->filter /* stolen */);
+      _mongoc_cursor_impl_find_opquery_init (cursor, &data->filter /* stolen */);
    }
    /* destroy this impl data since impl functions have been replaced. */
    bson_free (data);
@@ -95,8 +92,7 @@ _mongoc_cursor_find_new (mongoc_client_t *client,
 
    mongoc_cursor_t *cursor;
    data_find_t *data = BSON_ALIGNED_ALLOC0 (data_find_t);
-   cursor = _mongoc_cursor_new_with_opts (
-      client, db_and_coll, opts, user_prefs, default_prefs, read_concern);
+   cursor = _mongoc_cursor_new_with_opts (client, db_and_coll, opts, user_prefs, default_prefs, read_concern);
    _mongoc_cursor_check_and_copy_to (cursor, "filter", filter, &data->filter);
    cursor->impl.prime = _prime;
    cursor->impl.clone = _clone;

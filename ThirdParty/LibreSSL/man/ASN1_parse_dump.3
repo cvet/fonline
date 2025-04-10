@@ -1,4 +1,4 @@
-.\" $OpenBSD: ASN1_parse_dump.3,v 1.1 2021/07/11 19:03:45 schwarze Exp $
+.\" $OpenBSD: ASN1_parse_dump.3,v 1.3 2021/12/09 18:52:09 schwarze Exp $
 .\"
 .\" Copyright (c) 2021 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 11 2021 $
+.Dd $Mdocdate: December 9 2021 $
 .Dt ASN1_PARSE_DUMP 3
 .Os
 .Sh NAME
@@ -133,7 +133,7 @@ carriage returns and horizontal tabs, it is printed as an ASCII string.
 Otherwise, the
 .Fa dump
 argument decides the format.
-If it is zero, a raw hex dump is emissed, consisting of two hexadecimal
+If it is zero, a raw hex dump is emitted, consisting of two hexadecimal
 digits for every data byte.
 If
 .Fa dump
@@ -175,7 +175,7 @@ bytes.
 .Fn ASN1_parse
 is identical to
 .Fn ASN1_parse_dump
-woth 0 passed as the
+with 0 passed as the
 .Fa dump
 argument.
 .Sh RETURN VALUES
@@ -196,6 +196,12 @@ when any printing operation fails.
 .Xr ASN1_item_new 3 ,
 .Xr ASN1_STRING_print 3 ,
 .Xr ASN1_TYPE_new 3
+.Sh STANDARDS
+ITU-T Recommendation X.690, also known as ISO/IEC 8825-1:
+Information technology - ASN.1 encoding rules:
+Specification of Basic Encoding Rules (BER), Canonical Encoding
+Rules (CER) and Distinguished Encoding Rules (DER),
+section 8.1: General rules for encoding
 .Sh HISTORY
 .Fn ASN1_parse
 first appeared in SSLeay 0.5.1 and has been available since

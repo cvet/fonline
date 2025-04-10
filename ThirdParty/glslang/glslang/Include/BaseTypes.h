@@ -67,6 +67,10 @@ enum TBasicType {
     EbtRayQuery,
     EbtHitObjectNV,
     EbtCoopmat,
+    EbtFunction,
+    EbtTensorLayoutNV,
+    EbtTensorViewNV,
+    EbtCoopvecNV,
     // SPIR-V type defined by spirv_type
     EbtSpirvType,
 
@@ -275,6 +279,7 @@ enum TBuiltInVariable {
     EbvWorldToObject3x4,
     EbvIncomingRayFlags,
     EbvCurrentRayTimeNV,
+    EbvClusterIDNV,
     // barycentrics
     EbvBaryCoordNV,
     EbvBaryCoordNoPerspNV,
@@ -294,6 +299,13 @@ enum TBuiltInVariable {
     EbvMicroTriangleBaryNV,
     EbvHitKindFrontFacingMicroTriangleNV,
     EbvHitKindBackFacingMicroTriangleNV,
+
+    EbvHitIsSphereNV,
+    EbvHitIsLSSNV,
+    EbvHitSpherePositionNV,
+    EbvHitSphereRadiusNV,
+    EbvHitLSSPositionsNV,
+    EbvHitLSSRadiiNV,
 
     //GL_EXT_mesh_shader
     EbvPrimitivePointIndicesEXT,
@@ -499,6 +511,7 @@ __inline const char* GetBuiltInVariableString(TBuiltInVariable v)
     case EbvObjectToWorld:              return "ObjectToWorldNV";
     case EbvWorldToObject:              return "WorldToObjectNV";
     case EbvCurrentRayTimeNV:           return "CurrentRayTimeNV";
+    case EbvClusterIDNV:                return "ClusterIDNV";
 
     case EbvBaryCoordEXT:
     case EbvBaryCoordNV:                return "BaryCoordKHR";
@@ -529,6 +542,13 @@ __inline const char* GetBuiltInVariableString(TBuiltInVariable v)
 
     case EbvHitKindFrontFacingMicroTriangleNV: return "HitKindFrontFacingMicroTriangleNV";
     case EbvHitKindBackFacingMicroTriangleNV:  return "HitKindBackFacingMicroTriangleNV";
+
+    case EbvHitIsSphereNV:              return "HitIsSphereNV";
+    case EbvHitIsLSSNV:                 return "HitIsLSSNV";
+    case EbvHitSpherePositionNV:        return "HitSpherePositionNV";
+    case EbvHitSphereRadiusNV:          return "HitSphereRadiusNV";
+    case EbvHitLSSPositionsNV:          return "HitSpherePositionsNV";
+    case EbvHitLSSRadiiNV:              return "HitLSSRadiiNV";
 
     default:                      return "unknown built-in variable";
     }
@@ -585,6 +605,30 @@ __inline bool isTypeFloat(TBasicType type)
         return true;
     default:
         return false;
+    }
+}
+
+__inline uint32_t GetNumBits(TBasicType type)
+{
+    switch (type) {
+    case EbtInt8:
+    case EbtUint8:
+        return 8;
+    case EbtFloat16:
+    case EbtInt16:
+    case EbtUint16:
+        return 16;
+    case EbtInt:
+    case EbtUint:
+    case EbtFloat:
+        return 32;
+    case EbtDouble:
+    case EbtInt64:
+    case EbtUint64:
+        return 64;
+    default:
+        assert(false);
+        return 0;
     }
 }
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: evp_aead.c,v 1.6 2017/01/29 17:49:23 beck Exp $ */
+/* $OpenBSD: evp_aead.c,v 1.11 2024/04/09 13:52:41 beck Exp $ */
 /*
  * Copyright (c) 2014, Google Inc.
  *
@@ -21,31 +21,35 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
-#include "evp_locl.h"
+#include "evp_local.h"
 
 size_t
 EVP_AEAD_key_length(const EVP_AEAD *aead)
 {
 	return aead->key_len;
 }
+LCRYPTO_ALIAS(EVP_AEAD_key_length);
 
 size_t
 EVP_AEAD_nonce_length(const EVP_AEAD *aead)
 {
 	return aead->nonce_len;
 }
+LCRYPTO_ALIAS(EVP_AEAD_nonce_length);
 
 size_t
 EVP_AEAD_max_overhead(const EVP_AEAD *aead)
 {
 	return aead->overhead;
 }
+LCRYPTO_ALIAS(EVP_AEAD_max_overhead);
 
 size_t
 EVP_AEAD_max_tag_len(const EVP_AEAD *aead)
 {
 	return aead->max_tag_len;
 }
+LCRYPTO_ALIAS(EVP_AEAD_max_tag_len);
 
 int
 EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
@@ -58,6 +62,7 @@ EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
 	}
 	return aead->init(ctx, key, key_len, tag_len);
 }
+LCRYPTO_ALIAS(EVP_AEAD_CTX_init);
 
 void
 EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx)
@@ -67,6 +72,25 @@ EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx)
 	ctx->aead->cleanup(ctx);
 	ctx->aead = NULL;
 }
+LCRYPTO_ALIAS(EVP_AEAD_CTX_cleanup);
+
+EVP_AEAD_CTX *
+EVP_AEAD_CTX_new(void)
+{
+	return calloc(1, sizeof(EVP_AEAD_CTX));
+}
+LCRYPTO_ALIAS(EVP_AEAD_CTX_new);
+
+void
+EVP_AEAD_CTX_free(EVP_AEAD_CTX *ctx)
+{
+	if (ctx == NULL)
+		return;
+
+	EVP_AEAD_CTX_cleanup(ctx);
+	free(ctx);
+}
+LCRYPTO_ALIAS(EVP_AEAD_CTX_free);
 
 /* check_alias returns 0 if out points within the buffer determined by in
  * and in_len and 1 otherwise.
@@ -117,6 +141,7 @@ error:
 	*out_len = 0;
 	return 0;
 }
+LCRYPTO_ALIAS(EVP_AEAD_CTX_seal);
 
 int
 EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
@@ -142,3 +167,4 @@ error:
 	*out_len = 0;
 	return 0;
 }
+LCRYPTO_ALIAS(EVP_AEAD_CTX_open);

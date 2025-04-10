@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.22)
 
 StatusMessage("Start project generation")
 
@@ -436,8 +436,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	set(FO_MONO_OS "browser")
 	set(FO_MONO_ARCH "wasm")
 	set(CMAKE_EXECUTABLE_SUFFIX ".js")
-	add_compile_options_C_CXX($<${expr_DebugInfo}:-g>)
+	add_compile_options_C_CXX($<${expr_DebugInfo}:-g3>)
+	add_link_options($<${expr_DebugInfo}:-g3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
+	add_link_options($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)
 	add_link_options($<${expr_FullOptimization}:-flto>)
 	add_compile_options_C_CXX(--no-heap-copy)
@@ -457,6 +459,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	add_link_options(-sDISABLE_EXCEPTION_CATCHING=0)
 	add_compile_options_C_CXX(-sDISABLE_EXCEPTION_CATCHING=0)
 	add_link_options(-sWASM_BIGINT=1)
+	add_link_options(-sMAIN_MODULE=2)
+	add_compile_options_C_CXX(-sMAIN_MODULE=2)
 
 	add_link_options(-lhtml5)
 	add_link_options(-lGL)
@@ -464,18 +468,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	add_link_options(-lhtml5_webgl.js)
 	add_link_options(-lidbfs.js)
 
-	add_link_options(-Wl,-u,ntohs)
-
 else()
 	AbortMessage("Unknown OS")
 endif()
 
 add_compile_definitions(FO_WINDOWS=${FO_WINDOWS} FO_UWP=${FO_UWP} FO_LINUX=${FO_LINUX} FO_MAC=${FO_MAC} FO_ANDROID=${FO_ANDROID} FO_IOS=${FO_IOS} FO_WEB=${FO_WEB})
 add_compile_definitions(FO_HAVE_OPENGL=${FO_HAVE_OPENGL} FO_OPENGL_ES=${FO_OPENGL_ES} FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D} FO_HAVE_METAL=${FO_HAVE_METAL} FO_HAVE_VULKAN=${FO_HAVE_VULKAN})
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	add_compile_options_C_CXX(--param=max-vartrack-size=1000000)
-endif()
 
 if(FO_CODE_COVERAGE)
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

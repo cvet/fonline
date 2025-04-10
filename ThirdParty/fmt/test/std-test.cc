@@ -13,13 +13,17 @@
 #include <vector>
 
 #include "fmt/os.h"  // fmt::system_category
-#include "fmt/ranges.h"
 #include "gtest-extra.h"  // StartsWith
 
 #ifdef __cpp_lib_filesystem
 TEST(std_test, path) {
   using std::filesystem::path;
   EXPECT_EQ(fmt::format("{}", path("/usr/bin")), "/usr/bin");
+
+  // see #4303
+  const path p = "/usr/bin";
+  EXPECT_EQ(fmt::format("{}", p), "/usr/bin");
+
   EXPECT_EQ(fmt::format("{:?}", path("/usr/bin")), "\"/usr/bin\"");
   EXPECT_EQ(fmt::format("{:8}", path("foo")), "foo     ");
 
@@ -35,9 +39,17 @@ TEST(std_test, path) {
                                    L"\x0447\x044B\x043D\x0430")),
             "Шчучыншчына");
   EXPECT_EQ(fmt::format("{}", path(L"\xd800")), "�");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xd800 TAIL")), "HEAD � TAIL");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xD83D\xDE00 TAIL")),
+            "HEAD \xF0\x9F\x98\x80 TAIL");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xD83D\xD83D\xDE00 TAIL")),
+            "HEAD �\xF0\x9F\x98\x80 TAIL");
   EXPECT_EQ(fmt::format("{:?}", path(L"\xd800")), "\"\\ud800\"");
 #  endif
 }
+
+// Intentionally delayed include to test #4303
+#include "fmt/ranges.h"
 
 // Test ambiguity problem described in #2954.
 TEST(ranges_std_test, format_vector_path) {
@@ -85,6 +97,9 @@ TEST(std_test, complex) {
   EXPECT_EQ(fmt::format("{:+}", std::complex<double>(1, 2.2)), "(+1+2.2i)");
   EXPECT_EQ(fmt::format("{: }", std::complex<double>(1, 2.2)), "( 1+2.2i)");
   EXPECT_EQ(fmt::format("{: }", std::complex<double>(1, -2.2)), "( 1-2.2i)");
+
+  EXPECT_EQ(fmt::format("{:8}", std::complex<double>(1, 2)), "(1+2i)  ");
+  EXPECT_EQ(fmt::format("{:-<8}", std::complex<double>(1, 2)), "(1+2i)--");
 
   EXPECT_EQ(fmt::format("{:>20.2f}", std::complex<double>(1, 2.2)),
             "        (1.00+2.20i)");
@@ -135,6 +150,7 @@ TEST(std_test, optional) {
 
 TEST(std_test, expected) {
 #ifdef __cpp_lib_expected
+  EXPECT_EQ(fmt::format("{}", std::expected<void, int>{}), "expected()");
   EXPECT_EQ(fmt::format("{}", std::expected<int, int>{1}), "expected(1)");
   EXPECT_EQ(fmt::format("{}", std::expected<int, int>{std::unexpected(1)}),
             "unexpected(1)");
@@ -158,6 +174,7 @@ TEST(std_test, expected) {
   EXPECT_FALSE(
       (fmt::is_formattable<std::expected<int, unformattable2>>::value));
   EXPECT_TRUE((fmt::is_formattable<std::expected<int, int>>::value));
+  EXPECT_TRUE((fmt::is_formattable<std::expected<void, int>>::value));
 #endif
 }
 
@@ -258,9 +275,13 @@ TEST(std_test, variant) {
 }
 
 TEST(std_test, error_code) {
+  auto& generic = std::generic_category();
   EXPECT_EQ("generic:42",
-            fmt::format(FMT_STRING("{0}"),
-                        std::error_code(42, std::generic_category())));
+            fmt::format(FMT_STRING("{0}"), std::error_code(42, generic)));
+  EXPECT_EQ("  generic:42",
+            fmt::format(FMT_STRING("{:>12}"), std::error_code(42, generic)));
+  EXPECT_EQ("generic:42  ",
+            fmt::format(FMT_STRING("{:12}"), std::error_code(42, generic)));
   EXPECT_EQ("system:42",
             fmt::format(FMT_STRING("{0}"),
                         std::error_code(42, fmt::system_category())));
@@ -387,4 +408,9 @@ TEST(std_test, format_shared_ptr) {
   std::shared_ptr<int> sp(new int(1));
   EXPECT_EQ(fmt::format("{}", fmt::ptr(sp.get())),
             fmt::format("{}", fmt::ptr(sp)));
+}
+
+TEST(std_test, format_reference_wrapper) {
+  int num = 35;
+  EXPECT_EQ("35", fmt::to_string(std::cref(num)));
 }

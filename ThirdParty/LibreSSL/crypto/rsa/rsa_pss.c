@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_pss.c,v 1.13 2018/09/05 00:55:33 djm Exp $ */
+/* $OpenBSD: rsa_pss.c,v 1.19 2024/03/26 05:26:27 joshua Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2005.
  */
@@ -66,6 +66,9 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
+#include "evp_local.h"
+#include "rsa_local.h"
+
 static const unsigned char zeroes[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 int
@@ -74,6 +77,7 @@ RSA_verify_PKCS1_PSS(RSA *rsa, const unsigned char *mHash, const EVP_MD *Hash,
 {
 	return RSA_verify_PKCS1_PSS_mgf1(rsa, mHash, Hash, NULL, EM, sLen);
 }
+LCRYPTO_ALIAS(RSA_verify_PKCS1_PSS);
 
 int
 RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
@@ -85,10 +89,11 @@ RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
 	int hLen, maskedDBLen, MSBits, emLen;
 	const unsigned char *H;
 	unsigned char *DB = NULL;
-	EVP_MD_CTX ctx;
+	EVP_MD_CTX *md_ctx;
 	unsigned char H_[EVP_MAX_MD_SIZE];
 
-	EVP_MD_CTX_init(&ctx);
+	if ((md_ctx = EVP_MD_CTX_new()) == NULL)
+		goto err;
 
 	if (mgf1Hash == NULL)
 		mgf1Hash = Hash;
@@ -153,28 +158,30 @@ RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
 		RSAerror(RSA_R_SLEN_CHECK_FAILED);
 		goto err;
 	}
-	if (!EVP_DigestInit_ex(&ctx, Hash, NULL) ||
-	    !EVP_DigestUpdate(&ctx, zeroes, sizeof zeroes) ||
-	    !EVP_DigestUpdate(&ctx, mHash, hLen))
+	if (!EVP_DigestInit_ex(md_ctx, Hash, NULL) ||
+	    !EVP_DigestUpdate(md_ctx, zeroes, sizeof zeroes) ||
+	    !EVP_DigestUpdate(md_ctx, mHash, hLen))
 		goto err;
 	if (maskedDBLen - i) {
-		if (!EVP_DigestUpdate(&ctx, DB + i, maskedDBLen - i))
+		if (!EVP_DigestUpdate(md_ctx, DB + i, maskedDBLen - i))
 			goto err;
 	}
-	if (!EVP_DigestFinal_ex(&ctx, H_, NULL))
+	if (!EVP_DigestFinal_ex(md_ctx, H_, NULL))
 		goto err;
 	if (timingsafe_bcmp(H_, H, hLen)) {
 		RSAerror(RSA_R_BAD_SIGNATURE);
 		ret = 0;
-	} else
+	} else {
 		ret = 1;
+	}
 
-err:
+ err:
 	free(DB);
-	EVP_MD_CTX_cleanup(&ctx);
+	EVP_MD_CTX_free(md_ctx);
 
 	return ret;
 }
+LCRYPTO_ALIAS(RSA_verify_PKCS1_PSS_mgf1);
 
 int
 RSA_padding_add_PKCS1_PSS(RSA *rsa, unsigned char *EM,
@@ -182,6 +189,7 @@ RSA_padding_add_PKCS1_PSS(RSA *rsa, unsigned char *EM,
 {
 	return RSA_padding_add_PKCS1_PSS_mgf1(rsa, EM, mHash, Hash, NULL, sLen);
 }
+LCRYPTO_ALIAS(RSA_padding_add_PKCS1_PSS);
 
 int
 RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
@@ -192,9 +200,10 @@ RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
 	int ret = 0;
 	int hLen, maskedDBLen, MSBits, emLen;
 	unsigned char *H, *salt = NULL, *p;
-	EVP_MD_CTX ctx;
+	EVP_MD_CTX *md_ctx;
 
-	EVP_MD_CTX_init(&ctx);
+	if ((md_ctx = EVP_MD_CTX_new()) == NULL)
+		goto err;
 
 	if (mgf1Hash == NULL)
 		mgf1Hash = Hash;
@@ -239,13 +248,13 @@ RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
 	}
 	maskedDBLen = emLen - hLen - 1;
 	H = EM + maskedDBLen;
-	if (!EVP_DigestInit_ex(&ctx, Hash, NULL) ||
-	    !EVP_DigestUpdate(&ctx, zeroes, sizeof zeroes) ||
-	    !EVP_DigestUpdate(&ctx, mHash, hLen))
+	if (!EVP_DigestInit_ex(md_ctx, Hash, NULL) ||
+	    !EVP_DigestUpdate(md_ctx, zeroes, sizeof zeroes) ||
+	    !EVP_DigestUpdate(md_ctx, mHash, hLen))
 		goto err;
-	if (sLen && !EVP_DigestUpdate(&ctx, salt, sLen))
+	if (sLen && !EVP_DigestUpdate(md_ctx, salt, sLen))
 		goto err;
-	if (!EVP_DigestFinal_ex(&ctx, H, NULL))
+	if (!EVP_DigestFinal_ex(md_ctx, H, NULL))
 		goto err;
 
 	/* Generate dbMask in place then perform XOR on it */
@@ -275,7 +284,8 @@ RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
 
 err:
 	free(salt);
-	EVP_MD_CTX_cleanup(&ctx);
+	EVP_MD_CTX_free(md_ctx);
 
 	return ret;
 }
+LCRYPTO_ALIAS(RSA_padding_add_PKCS1_PSS_mgf1);

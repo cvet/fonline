@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_CONTEXT_PRIVATE_H
 #define BSON_CONTEXT_PRIVATE_H
 
 
-#include "bson-context.h"
-#include "common-thread-private.h"
+#include <bson/bson-context.h>
+#include <common-thread-private.h>
 
 
 BSON_BEGIN_DECLS
@@ -64,19 +64,6 @@ _bson_context_set_oid_rand (bson_context_t *context, bson_oid_t *oid);
  */
 void
 _bson_context_set_oid_seq32 (bson_context_t *context, bson_oid_t *oid);
-
-/**
- * @brief Write a 64-bit counter from the given context into the OID. Increments
- * the context's sequence counter.
- *
- * @param context The context with the counter to get+update
- * @param oid The OID to modify
- *
- * @note Only used by the deprecated @ref bson_oid_init_sequence
- */
-void
-_bson_context_set_oid_seq64 (bson_context_t *context, bson_oid_t *oid);
-
 
 BSON_END_DECLS
 

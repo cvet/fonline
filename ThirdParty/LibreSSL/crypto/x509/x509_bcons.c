@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_bcons.c,v 1.1 2020/06/04 15:19:31 jsing Exp $ */
+/* $OpenBSD: x509_bcons.c,v 1.6 2024/08/31 10:03:03 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -65,12 +65,14 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "x509_local.h"
+
 static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
     BASIC_CONSTRAINTS *bcons, STACK_OF(CONF_VALUE) *extlist);
 static BASIC_CONSTRAINTS *v2i_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *values);
 
-const X509V3_EXT_METHOD v3_bcons = {
+static const X509V3_EXT_METHOD x509v3_ext_basic_constraints = {
 	.ext_nid = NID_basic_constraints,
 	.ext_flags = 0,
 	.it = &BASIC_CONSTRAINTS_it,
@@ -86,6 +88,12 @@ const X509V3_EXT_METHOD v3_bcons = {
 	.r2i = NULL,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_basic_constraints(void)
+{
+	return &x509v3_ext_basic_constraints;
+}
 
 static const ASN1_TEMPLATE BASIC_CONSTRAINTS_seq_tt[] = {
 	{
@@ -113,6 +121,7 @@ const ASN1_ITEM BASIC_CONSTRAINTS_it = {
 	.size = sizeof(BASIC_CONSTRAINTS),
 	.sname = "BASIC_CONSTRAINTS",
 };
+LCRYPTO_ALIAS(BASIC_CONSTRAINTS_it);
 
 
 BASIC_CONSTRAINTS *
@@ -121,24 +130,28 @@ d2i_BASIC_CONSTRAINTS(BASIC_CONSTRAINTS **a, const unsigned char **in, long len)
 	return (BASIC_CONSTRAINTS *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &BASIC_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(d2i_BASIC_CONSTRAINTS);
 
 int
 i2d_BASIC_CONSTRAINTS(BASIC_CONSTRAINTS *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &BASIC_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(i2d_BASIC_CONSTRAINTS);
 
 BASIC_CONSTRAINTS *
 BASIC_CONSTRAINTS_new(void)
 {
 	return (BASIC_CONSTRAINTS *)ASN1_item_new(&BASIC_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(BASIC_CONSTRAINTS_new);
 
 void
 BASIC_CONSTRAINTS_free(BASIC_CONSTRAINTS *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &BASIC_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(BASIC_CONSTRAINTS_free);
 
 
 static STACK_OF(CONF_VALUE) *

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_READ_PREFS_H
 #define MONGOC_READ_PREFS_H
 
 #include <bson/bson.h>
 
-#include "mongoc-macros.h"
-#include "mongoc-config.h"
+#include <mongoc/mongoc-macros.h>
+#include <mongoc/mongoc-config.h>
 
 BSON_BEGIN_DECLS
 
@@ -48,36 +48,41 @@ typedef enum {
 
 
 MONGOC_EXPORT (mongoc_read_prefs_t *)
-mongoc_read_prefs_new (mongoc_read_mode_t read_mode)
-   BSON_GNUC_WARN_UNUSED_RESULT;
+mongoc_read_prefs_new (mongoc_read_mode_t read_mode) BSON_GNUC_WARN_UNUSED_RESULT;
+
 MONGOC_EXPORT (mongoc_read_prefs_t *)
-mongoc_read_prefs_copy (const mongoc_read_prefs_t *read_prefs)
-   BSON_GNUC_WARN_UNUSED_RESULT;
+mongoc_read_prefs_copy (const mongoc_read_prefs_t *read_prefs) BSON_GNUC_WARN_UNUSED_RESULT;
+
 MONGOC_EXPORT (void)
 mongoc_read_prefs_destroy (mongoc_read_prefs_t *read_prefs);
+
 MONGOC_EXPORT (mongoc_read_mode_t)
 mongoc_read_prefs_get_mode (const mongoc_read_prefs_t *read_prefs);
+
 MONGOC_EXPORT (void)
-mongoc_read_prefs_set_mode (mongoc_read_prefs_t *read_prefs,
-                            mongoc_read_mode_t mode);
+mongoc_read_prefs_set_mode (mongoc_read_prefs_t *read_prefs, mongoc_read_mode_t mode);
+
 MONGOC_EXPORT (const bson_t *)
 mongoc_read_prefs_get_tags (const mongoc_read_prefs_t *read_prefs);
+
 MONGOC_EXPORT (void)
-mongoc_read_prefs_set_tags (mongoc_read_prefs_t *read_prefs,
-                            const bson_t *tags);
+mongoc_read_prefs_set_tags (mongoc_read_prefs_t *read_prefs, const bson_t *tags);
+
 MONGOC_EXPORT (void)
 mongoc_read_prefs_add_tag (mongoc_read_prefs_t *read_prefs, const bson_t *tag);
+
 MONGOC_EXPORT (int64_t)
-mongoc_read_prefs_get_max_staleness_seconds (
-   const mongoc_read_prefs_t *read_prefs);
+mongoc_read_prefs_get_max_staleness_seconds (const mongoc_read_prefs_t *read_prefs);
+
 MONGOC_EXPORT (void)
-mongoc_read_prefs_set_max_staleness_seconds (mongoc_read_prefs_t *read_prefs,
-                                             int64_t max_staleness_seconds);
-MONGOC_EXPORT (const bson_t *)
-mongoc_read_prefs_get_hedge (const mongoc_read_prefs_t *read_prefs);
-MONGOC_EXPORT (void)
-mongoc_read_prefs_set_hedge (mongoc_read_prefs_t *read_prefs,
-                             const bson_t *hedge);
+mongoc_read_prefs_set_max_staleness_seconds (mongoc_read_prefs_t *read_prefs, int64_t max_staleness_seconds);
+
+BSON_DEPRECATED ("Hedged reads are deprecated in MongoDB 8.0 and will be removed in a future release")
+MONGOC_EXPORT (const bson_t *) mongoc_read_prefs_get_hedge (const mongoc_read_prefs_t *read_prefs);
+
+BSON_DEPRECATED ("Hedged reads are deprecated in MongoDB 8.0 and will be removed in a future release")
+MONGOC_EXPORT (void) mongoc_read_prefs_set_hedge (mongoc_read_prefs_t *read_prefs, const bson_t *hedge);
+
 MONGOC_EXPORT (bool)
 mongoc_read_prefs_is_valid (const mongoc_read_prefs_t *read_prefs);
 

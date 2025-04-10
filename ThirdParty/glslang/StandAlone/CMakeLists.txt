@@ -59,8 +59,6 @@ glslang_set_link_args(glslang-standalone)
 
 set(LIBRARIES
     glslang
-    OSDependent
-    SPIRV
     glslang-default-resource-limits)
 
 if(WIN32)
@@ -75,12 +73,14 @@ target_link_libraries(glslang-standalone ${LIBRARIES})
 target_include_directories(glslang-standalone PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../External>)
 
-if(ENABLE_SPVREMAPPER)
-    set(REMAPPER_SOURCES spirv-remap.cpp)
-    add_executable(spirv-remap ${REMAPPER_SOURCES})
-    set_property(TARGET spirv-remap PROPERTY FOLDER tools)
-    glslang_set_link_args(spirv-remap)
-    target_link_libraries(spirv-remap SPVRemapper ${LIBRARIES})
+if(ENABLE_SPIRV)
+    if(ENABLE_SPVREMAPPER)
+        set(REMAPPER_SOURCES spirv-remap.cpp)
+        add_executable(spirv-remap ${REMAPPER_SOURCES})
+        set_property(TARGET spirv-remap PROPERTY FOLDER tools)
+        glslang_set_link_args(spirv-remap)
+        target_link_libraries(spirv-remap SPVRemapper ${LIBRARIES})
+    endif()
 endif()
 
 if(WIN32)
@@ -90,23 +90,32 @@ endif()
 # Create a symbolic link to glslang named glslangValidator for backwards compatibility
 set(legacy_glslang_name "glslangValidator${CMAKE_EXECUTABLE_SUFFIX}")
 set(link_method create_symlink)
-if (WIN32 OR MINGW)
-set(link_method copy_if_different)
+if(WIN32 OR MINGW)
+  set(link_method copy_if_different)
 endif()
-add_custom_command(TARGET glslang-standalone
-	       POST_BUILD
-	       COMMAND ${CMAKE_COMMAND} -E ${link_method} $<TARGET_FILE_NAME:glslang-standalone> ${legacy_glslang_name}
-	       WORKING_DIRECTORY $<TARGET_FILE_DIR:glslang-standalone>)
+
+add_custom_command(
+    TARGET glslang-standalone POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E "${link_method}" "\$<TARGET_FILE_NAME:glslang-standalone>" "${legacy_glslang_name}"
+    WORKING_DIRECTORY "\$<TARGET_FILE_DIR:glslang-standalone>"
+    VERBATIM
+)
 
 if(GLSLANG_ENABLE_INSTALL)
     install(TARGETS glslang-standalone EXPORT glslang-targets)
 
     # Create the same symlink at install time
-    install(CODE "execute_process( \
-                      COMMAND ${CMAKE_COMMAND} -E ${link_method} $<TARGET_FILE_NAME:glslang-standalone> ${legacy_glslang_name} \
-                      WORKING_DIRECTORY \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR})")
+    install(CODE "\
+        message(STATUS \"Installing (${link_method}): \$<TARGET_FILE_NAME:glslang-standalone> -> \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\")
+        execute_process(
+            COMMAND \"\${CMAKE_COMMAND}\" -E ${link_method} [=[\$<TARGET_FILE_NAME:glslang-standalone>]=] [=[${legacy_glslang_name}]=]
+            WORKING_DIRECTORY \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
+        )
+    ")
 
-    if(ENABLE_SPVREMAPPER)
-        install(TARGETS spirv-remap EXPORT glslang-targets)
+    if(ENABLE_SPIRV)
+        if(ENABLE_SPVREMAPPER)
+            install(TARGETS spirv-remap EXPORT glslang-targets)
+        endif()
     endif()
 endif(GLSLANG_ENABLE_INSTALL)

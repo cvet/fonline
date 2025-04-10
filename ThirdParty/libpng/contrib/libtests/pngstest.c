@@ -1,4 +1,3 @@
-
 /* pngstest.c
  *
  * Copyright (c) 2021 Cosmin Truta
@@ -3500,7 +3499,7 @@ main(int argc, char **argv)
    int retval = 0;
    int c;
 
-#if PNG_LIBPNG_VER >= 10700
+#if PNG_LIBPNG_VER == 10700
       /* This error should not exist in 1.7 or later: */
       opts |= GBG_ERROR;
 #endif

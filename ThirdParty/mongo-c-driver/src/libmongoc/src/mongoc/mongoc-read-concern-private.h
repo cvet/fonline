@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_READ_CONCERN_PRIVATE_H
 #define MONGOC_READ_CONCERN_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-read-concern.h"
+#include <mongoc/mongoc-read-concern.h>
 
 
 BSON_BEGIN_DECLS
@@ -38,8 +38,7 @@ _mongoc_read_concern_get_bson (mongoc_read_concern_t *read_concern);
 
 
 mongoc_read_concern_t *
-_mongoc_read_concern_new_from_iter (const bson_iter_t *iter,
-                                    bson_error_t *error);
+_mongoc_read_concern_new_from_iter (const bson_iter_t *iter, bson_error_t *error);
 
 BSON_END_DECLS
 

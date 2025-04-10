@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssl_get_shared_ciphers.c,v 1.10 2021/05/04 18:20:05 tb Exp $ */
+/*	$OpenBSD: ssl_get_shared_ciphers.c,v 1.13 2024/08/31 12:47:24 jsing Exp $ */
 /*
  * Copyright (c) 2021 Theo Buehler <tb@openbsd.org>
  *
@@ -53,9 +53,9 @@ static const struct ssl_shared_ciphers_test_data ssl_shared_ciphers_tests[] = {
 			.max_version = TLS1_3_VERSION,
 			.min_version = TLS1_3_VERSION,
 			.ciphers =
-			    "AEAD-AES256-GCM-SHA384:"
-			    "AEAD-CHACHA20-POLY1305-SHA256:"
-			    "AEAD-AES128-GCM-SHA256",
+			    "TLS_AES_256_GCM_SHA384:"
+			    "TLS_CHACHA20_POLY1305_SHA256:"
+			    "TLS_AES_128_GCM_SHA256",
 		},
 		.server_config = {
 			.name = "server",
@@ -63,14 +63,14 @@ static const struct ssl_shared_ciphers_test_data ssl_shared_ciphers_tests[] = {
 			.max_version = TLS1_3_VERSION,
 			.min_version = TLS1_3_VERSION,
 			.ciphers =
-			    "AEAD-AES256-GCM-SHA384:"
-			    "AEAD-CHACHA20-POLY1305-SHA256:"
-			    "AEAD-AES128-GCM-SHA256",
+			    "TLS_AES_256_GCM_SHA384:"
+			    "TLS_CHACHA20_POLY1305_SHA256:"
+			    "TLS_AES_128_GCM_SHA256",
 		},
 		.shared_ciphers =
-		    "AEAD-AES256-GCM-SHA384:"
-		    "AEAD-CHACHA20-POLY1305-SHA256:"
-		    "AEAD-AES128-GCM-SHA256",
+		    "TLS_AES_256_GCM_SHA384:"
+		    "TLS_CHACHA20_POLY1305_SHA256:"
+		    "TLS_AES_128_GCM_SHA256",
 	},
 
 	{
@@ -81,8 +81,8 @@ static const struct ssl_shared_ciphers_test_data ssl_shared_ciphers_tests[] = {
 			.max_version = TLS1_3_VERSION,
 			.min_version = TLS1_3_VERSION,
 			.ciphers =
-			    "AEAD-AES256-GCM-SHA384:"
-			    "AEAD-AES128-GCM-SHA256",
+			    "TLS_AES_256_GCM_SHA384:"
+			    "TLS_AES_128_GCM_SHA256",
 		},
 		.server_config = {
 			.name = "server",
@@ -90,13 +90,13 @@ static const struct ssl_shared_ciphers_test_data ssl_shared_ciphers_tests[] = {
 			.max_version = TLS1_3_VERSION,
 			.min_version = TLS1_3_VERSION,
 			.ciphers =
-			    "AEAD-AES256-GCM-SHA384:"
-			    "AEAD-CHACHA20-POLY1305-SHA256:"
-			    "AEAD-AES128-GCM-SHA256",
+			    "TLS_AES_256_GCM_SHA384:"
+			    "TLS_CHACHA20_POLY1305_SHA256:"
+			    "TLS_AES_128_GCM_SHA256",
 		},
 		.shared_ciphers =
-		    "AEAD-AES256-GCM-SHA384:"
-		    "AEAD-AES128-GCM-SHA256",
+		    "TLS_AES_256_GCM_SHA384:"
+		    "TLS_AES_128_GCM_SHA256",
 	},
 
 	{
@@ -186,14 +186,14 @@ static const struct ssl_shared_ciphers_test_data ssl_shared_ciphers_tests[] = {
 			    "ECDHE-RSA-AES256-GCM-SHA384",
 		},
 		.shared_ciphers =
-		    "AEAD-AES256-GCM-SHA384:"
-		    "AEAD-CHACHA20-POLY1305-SHA256:"
-		    "AEAD-AES128-GCM-SHA256:"
+		    "TLS_AES_256_GCM_SHA384:"
+		    "TLS_CHACHA20_POLY1305_SHA256:"
+		    "TLS_AES_128_GCM_SHA256:"
 		    "ECDHE-RSA-AES256-GCM-SHA384",
 		.shared_ciphers_without_aesni =
-		    "AEAD-CHACHA20-POLY1305-SHA256:"
-		    "AEAD-AES256-GCM-SHA384:"
-		    "AEAD-AES128-GCM-SHA256:"
+		    "TLS_CHACHA20_POLY1305_SHA256:"
+		    "TLS_AES_256_GCM_SHA384:"
+		    "TLS_AES_128_GCM_SHA256:"
 		    "ECDHE-RSA-AES256-GCM-SHA384",
 	},
 };
@@ -379,11 +379,7 @@ shutdown_peers(SSL *client_ssl, SSL *server_ssl, const char *description)
 static inline int
 ssl_aes_is_accelerated(void)
 {
-#if defined(__i386__) || defined(__x86_64__)
-	return ((OPENSSL_cpu_caps() & (1ULL << 57)) != 0);
-#else
-	return (0);
-#endif
+	return (OPENSSL_cpu_caps() & CRYPTO_CPU_CAPS_ACCELERATED_AES) != 0;
 }
 
 static int
@@ -462,7 +458,7 @@ main(int argc, char **argv)
 	size_t i;
 	int failed = 0;
 
-	if (asprintf(&server_cert, "%s/server.pem", CERTSDIR) == -1) {
+	if (asprintf(&server_cert, "%s/server1-rsa.pem", CERTSDIR) == -1) {
 		fprintf(stderr, "asprintf server_cert failed\n");
 		failed = 1;
 		goto err;

@@ -1,4 +1,4 @@
-/* $OpenBSD: x_spki.c,v 1.11 2015/02/11 04:00:39 jsing Exp $ */
+/* $OpenBSD: x_spki.c,v 1.15 2024/07/08 14:48:49 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -86,6 +86,7 @@ const ASN1_ITEM NETSCAPE_SPKAC_it = {
 	.size = sizeof(NETSCAPE_SPKAC),
 	.sname = "NETSCAPE_SPKAC",
 };
+LCRYPTO_ALIAS(NETSCAPE_SPKAC_it);
 
 
 NETSCAPE_SPKAC *
@@ -94,24 +95,28 @@ d2i_NETSCAPE_SPKAC(NETSCAPE_SPKAC **a, const unsigned char **in, long len)
 	return (NETSCAPE_SPKAC *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &NETSCAPE_SPKAC_it);
 }
+LCRYPTO_ALIAS(d2i_NETSCAPE_SPKAC);
 
 int
 i2d_NETSCAPE_SPKAC(NETSCAPE_SPKAC *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &NETSCAPE_SPKAC_it);
 }
+LCRYPTO_ALIAS(i2d_NETSCAPE_SPKAC);
 
 NETSCAPE_SPKAC *
 NETSCAPE_SPKAC_new(void)
 {
 	return (NETSCAPE_SPKAC *)ASN1_item_new(&NETSCAPE_SPKAC_it);
 }
+LCRYPTO_ALIAS(NETSCAPE_SPKAC_new);
 
 void
 NETSCAPE_SPKAC_free(NETSCAPE_SPKAC *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &NETSCAPE_SPKAC_it);
 }
+LCRYPTO_ALIAS(NETSCAPE_SPKAC_free);
 
 static const ASN1_TEMPLATE NETSCAPE_SPKI_seq_tt[] = {
 	{
@@ -146,6 +151,7 @@ const ASN1_ITEM NETSCAPE_SPKI_it = {
 	.size = sizeof(NETSCAPE_SPKI),
 	.sname = "NETSCAPE_SPKI",
 };
+LCRYPTO_ALIAS(NETSCAPE_SPKI_it);
 
 
 NETSCAPE_SPKI *
@@ -154,21 +160,25 @@ d2i_NETSCAPE_SPKI(NETSCAPE_SPKI **a, const unsigned char **in, long len)
 	return (NETSCAPE_SPKI *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &NETSCAPE_SPKI_it);
 }
+LCRYPTO_ALIAS(d2i_NETSCAPE_SPKI);
 
 int
 i2d_NETSCAPE_SPKI(NETSCAPE_SPKI *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &NETSCAPE_SPKI_it);
 }
+LCRYPTO_ALIAS(i2d_NETSCAPE_SPKI);
 
 NETSCAPE_SPKI *
 NETSCAPE_SPKI_new(void)
 {
 	return (NETSCAPE_SPKI *)ASN1_item_new(&NETSCAPE_SPKI_it);
 }
+LCRYPTO_ALIAS(NETSCAPE_SPKI_new);
 
 void
 NETSCAPE_SPKI_free(NETSCAPE_SPKI *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &NETSCAPE_SPKI_it);
 }
+LCRYPTO_ALIAS(NETSCAPE_SPKI_free);

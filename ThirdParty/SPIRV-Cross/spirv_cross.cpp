@@ -587,6 +587,7 @@ const SPIRType &Compiler::expression_type(uint32_t id) const
 bool Compiler::expression_is_lvalue(uint32_t id) const
 {
 	auto &type = expression_type(id);
+
 	switch (type.basetype)
 	{
 	case SPIRType::SampledImage:
@@ -1850,6 +1851,11 @@ const SmallVector<SPIRBlock::Case> &Compiler::get_case_list(const SPIRBlock &blo
 		const auto &type = get<SPIRType>(constant->constant_type);
 		width = type.width;
 	}
+	else if (const auto *op = maybe_get<SPIRConstantOp>(block.condition))
+	{
+		const auto &type = get<SPIRType>(op->basetype);
+		width = type.width;
+	}
 	else if (const auto *var = maybe_get<SPIRVariable>(block.condition))
 	{
 		const auto &type = get<SPIRType>(var->basetype);
@@ -2564,6 +2570,15 @@ void Compiler::add_active_interface_variable(uint32_t var_id)
 
 void Compiler::inherit_expression_dependencies(uint32_t dst, uint32_t source_expression)
 {
+	auto *ptr_e = maybe_get<SPIRExpression>(dst);
+
+	if (is_position_invariant() && ptr_e && maybe_get<SPIRExpression>(source_expression))
+	{
+		auto &deps = ptr_e->invariance_dependencies;
+		if (std::find(deps.begin(), deps.end(), source_expression) == deps.end())
+			deps.push_back(source_expression);
+	}
+
 	// Don't inherit any expression dependencies if the expression in dst
 	// is not a forwarded temporary.
 	if (forwarded_temporaries.find(dst) == end(forwarded_temporaries) ||
@@ -2572,7 +2587,7 @@ void Compiler::inherit_expression_dependencies(uint32_t dst, uint32_t source_exp
 		return;
 	}
 
-	auto &e = get<SPIRExpression>(dst);
+	auto &e = *ptr_e;
 	auto *phi = maybe_get<SPIRVariable>(source_expression);
 	if (phi && phi->phi_variable)
 	{
@@ -4896,13 +4911,16 @@ void Compiler::make_constant_null(uint32_t id, uint32_t type)
 		uint32_t parent_id = ir.increase_bound_by(1);
 		make_constant_null(parent_id, constant_type.parent_type);
 
-		if (!constant_type.array_size_literal.back())
-			SPIRV_CROSS_THROW("Array size of OpConstantNull must be a literal.");
-
-		SmallVector<uint32_t> elements(constant_type.array.back());
-		for (uint32_t i = 0; i < constant_type.array.back(); i++)
+		// The array size of OpConstantNull can be either literal or specialization constant.
+		// In the latter case, we cannot take the value as-is, as it can be changed to anything.
+		// Rather, we assume it to be *one* for the sake of initializer.
+		bool is_literal_array_size = constant_type.array_size_literal.back();
+		uint32_t count = is_literal_array_size ? constant_type.array.back() : 1;
+		SmallVector<uint32_t> elements(count);
+		for (uint32_t i = 0; i < count; i++)
 			elements[i] = parent_id;
-		set<SPIRConstant>(id, type, elements.data(), uint32_t(elements.size()), false);
+		auto &constant = set<SPIRConstant>(id, type, elements.data(), uint32_t(elements.size()), false);
+		constant.is_null_array_specialized_length = !is_literal_array_size;
 	}
 	else if (!constant_type.member_types.empty())
 	{

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifdef MONGOC_ENABLE_CRYPTO_CNG
 
@@ -22,7 +22,7 @@
 #define MONGOC_CRYPTO_CNG_PRIVATE_H
 
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 
 BSON_BEGIN_DECLS
@@ -32,6 +32,17 @@ mongoc_crypto_cng_init (void);
 
 void
 mongoc_crypto_cng_cleanup (void);
+
+bool
+mongoc_crypto_cng_pbkdf2_hmac_sha1 (mongoc_crypto_t *crypto,
+                                    const char *password,
+                                    size_t password_len,
+                                    const uint8_t *salt,
+                                    size_t salt_len,
+                                    uint32_t iterations,
+                                    size_t output_len,
+                                    unsigned char *output);
+
 
 void
 mongoc_crypto_cng_hmac_sha1 (mongoc_crypto_t *crypto,
@@ -46,6 +57,16 @@ mongoc_crypto_cng_sha1 (mongoc_crypto_t *crypto,
                         const unsigned char *input,
                         const size_t input_len,
                         unsigned char *hash_out);
+
+bool
+mongoc_crypto_cng_pbkdf2_hmac_sha256 (mongoc_crypto_t *crypto,
+                                      const char *password,
+                                      size_t password_len,
+                                      const uint8_t *salt,
+                                      size_t salt_len,
+                                      uint32_t iterations,
+                                      size_t output_len,
+                                      unsigned char *output);
 
 void
 mongoc_crypto_cng_hmac_sha256 (mongoc_crypto_t *crypto,

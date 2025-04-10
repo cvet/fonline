@@ -1,4 +1,4 @@
-/* $OpenBSD: m_md5.c,v 1.15 2014/07/13 09:30:02 miod Exp $ */
+/* $OpenBSD: m_md5.c,v 1.21 2024/04/09 13:52:41 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -71,6 +71,8 @@
 #include <openssl/rsa.h>
 #endif
 
+#include "evp_local.h"
+
 static int
 init(EVP_MD_CTX *ctx)
 {
@@ -99,13 +101,6 @@ static const EVP_MD md5_md = {
 	.final = final,
 	.copy = NULL,
 	.cleanup = NULL,
-#ifndef OPENSSL_NO_RSA
-	.sign = (evp_sign_method *)RSA_sign,
-	.verify = (evp_verify_method *)RSA_verify,
-	.required_pkey_type = {
-		EVP_PKEY_RSA, EVP_PKEY_RSA2, 0, 0,
-	},
-#endif
 	.block_size = MD5_CBLOCK,
 	.ctx_size = sizeof(EVP_MD *) + sizeof(MD5_CTX),
 };
@@ -115,4 +110,5 @@ EVP_md5(void)
 {
 	return (&md5_md);
 }
+LCRYPTO_ALIAS(EVP_md5);
 #endif

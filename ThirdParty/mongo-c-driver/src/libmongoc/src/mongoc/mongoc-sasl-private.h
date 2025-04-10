@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SASL_PRIVATE_H
 #define MONGOC_SASL_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-uri.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-stream.h"
-#include "mongoc-stream-socket.h"
+#include <mongoc/mongoc-uri.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream.h>
+#include <mongoc/mongoc-stream-socket.h>
 
 BSON_BEGIN_DECLS
 

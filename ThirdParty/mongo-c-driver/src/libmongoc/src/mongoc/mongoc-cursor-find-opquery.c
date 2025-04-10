@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mongoc.h"
-#include "mongoc-rpc-private.h"
-#include "mongoc-cursor-private.h"
+#include <mongoc/mongoc.h>
+#include <mongoc/mongoc-rpc-private.h>
+#include <mongoc/mongoc-cursor-private.h>
 
 typedef struct _data_find_opquery_t {
    mongoc_cursor_response_legacy_t response_legacy;

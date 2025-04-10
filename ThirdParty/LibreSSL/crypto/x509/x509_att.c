@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_att.c,v 1.17 2018/05/18 19:21:33 tb Exp $ */
+/* $OpenBSD: x509_att.c,v 1.25 2024/08/31 10:46:40 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -66,11 +66,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-int
-X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x)
-{
-	return sk_X509_ATTRIBUTE_num(x);
-}
+#include "x509_local.h"
 
 int
 X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x, int nid, int lastpos)
@@ -102,26 +98,6 @@ X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
 			return (lastpos);
 	}
 	return (-1);
-}
-
-X509_ATTRIBUTE *
-X509at_get_attr(const STACK_OF(X509_ATTRIBUTE) *x, int loc)
-{
-	if (x == NULL || sk_X509_ATTRIBUTE_num(x) <= loc || loc < 0)
-		return NULL;
-	else
-		return sk_X509_ATTRIBUTE_value(x, loc);
-}
-
-X509_ATTRIBUTE *
-X509at_delete_attr(STACK_OF(X509_ATTRIBUTE) *x, int loc)
-{
-	X509_ATTRIBUTE *ret;
-
-	if (x == NULL || sk_X509_ATTRIBUTE_num(x) <= loc || loc < 0)
-		return (NULL);
-	ret = sk_X509_ATTRIBUTE_delete(x, loc);
-	return (ret);
 }
 
 STACK_OF(X509_ATTRIBUTE) *
@@ -216,7 +192,7 @@ X509at_get0_data_by_OBJ(STACK_OF(X509_ATTRIBUTE) *x, const ASN1_OBJECT *obj,
 		return NULL;
 	if ((lastpos <= -2) && (X509at_get_attr_by_OBJ(x, obj, i) != -1))
 		return NULL;
-	at = X509at_get_attr(x, i);
+	at = sk_X509_ATTRIBUTE_value(x, i);
 	if (lastpos <= -3 && (X509_ATTRIBUTE_count(at) != 1))
 		return NULL;
 	return X509_ATTRIBUTE_get0_data(at, 0, type, NULL);
@@ -239,6 +215,7 @@ X509_ATTRIBUTE_create_by_NID(X509_ATTRIBUTE **attr, int nid, int atrtype,
 		ASN1_OBJECT_free(obj);
 	return (ret);
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_create_by_NID);
 
 X509_ATTRIBUTE *
 X509_ATTRIBUTE_create_by_OBJ(X509_ATTRIBUTE **attr, const ASN1_OBJECT *obj,
@@ -268,6 +245,7 @@ err:
 		X509_ATTRIBUTE_free(ret);
 	return (NULL);
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_create_by_OBJ);
 
 X509_ATTRIBUTE *
 X509_ATTRIBUTE_create_by_txt(X509_ATTRIBUTE **attr, const char *atrname,
@@ -286,6 +264,7 @@ X509_ATTRIBUTE_create_by_txt(X509_ATTRIBUTE **attr, const char *atrname,
 	ASN1_OBJECT_free(obj);
 	return nattr;
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_create_by_txt);
 
 int
 X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr, const ASN1_OBJECT *obj)
@@ -296,6 +275,7 @@ X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr, const ASN1_OBJECT *obj)
 	attr->object = OBJ_dup(obj);
 	return attr->object != NULL;
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_set1_object);
 
 int
 X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype, const void *data,
@@ -322,10 +302,8 @@ X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype, const void *data,
 			goto err;
 		atype = attrtype;
 	}
-	if (!(attr->value.set = sk_ASN1_TYPE_new_null()))
-		goto err;
-	attr->single = 0;
-	/* This is a bit naughty because the attribute should really have
+	/*
+	 * This is a bit naughty because the attribute should really have
 	 * at least one value but some types use and zero length SET and
 	 * require this.
 	 */
@@ -341,7 +319,7 @@ X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype, const void *data,
 			goto err;
 	} else
 		ASN1_TYPE_set(ttmp, atype, stmp);
-	if (!sk_ASN1_TYPE_push(attr->value.set, ttmp))
+	if (!sk_ASN1_TYPE_push(attr->set, ttmp))
 		goto err;
 	return 1;
 
@@ -351,16 +329,17 @@ err:
 	X509error(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_set1_data);
 
 int
 X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr)
 {
-	if (!attr->single)
-		return sk_ASN1_TYPE_num(attr->value.set);
-	if (attr->value.single)
-		return 1;
-	return 0;
+	if (attr == NULL)
+		return 0;
+
+	return sk_ASN1_TYPE_num(attr->set);
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_count);
 
 ASN1_OBJECT *
 X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr)
@@ -369,6 +348,7 @@ X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr)
 		return (NULL);
 	return (attr->object);
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_get0_object);
 
 void *
 X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx, int atrtype, void *data)
@@ -384,16 +364,14 @@ X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx, int atrtype, void *data)
 	}
 	return ttmp->value.ptr;
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_get0_data);
 
 ASN1_TYPE *
 X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr, int idx)
 {
 	if (attr == NULL)
 		return (NULL);
-	if (idx >= X509_ATTRIBUTE_count(attr))
-		return NULL;
-	if (!attr->single)
-		return sk_ASN1_TYPE_value(attr->value.set, idx);
-	else
-		return attr->value.single;
+
+	return sk_ASN1_TYPE_value(attr->set, idx);
 }
+LCRYPTO_ALIAS(X509_ATTRIBUTE_get0_type);

@@ -1,10 +1,10 @@
-.\" $OpenBSD: EVP_PKEY_set1_RSA.3,v 1.18 2021/07/02 11:48:01 schwarze Exp $
+.\" $OpenBSD: EVP_PKEY_set1_RSA.3,v 1.23 2024/04/18 16:32:22 tb Exp $
 .\" full merge up to: OpenSSL 99d63d46 Oct 26 13:56:48 2016 -0400
 .\"
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
 .\"
-.\" Copyright (c) 2019, 2020 Ingo Schwarze <schwarze@openbsd.org>
+.\" Copyright (c) 2019, 2020, 2023 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -18,7 +18,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\" The original file was written by by Dr. Stephen Henson <steve@openssl.org>.
+.\" The original file was written by Dr. Stephen Henson <steve@openssl.org>.
 .\" Copyright (c) 2002, 2015, 2016 The OpenSSL Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -65,7 +65,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: July 2 2021 $
+.Dd $Mdocdate: April 18 2024 $
 .Dt EVP_PKEY_SET1_RSA 3
 .Os
 .Sh NAME
@@ -87,12 +87,12 @@
 .Nm EVP_PKEY_assign_DSA ,
 .Nm EVP_PKEY_assign_DH ,
 .Nm EVP_PKEY_assign_EC_KEY ,
-.Nm EVP_PKEY_assign_GOST ,
 .Nm EVP_PKEY_assign ,
 .Nm EVP_PKEY_base_id ,
 .Nm EVP_PKEY_id ,
 .Nm EVP_PKEY_type ,
-.Nm EVP_PKEY_set_type
+.Nm EVP_PKEY_set_type ,
+.Nm EVP_PKEY_set_type_str
 .\" The function X509_certificate_type(3) is intentionally undocumented
 .\" and scheduled for deletion from the library.  BoringSSL already
 .\" deleted it and OpenSSL deprecates it in version 3.0.
@@ -181,11 +181,6 @@
 .Fa "EC_KEY *key"
 .Fc
 .Ft int
-.Fo EVP_PKEY_assign_GOST
-.Fa "EVP_PKEY *pkey"
-.Fa "GOST_KEY *key"
-.Fc
-.Ft int
 .Fo EVP_PKEY_assign
 .Fa "EVP_PKEY *pkey"
 .Fa "int type"
@@ -207,6 +202,12 @@
 .Fo EVP_PKEY_set_type
 .Fa "EVP_PKEY *pkey"
 .Fa "int type"
+.Fc
+.Ft int
+.Fo EVP_PKEY_set_type_str
+.Fa "EVP_PKEY *pkey"
+.Fa "const char *str"
+.Fa "int len"
 .Fc
 .Sh DESCRIPTION
 .Fn EVP_PKEY_set1_RSA ,
@@ -261,7 +262,6 @@ becomes unspecified.
 .Fn EVP_PKEY_assign_DSA ,
 .Fn EVP_PKEY_assign_DH ,
 .Fn EVP_PKEY_assign_EC_KEY ,
-.Fn EVP_PKEY_assign_GOST ,
 and
 .Fn EVP_PKEY_assign
 also set the referenced key to
@@ -285,30 +285,24 @@ The following types are supported:
 .Dv EVP_PKEY_RSA ,
 .Dv EVP_PKEY_DSA ,
 .Dv EVP_PKEY_DH ,
-.Dv EVP_PKEY_EC ,
 and
-.Dv EVP_PKEY_GOSTR01 .
+.Dv EVP_PKEY_EC .
 .Pp
 .Fn EVP_PKEY_base_id
 returns the type of
 .Fa pkey
 according to the following table:
 .Pp
-.Bl -column -compact -offset 2n EVP_PKEY_GOSTR NID_X9_62_id_ecPublicKey
+.Bl -column -compact -offset 2n EVP_PKEY_RSA_PSS NID_X9_62_id_ecPublicKey
 .It Sy return value      Ta                               Ta Sy PEM type string
 .It Dv EVP_PKEY_CMAC     Ta = Dv NID_cmac                 Ta CMAC
 .It Dv EVP_PKEY_DH       Ta = Dv NID_dhKeyAgreement       Ta DH
 .It Dv EVP_PKEY_DSA      Ta = Dv NID_dsa                  Ta DSA
 .It Dv EVP_PKEY_EC       Ta = Dv NID_X9_62_id_ecPublicKey Ta EC
-.It Dv EVP_PKEY_GOSTIMIT Ta = Dv NID_id_Gost28147_89_MAC  Ta GOST-MAC
-.It Dv EVP_PKEY_GOSTR01  Ta = Dv NID_id_GostR3410_2001    Ta GOST2001
 .It Dv EVP_PKEY_HMAC     Ta = Dv NID_hmac                 Ta HMAC
 .It Dv EVP_PKEY_RSA      Ta = Dv NID_rsaEncryption        Ta RSA
 .It Dv EVP_PKEY_RSA_PSS  Ta = Dv NID_rsassaPss            Ta RSA-PSS
 .El
-.Pp
-Application programs can support additional key types by calling
-.Xr EVP_PKEY_asn1_add0 3 .
 .Pp
 .Fn EVP_PKEY_id
 returns the actual OID associated with
@@ -316,19 +310,14 @@ returns the actual OID associated with
 Historically keys using the same algorithm could use different OIDs.
 The following deprecated aliases are still supported:
 .Pp
-.Bl -column -compact -offset 2n EVP_PKEY_GOSTR12_ NID_id_tc26_gost3410_2012_512
+.Bl -column -compact -offset 2n EVP_PKEY_DSA4 NID_dsaWithSHA1_2
 .It Sy return value         Ta                                  Ta Sy alias for
 .It Dv EVP_PKEY_DSA1        Ta = Dv NID_dsa_2                     Ta DSA
 .It Dv EVP_PKEY_DSA2        Ta = Dv NID_dsaWithSHA                Ta DSA
 .It Dv EVP_PKEY_DSA3        Ta = Dv NID_dsaWithSHA1               Ta DSA
 .It Dv EVP_PKEY_DSA4        Ta = Dv NID_dsaWithSHA1_2             Ta DSA
-.It Dv EVP_PKEY_GOSTR12_256 Ta = Dv NID_id_tc26_gost3410_2012_256 Ta GOST2001
-.It Dv EVP_PKEY_GOSTR12_512 Ta = Dv NID_id_tc26_gost3410_2012_512 Ta GOST2001
 .It Dv EVP_PKEY_RSA2        Ta = Dv NID_rsa                       Ta RSA
 .El
-.Pp
-Application programs can support additional alternative OIDs by calling
-.Xr EVP_PKEY_asn1_add_alias 3 .
 .Pp
 Most applications wishing to know a key type will simply call
 .Fn EVP_PKEY_base_id
@@ -361,6 +350,36 @@ and
 .Fn EVP_PKEY_id
 can be passed.
 .Pp
+.Fn EVP_PKEY_set_type_str
+frees the key referenced in
+.Fa pkey ,
+if any, and sets the key type of
+.Fa pkey
+according to the PEM type string given by the first
+.Fa len
+bytes of
+.Fa str .
+If
+.Fa len
+is \-1, the
+.Xr strlen 3
+of
+.Fa str
+is used instead.
+The PEM type strings supported by default are listed in the table above.
+This function does not reference a new key from
+.Fa pkey .
+.Pp
+If
+.Fa pkey
+is a
+.Dv NULL
+pointer,
+.Fn EVP_PKEY_set_type
+and
+.Fn EVP_PKEY_set_type_str
+check that a matching key type exists but do not change any object.
+.Pp
 In accordance with the OpenSSL naming convention, the key obtained from
 or assigned to
 .Fa pkey
@@ -377,10 +396,10 @@ functions must be freed as well as
 .Fn EVP_PKEY_assign_DSA ,
 .Fn EVP_PKEY_assign_DH ,
 .Fn EVP_PKEY_assign_EC_KEY ,
-.Fn EVP_PKEY_assign_GOST ,
 .Fn EVP_PKEY_assign ,
+.Fn EVP_PKEY_set_type ,
 and
-.Fn EVP_PKEY_set_type
+.Fn EVP_PKEY_set_type_str
 return 1 for success or 0 for failure.
 .Pp
 .Fn EVP_PKEY_get1_RSA ,
@@ -404,7 +423,6 @@ the return value points to an
 .Vt DSA ,
 .Vt DH ,
 .Vt EC_KEY ,
-.Vt GOST_KEY ,
 or
 .Vt ASN1_OCTET_STRING
 object depending on the type of
@@ -454,16 +472,13 @@ first appeared in OpenSSL 0.9.8 and have been available since
 .Ox 4.5 .
 .Pp
 .Fn EVP_PKEY_get0 ,
-.Fn EVP_PKEY_set_type ,
 .Fn EVP_PKEY_base_id ,
+.Fn EVP_PKEY_id ,
+.Fn EVP_PKEY_set_type ,
 and
-.Fn EVP_PKEY_id
+.Fn EVP_PKEY_set_type_str
 first appeared in OpenSSL 1.0.0 and have been available since
 .Ox 4.9 .
-.Pp
-.Fn EVP_PKEY_assign_GOST
-first appeared in
-.Ox 5.7 .
 .Pp
 .Fn EVP_PKEY_get0_RSA ,
 .Fn EVP_PKEY_get0_DSA ,

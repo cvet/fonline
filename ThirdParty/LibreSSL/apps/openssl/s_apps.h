@@ -1,4 +1,4 @@
-/* $OpenBSD: s_apps.h,v 1.6 2021/08/29 12:33:15 tb Exp $ */
+/* $OpenBSD: s_apps.h,v 1.8 2024/05/18 08:47:13 jsg Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -119,7 +119,7 @@ extern int verify_depth;
 extern int verify_return_error;
 
 int do_server(int port, int type, int *ret,
-    int (*cb)(char *hostname, int s, unsigned char *context),
+    int (*cb)(int s, unsigned char *context),
     unsigned char *context, int naccept);
 #ifdef HEADER_X509_H
 int verify_callback(int ok, X509_STORE_CTX *ctx);
@@ -130,7 +130,6 @@ int set_cert_key_stuff(SSL_CTX *ctx, X509 *cert, EVP_PKEY *key);
 #endif
 int ssl_print_tmp_key(BIO *out, SSL *s);
 int init_client(int *sock, char *server, char *port, int type, int af);
-int should_retry(int i);
 int extract_port(char *str, short *port_ptr);
 int extract_host_port(char *str, char **host_ptr, unsigned char *ip, char **p);
 

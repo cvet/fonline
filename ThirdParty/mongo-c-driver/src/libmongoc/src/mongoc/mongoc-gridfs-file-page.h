@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_GRIDFS_FILE_PAGE_H
 #define MONGOC_GRIDFS_FILE_PAGE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-stream.h"
-#include "mongoc-gridfs-file.h"
-#include "mongoc-gridfs-file-list.h"
+#include <mongoc/mongoc-stream.h>
+#include <mongoc/mongoc-gridfs-file.h>
+#include <mongoc/mongoc-gridfs-file-list.h>
 
 
 BSON_BEGIN_DECLS

@@ -1,10 +1,10 @@
-/* $OpenBSD: b_dump.c,v 1.22 2021/07/11 20:18:07 beck Exp $ */
+/* $OpenBSD: b_dump.c,v 1.30 2024/03/02 09:21:24 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
-* The implementation was written so as to conform with Netscapes SSL.
+ * The implementation was written so as to conform with Netscapes SSL.
  *
  * This library is free for commercial and non-commercial use as long as
  * the following conditions are aheared to.  The following conditions
@@ -56,132 +56,156 @@
  * [including the GNU Public Licence.]
  */
 
-/*
- * Stolen from tjh's ssl/ssl_trc.c stuff.
- */
-
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <openssl/bio.h>
+#include <openssl/err.h>
 
-#define TRUNCATE
-#define DUMP_WIDTH	16
-#define DUMP_WIDTH_LESS_INDENT(i) (DUMP_WIDTH - ((i - (i > 6 ? 6 : i) + 3) / 4))
+#include "bytestring.h"
+
+#define MAX_BYTES_PER_LINE	16
+
+/*
+ * The byte string s is dumped as lines of the following form:
+ *	indent | byte count (4 digits) | " - " | hex dump | "  " | ASCII dump
+ * Each byte uses 4 characters (two hex digits followed by a space and one
+ * ASCII character).
+ */
 
 int
-BIO_dump_cb(int (*cb)(const void *data, size_t len, void *u),
-    void *u, const char *s, int len)
+BIO_dump_indent(BIO *bio, const char *s, int len, int indent)
 {
-	return BIO_dump_indent_cb(cb, u, s, len, 0);
-}
+	CBB cbb;
+	CBS cbs;
+	int bytes_per_line, dumped, printed, trailing, written;
+	int ret = -1;
 
-int
-BIO_dump_indent_cb(int (*cb)(const void *data, size_t len, void *u),
-    void *u, const char *s, int len, int indent)
-{
-	int ret = 0;
-	char buf[288 + 1], tmp[20], str[128 + 1];
-	int i, j, rows, trc, written;
-	unsigned char ch;
-	int dump_width;
+	memset(&cbb, 0, sizeof(cbb));
 
-	trc = 0;
-
-#ifdef TRUNCATE
-	for (; (len > 0) && ((s[len - 1] == ' ') || (s[len - 1] == '\0')); len--)
-		trc++;
-#endif
+	if (len < 0)
+		goto err;
+	CBS_init(&cbs, s, len);
 
 	if (indent < 0)
 		indent = 0;
-	if (indent) {
-		if (indent > 128)
-			indent = 128;
-		memset(str, ' ', indent);
-	}
-	str[indent] = '\0';
+	if (indent > 64)
+		indent = 64;
 
-	dump_width = DUMP_WIDTH_LESS_INDENT(indent);
-	rows = (len / dump_width);
-	if ((rows * dump_width) < len)
-		rows++;
-	for (i = 0; i < rows; i++) {
-		strlcpy(buf, str, sizeof buf);
-		snprintf(tmp, sizeof tmp, "%04x - ", i*dump_width);
-		strlcat(buf, tmp, sizeof buf);
-		for (j = 0; j < dump_width; j++) {
-			if (((i*dump_width) + j) >= len) {
-				strlcat(buf, "   ", sizeof buf);
-			} else {
-				ch = ((unsigned char)*(s + i*dump_width + j)) & 0xff;
-				snprintf(tmp, sizeof tmp, "%02x%c", ch,
-				    j == 7 ? '-' : ' ');
-				strlcat(buf, tmp, sizeof buf);
-			}
-		}
-		strlcat(buf, "  ", sizeof buf);
-		for (j = 0; j < dump_width; j++) {
-			if (((i*dump_width) + j) >= len)
-				break;
-			ch = ((unsigned char)*(s + i * dump_width + j)) & 0xff;
-			snprintf(tmp, sizeof tmp, "%c",
-			    ((ch >= ' ') && (ch <= '~')) ? ch : '.');
-			strlcat(buf, tmp, sizeof buf);
-		}
-		strlcat(buf, "\n", sizeof buf);
-		/* if this is the last call then update the ddt_dump thing so
-		 * that we will move the selection point in the debug window
+	/*
+	 * Less obfuscated version of the original calculation attempting to
+	 * ensure that the dump doesn't overshoot 80 characters per line. For
+	 * a very long string the byte count will still make it go past that.
+	 */
+	bytes_per_line = MAX_BYTES_PER_LINE;
+	if (indent > 6)
+		bytes_per_line -= (indent - 3) / 4;
+	if (bytes_per_line <= 0)
+		goto err;
+
+	/* Strip and count trailing spaces and NULs. */
+	trailing = 0;
+	while (CBS_len(&cbs) > 0) {
+		uint8_t u8;
+
+		if (!CBS_peek_last_u8(&cbs, &u8))
+			goto err;
+		if (u8 != '\0' && u8 != ' ')
+			break;
+		if (!CBS_get_last_u8(&cbs, &u8))
+			goto err;
+		trailing++;
+	}
+
+	printed = 0;
+	dumped = 0;
+	while (CBS_len(&cbs) > 0) {
+		CBS row;
+		uint8_t ascii_dump[MAX_BYTES_PER_LINE];
+		int missing, row_bytes;
+
+		if ((row_bytes = CBS_len(&cbs)) > bytes_per_line)
+			row_bytes = bytes_per_line;
+		if (!CBS_get_bytes(&cbs, &row, row_bytes))
+			goto err;
+
+		/* Write out indent, byte count and initial " - ". */
+		if ((written = BIO_printf(bio, "%*s%04x - ", indent, "",
+		    dumped)) < 0)
+			goto err;
+		if (printed > INT_MAX - written)
+			goto err;
+		printed += written;
+
+		/*
+		 * Write out hex dump, prepare ASCII dump.
 		 */
-		if ((written = cb((void *)buf, strlen(buf), u)) < 0)
-			return -1;
-		ret += written;
 
+		if (!CBB_init_fixed(&cbb, ascii_dump, sizeof(ascii_dump)))
+			goto err;
+		while (CBS_len(&row) > 0) {
+			uint8_t u8;
+			char sep = ' ';
+
+			if (!CBS_get_u8(&row, &u8))
+				goto err;
+
+			/* Historic behavior: print a '-' after eighth byte. */
+			if (row_bytes - CBS_len(&row) == 8)
+				sep = '-';
+			if ((written = BIO_printf(bio, "%02x%c", u8, sep)) < 0)
+				goto err;
+			if (printed > INT_MAX - written)
+				goto err;
+			printed += written;
+
+			/* Locale-independent version of !isprint(u8). */
+			if (u8 < ' ' || u8 > '~')
+				u8 = '.';
+			if (!CBB_add_u8(&cbb, u8))
+				goto err;
+		}
+		if (!CBB_finish(&cbb, NULL, NULL))
+			goto err;
+
+		/* Calculate number of bytes missing in dump of last line. */
+		if ((missing = bytes_per_line - row_bytes) < 0)
+			goto err;
+
+		/* Pad missing bytes, add 2 spaces and print the ASCII dump. */
+		if ((written = BIO_printf(bio, "%*s%.*s\n", 3 * missing + 2, "",
+		    row_bytes, ascii_dump)) < 0)
+			goto err;
+		if (printed > INT_MAX - written)
+			goto err;
+		printed += written;
+
+		dumped += row_bytes;
 	}
-#ifdef TRUNCATE
-	if (trc > 0) {
-		snprintf(buf, sizeof buf, "%s%04x - <SPACES/NULS>\n",
-		    str, len + trc);
-		if ((written = cb((void *)buf, strlen(buf), u)) < 0)
-			return -1;
-		ret += written;
+
+	if (trailing > 0) {
+		if ((written = BIO_printf(bio, "%*s%04x - <SPACES/NULS>\n",
+		    indent, "", dumped + trailing)) < 0)
+			goto err;
+		if (printed > INT_MAX - written)
+			goto err;
+		printed += written;
 	}
-#endif
-	return (ret);
-}
 
-static int
-write_fp(const void *data, size_t len, void *fp)
-{
-	return fwrite(data, 1, len, fp);
-}
+	ret = printed;
 
-int
-BIO_dump_fp(FILE *fp, const char *s, int len)
-{
-	return BIO_dump_cb(write_fp, fp, s, len);
+ err:
+	CBB_cleanup(&cbb);
+
+	return ret;
 }
+LCRYPTO_ALIAS(BIO_dump_indent);
 
 int
-BIO_dump_indent_fp(FILE *fp, const char *s, int len, int indent)
+BIO_dump(BIO *bio, const char *s, int len)
 {
-	return BIO_dump_indent_cb(write_fp, fp, s, len, indent);
+	return BIO_dump_indent(bio, s, len, 0);
 }
-
-static int
-write_bio(const void *data, size_t len, void *bp)
-{
-	return BIO_write((BIO *)bp, (const char *)data, len);
-}
-
-int
-BIO_dump(BIO *bp, const char *s, int len)
-{
-	return BIO_dump_cb(write_bio, bp, s, len);
-}
-
-int
-BIO_dump_indent(BIO *bp, const char *s, int len, int indent)
-{
-	return BIO_dump_indent_cb(write_bio, bp, s, len, indent);
-}
+LCRYPTO_ALIAS(BIO_dump);

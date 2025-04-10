@@ -1,4 +1,4 @@
-/* $OpenBSD: t_x509.c,v 1.34 2021/07/26 16:54:20 tb Exp $ */
+/* $OpenBSD: t_x509.c,v 1.46 2024/08/28 06:17:06 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,6 +56,7 @@
  * [including the GNU Public Licence.]
  */
 
+#include <limits.h>
 #include <stdio.h>
 
 #include <openssl/opensslconf.h>
@@ -77,13 +78,15 @@
 #include <openssl/rsa.h>
 #endif
 
-#include "asn1_locl.h"
+#include "evp_local.h"
+#include "x509_local.h"
 
 int
 X509_print_fp(FILE *fp, X509 *x)
 {
 	return X509_print_ex_fp(fp, x, XN_FLAG_COMPAT, X509_FLAG_COMPAT);
 }
+LCRYPTO_ALIAS(X509_print_fp);
 
 int
 X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag, unsigned long cflag)
@@ -100,12 +103,14 @@ X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag, unsigned long cflag)
 	BIO_free(b);
 	return (ret);
 }
+LCRYPTO_ALIAS(X509_print_ex_fp);
 
 int
 X509_print(BIO *bp, X509 *x)
 {
 	return X509_print_ex(bp, x, XN_FLAG_COMPAT, X509_FLAG_COMPAT);
 }
+LCRYPTO_ALIAS(X509_print);
 
 int
 X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags, unsigned long cflag)
@@ -117,7 +122,6 @@ X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags, unsigned long cflag)
 	X509_CINF *ci;
 	ASN1_INTEGER *bs;
 	EVP_PKEY *pkey = NULL;
-	const char *neg;
 
 	if ((nmflags & XN_FLAG_SEP_MASK) == XN_FLAG_SEP_MULTILINE) {
 		mlch = '\n';
@@ -136,9 +140,15 @@ X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags, unsigned long cflag)
 	}
 	if (!(cflag & X509_FLAG_NO_VERSION)) {
 		l = X509_get_version(x);
-		if (BIO_printf(bp, "%8sVersion: %lu (0x%lx)\n",
-		    "", l + 1, l) <= 0)
-			goto err;
+		if (l >= 0 && l <= 2) {
+			if (BIO_printf(bp, "%8sVersion: %ld (0x%lx)\n",
+			    "", l + 1, l) <= 0)
+				goto err;
+		} else {
+			if (BIO_printf(bp, "%8sVersion: unknown (%ld)\n",
+			    "", l) <= 0)
+				goto err;
+		}
 	}
 	if (!(cflag & X509_FLAG_NO_SERIAL)) {
 		if (BIO_write(bp, "        Serial Number:", 22) <= 0)
@@ -146,20 +156,30 @@ X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags, unsigned long cflag)
 
 		bs = X509_get_serialNumber(x);
 		l = -1;
-		if (bs->length <= (int)sizeof(long))
-			l = ASN1_INTEGER_get(bs);
-		if (l != -1) {
-			if (bs->type == V_ASN1_NEG_INTEGER) {
-				l = -l;
-				neg = "-";
-			} else
-				neg = "";
-			if (BIO_printf(bp, " %s%lu (%s0x%lx)\n",
-			    neg, l, neg, l) <= 0)
+
+		/*
+		 * For historical reasons, non-negative serial numbers are
+		 * printed in decimal as long as they fit into a long. Using
+		 * ASN1_INTEGER_get_uint64() avoids an error on the stack for
+		 * numbers between LONG_MAX and ULONG_MAX. Otherwise fall back
+		 * to hexadecimal, also for numbers that are non-conformant
+		 * (negative or larger than 2^159 - 1).
+		 */
+		if (bs->length <= sizeof(long) && bs->type == V_ASN1_INTEGER) {
+			uint64_t u64;
+
+			if (ASN1_INTEGER_get_uint64(&u64, bs) && u64 <= LONG_MAX)
+				l = (long)u64;
+		}
+		if (l >= 0) {
+			if (BIO_printf(bp, " %ld (0x%lx)\n", l, l) <= 0)
 				goto err;
 		} else {
-			neg = (bs->type == V_ASN1_NEG_INTEGER) ?
-			    " (Negative)" : "";
+			const char *neg = "";
+
+			if (bs->type == V_ASN1_NEG_INTEGER)
+				neg = " (Negative)";
+
 			if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0)
 				goto err;
 			for (i = 0; i < bs->length; i++) {
@@ -243,10 +263,11 @@ X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags, unsigned long cflag)
 	}
 	ret = 1;
 
-err:
+ err:
 	free(m);
 	return (ret);
 }
+LCRYPTO_ALIAS(X509_print_ex);
 
 int
 X509_ocspid_print(BIO *bp, X509 *x)
@@ -294,10 +315,11 @@ X509_ocspid_print(BIO *bp, X509 *x)
 
 	return (1);
 
-err:
+ err:
 	free(der);
 	return (0);
 }
+LCRYPTO_ALIAS(X509_ocspid_print);
 
 int
 X509_signature_dump(BIO *bp, const ASN1_STRING *sig, int indent)
@@ -323,6 +345,7 @@ X509_signature_dump(BIO *bp, const ASN1_STRING *sig, int indent)
 
 	return 1;
 }
+LCRYPTO_ALIAS(X509_signature_dump);
 
 int
 X509_signature_print(BIO *bp, const X509_ALGOR *sigalg, const ASN1_STRING *sig)
@@ -349,36 +372,7 @@ X509_signature_print(BIO *bp, const X509_ALGOR *sigalg, const ASN1_STRING *sig)
 		return 0;
 	return 1;
 }
-
-int
-ASN1_STRING_print(BIO *bp, const ASN1_STRING *v)
-{
-	int i, n;
-	char buf[80];
-	const char *p;
-
-	if (v == NULL)
-		return (0);
-	n = 0;
-	p = (const char *)v->data;
-	for (i = 0; i < v->length; i++) {
-		if ((p[i] > '~') || ((p[i] < ' ') &&
-		    (p[i] != '\n') && (p[i] != '\r')))
-			buf[n] = '.';
-		else
-			buf[n] = p[i];
-		n++;
-		if (n >= 80) {
-			if (BIO_write(bp, buf, n) <= 0)
-				return (0);
-			n = 0;
-		}
-	}
-	if (n > 0)
-		if (BIO_write(bp, buf, n) <= 0)
-			return (0);
-	return (1);
-}
+LCRYPTO_ALIAS(X509_signature_print);
 
 int
 ASN1_TIME_print(BIO *bp, const ASN1_TIME *tm)
@@ -390,6 +384,7 @@ ASN1_TIME_print(BIO *bp, const ASN1_TIME *tm)
 	BIO_write(bp, "Bad time value", 14);
 	return (0);
 }
+LCRYPTO_ALIAS(ASN1_TIME_print);
 
 static const char *mon[12] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -445,10 +440,11 @@ ASN1_GENERALIZEDTIME_print(BIO *bp, const ASN1_GENERALIZEDTIME *tm)
 	else
 		return (1);
 
-err:
+ err:
 	BIO_write(bp, "Bad time value", 14);
 	return (0);
 }
+LCRYPTO_ALIAS(ASN1_GENERALIZEDTIME_print);
 
 int
 ASN1_UTCTIME_print(BIO *bp, const ASN1_UTCTIME *tm)
@@ -488,18 +484,18 @@ ASN1_UTCTIME_print(BIO *bp, const ASN1_UTCTIME *tm)
 	else
 		return (1);
 
-err:
+ err:
 	BIO_write(bp, "Bad time value", 14);
 	return (0);
 }
+LCRYPTO_ALIAS(ASN1_UTCTIME_print);
 
 int
 X509_NAME_print(BIO *bp, const X509_NAME *name, int obase)
 {
 	char *s, *c, *b;
-	int ret = 0, l, i;
-
-	l = 80 - 2 - obase;
+	int i;
+	int ret = 0;
 
 	b = X509_NAME_oneline(name, NULL, 0);
 	if (b == NULL)
@@ -524,19 +520,18 @@ X509_NAME_print(BIO *bp, const X509_NAME *name, int obase)
 				if (BIO_write(bp, ", ", 2) != 2)
 					goto err;
 			}
-			l--;
 		}
 		if (*s == '\0')
 			break;
 		s++;
-		l--;
 	}
 
 	ret = 1;
 	if (0) {
-err:
+ err:
 		X509error(ERR_R_BUF_LIB);
 	}
 	free(b);
 	return (ret);
 }
+LCRYPTO_ALIAS(X509_NAME_print);

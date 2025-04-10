@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SERVER_STREAM_H
 #define MONGOC_SERVER_STREAM_H
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #include <bson/bson.h>
 
-#include "mongoc-topology-description-private.h"
-#include "mongoc-server-description-private.h"
-#include "mongoc-stream.h"
+#include <mongoc/mongoc-topology-description-private.h>
+#include <mongoc/mongoc-server-description-private.h>
+#include <mongoc/mongoc-stream.h>
 
 BSON_BEGIN_DECLS
 
@@ -56,8 +56,7 @@ int32_t
 mongoc_server_stream_max_msg_size (mongoc_server_stream_t *server_stream);
 
 int32_t
-mongoc_server_stream_max_write_batch_size (
-   mongoc_server_stream_t *server_stream);
+mongoc_server_stream_max_write_batch_size (mongoc_server_stream_t *server_stream);
 
 void
 mongoc_server_stream_cleanup (mongoc_server_stream_t *server_stream);

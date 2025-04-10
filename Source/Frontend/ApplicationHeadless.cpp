@@ -566,24 +566,6 @@ auto AppAudio::IsEnabled() const -> bool
     return false;
 }
 
-auto AppAudio::GetStreamSize() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(IsEnabled());
-
-    return 0;
-}
-
-auto AppAudio::GetSilence() const -> uint8
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(IsEnabled());
-
-    return 0;
-}
-
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     STACK_TRACE_ENTRY();
@@ -594,10 +576,6 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
     RUNTIME_ASSERT(IsEnabled());
 }
-
-struct AppAudio::AudioConverter
-{
-};
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
@@ -615,7 +593,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
     return true;
 }
 
-void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
+void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
 {
     STACK_TRACE_ENTRY();
 
@@ -623,6 +601,7 @@ void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 
     UNUSED_VARIABLE(output);
     UNUSED_VARIABLE(buf);
+    UNUSED_VARIABLE(len);
     UNUSED_VARIABLE(volume);
 
     RUNTIME_ASSERT(IsEnabled());

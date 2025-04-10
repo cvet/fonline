@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_record_layer.c,v 1.64 2021/09/16 19:25:30 jsing Exp $ */
+/* $OpenBSD: tls13_record_layer.c,v 1.74 2024/09/09 03:32:29 tb Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -25,7 +25,7 @@ static ssize_t tls13_record_layer_write_record(struct tls13_record_layer *rl,
     uint8_t content_type, const uint8_t *content, size_t content_len);
 
 struct tls13_record_protection {
-	EVP_AEAD_CTX aead_ctx;
+	EVP_AEAD_CTX *aead_ctx;
 	struct tls13_secret iv;
 	struct tls13_secret nonce;
 	uint8_t seq_num[TLS13_RECORD_SEQ_NUM_LEN];
@@ -40,12 +40,12 @@ tls13_record_protection_new(void)
 void
 tls13_record_protection_clear(struct tls13_record_protection *rp)
 {
-	EVP_AEAD_CTX_cleanup(&rp->aead_ctx);
+	EVP_AEAD_CTX_free(rp->aead_ctx);
 
 	tls13_secret_cleanup(&rp->iv);
 	tls13_secret_cleanup(&rp->nonce);
 
-	memset(rp->seq_num, 0, sizeof(rp->seq_num));
+	memset(rp, 0, sizeof(*rp));
 }
 
 void
@@ -146,8 +146,8 @@ tls13_record_layer_new(const struct tls13_record_layer_callbacks *callbacks,
 		goto err;
 
 	rl->legacy_version = TLS1_2_VERSION;
-	rl->cb = *callbacks;
-	rl->cb_arg = cb_arg;
+
+	tls13_record_layer_set_callbacks(rl, callbacks, cb_arg);
 
 	return rl;
 
@@ -175,6 +175,14 @@ tls13_record_layer_free(struct tls13_record_layer *rl)
 	tls13_record_protection_free(rl->write);
 
 	freezero(rl, sizeof(struct tls13_record_layer));
+}
+
+void
+tls13_record_layer_set_callbacks(struct tls13_record_layer *rl,
+    const struct tls13_record_layer_callbacks *callbacks, void *cb_arg)
+{
+	rl->cb = *callbacks;
+	rl->cb_arg = cb_arg;
 }
 
 void
@@ -319,9 +327,16 @@ tls13_record_layer_process_alert(struct tls13_record_layer *rl)
 		return tls13_send_alert(rl, TLS13_ALERT_ILLEGAL_PARAMETER);
 	}
 
-	rl->cb.alert_recv(alert_desc, rl->cb_arg);
+	rl->cb.alert_recv(alert_level, alert_desc, rl->cb_arg);
 
 	return ret;
+}
+
+void
+tls13_record_layer_alert_sent(struct tls13_record_layer *rl,
+    uint8_t alert_level, uint8_t alert_desc)
+{
+	rl->cb.alert_sent(alert_level, alert_desc, rl->cb_arg);
 }
 
 static ssize_t
@@ -353,7 +368,7 @@ tls13_record_layer_send_alert(struct tls13_record_layer *rl)
 		ret = TLS13_IO_ALERT;
 	}
 
-	rl->cb.alert_sent(rl->alert_desc, rl->cb_arg);
+	tls13_record_layer_alert_sent(rl, rl->alert_level, rl->alert_desc);
 
 	return ret;
 }
@@ -458,6 +473,9 @@ tls13_record_layer_set_traffic_key(const EVP_AEAD *aead, const EVP_MD *hash,
 
 	tls13_record_protection_clear(rp);
 
+	if ((rp->aead_ctx = EVP_AEAD_CTX_new()) == NULL)
+		return 0;
+
 	if (!tls13_secret_init(&rp->iv, EVP_AEAD_nonce_length(aead)))
 		goto err;
 	if (!tls13_secret_init(&rp->nonce, EVP_AEAD_nonce_length(aead)))
@@ -470,7 +488,7 @@ tls13_record_layer_set_traffic_key(const EVP_AEAD *aead, const EVP_MD *hash,
 	if (!tls13_hkdf_expand_label(&key, hash, traffic_key, "key", &context))
 		goto err;
 
-	if (!EVP_AEAD_CTX_init(&rp->aead_ctx, aead, key.data, key.len,
+	if (!EVP_AEAD_CTX_init(rp->aead_ctx, aead, key.data, key.len,
 	    EVP_AEAD_DEFAULT_TAG_LENGTH, NULL))
 		goto err;
 
@@ -484,16 +502,24 @@ tls13_record_layer_set_traffic_key(const EVP_AEAD *aead, const EVP_MD *hash,
 
 int
 tls13_record_layer_set_read_traffic_key(struct tls13_record_layer *rl,
-    struct tls13_secret *read_key)
+    struct tls13_secret *read_key, enum ssl_encryption_level_t read_level)
 {
+	if (rl->cb.set_read_traffic_key != NULL)
+		return rl->cb.set_read_traffic_key(read_key, read_level,
+		    rl->cb_arg);
+
 	return tls13_record_layer_set_traffic_key(rl->aead, rl->hash,
 	    rl->read, read_key);
 }
 
 int
 tls13_record_layer_set_write_traffic_key(struct tls13_record_layer *rl,
-    struct tls13_secret *write_key)
+    struct tls13_secret *write_key, enum ssl_encryption_level_t write_level)
 {
+	if (rl->cb.set_write_traffic_key != NULL)
+		return rl->cb.set_write_traffic_key(write_key, write_level,
+		    rl->cb_arg);
+
 	return tls13_record_layer_set_traffic_key(rl->aead, rl->hash,
 	    rl->write, write_key);
 }
@@ -528,8 +554,7 @@ tls13_record_layer_open_record_plaintext(struct tls13_record_layer *rl)
 static int
 tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 {
-	CBS header, enc_record;
-	ssize_t inner_len;
+	CBS header, enc_record, inner;
 	uint8_t *content = NULL;
 	size_t content_len = 0;
 	uint8_t content_type;
@@ -543,6 +568,7 @@ tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 	if (!tls13_record_content(rl->rrec, &enc_record))
 		goto err;
 
+	/* XXX - minus tag len? */
 	if ((content = calloc(1, CBS_len(&enc_record))) == NULL)
 		goto err;
 	content_len = CBS_len(&enc_record);
@@ -551,7 +577,7 @@ tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 	    rl->read->seq_num))
 		goto err;
 
-	if (!EVP_AEAD_CTX_open(&rl->read->aead_ctx,
+	if (!EVP_AEAD_CTX_open(rl->read->aead_ctx,
 	    content, &out_len, content_len,
 	    rl->read->nonce.data, rl->read->nonce.len,
 	    CBS_data(&enc_record), CBS_len(&enc_record),
@@ -571,22 +597,24 @@ tls13_record_layer_open_record_protected(struct tls13_record_layer *rl)
 	 * it may be followed by padding that consists of one or more zeroes.
 	 * Time to hunt for that elusive content type!
 	 */
-	/* XXX - CBS from end? CBS_get_end_u8()? */
-	inner_len = out_len - 1;
-	while (inner_len >= 0 && content[inner_len] == 0)
-		inner_len--;
-	if (inner_len < 0) {
+	CBS_init(&inner, content, out_len);
+	content_type = 0;
+	while (CBS_get_last_u8(&inner, &content_type)) {
+		if (content_type != 0)
+			break;
+	}
+	if (content_type == 0) {
 		/* Unexpected message per RFC 8446 section 5.4. */
 		rl->alert = TLS13_ALERT_UNEXPECTED_MESSAGE;
 		goto err;
 	}
-	if (inner_len > TLS13_RECORD_MAX_PLAINTEXT_LEN) {
+	if (CBS_len(&inner) > TLS13_RECORD_MAX_PLAINTEXT_LEN) {
 		rl->alert = TLS13_ALERT_RECORD_OVERFLOW;
 		goto err;
 	}
-	content_type = content[inner_len];
 
-	tls_content_set_data(rl->rcontent, content_type, content, inner_len);
+	tls_content_set_data(rl->rcontent, content_type, CBS_data(&inner),
+	    CBS_len(&inner));
 
 	return 1;
 
@@ -727,7 +755,7 @@ tls13_record_layer_seal_record_protected(struct tls13_record_layer *rl,
 	 * this would avoid a copy since the inner would be passed as two
 	 * separate pieces.
 	 */
-	if (!EVP_AEAD_CTX_seal(&rl->write->aead_ctx,
+	if (!EVP_AEAD_CTX_seal(rl->write->aead_ctx,
 	    enc_record, &out_len, enc_record_len,
 	    rl->write->nonce.data, rl->write->nonce.len,
 	    inner, inner_len, header, header_len))
@@ -830,6 +858,8 @@ tls13_record_layer_read_record(struct tls13_record_layer *rl)
 			return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 		if (ccs != 1)
 			return tls13_send_alert(rl, TLS13_ALERT_ILLEGAL_PARAMETER);
+		if (CBS_len(&cbs) != 0)
+			return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 		rl->ccs_seen++;
 		tls13_record_layer_rrec_free(rl);
 		return TLS13_IO_WANT_RETRY;
@@ -905,7 +935,7 @@ tls13_record_layer_recv_phh(struct tls13_record_layer *rl)
 	 * TLS13_IO_FAILURE	 something broke.
 	 */
 	if (rl->cb.phh_recv != NULL)
-		ret = rl->cb.phh_recv(rl->cb_arg, tls_content_cbs(rl->rcontent));
+		ret = rl->cb.phh_recv(rl->cb_arg);
 
 	tls_content_clear(rl->rcontent);
 
@@ -1124,6 +1154,9 @@ tls13_send_dummy_ccs(struct tls13_record_layer *rl)
 ssize_t
 tls13_read_handshake_data(struct tls13_record_layer *rl, uint8_t *buf, size_t n)
 {
+	if (rl->cb.handshake_read != NULL)
+		return rl->cb.handshake_read(buf, n, rl->cb_arg);
+
 	return tls13_record_layer_read(rl, SSL3_RT_HANDSHAKE, buf, n);
 }
 
@@ -1131,6 +1164,9 @@ ssize_t
 tls13_write_handshake_data(struct tls13_record_layer *rl, const uint8_t *buf,
     size_t n)
 {
+	if (rl->cb.handshake_write != NULL)
+		return rl->cb.handshake_write(buf, n, rl->cb_arg);
+
 	return tls13_record_layer_write(rl, SSL3_RT_HANDSHAKE, buf, n);
 }
 
@@ -1176,6 +1212,9 @@ tls13_send_alert(struct tls13_record_layer *rl, uint8_t alert_desc)
 {
 	uint8_t alert_level = TLS13_ALERT_LEVEL_FATAL;
 	ssize_t ret;
+
+	if (rl->cb.alert_send != NULL)
+		return rl->cb.alert_send(alert_desc, rl->cb_arg);
 
 	if (alert_desc == TLS13_ALERT_CLOSE_NOTIFY ||
 	    alert_desc == TLS13_ALERT_USER_CANCELED)

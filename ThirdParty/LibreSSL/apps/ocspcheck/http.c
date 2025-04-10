@@ -1,4 +1,4 @@
-/*	$Id: http.c,v 1.15 2021/09/14 16:37:20 tb Exp $ */
+/*	$Id: http.c,v 1.17 2023/04/19 12:58:16 jsg Exp $ */
 /*
  * Copyright (c) 2016 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -33,7 +33,6 @@
 #include <unistd.h>
 
 #include "http.h"
-#include <tls.h>
 
 /*
  * A buffer for transferring HTTP/S data.
@@ -556,7 +555,7 @@ http_head_parse(const struct http *http, struct httpxfer *trans, size_t *sz)
 		}
 
 		*ccp++ = '\0';
-		while (isspace((int)*ccp))
+		while (isspace((unsigned char)*ccp))
 			ccp++;
 		h[hsz].key = cp;
 		h[hsz++].val = ccp;

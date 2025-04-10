@@ -1,26 +1,33 @@
 ; 1 "crypto/bn/mont5-masm-x86_64.S.tmp"
 ; 1 "<built-in>" 1
 ; 1 "<built-in>" 3
-; 340 "<built-in>" 3
+; 371 "<built-in>" 3
 ; 1 "<command line>" 1
 ; 1 "<built-in>" 2
 ; 1 "crypto/bn/mont5-masm-x86_64.S.tmp" 2
 OPTION	DOTNAME
 
+
+
+
+
+
+
 ; 1 "./crypto/x86_arch.h" 1
 
 
 ; 16 "./crypto/x86_arch.h"
+   
 
 
 
 
 
-
-
+   
 
 
 ; 40 "./crypto/x86_arch.h"
+   
 
 
 
@@ -65,8 +72,7 @@ OPTION	DOTNAME
 
 
 
-
-; 3 "crypto/bn/mont5-masm-x86_64.S.tmp" 2
+; 9 "crypto/bn/mont5-masm-x86_64.S.tmp" 2
 .text$	SEGMENT ALIGN(64) 'CODE'
 
 PUBLIC	bn_mul_mont_gather5
@@ -83,6 +89,7 @@ $L$SEH_begin_bn_mul_mont_gather5::
 	mov	rcx,r9
 	mov	r8,QWORD PTR[40+rsp]
 	mov	r9,QWORD PTR[48+rsp]
+
 
 
 	test	r9d,3
@@ -493,6 +500,7 @@ $L$SEH_begin_bn_mul4x_mont_gather5::
 	mov	rcx,r9
 	mov	r8,QWORD PTR[40+rsp]
 	mov	r9,QWORD PTR[48+rsp]
+
 
 
 $L$mul4x_enter::
@@ -1088,6 +1096,7 @@ PUBLIC	bn_scatter5
 
 ALIGN	16
 bn_scatter5	PROC PUBLIC
+
 	cmp	rdx,0
 	jz	$L$scatter_epilogue
 	lea	r8,QWORD PTR[r9*8+r8]
@@ -1106,6 +1115,7 @@ PUBLIC	bn_gather5
 
 ALIGN	16
 bn_gather5	PROC PUBLIC
+
 $L$SEH_begin_bn_gather5::
 
 DB	04ch,08dh,014h,024h			
@@ -1265,20 +1275,19 @@ $L$gather::
 	DB	0F3h,0C3h		;repret
 $L$SEH_end_bn_gather5::
 bn_gather5	ENDP
+.text$	ENDS
+.rdata	SEGMENT READONLY ALIGN(64)
 ALIGN	64
 $L$inc::
 	DD	0,0,1,1
 	DD	2,2,2,2
-DB	77,111,110,116,103,111,109,101,114,121,32,77,117,108,116,105
-DB	112,108,105,99,97,116,105,111,110,32,119,105,116,104,32,115
-DB	99,97,116,116,101,114,47,103,97,116,104,101,114,32,102,111
-DB	114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79
-DB	71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111
-DB	112,101,110,115,115,108,46,111,114,103,62,0
+.rdata	ENDS
+.text$	SEGMENT ALIGN(64) 'CODE'
 EXTERN	__imp_RtlVirtualUnwind:NEAR
 
 ALIGN	16
 mul_handler	PROC PRIVATE
+
 	push	rsi
 	push	rdi
 	push	rbx

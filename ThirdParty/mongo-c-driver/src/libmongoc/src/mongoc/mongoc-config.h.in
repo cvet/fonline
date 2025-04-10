@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
  * o The bitfield in mongoc-handshake-private.h
  * o _mongoc_handshake_get_config_hex_string() in mongoc-handshake.c
  * o examples/parse_handshake_cfg.py
- * o test_handshake_config_string in test-mongoc-handshake.c
+ * o test_handshake_platform_config in test-mongoc-handshake.c
  */
 
 /* MONGOC_USER_SET_CFLAGS is set from config based on what compiler flags were
@@ -64,6 +64,15 @@
 #  undef MONGOC_ENABLE_CRYPTO_CNG
 #endif
 
+/*
+ * MONGOC_HAVE_BCRYPT_PBKDF2 is set from configure to determine if 
+ * our Bcrypt Windows library supports PBKDF2 
+ */
+#define MONGOC_HAVE_BCRYPT_PBKDF2 @MONGOC_HAVE_BCRYPT_PBKDF2@
+
+#if MONGOC_HAVE_BCRYPT_PBKDF2 != 1
+#  undef MONGOC_HAVE_BCRYPT_PBKDF2
+#endif
 
 /*
  * MONGOC_ENABLE_SSL_SECURE_TRANSPORT is set from configure to determine if we are
@@ -84,17 +93,6 @@
 
 #if MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO != 1
 #  undef MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO
-#endif
-
-
-/*
- * MONGOC_ENABLE_SSL_LIBRESSL is set from configure to determine if we are
- * compiled with LibreSSL support.
- */
-#define MONGOC_ENABLE_SSL_LIBRESSL @MONGOC_ENABLE_SSL_LIBRESSL@
-
-#if MONGOC_ENABLE_SSL_LIBRESSL != 1
-#  undef MONGOC_ENABLE_SSL_LIBRESSL
 #endif
 
 
@@ -205,17 +203,6 @@
 #  undef MONGOC_HAVE_SASL_CLIENT_DONE
 #endif
 
-
-/*
- * Disable automatic calls to mongoc_init() and mongoc_cleanup()
- * before main() is called, and after exit() (respectively).
- */
-#define MONGOC_NO_AUTOMATIC_GLOBALS @MONGOC_NO_AUTOMATIC_GLOBALS@
-
-#if MONGOC_NO_AUTOMATIC_GLOBALS != 1
-#  undef MONGOC_NO_AUTOMATIC_GLOBALS
-#endif
-
 /*
  * MONGOC_HAVE_SOCKLEN is set from configure to determine if we
  * need to emulate the type.
@@ -226,6 +213,10 @@
 #  undef MONGOC_HAVE_SOCKLEN
 #endif
 
+/**
+ * @brief Defined to 0/1 for whether we were configured with ENABLE_SRV
+ */
+#define MONGOC_ENABLE_SRV @MONGOC_ENABLE_SRV@
 
 /*
  * MONGOC_HAVE_DNSAPI is set from configure to determine if we should use the
@@ -368,26 +359,6 @@
  */
 #define MONGOC_TRACE @MONGOC_TRACE@
 
-enum {
-   /**
-    * @brief Compile-time constant determining whether the mongoc library was
-    * compiled with tracing enabled.
-    *
-    * Can be controlled with the 'ENABLE_TRACING" configure-time boolean option
-    */
-   MONGOC_TRACE_ENABLED = MONGOC_TRACE
-};
-
-/*
- * Set if we have ICU support.
- */
-#define MONGOC_ENABLE_ICU @MONGOC_ENABLE_ICU@
-
-#if MONGOC_ENABLE_ICU != 1
-#  undef MONGOC_ENABLE_ICU
-#endif
-
-
 /*
  * Set if we have Client Side Encryption support.
  */
@@ -417,6 +388,23 @@ enum {
 #if MONGOC_ENABLE_MONGODB_AWS_AUTH != 1
 #  undef MONGOC_ENABLE_MONGODB_AWS_AUTH
 #endif
+
+enum {
+   /**
+    * @brief Compile-time constant determining whether the mongoc library was
+    * compiled with tracing enabled.
+    *
+    * Can be controlled with the “ENABLE_TRACING” configure-time boolean option
+    */
+   MONGOC_TRACE_ENABLED = MONGOC_TRACE,
+   /**
+    * @brief Compile-time constant indicating whether the mongoc library was
+    * compiled with SRV server discovery support.
+    *
+    * Can be controled with the “ENABLE_SRV” configure-time boolean option.
+    */
+   MONGOC_SRV_ENABLED = MONGOC_ENABLE_SRV,
+};
 
 /* clang-format on */
 

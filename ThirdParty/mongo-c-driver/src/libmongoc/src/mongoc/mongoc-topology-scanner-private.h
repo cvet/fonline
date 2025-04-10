@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_TOPOLOGY_SCANNER_PRIVATE_H
 #define MONGOC_TOPOLOGY_SCANNER_PRIVATE_H
@@ -22,28 +22,26 @@
 /* TODO: rename to TOPOLOGY scanner */
 
 #include <bson/bson.h>
-#include "mongoc-async-private.h"
-#include "mongoc-async-cmd-private.h"
-#include "mongoc-handshake-private.h"
-#include "mongoc-host-list.h"
-#include "mongoc-apm-private.h"
-#include "mongoc-scram-private.h"
-#include "mongoc-ssl.h"
-#include "mongoc-crypto-private.h"
-#include "mongoc-server-description-private.h"
-#include "common-thread-private.h"
+#ifdef MONGOC_ENABLE_SSL_OPENSSL
+#include <openssl/ssl.h>
+#endif
+#include <mongoc/mongoc-async-private.h>
+#include <mongoc/mongoc-async-cmd-private.h>
+#include <mongoc/mongoc-handshake-private.h>
+#include <mongoc/mongoc-host-list.h>
+#include <mongoc/mongoc-apm-private.h>
+#include <mongoc/mongoc-scram-private.h>
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-crypto-private.h>
+#include <mongoc/mongoc-server-description-private.h>
+#include <common-thread-private.h>
 
 BSON_BEGIN_DECLS
 
-typedef void (*mongoc_topology_scanner_setup_err_cb_t) (
-   uint32_t id, void *data, const bson_error_t *error /* IN */);
+typedef void (*mongoc_topology_scanner_setup_err_cb_t) (uint32_t id, void *data, const bson_error_t *error /* IN */);
 
 typedef void (*mongoc_topology_scanner_cb_t) (
-   uint32_t id,
-   const bson_t *bson,
-   int64_t rtt,
-   void *data,
-   const bson_error_t *error /* IN */);
+   uint32_t id, const bson_t *bson, int64_t rtt, void *data, const bson_error_t *error /* IN */);
 
 struct mongoc_topology_scanner;
 struct mongoc_topology_scanner_node;
@@ -117,6 +115,7 @@ typedef struct mongoc_topology_scanner {
    bson_t *handshake_cmd;
    handshake_state_t handshake_state;
    bson_t cluster_time;
+   bson_oid_t topology_id;
    const char *appname;
 
    mongoc_topology_scanner_setup_err_cb_t setup_err_cb;
@@ -132,8 +131,10 @@ typedef struct mongoc_topology_scanner {
    mongoc_ssl_opt_t *ssl_opts;
 #endif
 
-   mongoc_apm_callbacks_t apm_callbacks;
-   void *apm_context;
+#if defined(MONGOC_ENABLE_SSL_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10100000L
+   SSL_CTX *openssl_ctx;
+#endif
+
    int64_t dns_cache_timeout_ms;
    /* only used by single-threaded clients to negotiate auth mechanisms. */
    bool negotiate_sasl_supported_mechs;
@@ -141,16 +142,18 @@ typedef struct mongoc_topology_scanner {
    bool speculative_authentication;
 
    mongoc_server_api_t *api;
+   mongoc_log_and_monitor_instance_t *log_and_monitor; // Not null.
    bool loadbalanced;
 } mongoc_topology_scanner_t;
 
 mongoc_topology_scanner_t *
-mongoc_topology_scanner_new (
-   const mongoc_uri_t *uri,
-   mongoc_topology_scanner_setup_err_cb_t setup_err_cb,
-   mongoc_topology_scanner_cb_t cb,
-   void *data,
-   int64_t connect_timeout_msec);
+mongoc_topology_scanner_new (const mongoc_uri_t *uri,
+                             const bson_oid_t *topology_id,
+                             mongoc_log_and_monitor_instance_t *log_and_monitor,
+                             mongoc_topology_scanner_setup_err_cb_t setup_err_cb,
+                             mongoc_topology_scanner_cb_t cb,
+                             void *data,
+                             int64_t connect_timeout_msec);
 
 void
 mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts);
@@ -159,10 +162,7 @@ bool
 mongoc_topology_scanner_valid (mongoc_topology_scanner_t *ts);
 
 void
-mongoc_topology_scanner_add (mongoc_topology_scanner_t *ts,
-                             const mongoc_host_list_t *host,
-                             uint32_t id,
-                             bool hello_ok);
+mongoc_topology_scanner_add (mongoc_topology_scanner_t *ts, const mongoc_host_list_t *host, uint32_t id, bool hello_ok);
 
 void
 mongoc_topology_scanner_scan (mongoc_topology_scanner_t *ts, uint32_t id);
@@ -174,20 +174,16 @@ void
 mongoc_topology_scanner_node_retire (mongoc_topology_scanner_node_t *node);
 
 void
-mongoc_topology_scanner_node_disconnect (mongoc_topology_scanner_node_t *node,
-                                         bool failed);
+mongoc_topology_scanner_node_disconnect (mongoc_topology_scanner_node_t *node, bool failed);
 
 void
-mongoc_topology_scanner_node_destroy (mongoc_topology_scanner_node_t *node,
-                                      bool failed);
+mongoc_topology_scanner_node_destroy (mongoc_topology_scanner_node_t *node, bool failed);
 
 bool
-mongoc_topology_scanner_in_cooldown (mongoc_topology_scanner_t *ts,
-                                     int64_t when);
+mongoc_topology_scanner_in_cooldown (mongoc_topology_scanner_t *ts, int64_t when);
 
 void
-mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
-                               bool obey_cooldown);
+mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts, bool obey_cooldown);
 
 void
 mongoc_topology_scanner_work (mongoc_topology_scanner_t *ts);
@@ -196,38 +192,31 @@ void
 _mongoc_topology_scanner_finish (mongoc_topology_scanner_t *ts);
 
 void
-mongoc_topology_scanner_get_error (mongoc_topology_scanner_t *ts,
-                                   bson_error_t *error);
+mongoc_topology_scanner_get_error (mongoc_topology_scanner_t *ts, bson_error_t *error);
 
 void
 mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts);
 
 void
-mongoc_topology_scanner_node_setup (mongoc_topology_scanner_node_t *node,
-                                    bson_error_t *error);
+mongoc_topology_scanner_node_setup (mongoc_topology_scanner_node_t *node, bson_error_t *error);
 
 mongoc_topology_scanner_node_t *
 mongoc_topology_scanner_get_node (mongoc_topology_scanner_t *ts, uint32_t id);
 
 void
-_mongoc_topology_scanner_add_speculative_authentication (
-   bson_t *cmd,
-   const mongoc_uri_t *uri,
-   const mongoc_ssl_opt_t *ssl_opts,
-   mongoc_scram_cache_t *scram_cache,
-   mongoc_scram_t *scram /* OUT */);
+_mongoc_topology_scanner_add_speculative_authentication (bson_t *cmd,
+                                                         const mongoc_uri_t *uri,
+                                                         const mongoc_ssl_opt_t *ssl_opts,
+                                                         mongoc_scram_t *scram /* OUT */);
 
 void
-_mongoc_topology_scanner_parse_speculative_authentication (
-   const bson_t *hello, bson_t *speculative_authenticate);
+_mongoc_topology_scanner_parse_speculative_authentication (const bson_t *hello, bson_t *speculative_authenticate);
 
 const char *
-_mongoc_topology_scanner_get_speculative_auth_mechanism (
-   const mongoc_uri_t *uri);
+_mongoc_topology_scanner_get_speculative_auth_mechanism (const mongoc_uri_t *uri);
 
 const bson_t *
-_mongoc_topology_scanner_get_monitoring_cmd (mongoc_topology_scanner_t *ts,
-                                             bool hello_ok);
+_mongoc_topology_scanner_get_monitoring_cmd (mongoc_topology_scanner_t *ts, bool hello_ok);
 
 /**
  * @brief Get the scanner's associated handshake command BSON document.
@@ -237,45 +226,34 @@ _mongoc_topology_scanner_get_monitoring_cmd (mongoc_topology_scanner_t *ts,
  * will be copied into the pointee.
  */
 void
-_mongoc_topology_scanner_dup_handshake_cmd (mongoc_topology_scanner_t *ts,
-                                            bson_t *copy_into);
+_mongoc_topology_scanner_dup_handshake_cmd (mongoc_topology_scanner_t *ts, bson_t *copy_into);
 
 bool
-mongoc_topology_scanner_has_node_for_host (mongoc_topology_scanner_t *ts,
-                                           mongoc_host_list_t *host);
+mongoc_topology_scanner_has_node_for_host (mongoc_topology_scanner_t *ts, mongoc_host_list_t *host);
 
 void
-mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts,
-                                              mongoc_stream_initiator_t si,
-                                              void *ctx);
+mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts, mongoc_stream_initiator_t si, void *ctx);
 bool
-_mongoc_topology_scanner_set_appname (mongoc_topology_scanner_t *ts,
-                                      const char *name);
+_mongoc_topology_scanner_set_appname (mongoc_topology_scanner_t *ts, const char *name);
 void
-_mongoc_topology_scanner_set_cluster_time (mongoc_topology_scanner_t *ts,
-                                           const bson_t *cluster_time);
+_mongoc_topology_scanner_set_cluster_time (mongoc_topology_scanner_t *ts, const bson_t *cluster_time);
 
 void
-_mongoc_topology_scanner_set_dns_cache_timeout (mongoc_topology_scanner_t *ts,
-                                                int64_t timeout_ms);
+_mongoc_topology_scanner_set_dns_cache_timeout (mongoc_topology_scanner_t *ts, int64_t timeout_ms);
 
 #ifdef MONGOC_ENABLE_SSL
 void
-mongoc_topology_scanner_set_ssl_opts (mongoc_topology_scanner_t *ts,
-                                      mongoc_ssl_opt_t *opts);
+mongoc_topology_scanner_set_ssl_opts (mongoc_topology_scanner_t *ts, mongoc_ssl_opt_t *opts);
 #endif
 
 bool
-mongoc_topology_scanner_node_in_cooldown (mongoc_topology_scanner_node_t *node,
-                                          int64_t when);
+mongoc_topology_scanner_node_in_cooldown (mongoc_topology_scanner_node_t *node, int64_t when);
 
 void
-_mongoc_topology_scanner_set_server_api (mongoc_topology_scanner_t *ts,
-                                         const mongoc_server_api_t *api);
+_mongoc_topology_scanner_set_server_api (mongoc_topology_scanner_t *ts, const mongoc_server_api_t *api);
 
 void
-_mongoc_topology_scanner_set_loadbalanced (mongoc_topology_scanner_t *ts,
-                                           bool val);
+_mongoc_topology_scanner_set_loadbalanced (mongoc_topology_scanner_t *ts, bool val);
 
 /* for testing. */
 mongoc_stream_t *

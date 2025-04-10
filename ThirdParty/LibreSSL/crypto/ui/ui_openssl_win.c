@@ -20,7 +20,7 @@
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgment:
  *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+ *    for use in the OpenSSL Toolkit. (https://www.openssl.org/)"
  *
  * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
  *    endorse or promote products derived from this software without
@@ -34,7 +34,7 @@
  * 6. Redistributions of any form whatsoever must retain the following
  *    acknowledgment:
  *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+ *    for use in the OpenSSL Toolkit (https://www.openssl.org/)"
  *
  * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
  * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -124,14 +124,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ui_locl.h"
+#include "ui_local.h"
 
 #ifndef NX509_SIG
 #define NX509_SIG 32
 #endif
-
-/* Define globals.  They are protected by a lock */
-static void (*savsig[NX509_SIG])(int );
 
 DWORD console_mode;
 static FILE *tty_in, *tty_out;
@@ -139,9 +136,6 @@ static int is_a_tty;
 
 /* Declare static functions */
 static int read_till_nl(FILE *);
-static void recsig(int);
-static void pushsig(void);
-static void popsig(void);
 static int read_string_inner(UI *ui, UI_STRING *uis, int echo, int strip_nl);
 
 static int read_string(UI *ui, UI_STRING *uis);
@@ -236,8 +230,6 @@ read_till_nl(FILE *in)
 	return 1;
 }
 
-static volatile sig_atomic_t intr_signal;
-
 static int
 read_string_inner(UI *ui, UI_STRING *uis, int echo, int strip_nl)
 {
@@ -247,11 +239,8 @@ read_string_inner(UI *ui, UI_STRING *uis, int echo, int strip_nl)
 	int maxsize = BUFSIZ - 1;
 	char *p;
 
-	intr_signal = 0;
 	ok = 0;
 	ps = 0;
-
-	pushsig();
 
 	ps = 1;
 
@@ -276,15 +265,10 @@ read_string_inner(UI *ui, UI_STRING *uis, int echo, int strip_nl)
 		ok = 1;
 
 error:
-	if (intr_signal == SIGINT)
-		ok = -1;
 	if (!echo)
 		fprintf(tty_out, "\n");
 	if (ps >= 2 && !echo && !echo_console(ui))
 		ok = 0;
-
-	if (ps >= 1)
-		popsig();
 
 	explicit_bzero(result, BUFSIZ);
 	return ok;
@@ -347,33 +331,4 @@ close_console(UI *ui)
 	CRYPTO_w_unlock(CRYPTO_LOCK_UI);
 
 	return 1;
-}
-
-/* Internal functions to handle signals and act on them */
-static void
-pushsig(void)
-{
-	savsig[SIGABRT] = signal(SIGABRT, recsig);
-	savsig[SIGFPE]  = signal(SIGFPE,  recsig);
-	savsig[SIGILL]  = signal(SIGILL,  recsig);
-	savsig[SIGINT]  = signal(SIGINT,  recsig);
-	savsig[SIGSEGV] = signal(SIGSEGV, recsig);
-	savsig[SIGTERM] = signal(SIGTERM, recsig);
-}
-
-static void
-popsig(void)
-{
-	signal(SIGABRT, savsig[SIGABRT]);
-	signal(SIGFPE,  savsig[SIGFPE]);
-	signal(SIGILL,  savsig[SIGILL]);
-	signal(SIGINT,  savsig[SIGINT]);
-	signal(SIGSEGV, savsig[SIGSEGV]);
-	signal(SIGTERM, savsig[SIGTERM]);
-}
-
-static void
-recsig(int i)
-{
-	intr_signal = i;
 }

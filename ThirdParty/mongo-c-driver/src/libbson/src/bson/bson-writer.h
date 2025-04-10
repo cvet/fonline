@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_WRITER_H
 #define BSON_WRITER_H
 
 
-#include "bson.h"
+#include <bson/bson.h>
 
 
 BSON_BEGIN_DECLS
@@ -42,11 +42,7 @@ typedef struct _bson_writer_t bson_writer_t;
 
 
 BSON_EXPORT (bson_writer_t *)
-bson_writer_new (uint8_t **buf,
-                 size_t *buflen,
-                 size_t offset,
-                 bson_realloc_func realloc_func,
-                 void *realloc_func_ctx);
+bson_writer_new (uint8_t **buf, size_t *buflen, size_t offset, bson_realloc_func realloc_func, void *realloc_func_ctx);
 BSON_EXPORT (void)
 bson_writer_destroy (bson_writer_t *writer);
 BSON_EXPORT (size_t)

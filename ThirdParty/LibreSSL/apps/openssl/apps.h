@@ -1,4 +1,4 @@
-/* $OpenBSD: apps.h,v 1.28 2021/09/02 11:30:15 inoguchi Exp $ */
+/* $OpenBSD: apps.h,v 1.38 2024/08/29 17:01:02 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -127,16 +127,10 @@
 #endif
 
 #include <unistd.h>
-extern int single_execution;
 
 extern CONF *config;
 extern char *default_config_file;
 extern BIO *bio_err;
-
-typedef struct args_st {
-	char **data;
-	int count;
-} ARGS;
 
 #define PW_MIN_LENGTH 4
 typedef struct pw_cb_data {
@@ -155,11 +149,8 @@ int ui_read(UI *ui, UI_STRING *uis);
 int ui_write(UI *ui, UI_STRING *uis);
 int ui_close(UI *ui);
 
-int should_retry(int i);
-int args_from_file(char *file, int *argc, char **argv[]);
 int str2fmt(char *s);
 void program_name(char *in, char *out, int size);
-int chopup_args(ARGS *arg, char *buf, int *argc, char **argv[]);
 #ifdef HEADER_X509_H
 int dump_cert_text(BIO *out, X509 *x);
 void print_name(BIO *out, const char *title, X509_NAME *nm,
@@ -237,7 +228,6 @@ int parse_yesno(const char *str, int def);
 X509_NAME *parse_name(char *str, long chtype, int multirdn);
 int args_verify(char ***pargs, int *pargc, int *badarg, BIO *err,
     X509_VERIFY_PARAM **pm);
-void policies_print(BIO *out, X509_STORE_CTX *ctx);
 int bio_to_mem(unsigned char **out, int maxlen, BIO *in);
 int pkey_ctrl_string(EVP_PKEY_CTX *ctx, char *value);
 int init_gen_str(BIO *err, EVP_PKEY_CTX **pctx, const char *algname,
@@ -255,22 +245,18 @@ unsigned char *next_protos_parse(unsigned short *outlen, const char *in);
 #define FORMAT_ASN1     1
 #define FORMAT_TEXT     2
 #define FORMAT_PEM      3
-#define FORMAT_NETSCAPE 4
+
 #define FORMAT_PKCS12   5
 #define FORMAT_SMIME    6
 
-#define FORMAT_IISSGC	8	/* XXX this stupid macro helps us to avoid
-				 * adding yet another param to load_*key() */
-#define FORMAT_PEMRSA	9	/* PEM RSAPubicKey format */
-#define FORMAT_ASN1RSA	10	/* DER RSAPubicKey format */
+#define FORMAT_PEMRSA	9	/* PEM RSAPublicKey format */
+#define FORMAT_ASN1RSA	10	/* DER RSAPublicKey format */
 #define FORMAT_MSBLOB	11	/* MS Key blob format */
 #define FORMAT_PVK	12	/* MS PVK file format */
 
 #define EXT_COPY_NONE	0
 #define EXT_COPY_ADD	1
 #define EXT_COPY_ALL	2
-
-#define NETSCAPE_CERT_HDR	"certificate"
 
 #define APP_PASS_LEN	1024
 
@@ -329,5 +315,4 @@ int options_parse(int argc, char **argv, const struct option *opts,
     char **unnamed, int *argsused);
 
 void show_cipher(const OBJ_NAME *name, void *arg);
-
 #endif

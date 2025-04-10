@@ -849,9 +849,23 @@ void CompilerHLSL::emit_builtin_inputs_in_struct()
 		case BuiltInSubgroupLeMask:
 		case BuiltInSubgroupGtMask:
 		case BuiltInSubgroupGeMask:
-		case BuiltInBaseVertex:
-		case BuiltInBaseInstance:
 			// Handled specially.
+			break;
+
+		case BuiltInBaseVertex:
+			if (hlsl_options.shader_model >= 68)
+			{
+				type = "uint";
+				semantic = "SV_StartVertexLocation";
+			}
+			break;
+
+		case BuiltInBaseInstance:
+			if (hlsl_options.shader_model >= 68)
+			{
+				type = "uint";
+				semantic = "SV_StartInstanceLocation";
+			}
 			break;
 
 		case BuiltInHelperInvocation:
@@ -905,6 +919,17 @@ void CompilerHLSL::emit_builtin_inputs_in_struct()
 			semantic = "SV_RenderTargetArrayIndex";
 			break;
 
+		case BuiltInBaryCoordKHR:
+		case BuiltInBaryCoordNoPerspKHR:
+			if (hlsl_options.shader_model < 61)
+				SPIRV_CROSS_THROW("SM 6.1 is required for barycentrics.");
+			type = builtin == BuiltInBaryCoordNoPerspKHR ? "noperspective float3" : "float3";
+			if (active_input_builtins.get(BuiltInBaryCoordKHR) && active_input_builtins.get(BuiltInBaryCoordNoPerspKHR))
+				semantic = builtin == BuiltInBaryCoordKHR ? "SV_Barycentrics0" : "SV_Barycentrics1";
+			else
+				semantic = "SV_Barycentrics";
+			break;
+
 		default:
 			SPIRV_CROSS_THROW("Unsupported builtin in HLSL.");
 		}
@@ -944,7 +969,7 @@ string CompilerHLSL::to_interpolation_qualifiers(const Bitset &flags)
 	string res;
 	//if (flags & (1ull << DecorationSmooth))
 	//    res += "linear ";
-	if (flags.get(DecorationFlat))
+	if (flags.get(DecorationFlat) || flags.get(DecorationPerVertexKHR))
 		res += "nointerpolation ";
 	if (flags.get(DecorationNoPerspective))
 		res += "noperspective ";
@@ -1000,7 +1025,11 @@ void CompilerHLSL::emit_interface_block_member_in_struct(const SPIRVariable &var
 	auto mbr_name = join(to_name(type.self), "_", to_member_name(type, member_index));
 	auto &mbr_type = get<SPIRType>(type.member_types[member_index]);
 
-	statement(to_interpolation_qualifiers(get_member_decoration_bitset(type.self, member_index)),
+	Bitset member_decorations = get_member_decoration_bitset(type.self, member_index);
+	if (has_decoration(var.self, DecorationPerVertexKHR))
+		member_decorations.set(DecorationPerVertexKHR);
+
+	statement(to_interpolation_qualifiers(member_decorations),
 	          type_to_glsl(mbr_type),
 	          " ", mbr_name, type_to_array_glsl(mbr_type, var.self),
 	          " : ", semantic, ";");
@@ -1088,7 +1117,7 @@ void CompilerHLSL::emit_interface_block_in_struct(const SPIRVariable &var, unord
 		else
 		{
 			auto decl_type = type;
-			if (execution.model == ExecutionModelMeshEXT)
+			if (execution.model == ExecutionModelMeshEXT || has_decoration(var.self, DecorationPerVertexKHR))
 			{
 				decl_type.array.erase(decl_type.array.begin());
 				decl_type.array_size_literal.erase(decl_type.array_size_literal.begin());
@@ -1231,7 +1260,7 @@ void CompilerHLSL::emit_builtin_variables()
 		case BuiltInVertexIndex:
 		case BuiltInInstanceIndex:
 			type = "int";
-			if (hlsl_options.support_nonzero_base_vertex_base_instance)
+			if (hlsl_options.support_nonzero_base_vertex_base_instance || hlsl_options.shader_model >= 68)
 				base_vertex_info.used = true;
 			break;
 
@@ -1327,6 +1356,13 @@ void CompilerHLSL::emit_builtin_variables()
 			type = "uint";
 			break;
 
+		case BuiltInBaryCoordKHR:
+		case BuiltInBaryCoordNoPerspKHR:
+			if (hlsl_options.shader_model < 61)
+				SPIRV_CROSS_THROW("Need SM 6.1 for barycentrics.");
+			type = "float3";
+			break;
+
 		default:
 			SPIRV_CROSS_THROW(join("Unsupported builtin in HLSL: ", unsigned(builtin)));
 		}
@@ -1353,7 +1389,7 @@ void CompilerHLSL::emit_builtin_variables()
 		}
 	});
 
-	if (base_vertex_info.used)
+	if (base_vertex_info.used && hlsl_options.shader_model < 68)
 	{
 		string binding_info;
 		if (base_vertex_info.explicit_binding)
@@ -2440,12 +2476,14 @@ void CompilerHLSL::analyze_meshlet_writes()
 			set_decoration(op_type, DecorationPerPrimitiveEXT);
 
 		auto &arr = set<SPIRType>(op_arr, type);
+		arr.op = OpTypeArray;
 		arr.parent_type = type.self;
 		arr.array.push_back(per_primitive ? execution.output_primitives : execution.output_vertices);
 		arr.array_size_literal.push_back(true);
 
 		auto &ptr = set<SPIRType>(op_ptr, arr);
 		ptr.parent_type = arr.self;
+		ptr.op = OpTypePointer;
 		ptr.pointer = true;
 		ptr.pointer_depth++;
 		ptr.storage = StorageClassOutput;
@@ -3136,23 +3174,39 @@ void CompilerHLSL::emit_hlsl_entry_point()
 		case BuiltInVertexIndex:
 		case BuiltInInstanceIndex:
 			// D3D semantics are uint, but shader wants int.
-			if (hlsl_options.support_nonzero_base_vertex_base_instance)
+			if (hlsl_options.support_nonzero_base_vertex_base_instance || hlsl_options.shader_model >= 68)
 			{
-				if (static_cast<BuiltIn>(i) == BuiltInInstanceIndex)
-					statement(builtin, " = int(stage_input.", builtin, ") + SPIRV_Cross_BaseInstance;");
+				if (hlsl_options.shader_model >= 68)
+				{
+					if (static_cast<BuiltIn>(i) == BuiltInInstanceIndex)
+						statement(builtin, " = int(stage_input.", builtin, " + stage_input.gl_BaseInstanceARB);");
+					else
+						statement(builtin, " = int(stage_input.", builtin, " + stage_input.gl_BaseVertexARB);");
+				}
 				else
-					statement(builtin, " = int(stage_input.", builtin, ") + SPIRV_Cross_BaseVertex;");
+				{
+					if (static_cast<BuiltIn>(i) == BuiltInInstanceIndex)
+						statement(builtin, " = int(stage_input.", builtin, ") + SPIRV_Cross_BaseInstance;");
+					else
+						statement(builtin, " = int(stage_input.", builtin, ") + SPIRV_Cross_BaseVertex;");
+				}
 			}
 			else
 				statement(builtin, " = int(stage_input.", builtin, ");");
 			break;
 
 		case BuiltInBaseVertex:
-			statement(builtin, " = SPIRV_Cross_BaseVertex;");
+			if (hlsl_options.shader_model >= 68)
+				statement(builtin, " = stage_input.gl_BaseVertexARB;");
+			else
+				statement(builtin, " = SPIRV_Cross_BaseVertex;");
 			break;
 
 		case BuiltInBaseInstance:
-			statement(builtin, " = SPIRV_Cross_BaseInstance;");
+			if (hlsl_options.shader_model >= 68)
+				statement(builtin, " = stage_input.gl_BaseInstanceARB;");
+			else
+				statement(builtin, " = SPIRV_Cross_BaseInstance;");
 			break;
 
 		case BuiltInInstanceId:
@@ -3268,11 +3322,23 @@ void CompilerHLSL::emit_hlsl_entry_point()
 			{
 				auto type_name = to_name(type.self);
 				auto var_name = to_name(var.self);
+				bool is_per_vertex = has_decoration(var.self, DecorationPerVertexKHR);
+				uint32_t array_size = is_per_vertex ? to_array_size_literal(type) : 0;
+
 				for (uint32_t mbr_idx = 0; mbr_idx < uint32_t(type.member_types.size()); mbr_idx++)
 				{
 					auto mbr_name = to_member_name(type, mbr_idx);
 					auto flat_name = join(type_name, "_", mbr_name);
-					statement(var_name, ".", mbr_name, " = stage_input.", flat_name, ";");
+
+					if (is_per_vertex)
+					{
+						for (uint32_t i = 0; i < array_size; i++)
+							statement(var_name, "[", i, "].", mbr_name, " = GetAttributeAtVertex(stage_input.", flat_name, ", ", i, ");");
+					}
+					else
+					{
+						statement(var_name, ".", mbr_name, " = stage_input.", flat_name, ";");
+					}
 				}
 			}
 			else
@@ -3284,6 +3350,12 @@ void CompilerHLSL::emit_hlsl_entry_point()
 					// Unroll matrices.
 					for (uint32_t col = 0; col < mtype.columns; col++)
 						statement(name, "[", col, "] = stage_input.", name, "_", col, ";");
+				}
+				else if (has_decoration(var.self, DecorationPerVertexKHR))
+				{
+					uint32_t array_size = to_array_size_literal(type);
+					for (uint32_t i = 0; i < array_size; i++)
+						statement(name, "[", i, "]", " = GetAttributeAtVertex(stage_input.", name, ", ", i, ");");
 				}
 				else
 				{
@@ -4705,13 +4777,13 @@ void CompilerHLSL::emit_load(const Instruction &instruction)
 {
 	auto ops = stream(instruction);
 
-	auto *chain = maybe_get<SPIRAccessChain>(ops[2]);
+	uint32_t result_type = ops[0];
+	uint32_t id = ops[1];
+	uint32_t ptr = ops[2];
+
+	auto *chain = maybe_get<SPIRAccessChain>(ptr);
 	if (chain)
 	{
-		uint32_t result_type = ops[0];
-		uint32_t id = ops[1];
-		uint32_t ptr = ops[2];
-
 		auto &type = get<SPIRType>(result_type);
 		bool composite_load = !type.array.empty() || type.basetype == SPIRType::Struct;
 
@@ -4749,7 +4821,36 @@ void CompilerHLSL::emit_load(const Instruction &instruction)
 		}
 	}
 	else
-		CompilerGLSL::emit_instruction(instruction);
+	{
+		// Very special case where we cannot rely on IO lowering.
+		// Mesh shader clip/cull arrays ... Cursed.
+		auto &res_type = get<SPIRType>(result_type);
+		if (get_execution_model() == ExecutionModelMeshEXT &&
+		    has_decoration(ptr, DecorationBuiltIn) &&
+		    (get_decoration(ptr, DecorationBuiltIn) == BuiltInClipDistance ||
+		     get_decoration(ptr, DecorationBuiltIn) == BuiltInCullDistance) &&
+		    is_array(res_type) && !is_array(get<SPIRType>(res_type.parent_type)) &&
+		    to_array_size_literal(res_type) > 1)
+		{
+			track_expression_read(ptr);
+			string load_expr = "{ ";
+			uint32_t num_elements = to_array_size_literal(res_type);
+			for (uint32_t i = 0; i < num_elements; i++)
+			{
+				load_expr += join(to_expression(ptr), ".", index_to_swizzle(i));
+				if (i + 1 < num_elements)
+					load_expr += ", ";
+			}
+			load_expr += " }";
+			emit_op(result_type, id, load_expr, false);
+			register_read(id, ptr, false);
+			inherit_expression_dependencies(id, ptr);
+		}
+		else
+		{
+			CompilerGLSL::emit_instruction(instruction);
+		}
+	}
 }
 
 void CompilerHLSL::write_access_chain_array(const SPIRAccessChain &chain, uint32_t value,
@@ -6695,6 +6796,7 @@ string CompilerHLSL::compile()
 	backend.support_case_fallthrough = false;
 	backend.force_merged_mesh_block = get_execution_model() == ExecutionModelMeshEXT;
 	backend.force_gl_in_out_block = backend.force_merged_mesh_block;
+	backend.supports_empty_struct = hlsl_options.shader_model <= 30;
 
 	// SM 4.1 does not support precise for some reason.
 	backend.support_precise_qualifier = hlsl_options.shader_model >= 50 || hlsl_options.shader_model == 40;
@@ -6713,6 +6815,15 @@ string CompilerHLSL::compile()
 	// Subpass input needs SV_Position.
 	if (need_subpass_input)
 		active_input_builtins.set(BuiltInFragCoord);
+
+	// Need to offset by BaseVertex/BaseInstance in SM 6.8+.
+	if (hlsl_options.shader_model >= 68)
+	{
+		if (active_input_builtins.get(BuiltInVertexIndex))
+			active_input_builtins.set(BuiltInBaseVertex);
+		if (active_input_builtins.get(BuiltInInstanceIndex))
+			active_input_builtins.set(BuiltInBaseInstance);
+	}
 
 	uint32_t pass_count = 0;
 	do
@@ -6822,4 +6933,51 @@ bool CompilerHLSL::is_user_type_structured(uint32_t id) const
 		       user_type.compare(0, 33, "rasterizerorderedstructuredbuffer") == 0;
 	}
 	return false;
+}
+
+void CompilerHLSL::cast_to_variable_store(uint32_t target_id, std::string &expr, const SPIRType &expr_type)
+{
+	// Loading a full array of ClipDistance needs special consideration in mesh shaders
+	// since we cannot lower them by wrapping the variables in global statics.
+	// Fortunately, clip/cull is a proper vector in HLSL so we can lower with simple rvalue casts.
+	if (get_execution_model() != ExecutionModelMeshEXT ||
+	    !has_decoration(target_id, DecorationBuiltIn) ||
+	    !is_array(expr_type))
+	{
+		CompilerGLSL::cast_to_variable_store(target_id, expr, expr_type);
+		return;
+	}
+
+	auto builtin = BuiltIn(get_decoration(target_id, DecorationBuiltIn));
+	if (builtin != BuiltInClipDistance && builtin != BuiltInCullDistance)
+	{
+		CompilerGLSL::cast_to_variable_store(target_id, expr, expr_type);
+		return;
+	}
+
+	// Array of array means one thread is storing clip distance for all vertices. Nonsensical?
+	if (is_array(get<SPIRType>(expr_type.parent_type)))
+		SPIRV_CROSS_THROW("Attempting to store all mesh vertices in one go. This is not supported.");
+
+	uint32_t num_clip = to_array_size_literal(expr_type);
+	if (num_clip > 4)
+		SPIRV_CROSS_THROW("Number of clip or cull distances exceeds 4, this will not work with mesh shaders.");
+
+	if (num_clip == 1)
+	{
+		// We already emit array here.
+		CompilerGLSL::cast_to_variable_store(target_id, expr, expr_type);
+		return;
+	}
+
+	auto unrolled_expr = join("float", num_clip, "(");
+	for (uint32_t i = 0; i < num_clip; i++)
+	{
+		unrolled_expr += join(expr, "[", i, "]");
+		if (i + 1 < num_clip)
+			unrolled_expr += ", ";
+	}
+
+	unrolled_expr += ")";
+	expr = std::move(unrolled_expr);
 }

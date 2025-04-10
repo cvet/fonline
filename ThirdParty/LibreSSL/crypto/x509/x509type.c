@@ -1,4 +1,4 @@
-/* $OpenBSD: x509type.c,v 1.13 2018/05/30 15:59:33 tb Exp $ */
+/* $OpenBSD: x509type.c,v 1.24 2023/11/13 16:16:14 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -62,29 +62,39 @@
 #include <openssl/objects.h>
 #include <openssl/x509.h>
 
+#include "evp_local.h"
+#include "x509_local.h"
+
 int
 X509_certificate_type(const X509 *x, const EVP_PKEY *pkey)
 {
 	const EVP_PKEY *pk = pkey;
-	int ret = 0, i;
+	int nid;
+	int ret = 0;
 
 	if (x == NULL)
-		return (0);
+		goto done;
 
-	if (pk == NULL) {
-		if ((pk = X509_get0_pubkey(x)) == NULL)
-			return (0);
-	}
+	if (pk == NULL)
+		pk = X509_get0_pubkey(x);
+	if (pk == NULL)
+		goto done;
 
 	switch (pk->type) {
 	case EVP_PKEY_RSA:
 		ret = EVP_PK_RSA|EVP_PKT_SIGN|EVP_PKT_ENC;
+		break;
+	case EVP_PKEY_RSA_PSS:
+		ret = EVP_PK_RSA|EVP_PKT_SIGN;
 		break;
 	case EVP_PKEY_DSA:
 		ret = EVP_PK_DSA|EVP_PKT_SIGN;
 		break;
 	case EVP_PKEY_EC:
 		ret = EVP_PK_EC|EVP_PKT_SIGN|EVP_PKT_EXCH;
+		break;
+	case EVP_PKEY_ED25519:
+		ret = EVP_PKT_SIGN;
 		break;
 	case EVP_PKEY_DH:
 		ret = EVP_PK_DH|EVP_PKT_EXCH;
@@ -97,27 +107,30 @@ X509_certificate_type(const X509 *x, const EVP_PKEY *pkey)
 		break;
 	}
 
-	i = OBJ_obj2nid(x->sig_alg->algorithm);
-	if (i && OBJ_find_sigid_algs(i, NULL, &i)) {
-		switch (i) {
-		case NID_rsaEncryption:
-		case NID_rsa:
-			ret |= EVP_PKS_RSA;
-			break;
-		case NID_dsa:
-		case NID_dsa_2:
-			ret |= EVP_PKS_DSA;
-			break;
-		case NID_X9_62_id_ecPublicKey:
-			ret |= EVP_PKS_EC;
-			break;
-		default:
-			break;
-		}
+	if ((nid = X509_get_signature_nid(x)) == NID_undef)
+		goto done;
+
+	if (!OBJ_find_sigid_algs(nid, NULL, &nid))
+		goto done;
+
+	switch (nid) {
+	case NID_rsaEncryption:
+	case NID_rsa:
+		ret |= EVP_PKS_RSA;
+		break;
+	case NID_dsa:
+	case NID_dsa_2:
+		ret |= EVP_PKS_DSA;
+		break;
+	case NID_X9_62_id_ecPublicKey:
+		ret |= EVP_PKS_EC;
+		break;
+	default:
+		break;
 	}
 
-	/* /8 because it's 1024 bits we look for, not bytes */
-	if (EVP_PKEY_size(pk) <= 1024 / 8)
-		ret |= EVP_PKT_EXP;
-	return (ret);
+ done:
+
+	return ret;
 }
+LCRYPTO_ALIAS(X509_certificate_type);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_OCSP_CACHE_PRIVATE_H
 #define MONGOC_OCSP_CACHE_PRIVATE_H
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
-#include "mongoc-openssl-private.h"
+#include <mongoc/mongoc-openssl-private.h>
 
 #ifdef MONGOC_ENABLE_OCSP_OPENSSL
 #include <openssl/ocsp.h>
@@ -30,11 +30,8 @@ void
 _mongoc_ocsp_cache_init (void);
 
 void
-_mongoc_ocsp_cache_set_resp (OCSP_CERTID *id,
-                             int cert_status,
-                             int reason,
-                             ASN1_GENERALIZEDTIME *this_update,
-                             ASN1_GENERALIZEDTIME *next_update);
+_mongoc_ocsp_cache_set_resp (
+   OCSP_CERTID *id, int cert_status, int reason, ASN1_GENERALIZEDTIME *this_update, ASN1_GENERALIZEDTIME *next_update);
 
 int
 _mongoc_ocsp_cache_length (void);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_GRIDFS_FILE_LIST_PRIVATE_H
 #define MONGOC_GRIDFS_FILE_LIST_PRIVATE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-gridfs.h"
-#include "mongoc-gridfs-file.h"
-#include "mongoc-cursor.h"
+#include <mongoc/mongoc-gridfs.h>
+#include <mongoc/mongoc-gridfs-file.h>
+#include <mongoc/mongoc-cursor.h>
 
 
 BSON_BEGIN_DECLS
@@ -37,13 +37,9 @@ struct _mongoc_gridfs_file_list_t {
 
 
 mongoc_gridfs_file_list_t *
-_mongoc_gridfs_file_list_new (mongoc_gridfs_t *gridfs,
-                              const bson_t *query,
-                              uint32_t limit);
+_mongoc_gridfs_file_list_new (mongoc_gridfs_t *gridfs, const bson_t *query, uint32_t limit);
 mongoc_gridfs_file_list_t *
-_mongoc_gridfs_file_list_new_with_opts (mongoc_gridfs_t *gridfs,
-                                        const bson_t *filter,
-                                        const bson_t *opts);
+_mongoc_gridfs_file_list_new_with_opts (mongoc_gridfs_t *gridfs, const bson_t *filter, const bson_t *opts);
 
 
 BSON_END_DECLS

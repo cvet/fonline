@@ -1,4 +1,4 @@
-/* $OpenBSD: gendh.c,v 1.11 2019/07/14 03:30:45 guenther Exp $ */
+/* $OpenBSD: gendh.c,v 1.14 2023/03/06 14:32:06 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -84,12 +84,12 @@
 
 #define DEFBITS	512
 
-static int dh_cb(int p, int n, BN_GENCB * cb);
+static int dh_cb(int p, int n, BN_GENCB *cb);
 
 static struct {
 	int g;
 	char *outfile;
-} gendh_config;
+} cfg;
 
 static const struct option gendh_options[] = {
 	{
@@ -98,21 +98,21 @@ static const struct option gendh_options[] = {
 		    "(default)",
 		.type = OPTION_VALUE,
 		.value = 2,
-		.opt.value = &gendh_config.g,
+		.opt.value = &cfg.g,
 	},
 	{
 		.name = "5",
 		.desc = "Generate DH parameters with a generator value of 5",
 		.type = OPTION_VALUE,
 		.value = 5,
-		.opt.value = &gendh_config.g,
+		.opt.value = &cfg.g,
 	},
 	{
 		.name = "out",
 		.argname = "file",
 		.desc = "Output file (default stdout)",
 		.type = OPTION_ARG,
-		.opt.arg = &gendh_config.outfile,
+		.opt.arg = &cfg.outfile,
 	},
 	{ NULL },
 };
@@ -128,24 +128,27 @@ gendh_usage(void)
 int
 gendh_main(int argc, char **argv)
 {
-	BN_GENCB cb;
+	BN_GENCB *cb = NULL;
 	DH *dh = NULL;
 	int ret = 1, numbits = DEFBITS;
 	BIO *out = NULL;
 	char *strbits = NULL;
 
-	if (single_execution) {
-		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
-			perror("pledge");
-			exit(1);
-		}
+	if (pledge("stdio cpath wpath rpath", NULL) == -1) {
+		perror("pledge");
+		exit(1);
 	}
 
-	BN_GENCB_set(&cb, dh_cb, bio_err);
+	if ((cb = BN_GENCB_new()) == NULL) {
+		BIO_printf(bio_err, "Error allocating BN_GENCB object\n");
+		goto end;
+	}
 
-	memset(&gendh_config, 0, sizeof(gendh_config));
+	BN_GENCB_set(cb, dh_cb, bio_err);
 
-	gendh_config.g = 2;
+	memset(&cfg, 0, sizeof(cfg));
+
+	cfg.g = 2;
 
 	if (options_parse(argc, argv, gendh_options, &strbits, NULL) != 0) {
 		gendh_usage();
@@ -166,21 +169,21 @@ gendh_main(int argc, char **argv)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-	if (gendh_config.outfile == NULL) {
+	if (cfg.outfile == NULL) {
 		BIO_set_fp(out, stdout, BIO_NOCLOSE);
 	} else {
-		if (BIO_write_filename(out, gendh_config.outfile) <= 0) {
-			perror(gendh_config.outfile);
+		if (BIO_write_filename(out, cfg.outfile) <= 0) {
+			perror(cfg.outfile);
 			goto end;
 		}
 	}
 
 	BIO_printf(bio_err, "Generating DH parameters, %d bit long safe prime,"
-	    " generator %d\n", numbits, gendh_config.g);
+	    " generator %d\n", numbits, cfg.g);
 	BIO_printf(bio_err, "This is going to take a long time\n");
 
 	if (((dh = DH_new()) == NULL) ||
-	    !DH_generate_parameters_ex(dh, numbits, gendh_config.g, &cb))
+	    !DH_generate_parameters_ex(dh, numbits, cfg.g, cb))
 		goto end;
 
 	if (!PEM_write_bio_DHparams(out, dh))
@@ -190,13 +193,14 @@ gendh_main(int argc, char **argv)
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 	BIO_free_all(out);
+	BN_GENCB_free(cb);
 	DH_free(dh);
 
 	return (ret);
 }
 
 static int
-dh_cb(int p, int n, BN_GENCB * cb)
+dh_cb(int p, int n, BN_GENCB *cb)
 {
 	char c = '*';
 
@@ -208,8 +212,8 @@ dh_cb(int p, int n, BN_GENCB * cb)
 		c = '*';
 	if (p == 3)
 		c = '\n';
-	BIO_write(cb->arg, &c, 1);
-	(void) BIO_flush(cb->arg);
+	BIO_write(BN_GENCB_get_arg(cb), &c, 1);
+	(void) BIO_flush(BN_GENCB_get_arg(cb));
 	return 1;
 }
 #endif

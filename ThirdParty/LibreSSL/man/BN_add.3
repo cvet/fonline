@@ -1,9 +1,26 @@
-.\"	$OpenBSD: BN_add.3,v 1.13 2018/04/29 15:58:21 schwarze Exp $
-.\"	OpenSSL b97fdb57 Nov 11 09:33:09 2016 +0100
+.\" $OpenBSD: BN_add.3,v 1.20 2023/04/27 09:47:03 tb Exp $
+.\" full merge up to: OpenSSL e9b77246 Jan 20 19:58:49 2017 +0100
 .\"
-.\" This file was written by Ulf Moeller <ulf@openssl.org>
+.\" This file is a derived work.
+.\" The changes are covered by the following Copyright and license:
+.\"
+.\" Copyright (c) 2021 Ingo Schwarze <schwarze@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\" The original file was written by Ulf Moeller <ulf@openssl.org>
 .\" and Bodo Moeller <bodo@openssl.org>.
-.\" Copyright (c) 2000, 2001, 2015 The OpenSSL Project.  All rights reserved.
+.\" Copyright (c) 2000, 2015 The OpenSSL Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -49,29 +66,37 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: April 29 2018 $
+.Dd $Mdocdate: April 27 2023 $
 .Dt BN_ADD 3
 .Os
 .Sh NAME
 .Nm BN_add ,
+.Nm BN_uadd ,
 .Nm BN_sub ,
+.Nm BN_usub ,
 .Nm BN_mul ,
 .Nm BN_sqr ,
 .Nm BN_div ,
 .Nm BN_mod ,
 .Nm BN_nnmod ,
 .Nm BN_mod_add ,
+.Nm BN_mod_add_quick ,
 .Nm BN_mod_sub ,
+.Nm BN_mod_sub_quick ,
 .Nm BN_mod_mul ,
 .Nm BN_mod_sqr ,
+.Nm BN_mod_lshift ,
+.Nm BN_mod_lshift_quick ,
+.Nm BN_mod_lshift1 ,
+.Nm BN_mod_lshift1_quick ,
 .Nm BN_exp ,
 .Nm BN_mod_exp ,
 .\" The following are public, but intentionally undocumented for now:
+.\" .Nm BN_mod_exp_mont ,  r \(== a ^ p (mod m)
 .\" .Nm BN_mod_exp_mont_consttime ,
-.\" .Nm BN_mod_exp_mont ,
 .\" .Nm BN_mod_exp_mont_word ,
-.\" .Nm BN_mod_exp_recp ,
 .\" .Nm BN_mod_exp_simple ,
+.\" .Nm BN_mod_exp2_mont   r \(== (a1 ^ p1) * (a2 ^ p2) (mod m)
 .\" Maybe they should be deleted from <openssl/bn.h>.
 .Nm BN_gcd
 .Nd arithmetic operations on BIGNUMs
@@ -84,7 +109,19 @@
 .Fa "const BIGNUM *b"
 .Fc
 .Ft int
+.Fo BN_uadd
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
+.Fc
+.Ft int
 .Fo BN_sub
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
+.Fc
+.Ft int
+.Fo BN_usub
 .Fa "BIGNUM *r"
 .Fa "const BIGNUM *a"
 .Fa "const BIGNUM *b"
@@ -92,14 +129,14 @@
 .Ft int
 .Fo BN_mul
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *b"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
 .Fo BN_sqr
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
+.Fa "const BIGNUM *a"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
@@ -127,45 +164,87 @@
 .Ft int
 .Fo BN_mod_add
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *b"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
 .Fa "const BIGNUM *m"
 .Fa "BN_CTX *ctx"
+.Fc
+.Ft int
+.Fo BN_mod_add_quick
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
+.Fa "const BIGNUM *m"
 .Fc
 .Ft int
 .Fo BN_mod_sub
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *b"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
 .Fa "const BIGNUM *m"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
+.Fo BN_mod_sub_quick
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
+.Fa "const BIGNUM *m"
+.Fc
+.Ft int
 .Fo BN_mod_mul
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *b"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
 .Fa "const BIGNUM *m"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
 .Fo BN_mod_sqr
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
+.Fa "const BIGNUM *a"
 .Fa "const BIGNUM *m"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
+.Fo BN_mod_lshift
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "int n"
+.Fa "const BIGNUM *m"
+.Fa "BN_CTX *ctx"
+.Fc
+.Ft int
+.Fo BN_mod_lshift_quick
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "int n"
+.Fa "const BIGNUM *m"
+.Fc
+.Ft int
+.Fo BN_mod_lshift1
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *m"
+.Fa "BN_CTX *ctx"
+.Fc
+.Ft int
+.Fo BN_mod_lshift1_quick
+.Fa "BIGNUM *r"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *m"
+.Fc
+.Ft int
 .Fo BN_exp
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *p"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *p"
 .Fa "BN_CTX *ctx"
 .Fc
 .Ft int
 .Fo BN_mod_exp
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
+.Fa "const BIGNUM *a"
 .Fa "const BIGNUM *p"
 .Fa "const BIGNUM *m"
 .Fa "BN_CTX *ctx"
@@ -173,8 +252,8 @@
 .Ft int
 .Fo BN_gcd
 .Fa "BIGNUM *r"
-.Fa "BIGNUM *a"
-.Fa "BIGNUM *b"
+.Fa "const BIGNUM *a"
+.Fa "const BIGNUM *b"
 .Fa "BN_CTX *ctx"
 .Fc
 .Sh DESCRIPTION
@@ -194,6 +273,22 @@ as
 or
 .Fa b .
 .Pp
+.Fn BN_uadd
+adds the absolute values of
+.Fa a
+and
+.Fa b
+and places the result in
+.Fa r
+.Pq Li r=|a|+|b|\& .
+.Fa r
+may be the same
+.Vt BIGNUM
+as
+.Fa a
+or
+.Fa b .
+.Pp
 .Fn BN_sub
 subtracts
 .Fa b
@@ -202,6 +297,27 @@ from
 and places the result in
 .Fa r
 .Pq Li r=a-b .
+.Fa r
+may be the same
+.Vt BIGNUM
+as
+.Fa a
+or
+.Fa b .
+.Pp
+.Fn BN_usub
+subtracts the absolute value of
+.Fa b
+from the absolute value of
+.Fa a
+and places the result in
+.Fa r
+.Pq Li r=|a|-|b|\& .
+It requires the absolute value of
+.Fa a
+to be greater than the absolute value of
+.Fa b ;
+otherwise it will fail.
 .Fa r
 may be the same
 .Vt BIGNUM
@@ -299,6 +415,18 @@ modulo
 and places the non-negative result in
 .Fa r .
 .Pp
+.Fn BN_mod_add_quick
+is a variant of
+.Fn BN_mod_add
+that requires
+.Fa a
+and
+.Fa b
+to both be non-negative and smaller than
+.Fa m .
+If any of these constraints are violated,
+it silently produces wrong results.
+.Pp
 .Fn BN_mod_sub
 subtracts
 .Fa b
@@ -308,6 +436,18 @@ modulo
 .Fa m
 and places the non-negative result in
 .Fa r .
+.Pp
+.Fn BN_mod_sub_quick
+is a variant of
+.Fn BN_mod_sub
+that requires
+.Fa a
+and
+.Fa b
+to both be non-negative and smaller than
+.Fa m .
+If any of these constraints are violated,
+it silently produces wrong results.
 .Pp
 .Fn BN_mod_mul
 multiplies
@@ -324,11 +464,9 @@ as
 .Fa a
 or
 .Fa b .
-For more efficient algorithms for repeated computations using the same
+For a more efficient algorithm for repeated computations using the same
 modulus, see
-.Xr BN_mod_mul_montgomery 3
-and
-.Xr BN_mod_mul_reciprocal 3 .
+.Xr BN_mod_mul_montgomery 3 .
 .Pp
 .Fn BN_mod_sqr
 takes the square of
@@ -337,6 +475,40 @@ modulo
 .Fa m
 and places the result in
 .Fa r .
+.Pp
+.Fn BN_mod_lshift
+shifts
+.Fa a
+left by
+.Fa n
+bits, reduces the result modulo
+.Fa m ,
+and places the non-negative remainder in
+.Fa r
+.Pq Li r=a*2^n mod m .
+.Pp
+.Fn BN_mod_lshift1
+shifts
+.Fa a
+left by one bit, reduces the result modulo
+.Fa m ,
+and places the non-negative remainder in
+.Fa r
+.Pq Li r=a*2 mod m .
+.Pp
+.Fn BN_mod_lshift_quick
+and
+.Fn BN_mod_lshift1_quick
+are variants of
+.Fn BN_mod_lshift
+and
+.Fn BN_mod_lshift1 ,
+respectively, that require
+.Fa a
+to be non-negative and less than
+.Fa m .
+If either of these constraints is violated, they sometimes fail
+and sometimes silently produce wrong results.
 .Pp
 .Fn BN_exp
 raises
@@ -422,18 +594,26 @@ first appeared in SSLeay 0.9.0.
 All these functions have been available since
 .Ox 2.4 .
 .Pp
-The
+.Fn BN_uadd ,
+.Fn BN_usub ,
+and the
 .Fa ctx
 argument to
 .Fn BN_mul
-was added in SSLeay 0.9.1 and
+first appeared in SSLeay 0.9.1 and have been available since
 .Ox 2.6 .
 .Pp
 .Fn BN_nnmod ,
 .Fn BN_mod_add ,
+.Fn BN_mod_add_quick ,
 .Fn BN_mod_sub ,
+.Fn BN_mod_sub_quick ,
+.Fn BN_mod_sqr ,
+.Fn BN_mod_lshift ,
+.Fn BN_mod_lshift_quick ,
+.Fn BN_mod_lshift1 ,
 and
-.Fn BN_mod_sqr
+.Fn BN_mod_lshift1_quick
 first appeared in OpenSSL 0.9.7 and have been available since
 .Ox 3.2 .
 .Sh BUGS

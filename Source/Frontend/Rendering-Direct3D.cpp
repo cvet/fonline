@@ -40,7 +40,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-#include "SDL_syswm.h"
+#include "SDL3/SDL_video.h"
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 
@@ -223,13 +223,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     VSync = settings.ClientMode && settings.VSync;
     SdlWindow = static_cast<SDL_Window*>(window);
 
-    SDL_SysWMinfo wminfo = {};
-    SDL_VERSION(&wminfo.version)
-    SDL_GetWindowWMInfo(SdlWindow, &wminfo);
 #if !FO_UWP
-    auto* hwnd = wminfo.info.win.window;
+    auto* hwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(SdlWindow), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 #else
-    HWND hwnd = 0;
+    HWND hwnd = nullptr;
 #endif
 
     // Device

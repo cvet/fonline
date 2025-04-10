@@ -1,4 +1,4 @@
-/* $OpenBSD: key_schedule.c,v 1.9 2019/11/18 02:09:58 beck Exp $ */
+/* $OpenBSD: key_schedule.c,v 1.11 2024/08/23 12:56:26 anton Exp $ */
 /*
  * Copyright (c) 2018-2019 Bob Beck <beck@openbsd.org>
  *
@@ -17,7 +17,7 @@
 
 #include <err.h>
 
-#include "ssl_locl.h"
+#include "ssl_local.h"
 
 #include "bytestring.h"
 #include "ssl_tlsext.h"
@@ -188,7 +188,7 @@ main (int argc, char **argv)
 	struct tls13_secrets *secrets;
 
 	if ((secrets = tls13_secrets_create(EVP_sha256(), 0)) == NULL)
-		errx(1,"failed to create secrets\n");
+		errx(1, "failed to create secrets");
 
 	secrets->insecure = 1; /* don't explicit_bzero when done */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 
 #include <limits.h>
 
-#include "mongoc-counters-private.h"
-#include "mongoc-stream.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-gridfs-file.h"
-#include "mongoc-gridfs-file-private.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-stream-gridfs.h"
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-stream.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-gridfs-file.h>
+#include <mongoc/mongoc-gridfs-file-private.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-stream-gridfs.h>
 
 
 #undef MONGOC_LOG_DOMAIN
@@ -97,11 +97,8 @@ _mongoc_stream_gridfs_flush (mongoc_stream_t *stream)
 
 
 static ssize_t
-_mongoc_stream_gridfs_readv (mongoc_stream_t *stream,
-                             mongoc_iovec_t *iov,
-                             size_t iovcnt,
-                             size_t min_bytes,
-                             int32_t timeout_msec)
+_mongoc_stream_gridfs_readv (
+   mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, size_t min_bytes, int32_t timeout_msec)
 {
    mongoc_stream_gridfs_t *file = (mongoc_stream_gridfs_t *) stream;
    ssize_t ret = 0;
@@ -124,10 +121,7 @@ _mongoc_stream_gridfs_readv (mongoc_stream_t *stream,
 
 
 static ssize_t
-_mongoc_stream_gridfs_writev (mongoc_stream_t *stream,
-                              mongoc_iovec_t *iov,
-                              size_t iovcnt,
-                              int32_t timeout_msec)
+_mongoc_stream_gridfs_writev (mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, int32_t timeout_msec)
 {
    mongoc_stream_gridfs_t *file = (mongoc_stream_gridfs_t *) stream;
    ssize_t ret = 0;

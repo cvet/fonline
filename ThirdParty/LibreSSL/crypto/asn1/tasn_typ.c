@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_typ.c,v 1.13 2015/07/24 15:09:52 jsing Exp $ */
+/* $OpenBSD: tasn_typ.c,v 1.20 2024/07/08 16:24:22 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -61,139 +61,12 @@
 
 /* Declarations for string types */
 
-const ASN1_ITEM ASN1_INTEGER_it = {
-	.itype = ASN1_ITYPE_PRIMITIVE,
-	.utype = V_ASN1_INTEGER,
-	.sname = "ASN1_INTEGER",
-};
-
-ASN1_INTEGER *
-d2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **in, long len)
-{
-	return (ASN1_INTEGER *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-	    &ASN1_INTEGER_it);
-}
-
-int
-i2d_ASN1_INTEGER(ASN1_INTEGER *a, unsigned char **out)
-{
-	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_INTEGER_it);
-}
-
-ASN1_INTEGER *
-ASN1_INTEGER_new(void)
-{
-	return (ASN1_INTEGER *)ASN1_item_new(&ASN1_INTEGER_it);
-}
-
-void
-ASN1_INTEGER_free(ASN1_INTEGER *a)
-{
-	ASN1_item_free((ASN1_VALUE *)a, &ASN1_INTEGER_it);
-}
-
-
-const ASN1_ITEM ASN1_ENUMERATED_it = {
-	.itype = ASN1_ITYPE_PRIMITIVE,
-	.utype = V_ASN1_ENUMERATED,
-	.sname = "ASN1_ENUMERATED",
-};
-
-ASN1_ENUMERATED *
-d2i_ASN1_ENUMERATED(ASN1_ENUMERATED **a, const unsigned char **in, long len)
-{
-	return (ASN1_ENUMERATED *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-	    &ASN1_ENUMERATED_it);
-}
-
-int
-i2d_ASN1_ENUMERATED(ASN1_ENUMERATED *a, unsigned char **out)
-{
-	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_ENUMERATED_it);
-}
-
-ASN1_ENUMERATED *
-ASN1_ENUMERATED_new(void)
-{
-	return (ASN1_ENUMERATED *)ASN1_item_new(&ASN1_ENUMERATED_it);
-}
-
-void
-ASN1_ENUMERATED_free(ASN1_ENUMERATED *a)
-{
-	ASN1_item_free((ASN1_VALUE *)a, &ASN1_ENUMERATED_it);
-}
-
-
-const ASN1_ITEM ASN1_BIT_STRING_it = {
-	.itype = ASN1_ITYPE_PRIMITIVE,
-	.utype = V_ASN1_BIT_STRING,
-	.sname = "ASN1_BIT_STRING",
-};
-
-ASN1_BIT_STRING *
-d2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a, const unsigned char **in, long len)
-{
-	return (ASN1_BIT_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-	    &ASN1_BIT_STRING_it);
-}
-
-int
-i2d_ASN1_BIT_STRING(ASN1_BIT_STRING *a, unsigned char **out)
-{
-	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_BIT_STRING_it);
-}
-
-ASN1_BIT_STRING *
-ASN1_BIT_STRING_new(void)
-{
-	return (ASN1_BIT_STRING *)ASN1_item_new(&ASN1_BIT_STRING_it);
-}
-
-void
-ASN1_BIT_STRING_free(ASN1_BIT_STRING *a)
-{
-	ASN1_item_free((ASN1_VALUE *)a, &ASN1_BIT_STRING_it);
-}
-
-
-const ASN1_ITEM ASN1_OCTET_STRING_it = {
-	.itype = ASN1_ITYPE_PRIMITIVE,
-	.utype = V_ASN1_OCTET_STRING,
-	.sname = "ASN1_OCTET_STRING",
-};
-
-ASN1_OCTET_STRING *
-d2i_ASN1_OCTET_STRING(ASN1_OCTET_STRING **a, const unsigned char **in, long len)
-{
-	return (ASN1_OCTET_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-	    &ASN1_OCTET_STRING_it);
-}
-
-int
-i2d_ASN1_OCTET_STRING(ASN1_OCTET_STRING *a, unsigned char **out)
-{
-	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_OCTET_STRING_it);
-}
-
-ASN1_OCTET_STRING *
-ASN1_OCTET_STRING_new(void)
-{
-	return (ASN1_OCTET_STRING *)ASN1_item_new(&ASN1_OCTET_STRING_it);
-}
-
-void
-ASN1_OCTET_STRING_free(ASN1_OCTET_STRING *a)
-{
-	ASN1_item_free((ASN1_VALUE *)a, &ASN1_OCTET_STRING_it);
-}
-
-
 const ASN1_ITEM ASN1_NULL_it = {
 	.itype = ASN1_ITYPE_PRIMITIVE,
 	.utype = V_ASN1_NULL,
 	.sname = "ASN1_NULL",
 };
+LCRYPTO_ALIAS(ASN1_NULL_it);
 
 ASN1_NULL *
 d2i_ASN1_NULL(ASN1_NULL **a, const unsigned char **in, long len)
@@ -201,31 +74,28 @@ d2i_ASN1_NULL(ASN1_NULL **a, const unsigned char **in, long len)
 	return (ASN1_NULL *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_NULL_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_NULL);
 
 int
 i2d_ASN1_NULL(ASN1_NULL *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_NULL_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_NULL);
 
 ASN1_NULL *
 ASN1_NULL_new(void)
 {
 	return (ASN1_NULL *)ASN1_item_new(&ASN1_NULL_it);
 }
+LCRYPTO_ALIAS(ASN1_NULL_new);
 
 void
 ASN1_NULL_free(ASN1_NULL *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_NULL_it);
 }
-
-
-const ASN1_ITEM ASN1_OBJECT_it = {
-	.itype = ASN1_ITYPE_PRIMITIVE,
-	.utype = V_ASN1_OBJECT,
-	.sname = "ASN1_OBJECT",
-};
+LCRYPTO_ALIAS(ASN1_NULL_free);
 
 
 const ASN1_ITEM ASN1_UTF8STRING_it = {
@@ -233,6 +103,7 @@ const ASN1_ITEM ASN1_UTF8STRING_it = {
 	.utype = V_ASN1_UTF8STRING,
 	.sname = "ASN1_UTF8STRING",
 };
+LCRYPTO_ALIAS(ASN1_UTF8STRING_it);
 
 ASN1_UTF8STRING *
 d2i_ASN1_UTF8STRING(ASN1_UTF8STRING **a, const unsigned char **in, long len)
@@ -240,24 +111,28 @@ d2i_ASN1_UTF8STRING(ASN1_UTF8STRING **a, const unsigned char **in, long len)
 	return (ASN1_UTF8STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_UTF8STRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_UTF8STRING);
 
 int
 i2d_ASN1_UTF8STRING(ASN1_UTF8STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_UTF8STRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_UTF8STRING);
 
 ASN1_UTF8STRING *
 ASN1_UTF8STRING_new(void)
 {
 	return (ASN1_UTF8STRING *)ASN1_item_new(&ASN1_UTF8STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_UTF8STRING_new);
 
 void
 ASN1_UTF8STRING_free(ASN1_UTF8STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_UTF8STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_UTF8STRING_free);
 
 
 const ASN1_ITEM ASN1_PRINTABLESTRING_it = {
@@ -265,6 +140,7 @@ const ASN1_ITEM ASN1_PRINTABLESTRING_it = {
 	.utype = V_ASN1_PRINTABLESTRING,
 	.sname = "ASN1_PRINTABLESTRING",
 };
+LCRYPTO_ALIAS(ASN1_PRINTABLESTRING_it);
 
 ASN1_PRINTABLESTRING *
 d2i_ASN1_PRINTABLESTRING(ASN1_PRINTABLESTRING **a, const unsigned char **in,
@@ -273,24 +149,28 @@ d2i_ASN1_PRINTABLESTRING(ASN1_PRINTABLESTRING **a, const unsigned char **in,
 	return (ASN1_PRINTABLESTRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_PRINTABLESTRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_PRINTABLESTRING);
 
 int
 i2d_ASN1_PRINTABLESTRING(ASN1_PRINTABLESTRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_PRINTABLESTRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_PRINTABLESTRING);
 
 ASN1_PRINTABLESTRING *
 ASN1_PRINTABLESTRING_new(void)
 {
 	return (ASN1_PRINTABLESTRING *)ASN1_item_new(&ASN1_PRINTABLESTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_PRINTABLESTRING_new);
 
 void
 ASN1_PRINTABLESTRING_free(ASN1_PRINTABLESTRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_PRINTABLESTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_PRINTABLESTRING_free);
 
 
 const ASN1_ITEM ASN1_T61STRING_it = {
@@ -298,6 +178,7 @@ const ASN1_ITEM ASN1_T61STRING_it = {
 	.utype = V_ASN1_T61STRING,
 	.sname = "ASN1_T61STRING",
 };
+LCRYPTO_ALIAS(ASN1_T61STRING_it);
 
 ASN1_T61STRING *
 d2i_ASN1_T61STRING(ASN1_T61STRING **a, const unsigned char **in, long len)
@@ -305,24 +186,28 @@ d2i_ASN1_T61STRING(ASN1_T61STRING **a, const unsigned char **in, long len)
 	return (ASN1_T61STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_T61STRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_T61STRING);
 
 int
 i2d_ASN1_T61STRING(ASN1_T61STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_T61STRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_T61STRING);
 
 ASN1_T61STRING *
 ASN1_T61STRING_new(void)
 {
 	return (ASN1_T61STRING *)ASN1_item_new(&ASN1_T61STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_T61STRING_new);
 
 void
 ASN1_T61STRING_free(ASN1_T61STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_T61STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_T61STRING_free);
 
 
 const ASN1_ITEM ASN1_IA5STRING_it = {
@@ -330,6 +215,7 @@ const ASN1_ITEM ASN1_IA5STRING_it = {
 	.utype = V_ASN1_IA5STRING,
 	.sname = "ASN1_IA5STRING",
 };
+LCRYPTO_ALIAS(ASN1_IA5STRING_it);
 
 ASN1_IA5STRING *
 d2i_ASN1_IA5STRING(ASN1_IA5STRING **a, const unsigned char **in, long len)
@@ -337,24 +223,28 @@ d2i_ASN1_IA5STRING(ASN1_IA5STRING **a, const unsigned char **in, long len)
 	return (ASN1_IA5STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_IA5STRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_IA5STRING);
 
 int
 i2d_ASN1_IA5STRING(ASN1_IA5STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_IA5STRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_IA5STRING);
 
 ASN1_IA5STRING *
 ASN1_IA5STRING_new(void)
 {
 	return (ASN1_IA5STRING *)ASN1_item_new(&ASN1_IA5STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_IA5STRING_new);
 
 void
 ASN1_IA5STRING_free(ASN1_IA5STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_IA5STRING_it);
 }
+LCRYPTO_ALIAS(ASN1_IA5STRING_free);
 
 
 const ASN1_ITEM ASN1_GENERALSTRING_it = {
@@ -362,6 +252,7 @@ const ASN1_ITEM ASN1_GENERALSTRING_it = {
 	.utype = V_ASN1_GENERALSTRING,
 	.sname = "ASN1_GENERALSTRING",
 };
+LCRYPTO_ALIAS(ASN1_GENERALSTRING_it);
 
 ASN1_GENERALSTRING *
 d2i_ASN1_GENERALSTRING(ASN1_GENERALSTRING **a, const unsigned char **in,
@@ -370,24 +261,28 @@ d2i_ASN1_GENERALSTRING(ASN1_GENERALSTRING **a, const unsigned char **in,
 	return (ASN1_GENERALSTRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_GENERALSTRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_GENERALSTRING);
 
 int
 i2d_ASN1_GENERALSTRING(ASN1_GENERALSTRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_GENERALSTRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_GENERALSTRING);
 
 ASN1_GENERALSTRING *
 ASN1_GENERALSTRING_new(void)
 {
 	return (ASN1_GENERALSTRING *)ASN1_item_new(&ASN1_GENERALSTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_GENERALSTRING_new);
 
 void
 ASN1_GENERALSTRING_free(ASN1_GENERALSTRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_GENERALSTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_GENERALSTRING_free);
 
 
 const ASN1_ITEM ASN1_UTCTIME_it = {
@@ -395,6 +290,7 @@ const ASN1_ITEM ASN1_UTCTIME_it = {
 	.utype = V_ASN1_UTCTIME,
 	.sname = "ASN1_UTCTIME",
 };
+LCRYPTO_ALIAS(ASN1_UTCTIME_it);
 
 ASN1_UTCTIME *
 d2i_ASN1_UTCTIME(ASN1_UTCTIME **a, const unsigned char **in, long len)
@@ -402,24 +298,28 @@ d2i_ASN1_UTCTIME(ASN1_UTCTIME **a, const unsigned char **in, long len)
 	return (ASN1_UTCTIME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_UTCTIME_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_UTCTIME);
 
 int
 i2d_ASN1_UTCTIME(ASN1_UTCTIME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_UTCTIME_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_UTCTIME);
 
 ASN1_UTCTIME *
 ASN1_UTCTIME_new(void)
 {
 	return (ASN1_UTCTIME *)ASN1_item_new(&ASN1_UTCTIME_it);
 }
+LCRYPTO_ALIAS(ASN1_UTCTIME_new);
 
 void
 ASN1_UTCTIME_free(ASN1_UTCTIME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_UTCTIME_it);
 }
+LCRYPTO_ALIAS(ASN1_UTCTIME_free);
 
 
 const ASN1_ITEM ASN1_GENERALIZEDTIME_it = {
@@ -427,6 +327,7 @@ const ASN1_ITEM ASN1_GENERALIZEDTIME_it = {
 	.utype = V_ASN1_GENERALIZEDTIME,
 	.sname = "ASN1_GENERALIZEDTIME",
 };
+LCRYPTO_ALIAS(ASN1_GENERALIZEDTIME_it);
 
 ASN1_GENERALIZEDTIME *
 d2i_ASN1_GENERALIZEDTIME(ASN1_GENERALIZEDTIME **a, const unsigned char **in,
@@ -435,24 +336,28 @@ d2i_ASN1_GENERALIZEDTIME(ASN1_GENERALIZEDTIME **a, const unsigned char **in,
 	return (ASN1_GENERALIZEDTIME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_GENERALIZEDTIME_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_GENERALIZEDTIME);
 
 int
 i2d_ASN1_GENERALIZEDTIME(ASN1_GENERALIZEDTIME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_GENERALIZEDTIME_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_GENERALIZEDTIME);
 
 ASN1_GENERALIZEDTIME *
 ASN1_GENERALIZEDTIME_new(void)
 {
 	return (ASN1_GENERALIZEDTIME *)ASN1_item_new(&ASN1_GENERALIZEDTIME_it);
 }
+LCRYPTO_ALIAS(ASN1_GENERALIZEDTIME_new);
 
 void
 ASN1_GENERALIZEDTIME_free(ASN1_GENERALIZEDTIME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_GENERALIZEDTIME_it);
 }
+LCRYPTO_ALIAS(ASN1_GENERALIZEDTIME_free);
 
 
 const ASN1_ITEM ASN1_VISIBLESTRING_it = {
@@ -460,6 +365,7 @@ const ASN1_ITEM ASN1_VISIBLESTRING_it = {
 	.utype = V_ASN1_VISIBLESTRING,
 	.sname = "ASN1_VISIBLESTRING",
 };
+LCRYPTO_ALIAS(ASN1_VISIBLESTRING_it);
 
 ASN1_VISIBLESTRING *
 d2i_ASN1_VISIBLESTRING(ASN1_VISIBLESTRING **a, const unsigned char **in,
@@ -468,24 +374,28 @@ d2i_ASN1_VISIBLESTRING(ASN1_VISIBLESTRING **a, const unsigned char **in,
 	return (ASN1_VISIBLESTRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_VISIBLESTRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_VISIBLESTRING);
 
 int
 i2d_ASN1_VISIBLESTRING(ASN1_VISIBLESTRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_VISIBLESTRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_VISIBLESTRING);
 
 ASN1_VISIBLESTRING *
 ASN1_VISIBLESTRING_new(void)
 {
 	return (ASN1_VISIBLESTRING *)ASN1_item_new(&ASN1_VISIBLESTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_VISIBLESTRING_new);
 
 void
 ASN1_VISIBLESTRING_free(ASN1_VISIBLESTRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_VISIBLESTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_VISIBLESTRING_free);
 
 
 const ASN1_ITEM ASN1_UNIVERSALSTRING_it = {
@@ -493,6 +403,7 @@ const ASN1_ITEM ASN1_UNIVERSALSTRING_it = {
 	.utype = V_ASN1_UNIVERSALSTRING,
 	.sname = "ASN1_UNIVERSALSTRING",
 };
+LCRYPTO_ALIAS(ASN1_UNIVERSALSTRING_it);
 
 ASN1_UNIVERSALSTRING *
 d2i_ASN1_UNIVERSALSTRING(ASN1_UNIVERSALSTRING **a, const unsigned char **in,
@@ -501,24 +412,28 @@ d2i_ASN1_UNIVERSALSTRING(ASN1_UNIVERSALSTRING **a, const unsigned char **in,
 	return (ASN1_UNIVERSALSTRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_UNIVERSALSTRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_UNIVERSALSTRING);
 
 int
 i2d_ASN1_UNIVERSALSTRING(ASN1_UNIVERSALSTRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_UNIVERSALSTRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_UNIVERSALSTRING);
 
 ASN1_UNIVERSALSTRING *
 ASN1_UNIVERSALSTRING_new(void)
 {
 	return (ASN1_UNIVERSALSTRING *)ASN1_item_new(&ASN1_UNIVERSALSTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_UNIVERSALSTRING_new);
 
 void
 ASN1_UNIVERSALSTRING_free(ASN1_UNIVERSALSTRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_UNIVERSALSTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_UNIVERSALSTRING_free);
 
 
 const ASN1_ITEM ASN1_BMPSTRING_it = {
@@ -526,6 +441,7 @@ const ASN1_ITEM ASN1_BMPSTRING_it = {
 	.utype = V_ASN1_BMPSTRING,
 	.sname = "ASN1_BMPSTRING",
 };
+LCRYPTO_ALIAS(ASN1_BMPSTRING_it);
 
 ASN1_BMPSTRING *
 d2i_ASN1_BMPSTRING(ASN1_BMPSTRING **a, const unsigned char **in, long len)
@@ -533,31 +449,36 @@ d2i_ASN1_BMPSTRING(ASN1_BMPSTRING **a, const unsigned char **in, long len)
 	return (ASN1_BMPSTRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_BMPSTRING_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_BMPSTRING);
 
 int
 i2d_ASN1_BMPSTRING(ASN1_BMPSTRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_BMPSTRING_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_BMPSTRING);
 
 ASN1_BMPSTRING *
 ASN1_BMPSTRING_new(void)
 {
 	return (ASN1_BMPSTRING *)ASN1_item_new(&ASN1_BMPSTRING_it);
 }
+LCRYPTO_ALIAS(ASN1_BMPSTRING_new);
 
 void
 ASN1_BMPSTRING_free(ASN1_BMPSTRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_BMPSTRING_it);
 }
-
+LCRYPTO_ALIAS(ASN1_BMPSTRING_free);
 
 const ASN1_ITEM ASN1_ANY_it = {
 	.itype = ASN1_ITYPE_PRIMITIVE,
 	.utype = V_ASN1_ANY,
 	.sname = "ASN1_ANY",
 };
+LCRYPTO_ALIAS(ASN1_ANY_it);
+
 
 /* Just swallow an ASN1_SEQUENCE in an ASN1_STRING */
 
@@ -566,32 +487,8 @@ const ASN1_ITEM ASN1_SEQUENCE_it = {
 	.utype = V_ASN1_SEQUENCE,
 	.sname = "ASN1_SEQUENCE",
 };
+LCRYPTO_ALIAS(ASN1_SEQUENCE_it);
 
-
-ASN1_TYPE *
-d2i_ASN1_TYPE(ASN1_TYPE **a, const unsigned char **in, long len)
-{
-	return (ASN1_TYPE *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-	    &ASN1_ANY_it);
-}
-
-int
-i2d_ASN1_TYPE(ASN1_TYPE *a, unsigned char **out)
-{
-	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_ANY_it);
-}
-
-ASN1_TYPE *
-ASN1_TYPE_new(void)
-{
-	return (ASN1_TYPE *)ASN1_item_new(&ASN1_ANY_it);
-}
-
-void
-ASN1_TYPE_free(ASN1_TYPE *a)
-{
-	ASN1_item_free((ASN1_VALUE *)a, &ASN1_ANY_it);
-}
 
 /* Multistring types */
 
@@ -605,6 +502,7 @@ const ASN1_ITEM ASN1_PRINTABLE_it = {
 	.size = sizeof(ASN1_STRING),
 	.sname = "ASN1_PRINTABLE",
 };
+LCRYPTO_ALIAS(ASN1_PRINTABLE_it);
 
 ASN1_STRING *
 d2i_ASN1_PRINTABLE(ASN1_STRING **a, const unsigned char **in, long len)
@@ -612,24 +510,28 @@ d2i_ASN1_PRINTABLE(ASN1_STRING **a, const unsigned char **in, long len)
 	return (ASN1_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_PRINTABLE_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_PRINTABLE);
 
 int
 i2d_ASN1_PRINTABLE(ASN1_STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_PRINTABLE_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_PRINTABLE);
 
 ASN1_STRING *
 ASN1_PRINTABLE_new(void)
 {
 	return (ASN1_STRING *)ASN1_item_new(&ASN1_PRINTABLE_it);
 }
+LCRYPTO_ALIAS(ASN1_PRINTABLE_new);
 
 void
 ASN1_PRINTABLE_free(ASN1_STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ASN1_PRINTABLE_it);
 }
+LCRYPTO_ALIAS(ASN1_PRINTABLE_free);
 
 
 const ASN1_ITEM DISPLAYTEXT_it = {
@@ -641,6 +543,7 @@ const ASN1_ITEM DISPLAYTEXT_it = {
 	.size = sizeof(ASN1_STRING),
 	.sname = "DISPLAYTEXT",
 };
+LCRYPTO_ALIAS(DISPLAYTEXT_it);
 
 ASN1_STRING *
 d2i_DISPLAYTEXT(ASN1_STRING **a, const unsigned char **in, long len)
@@ -648,24 +551,28 @@ d2i_DISPLAYTEXT(ASN1_STRING **a, const unsigned char **in, long len)
 	return (ASN1_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &DISPLAYTEXT_it);
 }
+LCRYPTO_ALIAS(d2i_DISPLAYTEXT);
 
 int
 i2d_DISPLAYTEXT(ASN1_STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &DISPLAYTEXT_it);
 }
+LCRYPTO_ALIAS(i2d_DISPLAYTEXT);
 
 ASN1_STRING *
 DISPLAYTEXT_new(void)
 {
 	return (ASN1_STRING *)ASN1_item_new(&DISPLAYTEXT_it);
 }
+LCRYPTO_ALIAS(DISPLAYTEXT_new);
 
 void
 DISPLAYTEXT_free(ASN1_STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &DISPLAYTEXT_it);
 }
+LCRYPTO_ALIAS(DISPLAYTEXT_free);
 
 
 const ASN1_ITEM DIRECTORYSTRING_it = {
@@ -677,6 +584,7 @@ const ASN1_ITEM DIRECTORYSTRING_it = {
 	.size = sizeof(ASN1_STRING),
 	.sname = "DIRECTORYSTRING",
 };
+LCRYPTO_ALIAS(DIRECTORYSTRING_it);
 
 ASN1_STRING *
 d2i_DIRECTORYSTRING(ASN1_STRING **a, const unsigned char **in, long len)
@@ -684,24 +592,28 @@ d2i_DIRECTORYSTRING(ASN1_STRING **a, const unsigned char **in, long len)
 	return (ASN1_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &DIRECTORYSTRING_it);
 }
+LCRYPTO_ALIAS(d2i_DIRECTORYSTRING);
 
 int
 i2d_DIRECTORYSTRING(ASN1_STRING *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &DIRECTORYSTRING_it);
 }
+LCRYPTO_ALIAS(i2d_DIRECTORYSTRING);
 
 ASN1_STRING *
 DIRECTORYSTRING_new(void)
 {
 	return (ASN1_STRING *)ASN1_item_new(&DIRECTORYSTRING_it);
 }
+LCRYPTO_ALIAS(DIRECTORYSTRING_new);
 
 void
 DIRECTORYSTRING_free(ASN1_STRING *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &DIRECTORYSTRING_it);
 }
+LCRYPTO_ALIAS(DIRECTORYSTRING_free);
 
 /* Three separate BOOLEAN type: normal, DEFAULT TRUE and DEFAULT FALSE */
 
@@ -711,6 +623,28 @@ const ASN1_ITEM ASN1_BOOLEAN_it = {
 	.size = -1,
 	.sname = "ASN1_BOOLEAN",
 };
+
+int
+i2d_ASN1_BOOLEAN(int a, unsigned char **out)
+{
+	return ASN1_item_ex_i2d((ASN1_VALUE **)&a, out,
+	    &ASN1_BOOLEAN_it, -1, 0);
+}
+
+int
+d2i_ASN1_BOOLEAN(int *a, const unsigned char **in, long len)
+{
+	ASN1_BOOLEAN abool;
+
+	if (ASN1_item_ex_d2i((ASN1_VALUE **)&abool, in, len, &ASN1_BOOLEAN_it,
+	    -1, 0, 0, NULL) <= 0)
+		return -1;
+
+	if (a != NULL)
+		*a = abool;
+
+	return abool;
+}
 
 const ASN1_ITEM ASN1_TBOOLEAN_it = {
 	.itype = ASN1_ITYPE_PRIMITIVE,
@@ -752,6 +686,7 @@ const ASN1_ITEM ASN1_SEQUENCE_ANY_it = {
 	.size = 0,
 	.sname = "ASN1_SEQUENCE_ANY",
 };
+LCRYPTO_ALIAS(ASN1_SEQUENCE_ANY_it);
 
 static const ASN1_TEMPLATE ASN1_SET_ANY_item_tt = {
 	.flags = ASN1_TFLG_SET_OF,
@@ -770,6 +705,7 @@ const ASN1_ITEM ASN1_SET_ANY_it = {
 	.size = 0,
 	.sname = "ASN1_SET_ANY",
 };
+LCRYPTO_ALIAS(ASN1_SET_ANY_it);
 
 
 ASN1_SEQUENCE_ANY *
@@ -778,12 +714,14 @@ d2i_ASN1_SEQUENCE_ANY(ASN1_SEQUENCE_ANY **a, const unsigned char **in, long len)
 	return (ASN1_SEQUENCE_ANY *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_SEQUENCE_ANY_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_SEQUENCE_ANY);
 
 int
 i2d_ASN1_SEQUENCE_ANY(const ASN1_SEQUENCE_ANY *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_SEQUENCE_ANY_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_SEQUENCE_ANY);
 
 ASN1_SEQUENCE_ANY *
 d2i_ASN1_SET_ANY(ASN1_SEQUENCE_ANY **a, const unsigned char **in, long len)
@@ -791,9 +729,11 @@ d2i_ASN1_SET_ANY(ASN1_SEQUENCE_ANY **a, const unsigned char **in, long len)
 	return (ASN1_SEQUENCE_ANY *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ASN1_SET_ANY_it);
 }
+LCRYPTO_ALIAS(d2i_ASN1_SET_ANY);
 
 int
 i2d_ASN1_SET_ANY(const ASN1_SEQUENCE_ANY *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_SET_ANY_it);
 }
+LCRYPTO_ALIAS(i2d_ASN1_SET_ANY);

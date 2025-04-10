@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,39 +17,36 @@
 
 #include <bson/bson.h>
 
-#include "mongoc-config.h"
-#include "mongoc-counters-private.h"
-#include "mongoc-init.h"
+#include <mongoc/mongoc-config.h>
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-init.h>
 
-#include "mongoc-handshake-private.h"
+#include <mongoc/mongoc-handshake-private.h>
 
-#include "mongoc-cluster-aws-private.h"
+#include <mongoc/mongoc-cluster-aws-private.h>
 
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
-#include "mongoc-openssl-private.h"
-#elif defined(MONGOC_ENABLE_SSL_LIBRESSL)
-#include "tls.h"
+#include <mongoc/mongoc-openssl-private.h>
 #endif
-#include "mongoc-thread-private.h"
-#include "common-b64-private.h"
+#include <mongoc/mongoc-thread-private.h>
+#include <common-b64-private.h>
 #if defined(MONGOC_ENABLE_CRYPTO_CNG)
-#include "mongoc-crypto-private.h"
-#include "mongoc-crypto-cng-private.h"
+#include <mongoc/mongoc-crypto-private.h>
+#include <mongoc/mongoc-crypto-cng-private.h>
 #endif
 
 #ifdef MONGOC_ENABLE_MONGODB_AWS_AUTH
-#include "kms_message/kms_message.h"
+#include <kms_message/kms_message.h>
 #endif
 
 #ifdef MONGOC_ENABLE_OCSP_OPENSSL
-#include "mongoc-ocsp-cache-private.h"
+#include <mongoc/mongoc-ocsp-cache-private.h>
 #endif
 
-#ifndef MONGOC_NO_AUTOMATIC_GLOBALS
-#pragma message( \
-   "Configure the driver with ENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF.\
- Automatic cleanup is deprecated and will be removed in version 2.0.")
-#endif
+// CDRIVER-2722: Cyrus SASL is deprecated on MacOS.
+#if defined(MONGOC_ENABLE_SASL_CYRUS) && defined(__APPLE__)
+BEGIN_IGNORE_DEPRECATIONS
+#endif // defined(MONGOC_ENABLE_SASL_CYRUS) && defined(__APPLE__)
 
 #ifdef MONGOC_ENABLE_SASL_CYRUS
 #include <sasl/sasl.h>
@@ -93,25 +90,28 @@ mongoc_cyrus_mutex_free (void *mutex)
 
 #endif /* MONGOC_ENABLE_SASL_CYRUS */
 
+static bool mongoc_init_called;
+bool
+mongoc_get_init_called (void)
+{
+   return mongoc_init_called;
+}
 
 static BSON_ONCE_FUN (_mongoc_do_init)
 {
+   mongoc_init_called = true;
 #ifdef MONGOC_ENABLE_SASL_CYRUS
    int status;
 #endif
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
    _mongoc_openssl_init ();
-#elif defined(MONGOC_ENABLE_SSL_LIBRESSL)
-   tls_init ();
 #endif
 
 #ifdef MONGOC_ENABLE_SASL_CYRUS
    /* The following functions should not use tracing, as they may be invoked
     * before mongoc_log_set_handler() can complete. */
-   sasl_set_mutex (mongoc_cyrus_mutex_alloc,
-                   mongoc_cyrus_mutex_lock,
-                   mongoc_cyrus_mutex_unlock,
-                   mongoc_cyrus_mutex_free);
+   sasl_set_mutex (
+      mongoc_cyrus_mutex_alloc, mongoc_cyrus_mutex_lock, mongoc_cyrus_mutex_unlock, mongoc_cyrus_mutex_free);
 
    status = sasl_client_init (NULL);
    BSON_ASSERT (status == SASL_OK);
@@ -206,25 +206,7 @@ mongoc_cleanup (void)
    bson_once (&once, _mongoc_do_cleanup);
 }
 
-/*
- * On GCC, just use __attribute__((constructor)) to perform initialization
- * automatically for the application.
- */
-#if defined(__GNUC__) && !defined(MONGOC_NO_AUTOMATIC_GLOBALS)
-static void
-_mongoc_init_ctor (void) __attribute__ ((constructor));
-static void
-_mongoc_init_ctor (void)
-{
-   mongoc_init ();
-}
-
-static void
-_mongoc_init_dtor (void) __attribute__ ((destructor));
-static void
-_mongoc_init_dtor (void)
-{
-   bson_mem_restore_vtable ();
-   mongoc_cleanup ();
-}
-#endif
+// CDRIVER-2722: Cyrus SASL is deprecated on MacOS.
+#if defined(MONGOC_ENABLE_SASL_CYRUS) && defined(__APPLE__)
+BEGIN_IGNORE_DEPRECATIONS
+#endif // defined(MONGOC_ENABLE_SASL_CYRUS) && defined(__APPLE__)

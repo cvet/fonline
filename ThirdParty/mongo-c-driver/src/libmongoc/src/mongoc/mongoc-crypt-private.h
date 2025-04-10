@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_CRYPT_PRIVATE_H
 #define MONGOC_CRYPT_PRIVATE_H
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
+#include <mongoc/mongoc-util-private.h>
 
-#include "mongoc.h"
+#include <mongoc/mongoc.h>
 
 typedef struct mc_kms_credentials_callback {
    mongoc_kms_credentials_provider_callback_fn fn;
@@ -48,6 +49,7 @@ _mongoc_crypt_new (const bson_t *kms_providers,
                    bool bypass_auto_encryption,
                    bool bypass_query_analysis,
                    mc_kms_credentials_callback creds_cb,
+                   mcd_optional_u64_t cache_expiration_ms,
                    bson_error_t *error);
 
 void
@@ -85,36 +87,34 @@ Perform explicit encryption.
 Return false on error and sets `error`.
 */
 bool
-_mongoc_crypt_explicit_encrypt (
-   _mongoc_crypt_t *crypt,
-   mongoc_collection_t *key_vault_coll,
-   const char *algorithm /* may be NULL */,
-   const bson_value_t *keyid /* may be NULL */,
-   const char *keyaltname /* may be NULL */,
-   const char *query_type /* may be NULL */,
-   const int64_t *contention_factor /* may be NULL */,
-   const bson_t *range_opts /* may be NULL */,
-   const bson_value_t *value_in,
-   bson_value_t *value_out,
-   bson_error_t *error);
+_mongoc_crypt_explicit_encrypt (_mongoc_crypt_t *crypt,
+                                mongoc_collection_t *key_vault_coll,
+                                const char *algorithm /* may be NULL */,
+                                const bson_value_t *keyid /* may be NULL */,
+                                const char *keyaltname /* may be NULL */,
+                                const char *query_type /* may be NULL */,
+                                const int64_t *contention_factor /* may be NULL */,
+                                const bson_t *range_opts /* may be NULL */,
+                                const bson_value_t *value_in,
+                                bson_value_t *value_out,
+                                bson_error_t *error);
 
 /*
 Perform explicit encryption on an expression.
 Return false on error and sets `error`.
 */
 bool
-_mongoc_crypt_explicit_encrypt_expression (
-   _mongoc_crypt_t *crypt,
-   mongoc_collection_t *key_vault_coll,
-   const char *algorithm /* may be NULL */,
-   const bson_value_t *keyid /* may be NULL */,
-   const char *keyaltname /* may be NULL */,
-   const char *query_type /* may be NULL */,
-   const int64_t *contention_factor /* may be NULL */,
-   const bson_t *range_opts /* may be NULL */,
-   const bson_t *expr_in,
-   bson_t *expr_out,
-   bson_error_t *error);
+_mongoc_crypt_explicit_encrypt_expression (_mongoc_crypt_t *crypt,
+                                           mongoc_collection_t *key_vault_coll,
+                                           const char *algorithm /* may be NULL */,
+                                           const bson_value_t *keyid /* may be NULL */,
+                                           const char *keyaltname /* may be NULL */,
+                                           const char *query_type /* may be NULL */,
+                                           const int64_t *contention_factor /* may be NULL */,
+                                           const bson_t *range_opts /* may be NULL */,
+                                           const bson_t *expr_in,
+                                           bson_t *expr_out,
+                                           bson_error_t *error);
 
 /*
 Perform explicit decryption.

@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_lib.c,v 1.23 2018/08/24 20:03:21 tb Exp $ */
+/* $OpenBSD: ocsp_lib.c,v 1.28 2024/08/28 06:27:19 tb Exp $ */
 /* Written by Tom Titchener <Tom_Titchener@groove.net> for the OpenSSL
  * project. */
 
@@ -74,6 +74,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "ocsp_local.h"
+#include "x509_local.h"
+
 /* Convert a certificate and its issuer to an OCSP_CERTID */
 
 OCSP_CERTID *
@@ -94,9 +97,12 @@ OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject, const X509 *issuer)
 		iname = X509_get_subject_name(issuer);
 		serial = NULL;
 	}
-	ikey = X509_get0_pubkey_bitstr(issuer);
+	if ((ikey = X509_get0_pubkey_bitstr(issuer)) == NULL)
+		return NULL;
+
 	return OCSP_cert_id_new(dgst, iname, ikey, serial);
 }
+LCRYPTO_ALIAS(OCSP_cert_to_id);
 
 OCSP_CERTID *
 OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
@@ -104,58 +110,58 @@ OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
 {
 	int nid;
 	unsigned int i;
-	X509_ALGOR *alg;
 	OCSP_CERTID *cid = NULL;
 	unsigned char md[EVP_MAX_MD_SIZE];
 
-	if (!(cid = OCSP_CERTID_new()))
+	if ((cid = OCSP_CERTID_new()) == NULL)
 		goto err;
 
-	alg = cid->hashAlgorithm;
-	if (alg->algorithm != NULL)
-		ASN1_OBJECT_free(alg->algorithm);
 	if ((nid = EVP_MD_type(dgst)) == NID_undef) {
 		OCSPerror(OCSP_R_UNKNOWN_NID);
 		goto err;
 	}
-	if (!(alg->algorithm = OBJ_nid2obj(nid)))
+	if (!X509_ALGOR_set0_by_nid(cid->hashAlgorithm, nid, V_ASN1_NULL, NULL))
 		goto err;
-	if ((alg->parameter = ASN1_TYPE_new()) == NULL)
-		goto err;
-	alg->parameter->type = V_ASN1_NULL;
 
-	if (!X509_NAME_digest(issuerName, dgst, md, &i))
-		goto digerr;
-	if (!(ASN1_OCTET_STRING_set(cid->issuerNameHash, md, i)))
+	if (!X509_NAME_digest(issuerName, dgst, md, &i)) {
+		OCSPerror(OCSP_R_DIGEST_ERR);
+		goto err;
+	}
+	if (!ASN1_OCTET_STRING_set(cid->issuerNameHash, md, i))
 		goto err;
 
 	/* Calculate the issuerKey hash, excluding tag and length */
 	if (!EVP_Digest(issuerKey->data, issuerKey->length, md, &i, dgst, NULL))
 		goto err;
 
-	if (!(ASN1_OCTET_STRING_set(cid->issuerKeyHash, md, i)))
+	if (!ASN1_OCTET_STRING_set(cid->issuerKeyHash, md, i))
 		goto err;
 
-	if (serialNumber) {
+	if (serialNumber != NULL) {
 		ASN1_INTEGER_free(cid->serialNumber);
-		if (!(cid->serialNumber = ASN1_INTEGER_dup(serialNumber)))
+		if ((cid->serialNumber = ASN1_INTEGER_dup(serialNumber)) == NULL)
 			goto err;
 	}
+
 	return cid;
 
-digerr:
-	OCSPerror(OCSP_R_DIGEST_ERR);
-err:
-	if (cid)
-		OCSP_CERTID_free(cid);
+ err:
+	OCSP_CERTID_free(cid);
+
 	return NULL;
 }
+LCRYPTO_ALIAS(OCSP_cert_id_new);
 
 int
 OCSP_id_issuer_cmp(OCSP_CERTID *a, OCSP_CERTID *b)
 {
 	int ret;
 
+	/*
+	 * XXX - should we really ignore parameters here? We probably need to
+	 * consider omitted parameters and explicit ASN.1 NULL as equal for
+	 * the SHAs, so don't blindly switch to X509_ALGOR_cmp().
+	 */
 	ret = OBJ_cmp(a->hashAlgorithm->algorithm, b->hashAlgorithm->algorithm);
 	if (ret)
 		return ret;
@@ -164,6 +170,7 @@ OCSP_id_issuer_cmp(OCSP_CERTID *a, OCSP_CERTID *b)
 		return ret;
 	return ASN1_OCTET_STRING_cmp(a->issuerKeyHash, b->issuerKeyHash);
 }
+LCRYPTO_ALIAS(OCSP_id_issuer_cmp);
 
 int
 OCSP_id_cmp(OCSP_CERTID *a, OCSP_CERTID *b)
@@ -175,6 +182,7 @@ OCSP_id_cmp(OCSP_CERTID *a, OCSP_CERTID *b)
 		return ret;
 	return ASN1_INTEGER_cmp(a->serialNumber, b->serialNumber);
 }
+LCRYPTO_ALIAS(OCSP_id_cmp);
 
 /* Parse a URL and split it up into host, port and path components and whether
  * it is SSL.
@@ -231,9 +239,11 @@ OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
 	*pport = port;
 	return 1;
 }
+LCRYPTO_ALIAS(OCSP_parse_url);
 
 OCSP_CERTID *
 OCSP_CERTID_dup(OCSP_CERTID *x)
 {
 	return ASN1_item_dup(&OCSP_CERTID_it, x);
 }
+LCRYPTO_ALIAS(OCSP_CERTID_dup);

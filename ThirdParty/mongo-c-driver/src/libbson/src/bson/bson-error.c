@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "bson-compat.h"
-#include "bson-config.h"
-#include "bson-error.h"
-#include "bson-memory.h"
-#include "bson-string.h"
-#include "bson-types.h"
+#include <bson/bson-compat.h>
+#include <bson/bson-config.h>
+#include <bson/bson-error-private.h>
+#include <bson/bson-memory.h>
+#include <common-string-private.h>
+#include <bson/bson-types.h>
 
 // See `bson_strerror_r()` definition below.
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -74,12 +74,11 @@ bson_set_error (bson_error_t *error, /* OUT */
    if (error) {
       error->domain = domain;
       error->code = code;
+      bson_set_error_category (error, BSON_ERROR_CATEGORY);
 
       va_start (args, format);
       bson_vsnprintf (error->message, sizeof error->message, format, args);
       va_end (args);
-
-      error->message[sizeof error->message - 1] = '\0';
    }
 }
 
@@ -116,6 +115,10 @@ bson_strerror_r (int err_code,                    /* IN */
    if (strerror_s (buf, buflen, err_code) != 0) {
       ret = buf;
    }
+#elif defined(_AIX)
+   // AIX does not provide strerror_l, and its strerror_r isn't glibc's.
+   // But it does provide a glibc compatible one called __linux_strerror_r
+   ret = __linux_strerror_r (err_code, buf, buflen);
 #elif defined(__APPLE__)
    // Apple does not provide `strerror_l`, but it does unconditionally provide
    // the XSI-compliant `strerror_r`, but only when compiling with Apple Clang.
@@ -126,6 +129,7 @@ bson_strerror_r (int err_code,                    /* IN */
    // required) by the POSIX spec (see:
    // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strerror.html#tag_16_574_08).
    (void) strerror_r (err_code, buf, buflen);
+   ret = buf;
 #elif defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 700
    // The behavior (of `strerror_l`) is undefined if the locale argument to
    // `strerror_l()` is the special locale object LC_GLOBAL_LOCALE or is not a

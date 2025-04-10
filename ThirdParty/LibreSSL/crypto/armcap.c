@@ -1,4 +1,4 @@
-/* $OpenBSD: armcap.c,v 1.8 2019/03/13 10:18:30 patrick Exp $ */
+/* $OpenBSD: armcap.c,v 1.3 2024/08/29 03:30:05 deraadt Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +14,11 @@ unsigned int OPENSSL_armcap_P;
 static sigset_t all_masked;
 
 static sigjmp_buf ill_jmp;
-	static void ill_handler (int sig) { siglongjmp(ill_jmp, sig);
+
+static void
+ill_handler(int sig)
+{
+	siglongjmp(ill_jmp, sig);
 }
 
 /*
@@ -26,10 +30,6 @@ void _armv8_aes_probe(void);
 void _armv8_sha1_probe(void);
 void _armv8_sha256_probe(void);
 void _armv8_pmull_probe(void);
-#endif
-
-#if defined(__GNUC__) && __GNUC__>=2
-void OPENSSL_cpuid_setup(void) __attribute__((constructor));
 #endif
 
 void
