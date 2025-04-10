@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_CLIENT_SESSION_PRIVATE_H
 #define MONGOC_CLIENT_SESSION_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-client-session.h"
+#include <mongoc/mongoc-client-session.h>
 
 /* error labels: see Transactions Spec */
 #define TRANSIENT_TXN_ERR "TransientTransactionError"
@@ -88,9 +88,7 @@ struct _mongoc_client_session_t {
 };
 
 bool
-_mongoc_parse_cluster_time (const bson_t *cluster_time,
-                            uint32_t *timestamp,
-                            uint32_t *increment);
+_mongoc_parse_cluster_time (const bson_t *cluster_time, uint32_t *timestamp, uint32_t *increment);
 
 bool
 _mongoc_cluster_time_greater (const bson_t *new, const bson_t *old);
@@ -102,15 +100,13 @@ _mongoc_client_session_handle_reply (mongoc_client_session_t *session,
                                      const bson_t *reply);
 
 bool
-_mongoc_server_session_init (mongoc_server_session_t *session,
-                             bson_error_t *error);
+_mongoc_server_session_init (mongoc_server_session_t *session, bson_error_t *error);
 
 void
 _mongoc_server_session_destroy (mongoc_server_session_t *session);
 
 bool
-_mongoc_server_session_timed_out (const mongoc_server_session_t *server_session,
-                                  int64_t session_timeout_minutes);
+_mongoc_server_session_timed_out (const mongoc_server_session_t *server_session, int64_t session_timeout_minutes);
 
 mongoc_client_session_t *
 _mongoc_client_session_new (mongoc_client_t *client,
@@ -128,16 +124,13 @@ bool
 _mongoc_client_session_in_txn (const mongoc_client_session_t *session);
 
 bool
-_mongoc_client_session_in_txn_or_ending (
-   const mongoc_client_session_t *session);
+_mongoc_client_session_in_txn_or_ending (const mongoc_client_session_t *session);
 
 bool
 _mongoc_client_session_txn_in_progress (const mongoc_client_session_t *session);
 
 bool
-_mongoc_client_session_append_txn (mongoc_client_session_t *session,
-                                   bson_t *cmd,
-                                   bson_error_t *error);
+_mongoc_client_session_append_txn (mongoc_client_session_t *session, bson_t *cmd, bson_error_t *error);
 
 void
 _mongoc_client_session_append_read_concern (const mongoc_client_session_t *cs,
@@ -149,13 +142,10 @@ void
 _mongoc_client_session_unpin (mongoc_client_session_t *session);
 
 void
-_mongoc_client_session_pin (mongoc_client_session_t *session,
-                            uint32_t server_id);
+_mongoc_client_session_pin (mongoc_client_session_t *session, uint32_t server_id);
 
 void
-_mongoc_client_session_set_snapshot_time (mongoc_client_session_t *session,
-                                          uint32_t t,
-                                          uint32_t i);
+_mongoc_client_session_set_snapshot_time (mongoc_client_session_t *session, uint32_t t, uint32_t i);
 
 void
 _mongoc_client_session_clear_snapshot_time (mongoc_client_session_t *session);

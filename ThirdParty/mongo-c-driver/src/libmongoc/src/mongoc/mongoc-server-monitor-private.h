@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SERVER_MONITOR_PRIVATE_H
 #define MONGOC_SERVER_MONITOR_PRIVATE_H
 
-#include "mongoc.h"
-#include "mongoc-server-description-private.h"
-#include "mongoc-topology-private.h"
+#include <mongoc/mongoc.h>
+#include <mongoc/mongoc-server-description-private.h>
+#include <mongoc/mongoc-topology-private.h>
 
 /* For background monitoring of a single server. */
+typedef enum {
+   MONGOC_SERVER_MONITORING_AUTO = 0,
+   MONGOC_SERVER_MONITORING_POLL,
+   MONGOC_SERVER_MONITORING_STREAM
+} mongoc_server_monitoring_mode_t;
 
 typedef struct _mongoc_server_monitor_t mongoc_server_monitor_t;
 
@@ -39,12 +44,10 @@ void
 mongoc_server_monitor_request_scan (mongoc_server_monitor_t *server_monitor);
 
 bool
-mongoc_server_monitor_request_shutdown (
-   mongoc_server_monitor_t *server_monitor);
+mongoc_server_monitor_request_shutdown (mongoc_server_monitor_t *server_monitor);
 
 void
-mongoc_server_monitor_wait_for_shutdown (
-   mongoc_server_monitor_t *server_monitor);
+mongoc_server_monitor_wait_for_shutdown (mongoc_server_monitor_t *server_monitor);
 
 void
 mongoc_server_monitor_destroy (mongoc_server_monitor_t *server_monitor);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,22 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_CLIENT_POOL_PRIVATE_H
 #define MONGOC_CLIENT_POOL_PRIVATE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-client-pool.h"
-#include "mongoc-topology-description.h"
-#include "mongoc-topology-private.h"
+#include <mongoc/mongoc-client-pool.h>
+#include <mongoc/mongoc-topology-description.h>
+#include <mongoc/mongoc-topology-private.h>
 
 BSON_BEGIN_DECLS
 
 /* for tests */
 void
-_mongoc_client_pool_set_stream_initiator (mongoc_client_pool_t *pool,
-                                          mongoc_stream_initiator_t si,
-                                          void *user_data);
+_mongoc_client_pool_set_stream_initiator (mongoc_client_pool_t *pool, mongoc_stream_initiator_t si, void *user_data);
 size_t
 mongoc_client_pool_get_size (mongoc_client_pool_t *pool);
 size_t

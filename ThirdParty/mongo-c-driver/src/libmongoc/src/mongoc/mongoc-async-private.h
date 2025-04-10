@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_ASYNC_PRIVATE_H
 #define MONGOC_ASYNC_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-stream.h"
+#include <mongoc/mongoc-stream.h>
 
 BSON_BEGIN_DECLS
 
@@ -45,14 +45,10 @@ typedef void (*mongoc_async_cmd_cb_t) (struct _mongoc_async_cmd *acmd,
                                        const bson_t *bson,
                                        int64_t duration_usec);
 
-typedef mongoc_stream_t *(*mongoc_async_cmd_initiate_t) (
-   struct _mongoc_async_cmd *);
+typedef mongoc_stream_t *(*mongoc_async_cmd_initiate_t) (struct _mongoc_async_cmd *);
 
-typedef int (*mongoc_async_cmd_setup_t) (mongoc_stream_t *stream,
-                                         int *events,
-                                         void *ctx,
-                                         int32_t timeout_msec,
-                                         bson_error_t *error);
+typedef int (*mongoc_async_cmd_setup_t) (
+   mongoc_stream_t *stream, int *events, void *ctx, int32_t timeout_msec, bson_error_t *error);
 
 
 mongoc_async_t *

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 
 
-#include "mongoc-stream-private.h"
-#include "mongoc-stream-socket.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-socket-private.h"
-#include "mongoc-errno-private.h"
-#include "mongoc-counters-private.h"
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream-socket.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-socket-private.h>
+#include <mongoc/mongoc-errno-private.h>
+#include <mongoc/mongoc-counters-private.h>
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream"
@@ -99,11 +99,8 @@ _mongoc_stream_socket_failed (mongoc_stream_t *stream)
 
 
 static int
-_mongoc_stream_socket_setsockopt (mongoc_stream_t *stream,
-                                  int level,
-                                  int optname,
-                                  void *optval,
-                                  mongoc_socklen_t optlen)
+_mongoc_stream_socket_setsockopt (
+   mongoc_stream_t *stream, int level, int optname, void *optval, mongoc_socklen_t optlen)
 {
    mongoc_stream_socket_t *ss = (mongoc_stream_socket_t *) stream;
    int ret;
@@ -129,11 +126,8 @@ _mongoc_stream_socket_flush (mongoc_stream_t *stream)
 
 
 static ssize_t
-_mongoc_stream_socket_readv (mongoc_stream_t *stream,
-                             mongoc_iovec_t *iov,
-                             size_t iovcnt,
-                             size_t min_bytes,
-                             int32_t timeout_msec)
+_mongoc_stream_socket_readv (
+   mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, size_t min_bytes, int32_t timeout_msec)
 {
    mongoc_stream_socket_t *ss = (mongoc_stream_socket_t *) stream;
    int64_t expire_at;
@@ -155,8 +149,7 @@ _mongoc_stream_socket_readv (mongoc_stream_t *stream,
     */
 
    for (;;) {
-      nread = mongoc_socket_recv (
-         ss->sock, iov[cur].iov_base, iov[cur].iov_len, 0, expire_at);
+      nread = mongoc_socket_recv (ss->sock, iov[cur].iov_base, iov[cur].iov_len, 0, expire_at);
 
       if (nread <= 0) {
          if (ret >= (ssize_t) min_bytes) {
@@ -192,10 +185,7 @@ _mongoc_stream_socket_readv (mongoc_stream_t *stream,
 
 
 static ssize_t
-_mongoc_stream_socket_writev (mongoc_stream_t *stream,
-                              mongoc_iovec_t *iov,
-                              size_t iovcnt,
-                              int32_t timeout_msec)
+_mongoc_stream_socket_writev (mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, int32_t timeout_msec)
 {
    mongoc_stream_socket_t *ss = (mongoc_stream_socket_t *) stream;
    int64_t expire_at;
@@ -215,9 +205,7 @@ _mongoc_stream_socket_writev (mongoc_stream_t *stream,
 
 
 static ssize_t
-_mongoc_stream_socket_poll (mongoc_stream_poll_t *streams,
-                            size_t nstreams,
-                            int32_t timeout_msec)
+_mongoc_stream_socket_poll (mongoc_stream_poll_t *streams, size_t nstreams, int32_t timeout_msec)
 
 {
    ssize_t ret = -1;

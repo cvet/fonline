@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 
 #include <errno.h>
 
-#include "mongoc-buffer-private.h"
-#include "mongoc-counters-private.h"
-#include "mongoc-log.h"
-#include "mongoc-stream-buffered.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-trace-private.h"
+#include <mongoc/mongoc-buffer-private.h>
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-stream-buffered.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-trace-private.h>
 
 
 #undef MONGOC_LOG_DOMAIN
@@ -182,8 +182,7 @@ mongoc_stream_buffered_writev (mongoc_stream_t *stream, /* IN */
 
    BSON_ASSERT (buffered);
 
-   ret =
-      mongoc_stream_writev (buffered->base_stream, iov, iovcnt, timeout_msec);
+   ret = mongoc_stream_writev (buffered->base_stream, iov, iovcnt, timeout_msec);
 
    RETURN (ret);
 }
@@ -239,11 +238,7 @@ mongoc_stream_buffered_readv (mongoc_stream_t *stream, /* IN */
       total_bytes += iov[i].iov_len;
    }
 
-   if (-1 == _mongoc_buffer_fill (&buffered->buffer,
-                                  buffered->base_stream,
-                                  total_bytes,
-                                  timeout_msec,
-                                  &error)) {
+   if (-1 == _mongoc_buffer_fill (&buffered->buffer, buffered->base_stream, total_bytes, timeout_msec, &error)) {
       MONGOC_WARNING ("%s", error.message);
       RETURN (-1);
    }
@@ -256,8 +251,7 @@ mongoc_stream_buffered_readv (mongoc_stream_t *stream, /* IN */
       buffered->buffer.len -= iov[i].iov_len;
    }
 
-   memmove (
-      buffered->buffer.data, buffered->buffer.data + off, buffered->buffer.len);
+   memmove (buffered->buffer.data, buffered->buffer.data + off, buffered->buffer.len);
 
    RETURN (total_bytes);
 }

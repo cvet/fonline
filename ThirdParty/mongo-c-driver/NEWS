@@ -1,3 +1,621 @@
+libmongoc 2.0.0
+===============
+
+## Notes
+
+* In a future minor release the minimum supported MongoDB Server version will be raised from 4.0 to 4.2. This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
+* Raise required version of libmongocrypt to 1.13.0 to support In-Use Encryption (corresponds to the CMake option: `ENABLE_CLIENT_SIDE_ENCRYPTION`).
+
+## Changes
+
+* Passing `batchSize:0` as an option to `mongoc_client_watch`, `mongoc_database_watch`, or `mongoc_collection_watch`
+  now applies `batchSize:0` to the `aggregate` command. Useful to request an immediate cursor. Previously the value
+  was ignored.
+* `bson_oid_init_sequence` is removed. Use `bson_oid_init` instead.
+* `mongoc_server_description_host` changes the return type from `mongoc_host_list_t *` to `const mongoc_host_list_t *`.
+* URI authentication credentials validation (only applicable during creation of a new `mongoc_uri_t` object from a connection string):
+  * The requirement that a username is non-empty when specified is now enforced regardless of authentication mechanism.
+  * Username and password specification requirements are now validated and returns a client error for the specified authentication mechanism.
+    * e.g. it is a client error to not specify a username or a password for SCRAM-SHA-1, SCRAM-SHA-256, and PLAIN.
+    * e.g. it is a client error to specify a password for MONGODB-X509.
+    * e.g. it is a client error to specify a username or a password without the other for MONGODB-AWS.
+  * `authSource` is now correctly defaulted to `"$external"` for MONGODB-AWS (instead of the database name or `"admin"`).
+  * `authMechanism` is now validated and returns a client error for invalid or unsupported values.
+  * `authMechanismProperties` is now validated and returns a client error for invalid or unsupported properties for the specified authentication mechanism.
+  * `authMechanismProperties` now correctly supports `':'` within property values.
+    * Old behavior: `authMechanismProperties=A:B,C:D:E,F:G` is parsed as `{'A': 'B', 'C': 'D:E,F:G'}`.
+    * New behavior: `authMechanismProperties=A:B,C:D:E,F:G` is parsed as `{'A': 'B': 'C': 'D:E', 'F': 'G'}`.
+* Calling `mongoc_bulk_operation_execute` on the same `mongoc_bulk_operation_t` repeatedly is an error. Previously this was only discouraged in documentation.
+* Consistently apply `__cdecl` calling convention to function declarations in public API. Intended to support consumers building their code using a different [default calling convention](https://learn.microsoft.com/en-us/cpp/build/reference/gd-gr-gv-gz-calling-convention) with MSVC. The mongoc and bson libraries only support being built with the `__cdecl` default calling convention.
+* `mongoc_client_set_ssl_opts` now ignores a pooled `mongoc_client_t` and logs an error. Use `mongoc_client_pool_set_ssl_opts` to set TLS options on a `mongoc_client_pool_t` before popping any clients.
+* `mongoc_client_set_ssl_stream_initiator` now ignores a pooled `mongoc_client_t` and logs an error.
+* The pkg-config files `libmongoc-1.0`, `libmongoc-static-1.0`, `libbson-1.0`,
+  and `libbson-static-1.0` have been renamed to `mongoc2`, `mongoc2-static`,
+  `bson2`, and `bson2-static`, respectively.
+
+### CMake Packages and Imported Targets
+
+The `mongoc-1.0` (and `bson-1.0`) CMake packages have been removed. Instead, use
+`mongoc` or `bson`, and specify a version or version range to be imported:
+
+```cmake
+find_package(mongoc 1.30...2.0)
+```
+
+The new packages import different target names:
+
+- `mongo::mongoc_static` → `mongoc::static`
+- `mongo::mongoc_shared` → `mongoc::shared`
+- The target `mongoc::mongoc` is a shim target that points to either the shared
+  library or the static library.
+
+The BSON library has had similar name changes.
+
+## Removals
+
+* The `bson_md5_t` struct and associated API is removed.
+* The client side matching feature, `mongoc_matcher_t` and related functions are removed.
+* `mongoc_server_description_ismaster` is removed. Use the equivalent `mongoc_server_description_hello` instead.
+* `MONGOC_QUERY_SLAVE_OK` is removed. Use the equivalent `MONGOC_QUERY_SECONDARY_OK` instead.
+* `MONGOC_URI_SLAVEOK` is removed. It was unused.
+* `mongoc_client_command`, `mongoc_database_command`, and `mongoc_collection_command` are removed. Use `mongoc_client_command_simple`,  `mongoc_database_command_simple`, and `mongoc_collection_command_simple` instead.
+* `MONGOC_URI_MAXIDLETIMEMS` and `MONGOC_URI_WAITQUEUEMULTIPLE` are removed. They were unused.
+* `bson_string_t` and associated functions are removed.
+* Support for `ENABLE_SASL=CYRUS` on Windows is removed. Use `ENABLE_SASL=SSPI` or `ENABLE_SASL=OFF` instead.
+    * The associated Windows-only option `CYRUS_PLUGIN_PATH_PREFIX` is removed.
+* Support for the deprecated `minPoolSize` URI option is removed along with associated API: `MONGOC_URI_MINPOOLSIZE` and `mongoc_client_pool_min_size`.
+* Support for LibreSSL (the CMake option `ENABLE_SSL=LIBRESSL`) is removed. Associated API is removed (`MONGOC_ENABLE_SSL_LIBRESSL` and  `mongoc_stream_tls_libressl_new`).
+* `MONGOC_WRITE_CONCERN_W_ERRORS_IGNORED` (value -1) is removed. Use `MONGOC_WRITE_CONCERN_W_UNACKNOWLEDGED` (value 0) which is handled equivalently. If specified in a URI, replace: `mongodb://host/?w=-1` with `mongodb://host/?w=0`.
+* The deprecated CMake option `ENABLE_AUTOMATIC_INIT_AND_CLEANUP` is removed. See [Initialization and cleanup](https://mongoc.org/libmongoc/1.30.2/init-cleanup.html) for expected use of `mongoc_init()` and `mongoc_cleanup()`.
+* `mongoc_client_get_database_names` is removed. Use `mongoc_client_get_database_names_with_opts` instead.
+* `mongoc_client_find_databases` is removed. Use `mongoc_client_find_databases_with_opts` instead.
+* `mongoc_client_get_max_message_size` is removed.
+* `mongoc_client_get_max_bson_size` is removed.
+* Deprecated `mongoc_apm_command_*_get_server_connection_id` functions are removed. Use `mongoc_apm_command_*_get_server_connection_id_int64` instead.
+* Deprecated index management API is removed:
+  * `mongoc_collection_create_index_with_opts`, `mongoc_collection_create_index`, and `mongoc_collection_ensure_index` are removed. Use `mongoc_collection_create_indexes_with_opts` instead.
+  * `mongoc_index_opt_t`, `mongoc_index_opt_geo_t` `mongoc_index_opt_wt_t` are removed. Pass options using `bson_t` to `mongoc_collection_create_indexes_with_opts` instead.
+  * `mongoc_collection_find_indexes` is removed. Use `mongoc_collection_find_indexes_with_opts` instead.
+  * See [MongoDB documentation](https://www.mongodb.com/docs/languages/c/c-driver/current/indexes/) for working with indexes.
+* Deprecated cursor API is removed:
+  * `mongoc_cursor_is_alive` is removed. Use the equivalent `mongoc_cursor_more` instead.
+  * `mongoc_cursor_set_hint` is removed. Use the equivalent `mongoc_cursor_set_server_id` instead.
+  * `mongoc_cursor_get_hint` is removed. Use the equivalent `mongoc_cursor_get_server_id` instead.
+  * `mongoc_cursor_new_from_command_reply` is removed. Use `mongoc_cursor_new_from_command_reply_with_opts` instead.
+* Deprecated CRUD API is removed:
+  * `mongoc_collection_save` is removed. Use `mongoc_collection_insert_one` or `mongoc_collection_replace_one` instead.
+  * `mongoc_collection_delete` is removed. Use `mongoc_collection_delete_one` or `mongoc_collection_delete_many` instead.
+  * `mongoc_delete_flags_t` and `mongoc_reply_flags_t` are removed.
+  * `mongoc_collection_find` is removed. Use `mongoc_collection_find_with_opts` instead.
+  * `mongoc_collection_insert_bulk` is removed. Use `mongoc_collection_insert_many` instead.
+  * `mongoc_collection_create_bulk_operation` is removed. Use `mongoc_collection_create_bulk_operation_with_opts` instead.
+  * `mongoc_collection_get_last_error` is removed. To get results from write operations, instead use:
+      * `mongoc_collection_update_one`
+      * `mongoc_collection_update_many`
+      * `mongoc_collection_replace_one`
+      * `mongoc_collection_delete_one`
+      * `mongoc_collection_delete_many`
+      * `mongoc_collection_insert_one`
+      * `mongoc_collection_insert_many`
+      * `mongoc_bulkwrite_t`
+      * `mongoc_bulk_operation_t`
+  * `mongoc_bulk_operation_delete` is removed. Use `mongoc_bulk_operation_remove()` instead.
+  * `mongoc_bulk_operation_delete_one` is removed. Use `mongoc_bulk_operation_remove_one` instead.
+  * `mongoc_bulk_operation_get_hint` is removed. Use `mongoc_bulk_operation_get_server_id` instead.
+  * `mongoc_bulk_operation_set_hint` is removed. Use `mongoc_bulk_operation_set_server_id` instead.
+  * `mongoc_collection_count` and `mongoc_collection_count_with_opts` are removed. Use `mongoc_collection_count_documents` or `mongoc_collection_estimated_document_count` instead.
+* `mongoc_collection_stats` is removed. Use the [$collStats aggregation pipeline stage](https://www.mongodb.com/docs/manual/reference/operator/aggregation/collStats/) with `mongoc_collection_aggregate` instead.
+* `mongoc_collection_validate` is removed. Run the [validate](https://www.mongodb.com/docs/manual/reference/command/validate/) command directly with `mongoc_client_read_command_with_opts` instead.
+* Deprecated API for `mongoc_database_t` is removed:
+  * `mongoc_database_find_collections` is removed. Use `mongoc_database_find_collections_with_opts` instead.
+  * `mongoc_database_get_collection_names` is removed. Use `mongoc_database_get_collection_names_with_opts` instead.
+* Deprecated GridFS API has been removed:
+  * `mongoc_gridfs_find` is removed. Use `mongoc_gridfs_find_with_opts` instead.
+  * `mongoc_gridfs_find_one` is removed. Use `mongoc_gridfs_find_one_with_opts` instead.
+* Deprecated TLS stream API is removed:
+  * `mongoc_stream_tls_do_handshake` is removed. Use `mongoc_stream_tls_handshake` instead.
+  * `mongoc_stream_tls_check_cert` is removed. Use `mongoc_stream_tls_handshake` instead.
+  * `mongoc_stream_tls_new` is removed. Use `mongoc_stream_tls_new_with_hostname` instead.
+* Deprecated URI API has been removed:
+  * `mongoc_uri_get_service` is removed. Use `mongoc_uri_get_srv_hostname` instead.
+  * `mongoc_uri_get_read_prefs` is removed. Use `mongoc_uri_get_read_prefs_t` instead.
+  * `mongoc_uri_get_ssl` is removed. Use `mongoc_uri_get_tls` instead.
+* Deprecated write concern API is removed:
+  * `mongoc_write_concern_get_fsync` is removed. Use `mongoc_write_concern_get_journal` instead.
+  * `mongoc_write_concern_set_fsync` is removed. Use `mongoc_write_concern_set_journal` instead.
+* The `libmongoc-ssl-1.0` pkg-config file has been removed.
+
+### Forwarding headers (`#include <bson.h>` and `#include <mongoc.h>`)
+
+The compatibility "forwarding" headers have been removed (previously added in 1.13.0). This means it is no longer valid to include the literal header names `mongoc.h` or `bson.h` directly:
+
+```c
+#include <bson.h> // No longer provided!
+#include <mongoc.h> // No longer provided!
+```
+
+Instead, the names must be prefixed with the parent directory: `mongoc/mongoc.h` and `bson/bson.h`:
+
+```c
+#include <bson/bson.h>
+#include <mongoc/mongoc.h>
+```
+
+### `mongoc_client_kill_cursor`
+
+`mongoc_client_kill_cursor` is removed. It did not accept a server identifier. It was only reliable when connected to a single server.
+
+Sending [killCursors](https://www.mongodb.com/docs/manual/reference/command/killCursors/) is not typically needed. `mongoc_cursor_t` manages the cursor lifetime. If needed, use a generic command helper to manually send a `killCursors` command:
+
+```c
+bson_t *cmd = BCON_NEW ("killCursors", "coll", "cursors", "[", BCON_INT64 (cursor_id), "]");
+bool ok = mongoc_client_command_simple_with_server_id (client, "db", cmd, NULL, server_id, NULL, &error);
+if (!ok) {
+  printf ("Failed to send 'killCursors': %s\n", error.message);
+}
+bson_destroy (cmd);
+```
+
+### `mongoc_client_get_server_status`
+
+`mongoc_client_get_server_status` is removed. Use a command helper to run the "serverStatus" command instead:
+
+```c
+bson_t *cmd = BCON_NEW("serverStatus", BCON_INT32(1));
+if (!mongoc_client_command_simple(client, "db", cmd, NULL, &reply, &error)) {
+    printf("Failed to send 'serverStatus': %s\n", error.message);
+} else {
+  // TODO: use `reply`
+}
+bson_destroy(&reply);
+bson_destroy(cmd);
+```
+
+## Contributors
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Ezra Chung
+  * Colby Pike
+  * Micah Scott
+  * Jeroen Ooms
+
+
+libmongoc 1.30.2
+================
+
+Fixes:
+
+  * Fix C23 build on Windows.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Jeroen Ooms
+
+libmongoc 1.30.1
+================
+
+No changes since 1.30.0. Version incremented to match the libbson version.
+
+libmongoc 1.30.0
+================
+
+Fixes:
+
+  * Additional APM events required by the SDAM specification will now be delivered:
+    * Servers that have seen `server_opening` will now see a `server_closed` prior to `topology_closed`.
+    * Before `topology_closed`, a `topology_changed` event will transition to `Unknown` topology type.
+  * Fix reporting insert IDs in `mongoc_bulkwrite_t` when verbose results requested.
+
+Improvements:
+
+  * Improve performance of `mongoc_server_description_new_copy`.
+
+New Features:
+
+  * Add support for structured logging.
+    * See `mongoc_client_set_structured_log_opts` and `mongoc_client_pool_set_structured_log_opts`.
+  * Add option to configure cache lifetime of In-Use Encryption data encryption keys.
+    * See `mongoc_auto_encryption_opts_set_key_expiration` and `mongoc_client_encryption_opts_set_key_expiration`.
+  * Support `sort` option for update and replace operations.
+  * Support constructing a `mongoc_bulkwrite_t` without a client.
+    * See `mongoc_bulkwrite_new` and `mongoc_bulkwrite_set_client`.
+
+Deprecated:
+
+  * Support for Debian 9 and Debian 10.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Micah Scott
+  * Jeremy Mikola
+  * Adrian Dole
+  * Ezra Chung
+  * Antony Polukhin
+  * Jeroen Ooms
+
+libmongoc 1.29.2
+================
+
+Fixes:
+  * Rename `set_error` function to avoid symbol conflicts.
+  * Fix Windows ARM 64 build.
+  * Fix comparison of uninitialized bytes.
+  * Fix format specifier on macOS.
+
+Notes:
+  * Windows ARM 64 is not-yet officially tested or supported. Support is community driven.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Adrian Dole
+  * Christian Schmitz
+  * Antony Polukhin
+  * Kevin Albertson
+
+
+
+libmongoc 1.29.1
+================
+
+Fixes:
+
+  * Assert session is consistent with client in `mongoc_bulkwrite_set_session`.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Jeremy Mikola
+  * Kevin Albertson
+
+
+
+libmongoc 1.29.0
+================
+
+Improvements:
+
+  * Retry KMS requests on transient errors.
+
+Platform Support:
+
+  * Support for Visual Studio 2013 is dropped.
+
+Deprecated:
+
+  * `mongoc_client_command` is deprecated and planned for removal in a future release. Use `mongoc_client_command_simple` instead.
+  * `mongoc_database_command` is deprecated and planned for removal in a future release. Use `mongoc_database_command_simple` instead.
+  * `mongoc_collection_command` is deprecated and planned for removal in a future release. Use `mongoc_collection_command_simple` instead.
+
+Notes:
+
+  * Raise required version of libmongocrypt to 1.12.0 to support In-Use Encryption (corresponds to the CMake option: `ENABLE_CLIENT_SIDE_ENCRYPTION`).
+  * A future minor release will raise the minimum supported MongoDB Server version from 4.0 to 4.2. This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles). **Support for MongoDB Server 4.0 will be dropped in a future release!**
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Ezra Chung
+  * Micah Scott
+  * Adrian Dole
+  * Andreas Braun
+  * Joshua Siegel
+
+
+libmongoc 1.28.1
+================
+
+Fixes:
+
+  * Do not return result in `mongoc_bulkwritereturn_t` if there are no known successful writes.
+  * Validate lengths in ill-formed server responses.
+  * Do not override read preference when using aggregate with `$out/$merge` with unscanned servers.
+  * Remove unexpected warning if `authSource` in TXT record is overriden by URI option.
+  * Fix crash when non-existent CA file configured with OpenSSL.
+
+libmongoc 1.28.0
+================
+
+New features:
+
+  * Support In-Use Encryption range queries.
+  * Include insert ID on result of `mongoc_collection_insert_one`.
+  * Add new bulk write API `mongoc_bulkwrite_t`. Requires MongoDB 8.0. Reduces round-trips for mixed writes.
+  - Add `serverMonitoringMode` URI option.
+
+Improvements:
+
+  * Improve performance of OpenSSL connection creation.
+  * Improve performance when trace logging is configured (`ENABLE_TRACING=ON`) but disabled at runtime.
+  * Prefer FIPS compliant functions for SCRAM-SHA-256 key derivation.
+  * Remove required slash to delimit options in MongoDB URI (e.g. `mongodb://example.com?w=1` parses the same as `mongodb://example.com/?w=1`).
+  * Include topology description in server selection timeout errors.
+
+Notes:
+
+  * Bump minimum wire protocol version from 6 (MongoDB 3.6) to 7 (MongoDB 4.0).
+  * Raise required version of libmongocrypt to 1.11.0 to support In-Use Encryption (corresponds to the CMake option: `ENABLE_CLIENT_SIDE_ENCRYPTION`).
+
+Build Configuration:
+
+  * Remove automatic ccache detection and usage (CCache.cmake).
+      * Set [`CMAKE_<LANG>_COMPILER_LAUNCHER`](https://cmake.org/cmake/help/latest/envvar/CMAKE_LANG_COMPILER_LAUNCHER.html) to build with ccache.
+  * Remove `MONGO_USE_CCACHE` (no longer applicable; see above).
+
+Changed:
+
+  * Test and example targets are excluded from the `ALL` target.
+    * All test targets can be built using the `mongo_c_driver_tests` target.
+    * All example targets can be built using the `mongo_c_driver_examples` target.
+  * Use `#!/usr/bin/env bash` instead of `#!/bin/sh` in uninstall script generated by `ENABLE_UNINSTALL=ON`.
+
+Deprecated:
+
+  * Use of `*_hint` functions is deprecated in favor of more aptly named `*_server_id` functions:
+    * `mongoc_bulk_operation_set_hint` is deprecated for `mongoc_bulk_operation_set_server_id`
+    * `mongoc_bulk_operation_get_hint` is deprecated for `mongoc_bulk_operation_get_server_id`
+    * `mongoc_cursor_set_hint` is deprecated for `mongoc_cursor_set_server_id`
+    * `mongoc_cursor_get_hint` is deprecated for `mongoc_cursor_get_server_id`
+
+  * A future minor release plans to drop support for Visual Studio 2013.
+  * `ENABLE_SSL=LIBRESSL` is deprecated along with `mongoc_stream_tls_libressl_new`. Support for LibreSSL may be dropped in a future major release.
+  * `ENABLE_SASL=CYRUS` on Windows platforms is deprecated. Support for `ENABLE_SASL=CYRUS` on Windows may be dropped in a future major release.
+    * The associated Windows-only option `CYRUS_PLUGIN_PATH_PREFIX` is deprecated.
+
+libmongoc 1.27.6
+================
+
+Fixes:
+
+  * Fix TSan warning.
+  * Fix C23 compile.
+
+Improvements:
+
+  * Document expected behavior of command errors in a transaction.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Adrian Dole
+  * Ezra Chung
+  * Joshua Siegel
+  * Kevin Albertson
+
+
+
+libmongoc 1.27.5
+================
+
+Fixes:
+
+  * Fix possible build error in environments where `bool` or `_Bool` is a macro.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+
+libmongoc 1.27.4
+================
+
+Fixes:
+
+  * Fix possible crash reading malformed wire protocol message.
+  * Fix build with Visual Studio 2013.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Ezra Chung
+  * Kevin Albertson
+
+
+
+libmongoc 1.27.3
+================
+
+Notes:
+
+  * This patch release introduces changes surrounding the development processes,
+    including new code signing and dependency tracking. There are no behavioral
+    or API changes.
+
+Fixes:
+
+  * Upgraded bundled Zlib from 1.2.3 to 1.3.1
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Colby Pike
+
+
+
+libmongoc 1.27.2
+================
+
+Fixes:
+
+  * Close leftover connections to removed servers.
+
+New features:
+
+  * Check environment variable `MONGOC_EXPERIMENTAL_SRV_PREFER_TCP` to prefer TCP for SRV lookup.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+
+
+libmongoc 1.27.1
+================
+
+No changes since 1.27.0. Version incremented to match the libbson version.
+
+libmongoc 1.27.0
+================
+
+Notes:
+
+  * Raise required version of libmongocrypt to 1.10.0 to support In-Use Encryption (corresponds to the CMake option: `ENABLE_CLIENT_SIDE_ENCRYPTION`).
+  * A future minor release plans to raise the minimum supported MongoDB Server version from 3.6 to 4.0. This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
+
+Fixes:
+
+  * Fix possible crash when client is configured with empty password.
+
+New Features:
+
+  * Add database name to command events: `mongoc_apm_command_failed_get_database_name` and `mongoc_apm_command_succeeded_get_database_name`.
+  * Support delegated KMIP protocol for In-Use Encryption.
+  * Enable setting socket timeout per client.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Adrian Dole
+  * Ezra Chung
+  * Roberto C. Sánchez
+  * Scott Hunt
+
+libmongoc 1.26.2
+================
+
+Cyrus SASL:
+
+  * Disable plugin loading with Cyrus SASL on Windows by default. To re-enable, set the CMake option `CYRUS_PLUGIN_PATH_PREFIX` to the absolute path prefix of the Cyrus SASL plugins.
+
+Fixes:
+
+  * Fix possible hang if `mongoc_gridfs_file_readv` is called with a corrupt chunk with incomplete data.
+  * Fix assert with legacy exhaust cursor protocol when connected to server < 4.2.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+libmongoc 1.26.1
+================
+
+Fixes:
+
+  * Fix 32-bit compile with 64-bit `time_t`
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Roberto C. Sánchez
+
+
+
+libmongoc 1.26.0
+================
+
+New Features:
+
+  * Support named KMS providers.
+  * Redirect retries in sharded clusters to another mongos if possible.
+
+Improvements:
+
+  * Add `VERSION_CURRENT` file in source to ease building.
+  * Consider more errors retryable.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Jeremy Mikola
+  * Adrian Dole
+  * Kyle Kloberdanz
+  * Ezra Chung
+  * MongoCaleb
+  * Roberto C. Sánchez
+  * itrofimow
+
+
+
+libmongoc 1.25.4
+================
+
+Fixes:
+
+  * Restore support for Sphinx 1.7.6 for man page build.
+
+libmongoc 1.25.3
+================
+
+Fixes:
+
+  * Disable shared libmongoc targets if `ENABLE_SHARED=OFF`
+  * Fix documentation build with Python 3.9.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+libmongoc 1.25.2
+================
+
+Fixes:
+
+  * Fix data race in `mongoc_cursor_get_host`.
+  * Accept discouraged timeout values for backwards compatibility.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Ezra Chung
+  * Kyle Kloberdanz
+  * Roberto C. Sánchez
+
+libmongoc 1.25.1
+================
+
+Fixes:
+
+  * Add back support for `BUILD_VERSION` CMake option. `BUILD_VERSION` was unintentionally removed in 1.25.0.
+
+libmongoc 1.25.0
+================
+
+Fixes:
+
+  * Send `recoveryToken` in transactions when connected to a load balancer.
+
+Improvements:
+
+  * Remove optional dependency of libicu.
+  * Use OP_MSG exhaust for mongod >= 4.2. Enable exhaust cursors for mongos >= 7.1.
+  * Share cached credentials for SCRAM authentication among all clients to improve performance.
+  * Use polling monitoring in FaaS environments.
+
+Build Configuration:
+
+  * Remove `ENABLE_SRV=AUTO`. Only support boolean values for `ENABLE_SRV`.
+
+Platform Support:
+
+  * Support for macOS 10.14 is dropped.
+  * Support for Ubuntu 14.04 is dropped.
+  * Support for Debian 8.1 is dropped.
+
+Other:
+
+  * The constructed source-distribution archive is no longer available as a
+    release artifact. Please instead use the per-release repository archive
+    attached to a GitHub release, or clone the repository at the desired release
+    tag.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Colby Pike
+  * Adrian Dole
+  * Roberto C. Sánchez
+  * Ezra Chung
+  * Joshua Siegel
+  * Kyle Kloberdanz
+  * Jeremy Mikola
+
 libmongoc 1.24.4
 ================
 
@@ -7,8 +625,6 @@ Fixes:
 Thanks to everyone who contributed to the development of this release.
 
   * Kevin Albertson
-
-
 
 libmongoc 1.24.3
 ================
@@ -24,8 +640,6 @@ Thanks to everyone who contributed to the development of this release.
   * Jeremy Mikola
   * Roberto C. Sánchez
 
-
-
 libmongoc 1.24.2
 ================
 
@@ -38,8 +652,6 @@ Thanks to everyone who contributed to the development of this release.
 
   * Kevin Albertson
 
-
-
 libmongoc 1.24.1
 ================
 
@@ -50,8 +662,6 @@ Fixes:
 Thanks to everyone who contributed to the development of this release.
 
   * Kevin Albertson
-
-
 
 libmongoc 1.24.0
 ================
@@ -1067,6 +1677,7 @@ Features:
     and all bson headers are under bson/. The preferred way of including the
     headers are mongoc/mongoc.h and bson/bson.h respectively.
     Forwarding headers in the root are provided for backwards compatibility.
+    (**Update**: These headers were removed in the 2.0 release)
   * The default CMake build type had been unspecified, now it is RelWithDebInfo.
   * Support LibreSSL 2.7+.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_GRIDFS_FILE_PAGE_PRIVATE_H
 #define MONGOC_GRIDFS_FILE_PAGE_PRIVATE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-gridfs-file.h"
+#include <mongoc/mongoc-gridfs-file.h>
 
 
 BSON_BEGIN_DECLS
@@ -37,25 +37,17 @@ struct _mongoc_gridfs_file_page_t {
 
 
 mongoc_gridfs_file_page_t *
-_mongoc_gridfs_file_page_new (const uint8_t *data,
-                              uint32_t len,
-                              uint32_t chunk_size);
+_mongoc_gridfs_file_page_new (const uint8_t *data, uint32_t len, uint32_t chunk_size);
 void
 _mongoc_gridfs_file_page_destroy (mongoc_gridfs_file_page_t *page);
 bool
-_mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page,
-                               uint32_t offset);
+_mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page, uint32_t offset);
 int32_t
-_mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page,
-                               void *dst,
-                               uint32_t len);
+_mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page, void *dst, uint32_t len);
 int32_t
-_mongoc_gridfs_file_page_write (mongoc_gridfs_file_page_t *page,
-                                const void *src,
-                                uint32_t len);
+_mongoc_gridfs_file_page_write (mongoc_gridfs_file_page_t *page, const void *src, uint32_t len);
 uint32_t
-_mongoc_gridfs_file_page_memset0 (mongoc_gridfs_file_page_t *page,
-                                  uint32_t len);
+_mongoc_gridfs_file_page_memset0 (mongoc_gridfs_file_page_t *page, uint32_t len);
 uint32_t
 _mongoc_gridfs_file_page_tell (mongoc_gridfs_file_page_t *page);
 const uint8_t *

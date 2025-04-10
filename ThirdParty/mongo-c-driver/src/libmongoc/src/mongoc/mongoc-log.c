@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include <process.h>
 #elif defined(__APPLE__)
 #include <pthread.h>
+#include <AvailabilityMacros.h>
 #elif defined(__FreeBSD__)
 #include <sys/thr.h>
 #elif defined(__NetBSD__)
@@ -31,15 +32,16 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "mongoc-log.h"
-#include "mongoc-log-private.h"
-#include "mongoc-thread-private.h"
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-log-private.h>
+#include <mongoc/mongoc-thread-private.h>
+#include <common-string-private.h>
 
 
 static bson_once_t once = BSON_ONCE_INIT;
 static bson_mutex_t gLogMutex;
 static mongoc_log_func_t gLogFunc = mongoc_log_default_handler;
-static bool gLogTrace = MONGOC_TRACE_ENABLED;
+bool gLogTrace = MONGOC_TRACE_ENABLED;
 static void *gLogData;
 
 static BSON_ONCE_FUN (_mongoc_ensure_mutex_once)
@@ -91,10 +93,7 @@ _mongoc_log_get_handler (mongoc_log_func_t *log_func, void **user_data)
 
 
 void
-mongoc_log (mongoc_log_level_t log_level,
-            const char *log_domain,
-            const char *format,
-            ...)
+mongoc_log (mongoc_log_level_t log_level, const char *log_domain, const char *format, ...)
 {
    va_list args;
    char *message;
@@ -103,8 +102,7 @@ mongoc_log (mongoc_log_level_t log_level,
    bson_once (&once, &_mongoc_ensure_mutex_once);
 
    stop_logging = !gLogFunc;
-   stop_logging = stop_logging || (log_level == MONGOC_LOG_LEVEL_TRACE &&
-                                   !_mongoc_log_trace_is_enabled ());
+   stop_logging = stop_logging || (log_level == MONGOC_LOG_LEVEL_TRACE && !_mongoc_log_trace_is_enabled ());
    if (stop_logging) {
       return;
    }
@@ -148,10 +146,7 @@ mongoc_log_level_str (mongoc_log_level_t log_level)
 
 
 void
-mongoc_log_default_handler (mongoc_log_level_t log_level,
-                            const char *log_domain,
-                            const char *message,
-                            void *user_data)
+mongoc_log_default_handler (mongoc_log_level_t log_level, const char *log_domain, const char *message, void *user_data)
 {
    struct timeval tv;
    struct tm tt;
@@ -204,17 +199,23 @@ mongoc_log_default_handler (mongoc_log_level_t log_level,
 #elif defined(__NetBSD__)
    pid = (int) _lwp_self ();
 #elif defined(__APPLE__)
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+   // libc on macOS < 10.7 does not support `pthread_threadid_np`
+   mach_port_t tid = pthread_mach_thread_np (pthread_self ());
+   pid = (int) tid;
+#else
    uint64_t tid;
    pthread_threadid_np (0, &tid);
    pid = (int) tid;
+#endif
 #else
    pid = (int) getpid ();
 #endif
 
    fprintf (stream,
-            "%s.%04ld: [%5d]: %8s: %12s: %s\n",
+            "%s.%04" PRId64 ": [%5d]: %8s: %12s: %s\n",
             nowstr,
-            tv.tv_usec / 1000L,
+            (int64_t) (tv.tv_usec / 1000),
             pid,
             mongoc_log_level_str (log_level),
             log_domain,
@@ -224,12 +225,11 @@ mongoc_log_default_handler (mongoc_log_level_t log_level,
 void
 mongoc_log_trace_bytes (const char *domain, const uint8_t *_b, size_t _l)
 {
-   if (!_mongoc_log_trace_is_enabled ()) {
-      return;
-   }
+   STOP_LOGGING_CHECK;
 
-   bson_string_t *const str = bson_string_new (NULL);
-   bson_string_t *const astr = bson_string_new (NULL);
+   mcommon_string_append_t str, astr;
+   mcommon_string_new_as_append (&str);
+   mcommon_string_new_as_append (&astr);
 
    size_t _i;
    for (_i = 0u; _i < _l; _i++) {
@@ -237,42 +237,39 @@ mongoc_log_trace_bytes (const char *domain, const uint8_t *_b, size_t _l)
       const size_t rem = _i % 16u;
 
       if (rem == 0u) {
-         bson_string_append_printf (str, "%05zx: ", _i);
+         mcommon_string_append_printf (&str, "%05zx: ", _i);
       }
 
-      bson_string_append_printf (str, " %02x", _v);
+      mcommon_string_append_printf (&str, " %02x", _v);
       if (isprint (_v)) {
-         bson_string_append_printf (astr, " %c", _v);
+         mcommon_string_append_printf (&astr, " %c", _v);
       } else {
-         bson_string_append (astr, " .");
+         mcommon_string_append (&astr, " .");
       }
 
       if (rem == 15u) {
          mongoc_log (
-            MONGOC_LOG_LEVEL_TRACE, domain, "%s %s", str->str, astr->str);
-         bson_string_truncate (str, 0);
-         bson_string_truncate (astr, 0);
+            MONGOC_LOG_LEVEL_TRACE, domain, "%s %s", mcommon_str_from_append (&str), mcommon_str_from_append (&astr));
+         mcommon_string_from_append_clear (&str);
+         mcommon_string_from_append_clear (&astr);
       } else if (rem == 7u) {
-         bson_string_append (str, " ");
-         bson_string_append (astr, " ");
+         mcommon_string_append (&str, " ");
+         mcommon_string_append (&astr, " ");
       }
    }
 
    if (_i != 16u) {
       mongoc_log (
-         MONGOC_LOG_LEVEL_TRACE, domain, "%-56s %s", str->str, astr->str);
+         MONGOC_LOG_LEVEL_TRACE, domain, "%-56s %s", mcommon_str_from_append (&str), mcommon_str_from_append (&astr));
    }
 
-   bson_string_free (str, true);
-   bson_string_free (astr, true);
+   mcommon_string_from_append_destroy (&str);
+   mcommon_string_from_append_destroy (&astr);
 }
 
 void
-mongoc_log_trace_iovec (const char *domain,
-                        const mongoc_iovec_t *_iov,
-                        size_t _iovcnt)
+mongoc_log_trace_iovec (const char *domain, const mongoc_iovec_t *_iov, size_t _iovcnt)
 {
-   bson_string_t *str, *astr;
    const char *_b;
    unsigned _i = 0;
    unsigned _j = 0;
@@ -280,17 +277,17 @@ mongoc_log_trace_iovec (const char *domain,
    size_t _l = 0;
    uint8_t _v;
 
-   if (!_mongoc_log_trace_is_enabled ()) {
-      return;
-   }
+   STOP_LOGGING_CHECK;
 
    for (_i = 0; _i < _iovcnt; _i++) {
       _l += _iov[_i].iov_len;
    }
 
    _i = 0;
-   str = bson_string_new (NULL);
-   astr = bson_string_new (NULL);
+
+   mcommon_string_append_t str, astr;
+   mcommon_string_new_as_append (&str);
+   mcommon_string_new_as_append (&astr);
 
    for (_j = 0; _j < _iovcnt; _j++) {
       _b = (char *) _iov[_j].iov_base;
@@ -299,33 +296,36 @@ mongoc_log_trace_iovec (const char *domain,
       for (_k = 0; _k < _l; _k++, _i++) {
          _v = *(_b + _k);
          if ((_i % 16) == 0) {
-            bson_string_append_printf (str, "%05x: ", _i);
+            mcommon_string_append_printf (&str, "%05x: ", _i);
          }
 
-         bson_string_append_printf (str, " %02x", _v);
+         mcommon_string_append_printf (&str, " %02x", _v);
          if (isprint (_v)) {
-            bson_string_append_printf (astr, " %c", _v);
+            mcommon_string_append_printf (&astr, " %c", _v);
          } else {
-            bson_string_append (astr, " .");
+            mcommon_string_append (&astr, " .");
          }
 
          if ((_i % 16) == 15) {
-            mongoc_log (
-               MONGOC_LOG_LEVEL_TRACE, domain, "%s %s", str->str, astr->str);
-            bson_string_truncate (str, 0);
-            bson_string_truncate (astr, 0);
+            mongoc_log (MONGOC_LOG_LEVEL_TRACE,
+                        domain,
+                        "%s %s",
+                        mcommon_str_from_append (&str),
+                        mcommon_str_from_append (&astr));
+            mcommon_string_from_append_clear (&str);
+            mcommon_string_from_append_clear (&astr);
          } else if ((_i % 16) == 7) {
-            bson_string_append (str, " ");
-            bson_string_append (astr, " ");
+            mcommon_string_append (&str, " ");
+            mcommon_string_append (&astr, " ");
          }
       }
    }
 
    if (_i != 16) {
       mongoc_log (
-         MONGOC_LOG_LEVEL_TRACE, domain, "%-56s %s", str->str, astr->str);
+         MONGOC_LOG_LEVEL_TRACE, domain, "%-56s %s", mcommon_str_from_append (&str), mcommon_str_from_append (&astr));
    }
 
-   bson_string_free (str, true);
-   bson_string_free (astr, true);
+   mcommon_string_from_append_destroy (&str);
+   mcommon_string_from_append_destroy (&astr);
 }

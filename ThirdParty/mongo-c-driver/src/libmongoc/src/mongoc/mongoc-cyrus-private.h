@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_CYRUS_PRIVATE_H
 #define MONGOC_CYRUS_PRIVATE_H
 
-#include "mongoc-uri.h"
-#include "mongoc-cluster-private.h"
-#include "mongoc-sasl-private.h"
+#include <mongoc/mongoc-uri.h>
+#include <mongoc/mongoc-cluster-private.h>
+#include <mongoc/mongoc-sasl-private.h>
 #include <bson/bson.h>
 #include <sasl/sasl.h>
 
@@ -43,17 +43,16 @@ struct _mongoc_cyrus_t {
 
 
 #ifndef SASL_CALLBACK_FN
-#define SASL_CALLBACK_FN(_f) ((int (*) (void)) (_f))
+#define SASL_CALLBACK_FN(_f) ((int (*) (void)) ((void (*) (void)) (_f)))
 #endif
 
+int
+_mongoc_cyrus_verifyfile_cb (void *context, const char *file, sasl_verify_type_t type);
 void
 _mongoc_cyrus_init (mongoc_cyrus_t *sasl);
 bool
-_mongoc_cyrus_new_from_cluster (mongoc_cyrus_t *sasl,
-                                mongoc_cluster_t *cluster,
-                                mongoc_stream_t *stream,
-                                const char *hostname,
-                                bson_error_t *error);
+_mongoc_cyrus_new_from_cluster (
+   mongoc_cyrus_t *sasl, mongoc_cluster_t *cluster, mongoc_stream_t *stream, const char *hostname, bson_error_t *error);
 int
 _mongoc_cyrus_log (mongoc_cyrus_t *sasl, int level, const char *message);
 void

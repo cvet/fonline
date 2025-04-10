@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 #include <bson/bson.h>
 #include <mongoc/mongoc.h>
+#include <mlib/cmp.h>
 
 
 #if defined(BSON_OS_UNIX) && defined(MONGOC_ENABLE_SHM_COUNTERS)
@@ -41,8 +42,7 @@ typedef struct {
 #pragma pack()
 
 
-BSON_STATIC_ASSERT2 (sizeof_counter_info_t,
-                     sizeof (mongoc_counter_info_t) == 128);
+BSON_STATIC_ASSERT2 (sizeof_counter_info_t, sizeof (mongoc_counter_info_t) == 128);
 
 
 #pragma pack(1)
@@ -65,8 +65,7 @@ typedef struct {
 } mongoc_counter_slots_t;
 
 
-BSON_STATIC_ASSERT2 (sizeof_counter_slots,
-                     sizeof (mongoc_counter_slots_t) == 64);
+BSON_STATIC_ASSERT2 (sizeof_counter_slots, sizeof (mongoc_counter_slots_t) == 64);
 
 
 typedef struct {
@@ -113,9 +112,7 @@ mongoc_counters_new_from_pid (unsigned pid)
    size = len;
 
    if (MAP_FAILED == (mem = mmap (NULL, size, PROT_READ, MAP_SHARED, fd, 0))) {
-      fprintf (stderr,
-               "Failed to mmap shared memory segment of size: %u",
-               (unsigned) size);
+      fprintf (stderr, "Failed to mmap shared memory segment of size: %zu", size);
       close (fd);
       return NULL;
    }
@@ -123,7 +120,7 @@ mongoc_counters_new_from_pid (unsigned pid)
    close (fd);
 
    counters = (mongoc_counters_t *) mem;
-   if (counters->size != len) {
+   if (mlib_cmp (counters->size, !=, len)) {
       perror ("Corrupted shared memory segment.");
       mongoc_counters_destroy (counters);
       return NULL;
@@ -150,9 +147,7 @@ mongoc_counters_get_infos (mongoc_counters_t *counters, uint32_t *n_infos)
 
 
 static int64_t
-mongoc_counters_get_value (mongoc_counters_t *counters,
-                           mongoc_counter_info_t *info,
-                           mongoc_counter_t *counter)
+mongoc_counters_get_value (mongoc_counters_t *counters, mongoc_counter_info_t *info, mongoc_counter_t *counter)
 {
    int64_t value = 0;
    unsigned i;
@@ -166,9 +161,7 @@ mongoc_counters_get_value (mongoc_counters_t *counters,
 
 
 static void
-mongoc_counters_print_info (mongoc_counters_t *counters,
-                            mongoc_counter_info_t *info,
-                            FILE *file)
+mongoc_counters_print_info (mongoc_counters_t *counters, mongoc_counter_info_t *info, FILE *file)
 {
    mongoc_counter_t ctr;
    int64_t value;
@@ -188,12 +181,7 @@ mongoc_counters_print_info (mongoc_counters_t *counters,
 
    value = mongoc_counters_get_value (counters, info, &ctr);
 
-   fprintf (file,
-            "%24s : %-24s : %-50s : %lld\n",
-            info->category,
-            info->name,
-            info->description,
-            (long long) value);
+   fprintf (file, "%24s : %-24s : %-50s : %lld\n", info->category, info->name, info->description, (long long) value);
 }
 
 
@@ -211,9 +199,9 @@ main (int argc, char *argv[])
       return 1;
    }
 
-   pid = strtol (argv[1], NULL, 10);
+   pid = (int) strtol (argv[1], NULL, 10);
    if (!(counters = mongoc_counters_new_from_pid (pid))) {
-      fprintf (stderr, "Failed to load shared memory for pid %u.\n", pid);
+      fprintf (stderr, "Failed to load shared memory for pid %d.\n", pid);
       return EXIT_FAILURE;
    }
 
@@ -232,7 +220,7 @@ main (int argc, char *argv[])
 #include <stdio.h>
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    fprintf (stderr, "mongoc-stat is not supported on your platform.\n");
    return EXIT_FAILURE;

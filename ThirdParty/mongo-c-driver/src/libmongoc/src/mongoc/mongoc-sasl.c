@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SASL
-#include "mongoc-sasl-private.h"
-#include "mongoc-util-private.h"
+#include <mongoc/mongoc-sasl-private.h>
+#include <mongoc/mongoc-util-private.h>
 
-#include "mongoc-trace-private.h"
-#include "mongoc-change-stream-private.h"
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-change-stream-private.h>
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "SASL"
@@ -75,8 +75,8 @@ _mongoc_sasl_set_properties (mongoc_sasl_t *sasl, const mongoc_uri_t *uri)
    const char *service_name = NULL;
    bool canonicalize = false;
 
-   _mongoc_sasl_set_pass(sasl, mongoc_uri_get_password(uri));
-   _mongoc_sasl_set_user(sasl, mongoc_uri_get_username(uri));
+   _mongoc_sasl_set_pass (sasl, mongoc_uri_get_password (uri));
+   _mongoc_sasl_set_user (sasl, mongoc_uri_get_username (uri));
 
    options = mongoc_uri_get_options (uri);
 
@@ -84,14 +84,11 @@ _mongoc_sasl_set_properties (mongoc_sasl_t *sasl, const mongoc_uri_t *uri)
       bson_init (&properties);
    }
 
-   if (bson_iter_init_find_case (
-          &iter, options, MONGOC_URI_GSSAPISERVICENAME) &&
-       BSON_ITER_HOLDS_UTF8 (&iter)) {
+   if (bson_iter_init_find_case (&iter, options, MONGOC_URI_GSSAPISERVICENAME) && BSON_ITER_HOLDS_UTF8 (&iter)) {
       service_name = bson_iter_utf8 (&iter, NULL);
    }
 
-   if (bson_iter_init_find_case (&iter, &properties, "SERVICE_NAME") &&
-       BSON_ITER_HOLDS_UTF8 (&iter)) {
+   if (bson_iter_init_find_case (&iter, &properties, "SERVICE_NAME") && BSON_ITER_HOLDS_UTF8 (&iter)) {
       /* newer "authMechanismProperties" URI syntax takes precedence */
       service_name = bson_iter_utf8 (&iter, NULL);
    }
@@ -109,17 +106,22 @@ _mongoc_sasl_set_properties (mongoc_sasl_t *sasl, const mongoc_uri_t *uri)
     *
     * See CDRIVER-323 for more information.
     */
-   if (bson_iter_init_find_case (
-          &iter, options, MONGOC_URI_CANONICALIZEHOSTNAME) &&
-       BSON_ITER_HOLDS_BOOL (&iter)) {
+   if (bson_iter_init_find_case (&iter, options, MONGOC_URI_CANONICALIZEHOSTNAME) && BSON_ITER_HOLDS_BOOL (&iter)) {
       canonicalize = bson_iter_bool (&iter);
    }
 
-   if (bson_iter_init_find_case (
-          &iter, &properties, "CANONICALIZE_HOST_NAME") &&
-       BSON_ITER_HOLDS_UTF8 (&iter)) {
-      /* newer "authMechanismProperties" URI syntax takes precedence */
-      canonicalize = !strcasecmp (bson_iter_utf8 (&iter, NULL), "true");
+   /* newer "authMechanismProperties" URI syntax takes precedence */
+   if (bson_iter_init_find_case (&iter, &properties, "CANONICALIZE_HOST_NAME") && BSON_ITER_HOLDS_UTF8 (&iter)) {
+      const char *const value = bson_iter_utf8 (&iter, NULL);
+
+      const bool is_true = strcasecmp (value, "true") == 0;
+
+      // CDRIVER-4128: only legacy boolean values are currently supported.
+      if (!is_true && strcasecmp (value, "false") != 0) {
+         MONGOC_WARNING ("Unsupported value for \"CANONICALIZE_HOST_NAME\": \"%s\"", value);
+      } else {
+         canonicalize = is_true;
+      }
    }
 
    sasl->canonicalize_host_name = canonicalize;
@@ -168,12 +170,13 @@ _mongoc_sasl_get_canonicalized_name (mongoc_stream_t *node_stream, /* IN */
    BSON_ASSERT (stream);
 
    if (stream->type == MONGOC_STREAM_SOCKET) {
-      sock =
-         mongoc_stream_socket_get_socket ((mongoc_stream_socket_t *) stream);
+      sock = mongoc_stream_socket_get_socket ((mongoc_stream_socket_t *) stream);
       if (sock) {
          canonicalized = mongoc_socket_getnameinfo (sock);
          if (canonicalized) {
-            bson_snprintf (name, namelen, "%s", canonicalized);
+            // Truncation is OK.
+            int req = bson_snprintf (name, namelen, "%s", canonicalized);
+            BSON_ASSERT (req > 0);
             bson_free (canonicalized);
             RETURN (true);
          }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SSL_SECURE_TRANSPORT
 
 #include <bson/bson.h>
 
-#include "mongoc-log.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-ssl.h"
-#include "mongoc-stream-tls.h"
-#include "mongoc-stream-tls-private.h"
-#include "mongoc-secure-transport-private.h"
-#include "mongoc-stream-tls-secure-transport-private.h"
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-stream-tls.h>
+#include <mongoc/mongoc-stream-tls-private.h>
+#include <mongoc/mongoc-secure-transport-private.h>
+#include <mongoc/mongoc-stream-tls-secure-transport-private.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <Security/Security.h>
@@ -36,6 +36,11 @@
 #include <Security/Security.h>
 #include <Security/SecureTransport.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <common-macros-private.h>
+#include <common-string-private.h>
+
+// CDRIVER-2722: Secure Transport is deprecated on MacOS.
+BEGIN_IGNORE_DEPRECATIONS
 
 /* Jailbreak Darwin Private API */
 /*
@@ -45,9 +50,7 @@
  * best solution.
  */
 SecIdentityRef
-SecIdentityCreate (CFAllocatorRef allocator,
-                   SecCertificateRef certificate,
-                   SecKeyRef privateKey);
+SecIdentityCreate (CFAllocatorRef allocator, SecCertificateRef certificate, SecKeyRef privateKey);
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-secure_transport"
@@ -82,7 +85,7 @@ _mongoc_cfstringref_to_cstring (CFStringRef str)
 }
 
 static void
-_bson_append_cftyperef (bson_string_t *retval, const char *label, CFTypeRef str)
+_bson_append_cftyperef (mcommon_string_append_t *retval, const char *label, CFTypeRef str)
 {
    char *cs;
 
@@ -90,10 +93,10 @@ _bson_append_cftyperef (bson_string_t *retval, const char *label, CFTypeRef str)
       cs = _mongoc_cfstringref_to_cstring (str);
 
       if (cs) {
-         bson_string_append_printf (retval, "%s%s", label, cs);
+         mcommon_string_append_printf (retval, "%s%s", label, cs);
          bson_free (cs);
       } else {
-         bson_string_append_printf (retval, "%s(null)", label);
+         mcommon_string_append_printf (retval, "%s(null)", label);
       }
    }
 }
@@ -114,8 +117,7 @@ _mongoc_secure_transport_dict_get (CFArrayRef values, CFStringRef label)
       }
 
       item_label = CFDictionaryGetValue (item, kSecPropertyKeyLabel);
-      if (item_label &&
-          CFStringCompare (item_label, label, 0) == kCFCompareEqualTo) {
+      if (item_label && CFStringCompare (item_label, label, 0) == kCFCompareEqualTo) {
          return CFDictionaryGetValue (item, kSecPropertyKeyValue);
       }
    }
@@ -127,7 +129,6 @@ char *
 _mongoc_secure_transport_RFC2253_from_cert (SecCertificateRef cert)
 {
    CFTypeRef value;
-   bson_string_t *retval;
    CFTypeRef subject_name;
    CFDictionaryRef cert_dict;
 
@@ -148,57 +149,49 @@ _mongoc_secure_transport_RFC2253_from_cert (SecCertificateRef cert)
       return NULL;
    }
 
-   retval = bson_string_new ("");
-   ;
+   mcommon_string_append_t retval;
+   mcommon_string_new_as_append (&retval);
 
    value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDCountryName);
-   _bson_append_cftyperef (retval, "C=", value);
+   _bson_append_cftyperef (&retval, "C=", value);
 
-   value = _mongoc_secure_transport_dict_get (subject_name,
-                                              kSecOIDStateProvinceName);
-   _bson_append_cftyperef (retval, ",ST=", value);
+   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDStateProvinceName);
+   _bson_append_cftyperef (&retval, ",ST=", value);
 
-   value =
-      _mongoc_secure_transport_dict_get (subject_name, kSecOIDLocalityName);
-   _bson_append_cftyperef (retval, ",L=", value);
+   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDLocalityName);
+   _bson_append_cftyperef (&retval, ",L=", value);
 
-   value =
-      _mongoc_secure_transport_dict_get (subject_name, kSecOIDOrganizationName);
-   _bson_append_cftyperef (retval, ",O=", value);
+   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDOrganizationName);
+   _bson_append_cftyperef (&retval, ",O=", value);
 
-   value = _mongoc_secure_transport_dict_get (subject_name,
-                                              kSecOIDOrganizationalUnitName);
+   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDOrganizationalUnitName);
    if (value) {
       /* Can be either one unit name, or array of unit names */
       if (CFGetTypeID (value) == CFStringGetTypeID ()) {
-         _bson_append_cftyperef (retval, ",OU=", value);
+         _bson_append_cftyperef (&retval, ",OU=", value);
       } else if (CFGetTypeID (value) == CFArrayGetTypeID ()) {
          CFIndex len = CFArrayGetCount (value);
 
          if (len > 0) {
-            _bson_append_cftyperef (
-               retval, ",OU=", CFArrayGetValueAtIndex (value, 0));
+            _bson_append_cftyperef (&retval, ",OU=", CFArrayGetValueAtIndex (value, 0));
          }
          if (len > 1) {
-            _bson_append_cftyperef (
-               retval, ",", CFArrayGetValueAtIndex (value, 1));
+            _bson_append_cftyperef (&retval, ",", CFArrayGetValueAtIndex (value, 1));
          }
          if (len > 2) {
-            _bson_append_cftyperef (
-               retval, ",", CFArrayGetValueAtIndex (value, 2));
+            _bson_append_cftyperef (&retval, ",", CFArrayGetValueAtIndex (value, 2));
          }
       }
    }
 
    value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDCommonName);
-   _bson_append_cftyperef (retval, ",CN=", value);
+   _bson_append_cftyperef (&retval, ",CN=", value);
 
-   value =
-      _mongoc_secure_transport_dict_get (subject_name, kSecOIDStreetAddress);
-   _bson_append_cftyperef (retval, ",STREET", value);
+   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDStreetAddress);
+   _bson_append_cftyperef (&retval, ",STREET", value);
 
    CFRelease (cert_dict);
-   return bson_string_free (retval, false);
+   return mcommon_string_from_append_destroy_with_steal (&retval);
 }
 
 
@@ -242,16 +235,14 @@ _mongoc_secure_transport_import_pem (const char *filename,
    params.keyAttributes = NULL;
 
    if (passphrase) {
-      params.passphrase = CFStringCreateWithCString (
-         kCFAllocatorDefault, passphrase, kCFStringEncodingUTF8);
+      params.passphrase = CFStringCreateWithCString (kCFAllocatorDefault, passphrase, kCFStringEncodingUTF8);
    }
 
-   url = CFURLCreateFromFileSystemRepresentation (
-      kCFAllocatorDefault, (const UInt8 *) filename, strlen (filename), false);
+   url =
+      CFURLCreateFromFileSystemRepresentation (kCFAllocatorDefault, (const UInt8 *) filename, strlen (filename), false);
    read_stream = CFReadStreamCreateWithFile (kCFAllocatorDefault, url);
    if (!CFReadStreamOpen (read_stream)) {
-      MONGOC_ERROR ("Cannot find certificate in '%s', error reading file",
-                    filename);
+      MONGOC_ERROR ("Cannot find certificate in '%s', error reading file", filename);
       goto done;
    }
 
@@ -261,16 +252,13 @@ _mongoc_secure_transport_import_pem (const char *filename,
    if (error) {
       CFStringRef str = CFErrorCopyDescription (error);
       MONGOC_ERROR (
-         "Failed importing PEM '%s': %s",
-         filename,
-         CFStringGetCStringPtr (str, CFStringGetFastestEncoding (str)));
+         "Failed importing PEM '%s': %s", filename, CFStringGetCStringPtr (str, CFStringGetFastestEncoding (str)));
 
       CFRelease (str);
       goto done;
    }
 
-   res = SecItemImport (
-      dataref, CFSTR (".pem"), &format, type, 0, &params, NULL, items);
+   res = SecItemImport (dataref, CFSTR (".pem"), &format, type, 0, &params, NULL, items);
 
    if (res) {
       MONGOC_ERROR ("Failed importing PEM '%s' (code: %d)", filename, res);
@@ -290,8 +278,7 @@ done:
 }
 
 char *
-_mongoc_secure_transport_extract_subject (const char *filename,
-                                          const char *passphrase)
+_mongoc_secure_transport_extract_subject (const char *filename, const char *passphrase)
 {
    bool success;
    char *retval = NULL;
@@ -299,8 +286,7 @@ _mongoc_secure_transport_extract_subject (const char *filename,
    SecExternalItemType type = kSecItemTypeCertificate;
 
 
-   success =
-      _mongoc_secure_transport_import_pem (filename, passphrase, &items, &type);
+   success = _mongoc_secure_transport_import_pem (filename, passphrase, &items, &type);
 
    if (!success) {
       return NULL;
@@ -311,14 +297,12 @@ _mongoc_secure_transport_extract_subject (const char *filename,
          CFTypeID item_id = CFGetTypeID (CFArrayGetValueAtIndex (items, i));
 
          if (item_id == SecCertificateGetTypeID ()) {
-            retval = _mongoc_secure_transport_RFC2253_from_cert (
-               (SecCertificateRef) CFArrayGetValueAtIndex (items, i));
+            retval = _mongoc_secure_transport_RFC2253_from_cert ((SecCertificateRef) CFArrayGetValueAtIndex (items, i));
             break;
          }
       }
    } else if (type == kSecItemTypeCertificate) {
-      retval =
-         _mongoc_secure_transport_RFC2253_from_cert ((SecCertificateRef) items);
+      retval = _mongoc_secure_transport_RFC2253_from_cert ((SecCertificateRef) items);
    }
 
    if (items) {
@@ -328,10 +312,30 @@ _mongoc_secure_transport_extract_subject (const char *filename,
    return retval;
 }
 
+static const char *
+SecExternalItemType_to_string (SecExternalItemType value)
+{
+   switch (value) {
+   case kSecItemTypeUnknown:
+      return "kSecItemTypeUnknown";
+   case kSecItemTypePrivateKey:
+      return "kSecItemTypePrivateKey";
+   case kSecItemTypePublicKey:
+      return "kSecItemTypePublicKey";
+   case kSecItemTypeSessionKey:
+      return "kSecItemTypeSessionKey";
+   case kSecItemTypeCertificate:
+      return "kSecItemTypeCertificate";
+   case kSecItemTypeAggregate:
+      return "kSecItemTypeAggregate";
+   default:
+      return "Unknown";
+   }
+}
+
 bool
-mongoc_secure_transport_setup_certificate (
-   mongoc_stream_tls_secure_transport_t *secure_transport,
-   mongoc_ssl_opt_t *opt)
+mongoc_secure_transport_setup_certificate (mongoc_stream_tls_secure_transport_t *secure_transport,
+                                           mongoc_ssl_opt_t *opt)
 {
    bool success;
    CFArrayRef items;
@@ -341,20 +345,19 @@ mongoc_secure_transport_setup_certificate (
    SecExternalItemType type = kSecItemTypeCertificate;
 
    if (!opt->pem_file) {
-      TRACE ("%s",
-             "No private key provided, the server won't be able to verify us");
+      TRACE ("%s", "No private key provided, the server won't be able to verify us");
       return false;
    }
 
-   success = _mongoc_secure_transport_import_pem (
-      opt->pem_file, opt->pem_pwd, &items, &type);
+   success = _mongoc_secure_transport_import_pem (opt->pem_file, opt->pem_pwd, &items, &type);
    if (!success) {
       /* caller will log an error */
       return false;
    }
 
    if (type != kSecItemTypeAggregate) {
-      MONGOC_ERROR ("Cannot work with keys of type \"%d\". Please file a JIRA",
+      MONGOC_ERROR ("Cannot work with keys of type %s (%" PRIu32 "). Type is not supported",
+                    SecExternalItemType_to_string (type),
                     type);
       CFRelease (items);
       return false;
@@ -377,8 +380,7 @@ mongoc_secure_transport_setup_certificate (
    }
 
    id = SecIdentityCreate (kCFAllocatorDefault, cert, key);
-   secure_transport->my_cert =
-      CFArrayCreateMutable (kCFAllocatorDefault, 2, &kCFTypeArrayCallBacks);
+   secure_transport->my_cert = CFArrayCreateMutable (kCFAllocatorDefault, 2, &kCFTypeArrayCallBacks);
 
    CFArrayAppendValue (secure_transport->my_cert, id);
    CFArrayAppendValue (secure_transport->my_cert, cert);
@@ -390,8 +392,7 @@ mongoc_secure_transport_setup_certificate (
     * session.
     *    * The identity specified in certRefs[0] is capable of signing.
     */
-   success = !SSLSetCertificate (secure_transport->ssl_ctx_ref,
-                                 secure_transport->my_cert);
+   success = !SSLSetCertificate (secure_transport->ssl_ctx_ref, secure_transport->my_cert);
    TRACE ("Setting client certificate %s", success ? "succeeded" : "failed");
 
    CFRelease (items);
@@ -399,9 +400,7 @@ mongoc_secure_transport_setup_certificate (
 }
 
 bool
-mongoc_secure_transport_setup_ca (
-   mongoc_stream_tls_secure_transport_t *secure_transport,
-   mongoc_ssl_opt_t *opt)
+mongoc_secure_transport_setup_ca (mongoc_stream_tls_secure_transport_t *secure_transport, mongoc_ssl_opt_t *opt)
 {
    CFArrayRef items;
    SecExternalItemType type = kSecItemTypeCertificate;
@@ -412,18 +411,15 @@ mongoc_secure_transport_setup_ca (
       return false;
    }
 
-   success =
-      _mongoc_secure_transport_import_pem (opt->ca_file, NULL, &items, &type);
+   success = _mongoc_secure_transport_import_pem (opt->ca_file, NULL, &items, &type);
 
    if (!success) {
-      MONGOC_ERROR ("Cannot load Certificate Authorities from file \'%s\'",
-                    opt->ca_file);
+      MONGOC_ERROR ("Cannot load Certificate Authorities from file \'%s\'", opt->ca_file);
       return false;
    }
 
    if (type == kSecItemTypeAggregate) {
-      CFMutableArrayRef anchors =
-         CFArrayCreateMutable (kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+      CFMutableArrayRef anchors = CFArrayCreateMutable (kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
       for (CFIndex i = 0; i < CFArrayGetCount (items); ++i) {
          CFTypeID item_id = CFGetTypeID (CFArrayGetValueAtIndex (items, i));
@@ -442,18 +438,13 @@ mongoc_secure_transport_setup_ca (
 
    /* This should be SSLSetCertificateAuthorities But the /TLS/ tests fail
     * when it is */
-   success = !SSLSetTrustedRoots (
-      secure_transport->ssl_ctx_ref, secure_transport->anchors, true);
-   TRACE ("Setting certificate authority %s (%s)",
-          success ? "succeeded" : "failed",
-          opt->ca_file);
+   success = !SSLSetTrustedRoots (secure_transport->ssl_ctx_ref, secure_transport->anchors, true);
+   TRACE ("Setting certificate authority %s (%s)", success ? "succeeded" : "failed", opt->ca_file);
    return success;
 }
 
 OSStatus
-mongoc_secure_transport_read (SSLConnectionRef connection,
-                              void *data,
-                              size_t *data_length)
+mongoc_secure_transport_read (SSLConnectionRef connection, void *data, size_t *data_length)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) connection;
    ssize_t length;
@@ -463,8 +454,7 @@ mongoc_secure_transport_read (SSLConnectionRef connection,
    /* 4 arguments is *min_bytes* -- This is not a negotiation.
     * Secure Transport wants all or nothing. We must continue reading until
     * we get this amount, or timeout */
-   length = mongoc_stream_read (
-      tls->base_stream, data, *data_length, *data_length, tls->timeout_msec);
+   length = mongoc_stream_read (tls->base_stream, data, *data_length, *data_length, tls->timeout_msec);
 
    if (length > 0) {
       *data_length = length;
@@ -492,17 +482,14 @@ mongoc_secure_transport_read (SSLConnectionRef connection,
 }
 
 OSStatus
-mongoc_secure_transport_write (SSLConnectionRef connection,
-                               const void *data,
-                               size_t *data_length)
+mongoc_secure_transport_write (SSLConnectionRef connection, const void *data, size_t *data_length)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) connection;
    ssize_t length;
    ENTRY;
 
    errno = 0;
-   length = mongoc_stream_write (
-      tls->base_stream, (void *) data, *data_length, tls->timeout_msec);
+   length = mongoc_stream_write (tls->base_stream, (void *) data, *data_length, tls->timeout_msec);
 
    if (length >= 0) {
       *data_length = length;
@@ -524,5 +511,8 @@ CFReleaseSafe (CFTypeRef cf)
       CFRelease (cf);
    }
 }
+
+// CDRIVER-2722: Secure Transport is deprecated on MacOS.
+END_IGNORE_DEPRECATIONS
 
 #endif

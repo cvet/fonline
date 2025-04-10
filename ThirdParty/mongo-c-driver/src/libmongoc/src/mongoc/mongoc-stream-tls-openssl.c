@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
 
@@ -27,19 +27,24 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
-#include "mongoc-counters-private.h"
-#include "mongoc-errno-private.h"
-#include "mongoc-ssl.h"
-#include "mongoc-ssl-private.h"
-#include "mongoc-stream-tls.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-stream-tls-private.h"
-#include "mongoc-stream-tls-openssl-bio-private.h"
-#include "mongoc-stream-tls-openssl-private.h"
-#include "mongoc-openssl-private.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-log.h"
-#include "mongoc-error.h"
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-errno-private.h>
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-ssl-private.h>
+#include <mongoc/mongoc-stream-tls.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream-tls-private.h>
+#include <mongoc/mongoc-stream-tls-openssl-bio-private.h>
+#include <mongoc/mongoc-stream-tls-openssl-private.h>
+#include <mongoc/mongoc-openssl-private.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-error-private.h>
+
+#include <common-macros-private.h>
+#include <mlib/cmp.h>
+
+#include <inttypes.h>
 
 
 #undef MONGOC_LOG_DOMAIN
@@ -47,8 +52,7 @@
 
 #define MONGOC_STREAM_TLS_OPENSSL_BUFFER_SIZE 4096
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-   (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 static void
 BIO_meth_free (BIO_METHOD *meth)
 {
@@ -79,8 +83,7 @@ static void
 _mongoc_stream_tls_openssl_destroy (mongoc_stream_t *stream)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
 
    BSON_ASSERT (tls);
 
@@ -184,8 +187,7 @@ static int
 _mongoc_stream_tls_openssl_flush (mongoc_stream_t *stream)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
 
    BSON_ASSERT (openssl);
 
@@ -194,12 +196,9 @@ _mongoc_stream_tls_openssl_flush (mongoc_stream_t *stream)
 
 
 static ssize_t
-_mongoc_stream_tls_openssl_write (mongoc_stream_tls_t *tls,
-                                  char *buf,
-                                  size_t buf_len)
+_mongoc_stream_tls_openssl_write (mongoc_stream_tls_t *tls, char *buf, size_t buf_len)
 {
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
    ssize_t ret;
    int64_t now;
    int64_t expire = 0;
@@ -213,7 +212,7 @@ _mongoc_stream_tls_openssl_write (mongoc_stream_tls_t *tls,
       expire = bson_get_monotonic_time () + (tls->timeout_msec * 1000);
    }
 
-   BSON_ASSERT (bson_in_range_unsigned (int, buf_len));
+   BSON_ASSERT (mlib_in_range (int, buf_len));
    ret = BIO_write (openssl->bio, buf, (int) buf_len);
 
    if (ret <= 0) {
@@ -224,7 +223,7 @@ _mongoc_stream_tls_openssl_write (mongoc_stream_tls_t *tls,
       now = bson_get_monotonic_time ();
 
       if ((expire - now) < 0) {
-         if (bson_cmp_less_su (ret, buf_len)) {
+         if (mlib_cmp (ret, <, buf_len)) {
             mongoc_counter_streams_timeout_inc ();
          }
 
@@ -258,10 +257,7 @@ _mongoc_stream_tls_openssl_write (mongoc_stream_tls_t *tls,
  */
 
 static ssize_t
-_mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
-                                   mongoc_iovec_t *iov,
-                                   size_t iovcnt,
-                                   int32_t timeout_msec)
+_mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, int32_t timeout_msec)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
    char buf[MONGOC_STREAM_TLS_OPENSSL_BUFFER_SIZE];
@@ -286,7 +282,7 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
    size_t bytes;
 
    char *to_write = NULL;
-   size_t to_write_len;
+   size_t to_write_len = 0u;
 
    BSON_ASSERT (tls);
    BSON_ASSERT (iov);
@@ -302,9 +298,7 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
          BSON_ASSERT (buf_end >= buf_tail);
          const size_t buf_remaining = (size_t) (buf_end - buf_tail);
 
-         if (buf_head != buf_tail ||
-             ((i + 1 < iovcnt) &&
-              (buf_remaining > (iov[i].iov_len - iov_pos)))) {
+         if (buf_head != buf_tail || ((i + 1 < iovcnt) && (buf_remaining > (iov[i].iov_len - iov_pos)))) {
             /* If we have either of:
              *   - buffered bytes already
              *   - another iovec to send after this one and we don't have more
@@ -339,17 +333,14 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
             /* We get here if we buffered some bytes and filled the buffer, or
              * if we didn't buffer and have to send out of the iovec */
 
-            child_ret =
-               _mongoc_stream_tls_openssl_write (tls, to_write, to_write_len);
-            if (bson_cmp_not_equal_su (child_ret, to_write_len)) {
-               TRACE ("Got child_ret: %ld while to_write_len is: %ld",
-                      child_ret,
-                      to_write_len);
+            child_ret = _mongoc_stream_tls_openssl_write (tls, to_write, to_write_len);
+            if (mlib_cmp (child_ret, !=, to_write_len)) {
+               TRACE ("Got child_ret: %zd while to_write_len is: %zu", child_ret, to_write_len);
             }
 
             if (child_ret < 0) {
-               TRACE ("Returning what I had (%ld) as apposed to the error "
-                      "(%ld, errno:%d)",
+               TRACE ("Returning what I had (%zd) as apposed to the error "
+                      "(%zd, errno:%d)",
                       ret,
                       child_ret,
                       errno);
@@ -358,7 +349,7 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
 
             ret += child_ret;
 
-            if (bson_cmp_less_su (child_ret, to_write_len)) {
+            if (mlib_cmp (child_ret, <, to_write_len)) {
                /* we timed out, so send back what we could send */
 
                RETURN (ret);
@@ -372,8 +363,7 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
    if (buf_head != buf_tail) {
       /* If we have any bytes buffered, send */
 
-      child_ret =
-         _mongoc_stream_tls_openssl_write (tls, buf_head, buf_tail - buf_head);
+      child_ret = _mongoc_stream_tls_openssl_write (tls, buf_head, buf_tail - buf_head);
 
       if (child_ret < 0) {
          RETURN (child_ret);
@@ -411,15 +401,11 @@ _mongoc_stream_tls_openssl_writev (mongoc_stream_t *stream,
  */
 
 static ssize_t
-_mongoc_stream_tls_openssl_readv (mongoc_stream_t *stream,
-                                  mongoc_iovec_t *iov,
-                                  size_t iovcnt,
-                                  size_t min_bytes,
-                                  int32_t timeout_msec)
+_mongoc_stream_tls_openssl_readv (
+   mongoc_stream_t *stream, mongoc_iovec_t *iov, size_t iovcnt, size_t min_bytes, int32_t timeout_msec)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
    ssize_t ret = 0;
    size_t i;
    int read_ret;
@@ -442,9 +428,7 @@ _mongoc_stream_tls_openssl_readv (mongoc_stream_t *stream,
       iov_pos = 0;
 
       while (iov_pos < iov[i].iov_len) {
-         read_ret = BIO_read (openssl->bio,
-                              (char *) iov[i].iov_base + iov_pos,
-                              (int) (iov[i].iov_len - iov_pos));
+         read_ret = BIO_read (openssl->bio, (char *) iov[i].iov_base + iov_pos, (int) (iov[i].iov_len - iov_pos));
 
          /* https://www.openssl.org/docs/crypto/BIO_should_retry.html:
           *
@@ -454,8 +438,7 @@ _mongoc_stream_tls_openssl_readv (mongoc_stream_t *stream,
           * socket BIO returns 0 and BIO_should_retry() is false then the cause
           * will be that the connection closed.
           */
-         if (read_ret < 0 ||
-             (read_ret == 0 && !BIO_should_retry (openssl->bio))) {
+         if (read_ret < 0 || (read_ret == 0 && !BIO_should_retry (openssl->bio))) {
             return -1;
          }
 
@@ -515,18 +498,14 @@ _mongoc_stream_tls_openssl_readv (mongoc_stream_t *stream,
  */
 
 static int
-_mongoc_stream_tls_openssl_setsockopt (mongoc_stream_t *stream,
-                                       int level,
-                                       int optname,
-                                       void *optval,
-                                       mongoc_socklen_t optlen)
+_mongoc_stream_tls_openssl_setsockopt (
+   mongoc_stream_t *stream, int level, int optname, void *optval, mongoc_socklen_t optlen)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
 
    BSON_ASSERT (tls);
 
-   return mongoc_stream_setsockopt (
-      tls->base_stream, level, optname, optval, optlen);
+   return mongoc_stream_setsockopt (tls->base_stream, level, optname, optval, optlen);
 }
 
 
@@ -561,12 +540,12 @@ _mongoc_stream_tls_openssl_set_verify_cert_error (SSL *ssl, bson_error_t *error)
       return false;
    }
 
-   bson_set_error (error,
-                   MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "TLS handshake failed: certificate verify failed (%ld): %s",
-                   verify_result,
-                   X509_verify_cert_error_string (verify_result));
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_STREAM,
+                      MONGOC_ERROR_STREAM_SOCKET,
+                      "TLS handshake failed: certificate verify failed (%ld): %s",
+                      verify_result,
+                      X509_verify_cert_error_string (verify_result));
 
    return true;
 }
@@ -575,14 +554,10 @@ _mongoc_stream_tls_openssl_set_verify_cert_error (SSL *ssl, bson_error_t *error)
  * mongoc_stream_tls_openssl_handshake:
  */
 static bool
-_mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
-                                      const char *host,
-                                      int *events,
-                                      bson_error_t *error)
+_mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream, const char *host, int *events, bson_error_t *error)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
    SSL *ssl;
 
    BSON_ASSERT (tls);
@@ -596,18 +571,14 @@ _mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
 
 #ifdef MONGOC_ENABLE_OCSP_OPENSSL
       /* Validate OCSP */
-      if (openssl->ocsp_opts &&
-          1 != _mongoc_ocsp_tlsext_status (ssl, openssl->ocsp_opts)) {
-         bson_set_error (error,
-                         MONGOC_ERROR_STREAM,
-                         MONGOC_ERROR_STREAM_SOCKET,
-                         "TLS handshake failed: Failed OCSP verification");
+      if (openssl->ocsp_opts && 1 != _mongoc_ocsp_tlsext_status (ssl, openssl->ocsp_opts)) {
+         _mongoc_set_error (
+            error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "TLS handshake failed: Failed OCSP verification");
          RETURN (false);
       }
 #endif
 
-      if (_mongoc_openssl_check_peer_hostname (
-             ssl, host, tls->ssl_opts.allow_invalid_hostname)) {
+      if (_mongoc_openssl_check_peer_hostname (ssl, host, tls->ssl_opts.allow_invalid_hostname)) {
          RETURN (true);
       }
 
@@ -617,10 +588,10 @@ _mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
       }
 
       /* Otherwise, use simple error message. */
-      bson_set_error (error,
-                      MONGOC_ERROR_STREAM,
-                      MONGOC_ERROR_STREAM_SOCKET,
-                      "TLS handshake failed: Failed certificate verification");
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_STREAM,
+                         MONGOC_ERROR_STREAM_SOCKET,
+                         "TLS handshake failed: Failed certificate verification");
 
       RETURN (false);
    }
@@ -647,11 +618,11 @@ _mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
 
    /* Otherwise, try to relay error info from OpenSSL. */
    if (ERR_peek_error () != 0) {
-      bson_set_error (error,
-                      MONGOC_ERROR_STREAM,
-                      MONGOC_ERROR_STREAM_SOCKET,
-                      "TLS handshake failed: %s",
-                      ERR_error_string (ERR_get_error (), NULL));
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_STREAM,
+                         MONGOC_ERROR_STREAM_SOCKET,
+                         "TLS handshake failed: %s",
+                         ERR_error_string (ERR_get_error (), NULL));
       RETURN (false);
    }
 
@@ -659,9 +630,7 @@ _mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
    {
 #ifdef _WIN32
       LPTSTR msg = NULL;
-      FormatMessage (FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                        FORMAT_MESSAGE_FROM_SYSTEM |
-                        FORMAT_MESSAGE_ARGUMENT_ARRAY,
+      FormatMessage (FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ARGUMENT_ARRAY,
                      NULL,
                      errno, /* WSAETIMEDOUT */
                      LANG_NEUTRAL,
@@ -672,11 +641,7 @@ _mongoc_stream_tls_openssl_handshake (mongoc_stream_t *stream,
       const char *msg = strerror (errno); /* ETIMEDOUT */
 #endif
 
-      bson_set_error (error,
-                      MONGOC_ERROR_STREAM,
-                      MONGOC_ERROR_STREAM_SOCKET,
-                      "TLS handshake failed: %s",
-                      msg);
+      _mongoc_set_error (error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "TLS handshake failed: %s", msg);
 
 #ifdef _WIN32
       LocalFree (msg);
@@ -724,8 +689,7 @@ static bool
 _mongoc_stream_tls_openssl_should_retry (mongoc_stream_t *stream)
 {
    mongoc_stream_tls_t *tls = (mongoc_stream_tls_t *) stream;
-   mongoc_stream_tls_openssl_t *openssl =
-      (mongoc_stream_tls_openssl_t *) tls->ctx;
+   mongoc_stream_tls_openssl_t *openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
 
    ENTRY;
 
@@ -736,83 +700,25 @@ _mongoc_stream_tls_openssl_should_retry (mongoc_stream_t *stream)
    RETURN (mongoc_stream_should_retry (tls->base_stream));
 }
 
-/*
- *--------------------------------------------------------------------------
- *
- * mongoc_stream_tls_openssl_new --
- *
- *       Creates a new mongoc_stream_tls_openssl_t to communicate with a remote
- *       server using a TLS stream.
- *
- *       @base_stream should be a stream that will become owned by the
- *       resulting tls stream. It will be used for raw I/O.
- *
- *       @trust_store_dir should be a path to the SSL cert db to use for
- *       verifying trust of the remote server.
- *
- * Returns:
- *       NULL on failure, otherwise a mongoc_stream_t.
- *
- * Side effects:
- *       None.
- *
- *--------------------------------------------------------------------------
- */
-
-mongoc_stream_t *
-mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
-                               const char *host,
-                               mongoc_ssl_opt_t *opt,
-                               int client)
+/* Creates a new mongoc_stream_tls_openssl_t with ssl_ctx. */
+static mongoc_stream_t *
+create_stream_with_ctx (
+   mongoc_stream_t *base_stream, const char *host, mongoc_ssl_opt_t *opt, int client, SSL_CTX *ssl_ctx)
 {
    mongoc_stream_tls_t *tls;
    mongoc_stream_tls_openssl_t *openssl;
    mongoc_openssl_ocsp_opt_t *ocsp_opts = NULL;
-   SSL_CTX *ssl_ctx = NULL;
    BIO *bio_ssl = NULL;
    BIO *bio_mongoc_shim = NULL;
    BIO_METHOD *meth;
+   SSL *ssl;
 
    BSON_ASSERT (base_stream);
    BSON_ASSERT (opt);
    ENTRY;
 
-   ssl_ctx = _mongoc_openssl_ctx_new (opt);
-
    if (!ssl_ctx) {
       RETURN (NULL);
-   }
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
-   if (!opt->allow_invalid_hostname) {
-      struct in_addr addr;
-      struct in6_addr addr6;
-      X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new ();
-
-      X509_VERIFY_PARAM_set_hostflags (param,
-                                       X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
-      if (inet_pton (AF_INET, host, &addr) ||
-          inet_pton (AF_INET6, host, &addr6)) {
-         X509_VERIFY_PARAM_set1_ip_asc (param, host);
-      } else {
-         X509_VERIFY_PARAM_set1_host (param, host, 0);
-      }
-      SSL_CTX_set1_param (ssl_ctx, param);
-      X509_VERIFY_PARAM_free (param);
-   }
-#endif
-
-   if (!client) {
-      /* Only used by the Mock Server.
-       * Set a callback to get the SNI, if provided */
-      SSL_CTX_set_tlsext_servername_callback (ssl_ctx,
-                                              _mongoc_stream_tls_openssl_sni);
-   }
-
-   if (opt->weak_cert_validation) {
-      SSL_CTX_set_verify (ssl_ctx, SSL_VERIFY_NONE, NULL);
-   } else {
-      SSL_CTX_set_verify (ssl_ctx, SSL_VERIFY_PEER, NULL);
    }
 
    bio_ssl = BIO_new_ssl (ssl_ctx, client);
@@ -820,6 +726,26 @@ mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
       SSL_CTX_free (ssl_ctx);
       RETURN (NULL);
    }
+
+   BIO_get_ssl (bio_ssl, &ssl);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
+   if (!opt->allow_invalid_hostname) {
+      struct in_addr addr;
+      struct in6_addr addr6;
+      X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new ();
+
+      X509_VERIFY_PARAM_set_hostflags (param, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+      if (inet_pton (AF_INET, host, &addr) || inet_pton (AF_INET6, host, &addr6)) {
+         X509_VERIFY_PARAM_set1_ip_asc (param, host);
+      } else {
+         X509_VERIFY_PARAM_set1_host (param, host, 0);
+      }
+      SSL_set1_param (ssl, param);
+      X509_VERIFY_PARAM_free (param);
+   }
+#endif
+
    meth = mongoc_stream_tls_openssl_bio_meth_new ();
    bio_mongoc_shim = BIO_new (meth);
    if (!bio_mongoc_shim) {
@@ -832,9 +758,7 @@ mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
 /* Added in OpenSSL 0.9.8f, as a build time option */
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
    if (client) {
-      SSL *ssl;
       /* Set the SNI hostname we are expecting certificate for */
-      BIO_get_ssl (bio_ssl, &ssl);
       SSL_set_tlsext_host_name (ssl, host);
 #endif
    }
@@ -842,12 +766,7 @@ mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
    BIO_push (bio_ssl, bio_mongoc_shim);
 
 #ifdef MONGOC_ENABLE_OCSP_OPENSSL
-   if (client && !opt->weak_cert_validation &&
-       !_mongoc_ssl_opts_disable_certificate_revocation_check (opt)) {
-      SSL *ssl;
-
-      BIO_get_ssl (bio_ssl, &ssl);
-
+   if (client && !opt->weak_cert_validation && !_mongoc_ssl_opts_disable_certificate_revocation_check (opt)) {
       /* Set the status_request extension on the SSL object.
        * Do not use SSL_CTX_set_tlsext_status_type, since that requires OpenSSL
        * 1.1.0.
@@ -864,8 +783,7 @@ mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
       ocsp_opts = bson_malloc0 (sizeof (mongoc_openssl_ocsp_opt_t));
       ocsp_opts->allow_invalid_hostname = opt->allow_invalid_hostname;
       ocsp_opts->weak_cert_validation = opt->weak_cert_validation;
-      ocsp_opts->disable_endpoint_check =
-         _mongoc_ssl_opts_disable_ocsp_endpoint_check (opt);
+      ocsp_opts->disable_endpoint_check = _mongoc_ssl_opts_disable_ocsp_endpoint_check (opt);
       ocsp_opts->host = bson_strdup (host);
       _mongoc_ssl_opts_copy_to (opt, &ocsp_opts->ssl_opts, true);
    }
@@ -901,6 +819,81 @@ mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
 
    RETURN ((mongoc_stream_t *) tls);
 }
+
+/*
+ *--------------------------------------------------------------------------
+ *
+ * mongoc_stream_tls_openssl_new --
+ *
+ *       Creates a new mongoc_stream_tls_openssl_t to communicate with a remote
+ *       server using a TLS stream.
+ *
+ *       @base_stream should be a stream that will become owned by the
+ *       resulting tls stream. It will be used for raw I/O.
+ *
+ * Returns:
+ *       NULL on failure, otherwise a mongoc_stream_t.
+ *
+ * Side effects:
+ *       None.
+ *
+ *--------------------------------------------------------------------------
+ */
+
+mongoc_stream_t *
+mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream, const char *host, mongoc_ssl_opt_t *opt, int client)
+{
+   SSL_CTX *ssl_ctx = _mongoc_openssl_ctx_new (opt);
+
+   if (!ssl_ctx) {
+      RETURN (NULL);
+   }
+
+   if (!client) {
+      /* Only used by the Mock Server.
+       * Set a callback to get the SNI, if provided */
+      SSL_CTX_set_tlsext_servername_callback (ssl_ctx, _mongoc_stream_tls_openssl_sni);
+   }
+
+   return create_stream_with_ctx (base_stream, host, opt, client, ssl_ctx);
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+/*
+ *--------------------------------------------------------------------------
+ *
+ * mongoc_stream_tls_openssl_new_with_context --
+ *
+ *       Creates a new mongoc_stream_tls_openssl_t to communicate with a remote
+ *       server using a TLS stream, using an existing OpenSSL context.
+ *
+ *       Only called by mongoc_stream_tls_new_with_hostname_and_openssl_context.
+ *
+ *       @ssl_ctx is the shared OpenSSL context for the mongoc_client_t
+ *       associated with this function call.
+ *
+ * Returns:
+ *       NULL on failure, otherwise a mongoc_stream_t.
+ *
+ * Side effects:
+ *       None.
+ *
+ *--------------------------------------------------------------------------
+ */
+
+mongoc_stream_t *
+mongoc_stream_tls_openssl_new_with_context (
+   mongoc_stream_t *base_stream, const char *host, mongoc_ssl_opt_t *opt, int client, SSL_CTX *ssl_ctx)
+{
+   // `ssl_ctx` may be NULL if creating the context failed. Return NULL to signal failure.
+   if (!ssl_ctx) {
+      return NULL;
+   }
+   SSL_CTX_up_ref (ssl_ctx);
+
+   return create_stream_with_ctx (base_stream, host, opt, client, ssl_ctx);
+}
+#endif
 
 void
 mongoc_openssl_ocsp_opt_destroy (void *ocsp_opt)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,19 +24,21 @@
 #include <windows.h>
 #endif
 
-#include "mongoc-linux-distro-scanner-private.h"
-#include "mongoc-handshake.h"
-#include "mongoc-handshake-compiler-private.h"
-#include "mongoc-handshake-os-private.h"
-#include "mongoc-handshake-private.h"
-#include "mongoc-client.h"
-#include "mongoc-client-private.h"
-#include "mongoc-error.h"
-#include "mongoc-log.h"
-#include "mongoc-version.h"
-#include "mongoc-util-private.h"
+#include <mongoc/mongoc-linux-distro-scanner-private.h>
+#include <mongoc/mongoc-handshake.h>
+#include <mongoc/mongoc-handshake-compiler-private.h>
+#include <mongoc/mongoc-handshake-os-private.h>
+#include <mongoc/mongoc-handshake-private.h>
+#include <mongoc/mongoc-client.h>
+#include <mongoc/mongoc-client-private.h>
+#include <mongoc/mongoc-error.h>
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-version.h>
+#include <mongoc/mongoc-util-private.h>
 
-#include <bson-dsl.h>
+#include <common-bson-dsl-private.h>
+#include <common-string-private.h>
+#include <mlib/cmp.h>
 
 /*
  * Global handshake data instance. Initialized at startup from mongoc_init
@@ -63,8 +65,7 @@ _set_bit (uint8_t *bf, uint32_t byte_count, uint32_t bit)
 char *
 _mongoc_handshake_get_config_hex_string (void)
 {
-   const uint32_t byte_count =
-      (LAST_MONGOC_MD_FLAG + 7) / 8; /* ceil (num_bits / 8) */
+   const uint32_t byte_count = (LAST_MONGOC_MD_FLAG + 7) / 8; /* ceil (num_bits / 8) */
    /* allocate enough bytes to fit all config bits. */
    uint8_t *const bf = (uint8_t *) bson_malloc0 (byte_count);
 
@@ -74,6 +75,10 @@ _mongoc_handshake_get_config_hex_string (void)
 
 #ifdef MONGOC_ENABLE_CRYPTO_CNG
    _set_bit (bf, byte_count, MONGOC_ENABLE_CRYPTO_CNG);
+#endif
+
+#ifdef MONGOC_HAVE_BCRYPT_PBKDF2
+   _set_bit (bf, byte_count, MONGOC_MD_FLAG_HAVE_BCRYPT_PBKDF2);
 #endif
 
 #ifdef MONGOC_ENABLE_SSL_SECURE_TRANSPORT
@@ -112,16 +117,8 @@ _mongoc_handshake_get_config_hex_string (void)
    _set_bit (bf, byte_count, MONGOC_MD_FLAG_HAVE_SASL_CLIENT_DONE);
 #endif
 
-#ifdef MONGOC_NO_AUTOMATIC_GLOBALS
-   _set_bit (bf, byte_count, MONGOC_MD_FLAG_NO_AUTOMATIC_GLOBALS);
-#endif
-
 #ifdef MONGOC_EXPERIMENTAL_FEATURES
    _set_bit (bf, byte_count, MONGOC_MD_FLAG_EXPERIMENTAL_FEATURES);
-#endif
-
-#ifdef MONGOC_ENABLE_SSL_LIBRESSL
-   _set_bit (bf, byte_count, MONGOC_MD_FLAG_ENABLE_SSL_LIBRESSL);
 #endif
 
 #ifdef MONGOC_ENABLE_SASL_CYRUS
@@ -184,10 +181,6 @@ _mongoc_handshake_get_config_hex_string (void)
       _set_bit (bf, byte_count, MONGOC_MD_FLAG_TRACE);
    }
 
-#ifdef MONGOC_ENABLE_ICU
-   _set_bit (bf, byte_count, MONGOC_MD_FLAG_ENABLE_ICU);
-#endif
-
 #ifdef MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION
    _set_bit (bf, byte_count, MONGOC_MD_FLAG_ENABLE_CLIENT_SIDE_ENCRYPTION);
 #endif
@@ -196,13 +189,17 @@ _mongoc_handshake_get_config_hex_string (void)
    _set_bit (bf, byte_count, MONGOC_MD_FLAG_ENABLE_MONGODB_AWS_AUTH);
 #endif
 
-   bson_string_t *const str = bson_string_new ("0x");
+   if (MONGOC_SRV_ENABLED) {
+      _set_bit (bf, byte_count, MONGOC_MD_FLAG_ENABLE_SRV);
+   }
+
+   mcommon_string_append_t append;
+   mcommon_string_set_append (mcommon_string_new_with_capacity ("0x", 2, 2 + byte_count * 2), &append);
    for (uint32_t i = 0u; i < byte_count; i++) {
-      bson_string_append_printf (str, "%02x", bf[i]);
+      mcommon_string_append_printf (&append, "%02x", bf[i]);
    }
    bson_free (bf);
-   /* free the bson_string_t, but keep the underlying char* alive. */
-   return bson_string_free (str, false);
+   return mcommon_string_from_append_destroy_with_steal (&append);
 }
 
 static char *
@@ -302,12 +299,10 @@ _get_os_version (void)
 #endif
 
    if (res) {
-      bson_snprintf (ret,
-                     HANDSHAKE_OS_VERSION_MAX,
-                     "%lu.%lu (%lu)",
-                     osvi.dwMajorVersion,
-                     osvi.dwMinorVersion,
-                     osvi.dwBuildNumber);
+      // Truncation is OK.
+      int req = bson_snprintf (
+         ret, HANDSHAKE_OS_VERSION_MAX, "%lu.%lu (%lu)", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
+      BSON_ASSERT (req > 0);
       found = true;
    } else {
       MONGOC_WARNING ("Error with GetVersionEx(): %lu", GetLastError ());
@@ -340,8 +335,7 @@ _get_system_info (mongoc_handshake_t *handshake)
    handshake->os_type = _get_os_type ();
 
 #ifdef MONGOC_OS_IS_LINUX
-   _mongoc_linux_distro_scanner_get_distro (&handshake->os_name,
-                                            &handshake->os_version);
+   _mongoc_linux_distro_scanner_get_distro (&handshake->os_name, &handshake->os_version);
 #else
    handshake->os_name = _get_os_name ();
    handshake->os_version = _get_os_version ();
@@ -363,8 +357,7 @@ static void
 _get_driver_info (mongoc_handshake_t *handshake)
 {
    handshake->driver_name = bson_strndup ("mongoc", HANDSHAKE_DRIVER_NAME_MAX);
-   handshake->driver_version =
-      bson_strndup (MONGOC_VERSION_S, HANDSHAKE_DRIVER_VERSION_MAX);
+   handshake->driver_version = bson_strndup (MONGOC_VERSION_S, HANDSHAKE_DRIVER_VERSION_MAX);
 }
 
 static void
@@ -377,59 +370,136 @@ _free_driver_info (mongoc_handshake_t *handshake)
 static void
 _set_platform_string (mongoc_handshake_t *handshake)
 {
-   bson_string_t *str;
+   handshake->platform = bson_strdup ("");
+}
 
-   str = bson_string_new ("");
+static void
+_free_env_info (mongoc_handshake_t *handshake)
+{
+   bson_free (handshake->env_region);
+}
 
-   handshake->platform = bson_string_free (str, false);
+static void
+_get_env_info (mongoc_handshake_t *handshake)
+{
+   char *aws_env = _mongoc_getenv ("AWS_EXECUTION_ENV");
+   char *aws_lambda = _mongoc_getenv ("AWS_LAMBDA_RUNTIME_API");
+   char *vercel_env = _mongoc_getenv ("VERCEL");
+   char *azure_env = _mongoc_getenv ("FUNCTIONS_WORKER_RUNTIME");
+   char *gcp_env = _mongoc_getenv ("K_SERVICE");
+   char *memory_str = NULL;
+   char *timeout_str = NULL;
+   char *region_str = NULL;
+
+   bool is_aws = (aws_env && strlen (aws_env) && (aws_env == strstr (aws_env, "AWS_Lambda_"))) ||
+                 (aws_lambda && strlen (aws_lambda));
+   bool is_vercel = vercel_env && strlen (vercel_env);
+   bool is_azure = azure_env && strlen (azure_env);
+   bool is_gcp = gcp_env && strlen (gcp_env);
+
+   handshake->env = MONGOC_HANDSHAKE_ENV_NONE;
+   handshake->env_region = NULL;
+   handshake->env_memory_mb.set = false;
+   handshake->env_timeout_sec.set = false;
+
+   if ((is_aws || is_vercel) + is_azure + is_gcp != 1) {
+      goto cleanup;
+   }
+
+   if (is_aws && !is_vercel) {
+      handshake->env = MONGOC_HANDSHAKE_ENV_AWS;
+      region_str = _mongoc_getenv ("AWS_REGION");
+      memory_str = _mongoc_getenv ("AWS_LAMBDA_FUNCTION_MEMORY_SIZE");
+   } else if (is_vercel) {
+      handshake->env = MONGOC_HANDSHAKE_ENV_VERCEL;
+      region_str = _mongoc_getenv ("VERCEL_REGION");
+   } else if (is_gcp) {
+      handshake->env = MONGOC_HANDSHAKE_ENV_GCP;
+      region_str = _mongoc_getenv ("FUNCTION_REGION");
+      memory_str = _mongoc_getenv ("FUNCTION_MEMORY_MB");
+      timeout_str = _mongoc_getenv ("FUNCTION_TIMEOUT_SEC");
+   } else if (is_azure) {
+      handshake->env = MONGOC_HANDSHAKE_ENV_AZURE;
+   }
+
+   if (memory_str) {
+      char *endptr;
+      int64_t env_memory_mb = bson_ascii_strtoll (memory_str, &endptr, 10);
+      bool parse_ok = endptr == memory_str + (strlen (memory_str));
+      bool in_range = mlib_in_range (int32_t, env_memory_mb);
+
+      if (parse_ok && in_range) {
+         handshake->env_memory_mb.set = true;
+         handshake->env_memory_mb.value = (int32_t) env_memory_mb;
+      }
+   }
+   if (timeout_str) {
+      char *endptr;
+      int64_t env_timeout_sec = bson_ascii_strtoll (timeout_str, &endptr, 10);
+      bool parse_ok = endptr == timeout_str + (strlen (timeout_str));
+      bool in_range = mlib_in_range (int32_t, env_timeout_sec);
+
+      if (parse_ok && in_range) {
+         handshake->env_timeout_sec.set = true;
+         handshake->env_timeout_sec.value = (int32_t) env_timeout_sec;
+      }
+   }
+   if (region_str && strlen (region_str)) {
+      handshake->env_region = bson_strdup (region_str);
+   }
+
+cleanup:
+   bson_free (aws_env);
+   bson_free (aws_lambda);
+   bson_free (vercel_env);
+   bson_free (azure_env);
+   bson_free (gcp_env);
+   bson_free (memory_str);
+   bson_free (timeout_str);
+   bson_free (region_str);
 }
 
 static void
 _set_compiler_info (mongoc_handshake_t *handshake)
 {
-   bson_string_t *str;
-   char *config_str;
+   mcommon_string_append_t append;
+   mcommon_string_new_as_append (&append);
 
-   str = bson_string_new ("");
-
-   config_str = _mongoc_handshake_get_config_hex_string ();
-   bson_string_append_printf (str, "cfg=%s", config_str);
+   char *config_str = _mongoc_handshake_get_config_hex_string ();
+   mcommon_string_append_printf (&append, "cfg=%s", config_str);
    bson_free (config_str);
 
 #ifdef _POSIX_VERSION
-   bson_string_append_printf (str, " posix=%ld", _POSIX_VERSION);
+   mcommon_string_append_printf (&append, " posix=%ld", _POSIX_VERSION);
 #endif
 
 #ifdef __STDC_VERSION__
-   bson_string_append_printf (str, " stdc=%ld", __STDC_VERSION__);
+   mcommon_string_append_printf (&append, " stdc=%ld", __STDC_VERSION__);
 #endif
 
-   bson_string_append_printf (str, " CC=%s", MONGOC_COMPILER);
+   mcommon_string_append_printf (&append, " CC=%s", MONGOC_COMPILER);
 
 #ifdef MONGOC_COMPILER_VERSION
-   bson_string_append_printf (str, " %s", MONGOC_COMPILER_VERSION);
+   mcommon_string_append_printf (&append, " %s", MONGOC_COMPILER_VERSION);
 #endif
-   handshake->compiler_info = bson_string_free (str, false);
+   handshake->compiler_info = mcommon_string_from_append_destroy_with_steal (&append);
 }
 
 static void
 _set_flags (mongoc_handshake_t *handshake)
 {
-   bson_string_t *str;
-
-   str = bson_string_new ("");
+   mcommon_string_append_t append;
+   mcommon_string_new_as_append (&append);
 
    if (strlen (MONGOC_EVALUATE_STR (MONGOC_USER_SET_CFLAGS)) > 0) {
-      bson_string_append_printf (
-         str, " CFLAGS=%s", MONGOC_EVALUATE_STR (MONGOC_USER_SET_CFLAGS));
+      mcommon_string_append_printf (&append, " CFLAGS=%s", MONGOC_EVALUATE_STR (MONGOC_USER_SET_CFLAGS));
    }
 
    if (strlen (MONGOC_EVALUATE_STR (MONGOC_USER_SET_LDFLAGS)) > 0) {
-      bson_string_append_printf (
-         str, " LDFLAGS=%s", MONGOC_EVALUATE_STR (MONGOC_USER_SET_LDFLAGS));
+      mcommon_string_append_printf (&append, " LDFLAGS=%s", MONGOC_EVALUATE_STR (MONGOC_USER_SET_LDFLAGS));
    }
 
-   handshake->flags = bson_string_free (str, false);
+   handshake->flags = mcommon_string_from_append_destroy_with_steal (&append);
 }
 
 static void
@@ -446,6 +516,7 @@ _mongoc_handshake_init (void)
    _get_system_info (_mongoc_handshake_get ());
    _get_driver_info (_mongoc_handshake_get ());
    _set_platform_string (_mongoc_handshake_get ());
+   _get_env_info (_mongoc_handshake_get ());
    _set_compiler_info (_mongoc_handshake_get ());
    _set_flags (_mongoc_handshake_get ());
 
@@ -456,63 +527,120 @@ _mongoc_handshake_init (void)
 void
 _mongoc_handshake_cleanup (void)
 {
-   _free_system_info (_mongoc_handshake_get ());
-   _free_driver_info (_mongoc_handshake_get ());
-   _free_platform_string (_mongoc_handshake_get ());
+   mongoc_handshake_t *h = _mongoc_handshake_get ();
+   _free_system_info (h);
+   _free_driver_info (h);
+   _free_platform_string (h);
+   _free_env_info (h);
+   *h = (mongoc_handshake_t){0};
 
    bson_mutex_destroy (&gHandshakeLock);
 }
 
 static void
-_append_platform_field (bson_t *doc, const char *platform)
+_append_platform_field (bson_t *doc, const char *platform, bool truncate)
 {
    char *compiler_info = _mongoc_handshake_get ()->compiler_info;
    char *flags = _mongoc_handshake_get ()->flags;
-   bson_string_t *combined_platform = bson_string_new (platform);
 
-   /* Compute space left for platform field */
-   const int max_platform_str_size =
-      HANDSHAKE_MAX_SIZE - ((int) doc->len +
-                            /* 1 byte for utf8 tag */
-                            1 +
+   const uint32_t overhead = (/* 1 byte for utf8 tag */
+                              1 +
+                              /* key size */
+                              (int) strlen (HANDSHAKE_PLATFORM_FIELD) + 1 +
+                              /* 4 bytes for length of string */
+                              4 +
+                              /* NUL terminator */
+                              1);
 
-                            /* key size */
-                            (int) strlen (HANDSHAKE_PLATFORM_FIELD) + 1 +
-
-                            /* 4 bytes for length of string */
-                            4);
-
-   if (max_platform_str_size <= 0) {
-      bson_string_free (combined_platform, true);
+   if (truncate && doc->len >= HANDSHAKE_MAX_SIZE - overhead) {
       return;
    }
 
-   /* We opt to drop compiler info and flags if they can't fit, while the
-    * platform information is truncated
-    * Try to drop flags first, and if there is still not enough space also drop
-    * compiler info */
-   if (bson_cmp_greater_su (max_platform_str_size,
-                            combined_platform->len + strlen (compiler_info) +
-                               1u)) {
-      bson_string_append (combined_platform, compiler_info);
+   mcommon_string_append_t combined_platform;
+   mcommon_string_set_append_with_limit (mcommon_string_new_with_capacity ("", 0, HANDSHAKE_MAX_SIZE - overhead),
+                                         &combined_platform,
+                                         truncate ? HANDSHAKE_MAX_SIZE - overhead - doc->len : UINT32_MAX - 1u);
+
+   mcommon_string_append (&combined_platform, platform);
+   mcommon_string_append_all_or_none (&combined_platform, compiler_info);
+   mcommon_string_append_all_or_none (&combined_platform, flags);
+
+   bson_append_utf8 (doc,
+                     HANDSHAKE_PLATFORM_FIELD,
+                     strlen (HANDSHAKE_PLATFORM_FIELD),
+                     mcommon_str_from_append (&combined_platform),
+                     mcommon_strlen_from_append (&combined_platform));
+
+   mcommon_string_from_append_destroy (&combined_platform);
+}
+
+static bool
+_get_subdoc_static (bson_t *doc, char *subdoc_name, bson_t *out)
+{
+   bson_iter_t iter;
+   if (bson_iter_init_find (&iter, doc, subdoc_name) && BSON_ITER_HOLDS_DOCUMENT (&iter)) {
+      uint32_t len;
+      const uint8_t *data;
+      bson_iter_document (&iter, &len, &data);
+      BSON_ASSERT (bson_init_static (out, data, len));
+
+      return true;
    }
-   if (bson_cmp_greater_su (max_platform_str_size,
-                            combined_platform->len + strlen (flags) + 1u)) {
-      bson_string_append (combined_platform, flags);
+   return false;
+}
+
+static bool
+_truncate_handshake (bson_t **doc)
+{
+   if ((*doc)->len > HANDSHAKE_MAX_SIZE) {
+      bson_t env_doc;
+      if (_get_subdoc_static (*doc, "env", &env_doc)) {
+         bson_t *new_env = bson_new ();
+         bson_copy_to_including_noinit (&env_doc, new_env, "name", NULL);
+
+         bson_t *new_doc = bson_new ();
+         bson_copy_to_excluding_noinit (*doc, new_doc, "env", NULL);
+
+         bson_append_document (new_doc, "env", -1, new_env);
+         bson_destroy (new_env);
+         bson_destroy (*doc);
+         *doc = new_doc;
+      }
    }
 
-   /* We use the flags_index field to check if the CLAGS/LDFLAGS need to be
-    * truncated, and if so we drop them altogether */
-   BSON_ASSERT (bson_in_range_unsigned (int, combined_platform->len));
-   bson_append_utf8 (
-      doc,
-      HANDSHAKE_PLATFORM_FIELD,
-      -1,
-      combined_platform->str,
-      BSON_MIN (max_platform_str_size - 1, (int) combined_platform->len));
+   if ((*doc)->len > HANDSHAKE_MAX_SIZE) {
+      bson_t os_doc;
+      if (_get_subdoc_static (*doc, "os", &os_doc)) {
+         bson_t *new_os = bson_new ();
+         bson_copy_to_including_noinit (&os_doc, new_os, "type", NULL);
 
-   bson_string_free (combined_platform, true);
-   BSON_ASSERT (doc->len <= HANDSHAKE_MAX_SIZE);
+         bson_t *new_doc = bson_new ();
+         bson_copy_to_excluding_noinit (*doc, new_doc, "os", NULL);
+
+         bson_append_document (new_doc, "os", -1, new_os);
+         bson_destroy (new_os);
+         bson_destroy (*doc);
+         *doc = new_doc;
+      }
+   }
+
+   if ((*doc)->len > HANDSHAKE_MAX_SIZE) {
+      bson_t *new_doc = bson_new ();
+      bson_copy_to_excluding_noinit (*doc, new_doc, "env", NULL);
+      bson_destroy (*doc);
+      *doc = new_doc;
+   }
+
+   const mongoc_handshake_t *md = _mongoc_handshake_get ();
+   if ((*doc)->len > HANDSHAKE_MAX_SIZE && md->platform) {
+      bson_t *new_doc = bson_new ();
+      bson_copy_to_excluding_noinit (*doc, new_doc, "platform", NULL);
+      _append_platform_field (new_doc, md->platform, true);
+      bson_destroy (*doc);
+      *doc = new_doc;
+   }
+
+   return (*doc)->len <= HANDSHAKE_MAX_SIZE;
 }
 
 /*
@@ -520,42 +648,71 @@ _append_platform_field (bson_t *doc, const char *platform)
  * false if there's no way to prevent the doc from being too big. In this
  * case, the caller shouldn't include it with hello
  */
-bool
-_mongoc_handshake_build_doc_with_application (bson_t *doc, const char *appname)
+bson_t *
+_mongoc_handshake_build_doc_with_application (const char *appname)
 {
    const mongoc_handshake_t *md = _mongoc_handshake_get ();
+   char *env_name = NULL;
+   switch (md->env) {
+   case MONGOC_HANDSHAKE_ENV_AWS:
+      env_name = "aws.lambda";
+      break;
+   case MONGOC_HANDSHAKE_ENV_GCP:
+      env_name = "gcp.func";
+      break;
+   case MONGOC_HANDSHAKE_ENV_AZURE:
+      env_name = "azure.func";
+      break;
+   case MONGOC_HANDSHAKE_ENV_VERCEL:
+      env_name = "vercel";
+      break;
+   case MONGOC_HANDSHAKE_ENV_NONE:
+      env_name = NULL;
+      break;
+   default:
+      break;
+   }
 
+   bson_t *doc = bson_new ();
+   // Optimistically include all handshake data
    bsonBuildAppend (
       *doc,
-      if (appname,
-          then (kv ("application", doc (kv ("name", cstr (appname)))))),
-      kv ("driver",
-          doc (kv ("name", cstr (md->driver_name)),
-               kv ("version", cstr (md->driver_version)))),
-      kv (
-         "os",
-         doc (kv ("type", cstr (md->os_type)),
-              if (md->os_name, then (kv ("name", cstr (md->os_name)))),
-              if (md->os_version, then (kv ("version", cstr (md->os_version)))),
-              if (md->os_architecture,
-                  then (kv ("architecture", cstr (md->os_architecture)))))));
-
-   if (doc->len > HANDSHAKE_MAX_SIZE) {
-      /* We've done all we can possibly do to ensure the current
-       * document is below the maxsize, so if it overflows there is
-       * nothing else we can do, so we fail */
-      return false;
-   }
+      if (appname, then (kv ("application", doc (kv ("name", cstr (appname)))))),
+      kv ("driver", doc (kv ("name", cstr (md->driver_name)), kv ("version", cstr (md->driver_version)))),
+      kv ("os",
+          doc (kv ("type", cstr (md->os_type)),
+               if (md->os_name, then (kv ("name", cstr (md->os_name)))),
+               if (md->os_version, then (kv ("version", cstr (md->os_version)))),
+               if (md->os_architecture, then (kv ("architecture", cstr (md->os_architecture)))))),
+      if (env_name,
+          then (kv ("env",
+                    doc (kv ("name", cstr (env_name)),
+                         if (md->env_timeout_sec.set, then (kv ("timeout_sec", int32 (md->env_timeout_sec.value)))),
+                         if (md->env_memory_mb.set, then (kv ("memory_mb", int32 (md->env_memory_mb.value)))),
+                         if (md->env_region, then (kv ("region", cstr (md->env_region)))))))));
 
    if (md->platform) {
-      _append_platform_field (doc, md->platform);
+      _append_platform_field (doc, md->platform, false);
    }
 
-   return true;
+   if (_truncate_handshake (&doc)) {
+      return doc;
+   } else {
+      bson_destroy (doc);
+      return NULL;
+   }
 }
 
 void
 _mongoc_handshake_freeze (void)
+{
+   bson_mutex_lock (&gHandshakeLock);
+   _mongoc_handshake_get ()->frozen = true;
+   bson_mutex_unlock (&gHandshakeLock);
+}
+
+static void
+_mongoc_handshake_freeze_nolock (void)
 {
    _mongoc_handshake_get ()->frozen = true;
 }
@@ -583,10 +740,9 @@ _append_and_truncate (char **s, const char *suffix, size_t max_len)
    }
 
    const size_t space_for_suffix = max_len - required_space;
-   BSON_ASSERT (bson_in_range_unsigned (int, space_for_suffix));
+   BSON_ASSERT (mlib_in_range (int, space_for_suffix));
 
-   *s =
-      bson_strdup_printf ("%s / %.*s", prefix, (int) space_for_suffix, suffix);
+   *s = bson_strdup_printf ("%s / %.*s", prefix, (int) space_for_suffix, suffix);
    BSON_ASSERT (strlen (*s) <= max_len);
 
    bson_free (old_str);
@@ -597,15 +753,13 @@ _append_and_truncate (char **s, const char *suffix, size_t max_len)
  * Set some values in our global handshake struct. These values will be sent
  * to the server as part of the initial connection handshake (hello).
  * If this function is called more than once, or after we've connected to a
- * mongod, then it will do nothing and return false. It will return true if it
- * successfully sets the values.
+ * mongod, then it will do nothing and return false. It will return true if
+ * it successfully sets the values.
  *
  * All arguments are optional.
  */
 bool
-mongoc_handshake_data_append (const char *driver_name,
-                              const char *driver_version,
-                              const char *platform)
+mongoc_handshake_data_append (const char *driver_name, const char *driver_version, const char *platform)
 {
    int platform_space;
 
@@ -620,35 +774,29 @@ mongoc_handshake_data_append (const char *driver_name,
 
    /* allow practically any size for "platform", we'll trim it down in
     * _mongoc_handshake_build_doc_with_application */
-   platform_space =
-      HANDSHAKE_MAX_SIZE - (int) strlen (_mongoc_handshake_get ()->platform);
+   platform_space = HANDSHAKE_MAX_SIZE - (int) strlen (_mongoc_handshake_get ()->platform);
 
    if (platform) {
-      /* we check for an empty string as a special case to avoid an unnecessary
-       * delimiter being added in front of the string by _append_and_truncate */
+      /* we check for an empty string as a special case to avoid an
+       * unnecessary delimiter being added in front of the string by
+       * _append_and_truncate */
       if (_mongoc_handshake_get ()->platform[0] == '\0') {
          bson_free (_mongoc_handshake_get ()->platform);
-         _mongoc_handshake_get ()->platform =
-            bson_strdup_printf ("%.*s", platform_space, platform);
+         _mongoc_handshake_get ()->platform = bson_strdup_printf ("%.*s", platform_space, platform);
       } else {
-         _append_and_truncate (
-            &_mongoc_handshake_get ()->platform, platform, HANDSHAKE_MAX_SIZE);
+         _append_and_truncate (&_mongoc_handshake_get ()->platform, platform, HANDSHAKE_MAX_SIZE);
       }
    }
 
    if (driver_name) {
-      _append_and_truncate (&_mongoc_handshake_get ()->driver_name,
-                            driver_name,
-                            HANDSHAKE_DRIVER_NAME_MAX);
+      _append_and_truncate (&_mongoc_handshake_get ()->driver_name, driver_name, HANDSHAKE_DRIVER_NAME_MAX);
    }
 
    if (driver_version) {
-      _append_and_truncate (&_mongoc_handshake_get ()->driver_version,
-                            driver_version,
-                            HANDSHAKE_DRIVER_VERSION_MAX);
+      _append_and_truncate (&_mongoc_handshake_get ()->driver_version, driver_version, HANDSHAKE_DRIVER_VERSION_MAX);
    }
 
-   _mongoc_handshake_freeze ();
+   _mongoc_handshake_freeze_nolock ();
    bson_mutex_unlock (&gHandshakeLock);
 
    return true;
@@ -667,29 +815,23 @@ _mongoc_handshake_appname_is_valid (const char *appname)
 }
 
 void
-_mongoc_handshake_append_sasl_supported_mechs (const mongoc_uri_t *uri,
-                                               bson_t *cmd)
+_mongoc_handshake_append_sasl_supported_mechs (const mongoc_uri_t *uri, bson_t *cmd)
 {
    const char *username;
    char *db_user;
    username = mongoc_uri_get_username (uri);
-   db_user =
-      bson_strdup_printf ("%s.%s", mongoc_uri_get_auth_source (uri), username);
+   db_user = bson_strdup_printf ("%s.%s", mongoc_uri_get_auth_source (uri), username);
    bson_append_utf8 (cmd, "saslSupportedMechs", 18, db_user, -1);
    bson_free (db_user);
 }
 
 void
-_mongoc_handshake_parse_sasl_supported_mechs (
-   const bson_t *hello,
-   mongoc_handshake_sasl_supported_mechs_t *sasl_supported_mechs)
+_mongoc_handshake_parse_sasl_supported_mechs (const bson_t *hello,
+                                              mongoc_handshake_sasl_supported_mechs_t *sasl_supported_mechs)
 {
    memset (sasl_supported_mechs, 0, sizeof (*sasl_supported_mechs));
    bsonParse (*hello,
               find (keyWithType ("saslSupportedMechs", array),
-                    visitEach (case (
-                       when (strEqual ("SCRAM-SHA-256"),
-                             do(sasl_supported_mechs->scram_sha_256 = true)),
-                       when (strEqual ("SCRAM-SHA-1"),
-                             do(sasl_supported_mechs->scram_sha_1 = true))))));
+                    visitEach (case (when (strEqual ("SCRAM-SHA-256"), do (sasl_supported_mechs->scram_sha_256 = true)),
+                                     when (strEqual ("SCRAM-SHA-1"), do (sasl_supported_mechs->scram_sha_1 = true))))));
 }

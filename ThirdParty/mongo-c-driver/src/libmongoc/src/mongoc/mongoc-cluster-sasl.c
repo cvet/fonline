@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,32 +16,29 @@
 
 /* for size_t */
 #include <bson/bson.h>
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
-#include "mongoc-cluster-private.h"
-#include "mongoc-log.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-stream-socket.h"
-#include "mongoc-error.h"
-#include "mongoc-util-private.h"
+#include <mongoc/mongoc-cluster-private.h>
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream-socket.h>
+#include <mongoc/mongoc-error-private.h>
+#include <mongoc/mongoc-util-private.h>
 
 #ifdef MONGOC_ENABLE_SASL
 
 #ifdef MONGOC_ENABLE_SASL_CYRUS
-#include "mongoc-cluster-cyrus-private.h"
+#include <mongoc/mongoc-cluster-cyrus-private.h>
 #endif
 #ifdef MONGOC_ENABLE_SASL_SSPI
-#include "mongoc-cluster-sspi-private.h"
+#include <mongoc/mongoc-cluster-sspi-private.h>
 #endif
 
 #endif
 
 void
-_mongoc_cluster_build_sasl_start (bson_t *cmd,
-                                  const char *mechanism,
-                                  const char *buf,
-                                  uint32_t buflen)
+_mongoc_cluster_build_sasl_start (bson_t *cmd, const char *mechanism, const char *buf, uint32_t buflen)
 {
    BSON_APPEND_INT32 (cmd, "saslStart", 1);
    BSON_APPEND_UTF8 (cmd, "mechanism", mechanism);
@@ -49,10 +46,7 @@ _mongoc_cluster_build_sasl_start (bson_t *cmd,
    BSON_APPEND_INT32 (cmd, "autoAuthorize", 1);
 }
 void
-_mongoc_cluster_build_sasl_continue (bson_t *cmd,
-                                     int conv_id,
-                                     const char *buf,
-                                     uint32_t buflen)
+_mongoc_cluster_build_sasl_continue (bson_t *cmd, int conv_id, const char *buf, uint32_t buflen)
 {
    BSON_APPEND_INT32 (cmd, "saslContinue", 1);
    BSON_APPEND_INT32 (cmd, "conversationId", conv_id);
@@ -63,8 +57,7 @@ _mongoc_cluster_get_conversation_id (const bson_t *reply)
 {
    bson_iter_t iter;
 
-   if (bson_iter_init_find (&iter, reply, "conversationId") &&
-       BSON_ITER_HOLDS_INT32 (&iter)) {
+   if (bson_iter_init_find (&iter, reply, "conversationId") && BSON_ITER_HOLDS_INT32 (&iter)) {
       return bson_iter_int32 (&iter);
    }
 
@@ -95,11 +88,11 @@ _mongoc_cluster_auth_node_sasl (mongoc_cluster_t *cluster,
                                 bson_error_t *error)
 {
 #ifndef MONGOC_ENABLE_SASL
-   bson_set_error (error,
-                   MONGOC_ERROR_CLIENT,
-                   MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                   "The GSSAPI authentication mechanism requires libmongoc "
-                   "built with ENABLE_SASL");
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_CLIENT,
+                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                      "The GSSAPI authentication mechanism requires libmongoc "
+                      "built with ENABLE_SASL");
    return false;
 #elif defined(MONGOC_ENABLE_SASL_CYRUS)
    return _mongoc_cluster_auth_node_cyrus (cluster, stream, sd, error);

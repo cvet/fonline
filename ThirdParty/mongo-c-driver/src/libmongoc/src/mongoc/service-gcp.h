@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #ifndef SERVICE_GCP_H_INCLUDED
 #define SERVICE_GCP_H_INCLUDED
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #include <mongoc/mongoc.h>
 
@@ -57,10 +57,7 @@ typedef struct gcp_request {
  * @note the request must later be destroyed with gcp_request_destroy
  */
 void
-gcp_request_init (gcp_request *req,
-                  const char *const opt_host,
-                  int opt_port,
-                  const char *const opt_extra_headers);
+gcp_request_init (gcp_request *req, const char *const opt_host, int opt_port, const char *const opt_extra_headers);
 
 
 /**
@@ -94,10 +91,7 @@ gcp_access_token_destroy (gcp_service_account_token *token);
  * @note The 'out' token must later be given to gcp_access_token_destroy
  */
 bool
-gcp_access_token_try_parse_from_json (gcp_service_account_token *out,
-                                      const char *json,
-                                      int len,
-                                      bson_error_t *error);
+gcp_access_token_try_parse_from_json (gcp_service_account_token *out, const char *json, int len, bson_error_t *error);
 
 /**
  * @brief Attempt to obtain a new GCP service account token from a GCP metadata

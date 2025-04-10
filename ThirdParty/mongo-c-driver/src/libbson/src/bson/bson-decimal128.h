@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_DECIMAL128_H
@@ -23,9 +23,9 @@
 
 #include <string.h>
 
-#include "bson-macros.h"
-#include "bson-config.h"
-#include "bson-types.h"
+#include <bson/bson-macros.h>
+#include <bson/bson-config.h>
+#include <bson/bson-types.h>
 
 
 /**
@@ -54,9 +54,7 @@ BSON_EXPORT (bool)
 bson_decimal128_from_string (const char *string, bson_decimal128_t *dec);
 
 BSON_EXPORT (bool)
-bson_decimal128_from_string_w_len (const char *string,
-                                   int len,
-                                   bson_decimal128_t *dec);
+bson_decimal128_from_string_w_len (const char *string, int len, bson_decimal128_t *dec);
 
 BSON_END_DECLS
 

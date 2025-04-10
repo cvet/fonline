@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@
 
 #include <bson/bson.h>
 
-#include "mongoc-async-private.h"
-#include "mongoc-async-cmd-private.h"
-#include "utlist.h"
-#include "mongoc.h"
-#include "mongoc-socket-private.h"
-#include "mongoc-util-private.h"
-
-#undef MONGOC_LOG_DOMAIN
-#define MONGOC_LOG_DOMAIN "async"
+#include <mongoc/mongoc-async-private.h>
+#include <mongoc/mongoc-async-cmd-private.h>
+#include <mongoc/utlist.h>
+#include <mongoc/mongoc.h>
+#include <mongoc/mongoc-error-private.h>
+#include <mongoc/mongoc-socket-private.h>
+#include <mongoc/mongoc-util-private.h>
 
 
 mongoc_async_t *
@@ -74,10 +72,8 @@ mongoc_async_run (mongoc_async_t *async)
    while (async->ncmds) {
       /* ncmds grows if we discover a replica & start calling hello on it */
       if (poll_size < async->ncmds) {
-         poller = (mongoc_stream_poll_t *) bson_realloc (
-            poller, sizeof (*poller) * async->ncmds);
-         acmds_polled = (mongoc_async_cmd_t **) bson_realloc (
-            acmds_polled, sizeof (*acmds_polled) * async->ncmds);
+         poller = (mongoc_stream_poll_t *) bson_realloc (poller, sizeof (*poller) * async->ncmds);
+         acmds_polled = (mongoc_async_cmd_t **) bson_realloc (acmds_polled, sizeof (*acmds_polled) * async->ncmds);
          poll_size = async->ncmds;
       }
 
@@ -99,8 +95,7 @@ mongoc_async_run (mongoc_async_t *async)
                }
             } else {
                /* don't poll longer than the earliest cmd ready to init. */
-               expire_at = BSON_MIN (
-                  expire_at, acmd->connect_started + acmd->initiate_delay_ms);
+               expire_at = BSON_MIN (expire_at, acmd->connect_started + acmd->initiate_delay_ms);
             }
          }
 
@@ -109,8 +104,7 @@ mongoc_async_run (mongoc_async_t *async)
             poller[nstreams].stream = acmd->stream;
             poller[nstreams].events = acmd->events;
             poller[nstreams].revents = 0;
-            expire_at = BSON_MIN (
-               expire_at, acmd->connect_started + acmd->timeout_msec * 1000);
+            expire_at = BSON_MIN (expire_at, acmd->connect_started + acmd->timeout_msec * 1000);
             ++nstreams;
          }
       }
@@ -125,8 +119,7 @@ mongoc_async_run (mongoc_async_t *async)
 
       if (nstreams > 0) {
          /* we need at least one stream to poll. */
-         nactive =
-            mongoc_stream_poll (poller, nstreams, (int32_t) poll_timeout_msec);
+         nactive = mongoc_stream_poll (poller, nstreams, (int32_t) poll_timeout_msec);
       } else {
          /* currently this does not get hit. we always have at least one command
           * initialized with a stream. */
@@ -139,24 +132,21 @@ mongoc_async_run (mongoc_async_t *async)
             if (poller[i].revents & (POLLERR | POLLHUP)) {
                int hup = poller[i].revents & POLLHUP;
                if (iter->state == MONGOC_ASYNC_CMD_SEND) {
-                  bson_set_error (&iter->error,
-                                  MONGOC_ERROR_STREAM,
-                                  MONGOC_ERROR_STREAM_CONNECT,
-                                  hup ? "connection refused"
-                                      : "unknown connection error");
+                  _mongoc_set_error (&iter->error,
+                                     MONGOC_ERROR_STREAM,
+                                     MONGOC_ERROR_STREAM_CONNECT,
+                                     hup ? "connection refused" : "unknown connection error");
                } else {
-                  bson_set_error (&iter->error,
-                                  MONGOC_ERROR_STREAM,
-                                  MONGOC_ERROR_STREAM_SOCKET,
-                                  hup ? "connection closed"
-                                      : "unknown socket error");
+                  _mongoc_set_error (&iter->error,
+                                     MONGOC_ERROR_STREAM,
+                                     MONGOC_ERROR_STREAM_SOCKET,
+                                     hup ? "connection closed" : "unknown socket error");
                }
 
                iter->state = MONGOC_ASYNC_CMD_ERROR_STATE;
             }
 
-            if ((poller[i].revents & poller[i].events) ||
-                iter->state == MONGOC_ASYNC_CMD_ERROR_STATE) {
+            if ((poller[i].revents & poller[i].events) || iter->state == MONGOC_ASYNC_CMD_ERROR_STATE) {
                (void) mongoc_async_cmd_run (iter);
                nactive--;
             }
@@ -169,28 +159,19 @@ mongoc_async_run (mongoc_async_t *async)
 
       DL_FOREACH_SAFE (async->cmds, acmd, tmp)
       {
-         bool remove_cmd = false;
-         mongoc_async_cmd_result_t result;
-
          /* check if an initiated cmd has passed the connection timeout.  */
-         if (acmd->state != MONGOC_ASYNC_CMD_INITIATE &&
-             now > acmd->connect_started + acmd->timeout_msec * 1000) {
-            bson_set_error (&acmd->error,
-                            MONGOC_ERROR_STREAM,
-                            MONGOC_ERROR_STREAM_CONNECT,
-                            acmd->state == MONGOC_ASYNC_CMD_SEND
-                               ? "connection timeout"
-                               : "socket timeout");
+         if (acmd->state != MONGOC_ASYNC_CMD_INITIATE && now > acmd->connect_started + acmd->timeout_msec * 1000) {
+            _mongoc_set_error (&acmd->error,
+                               MONGOC_ERROR_STREAM,
+                               MONGOC_ERROR_STREAM_CONNECT,
+                               acmd->state == MONGOC_ASYNC_CMD_SEND ? "connection timeout" : "socket timeout");
 
-            remove_cmd = true;
-            result = MONGOC_ASYNC_CMD_TIMEOUT;
+            acmd->cb (acmd, MONGOC_ASYNC_CMD_TIMEOUT, NULL, (now - acmd->connect_started) / 1000);
+
+            /* Remove acmd from the async->cmds doubly-linked list */
+            mongoc_async_cmd_destroy (acmd);
          } else if (acmd->state == MONGOC_ASYNC_CMD_CANCELED_STATE) {
-            remove_cmd = true;
-            result = MONGOC_ASYNC_CMD_ERROR;
-         }
-
-         if (remove_cmd) {
-            acmd->cb (acmd, result, NULL, (now - acmd->connect_started) / 1000);
+            acmd->cb (acmd, MONGOC_ASYNC_CMD_ERROR, NULL, (now - acmd->connect_started) / 1000);
 
             /* Remove acmd from the async->cmds doubly-linked list */
             mongoc_async_cmd_destroy (acmd);

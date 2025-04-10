@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_OID_H
@@ -23,10 +23,10 @@
 
 #include <time.h>
 
-#include "bson-context.h"
-#include "bson-macros.h"
-#include "bson-types.h"
-#include "bson-endian.h"
+#include <bson/bson-context.h>
+#include <bson/bson-macros.h>
+#include <bson/bson-types.h>
+#include <bson/bson-endian.h>
 
 
 BSON_BEGIN_DECLS
@@ -50,9 +50,6 @@ BSON_EXPORT (void)
 bson_oid_init_from_data (bson_oid_t *oid, const uint8_t *data);
 BSON_EXPORT (void)
 bson_oid_init_from_string (bson_oid_t *oid, const char *str);
-BSON_EXPORT (void)
-bson_oid_init_sequence (bson_oid_t *oid, bson_context_t *context)
-   BSON_GNUC_DEPRECATED_FOR (bson_oid_init);
 BSON_EXPORT (void)
 bson_oid_to_string (const bson_oid_t *oid, char str[25]);
 
@@ -115,7 +112,9 @@ bson_oid_hash_unsafe (const bson_oid_t *oid)
    uint32_t i;
 
    for (i = 0; i < sizeof oid->bytes; i++) {
+      BSON_DISABLE_UNSAFE_BUFFER_USAGE_WARNING_BEGIN
       hash = ((hash << 5) + hash) + oid->bytes[i];
+      BSON_DISABLE_UNSAFE_BUFFER_USAGE_WARNING_END
    }
 
    return hash;
@@ -214,8 +213,10 @@ bson_oid_init_from_string_unsafe (bson_oid_t *oid, const char *str)
    int i;
 
    for (i = 0; i < 12; i++) {
-      oid->bytes[i] = (uint8_t) ((bson_oid_parse_hex_char (str[2 * i]) << 4) |
-                                 (bson_oid_parse_hex_char (str[2 * i + 1])));
+      BSON_DISABLE_UNSAFE_BUFFER_USAGE_WARNING_BEGIN
+      oid->bytes[i] =
+         (uint8_t) ((bson_oid_parse_hex_char (str[2 * i]) << 4) | (bson_oid_parse_hex_char (str[2 * i + 1])));
+      BSON_DISABLE_UNSAFE_BUFFER_USAGE_WARNING_END
    }
 }
 

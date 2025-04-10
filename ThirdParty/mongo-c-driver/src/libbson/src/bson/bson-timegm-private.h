@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_TIMEGM_PRIVATE_H
 #define BSON_TIMEGM_PRIVATE_H
 
 
-#include "bson-compat.h"
-#include "bson-macros.h"
+#include <bson/bson-compat.h>
+#include <bson/bson-macros.h>
 
 
 BSON_BEGIN_DECLS

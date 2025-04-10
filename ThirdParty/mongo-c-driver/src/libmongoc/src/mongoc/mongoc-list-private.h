@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_LIST_H
 #define MONGOC_LIST_H
@@ -41,9 +41,7 @@ _mongoc_list_prepend (mongoc_list_t *list, void *data);
 mongoc_list_t *
 _mongoc_list_remove (mongoc_list_t *list, void *data);
 void
-_mongoc_list_foreach (mongoc_list_t *list,
-                      void (*func) (void *data, void *user_data),
-                      void *user_data);
+_mongoc_list_foreach (mongoc_list_t *list, void (*func) (void *data, void *user_data), void *user_data);
 void
 _mongoc_list_destroy (mongoc_list_t *list);
 

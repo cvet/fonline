@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_MEMCMP_PRIVATE_H
 #define MONGOC_MEMCMP_PRIVATE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 /* WARNING: mongoc_memcmp() must be used to verify if two secret keys
  * are equal, in constant time.
