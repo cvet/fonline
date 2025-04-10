@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -7,6 +13,7 @@
 .def	_bsaes_encrypt8;	.scl 3;	.type 32;	.endef
 .p2align	6
 _bsaes_encrypt8:
+_CET_ENDBR
 	leaq	.LBS0(%rip),%r11
 
 	movdqa	(%rax),%xmm8
@@ -479,6 +486,7 @@ _bsaes_encrypt8_bitslice:
 .def	_bsaes_decrypt8;	.scl 3;	.type 32;	.endef
 .p2align	6
 _bsaes_decrypt8:
+_CET_ENDBR
 	leaq	.LBS0(%rip),%r11
 
 	movdqa	(%rax),%xmm8
@@ -984,6 +992,7 @@ _bsaes_decrypt8:
 .def	_bsaes_key_convert;	.scl 3;	.type 32;	.endef
 .p2align	4
 _bsaes_key_convert:
+_CET_ENDBR
 	leaq	.Lmasks(%rip),%r11
 	movdqu	(%rcx),%xmm7
 	leaq	16(%rcx),%rcx
@@ -1068,6 +1077,7 @@ _bsaes_key_convert:
 .def	bsaes_cbc_encrypt;	.scl 2;	.type 32;	.endef
 .p2align	4
 bsaes_cbc_encrypt:
+_CET_ENDBR
 	movl	48(%rsp),%r11d
 	cmpl	$0,%r11d
 	jne	asm_AES_cbc_encrypt
@@ -1343,6 +1353,7 @@ bsaes_cbc_encrypt:
 .def	bsaes_ctr32_encrypt_blocks;	.scl 2;	.type 32;	.endef
 .p2align	4
 bsaes_ctr32_encrypt_blocks:
+_CET_ENDBR
 	movq	%rsp,%rax
 .Lctr_enc_prologue:
 	pushq	%rbp
@@ -1566,6 +1577,7 @@ bsaes_ctr32_encrypt_blocks:
 .def	bsaes_xts_encrypt;	.scl 2;	.type 32;	.endef
 .p2align	4
 bsaes_xts_encrypt:
+_CET_ENDBR
 	movq	%rsp,%rax
 .Lxts_enc_prologue:
 	pushq	%rbp
@@ -2043,6 +2055,7 @@ bsaes_xts_encrypt:
 .def	bsaes_xts_decrypt;	.scl 2;	.type 32;	.endef
 .p2align	4
 bsaes_xts_decrypt:
+_CET_ENDBR
 	movq	%rsp,%rax
 .Lxts_dec_prologue:
 	pushq	%rbp
@@ -2541,6 +2554,7 @@ bsaes_xts_decrypt:
 .Lxts_dec_epilogue:
 	retq
 
+.section	.rodata
 
 .p2align	6
 _bsaes_const:
@@ -2593,13 +2607,14 @@ _bsaes_const:
 .quad	0x02060a0e03070b0f, 0x0004080c0105090d
 .L63:
 .quad	0x6363636363636363, 0x6363636363636363
-.byte	66,105,116,45,115,108,105,99,101,100,32,65,69,83,32,102,111,114,32,120,56,54,95,54,52,47,83,83,83,69,51,44,32,69,109,105,108,105,97,32,75,195,164,115,112,101,114,44,32,80,101,116,101,114,32,83,99,104,119,97,98,101,44,32,65,110,100,121,32,80,111,108,121,97,107,111,118,0
 .p2align	6
 
+.text	
 
 .def	se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 se_handler:
+_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx

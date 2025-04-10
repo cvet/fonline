@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_STREAM_TLS_SECURE_TRANSPORT_PRIVATE_H
 #define MONGOC_STREAM_TLS_SECURE_TRANSPORT_PRIVATE_H
@@ -24,8 +24,12 @@
 
 #include <Security/Security.h>
 
+#include <common-macros-private.h>
+
 BSON_BEGIN_DECLS
 
+// CDRIVER-2722: Secure Transport is deprecated on MacOS.
+BEGIN_IGNORE_DEPRECATIONS
 
 /**
  * mongoc_stream_tls_secure_transport_t:
@@ -38,6 +42,8 @@ typedef struct {
    CFMutableArrayRef my_cert;
 } mongoc_stream_tls_secure_transport_t;
 
+// CDRIVER-2722: Secure Transport is deprecated on MacOS.
+END_IGNORE_DEPRECATIONS
 
 BSON_END_DECLS
 

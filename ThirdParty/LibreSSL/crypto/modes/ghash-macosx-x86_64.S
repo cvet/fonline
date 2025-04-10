@@ -1,3 +1,9 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 .text	
 
@@ -5,6 +11,7 @@
 
 .p2align	4
 _gcm_gmult_4bit:
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -93,6 +100,7 @@ L$gmult_epilogue:
 
 .p2align	4
 _gcm_ghash_4bit:
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -614,7 +622,6 @@ L$outer_loop:
 	xorq	%r13,%r9
 	shrq	$8,%r8
 	movzbq	%r12b,%r12
-	movl	-4(%rdi),%edx
 	shrq	$8,%r9
 	xorq	-128(%rbp,%rbx,8),%r8
 	shlq	$56,%r10
@@ -659,6 +666,7 @@ L$ghash_epilogue:
 
 .p2align	4
 _gcm_init_clmul:
+_CET_ENDBR
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
 
@@ -724,6 +732,7 @@ _gcm_init_clmul:
 
 .p2align	4
 _gcm_gmult_clmul:
+_CET_ENDBR
 	movdqu	(%rdi),%xmm0
 	movdqa	L$bswap_mask(%rip),%xmm5
 	movdqu	(%rsi),%xmm2
@@ -774,6 +783,7 @@ _gcm_gmult_clmul:
 
 .p2align	4
 _gcm_ghash_clmul:
+_CET_ENDBR
 	movdqa	L$bswap_mask(%rip),%xmm5
 
 	movdqu	(%rdi),%xmm0
@@ -976,6 +986,7 @@ L$done:
 	retq
 L$SEH_end_gcm_ghash_clmul:
 
+.section	__DATA,__const
 .p2align	6
 L$bswap_mask:
 .byte	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
@@ -1022,6 +1033,5 @@ L$rem_8bit:
 .value	0xA7D0,0xA612,0xA454,0xA596,0xA0D8,0xA11A,0xA35C,0xA29E
 .value	0xB5E0,0xB422,0xB664,0xB7A6,0xB2E8,0xB32A,0xB16C,0xB0AE
 .value	0xBBF0,0xBA32,0xB874,0xB9B6,0xBCF8,0xBD3A,0xBF7C,0xBEBE
-
-.byte	71,72,65,83,72,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .p2align	6
+.text	

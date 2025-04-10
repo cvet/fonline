@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_cl.c,v 1.17 2020/10/09 17:19:35 tb Exp $ */
+/* $OpenBSD: ocsp_cl.c,v 1.25 2024/03/24 11:30:12 beck Exp $ */
 /* Written by Tom Titchener <Tom_Titchener@groove.net> for the OpenSSL
  * project. */
 
@@ -68,8 +68,12 @@
 #include <openssl/ocsp.h>
 #include <openssl/objects.h>
 #include <openssl/pem.h>
+#include <openssl/posix_time.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
+
+#include "asn1_local.h"
+#include "ocsp_local.h"
 
 /* Utility functions related to sending OCSP requests and extracting
  * relevant information from the response.
@@ -86,7 +90,7 @@ OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid)
 	if ((one = OCSP_ONEREQ_new()) == NULL)
 		goto err;
 	if (req != NULL) {
-	       	if (!sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one))
+		if (!sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one))
 			goto err;
 	}
 	OCSP_CERTID_free(one->reqCert);
@@ -97,6 +101,7 @@ OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid)
 	OCSP_ONEREQ_free(one);
 	return NULL;
 }
+LCRYPTO_ALIAS(OCSP_request_add0_id);
 
 /* Set requestorName from an X509_NAME structure */
 int
@@ -117,6 +122,7 @@ OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm)
 	req->tbsRequest->requestorName = gen;
 	return 1;
 }
+LCRYPTO_ALIAS(OCSP_request_set1_name);
 
 /* Add a certificate to an OCSP request */
 int
@@ -136,9 +142,10 @@ OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert)
 
 	if (!sk_X509_push(sig->certs, cert))
 		return 0;
-	CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509);
+	X509_up_ref(cert);
 	return 1;
 }
+LCRYPTO_ALIAS(OCSP_request_add1_cert);
 
 /* Sign an OCSP request set the requestorName to the subject
  * name of an optional signers certificate and include one
@@ -184,6 +191,7 @@ err:
 	req->optionalSignature = NULL;
 	return 0;
 }
+LCRYPTO_ALIAS(OCSP_request_sign);
 
 /* Get response status */
 int
@@ -191,6 +199,7 @@ OCSP_response_status(OCSP_RESPONSE *resp)
 {
 	return ASN1_ENUMERATED_get(resp->responseStatus);
 }
+LCRYPTO_ALIAS(OCSP_response_status);
 
 /* Extract basic response from OCSP_RESPONSE or NULL if
  * no basic response present.
@@ -212,8 +221,9 @@ OCSP_response_get1_basic(OCSP_RESPONSE *resp)
 
 	return ASN1_item_unpack(rb->response, &OCSP_BASICRESP_it);
 }
+LCRYPTO_ALIAS(OCSP_response_get1_basic);
 
-/* Return number of OCSP_SINGLERESP reponses present in
+/* Return number of OCSP_SINGLERESP responses present in
  * a basic response.
  */
 int
@@ -223,6 +233,7 @@ OCSP_resp_count(OCSP_BASICRESP *bs)
 		return -1;
 	return sk_OCSP_SINGLERESP_num(bs->tbsResponseData->responses);
 }
+LCRYPTO_ALIAS(OCSP_resp_count);
 
 /* Extract an OCSP_SINGLERESP response with a given index */
 OCSP_SINGLERESP *
@@ -232,6 +243,62 @@ OCSP_resp_get0(OCSP_BASICRESP *bs, int idx)
 		return NULL;
 	return sk_OCSP_SINGLERESP_value(bs->tbsResponseData->responses, idx);
 }
+LCRYPTO_ALIAS(OCSP_resp_get0);
+
+const ASN1_GENERALIZEDTIME *
+OCSP_resp_get0_produced_at(const OCSP_BASICRESP *bs)
+{
+	return bs->tbsResponseData->producedAt;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_produced_at);
+
+const STACK_OF(X509) *
+OCSP_resp_get0_certs(const OCSP_BASICRESP *bs)
+{
+	return bs->certs;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_certs);
+
+int
+OCSP_resp_get0_id(const OCSP_BASICRESP *bs, const ASN1_OCTET_STRING **pid,
+    const X509_NAME **pname)
+{
+	const OCSP_RESPID *rid = bs->tbsResponseData->responderId;
+
+	if (rid->type == V_OCSP_RESPID_NAME) {
+		*pname = rid->value.byName;
+		*pid = NULL;
+	} else if (rid->type == V_OCSP_RESPID_KEY) {
+		*pid = rid->value.byKey;
+		*pname = NULL;
+	} else {
+		return 0;
+	}
+
+	return 1;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_id);
+
+const ASN1_OCTET_STRING *
+OCSP_resp_get0_signature(const OCSP_BASICRESP *bs)
+{
+	return bs->signature;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_signature);
+
+const X509_ALGOR *
+OCSP_resp_get0_tbs_sigalg(const OCSP_BASICRESP *bs)
+{
+	return bs->signatureAlgorithm;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_tbs_sigalg);
+
+const OCSP_RESPDATA *
+OCSP_resp_get0_respdata(const OCSP_BASICRESP *bs)
+{
+	return bs->tbsResponseData;
+}
+LCRYPTO_ALIAS(OCSP_resp_get0_respdata);
 
 /* Look single response matching a given certificate ID */
 int
@@ -255,6 +322,7 @@ OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last)
 	}
 	return -1;
 }
+LCRYPTO_ALIAS(OCSP_resp_find);
 
 /* Extract status information from an OCSP_SINGLERESP structure.
  * Note: the revtime and reason values are only set if the
@@ -292,6 +360,7 @@ OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
 		*nextupd = single->nextUpdate;
 	return ret;
 }
+LCRYPTO_ALIAS(OCSP_single_get0_status);
 
 /* This function combines the previous ones: look up a certificate ID and
  * if found extract status information. Return 0 is successful.
@@ -314,6 +383,7 @@ OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
 		*status = i;
 	return 1;
 }
+LCRYPTO_ALIAS(OCSP_resp_find_status);
 
 /* Check validity of thisUpdate and nextUpdate fields. It is possible that the request will
  * take a few seconds to process and/or the time wont be totally accurate. Therefore to avoid
@@ -325,75 +395,69 @@ int
 OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
     ASN1_GENERALIZEDTIME *nextupd, long nsec, long maxsec)
 {
-	time_t t_now, t_tmp;
-	struct tm tm_this, tm_next, tm_tmp;
+	int64_t posix_next, posix_this, posix_now;
+	struct tm tm_this, tm_next;
 
-	time(&t_now);
+	/* Negative values of nsec make no sense */
+	if (nsec < 0)
+		return 0;
+
+	posix_now = time(NULL);
 
 	/*
 	 * Times must explicitly be a GENERALIZEDTIME as per section
 	 * 4.2.2.1 of RFC 6960 - It is invalid to accept other times
 	 * (such as UTCTIME permitted/required by RFC 5280 for certificates)
 	 */
-
-	/* Check thisUpdate is valid and not more than nsec in the future */
+	/* Check that thisUpdate is valid. */
 	if (ASN1_time_parse(thisupd->data, thisupd->length, &tm_this,
 	    V_ASN1_GENERALIZEDTIME) != V_ASN1_GENERALIZEDTIME) {
 		OCSPerror(OCSP_R_ERROR_IN_THISUPDATE_FIELD);
 		return 0;
-	} else {
-		t_tmp = t_now + nsec;
-		if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
-			return 0;
-		if (ASN1_time_tm_cmp(&tm_this, &tm_tmp) > 0) {
-			OCSPerror(OCSP_R_STATUS_NOT_YET_VALID);
-			return 0;
-		}
-
-		/*
-		 * If maxsec specified check thisUpdate is not more than maxsec
-		 * in the past
-		 */
-		if (maxsec >= 0) {
-			t_tmp = t_now - maxsec;
-			if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
-				return 0;
-			if (ASN1_time_tm_cmp(&tm_this, &tm_tmp) < 0) {
-				OCSPerror(OCSP_R_STATUS_TOO_OLD);
-				return 0;
-			}
-		}
+	}
+	if (!OPENSSL_tm_to_posix(&tm_this, &posix_this))
+		return 0;
+	/* thisUpdate must not be more than nsec in the future. */
+	if (posix_this - nsec > posix_now) {
+		OCSPerror(OCSP_R_STATUS_NOT_YET_VALID);
+		return 0;
+	}
+	/* thisUpdate must not be more than maxsec seconds in the past. */
+	if (maxsec >= 0 && posix_this < posix_now - maxsec) {
+		OCSPerror(OCSP_R_STATUS_TOO_OLD);
+		return 0;
 	}
 
-	if (!nextupd)
+	/* RFC 6960 section 4.2.2.1 allows for servers to not set nextUpdate */
+	if (nextupd == NULL)
 		return 1;
 
-	/* Check nextUpdate is valid and not more than nsec in the past */
+	/* Check that nextUpdate is valid. */
 	if (ASN1_time_parse(nextupd->data, nextupd->length, &tm_next,
 	    V_ASN1_GENERALIZEDTIME) != V_ASN1_GENERALIZEDTIME) {
 		OCSPerror(OCSP_R_ERROR_IN_NEXTUPDATE_FIELD);
 		return 0;
-	} else {
-		t_tmp = t_now - nsec;
-		if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
-			return 0;
-		if (ASN1_time_tm_cmp(&tm_next, &tm_tmp) < 0) {
-			OCSPerror(OCSP_R_STATUS_EXPIRED);
-			return 0;
-		}
 	}
-
-	/* Also don't allow nextUpdate to precede thisUpdate */
-	if (ASN1_time_tm_cmp(&tm_next, &tm_this) < 0) {
+	if (!OPENSSL_tm_to_posix(&tm_next, &posix_next))
+		return 0;
+	/* Don't allow nextUpdate to precede thisUpdate. */
+	if (posix_next < posix_this) {
 		OCSPerror(OCSP_R_NEXTUPDATE_BEFORE_THISUPDATE);
+		return 0;
+	}
+	/* nextUpdate must not be more than nsec seconds in the past. */
+	if (posix_next + nsec  < posix_now) {
+		OCSPerror(OCSP_R_STATUS_EXPIRED);
 		return 0;
 	}
 
 	return 1;
 }
+LCRYPTO_ALIAS(OCSP_check_validity);
 
 const OCSP_CERTID *
 OCSP_SINGLERESP_get0_id(const OCSP_SINGLERESP *single)
 {
 	return single->certId;
 }
+LCRYPTO_ALIAS(OCSP_SINGLERESP_get0_id);

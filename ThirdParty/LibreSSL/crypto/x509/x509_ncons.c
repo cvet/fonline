@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_ncons.c,v 1.4 2020/09/16 18:12:06 beck Exp $ */
+/* $OpenBSD: x509_ncons.c,v 1.11 2024/07/13 15:08:58 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -64,6 +64,8 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "x509_local.h"
+
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
 static int i2r_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
@@ -79,7 +81,7 @@ static int nc_dns(ASN1_IA5STRING *sub, ASN1_IA5STRING *dns);
 static int nc_email(ASN1_IA5STRING *sub, ASN1_IA5STRING *eml);
 static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base);
 
-const X509V3_EXT_METHOD v3_name_constraints = {
+static const X509V3_EXT_METHOD x509v3_ext_name_constraints = {
 	.ext_nid = NID_name_constraints,
 	.ext_flags = 0,
 	.it = &NAME_CONSTRAINTS_it,
@@ -95,6 +97,12 @@ const X509V3_EXT_METHOD v3_name_constraints = {
 	.r2i = NULL,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_name_constraints(void)
+{
+	return &x509v3_ext_name_constraints;
+}
 
 static const ASN1_TEMPLATE GENERAL_SUBTREE_seq_tt[] = {
 	{
@@ -129,6 +137,7 @@ const ASN1_ITEM GENERAL_SUBTREE_it = {
 	.size = sizeof(GENERAL_SUBTREE),
 	.sname = "GENERAL_SUBTREE",
 };
+LCRYPTO_ALIAS(GENERAL_SUBTREE_it);
 
 static const ASN1_TEMPLATE NAME_CONSTRAINTS_seq_tt[] = {
 	{
@@ -156,6 +165,7 @@ const ASN1_ITEM NAME_CONSTRAINTS_it = {
 	.size = sizeof(NAME_CONSTRAINTS),
 	.sname = "NAME_CONSTRAINTS",
 };
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_it);
 
 
 GENERAL_SUBTREE *
@@ -163,24 +173,28 @@ GENERAL_SUBTREE_new(void)
 {
 	return (GENERAL_SUBTREE*)ASN1_item_new(&GENERAL_SUBTREE_it);
 }
+LCRYPTO_ALIAS(GENERAL_SUBTREE_new);
 
 void
 GENERAL_SUBTREE_free(GENERAL_SUBTREE *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &GENERAL_SUBTREE_it);
 }
+LCRYPTO_ALIAS(GENERAL_SUBTREE_free);
 
 NAME_CONSTRAINTS *
 NAME_CONSTRAINTS_new(void)
 {
 	return (NAME_CONSTRAINTS*)ASN1_item_new(&NAME_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_new);
 
 void
 NAME_CONSTRAINTS_free(NAME_CONSTRAINTS *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &NAME_CONSTRAINTS_it);
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_free);
 
 static void *
 v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -347,6 +361,7 @@ NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc)
 	}
 	return X509_V_OK;
 }
+LCRYPTO_ALIAS(NAME_CONSTRAINTS_check);
 static int
 nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc)
 {
@@ -475,7 +490,7 @@ nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
 
 	if (!emlat)
 		return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-	/* Special case: inital '.' is RHS match */
+	/* Special case: initial '.' is RHS match */
 	if (!baseat && (*baseptr == '.')) {
 		if (eml->length > base->length) {
 			emlptr += eml->length - base->length;
@@ -536,7 +551,7 @@ nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base)
 	if (hostlen == 0)
 		return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
 
-	/* Special case: inital '.' is RHS match */
+	/* Special case: initial '.' is RHS match */
 	if (*baseptr == '.') {
 		if (hostlen > base->length) {
 			p = hostptr + hostlen - base->length;

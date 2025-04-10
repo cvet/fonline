@@ -146,7 +146,7 @@ void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string_view>& fi
     }
 }
 
-void ImageBaker::BakeFiles(FileCollection&& files)
+void ImageBaker::BakeFiles(FileCollection files)
 {
     STACK_TRACE_ENTRY();
 

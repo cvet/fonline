@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SSL_SECURE_CHANNEL
 
-#include "mongoc-rand.h"
-#include "mongoc-rand-private.h"
+#include <mongoc/mongoc-rand.h>
+#include <mongoc/mongoc-rand-private.h>
 
-#include "mongoc.h"
+#include <mongoc/mongoc.h>
 
 #include <windows.h>
 #include <stdio.h>
@@ -37,8 +37,7 @@ _mongoc_rand_bytes (uint8_t *buf, int num)
    NTSTATUS status = 0;
 
    if (!algorithm) {
-      status = BCryptOpenAlgorithmProvider (
-         &algorithm, BCRYPT_RNG_ALGORITHM, NULL, 0);
+      status = BCryptOpenAlgorithmProvider (&algorithm, BCRYPT_RNG_ALGORITHM, NULL, 0);
       if (!NT_SUCCESS (status)) {
          MONGOC_ERROR ("BCryptOpenAlgorithmProvider(): %ld", status);
          return 0;

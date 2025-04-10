@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_GRIDFS_BUCKET_PRIVATE_H
 #define MONGOC_GRIDFS_BUCKET_PRIVATE_H
 
-#include "mongoc-collection.h"
+#include <mongoc/mongoc-collection.h>
 
 BSON_BEGIN_DECLS
 

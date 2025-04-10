@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_BULK_OPERATION_PRIVATE_H
 #define MONGOC_BULK_OPERATION_PRIVATE_H
 
-#include "mongoc-array-private.h"
-#include "mongoc-client.h"
-#include "mongoc-write-command-private.h"
+#include <mongoc/mongoc-array-private.h>
+#include <mongoc/mongoc-client.h>
+#include <mongoc/mongoc-write-command-private.h>
 
 
 BSON_BEGIN_DECLS

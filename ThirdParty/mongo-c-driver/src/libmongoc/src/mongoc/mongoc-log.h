@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_LOG_H
 #define MONGOC_LOG_H
 
 #include <bson/bson.h>
 
-#include "mongoc-macros.h"
+#include <mongoc/mongoc-macros.h>
 
 BSON_BEGIN_DECLS
 
@@ -31,18 +31,12 @@ BSON_BEGIN_DECLS
 #endif
 
 
-#define MONGOC_ERROR(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_ERROR, MONGOC_LOG_DOMAIN, __VA_ARGS__)
-#define MONGOC_CRITICAL(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_CRITICAL, MONGOC_LOG_DOMAIN, __VA_ARGS__)
-#define MONGOC_WARNING(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_WARNING, MONGOC_LOG_DOMAIN, __VA_ARGS__)
-#define MONGOC_MESSAGE(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_MESSAGE, MONGOC_LOG_DOMAIN, __VA_ARGS__)
-#define MONGOC_INFO(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_INFO, MONGOC_LOG_DOMAIN, __VA_ARGS__)
-#define MONGOC_DEBUG(...) \
-   mongoc_log (MONGOC_LOG_LEVEL_DEBUG, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_ERROR(...) mongoc_log (MONGOC_LOG_LEVEL_ERROR, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_CRITICAL(...) mongoc_log (MONGOC_LOG_LEVEL_CRITICAL, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_WARNING(...) mongoc_log (MONGOC_LOG_LEVEL_WARNING, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_MESSAGE(...) mongoc_log (MONGOC_LOG_LEVEL_MESSAGE, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_INFO(...) mongoc_log (MONGOC_LOG_LEVEL_INFO, MONGOC_LOG_DOMAIN, __VA_ARGS__)
+#define MONGOC_DEBUG(...) mongoc_log (MONGOC_LOG_LEVEL_DEBUG, MONGOC_LOG_DOMAIN, __VA_ARGS__)
 
 
 typedef enum {
@@ -67,10 +61,10 @@ typedef enum {
  * libmongoc library. This is useful if you would like to show them in a
  * user interface or alternate storage.
  */
-typedef void (*mongoc_log_func_t) (mongoc_log_level_t log_level,
-                                   const char *log_domain,
-                                   const char *message,
-                                   void *user_data);
+typedef void (BSON_CALL *mongoc_log_func_t) (mongoc_log_level_t log_level,
+                                             const char *log_domain,
+                                             const char *message,
+                                             void *user_data);
 
 
 /**
@@ -98,17 +92,11 @@ mongoc_log_set_handler (mongoc_log_func_t log_func, void *user_data);
  *
  */
 MONGOC_EXPORT (void)
-mongoc_log (mongoc_log_level_t log_level,
-            const char *log_domain,
-            const char *format,
-            ...) BSON_GNUC_PRINTF (3, 4);
+mongoc_log (mongoc_log_level_t log_level, const char *log_domain, const char *format, ...) BSON_GNUC_PRINTF (3, 4);
 
 
 MONGOC_EXPORT (void)
-mongoc_log_default_handler (mongoc_log_level_t log_level,
-                            const char *log_domain,
-                            const char *message,
-                            void *user_data);
+mongoc_log_default_handler (mongoc_log_level_t log_level, const char *log_domain, const char *message, void *user_data);
 
 
 /**

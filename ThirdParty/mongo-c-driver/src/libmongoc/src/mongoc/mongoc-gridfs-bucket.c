@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-#include "bson/bson.h"
-#include "mongoc.h"
-#include "mongoc-cursor-private.h"
-#include "mongoc-database-private.h"
-#include "mongoc-gridfs-bucket-private.h"
-#include "mongoc-gridfs-bucket-file-private.h"
-#include "mongoc-opts-private.h"
-#include "mongoc-read-concern-private.h"
-#include "mongoc-stream-gridfs-download-private.h"
-#include "mongoc-stream-gridfs-upload-private.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-write-concern-private.h"
+#include <bson/bson.h>
+#include <mongoc/mongoc.h>
+#include <mongoc/mongoc-cursor-private.h>
+#include <mongoc/mongoc-database-private.h>
+#include <mongoc/mongoc-error-private.h>
+#include <mongoc/mongoc-gridfs-bucket-private.h>
+#include <mongoc/mongoc-gridfs-bucket-file-private.h>
+#include <mongoc/mongoc-opts-private.h>
+#include <mongoc/mongoc-read-concern-private.h>
+#include <mongoc/mongoc-stream-gridfs-download-private.h>
+#include <mongoc/mongoc-stream-gridfs-upload-private.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-write-concern-private.h>
 
 /*--------------------------------------------------------------------------
  *
@@ -58,17 +59,14 @@ _mongoc_gridfs_find_file_with_id (mongoc_gridfs_bucket_t *bucket,
 
    BSON_APPEND_VALUE (&filter, "_id", file_id);
 
-   cursor =
-      mongoc_collection_find_with_opts (bucket->files, &filter, NULL, NULL);
+   cursor = mongoc_collection_find_with_opts (bucket->files, &filter, NULL, NULL);
    bson_destroy (&filter);
 
    r = mongoc_cursor_next (cursor, &doc);
    if (!r) {
       if (!mongoc_cursor_error (cursor, error)) {
-         bson_set_error (error,
-                         MONGOC_ERROR_GRIDFS,
-                         MONGOC_ERROR_GRIDFS_BUCKET_FILE_NOT_FOUND,
-                         "No file with given id exists");
+         _mongoc_set_error (
+            error, MONGOC_ERROR_GRIDFS, MONGOC_ERROR_GRIDFS_BUCKET_FILE_NOT_FOUND, "No file with given id exists");
       }
    } else {
       if (file) {
@@ -92,43 +90,41 @@ mongoc_gridfs_bucket_new (mongoc_database_t *db,
 
    BSON_ASSERT (db);
 
-   if (!_mongoc_gridfs_bucket_opts_parse (
-          db->client, opts, &gridfs_opts, error)) {
+   if (!_mongoc_gridfs_bucket_opts_parse (db->client, opts, &gridfs_opts, error)) {
       _mongoc_gridfs_bucket_opts_cleanup (&gridfs_opts);
       return NULL;
    }
 
    /* Initialize the bucket fields */
-   if (strlen (gridfs_opts.bucketName) + strlen (".chunks") + 1 >
-       sizeof (buf)) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "bucketName \"%s\" must have fewer than %d characters",
-                      gridfs_opts.bucketName,
-                      (int) (sizeof (buf) - (strlen (".chunks") + 1)));
+   if (strlen (gridfs_opts.bucketName) + strlen (".chunks") + 1 > sizeof (buf)) {
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_COMMAND_INVALID_ARG,
+                         "bucketName \"%s\" must have fewer than %d characters",
+                         gridfs_opts.bucketName,
+                         (int) (sizeof (buf) - (strlen (".chunks") + 1)));
+      return NULL;
    }
 
    bucket = (mongoc_gridfs_bucket_t *) bson_malloc0 (sizeof *bucket);
 
-   bson_snprintf (buf, sizeof (buf), "%s.chunks", gridfs_opts.bucketName);
+   // Expect no truncation from above, checking no error occurred.
+   int req = bson_snprintf (buf, sizeof (buf), "%s.chunks", gridfs_opts.bucketName);
+   BSON_ASSERT (req > 0);
    bucket->chunks = mongoc_database_get_collection (db, buf);
 
-   bson_snprintf (buf, sizeof (buf), "%s.files", gridfs_opts.bucketName);
+   req = bson_snprintf (buf, sizeof (buf), "%s.files", gridfs_opts.bucketName);
+   BSON_ASSERT (req > 0);
    bucket->files = mongoc_database_get_collection (db, buf);
 
    if (gridfs_opts.writeConcern) {
-      mongoc_collection_set_write_concern (bucket->chunks,
-                                           gridfs_opts.writeConcern);
-      mongoc_collection_set_write_concern (bucket->files,
-                                           gridfs_opts.writeConcern);
+      mongoc_collection_set_write_concern (bucket->chunks, gridfs_opts.writeConcern);
+      mongoc_collection_set_write_concern (bucket->files, gridfs_opts.writeConcern);
    }
 
    if (gridfs_opts.readConcern) {
-      mongoc_collection_set_read_concern (bucket->chunks,
-                                          gridfs_opts.readConcern);
-      mongoc_collection_set_read_concern (bucket->files,
-                                          gridfs_opts.readConcern);
+      mongoc_collection_set_read_concern (bucket->chunks, gridfs_opts.readConcern);
+      mongoc_collection_set_read_concern (bucket->files, gridfs_opts.readConcern);
    }
 
    if (read_prefs) {
@@ -160,8 +156,7 @@ mongoc_gridfs_bucket_open_upload_stream_with_id (mongoc_gridfs_bucket_t *bucket,
    BSON_ASSERT (file_id);
    BSON_ASSERT (filename);
 
-   if (!_mongoc_gridfs_bucket_upload_opts_parse (
-          bucket->files->client, opts, &gridfs_opts, error)) {
+   if (!_mongoc_gridfs_bucket_upload_opts_parse (bucket->files->client, opts, &gridfs_opts, error)) {
       _mongoc_gridfs_bucket_upload_opts_cleanup (&gridfs_opts);
       return NULL;
    }
@@ -211,8 +206,7 @@ mongoc_gridfs_bucket_open_upload_stream (mongoc_gridfs_bucket_t *bucket,
    val.value_type = BSON_TYPE_OID;
    val.value.v_oid = object_id;
 
-   stream = mongoc_gridfs_bucket_open_upload_stream_with_id (
-      bucket, &val, filename, opts, error);
+   stream = mongoc_gridfs_bucket_open_upload_stream_with_id (bucket, &val, filename, opts, error);
 
    if (!stream) {
       return NULL;
@@ -243,8 +237,7 @@ mongoc_gridfs_bucket_upload_from_stream_with_id (mongoc_gridfs_bucket_t *bucket,
    BSON_ASSERT (filename);
    BSON_ASSERT (source);
 
-   upload_stream = mongoc_gridfs_bucket_open_upload_stream_with_id (
-      bucket, file_id, filename, opts, error);
+   upload_stream = mongoc_gridfs_bucket_open_upload_stream_with_id (bucket, file_id, filename, opts, error);
 
    if (!upload_stream) {
       return false;
@@ -262,10 +255,8 @@ mongoc_gridfs_bucket_upload_from_stream_with_id (mongoc_gridfs_bucket_t *bucket,
 
    if (bytes_read < 0) {
       mongoc_gridfs_bucket_abort_upload (upload_stream);
-      bson_set_error (error,
-                      MONGOC_ERROR_GRIDFS,
-                      MONGOC_ERROR_GRIDFS_BUCKET_STREAM,
-                      "Error occurred on the provided stream.");
+      _mongoc_set_error (
+         error, MONGOC_ERROR_GRIDFS, MONGOC_ERROR_GRIDFS_BUCKET_STREAM, "Error occurred on the provided stream.");
       mongoc_stream_destroy (upload_stream);
       return false;
    } else {
@@ -295,8 +286,7 @@ mongoc_gridfs_bucket_upload_from_stream (mongoc_gridfs_bucket_t *bucket,
    val.value_type = BSON_TYPE_OID;
    val.value.v_oid = object_id;
 
-   r = mongoc_gridfs_bucket_upload_from_stream_with_id (
-      bucket, &val, filename, source, opts, error);
+   r = mongoc_gridfs_bucket_upload_from_stream_with_id (bucket, &val, filename, source, opts, error);
 
    if (!r) {
       return false;
@@ -333,10 +323,7 @@ mongoc_gridfs_bucket_open_download_stream (mongoc_gridfs_bucket_t *bucket,
    }
 
    if (!bson_iter_init (&iter, &file_doc)) {
-      bson_set_error (error,
-                      MONGOC_ERROR_BSON,
-                      MONGOC_ERROR_BSON_INVALID,
-                      "File document malformed");
+      _mongoc_set_error (error, MONGOC_ERROR_BSON, MONGOC_ERROR_BSON_INVALID, "File document malformed");
       return NULL;
    }
 
@@ -384,17 +371,13 @@ mongoc_gridfs_bucket_download_to_stream (mongoc_gridfs_bucket_t *bucket,
    BSON_ASSERT (destination);
 
    /* Make the download stream */
-   download_stream =
-      mongoc_gridfs_bucket_open_download_stream (bucket, file_id, error);
+   download_stream = mongoc_gridfs_bucket_open_download_stream (bucket, file_id, error);
 
-   while ((bytes_read = mongoc_stream_read (download_stream, buf, 256, 1, 0)) >
-          0) {
+   while ((bytes_read = mongoc_stream_read (download_stream, buf, 256, 1, 0)) > 0) {
       bytes_written = mongoc_stream_write (destination, buf, bytes_read, 0);
       if (bytes_written < 0) {
-         bson_set_error (error,
-                         MONGOC_ERROR_GRIDFS,
-                         MONGOC_ERROR_GRIDFS_BUCKET_STREAM,
-                         "Error occurred on the provided stream.");
+         _mongoc_set_error (
+            error, MONGOC_ERROR_GRIDFS, MONGOC_ERROR_GRIDFS_BUCKET_STREAM, "Error occurred on the provided stream.");
          mongoc_stream_destroy (download_stream);
          return false;
       }
@@ -405,9 +388,7 @@ mongoc_gridfs_bucket_download_to_stream (mongoc_gridfs_bucket_t *bucket,
 }
 
 bool
-mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket,
-                                   const bson_value_t *file_id,
-                                   bson_error_t *error)
+mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket, const bson_value_t *file_id, bson_error_t *error)
 {
    bson_t files_selector;
    bson_t chunks_selector;
@@ -422,8 +403,7 @@ mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket,
 
    BSON_APPEND_VALUE (&files_selector, "_id", file_id);
 
-   r = mongoc_collection_delete_one (
-      bucket->files, &files_selector, NULL, &reply, error);
+   r = mongoc_collection_delete_one (bucket->files, &files_selector, NULL, &reply, error);
    bson_destroy (&files_selector);
    if (!r) {
       bson_destroy (&reply);
@@ -433,10 +413,7 @@ mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket,
    BSON_ASSERT (bson_iter_init_find (&iter, &reply, "deletedCount"));
 
    if (bson_iter_as_int64 (&iter) != 1) {
-      bson_set_error (error,
-                      MONGOC_ERROR_GRIDFS,
-                      MONGOC_ERROR_GRIDFS_BUCKET_FILE_NOT_FOUND,
-                      "File not found");
+      _mongoc_set_error (error, MONGOC_ERROR_GRIDFS, MONGOC_ERROR_GRIDFS_BUCKET_FILE_NOT_FOUND, "File not found");
       bson_destroy (&reply);
       return false;
    }
@@ -447,8 +424,7 @@ mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket,
 
    BSON_APPEND_VALUE (&chunks_selector, "files_id", file_id);
 
-   r = mongoc_collection_delete_many (
-      bucket->chunks, &chunks_selector, NULL, NULL, error);
+   r = mongoc_collection_delete_many (bucket->chunks, &chunks_selector, NULL, NULL, error);
    bson_destroy (&chunks_selector);
    if (!r) {
       return false;
@@ -458,21 +434,16 @@ mongoc_gridfs_bucket_delete_by_id (mongoc_gridfs_bucket_t *bucket,
 }
 
 mongoc_cursor_t *
-mongoc_gridfs_bucket_find (mongoc_gridfs_bucket_t *bucket,
-                           const bson_t *filter,
-                           const bson_t *opts)
+mongoc_gridfs_bucket_find (mongoc_gridfs_bucket_t *bucket, const bson_t *filter, const bson_t *opts)
 {
    mongoc_cursor_t *cursor;
    BSON_ASSERT (bucket);
    BSON_ASSERT (filter);
 
-   cursor =
-      mongoc_collection_find_with_opts (bucket->files, filter, opts, NULL);
+   cursor = mongoc_collection_find_with_opts (bucket->files, filter, opts, NULL);
    if (!cursor->error.code && opts && bson_has_field (opts, "sessionId")) {
-      bson_set_error (&cursor->error,
-                      MONGOC_ERROR_CURSOR,
-                      MONGOC_ERROR_CURSOR_INVALID_CURSOR,
-                      "Cannot pass sessionId as an option");
+      _mongoc_set_error (
+         &cursor->error, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CURSOR_INVALID_CURSOR, "Cannot pass sessionId as an option");
    }
    return cursor;
 }
@@ -531,8 +502,7 @@ mongoc_gridfs_bucket_abort_upload (mongoc_stream_t *stream)
    bson_init (&chunks_selector);
    BSON_APPEND_VALUE (&chunks_selector, "files_id", file->file_id);
 
-   r = mongoc_collection_delete_many (
-      file->bucket->chunks, &chunks_selector, NULL, NULL, &file->err);
+   r = mongoc_collection_delete_many (file->bucket->chunks, &chunks_selector, NULL, NULL, &file->err);
    bson_destroy (&chunks_selector);
    return r;
 }

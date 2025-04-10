@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#include "bson-compat.h"
+#include <mlib/intencode.h>
+#include <bson/bson-compat.h>
 
 #include <limits.h>
 #include <stdarg.h>
@@ -22,12 +23,12 @@
 #include <string.h>
 #include <time.h>
 
-#include "bson-atomic.h"
-#include "bson-clock.h"
-#include "bson-context.h"
-#include "bson-context-private.h"
-#include "bson-memory.h"
-#include "common-thread-private.h"
+#include <common-atomic-private.h>
+#include <bson/bson-clock.h>
+#include <bson/bson-context.h>
+#include <bson/bson-context-private.h>
+#include <bson/bson-memory.h>
+#include <common-thread-private.h>
 
 
 #ifndef HOST_NAME_MAX
@@ -61,24 +62,10 @@ void
 _bson_context_set_oid_seq32 (bson_context_t *context, /* IN */
                              bson_oid_t *oid)         /* OUT */
 {
-   uint32_t seq = (uint32_t) bson_atomic_int32_fetch_add (
-      (DECL_ATOMIC_INTEGRAL_INT32 *) &context->seq32, 1, bson_memory_order_seq_cst);
+   uint32_t seq = (uint32_t) mcommon_atomic_int32_fetch_add (
+      (DECL_ATOMIC_INTEGRAL_INT32 *) &context->seq32, 1, mcommon_memory_order_seq_cst);
    seq = BSON_UINT32_TO_BE (seq);
-   memcpy (&oid->bytes[BSON_OID_SEQ32_OFFSET],
-           ((uint8_t *) &seq) + 1,
-           BSON_OID_SEQ32_SIZE);
-}
-
-
-void
-_bson_context_set_oid_seq64 (bson_context_t *context, /* IN */
-                             bson_oid_t *oid)         /* OUT */
-{
-   uint64_t seq = (uint64_t) bson_atomic_int64_fetch_add (
-      (int64_t *) &context->seq64, 1, bson_memory_order_seq_cst);
-
-   seq = BSON_UINT64_TO_BE (seq);
-   memcpy (&oid->bytes[BSON_OID_SEQ64_OFFSET], &seq, BSON_OID_SEQ64_SIZE);
+   memcpy (&oid->bytes[BSON_OID_SEQ32_OFFSET], ((uint8_t *) &seq) + 1, BSON_OID_SEQ32_SIZE);
 }
 
 /*
@@ -96,9 +83,7 @@ _bson_context_get_hostname (char out[HOST_NAME_MAX])
 {
    if (gethostname (out, HOST_NAME_MAX) != 0) {
       if (errno == ENAMETOOLONG) {
-         fprintf (stderr,
-                  "hostname exceeds %d characters, truncating.",
-                  HOST_NAME_MAX);
+         fprintf (stderr, "hostname exceeds %d characters, truncating.", HOST_NAME_MAX);
       } else {
          fprintf (stderr, "unable to get hostname: %d", errno);
       }
@@ -118,23 +103,6 @@ void
 _bson_rotl_u64 (uint64_t *p, int nbits)
 {
    *p = (*p << nbits) | (*p >> (64 - nbits));
-}
-
-/* Write the little-endian representation of 'val' into 'out' */
-void
-_u64_into_u8x8_le (uint8_t out[8], uint64_t val)
-{
-   val = BSON_UINT64_TO_LE (val);
-   memcpy (out, &val, sizeof val);
-}
-
-/* Read a little-endian representation of a 64bit number from 'in' */
-uint64_t
-_u8x8_le_to_u64 (const uint8_t in[8])
-{
-   uint64_t r;
-   memcpy (&r, in, sizeof r);
-   return BSON_UINT64_FROM_LE (r);
 }
 
 /* Perform one SipHash round */
@@ -158,10 +126,7 @@ _sip_round (uint64_t *v0, uint64_t *v1, uint64_t *v2, uint64_t *v3)
 }
 
 void
-_siphash (const void *in,
-          const size_t inlen,
-          const uint64_t key[2],
-          uint64_t digest[2])
+_siphash (const void *in, const size_t inlen, const uint64_t key[2], uint64_t digest[2])
 {
    const unsigned char *ni = (const unsigned char *) in;
    const unsigned char *kk = (const unsigned char *) key;
@@ -174,8 +139,8 @@ _siphash (const void *in,
    uint64_t v1 = UINT64_C (0x646f72616e646f6d);
    uint64_t v2 = UINT64_C (0x6c7967656e657261);
    uint64_t v3 = UINT64_C (0x7465646279746573);
-   uint64_t k0 = _u8x8_le_to_u64 (kk);
-   uint64_t k1 = _u8x8_le_to_u64 (kk + 8);
+   uint64_t k0 = mlib_read_u64le (kk);
+   uint64_t k1 = mlib_read_u64le (kk + 8);
    uint64_t m;
    int i;
    const unsigned char *end = ni + inlen - (inlen % sizeof (uint64_t));
@@ -189,7 +154,7 @@ _siphash (const void *in,
    v1 ^= 0xee;
 
    for (; ni != end; ni += 8) {
-      m = _u8x8_le_to_u64 (ni);
+      m = mlib_read_u64le (ni);
       v3 ^= m;
 
       for (i = 0; i < C_ROUNDS; ++i)
@@ -239,7 +204,7 @@ _siphash (const void *in,
       _sip_round (&v0, &v1, &v2, &v3);
 
    b = v0 ^ v1 ^ v2 ^ v3;
-   _u64_into_u8x8_le (digest_buf, b);
+   mlib_write_u64le (digest_buf, b);
 
    v1 ^= 0xdd;
 
@@ -247,7 +212,7 @@ _siphash (const void *in,
       _sip_round (&v0, &v1, &v2, &v3);
 
    b = v0 ^ v1 ^ v2 ^ v3;
-   _u64_into_u8x8_le (digest_buf + 8, b);
+   mlib_write_u64le (digest_buf + 8, b);
 
    memcpy (digest, digest_buf, sizeof digest_buf);
 }
@@ -286,8 +251,8 @@ _bson_context_init_random (bson_context_t *context, bool init_seq)
    bson_gettimeofday (&rand_params.time);
    rand_params.pid = _bson_getpid ();
    _bson_context_get_hostname (rand_params.hostname);
-   rand_params.rand_call_counter = bson_atomic_int64_fetch_add (
-      &s_rand_call_counter, 1, bson_memory_order_seq_cst);
+   rand_params.rand_call_counter =
+      mcommon_atomic_int64_fetch_add (&s_rand_call_counter, 1, mcommon_memory_order_seq_cst);
 
    /* Generate a SipHash key. We do not care about secrecy or determinism, only
     * uniqueness. */
@@ -332,14 +297,11 @@ _bson_context_set_oid_rand (bson_context_t *context, bson_oid_t *oid)
        * after a call to fork() */
       uint64_t now_pid = _bson_getpid ();
       if (now_pid != context->pid) {
-         _bson_context_init_random (
-            context, false /* Do not update the sequence counters */);
+         _bson_context_init_random (context, false /* Do not update the sequence counters */);
       }
    }
    /* Copy the stored randomness into the OID */
-   memcpy (oid->bytes + BSON_OID_RANDOMESS_OFFSET,
-           &context->randomness,
-           BSON_OID_RANDOMNESS_SIZE);
+   memcpy (oid->bytes + BSON_OID_RANDOMESS_OFFSET, &context->randomness, BSON_OID_RANDOMNESS_SIZE);
 }
 
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: evp_key.c,v 1.26 2018/08/14 17:59:26 tb Exp $ */
+/* $OpenBSD: evp_key.c,v 1.36 2024/04/09 13:52:41 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -65,6 +65,8 @@
 #include <openssl/ui.h>
 #include <openssl/x509.h>
 
+#include "evp_local.h"
+
 /* should be init to zeros. */
 static char prompt_string[80];
 
@@ -73,63 +75,71 @@ EVP_set_pw_prompt(const char *prompt)
 {
 	if (prompt == NULL)
 		prompt_string[0] = '\0';
-	else {
+	else
 		strlcpy(prompt_string, prompt, sizeof(prompt_string));
-	}
 }
+LCRYPTO_ALIAS(EVP_set_pw_prompt);
 
 char *
 EVP_get_pw_prompt(void)
 {
 	if (prompt_string[0] == '\0')
-		return (NULL);
-	else
-		return (prompt_string);
+		return NULL;
+
+	return prompt_string;
 }
+LCRYPTO_ALIAS(EVP_get_pw_prompt);
 
 int
 EVP_read_pw_string(char *buf, int len, const char *prompt, int verify)
 {
 	return EVP_read_pw_string_min(buf, 0, len, prompt, verify);
 }
+LCRYPTO_ALIAS(EVP_read_pw_string);
 
 int
 EVP_read_pw_string_min(char *buf, int min, int len, const char *prompt,
     int verify)
 {
-	int ret;
+	UI *ui = NULL;
 	char buff[BUFSIZ];
-	UI *ui;
+	int ret = -1;
 
 	if (len > BUFSIZ)
 		len = BUFSIZ;
 	/* Ensure that 0 <= min <= len - 1. In particular, 1 <= len. */
 	if (min < 0 || len - 1 < min)
-		return -1;
-	if ((prompt == NULL) && (prompt_string[0] != '\0'))
+		goto err;
+
+	if (prompt == NULL && prompt_string[0] != '\0')
 		prompt = prompt_string;
-	ui = UI_new();
-	if (ui == NULL)
-		return -1;
+
+	if ((ui = UI_new()) == NULL)
+		goto err;
 	if (UI_add_input_string(ui, prompt, 0, buf, min, len - 1) < 0)
-		return -1;
+		goto err;
 	if (verify) {
-		if (UI_add_verify_string(ui, prompt, 0, buff, min, len - 1, buf)
-		    < 0)
-			return -1;
+		if (UI_add_verify_string(ui, prompt, 0, buff, min, len - 1,
+		    buf) < 0)
+			goto err;
 	}
+
 	ret = UI_process(ui);
+
+ err:
 	UI_free(ui);
 	explicit_bzero(buff, BUFSIZ);
+
 	return ret;
 }
+LCRYPTO_ALIAS(EVP_read_pw_string_min);
 
 int
 EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
     const unsigned char *salt, const unsigned char *data, int datal,
     int count, unsigned char *key, unsigned char *iv)
 {
-	EVP_MD_CTX c;
+	EVP_MD_CTX *md_ctx;
 	unsigned char md_buf[EVP_MAX_MD_SIZE];
 	int niv, nkey, addmd = 0;
 	unsigned int mds = 0, i;
@@ -148,29 +158,31 @@ EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 	}
 
 	if (data == NULL)
-		return (nkey);
+		return nkey;
 
-	EVP_MD_CTX_init(&c);
+	if ((md_ctx = EVP_MD_CTX_new()) == NULL)
+		goto err;
+
 	for (;;) {
-		if (!EVP_DigestInit_ex(&c, md, NULL))
+		if (!EVP_DigestInit_ex(md_ctx, md, NULL))
 			goto err;
 		if (addmd++)
-			if (!EVP_DigestUpdate(&c, &(md_buf[0]), mds))
+			if (!EVP_DigestUpdate(md_ctx, &(md_buf[0]), mds))
 				goto err;
-		if (!EVP_DigestUpdate(&c, data, datal))
+		if (!EVP_DigestUpdate(md_ctx, data, datal))
 			goto err;
 		if (salt != NULL)
-			if (!EVP_DigestUpdate(&c, salt, PKCS5_SALT_LEN))
+			if (!EVP_DigestUpdate(md_ctx, salt, PKCS5_SALT_LEN))
 				goto err;
-		if (!EVP_DigestFinal_ex(&c, &(md_buf[0]), &mds))
+		if (!EVP_DigestFinal_ex(md_ctx, &(md_buf[0]), &mds))
 			goto err;
 
 		for (i = 1; i < (unsigned int)count; i++) {
-			if (!EVP_DigestInit_ex(&c, md, NULL))
+			if (!EVP_DigestInit_ex(md_ctx, md, NULL))
 				goto err;
-			if (!EVP_DigestUpdate(&c, &(md_buf[0]), mds))
+			if (!EVP_DigestUpdate(md_ctx, &(md_buf[0]), mds))
 				goto err;
-			if (!EVP_DigestFinal_ex(&c, &(md_buf[0]), &mds))
+			if (!EVP_DigestFinal_ex(md_ctx, &(md_buf[0]), &mds))
 				goto err;
 		}
 		i = 0;
@@ -204,7 +216,8 @@ EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 	rv = type->key_len;
 
 err:
-	EVP_MD_CTX_cleanup(&c);
+	EVP_MD_CTX_free(md_ctx);
 	explicit_bzero(md_buf, sizeof md_buf);
 	return rv;
 }
+LCRYPTO_ALIAS(EVP_BytesToKey);

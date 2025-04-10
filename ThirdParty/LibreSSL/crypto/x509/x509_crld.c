@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_crld.c,v 1.1 2020/06/04 15:19:31 jsing Exp $ */
+/* $OpenBSD: x509_crld.c,v 1.7 2024/07/13 15:08:58 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -65,12 +65,14 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "x509_local.h"
+
 static void *v2i_crld(const X509V3_EXT_METHOD *method,
     X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
 static int i2r_crldp(const X509V3_EXT_METHOD *method, void *pcrldp, BIO *out,
     int indent);
 
-const X509V3_EXT_METHOD v3_crld = {
+static const X509V3_EXT_METHOD x509v3_ext_crl_distribution_points = {
 	.ext_nid = NID_crl_distribution_points,
 	.ext_flags = 0,
 	.it = &CRL_DIST_POINTS_it,
@@ -87,7 +89,13 @@ const X509V3_EXT_METHOD v3_crld = {
 	.usr_data = NULL,
 };
 
-const X509V3_EXT_METHOD v3_freshest_crl = {
+const X509V3_EXT_METHOD *
+x509v3_ext_method_crl_distribution_points(void)
+{
+	return &x509v3_ext_crl_distribution_points;
+}
+
+static const X509V3_EXT_METHOD x509v3_ext_freshest_crl = {
 	.ext_nid = NID_freshest_crl,
 	.ext_flags = 0,
 	.it = &CRL_DIST_POINTS_it,
@@ -103,6 +111,12 @@ const X509V3_EXT_METHOD v3_freshest_crl = {
 	.r2i = NULL,
 	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_freshest_crl(void)
+{
+	return &x509v3_ext_freshest_crl;
+}
 
 static STACK_OF(GENERAL_NAME) *
 gnames_from_sectname(X509V3_CTX *ctx, char *sect)
@@ -415,6 +429,7 @@ const ASN1_ITEM DIST_POINT_NAME_it = {
 	.size = sizeof(DIST_POINT_NAME),
 	.sname = "DIST_POINT_NAME",
 };
+LCRYPTO_ALIAS(DIST_POINT_NAME_it);
 
 
 
@@ -424,24 +439,28 @@ d2i_DIST_POINT_NAME(DIST_POINT_NAME **a, const unsigned char **in, long len)
 	return (DIST_POINT_NAME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &DIST_POINT_NAME_it);
 }
+LCRYPTO_ALIAS(d2i_DIST_POINT_NAME);
 
 int
 i2d_DIST_POINT_NAME(DIST_POINT_NAME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &DIST_POINT_NAME_it);
 }
+LCRYPTO_ALIAS(i2d_DIST_POINT_NAME);
 
 DIST_POINT_NAME *
 DIST_POINT_NAME_new(void)
 {
 	return (DIST_POINT_NAME *)ASN1_item_new(&DIST_POINT_NAME_it);
 }
+LCRYPTO_ALIAS(DIST_POINT_NAME_new);
 
 void
 DIST_POINT_NAME_free(DIST_POINT_NAME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &DIST_POINT_NAME_it);
 }
+LCRYPTO_ALIAS(DIST_POINT_NAME_free);
 
 static const ASN1_TEMPLATE DIST_POINT_seq_tt[] = {
 	{
@@ -476,6 +495,7 @@ const ASN1_ITEM DIST_POINT_it = {
 	.size = sizeof(DIST_POINT),
 	.sname = "DIST_POINT",
 };
+LCRYPTO_ALIAS(DIST_POINT_it);
 
 
 DIST_POINT *
@@ -484,24 +504,28 @@ d2i_DIST_POINT(DIST_POINT **a, const unsigned char **in, long len)
 	return (DIST_POINT *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &DIST_POINT_it);
 }
+LCRYPTO_ALIAS(d2i_DIST_POINT);
 
 int
 i2d_DIST_POINT(DIST_POINT *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &DIST_POINT_it);
 }
+LCRYPTO_ALIAS(i2d_DIST_POINT);
 
 DIST_POINT *
 DIST_POINT_new(void)
 {
 	return (DIST_POINT *)ASN1_item_new(&DIST_POINT_it);
 }
+LCRYPTO_ALIAS(DIST_POINT_new);
 
 void
 DIST_POINT_free(DIST_POINT *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &DIST_POINT_it);
 }
+LCRYPTO_ALIAS(DIST_POINT_free);
 
 static const ASN1_TEMPLATE CRL_DIST_POINTS_item_tt = {
 	.flags = ASN1_TFLG_SEQUENCE_OF,
@@ -520,6 +544,7 @@ const ASN1_ITEM CRL_DIST_POINTS_it = {
 	.size = 0,
 	.sname = "CRL_DIST_POINTS",
 };
+LCRYPTO_ALIAS(CRL_DIST_POINTS_it);
 
 
 CRL_DIST_POINTS *
@@ -528,24 +553,28 @@ d2i_CRL_DIST_POINTS(CRL_DIST_POINTS **a, const unsigned char **in, long len)
 	return (CRL_DIST_POINTS *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &CRL_DIST_POINTS_it);
 }
+LCRYPTO_ALIAS(d2i_CRL_DIST_POINTS);
 
 int
 i2d_CRL_DIST_POINTS(CRL_DIST_POINTS *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &CRL_DIST_POINTS_it);
 }
+LCRYPTO_ALIAS(i2d_CRL_DIST_POINTS);
 
 CRL_DIST_POINTS *
 CRL_DIST_POINTS_new(void)
 {
 	return (CRL_DIST_POINTS *)ASN1_item_new(&CRL_DIST_POINTS_it);
 }
+LCRYPTO_ALIAS(CRL_DIST_POINTS_new);
 
 void
 CRL_DIST_POINTS_free(CRL_DIST_POINTS *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &CRL_DIST_POINTS_it);
 }
+LCRYPTO_ALIAS(CRL_DIST_POINTS_free);
 
 static const ASN1_TEMPLATE ISSUING_DIST_POINT_seq_tt[] = {
 	{
@@ -601,6 +630,7 @@ const ASN1_ITEM ISSUING_DIST_POINT_it = {
 	.size = sizeof(ISSUING_DIST_POINT),
 	.sname = "ISSUING_DIST_POINT",
 };
+LCRYPTO_ALIAS(ISSUING_DIST_POINT_it);
 
 
 ISSUING_DIST_POINT *
@@ -609,40 +639,56 @@ d2i_ISSUING_DIST_POINT(ISSUING_DIST_POINT **a, const unsigned char **in, long le
 	return (ISSUING_DIST_POINT *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &ISSUING_DIST_POINT_it);
 }
+LCRYPTO_ALIAS(d2i_ISSUING_DIST_POINT);
 
 int
 i2d_ISSUING_DIST_POINT(ISSUING_DIST_POINT *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ISSUING_DIST_POINT_it);
 }
+LCRYPTO_ALIAS(i2d_ISSUING_DIST_POINT);
 
 ISSUING_DIST_POINT *
 ISSUING_DIST_POINT_new(void)
 {
 	return (ISSUING_DIST_POINT *)ASN1_item_new(&ISSUING_DIST_POINT_it);
 }
+LCRYPTO_ALIAS(ISSUING_DIST_POINT_new);
 
 void
 ISSUING_DIST_POINT_free(ISSUING_DIST_POINT *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &ISSUING_DIST_POINT_it);
 }
+LCRYPTO_ALIAS(ISSUING_DIST_POINT_free);
 
 static int i2r_idp(const X509V3_EXT_METHOD *method, void *pidp, BIO *out,
     int indent);
 static void *v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
     STACK_OF(CONF_VALUE) *nval);
 
-const X509V3_EXT_METHOD v3_idp = {
-	NID_issuing_distribution_point, X509V3_EXT_MULTILINE,
-	&ISSUING_DIST_POINT_it,
-	0, 0, 0, 0,
-	0, 0,
-	0,
-	v2i_idp,
-	i2r_idp, 0,
-	NULL
+static const X509V3_EXT_METHOD x509v3_ext_issuing_distribution_point = {
+	.ext_nid = NID_issuing_distribution_point,
+	.ext_flags = X509V3_EXT_MULTILINE,
+	.it = &ISSUING_DIST_POINT_it,
+	.ext_new = NULL,
+	.ext_free = NULL,
+	.d2i = NULL,
+	.i2d = NULL,
+	.i2s = NULL,
+	.s2i = NULL,
+	.i2v = NULL,
+	.v2i = v2i_idp,
+	.i2r = i2r_idp,
+	.r2i = NULL,
+	.usr_data = NULL,
 };
+
+const X509V3_EXT_METHOD *
+x509v3_ext_method_issuing_distribution_point(void)
+{
+	return &x509v3_ext_issuing_distribution_point;
+}
 
 static void *
 v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
@@ -807,3 +853,4 @@ DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname)
 	}
 	return 1;
 }
+LCRYPTO_ALIAS(DIST_POINT_set_dpname);

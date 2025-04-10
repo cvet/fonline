@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-config.h"
+#include <mongoc/mongoc-config.h>
 
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
 
@@ -23,37 +23,36 @@
 #include <errno.h>
 #include <string.h>
 
-#include "mongoc-counters-private.h"
-#include "mongoc-errno-private.h"
-#include "mongoc-stream-tls.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-stream-tls-private.h"
-#include "mongoc-stream-tls-openssl-bio-private.h"
-#include "mongoc-stream-tls-openssl-private.h"
-#include "mongoc-openssl-private.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-log.h"
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-errno-private.h>
+#include <mongoc/mongoc-stream-tls.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream-tls-private.h>
+#include <mongoc/mongoc-stream-tls-openssl-bio-private.h>
+#include <mongoc/mongoc-stream-tls-openssl-private.h>
+#include <mongoc/mongoc-openssl-private.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-log.h>
+#include <mlib/cmp.h>
 
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-tls-openssl-bio"
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-   (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 
 /* Magic vtable to make our BIO shim */
-static BIO_METHOD gMongocStreamTlsOpenSslRawMethods = {
-   BIO_TYPE_FILTER,
-   "mongoc-stream-tls-glue",
-   mongoc_stream_tls_openssl_bio_write,
-   mongoc_stream_tls_openssl_bio_read,
-   mongoc_stream_tls_openssl_bio_puts,
-   mongoc_stream_tls_openssl_bio_gets,
-   mongoc_stream_tls_openssl_bio_ctrl,
-   mongoc_stream_tls_openssl_bio_create,
-   mongoc_stream_tls_openssl_bio_destroy,
-   NULL};
+static BIO_METHOD gMongocStreamTlsOpenSslRawMethods = {BIO_TYPE_FILTER,
+                                                       "mongoc-stream-tls-glue",
+                                                       mongoc_stream_tls_openssl_bio_write,
+                                                       mongoc_stream_tls_openssl_bio_read,
+                                                       mongoc_stream_tls_openssl_bio_puts,
+                                                       mongoc_stream_tls_openssl_bio_gets,
+                                                       mongoc_stream_tls_openssl_bio_ctrl,
+                                                       mongoc_stream_tls_openssl_bio_create,
+                                                       mongoc_stream_tls_openssl_bio_destroy,
+                                                       NULL};
 
 static void
 BIO_set_data (BIO *b, void *ptr)
@@ -216,19 +215,16 @@ mongoc_stream_tls_openssl_bio_read (BIO *b, char *buf, int len)
       RETURN (-1);
    }
 
-   if (BSON_UNLIKELY (!bson_in_range_signed (int32_t, tls->timeout_msec))) {
+   if (BSON_UNLIKELY (!mlib_in_range (int32_t, tls->timeout_msec))) {
       // CDRIVER-4589
-      MONGOC_ERROR ("timeout_msec value %" PRIu64
-                    " exceeds supported 32-bit range",
-                    tls->timeout_msec);
+      MONGOC_ERROR ("timeout_msec value %" PRId64 " exceeds supported 32-bit range", tls->timeout_msec);
       return -1;
    }
 
    openssl = (mongoc_stream_tls_openssl_t *) tls->ctx;
 
    errno = 0;
-   const ssize_t ret = mongoc_stream_read (
-      tls->base_stream, buf, (size_t) len, 0, (int32_t) tls->timeout_msec);
+   const ssize_t ret = mongoc_stream_read (tls->base_stream, buf, (size_t) len, 0, (int32_t) tls->timeout_msec);
    BIO_clear_retry_flags (b);
 
    if ((ret <= 0) && MONGOC_ERRNO_IS_AGAIN (errno)) {
@@ -239,7 +235,7 @@ mongoc_stream_tls_openssl_bio_read (BIO *b, char *buf, int len)
       BIO_set_retry_read (openssl->bio);
    }
 
-   BSON_ASSERT (bson_in_range_signed (int, ret));
+   BSON_ASSERT (mlib_in_range (int, ret));
 
    RETURN ((int) ret);
 }
@@ -287,18 +283,15 @@ mongoc_stream_tls_openssl_bio_write (BIO *b, const char *buf, int len)
    iov.iov_base = (void *) buf;
    iov.iov_len = (size_t) len;
 
-   if (BSON_UNLIKELY (!bson_in_range_signed (int32_t, tls->timeout_msec))) {
+   if (BSON_UNLIKELY (!mlib_in_range (int32_t, tls->timeout_msec))) {
       // CDRIVER-4589
-      MONGOC_ERROR ("timeout_msec value %" PRIu64
-                    " exceeds supported 32-bit range",
-                    tls->timeout_msec);
+      MONGOC_ERROR ("timeout_msec value %" PRId64 " exceeds supported 32-bit range", tls->timeout_msec);
       RETURN (-1);
    }
 
    errno = 0;
    TRACE ("mongoc_stream_writev is expected to write: %d", len);
-   const ssize_t ret = mongoc_stream_writev (
-      tls->base_stream, &iov, 1, (int32_t) tls->timeout_msec);
+   const ssize_t ret = mongoc_stream_writev (tls->base_stream, &iov, 1, (int32_t) tls->timeout_msec);
    BIO_clear_retry_flags (b);
 
    if (len > ret) {
@@ -315,7 +308,7 @@ mongoc_stream_tls_openssl_bio_write (BIO *b, const char *buf, int len)
       BIO_set_retry_write (openssl->bio);
    }
 
-   BSON_ASSERT (bson_in_range_signed (int, ret));
+   BSON_ASSERT (mlib_in_range (int, ret));
 
    RETURN ((int) ret);
 }

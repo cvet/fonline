@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,14 +96,6 @@
 #endif
 
 
-/*
- * Define to 1 if you want extra aligned types in libbson
- */
-#define BSON_EXTRA_ALIGN @BSON_EXTRA_ALIGN@
-#if BSON_EXTRA_ALIGN != 1
-# undef BSON_EXTRA_ALIGN
-#endif
-
 
 /*
  * Define to 1 if you have rand_r available on your platform.
@@ -120,6 +112,15 @@
 #define BSON_HAVE_STRLCPY @BSON_HAVE_STRLCPY@
 #if BSON_HAVE_STRLCPY != 1
 # undef BSON_HAVE_STRLCPY
+#endif
+
+
+/*
+ * Define to 1 if you have aligned_alloc available on your platform.
+ */
+#define BSON_HAVE_ALIGNED_ALLOC @BSON_HAVE_ALIGNED_ALLOC@
+#if BSON_HAVE_ALIGNED_ALLOC != 1
+# undef BSON_HAVE_ALIGNED_ALLOC
 #endif
 
 #endif /* BSON_CONFIG_H */

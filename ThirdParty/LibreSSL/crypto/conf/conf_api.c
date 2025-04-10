@@ -1,4 +1,4 @@
-/* $OpenBSD: conf_api.c,v 1.15 2015/04/11 16:03:21 deraadt Exp $ */
+/* $OpenBSD: conf_api.c,v 1.21 2024/08/31 09:29:03 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -67,7 +67,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <openssl/conf.h>
-#include <openssl/conf_api.h>
+
+#include "conf_local.h"
 
 static void value_free_hash_doall_arg(CONF_VALUE *a,
     LHASH_OF(CONF_VALUE) *conf);
@@ -200,9 +201,6 @@ _CONF_free_data(CONF *conf)
 	if (conf == NULL || conf->data == NULL)
 		return;
 
-	lh_CONF_VALUE_down_load(conf->data) = 0; /* evil thing to make
-						  * sure the 'free()' works as
-						  * expected */
 	lh_CONF_VALUE_doall_arg(conf->data,
 	    LHASH_DOALL_ARG_FN(value_free_hash),
 	    LHASH_OF(CONF_VALUE), conf->data);

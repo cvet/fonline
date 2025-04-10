@@ -1,9 +1,16 @@
+#if defined(__CET__)
+#include <cet.h>
+#else
+#define _CET_ENDBR
+#endif
+
 #include "x86_arch.h"
 
 .text	
 .def	_x86_64_AES_encrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_encrypt:
+_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -157,6 +164,7 @@ _x86_64_AES_encrypt:
 .def	_x86_64_AES_encrypt_compact;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_encrypt_compact:
+_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -329,21 +337,22 @@ _x86_64_AES_encrypt_compact:
 	xorl	12(%r15),%edx
 	retq
 
-.globl	AES_encrypt
-.def	AES_encrypt;	.scl 2;	.type 32;	.endef
+.globl	aes_encrypt_internal
+.def	aes_encrypt_internal;	.scl 2;	.type 32;	.endef
 .p2align	4
 .globl	asm_AES_encrypt
 
 asm_AES_encrypt:
-AES_encrypt:
+aes_encrypt_internal:
 	movq	%rdi,8(%rsp)
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%rax
-.LSEH_begin_AES_encrypt:
+.LSEH_begin_aes_encrypt_internal:
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -405,10 +414,11 @@ AES_encrypt:
 	movq	8(%rsp),%rdi
 	movq	16(%rsp),%rsi
 	retq
-.LSEH_end_AES_encrypt:
+.LSEH_end_aes_encrypt_internal:
 .def	_x86_64_AES_decrypt;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_decrypt:
+_CET_ENDBR
 	xorl	0(%r15),%eax
 	xorl	4(%r15),%ebx
 	xorl	8(%r15),%ecx
@@ -564,6 +574,7 @@ _x86_64_AES_decrypt:
 .def	_x86_64_AES_decrypt_compact;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_decrypt_compact:
+_CET_ENDBR
 	leaq	128(%r14),%r8
 	movl	0-128(%r8),%edi
 	movl	32-128(%r8),%ebp
@@ -787,21 +798,22 @@ _x86_64_AES_decrypt_compact:
 	xorl	12(%r15),%edx
 	retq
 
-.globl	AES_decrypt
-.def	AES_decrypt;	.scl 2;	.type 32;	.endef
+.globl	aes_decrypt_internal
+.def	aes_decrypt_internal;	.scl 2;	.type 32;	.endef
 .p2align	4
 .globl	asm_AES_decrypt
 
 asm_AES_decrypt:
-AES_decrypt:
+aes_decrypt_internal:
 	movq	%rdi,8(%rsp)
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%rax
-.LSEH_begin_AES_decrypt:
+.LSEH_begin_aes_decrypt_internal:
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -865,19 +877,20 @@ AES_decrypt:
 	movq	8(%rsp),%rdi
 	movq	16(%rsp),%rsi
 	retq
-.LSEH_end_AES_decrypt:
-.globl	AES_set_encrypt_key
-.def	AES_set_encrypt_key;	.scl 2;	.type 32;	.endef
+.LSEH_end_aes_decrypt_internal:
+.globl	aes_set_encrypt_key_internal
+.def	aes_set_encrypt_key_internal;	.scl 2;	.type 32;	.endef
 .p2align	4
-AES_set_encrypt_key:
+aes_set_encrypt_key_internal:
 	movq	%rdi,8(%rsp)
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%rax
-.LSEH_begin_AES_set_encrypt_key:
+.LSEH_begin_aes_set_encrypt_key_internal:
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -900,11 +913,12 @@ AES_set_encrypt_key:
 	movq	8(%rsp),%rdi
 	movq	16(%rsp),%rsi
 	retq
-.LSEH_end_AES_set_encrypt_key:
+.LSEH_end_aes_set_encrypt_key_internal:
 
 .def	_x86_64_AES_set_encrypt_key;	.scl 3;	.type 32;	.endef
 .p2align	4
 _x86_64_AES_set_encrypt_key:
+_CET_ENDBR
 	movl	%esi,%ecx
 	movq	%rdi,%rsi
 	movq	%rdx,%rdi
@@ -1141,18 +1155,19 @@ _x86_64_AES_set_encrypt_key:
 .Lexit:
 	retq
 
-.globl	AES_set_decrypt_key
-.def	AES_set_decrypt_key;	.scl 2;	.type 32;	.endef
+.globl	aes_set_decrypt_key_internal
+.def	aes_set_decrypt_key_internal;	.scl 2;	.type 32;	.endef
 .p2align	4
-AES_set_decrypt_key:
+aes_set_decrypt_key_internal:
 	movq	%rdi,8(%rsp)
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%rax
-.LSEH_begin_AES_set_decrypt_key:
+.LSEH_begin_aes_set_decrypt_key_internal:
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
 
+_CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1337,20 +1352,20 @@ AES_set_decrypt_key:
 	movq	8(%rsp),%rdi
 	movq	16(%rsp),%rsi
 	retq
-.LSEH_end_AES_set_decrypt_key:
-.globl	AES_cbc_encrypt
-.def	AES_cbc_encrypt;	.scl 2;	.type 32;	.endef
+.LSEH_end_aes_set_decrypt_key_internal:
+.globl	aes_cbc_encrypt_internal
+.def	aes_cbc_encrypt_internal;	.scl 2;	.type 32;	.endef
 .p2align	4
 
 
 .globl	asm_AES_cbc_encrypt
 
 asm_AES_cbc_encrypt:
-AES_cbc_encrypt:
+aes_cbc_encrypt_internal:
 	movq	%rdi,8(%rsp)
 	movq	%rsi,16(%rsp)
 	movq	%rsp,%rax
-.LSEH_begin_AES_cbc_encrypt:
+.LSEH_begin_aes_cbc_encrypt_internal:
 	movq	%rcx,%rdi
 	movq	%rdx,%rsi
 	movq	%r8,%rdx
@@ -1358,6 +1373,7 @@ AES_cbc_encrypt:
 	movq	40(%rsp),%r8
 	movq	48(%rsp),%r9
 
+_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lcbc_epilogue
 	pushfq
@@ -1808,7 +1824,8 @@ AES_cbc_encrypt:
 	movq	8(%rsp),%rdi
 	movq	16(%rsp),%rsi
 	retq
-.LSEH_end_AES_cbc_encrypt:
+.LSEH_end_aes_cbc_encrypt_internal:
+.section	.rodata
 .p2align	6
 .LAES_Te:
 .long	0xa56363c6,0xa56363c6
@@ -2593,12 +2610,13 @@ AES_cbc_encrypt:
 .byte	0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d
 .long	0x80808080, 0x80808080, 0xfefefefe, 0xfefefefe
 .long	0x1b1b1b1b, 0x1b1b1b1b, 0, 0
-.byte	65,69,83,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .p2align	6
+.text	
 
 .def	block_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 block_se_handler:
+_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx
@@ -2657,6 +2675,7 @@ block_se_handler:
 .def	key_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 key_se_handler:
+_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx
@@ -2714,6 +2733,7 @@ key_se_handler:
 .def	cbc_se_handler;	.scl 3;	.type 32;	.endef
 .p2align	4
 cbc_se_handler:
+_CET_ENDBR
 	pushq	%rsi
 	pushq	%rdi
 	pushq	%rbx
@@ -2818,44 +2838,44 @@ cbc_se_handler:
 
 .section	.pdata
 .p2align	2
-.rva	.LSEH_begin_AES_encrypt
-.rva	.LSEH_end_AES_encrypt
-.rva	.LSEH_info_AES_encrypt
+.rva	.LSEH_begin_aes_encrypt_internal
+.rva	.LSEH_end_aes_encrypt_internal
+.rva	.LSEH_info_aes_encrypt_internal
 
-.rva	.LSEH_begin_AES_decrypt
-.rva	.LSEH_end_AES_decrypt
-.rva	.LSEH_info_AES_decrypt
+.rva	.LSEH_begin_aes_decrypt_internal
+.rva	.LSEH_end_aes_decrypt_internal
+.rva	.LSEH_info_aes_decrypt_internal
 
-.rva	.LSEH_begin_AES_set_encrypt_key
-.rva	.LSEH_end_AES_set_encrypt_key
-.rva	.LSEH_info_AES_set_encrypt_key
+.rva	.LSEH_begin_aes_set_encrypt_key_internal
+.rva	.LSEH_end_aes_set_encrypt_key_internal
+.rva	.LSEH_info_aes_set_encrypt_key_internal
 
-.rva	.LSEH_begin_AES_set_decrypt_key
-.rva	.LSEH_end_AES_set_decrypt_key
-.rva	.LSEH_info_AES_set_decrypt_key
+.rva	.LSEH_begin_aes_set_decrypt_key_internal
+.rva	.LSEH_end_aes_set_decrypt_key_internal
+.rva	.LSEH_info_aes_set_decrypt_key_internal
 
-.rva	.LSEH_begin_AES_cbc_encrypt
-.rva	.LSEH_end_AES_cbc_encrypt
-.rva	.LSEH_info_AES_cbc_encrypt
+.rva	.LSEH_begin_aes_cbc_encrypt_internal
+.rva	.LSEH_end_aes_cbc_encrypt_internal
+.rva	.LSEH_info_aes_cbc_encrypt_internal
 
 .section	.xdata
 .p2align	3
-.LSEH_info_AES_encrypt:
+.LSEH_info_aes_encrypt_internal:
 .byte	9,0,0,0
 .rva	block_se_handler
 .rva	.Lenc_prologue,.Lenc_epilogue	
-.LSEH_info_AES_decrypt:
+.LSEH_info_aes_decrypt_internal:
 .byte	9,0,0,0
 .rva	block_se_handler
 .rva	.Ldec_prologue,.Ldec_epilogue	
-.LSEH_info_AES_set_encrypt_key:
+.LSEH_info_aes_set_encrypt_key_internal:
 .byte	9,0,0,0
 .rva	key_se_handler
 .rva	.Lenc_key_prologue,.Lenc_key_epilogue	
-.LSEH_info_AES_set_decrypt_key:
+.LSEH_info_aes_set_decrypt_key_internal:
 .byte	9,0,0,0
 .rva	key_se_handler
 .rva	.Ldec_key_prologue,.Ldec_key_epilogue	
-.LSEH_info_AES_cbc_encrypt:
+.LSEH_info_aes_cbc_encrypt_internal:
 .byte	9,0,0,0
 .rva	cbc_se_handler

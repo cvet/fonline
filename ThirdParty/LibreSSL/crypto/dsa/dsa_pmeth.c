@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa_pmeth.c,v 1.12 2019/09/09 18:06:25 jsing Exp $ */
+/* $OpenBSD: dsa_pmeth.c,v 1.20 2024/08/26 22:00:47 op Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -10,7 +10,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -58,6 +58,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/asn1t.h>
@@ -66,8 +67,9 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-#include "dsa_locl.h"
-#include "evp_locl.h"
+#include "bn_local.h"
+#include "dsa_local.h"
+#include "evp_local.h"
 
 /* DSA pkey context structure */
 
@@ -98,7 +100,7 @@ pkey_dsa_init(EVP_PKEY_CTX *ctx)
 	ctx->data = dctx;
 	ctx->keygen_info = dctx->gentmp;
 	ctx->keygen_info_count = 2;
-	
+
 	return 1;
 }
 
@@ -109,7 +111,7 @@ pkey_dsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
 	if (!pkey_dsa_init(dst))
 		return 0;
-       	sctx = src->data;
+	sctx = src->data;
 	dctx = dst->data;
 	dctx->nbits = sctx->nbits;
 	dctx->qbits = sctx->qbits;
@@ -127,24 +129,28 @@ pkey_dsa_cleanup(EVP_PKEY_CTX *ctx)
 }
 
 static int
-pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
+pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *out_siglen,
     const unsigned char *tbs, size_t tbslen)
 {
-	int ret, type;
-	unsigned int sltmp;
-	DSA_PKEY_CTX *dctx = ctx->data;
 	DSA *dsa = ctx->pkey->pkey.dsa;
+	DSA_PKEY_CTX *dctx = ctx->data;
+	unsigned int siglen;
 
-	if (dctx->md)
-		type = EVP_MD_type(dctx->md);
-	else
-		type = NID_sha1;
+	*out_siglen = 0;
 
-	ret = DSA_sign(type, tbs, tbslen, sig, &sltmp, dsa);
+	if (tbslen > INT_MAX)
+		 return 0;
 
-	if (ret <= 0)
-		return ret;
-	*siglen = sltmp;
+	if (dctx->md != NULL) {
+		if (tbslen != EVP_MD_size(dctx->md))
+			return 0;
+	}
+
+	if (!DSA_sign(0, tbs, tbslen, sig, &siglen, dsa))
+		return 0;
+
+	*out_siglen = siglen;
+
 	return 1;
 }
 
@@ -152,18 +158,18 @@ static int
 pkey_dsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen,
     const unsigned char *tbs, size_t tbslen)
 {
-	int ret, type;
-	DSA_PKEY_CTX *dctx = ctx->data;
 	DSA *dsa = ctx->pkey->pkey.dsa;
+	DSA_PKEY_CTX *dctx = ctx->data;
 
-	if (dctx->md)
-		type = EVP_MD_type(dctx->md);
-	else
-		type = NID_sha1;
+	if (tbslen > INT_MAX || siglen > INT_MAX)
+		 return 0;
 
-	ret = DSA_verify(type, tbs, tbslen, sig, siglen, dsa);
+	if (dctx->md != NULL) {
+		if (tbslen != EVP_MD_size(dctx->md))
+			return 0;
+	}
 
-	return ret;
+	return DSA_verify(0, tbs, tbslen, sig, siglen, dsa);
 }
 
 static int
@@ -198,6 +204,7 @@ pkey_dsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 		return 1;
 
 	case EVP_PKEY_CTRL_MD:
+		/* ANSI X9.57 and NIST CSOR. */
 		switch (EVP_MD_type((const EVP_MD *)p2)) {
 		case NID_sha1:
 		case NID_dsa:
@@ -206,6 +213,10 @@ pkey_dsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 		case NID_sha256:
 		case NID_sha384:
 		case NID_sha512:
+		case NID_sha3_224:
+		case NID_sha3_256:
+		case NID_sha3_384:
+		case NID_sha3_512:
 			break;
 		default:
 			DSAerror(DSA_R_INVALID_DIGEST_TYPE);
@@ -222,81 +233,72 @@ pkey_dsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 	case EVP_PKEY_CTRL_PKCS7_SIGN:
 	case EVP_PKEY_CTRL_CMS_SIGN:
 		return 1;
-		
+
 	case EVP_PKEY_CTRL_PEER_KEY:
 		DSAerror(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-		return -2;	
+		return -2;
 	default:
 		return -2;
 	}
 }
-			
+
 static int
 pkey_dsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 {
- 	long lval;
-	char *ep;
+	const char *errstr;
 
 	if (!strcmp(type, "dsa_paramgen_bits")) {
 		int nbits;
 
-		errno = 0;
-		lval = strtol(value, &ep, 10);
-		if (value[0] == '\0' || *ep != '\0')
-			goto not_a_number;
-		if ((errno == ERANGE &&
-		    (lval == LONG_MAX || lval == LONG_MIN)) ||
-		    (lval > INT_MAX || lval < INT_MIN))
-			goto out_of_range;
-		nbits = lval;
+		nbits = strtonum(value, INT_MIN, INT_MAX, &errstr);
+		if (errstr != NULL)
+			return -2;
 		return EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx, nbits);
 	} else if (!strcmp(type, "dsa_paramgen_q_bits")) {
 		int qbits;
 
-		errno = 0;
-		lval = strtol(value, &ep, 10);
-		if (value[0] == '\0' || *ep != '\0')
-			goto not_a_number;
-		if ((errno == ERANGE &&
-		    (lval == LONG_MAX || lval == LONG_MIN)) ||
-		    (lval > INT_MAX || lval < INT_MIN))
-			goto out_of_range;
-		qbits = lval;
+		qbits = strtonum(value, INT_MIN, INT_MAX, &errstr);
+		if (errstr != NULL)
+			return -2;
 		return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DSA,
 		    EVP_PKEY_OP_PARAMGEN, EVP_PKEY_CTRL_DSA_PARAMGEN_Q_BITS,
 		    qbits, NULL);
 	} else if (!strcmp(type, "dsa_paramgen_md")) {
 		return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DSA,
-		    EVP_PKEY_OP_PARAMGEN, EVP_PKEY_CTRL_DSA_PARAMGEN_MD, 0, 
+		    EVP_PKEY_OP_PARAMGEN, EVP_PKEY_CTRL_DSA_PARAMGEN_MD, 0,
 		    (void *)EVP_get_digestbyname(value));
 	}
-not_a_number:
-out_of_range:
+
 	return -2;
 }
 
 static int
 pkey_dsa_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
-	DSA *dsa = NULL;
+	DSA *dsa;
 	DSA_PKEY_CTX *dctx = ctx->data;
-	BN_GENCB *pcb, cb;
-	int ret;
+	BN_GENCB *pcb = NULL;
+	BN_GENCB cb = {0};
+	int ret = 0;
 
-	if (ctx->pkey_gencb) {
+	if ((dsa = DSA_new()) == NULL)
+		goto err;
+	if (ctx->pkey_gencb != NULL) {
 		pcb = &cb;
 		evp_pkey_set_cb_translate(pcb, ctx);
-	} else
-		pcb = NULL;
-	dsa = DSA_new();
-	if (!dsa)
-		return 0;
-	ret = dsa_builtin_paramgen(dsa, dctx->nbits, dctx->qbits, dctx->pmd,
-	    NULL, 0, NULL, NULL, NULL, pcb);
-	if (ret)
-		EVP_PKEY_assign_DSA(pkey, dsa);
-	else
-		DSA_free(dsa);
+	}
+	if (!dsa_builtin_paramgen(dsa, dctx->nbits, dctx->qbits, dctx->pmd,
+	    NULL, 0, NULL, NULL, NULL, pcb))
+		goto err;
+	if (!EVP_PKEY_assign_DSA(pkey, dsa))
+		goto err;
+	dsa = NULL;
+
+	ret = 1;
+
+ err:
+	DSA_free(dsa);
+
 	return ret;
 }
 
@@ -304,19 +306,28 @@ static int
 pkey_dsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
 	DSA *dsa = NULL;
+	int ret = 0;
 
 	if (ctx->pkey == NULL) {
 		DSAerror(DSA_R_NO_PARAMETERS_SET);
-		return 0;
+		goto err;
 	}
-	dsa = DSA_new();
-	if (!dsa)
-		return 0;
-	EVP_PKEY_assign_DSA(pkey, dsa);
-	/* Note: if error return, pkey is freed by parent routine */
+	if ((dsa = DSA_new()) == NULL)
+		goto err;
+	if (!EVP_PKEY_set1_DSA(pkey, dsa))
+		goto err;
+
 	if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey))
-		return 0;
-	return DSA_generate_key(pkey->pkey.dsa);
+		goto err;
+	if (!DSA_generate_key(dsa))
+		goto err;
+
+	ret = 1;
+
+ err:
+	DSA_free(dsa);
+
+	return ret;
 }
 
 const EVP_PKEY_METHOD dsa_pkey_meth = {

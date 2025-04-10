@@ -271,10 +271,10 @@ void ParticleEditor::OnDraw()
     draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
     draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
     if (App->Render.IsRenderTargetFlipped()) {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+        draw_list->AddImage(reinterpret_cast<ImTextureID>(_impl->RenderTarget.get()), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
     }
     else {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
+        draw_list->AddImage(reinterpret_cast<ImTextureID>(_impl->RenderTarget.get()), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
     }
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 

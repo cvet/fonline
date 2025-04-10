@@ -1,4 +1,4 @@
-.\"	$OpenBSD: ASN1_STRING_new.3,v 1.17 2019/06/14 13:59:32 schwarze Exp $
+.\"	$OpenBSD: ASN1_STRING_new.3,v 1.26 2024/03/05 18:30:40 tb Exp $
 .\"	OpenSSL 99d63d46 Tue Mar 24 07:52:24 2015 -0400
 .\"
 .\" Copyright (c) 2017 Ingo Schwarze <schwarze@openbsd.org>
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: June 14 2019 $
+.Dd $Mdocdate: March 5 2024 $
 .Dt ASN1_STRING_NEW 3
 .Os
 .Sh NAME
@@ -58,6 +58,8 @@
 .Nm ASN1_UTCTIME_free ,
 .Nm ASN1_TIME_new ,
 .Nm ASN1_TIME_free
+.\" deprecated aliases, intentionally undocumented: M_ASN1_IA5STRING_new,
+.\" M_ASN1_ENUMERATED_free, M_ASN1_INTEGER_free, M_ASN1_OCTET_STRING_free
 .Nd allocate and free ASN1_STRING objects
 .Sh SYNOPSIS
 .In openssl/asn1.h
@@ -203,14 +205,19 @@ object if successful; otherwise
 is returned and an error code can be retrieved with
 .Xr ERR_get_error 3 .
 .Sh SEE ALSO
+.Xr ASN1_BIT_STRING_set 3 ,
 .Xr ASN1_INTEGER_get 3 ,
+.Xr ASN1_item_pack 3 ,
+.Xr ASN1_mbstring_copy 3 ,
+.Xr ASN1_PRINTABLE_type 3 ,
 .Xr ASN1_STRING_length 3 ,
 .Xr ASN1_STRING_print_ex 3 ,
-.Xr ASN1_time_parse 3 ,
 .Xr ASN1_TIME_set 3 ,
 .Xr ASN1_TYPE_get 3 ,
+.Xr ASN1_UNIVERSALSTRING_to_string 3 ,
 .Xr d2i_ASN1_OBJECT 3 ,
 .Xr d2i_ASN1_OCTET_STRING 3 ,
+.Xr i2a_ASN1_STRING 3 ,
 .Xr X509_cmp_time 3 ,
 .Xr X509_EXTENSION_get_object 3 ,
 .Xr X509_get_ext_by_OBJ 3 ,

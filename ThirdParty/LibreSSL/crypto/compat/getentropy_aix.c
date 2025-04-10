@@ -1,4 +1,4 @@
-/*	$OpenBSD: getentropy_aix.c,v 1.7 2020/05/17 14:44:20 deraadt Exp $	*/
+/*	$OpenBSD: getentropy_aix.c,v 1.9 2022/12/26 07:18:50 jmc Exp $	*/
 
 /*
  * Copyright (c) 2015 Michael Felt <aixtools@gmail.com>
@@ -21,7 +21,7 @@
  * http://man.openbsd.org/getentropy.2
  */
 /*
- * -lperfstat is needed for the psuedo entropy data
+ * -lperfstat is needed for the pseudo entropy data
  */
 
 #include <sys/mman.h>
@@ -134,7 +134,7 @@ start:
 #ifdef O_CLOEXEC
 	flags |= O_CLOEXEC;
 #endif
-	fd = open(path, flags, 0);
+	fd = open(path, flags);
 	if (fd == -1) {
 		if (errno == EINTR)
 			goto start;

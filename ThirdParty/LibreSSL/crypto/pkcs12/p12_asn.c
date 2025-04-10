@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_asn.c,v 1.9 2015/07/25 17:08:40 jsing Exp $ */
+/* $OpenBSD: p12_asn.c,v 1.16 2024/07/09 06:13:22 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -61,6 +61,8 @@
 #include <openssl/asn1t.h>
 #include <openssl/pkcs12.h>
 
+#include "pkcs12_local.h"
+
 /* PKCS#12 ASN1 module */
 
 static const ASN1_TEMPLATE PKCS12_seq_tt[] = {
@@ -96,6 +98,7 @@ const ASN1_ITEM PKCS12_it = {
 	.size = sizeof(PKCS12),
 	.sname = "PKCS12",
 };
+LCRYPTO_ALIAS(PKCS12_it);
 
 
 PKCS12 *
@@ -104,24 +107,28 @@ d2i_PKCS12(PKCS12 **a, const unsigned char **in, long len)
 	return (PKCS12 *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS12_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS12);
 
 int
 i2d_PKCS12(PKCS12 *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS12_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS12);
 
 PKCS12 *
 PKCS12_new(void)
 {
 	return (PKCS12 *)ASN1_item_new(&PKCS12_it);
 }
+LCRYPTO_ALIAS(PKCS12_new);
 
 void
 PKCS12_free(PKCS12 *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS12_it);
 }
+LCRYPTO_ALIAS(PKCS12_free);
 
 static const ASN1_TEMPLATE PKCS12_MAC_DATA_seq_tt[] = {
 	{
@@ -230,7 +237,6 @@ static const ASN1_ADB_TABLE PKCS12_BAGS_adbtbl[] = {
 static const ASN1_ADB PKCS12_BAGS_adb = {
 	.flags = 0,
 	.offset = offsetof(PKCS12_BAGS, type),
-	.app_items = 0,
 	.tbl = PKCS12_BAGS_adbtbl,
 	.tblcount = sizeof(PKCS12_BAGS_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &bag_default_tt,
@@ -324,7 +330,7 @@ static const ASN1_ADB_TABLE PKCS12_SAFEBAG_adbtbl[] = {
 	{
 		.value = NID_safeContentsBag,
 		.tt = {
-			.flags = ASN1_TFLG_EXPLICIT | ASN1_TFLG_SET_OF,
+			.flags = ASN1_TFLG_EXPLICIT | ASN1_TFLG_SEQUENCE_OF,
 			.tag = 0,
 			.offset = offsetof(PKCS12_SAFEBAG, value.safes),
 			.field_name = "value.safes",
@@ -369,7 +375,6 @@ static const ASN1_ADB_TABLE PKCS12_SAFEBAG_adbtbl[] = {
 static const ASN1_ADB PKCS12_SAFEBAG_adb = {
 	.flags = 0,
 	.offset = offsetof(PKCS12_SAFEBAG, type),
-	.app_items = 0,
 	.tbl = PKCS12_SAFEBAG_adbtbl,
 	.tblcount = sizeof(PKCS12_SAFEBAG_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &safebag_default_tt,
@@ -409,6 +414,7 @@ const ASN1_ITEM PKCS12_SAFEBAG_it = {
 	.size = sizeof(PKCS12_SAFEBAG),
 	.sname = "PKCS12_SAFEBAG",
 };
+LCRYPTO_ALIAS(PKCS12_SAFEBAG_it);
 
 
 PKCS12_SAFEBAG *
@@ -417,24 +423,28 @@ d2i_PKCS12_SAFEBAG(PKCS12_SAFEBAG **a, const unsigned char **in, long len)
 	return (PKCS12_SAFEBAG *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &PKCS12_SAFEBAG_it);
 }
+LCRYPTO_ALIAS(d2i_PKCS12_SAFEBAG);
 
 int
 i2d_PKCS12_SAFEBAG(PKCS12_SAFEBAG *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &PKCS12_SAFEBAG_it);
 }
+LCRYPTO_ALIAS(i2d_PKCS12_SAFEBAG);
 
 PKCS12_SAFEBAG *
 PKCS12_SAFEBAG_new(void)
 {
 	return (PKCS12_SAFEBAG *)ASN1_item_new(&PKCS12_SAFEBAG_it);
 }
+LCRYPTO_ALIAS(PKCS12_SAFEBAG_new);
 
 void
 PKCS12_SAFEBAG_free(PKCS12_SAFEBAG *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &PKCS12_SAFEBAG_it);
 }
+LCRYPTO_ALIAS(PKCS12_SAFEBAG_free);
 
 /* SEQUENCE OF SafeBag */
 static const ASN1_TEMPLATE PKCS12_SAFEBAGS_item_tt = {
@@ -473,4 +483,3 @@ const ASN1_ITEM PKCS12_AUTHSAFES_it = {
 	.size = 0,
 	.sname = "PKCS12_AUTHSAFES",
 };
-

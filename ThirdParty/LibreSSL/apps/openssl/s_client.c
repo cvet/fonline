@@ -1,4 +1,4 @@
-/* $OpenBSD: s_client.c,v 1.54 2021/03/17 18:11:01 jsing Exp $ */
+/* $OpenBSD: s_client.c,v 1.64 2023/12/29 12:15:49 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -219,10 +219,10 @@ static struct {
 	int msg;
 	int nbio;
 	int nbio_test;
+	int no_servername;
 	char *npn_in;
 	unsigned int off;
 	char *passarg;
-	int pause;
 	int peekaboo;
 	char *port;
 	int prexit;
@@ -245,16 +245,16 @@ static struct {
 	int verify;
 	X509_VERIFY_PARAM *vpm;
 	char *xmpphost;
-} s_client_config;
+} cfg;
 
 static int
 s_client_opt_keymatexportlen(char *arg)
 {
-	s_client_config.keymatexportlen = strtonum(arg, 1, INT_MAX,
-	    &s_client_config.errstr);
-	if (s_client_config.errstr != NULL) {
+	cfg.keymatexportlen = strtonum(arg, 1, INT_MAX,
+	    &cfg.errstr);
+	if (cfg.errstr != NULL) {
 		BIO_printf(bio_err, "invalid argument %s: %s\n",
-		    arg, s_client_config.errstr);
+		    arg, cfg.errstr);
 		return (1);
 	}
 	return (0);
@@ -264,11 +264,11 @@ s_client_opt_keymatexportlen(char *arg)
 static int
 s_client_opt_mtu(char *arg)
 {
-	s_client_config.socket_mtu = strtonum(arg, 0, LONG_MAX,
-	    &s_client_config.errstr);
-	if (s_client_config.errstr != NULL) {
+	cfg.socket_mtu = strtonum(arg, 0, LONG_MAX,
+	    &cfg.errstr);
+	if (cfg.errstr != NULL) {
 		BIO_printf(bio_err, "invalid argument %s: %s\n",
-		    arg, s_client_config.errstr);
+		    arg, cfg.errstr);
 		return (1);
 	}
 	return (0);
@@ -281,7 +281,7 @@ s_client_opt_port(char *arg)
 	if (*arg == '\0')
 		return (1);
 
-	s_client_config.port = arg;
+	cfg.port = arg;
 	return (0);
 }
 
@@ -289,20 +289,8 @@ s_client_opt_port(char *arg)
 static int
 s_client_opt_protocol_version_dtls(void)
 {
-	s_client_config.meth = DTLS_client_method();
-	s_client_config.socket_type = SOCK_DGRAM;
-	return (0);
-}
-#endif
-
-#ifndef OPENSSL_NO_DTLS1
-static int
-s_client_opt_protocol_version_dtls1(void)
-{
-	s_client_config.meth = DTLS_client_method();
-	s_client_config.min_version = DTLS1_VERSION;
-	s_client_config.max_version = DTLS1_VERSION;
-	s_client_config.socket_type = SOCK_DGRAM;
+	cfg.meth = DTLS_client_method();
+	cfg.socket_type = SOCK_DGRAM;
 	return (0);
 }
 #endif
@@ -311,51 +299,35 @@ s_client_opt_protocol_version_dtls1(void)
 static int
 s_client_opt_protocol_version_dtls1_2(void)
 {
-	s_client_config.meth = DTLS_client_method();
-	s_client_config.min_version = DTLS1_2_VERSION;
-	s_client_config.max_version = DTLS1_2_VERSION;
-	s_client_config.socket_type = SOCK_DGRAM;
+	cfg.meth = DTLS_client_method();
+	cfg.min_version = DTLS1_2_VERSION;
+	cfg.max_version = DTLS1_2_VERSION;
+	cfg.socket_type = SOCK_DGRAM;
 	return (0);
 }
 #endif
 
 static int
-s_client_opt_protocol_version_tls1(void)
-{
-	s_client_config.min_version = TLS1_VERSION;
-	s_client_config.max_version = TLS1_VERSION;
-	return (0);
-}
-
-static int
-s_client_opt_protocol_version_tls1_1(void)
-{
-	s_client_config.min_version = TLS1_1_VERSION;
-	s_client_config.max_version = TLS1_1_VERSION;
-	return (0);
-}
-
-static int
 s_client_opt_protocol_version_tls1_2(void)
 {
-	s_client_config.min_version = TLS1_2_VERSION;
-	s_client_config.max_version = TLS1_2_VERSION;
+	cfg.min_version = TLS1_2_VERSION;
+	cfg.max_version = TLS1_2_VERSION;
 	return (0);
 }
 
 static int
 s_client_opt_protocol_version_tls1_3(void)
 {
-	s_client_config.min_version = TLS1_3_VERSION;
-	s_client_config.max_version = TLS1_3_VERSION;
+	cfg.min_version = TLS1_3_VERSION;
+	cfg.max_version = TLS1_3_VERSION;
 	return (0);
 }
 
 static int
 s_client_opt_quiet(void)
 {
-	s_client_config.quiet = 1;
-	s_client_config.ign_eof = 1;
+	cfg.quiet = 1;
+	cfg.ign_eof = 1;
 	return (0);
 }
 
@@ -363,17 +335,17 @@ static int
 s_client_opt_starttls(char *arg)
 {
 	if (strcmp(arg, "smtp") == 0)
-		s_client_config.starttls_proto = PROTO_SMTP;
+		cfg.starttls_proto = PROTO_SMTP;
 	else if (strcmp(arg, "lmtp") == 0)
-		s_client_config.starttls_proto = PROTO_LMTP;
+		cfg.starttls_proto = PROTO_LMTP;
 	else if (strcmp(arg, "pop3") == 0)
-		s_client_config.starttls_proto = PROTO_POP3;
+		cfg.starttls_proto = PROTO_POP3;
 	else if (strcmp(arg, "imap") == 0)
-		s_client_config.starttls_proto = PROTO_IMAP;
+		cfg.starttls_proto = PROTO_IMAP;
 	else if (strcmp(arg, "ftp") == 0)
-		s_client_config.starttls_proto = PROTO_FTP;
+		cfg.starttls_proto = PROTO_FTP;
 	else if (strcmp(arg, "xmpp") == 0)
-		s_client_config.starttls_proto = PROTO_XMPP;
+		cfg.starttls_proto = PROTO_XMPP;
 	else
 		return (1);
 	return (0);
@@ -382,12 +354,12 @@ s_client_opt_starttls(char *arg)
 static int
 s_client_opt_verify(char *arg)
 {
-	s_client_config.verify = SSL_VERIFY_PEER;
+	cfg.verify = SSL_VERIFY_PEER;
 
-	verify_depth = strtonum(arg, 0, INT_MAX, &s_client_config.errstr);
-	if (s_client_config.errstr != NULL) {
+	verify_depth = strtonum(arg, 0, INT_MAX, &cfg.errstr);
+	if (cfg.errstr != NULL) {
 		BIO_printf(bio_err, "invalid argument %s: %s\n",
-		    arg, s_client_config.errstr);
+		    arg, cfg.errstr);
 		return (1);
 	}
 	BIO_printf(bio_err, "verify depth is %d\n", verify_depth);
@@ -402,7 +374,7 @@ s_client_opt_verify_param(int argc, char **argv, int *argsused)
 	int badarg = 0;
 
 	if (!args_verify(&pargs, &pargc, &badarg, bio_err,
-	    &s_client_config.vpm)) {
+	    &cfg.vpm)) {
 		BIO_printf(bio_err, "unknown option %s\n", *argv);
 		return (1);
 	}
@@ -418,14 +390,14 @@ static const struct option s_client_options[] = {
 		.name = "4",
 		.desc = "Use IPv4 only",
 		.type = OPTION_VALUE,
-		.opt.value = &s_client_config.af,
+		.opt.value = &cfg.af,
 		.value = AF_INET,
 	},
 	{
 		.name = "6",
 		.desc = "Use IPv6 only",
 		.type = OPTION_VALUE,
-		.opt.value = &s_client_config.af,
+		.opt.value = &cfg.af,
 		.value = AF_INET6,
 	},
 	{
@@ -434,67 +406,67 @@ static const struct option s_client_options[] = {
 		.desc = "Set the advertised protocols for ALPN"
 			" (comma-separated list)",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.alpn_in,
+		.opt.arg = &cfg.alpn_in,
 	},
 	{
 		.name = "bugs",
 		.desc = "Enable various workarounds for buggy implementations",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.bugs,
+		.opt.flag = &cfg.bugs,
 	},
 	{
 		.name = "CAfile",
 		.argname = "file",
 		.desc = "PEM format file of CA certificates",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.CAfile,
+		.opt.arg = &cfg.CAfile,
 	},
 	{
 		.name = "CApath",
 		.argname = "directory",
 		.desc = "PEM format directory of CA certificates",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.CApath,
+		.opt.arg = &cfg.CApath,
 	},
 	{
 		.name = "cert",
 		.argname = "file",
 		.desc = "Certificate file to use, PEM format assumed",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.cert_file,
+		.opt.arg = &cfg.cert_file,
 	},
 	{
 		.name = "certform",
 		.argname = "fmt",
 		.desc = "Certificate format (PEM or DER) PEM default",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &s_client_config.cert_format,
+		.opt.value = &cfg.cert_format,
 	},
 	{
 		.name = "cipher",
 		.argname = "cipherlist",
 		.desc = "Preferred cipher to use (see 'openssl ciphers')",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.cipher,
+		.opt.arg = &cfg.cipher,
 	},
 	{
 		.name = "connect",
 		.argname = "host:port",
 		.desc = "Who to connect to (default is localhost:4433)",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.connect,
+		.opt.arg = &cfg.connect,
 	},
 	{
 		.name = "crlf",
 		.desc = "Convert LF from terminal into CRLF",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.crlf,
+		.opt.flag = &cfg.crlf,
 	},
 	{
 		.name = "debug",
 		.desc = "Print extensive debugging information",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.debug,
+		.opt.flag = &cfg.debug,
 	},
 #ifndef OPENSSL_NO_DTLS
 	{
@@ -502,14 +474,6 @@ static const struct option s_client_options[] = {
 		.desc = "Use any version of DTLS",
 		.type = OPTION_FUNC,
 		.opt.func = s_client_opt_protocol_version_dtls,
-	},
-#endif
-#ifndef OPENSSL_NO_DTLS1
-	{
-		.name = "dtls1",
-		.desc = "Just use DTLSv1",
-		.type = OPTION_FUNC,
-		.opt.func = s_client_opt_protocol_version_dtls1,
 	},
 #endif
 #ifndef OPENSSL_NO_DTLS1_2
@@ -525,20 +489,20 @@ static const struct option s_client_options[] = {
 		.argname = "list",
 		.desc = "Specify EC groups (colon-separated list)",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.groups_in,
+		.opt.arg = &cfg.groups_in,
 	},
 	{
 		.name = "host",
 		.argname = "host",
 		.desc = "Use -connect instead",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.host,
+		.opt.arg = &cfg.host,
 	},
 	{
 		.name = "ign_eof",
 		.desc = "Ignore input EOF (default when -quiet)",
 		.type = OPTION_VALUE,
-		.opt.value = &s_client_config.ign_eof,
+		.opt.value = &cfg.ign_eof,
 		.value = 1,
 	},
 	{
@@ -546,21 +510,21 @@ static const struct option s_client_options[] = {
 		.argname = "file",
 		.desc = "Private key file to use, if not, -cert file is used",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.key_file,
+		.opt.arg = &cfg.key_file,
 	},
 	{
 		.name = "keyform",
 		.argname = "fmt",
 		.desc = "Key format (PEM or DER) PEM default",
 		.type = OPTION_ARG_FORMAT,
-		.opt.value = &s_client_config.key_format,
+		.opt.value = &cfg.key_format,
 	},
 	{
 		.name = "keymatexport",
 		.argname = "label",
 		.desc = "Export keying material using label",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.keymatexportlabel,
+		.opt.arg = &cfg.keymatexportlabel,
 	},
 	{
 		.name = "keymatexportlen",
@@ -577,14 +541,14 @@ static const struct option s_client_options[] = {
 		.name = "legacy_server_connect",
 		.desc = "Allow initial connection to servers that don't support RI",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_LEGACY_SERVER_CONNECT,
 	},
 	{
 		.name = "msg",
 		.desc = "Show all protocol messages with hex dump",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.msg,
+		.opt.flag = &cfg.msg,
 	},
 #ifndef OPENSSL_NO_DTLS
 	{
@@ -599,104 +563,107 @@ static const struct option s_client_options[] = {
 		.name = "nbio",
 		.desc = "Turn on non-blocking I/O",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.nbio,
+		.opt.flag = &cfg.nbio,
 	},
 	{
 		.name = "nbio_test",
 		.desc = "Test non-blocking I/O",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.nbio_test,
+		.opt.flag = &cfg.nbio_test,
 	},
 	{
 		.name = "nextprotoneg",
 		.argname = "protocols",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.npn_in, /* Ignored. */
+		.opt.arg = &cfg.npn_in, /* Ignored. */
 	},
 	{
 		.name = "no_comp",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_COMPRESSION,
 	},
 	{
 		.name = "no_ign_eof",
 		.desc = "Don't ignore input EOF",
 		.type = OPTION_VALUE,
-		.opt.value = &s_client_config.ign_eof,
+		.opt.value = &cfg.ign_eof,
 		.value = 0,
 	},
 	{
 		.name = "no_legacy_server_connect",
 		.desc = "Disallow initial connection to servers that don't support RI",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.clr,
+		.opt.value = &cfg.clr,
 		.value = SSL_OP_LEGACY_SERVER_CONNECT,
+	},
+	{
+		.name = "no_servername",
+		.desc = "Do not send a Server Name Indication (SNI) extension",
+		.type = OPTION_FLAG,
+		.opt.value = &cfg.no_servername,
 	},
 	{
 		.name = "no_ssl2",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_SSLv2,
 	},
 	{
 		.name = "no_ssl3",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_SSLv3,
 	},
 	{
 		.name = "no_ticket",
 		.desc = "Disable use of RFC4507 session ticket support",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_TICKET,
 	},
 	{
 		.name = "no_tls1",
-		.desc = "Disable the use of TLSv1",
-		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
-		.value = SSL_OP_NO_TLSv1,
+		.type = OPTION_DISCARD,
 	},
 	{
 		.name = "no_tls1_1",
-		.desc = "Disable the use of TLSv1.1",
-		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
-		.value = SSL_OP_NO_TLSv1_1,
+		.type = OPTION_DISCARD,
 	},
 	{
 		.name = "no_tls1_2",
 		.desc = "Disable the use of TLSv1.2",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_TLSv1_2,
 	},
 	{
 		.name = "no_tls1_3",
 		.desc = "Disable the use of TLSv1.3",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_NO_TLSv1_3,
+	},
+	{
+		.name = "noservername",
+		.type = OPTION_FLAG,
+		.opt.value = &cfg.no_servername,
 	},
 	{
 		.name = "pass",
 		.argname = "arg",
 		.desc = "Private key file pass phrase source",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.passarg,
+		.opt.arg = &cfg.passarg,
 	},
 	{
 		.name = "pause",
-		.desc = "Pause 1 second between each read and write call",
-		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.pause,
+		.type = OPTION_DISCARD,
 	},
 	{
 		.name = "peekaboo",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.peekaboo,
+		.opt.flag = &cfg.peekaboo,
 	},
 	{
 		.name = "port",
@@ -709,14 +676,14 @@ static const struct option s_client_options[] = {
 		.name = "prexit",
 		.desc = "Print session information when the program exits",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.prexit,
+		.opt.flag = &cfg.prexit,
 	},
 	{
 		.name = "proxy",
 		.argname = "host:port",
 		.desc = "Connect to http proxy",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.proxy,
+		.opt.arg = &cfg.proxy,
 	},
 	{
 		.name = "quiet",
@@ -728,7 +695,7 @@ static const struct option s_client_options[] = {
 		.name = "reconnect",
 		.desc = "Drop and re-make the connection with the same Session-ID",
 		.type = OPTION_VALUE,
-		.opt.value = &s_client_config.reconnect,
+		.opt.value = &cfg.reconnect,
 		.value = 5,
 	},
 	{
@@ -736,13 +703,13 @@ static const struct option s_client_options[] = {
 		.argname = "name",
 		.desc = "Set TLS extension servername in ClientHello (SNI)",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.servername,
+		.opt.arg = &cfg.servername,
 	},
 	{
 		.name = "serverpref",
 		.desc = "Use server's cipher preferences",
 		.type = OPTION_VALUE_OR,
-		.opt.value = &s_client_config.off,
+		.opt.value = &cfg.off,
 		.value = SSL_OP_CIPHER_SERVER_PREFERENCE,
 	},
 	{
@@ -750,20 +717,20 @@ static const struct option s_client_options[] = {
 		.argname = "file",
 		.desc = "File to read TLS session from",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.sess_in,
+		.opt.arg = &cfg.sess_in,
 	},
 	{
 		.name = "sess_out",
 		.argname = "file",
 		.desc = "File to write TLS session to",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.sess_out,
+		.opt.arg = &cfg.sess_out,
 	},
 	{
 		.name = "showcerts",
 		.desc = "Show all server certificates in the chain",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.showcerts,
+		.opt.flag = &cfg.showcerts,
 	},
 	{
 		.name = "starttls",
@@ -777,34 +744,22 @@ static const struct option s_client_options[] = {
 		.name = "state",
 		.desc = "Print the TLS session states",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.state,
+		.opt.flag = &cfg.state,
 	},
 	{
 		.name = "status",
 		.desc = "Send a certificate status request to the server (OCSP)",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.status_req,
+		.opt.flag = &cfg.status_req,
 	},
 #ifndef OPENSSL_NO_DTLS
 	{
 		.name = "timeout",
 		.desc = "Enable send/receive timeout on DTLS connections",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.enable_timeouts,
+		.opt.flag = &cfg.enable_timeouts,
 	},
 #endif
-	{
-		.name = "tls1",
-		.desc = "Just use TLSv1",
-		.type = OPTION_FUNC,
-		.opt.func = s_client_opt_protocol_version_tls1,
-	},
-	{
-		.name = "tls1_1",
-		.desc = "Just use TLSv1.1",
-		.type = OPTION_FUNC,
-		.opt.func = s_client_opt_protocol_version_tls1_1,
-	},
 	{
 		.name = "tls1_2",
 		.desc = "Just use TLSv1.2",
@@ -821,7 +776,7 @@ static const struct option s_client_options[] = {
 		.name = "tlsextdebug",
 		.desc = "Hex dump of all TLS extensions received",
 		.type = OPTION_FLAG,
-		.opt.flag = &s_client_config.tlsextdebug,
+		.opt.flag = &cfg.tlsextdebug,
 	},
 #ifndef OPENSSL_NO_SRTP
 	{
@@ -829,7 +784,7 @@ static const struct option s_client_options[] = {
 		.argname = "profiles",
 		.desc = "Offer SRTP key management with a colon-separated profiles",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.srtp_profiles,
+		.opt.arg = &cfg.srtp_profiles,
 	},
 #endif
 	{
@@ -850,7 +805,7 @@ static const struct option s_client_options[] = {
 		.argname = "host",
 		.desc = "Connect to this virtual host on the xmpp server",
 		.type = OPTION_ARG,
-		.opt.arg = &s_client_config.xmpphost,
+		.opt.arg = &cfg.xmpphost,
 	},
 	{
 		.name = NULL,
@@ -868,17 +823,17 @@ sc_usage(void)
 	    "[-4 | -6] [-alpn protocols] [-bugs] [-CAfile file]\n"
 	    "    [-CApath directory] [-cert file] [-certform der | pem] [-check_ss_sig]\n"
 	    "    [-cipher cipherlist] [-connect host[:port]] [-crl_check]\n"
-	    "    [-crl_check_all] [-crlf] [-debug] [-dtls] [-dtls1] [-dtls1_2] [-extended_crl]\n"
+	    "    [-crl_check_all] [-crlf] [-debug] [-dtls] [-dtls1_2] [-extended_crl]\n"
 	    "    [-groups list] [-host host] [-ign_eof] [-ignore_critical]\n"
 	    "    [-issuer_checks] [-key keyfile] [-keyform der | pem]\n"
 	    "    [-keymatexport label] [-keymatexportlen len] [-legacy_server_connect]\n"
 	    "    [-msg] [-mtu mtu] [-nbio] [-nbio_test] [-no_comp] [-no_ign_eof]\n"
-	    "    [-no_legacy_server_connect] [-no_ticket] [-no_tls1] [-no_tls1_1]\n"
-	    "    [-no_tls1_2] [-no_tls1_3] [-pass arg] [-pause] [-policy_check]\n"
+	    "    [-no_legacy_server_connect] [-no_ticket] \n"
+	    "    [-no_tls1_2] [-no_tls1_3] [-pass arg] [-policy_check]\n"
 	    "    [-port port] [-prexit] [-proxy host:port] [-quiet] [-reconnect]\n"
 	    "    [-servername name] [-serverpref] [-sess_in file] [-sess_out file]\n"
 	    "    [-showcerts] [-starttls protocol] [-state] [-status] [-timeout]\n"
-	    "    [-tls1] [-tls1_1] [-tls1_2] [-tls1_3] [-tlsextdebug]\n"
+	    "    [-tls1_2] [-tls1_3] [-tlsextdebug]\n"
 	    "    [-use_srtp profiles] [-verify depth] [-verify_return_error]\n"
 	    "    [-x509_strict] [-xmpphost host]\n");
 	fprintf(stderr, "\n");
@@ -894,8 +849,8 @@ s_client_main(int argc, char **argv)
 	char *cbuf = NULL, *sbuf = NULL, *mbuf = NULL, *pbuf = NULL;
 	int cbuf_len, cbuf_off;
 	int sbuf_len, sbuf_off;
-	int pbuf_len, pbuf_off;
 	int full_log = 1;
+	const char *servername;
 	char *pass = NULL;
 	X509 *cert = NULL;
 	EVP_PKEY *key = NULL;
@@ -911,24 +866,22 @@ s_client_main(int argc, char **argv)
 	struct sockaddr_storage peer;
 	int peerlen = sizeof(peer);
 
-	if (single_execution) {
-		if (pledge("stdio cpath wpath rpath inet dns tty", NULL) == -1) {
-			perror("pledge");
-			exit(1);
-		}
+	if (pledge("stdio cpath wpath rpath inet dns tty", NULL) == -1) {
+		perror("pledge");
+		exit(1);
 	}
 
-	memset(&s_client_config, 0, sizeof(s_client_config));
-	s_client_config.af = AF_UNSPEC;
-	s_client_config.cert_format = FORMAT_PEM;
-	s_client_config.host = SSL_HOST_NAME;
-	s_client_config.key_format = FORMAT_PEM;
-	s_client_config.keymatexportlen = 20;
-	s_client_config.meth = TLS_client_method();
-	s_client_config.port = PORT_STR;
-	s_client_config.socket_type = SOCK_STREAM;
-	s_client_config.starttls_proto = PROTO_OFF;
-	s_client_config.verify = SSL_VERIFY_NONE;
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.af = AF_UNSPEC;
+	cfg.cert_format = FORMAT_PEM;
+	cfg.host = SSL_HOST_NAME;
+	cfg.key_format = FORMAT_PEM;
+	cfg.keymatexportlen = 20;
+	cfg.meth = TLS_client_method();
+	cfg.port = PORT_STR;
+	cfg.socket_type = SOCK_STREAM;
+	cfg.starttls_proto = PROTO_OFF;
+	cfg.verify = SSL_VERIFY_NONE;
 
 	if (((cbuf = malloc(BUFSIZZ)) == NULL) ||
 	    ((sbuf = malloc(BUFSIZZ)) == NULL) ||
@@ -943,45 +896,45 @@ s_client_main(int argc, char **argv)
 		badop = 1;
 		goto bad;
 	}
-	if (s_client_config.proxy != NULL) {
-		if (!extract_host_port(s_client_config.proxy,
-		    &s_client_config.host, NULL, &s_client_config.port))
+	if (cfg.proxy != NULL) {
+		if (!extract_host_port(cfg.proxy,
+		    &cfg.host, NULL, &cfg.port))
 			goto bad;
-		if (s_client_config.connect == NULL)
-			s_client_config.connect = SSL_HOST_NAME;
-	} else if (s_client_config.connect != NULL) {
-		if (!extract_host_port(s_client_config.connect,
-		    &s_client_config.host, NULL, &s_client_config.port))
+		if (cfg.connect == NULL)
+			cfg.connect = SSL_HOST_NAME;
+	} else if (cfg.connect != NULL) {
+		if (!extract_host_port(cfg.connect,
+		    &cfg.host, NULL, &cfg.port))
 			goto bad;
 	}
 	if (badop) {
  bad:
-		if (s_client_config.errstr == NULL)
+		if (cfg.errstr == NULL)
 			sc_usage();
 		goto end;
 	}
 
-	if (!app_passwd(bio_err, s_client_config.passarg, NULL, &pass, NULL)) {
+	if (!app_passwd(bio_err, cfg.passarg, NULL, &pass, NULL)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;
 	}
-	if (s_client_config.key_file == NULL)
-		s_client_config.key_file = s_client_config.cert_file;
+	if (cfg.key_file == NULL)
+		cfg.key_file = cfg.cert_file;
 
 
-	if (s_client_config.key_file) {
+	if (cfg.key_file) {
 
-		key = load_key(bio_err, s_client_config.key_file,
-		    s_client_config.key_format, 0, pass,
+		key = load_key(bio_err, cfg.key_file,
+		    cfg.key_format, 0, pass,
 		    "client certificate private key file");
 		if (!key) {
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 	}
-	if (s_client_config.cert_file) {
-		cert = load_cert(bio_err, s_client_config.cert_file,
-		    s_client_config.cert_format,
+	if (cfg.cert_file) {
+		cert = load_cert(bio_err, cfg.cert_file,
+		    cfg.cert_format,
 		    NULL, "client certificate file");
 
 		if (!cert) {
@@ -989,8 +942,8 @@ s_client_main(int argc, char **argv)
 			goto end;
 		}
 	}
-	if (s_client_config.quiet && !s_client_config.debug &&
-	    !s_client_config.msg) {
+	if (cfg.quiet && !cfg.debug &&
+	    !cfg.msg) {
 		if ((bio_c_out = BIO_new(BIO_s_null())) == NULL)
 			goto end;
 	} else {
@@ -998,7 +951,7 @@ s_client_main(int argc, char **argv)
 			goto end;
 	}
 
-	ctx = SSL_CTX_new(s_client_config.meth);
+	ctx = SSL_CTX_new(cfg.meth);
 	if (ctx == NULL) {
 		ERR_print_errors(bio_err);
 		goto end;
@@ -1006,31 +959,31 @@ s_client_main(int argc, char **argv)
 
 	SSL_CTX_clear_mode(ctx, SSL_MODE_AUTO_RETRY);
 
-	if (s_client_config.vpm)
-		SSL_CTX_set1_param(ctx, s_client_config.vpm);
+	if (cfg.vpm)
+		SSL_CTX_set1_param(ctx, cfg.vpm);
 
-	if (!SSL_CTX_set_min_proto_version(ctx, s_client_config.min_version))
+	if (!SSL_CTX_set_min_proto_version(ctx, cfg.min_version))
 		goto end;
-	if (!SSL_CTX_set_max_proto_version(ctx, s_client_config.max_version))
+	if (!SSL_CTX_set_max_proto_version(ctx, cfg.max_version))
 		goto end;
 
 #ifndef OPENSSL_NO_SRTP
-	if (s_client_config.srtp_profiles != NULL)
-		SSL_CTX_set_tlsext_use_srtp(ctx, s_client_config.srtp_profiles);
+	if (cfg.srtp_profiles != NULL)
+		SSL_CTX_set_tlsext_use_srtp(ctx, cfg.srtp_profiles);
 #endif
-	if (s_client_config.bugs)
-		SSL_CTX_set_options(ctx, SSL_OP_ALL | s_client_config.off);
+	if (cfg.bugs)
+		SSL_CTX_set_options(ctx, SSL_OP_ALL | cfg.off);
 	else
-		SSL_CTX_set_options(ctx, s_client_config.off);
+		SSL_CTX_set_options(ctx, cfg.off);
 
-	if (s_client_config.clr)
-		SSL_CTX_clear_options(ctx, s_client_config.clr);
+	if (cfg.clr)
+		SSL_CTX_clear_options(ctx, cfg.clr);
 
-	if (s_client_config.alpn_in) {
+	if (cfg.alpn_in) {
 		unsigned short alpn_len;
 		unsigned char *alpn;
 
-		alpn = next_protos_parse(&alpn_len, s_client_config.alpn_in);
+		alpn = next_protos_parse(&alpn_len, cfg.alpn_in);
 		if (alpn == NULL) {
 			BIO_printf(bio_err, "Error parsing -alpn argument\n");
 			goto end;
@@ -1038,48 +991,42 @@ s_client_main(int argc, char **argv)
 		SSL_CTX_set_alpn_protos(ctx, alpn, alpn_len);
 		free(alpn);
 	}
-	if (s_client_config.groups_in != NULL) {
-		if (SSL_CTX_set1_groups_list(ctx, s_client_config.groups_in) != 1) {
+	if (cfg.groups_in != NULL) {
+		if (SSL_CTX_set1_groups_list(ctx, cfg.groups_in) != 1) {
 			BIO_printf(bio_err, "Failed to set groups '%s'\n",
-			    s_client_config.groups_in);
+			    cfg.groups_in);
 			goto end;
 		}
 	}
 
-	if (s_client_config.state)
+	if (cfg.state)
 		SSL_CTX_set_info_callback(ctx, apps_ssl_info_callback);
-	if (s_client_config.cipher != NULL)
-		if (!SSL_CTX_set_cipher_list(ctx, s_client_config.cipher)) {
+	if (cfg.cipher != NULL)
+		if (!SSL_CTX_set_cipher_list(ctx, cfg.cipher)) {
 			BIO_printf(bio_err, "error setting cipher list\n");
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 
-	SSL_CTX_set_verify(ctx, s_client_config.verify, verify_callback);
+	SSL_CTX_set_verify(ctx, cfg.verify, verify_callback);
 	if (!set_cert_key_stuff(ctx, cert, key))
 		goto end;
 
-	if ((s_client_config.CAfile || s_client_config.CApath)
-	    && !SSL_CTX_load_verify_locations(ctx, s_client_config.CAfile,
-	    s_client_config.CApath))
+	if ((cfg.CAfile || cfg.CApath)
+	    && !SSL_CTX_load_verify_locations(ctx, cfg.CAfile,
+	    cfg.CApath))
 		ERR_print_errors(bio_err);
 
 	if (!SSL_CTX_set_default_verify_paths(ctx))
 		ERR_print_errors(bio_err);
 
-	if (s_client_config.servername != NULL) {
-		tlsextcbp.biodebug = bio_err;
-		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
-		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
-	}
-
 	con = SSL_new(ctx);
-	if (s_client_config.sess_in) {
+	if (cfg.sess_in) {
 		SSL_SESSION *sess;
-		BIO *stmp = BIO_new_file(s_client_config.sess_in, "r");
+		BIO *stmp = BIO_new_file(cfg.sess_in, "r");
 		if (!stmp) {
 			BIO_printf(bio_err, "Can't open session file %s\n",
-			    s_client_config.sess_in);
+			    cfg.sess_in);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
@@ -1087,42 +1034,57 @@ s_client_main(int argc, char **argv)
 		BIO_free(stmp);
 		if (!sess) {
 			BIO_printf(bio_err, "Can't open session file %s\n",
-			    s_client_config.sess_in);
+			    cfg.sess_in);
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 		SSL_set_session(con, sess);
 		SSL_SESSION_free(sess);
 	}
-	if (s_client_config.servername != NULL) {
-		if (!SSL_set_tlsext_host_name(con, s_client_config.servername)) {
+
+	/* Attempt to opportunistically use the host name for SNI. */
+	servername = cfg.servername;
+	if (servername == NULL)
+		servername = cfg.host;
+
+	if (!cfg.no_servername && servername != NULL &&
+	    !SSL_set_tlsext_host_name(con, servername)) {
+		long ssl_err = ERR_peek_error();
+
+		if (cfg.servername != NULL ||
+		    ERR_GET_LIB(ssl_err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(ssl_err) != SSL_R_SSL3_EXT_INVALID_SERVERNAME) {
 			BIO_printf(bio_err,
 			    "Unable to set TLS servername extension.\n");
 			ERR_print_errors(bio_err);
 			goto end;
 		}
+		servername = NULL;
+		ERR_clear_error();
 	}
-/*	SSL_set_cipher_list(con,"RC4-MD5"); */
+	if (!cfg.no_servername && servername != NULL) {
+		tlsextcbp.biodebug = bio_err;
+		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
+		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
+	}
 
  re_start:
 
-	if (init_client(&s, s_client_config.host, s_client_config.port,
-	    s_client_config.socket_type, s_client_config.af) == 0) {
+	if (init_client(&s, cfg.host, cfg.port,
+	    cfg.socket_type, cfg.af) == 0) {
 		BIO_printf(bio_err, "connect:errno=%d\n", errno);
 		goto end;
 	}
 	BIO_printf(bio_c_out, "CONNECTED(%08X)\n", s);
 
-	if (s_client_config.nbio) {
-		if (!s_client_config.quiet)
+	if (cfg.nbio) {
+		if (!cfg.quiet)
 			BIO_printf(bio_c_out, "turning on non blocking io\n");
 		if (!BIO_socket_nbio(s, 1)) {
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 	}
-	if (s_client_config.pause & 0x01)
-		SSL_set_debug(con, 1);
 
 	if (SSL_is_dtls(con)) {
 		sbio = BIO_new_dgram(s, BIO_NOCLOSE);
@@ -1136,7 +1098,7 @@ s_client_main(int argc, char **argv)
 		}
 		(void) BIO_ctrl_set_connected(sbio, 1, &peer);
 
-		if (s_client_config.enable_timeouts) {
+		if (cfg.enable_timeouts) {
 			timeout.tv_sec = 0;
 			timeout.tv_usec = DGRAM_RCV_TIMEOUT;
 			BIO_ctrl(sbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0,
@@ -1147,35 +1109,34 @@ s_client_main(int argc, char **argv)
 			BIO_ctrl(sbio, BIO_CTRL_DGRAM_SET_SEND_TIMEOUT, 0,
 			    &timeout);
 		}
-		if (s_client_config.socket_mtu > 28) {
+		if (cfg.socket_mtu > 28) {
 			SSL_set_options(con, SSL_OP_NO_QUERY_MTU);
-			SSL_set_mtu(con, s_client_config.socket_mtu - 28);
+			SSL_set_mtu(con, cfg.socket_mtu - 28);
 		} else
 			/* want to do MTU discovery */
 			BIO_ctrl(sbio, BIO_CTRL_DGRAM_MTU_DISCOVER, 0, NULL);
 	} else
 		sbio = BIO_new_socket(s, BIO_NOCLOSE);
 
-	if (s_client_config.nbio_test) {
+	if (cfg.nbio_test) {
 		BIO *test;
 
 		test = BIO_new(BIO_f_nbio_test());
 		sbio = BIO_push(test, sbio);
 	}
-	if (s_client_config.debug) {
-		SSL_set_debug(con, 1);
+	if (cfg.debug) {
 		BIO_set_callback(sbio, bio_dump_callback);
 		BIO_set_callback_arg(sbio, (char *) bio_c_out);
 	}
-	if (s_client_config.msg) {
+	if (cfg.msg) {
 		SSL_set_msg_callback(con, msg_cb);
 		SSL_set_msg_callback_arg(con, bio_c_out);
 	}
-	if (s_client_config.tlsextdebug) {
+	if (cfg.tlsextdebug) {
 		SSL_set_tlsext_debug_callback(con, tlsext_cb);
 		SSL_set_tlsext_debug_arg(con, bio_c_out);
 	}
-	if (s_client_config.status_req) {
+	if (cfg.status_req) {
 		SSL_set_tlsext_status_type(con, TLSEXT_STATUSTYPE_ocsp);
 		SSL_CTX_set_tlsext_status_cb(ctx, ocsp_resp_cb);
 		SSL_CTX_set_tlsext_status_arg(ctx, bio_c_out);
@@ -1195,8 +1156,6 @@ s_client_main(int argc, char **argv)
 	cbuf_off = 0;
 	sbuf_len = 0;
 	sbuf_off = 0;
-	pbuf_len = 0;
-	pbuf_off = 0;
 
 	/* This is an ugly hack that does a lot of assumptions */
 	/*
@@ -1206,8 +1165,8 @@ s_client_main(int argc, char **argv)
 	 * push a buffering BIO into the chain that is removed again later on
 	 * to not disturb the rest of the s_client operation.
 	 */
-	if (s_client_config.starttls_proto == PROTO_SMTP ||
-	    s_client_config.starttls_proto == PROTO_LMTP) {
+	if (cfg.starttls_proto == PROTO_SMTP ||
+	    cfg.starttls_proto == PROTO_LMTP) {
 		int foundit = 0;
 		BIO *fbio = BIO_new(BIO_f_buffer());
 		BIO_push(fbio, sbio);
@@ -1218,7 +1177,7 @@ s_client_main(int argc, char **argv)
 		while (mbuf_len > 3 && mbuf[3] == '-');
 		/* STARTTLS command requires EHLO... */
 		BIO_printf(fbio, "%cHLO openssl.client.net\r\n",
-		    s_client_config.starttls_proto == PROTO_SMTP ? 'E' : 'L');
+		    cfg.starttls_proto == PROTO_SMTP ? 'E' : 'L');
 		(void) BIO_flush(fbio);
 		/* wait for multi-line response to end EHLO SMTP response */
 		do {
@@ -1236,7 +1195,7 @@ s_client_main(int argc, char **argv)
 			    " try anyway...\n");
 		BIO_printf(sbio, "STARTTLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
-	} else if (s_client_config.starttls_proto == PROTO_POP3) {
+	} else if (cfg.starttls_proto == PROTO_POP3) {
 		mbuf_len = BIO_read(sbio, mbuf, BUFSIZZ);
 		if (mbuf_len == -1) {
 			BIO_printf(bio_err, "BIO_read failed\n");
@@ -1244,7 +1203,7 @@ s_client_main(int argc, char **argv)
 		}
 		BIO_printf(sbio, "STLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
-	} else if (s_client_config.starttls_proto == PROTO_IMAP) {
+	} else if (cfg.starttls_proto == PROTO_IMAP) {
 		int foundit = 0;
 		BIO *fbio = BIO_new(BIO_f_buffer());
 		BIO_push(fbio, sbio);
@@ -1268,7 +1227,7 @@ s_client_main(int argc, char **argv)
 			    " try anyway...\n");
 		BIO_printf(sbio, ". STARTTLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
-	} else if (s_client_config.starttls_proto == PROTO_FTP) {
+	} else if (cfg.starttls_proto == PROTO_FTP) {
 		BIO *fbio = BIO_new(BIO_f_buffer());
 		BIO_push(fbio, sbio);
 		/* wait for multi-line response to end from FTP */
@@ -1281,13 +1240,13 @@ s_client_main(int argc, char **argv)
 		BIO_free(fbio);
 		BIO_printf(sbio, "AUTH TLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
-	} else if (s_client_config.starttls_proto == PROTO_XMPP) {
+	} else if (cfg.starttls_proto == PROTO_XMPP) {
 		int seen = 0;
 		BIO_printf(sbio, "<stream:stream "
 		    "xmlns:stream='http://etherx.jabber.org/streams' "
 		    "xmlns='jabber:client' to='%s' version='1.0'>",
-		    s_client_config.xmpphost ?
-		    s_client_config.xmpphost : s_client_config.host);
+		    cfg.xmpphost ?
+		    cfg.xmpphost : cfg.host);
 		seen = BIO_read(sbio, mbuf, BUFSIZZ);
 
 		if (seen <= 0)
@@ -1310,9 +1269,9 @@ s_client_main(int argc, char **argv)
 		if (!strstr(sbuf, "<proceed"))
 			goto shut;
 		mbuf[0] = 0;
-	} else if (s_client_config.proxy != NULL) {
+	} else if (cfg.proxy != NULL) {
 		BIO_printf(sbio, "CONNECT %s HTTP/1.0\r\n\r\n",
-		    s_client_config.connect);
+		    cfg.connect);
 		mbuf_len = BIO_read(sbio, mbuf, BUFSIZZ);
 		if (mbuf_len == -1) {
 			BIO_printf(bio_err, "BIO_read failed\n");
@@ -1334,9 +1293,9 @@ s_client_main(int argc, char **argv)
 			tty_on = 1;
 			if (in_init) {
 				in_init = 0;
-				if (s_client_config.sess_out) {
+				if (cfg.sess_out) {
 					BIO *stmp = BIO_new_file(
-					    s_client_config.sess_out, "w");
+					    cfg.sess_out, "w");
 					if (stmp) {
 						PEM_write_bio_SSL_SESSION(stmp,
 						    SSL_get_session(con));
@@ -1344,19 +1303,19 @@ s_client_main(int argc, char **argv)
 					} else
 						BIO_printf(bio_err,
 						    "Error writing session file %s\n",
-						    s_client_config.sess_out);
+						    cfg.sess_out);
 				}
 				print_stuff(bio_c_out, con, full_log);
 				if (full_log > 0)
 					full_log--;
 
-				if (s_client_config.starttls_proto) {
+				if (cfg.starttls_proto) {
 					BIO_write(bio_err, mbuf, mbuf_len);
 					/* We don't need to know any more */
-					s_client_config.starttls_proto = PROTO_OFF;
+					cfg.starttls_proto = PROTO_OFF;
 				}
-				if (s_client_config.reconnect) {
-					s_client_config.reconnect--;
+				if (cfg.reconnect) {
+					cfg.reconnect--;
 					BIO_printf(bio_c_out,
 					    "drop connection and then reconnect\n");
 					SSL_shutdown(con);
@@ -1497,14 +1456,12 @@ s_client_main(int argc, char **argv)
 				}
 			}
 #endif
-			if (s_client_config.peekaboo) {
+			if (cfg.peekaboo) {
 				k = p = SSL_peek(con, pbuf, 1024 /* BUFSIZZ */ );
 				pending = SSL_pending(con);
 				if (SSL_get_error(con, p) == SSL_ERROR_NONE) {
 					if (p <= 0)
 						goto end;
-					pbuf_off = 0;
-					pbuf_len = p;
 
 					k = SSL_read(con, sbuf, p);
 				}
@@ -1518,7 +1475,7 @@ s_client_main(int argc, char **argv)
 					goto end;
 				sbuf_off = 0;
 				sbuf_len = k;
-				if (s_client_config.peekaboo) {
+				if (cfg.peekaboo) {
 					if (p != pending) {
 						ret = -1;
 						BIO_printf(bio_err,
@@ -1577,7 +1534,7 @@ s_client_main(int argc, char **argv)
 				BIO_printf(bio_err, "poll error");
 				goto shut;
 			}
-			if (s_client_config.crlf) {
+			if (cfg.crlf) {
 				int j, lf_num;
 
 				i = read(fileno(stdin), cbuf, BUFSIZZ / 2);
@@ -1598,13 +1555,13 @@ s_client_main(int argc, char **argv)
 			} else
 				i = read(fileno(stdin), cbuf, BUFSIZZ);
 
-			if ((!s_client_config.ign_eof) &&
+			if ((!cfg.ign_eof) &&
 			    ((i <= 0) || (cbuf[0] == 'Q'))) {
 				BIO_printf(bio_err, "DONE\n");
 				ret = 0;
 				goto shut;
 			}
-			if ((!s_client_config.ign_eof) && (cbuf[0] == 'R')) {
+			if ((!cfg.ign_eof) && (cbuf[0] == 'R')) {
 				BIO_printf(bio_err, "RENEGOTIATING\n");
 				SSL_renegotiate(con);
 				cbuf_len = 0;
@@ -1627,7 +1584,7 @@ s_client_main(int argc, char **argv)
 	close(SSL_get_fd(con));
  end:
 	if (con != NULL) {
-		if (s_client_config.prexit != 0)
+		if (cfg.prexit != 0)
 			print_stuff(bio_c_out, con, 1);
 		SSL_free(con);
 	}
@@ -1635,7 +1592,7 @@ s_client_main(int argc, char **argv)
 	X509_free(cert);
 	EVP_PKEY_free(key);
 	free(pass);
-	X509_VERIFY_PARAM_free(s_client_config.vpm);
+	X509_VERIFY_PARAM_free(cfg.vpm);
 	freezero(cbuf, BUFSIZZ);
 	freezero(sbuf, BUFSIZZ);
 	freezero(pbuf, BUFSIZZ);
@@ -1675,7 +1632,7 @@ print_stuff(BIO *bio, SSL *s, int full)
 				X509_NAME_oneline(X509_get_issuer_name(
 					sk_X509_value(sk, i)), buf, sizeof buf);
 				BIO_printf(bio, "   i:%s\n", buf);
-				if (s_client_config.showcerts)
+				if (cfg.showcerts)
 					PEM_write_bio_X509(bio,
 					    sk_X509_value(sk, i));
 			}
@@ -1684,7 +1641,7 @@ print_stuff(BIO *bio, SSL *s, int full)
 		peer = SSL_get_peer_certificate(s);
 		if (peer != NULL) {
 			BIO_printf(bio, "Server certificate\n");
-			if (!(s_client_config.showcerts && got_a_chain)) {
+			if (!(cfg.showcerts && got_a_chain)) {
 				/* Redundant if we showed the whole chain */
 				PEM_write_bio_X509(bio, peer);
 			}
@@ -1753,10 +1710,10 @@ print_stuff(BIO *bio, SSL *s, int full)
 	    SSL_CIPHER_get_name(c));
 	if (peer != NULL) {
 		EVP_PKEY *pktmp;
-		pktmp = X509_get_pubkey(peer);
+
+		pktmp = X509_get0_pubkey(peer);
 		BIO_printf(bio, "Server public key is %d bit\n",
 		    EVP_PKEY_bits(pktmp));
-		EVP_PKEY_free(pktmp);
 	}
 	BIO_printf(bio, "Secure Renegotiation IS%s supported\n",
 	    SSL_get_secure_renegotiation_support(s) ? "" : " NOT");
@@ -1803,23 +1760,23 @@ print_stuff(BIO *bio, SSL *s, int full)
 #endif
 
 	SSL_SESSION_print(bio, SSL_get_session(s));
-	if (s_client_config.keymatexportlabel != NULL) {
+	if (cfg.keymatexportlabel != NULL) {
 		BIO_printf(bio, "Keying material exporter:\n");
 		BIO_printf(bio, "    Label: '%s'\n",
-		    s_client_config.keymatexportlabel);
+		    cfg.keymatexportlabel);
 		BIO_printf(bio, "    Length: %i bytes\n",
-		    s_client_config.keymatexportlen);
-		exportedkeymat = malloc(s_client_config.keymatexportlen);
+		    cfg.keymatexportlen);
+		exportedkeymat = malloc(cfg.keymatexportlen);
 		if (exportedkeymat != NULL) {
 			if (!SSL_export_keying_material(s, exportedkeymat,
-				s_client_config.keymatexportlen,
-				s_client_config.keymatexportlabel,
-				strlen(s_client_config.keymatexportlabel),
+				cfg.keymatexportlen,
+				cfg.keymatexportlabel,
+				strlen(cfg.keymatexportlabel),
 				NULL, 0, 0)) {
 				BIO_printf(bio, "    Error\n");
 			} else {
 				BIO_printf(bio, "    Keying material: ");
-				for (i = 0; i < s_client_config.keymatexportlen; i++)
+				for (i = 0; i < cfg.keymatexportlen; i++)
 					BIO_printf(bio, "%02X",
 					    exportedkeymat[i]);
 				BIO_printf(bio, "\n");

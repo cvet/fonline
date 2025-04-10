@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_add.c,v 1.17 2018/05/13 14:24:07 tb Exp $ */
+/* $OpenBSD: p12_add.c,v 1.25 2024/03/02 10:20:27 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -61,6 +61,9 @@
 #include <openssl/err.h>
 #include <openssl/pkcs12.h>
 
+#include "pkcs12_local.h"
+#include "x509_local.h"
+
 /* Pack an object into an OCTET STRING and turn into a safebag */
 
 PKCS12_SAFEBAG *
@@ -87,54 +90,6 @@ PKCS12_item_pack_safebag(void *obj, const ASN1_ITEM *it, int nid1, int nid2)
 	safebag->value.bag = bag;
 	safebag->type = OBJ_nid2obj(nid2);
 	return safebag;
-}
-
-/* Turn PKCS8 object into a keybag */
-
-PKCS12_SAFEBAG *
-PKCS12_MAKE_KEYBAG(PKCS8_PRIV_KEY_INFO *p8)
-{
-	PKCS12_SAFEBAG *bag;
-
-	if (!(bag = PKCS12_SAFEBAG_new())) {
-		PKCS12error(ERR_R_MALLOC_FAILURE);
-		return NULL;
-	}
-	bag->type = OBJ_nid2obj(NID_keyBag);
-	bag->value.keybag = p8;
-	return bag;
-}
-
-/* Turn PKCS8 object into a shrouded keybag */
-
-PKCS12_SAFEBAG *
-PKCS12_MAKE_SHKEYBAG(int pbe_nid, const char *pass, int passlen,
-    unsigned char *salt, int saltlen, int iter, PKCS8_PRIV_KEY_INFO *p8)
-{
-	PKCS12_SAFEBAG *bag;
-	const EVP_CIPHER *pbe_ciph;
-
-	/* Set up the safe bag */
-	if (!(bag = PKCS12_SAFEBAG_new())) {
-		PKCS12error(ERR_R_MALLOC_FAILURE);
-		return NULL;
-	}
-
-	bag->type = OBJ_nid2obj(NID_pkcs8ShroudedKeyBag);
-
-	pbe_ciph = EVP_get_cipherbynid(pbe_nid);
-
-	if (pbe_ciph)
-		pbe_nid = -1;
-
-	if (!(bag->value.shkeybag = PKCS8_encrypt(pbe_nid, pbe_ciph, pass,
-	    passlen, salt, saltlen, iter, p8))) {
-		PKCS12error(ERR_R_MALLOC_FAILURE);
-		PKCS12_SAFEBAG_free(bag);
-		return NULL;
-	}
-
-	return bag;
 }
 
 /* Turn a stack of SAFEBAGS into a PKCS#7 data Contentinfo */
@@ -168,12 +123,17 @@ err:
 STACK_OF(PKCS12_SAFEBAG) *
 PKCS12_unpack_p7data(PKCS7 *p7)
 {
+	ASN1_OCTET_STRING *aos;
+
 	if (!PKCS7_type_is_data(p7)) {
 		PKCS12error(PKCS12_R_CONTENT_TYPE_NOT_DATA);
 		return NULL;
 	}
-	return ASN1_item_unpack(p7->d.data, &PKCS12_SAFEBAGS_it);
+	if ((aos = PKCS7_get_octet_string(p7)) == NULL)
+		return NULL;
+	return ASN1_item_unpack(aos, &PKCS12_SAFEBAGS_it);
 }
+LCRYPTO_ALIAS(PKCS12_unpack_p7data);
 
 /* Turn a stack of SAFEBAGS into a PKCS#7 encrypted data ContentInfo */
 
@@ -224,18 +184,25 @@ err:
 STACK_OF(PKCS12_SAFEBAG) *
 PKCS12_unpack_p7encdata(PKCS7 *p7, const char *pass, int passlen)
 {
+	PKCS7_ENC_CONTENT *content;
+
 	if (!PKCS7_type_is_encrypted(p7))
 		return NULL;
-	return PKCS12_item_decrypt_d2i(p7->d.encrypted->enc_data->algorithm,
-	    &PKCS12_SAFEBAGS_it, pass, passlen,
-	    p7->d.encrypted->enc_data->enc_data, 1);
+	if (p7->d.encrypted == NULL)
+		return NULL;
+	if ((content = p7->d.encrypted->enc_data) == NULL)
+		return NULL;
+	return PKCS12_item_decrypt_d2i(content->algorithm, &PKCS12_SAFEBAGS_it,
+	    pass, passlen, content->enc_data, 1);
 }
+LCRYPTO_ALIAS(PKCS12_unpack_p7encdata);
 
 PKCS8_PRIV_KEY_INFO *
 PKCS12_decrypt_skey(const PKCS12_SAFEBAG *bag, const char *pass, int passlen)
 {
 	return PKCS8_decrypt(bag->value.shkeybag, pass, passlen);
 }
+LCRYPTO_ALIAS(PKCS12_decrypt_skey);
 
 int
 PKCS12_pack_authsafes(PKCS12 *p12, STACK_OF(PKCS7) *safes)
@@ -249,10 +216,14 @@ PKCS12_pack_authsafes(PKCS12 *p12, STACK_OF(PKCS7) *safes)
 STACK_OF(PKCS7) *
 PKCS12_unpack_authsafes(const PKCS12 *p12)
 {
+	ASN1_OCTET_STRING *aos;
+
 	if (!PKCS7_type_is_data(p12->authsafes)) {
 		PKCS12error(PKCS12_R_CONTENT_TYPE_NOT_DATA);
 		return NULL;
 	}
-	return ASN1_item_unpack(p12->authsafes->d.data,
-	    &PKCS12_AUTHSAFES_it);
+	if ((aos = PKCS7_get_octet_string(p12->authsafes)) == NULL)
+		return NULL;
+	return ASN1_item_unpack(aos, &PKCS12_AUTHSAFES_it);
 }
+LCRYPTO_ALIAS(PKCS12_unpack_authsafes);

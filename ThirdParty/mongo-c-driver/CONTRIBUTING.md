@@ -15,7 +15,7 @@ The mongo-c-driver has a few guidelines that help direct the process.
 ### Portability
 
 mongo-c-driver is portable software. It needs to run on a multitude of
-[Supported Platforms](https://mongoc.org/libmongoc/current/installing.html#supported-platforms).
+[Supported Platforms](https://www.mongodb.com/docs/languages/c/c-driver/current/libmongoc/ref/platforms/).
 
 
 ### Licensing
@@ -127,6 +127,12 @@ documentation to be generated:
 ./tools/poetry.sh run sphinx-build -WEn -bhtml src/libmongoc/doc/ src/libmongoc/doc/html
 ```
 
+`sphinx-autobuild` can be used to serve docs locally. This can be convenient when editing. Files are rebuilt
+when changes are detected:
+
+```sh
+./tools/poetry.sh run sphinx-autobuild -b html src/libmongoc/doc/ src/libmongoc/doc/html --re-ignore ".*.pickle" --re-ignore ".*.doctree" -j auto
+```
 
 ### Testing
 
@@ -135,13 +141,14 @@ To run the entire test suite, including authentication and support for the
 enabled:
 
 ```
-$ mongod --auth --setParameter enableTestCommands=1
+$ mkdir db
+$ mongod --auth --setParameter enableTestCommands=1 --dbpath db/
 ```
 
-In another terminal, use the `mongo` shell to create a user:
+In another terminal, use the `mongosh` shell to create a user:
 
 ```
-$ mongo --eval "db.createUser({user: 'admin', pwd: 'pass', roles: ['root']})" admin
+$ mongosh --eval "db.createUser({user: 'admin', pwd: 'pass', roles: ['root']})" admin
 ```
 
 Authentication in MongoDB 3.0 and later uses SCRAM-SHA-1, which in turn
@@ -220,10 +227,6 @@ Some tests run against a local mock server, these can be skipped with:
 
 * `MONGOC_TEST_SKIP_MOCK=on`
 
-If you have started with MongoDB with `--ipv6`, you can test IPv6 with:
-
-* `MONGOC_CHECK_IPV6=on`
-
 The tests for mongodb+srv:// connection strings require some setup, see the
 Initial DNS Seedlist Discovery Spec. By default these connection strings are
 NOT tested, enable them with:
@@ -240,12 +243,14 @@ The mock server timeout threshold for future functions can be set with:
 
 This is useful for debugging, so future calls don't timeout when stepping through code.
 
-Tests of Client-Side Field Level Encryption require credentials to external KMS providers.
+Tests of In-Use Encryption require credentials to external KMS providers.
 
 For AWS:
 
 * `MONGOC_TEST_AWS_SECRET_ACCESS_KEY=<string>`
 * `MONGOC_TEST_AWS_ACCESS_KEY_ID=<string>`
+* `MONGOC_TEST_AWSNAME2_SECRET_ACCESS_KEY=<string>`
+* `MONGOC_TEST_AWSNAME2_ACCESS_KEY_ID=<string>`
 
 An Azure:
 
@@ -258,7 +263,7 @@ For GCP:
 * `MONGOC_TEST_GCP_EMAIL=<string>`
 * `MONGOC_TEST_GCP_PRIVATEKEY=<string>`
 
-Tests of Client-Side Field Level Encryption also require temporary credentials to external KMS providers.
+Tests of In-Use Encryption also require temporary credentials to external KMS providers.
 
 For AWS:
 
@@ -266,12 +271,12 @@ For AWS:
 * `MONGOC_TEST_AWS_TEMP_ACCESS_KEY_ID=<string>`
 * `MONGOC_TEST_AWS_TEMP_SESSION_TOKEN=<string>`
 
-Tests of Client-Side Field Level Encryption spawn an extra process, "mongocryptd", by default. To bypass this spawning,
+Tests of In-Use Encryption spawn an extra process, "mongocryptd", by default. To bypass this spawning,
 start mongocryptd on port 27020 and set the following:
 
 * `MONGOC_TEST_MONGOCRYPTD_BYPASS_SPAWN=on`
 
-KMS TLS tests for Client-Side Field Level Encryption require mock KMS servers to be running in the background.
+KMS TLS tests for In-Use Encryption require mock KMS servers to be running in the background.
 
 The [Setup instructions](https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#setup-3) given in the Client Side Encryption Tests specification provide additional information.
 
@@ -284,8 +289,9 @@ The set of mock KMS servers running in the background and their corresponding in
 | 8999 | ca.pem | server.pem | python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8999
 | 9000 | ca.pem | expired.pem | python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 9000
 | 9001 | ca.pem | wrong-host.pem | python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 9001
-| 9002 | ca.pem | server.pem | python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port --require_client_cert 9002
+| 9002 | ca.pem | server.pem | python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --require_client_cert --port 9002
 | 5698 | ca.pem | server.pem | python -u kms_kmip_server.py
+| 9003 | ca.pem | server.pem | python kms_failpoint_server.py --port 9003
 
 The path to `ca.pem` and `client.pem` must be passed through the following environment variables:
 
@@ -296,7 +302,12 @@ Specification tests may be filtered by their description:
 
 * `MONGOC_JSON_SUBTEST=<string>`
 
-This can be useful in debugging a specific test case in a spec test file with multiple tests.
+This can be useful in debugging a specific test case in a spec test file with multiple tests. Example:
+
+```sh
+MONGOC_JSON_SUBTEST="Insert with randomized encryption, then find it" \
+  ./cmake-build/src/libmongoc/test-libmongoc -l "/client_side_encryption/legacy/basic"
+```
 
 To test with a declared API version, you can pass the API version using an environment variable:
 
@@ -309,6 +320,10 @@ To test a load balanced deployment, set the following environment variables:
 * `MONGOC_TEST_LOADBALANCED=on`
 * `SINGLE_MONGOS_LB_URI=<string>` to a MongoDB URI with a host of a load balancer fronting one mongos.
 * `MULTI_MONGOS_LB_URI=<string>` to a MongoDB URI with a host of a load balancer fronting multiple mongos processes.
+
+To run test cases with large allocations, set:
+
+* `MONGOC_TEST_LARGE_ALLOCATIONS=on` This may result in sudden test suite termination due to allocation failure. Use with caution.
 
 All tests should pass before submitting a patch.
 
@@ -324,44 +339,3 @@ $ ./test-libmongoc -l "/server_selection/*"
 ```
 
 The full list of tests is shown in the help.
-
-## Creating and checking a distribution tarball
-
-The `make distcheck` command can be used to confirm that any modifications are
-able to be packaged into the distribution tarball and that the resulting
-distribution tarball can be used to successfully build the project.
-
-A failure of the `make distcheck` target is an indicator of an oversight in the
-modification to the project. For example, if a new source file is added to the
-project but it is not added to the proper distribution list, it is possible that
-the distribution tarball will be created without that file. An attempt to build
-the project without the file is likely to fail.
-
-When `make distcheck` is invoked, several things happen. The `dist` target is
-executed to create a distribution tarball. Then the tarball is unpacked,
-configured (with an invocation of `cmake`), built (by calling `make`), installed
-(by calling `make install`), and tested (by calling `make check`). Three
-environment variables can be used to modify these steps.
-
-To adjust the options passed to `make` during the build step, set:
-
-* `DISTCHECK_BUILD_OPTS`
-
-If this variable is not set, then `make` is called with a default of "-j 8".
-
-To adjust the options passed to `make install` during the installation step,
-set:
-
-* `DISTCHECK_INSTALL_OPTS`
-
-To adjust the options passed to `make check` during the test step, set:
-
-* `DISTCHECK_CHECK_OPTS`
-
-Remember, if you want to modify the top-level `make` invocation, you will need
-to pass options on the command line as normal.
-
-For example, the command `make -j 6 distcheck DISTCHECK_BUILD_OPTS="-j 4"` will
-call the standard sequence of targets depended upon by `distcheck` with a
-parallelism level of 6, while the build step that is later called by the
-`distcheck` target will be executed with a parallelism level of 4.

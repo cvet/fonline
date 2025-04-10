@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,48 +15,52 @@
  */
 
 
-#include "mongoc-config.h"
+#include <mlib/intencode.h>
+#include <mongoc/mongoc-config.h>
 
 #include <string.h>
 
-#include "mongoc-cluster-private.h"
-#include "mongoc-client-private.h"
-#include "mongoc-client-side-encryption-private.h"
-#include "mongoc-counters-private.h"
-#include "mongoc-config.h"
-#include "mongoc-error.h"
-#include "mongoc-flags-private.h"
-#include "mongoc-host-list-private.h"
-#include "mongoc-log.h"
-#include "mongoc-cluster-sasl-private.h"
+#include <mongoc/mcd-rpc.h>
+#include <mongoc/mongoc-cluster-private.h>
+#include <mongoc/mongoc-client-private.h>
+#include <mongoc/mongoc-client-side-encryption-private.h>
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-config.h>
+#include <mongoc/mongoc-flags-private.h>
+#include <mongoc/mongoc-host-list-private.h>
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-cluster-sasl-private.h>
 #ifdef MONGOC_ENABLE_SSL
-#include "mongoc-ssl.h"
-#include "mongoc-ssl-private.h"
-#include "mongoc-stream-tls.h"
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-ssl-private.h>
+#include <mongoc/mongoc-stream-tls.h>
 #endif
-#include "common-b64-private.h"
-#include "mongoc-scram-private.h"
-#include "mongoc-set-private.h"
-#include "mongoc-socket.h"
-#include "mongoc-stream-private.h"
-#include "mongoc-stream-socket.h"
-#include "mongoc-stream-tls.h"
-#include "mongoc-thread-private.h"
-#include "mongoc-topology-private.h"
-#include "mongoc-topology-background-monitoring-private.h"
-#include "mongoc-trace-private.h"
-#include "mongoc-util-private.h"
-#include "mongoc-write-concern-private.h"
-#include "mongoc-uri-private.h"
-#include "mongoc-rpc-private.h"
-#include "mongoc-compression-private.h"
-#include "mongoc-cmd-private.h"
-#include "utlist.h"
-#include "mongoc-handshake-private.h"
-#include "mongoc-cluster-aws-private.h"
-#include "mongoc-error-private.h"
+#include <common-b64-private.h>
+#include <mongoc/mongoc-scram-private.h>
+#include <mongoc/mongoc-set-private.h>
+#include <mongoc/mongoc-socket.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-stream-socket.h>
+#include <mongoc/mongoc-stream-tls.h>
+#include <mongoc/mongoc-thread-private.h>
+#include <mongoc/mongoc-topology-private.h>
+#include <mongoc/mongoc-topology-background-monitoring-private.h>
+#include <mongoc/mongoc-trace-private.h>
+#include <mongoc/mongoc-util-private.h>
+#include <mongoc/mongoc-write-concern-private.h>
+#include <mongoc/mongoc-uri-private.h>
+#include <mongoc/mongoc-rpc-private.h>
+#include <mongoc/mongoc-compression-private.h>
+#include <mongoc/mongoc-cmd-private.h>
+#include <mongoc/utlist.h>
+#include <mongoc/mongoc-handshake-private.h>
+#include <mongoc/mongoc-cluster-aws-private.h>
+#include <mongoc/mongoc-error-private.h>
+#include <mongoc/mongoc-structured-log-private.h>
 
-#include <bson-dsl.h>
+#include <common-bson-dsl-private.h>
+#include <mlib/cmp.h>
+#include <common-oid-private.h>
 
 #include <inttypes.h>
 
@@ -83,19 +87,13 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
                               bson_error_t *error);
 
 static bool
-mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster,
-                          mongoc_cmd_t *cmd,
-                          bson_t *reply,
-                          bson_error_t *error);
+mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, bson_t *reply, bson_error_t *error);
 
 static void
-_bson_error_message_printf (bson_error_t *error, const char *format, ...)
-   BSON_GNUC_PRINTF (2, 3);
+_bson_error_message_printf (bson_error_t *error, const char *format, ...) BSON_GNUC_PRINTF (2, 3);
 
 static void
-_handle_not_primary_error (mongoc_cluster_t *cluster,
-                           const mongoc_server_stream_t *server_stream,
-                           const bson_t *reply)
+_handle_not_primary_error (mongoc_cluster_t *cluster, const mongoc_server_stream_t *server_stream, const bson_t *reply)
 {
    uint32_t server_id;
 
@@ -116,9 +114,7 @@ _handle_not_primary_error (mongoc_cluster_t *cluster,
 /* Called when a network error occurs on an application socket.
  */
 static void
-_handle_network_error (mongoc_cluster_t *cluster,
-                       mongoc_server_stream_t *server_stream,
-                       const bson_error_t *why)
+_handle_network_error (mongoc_cluster_t *cluster, mongoc_server_stream_t *server_stream, const bson_error_t *why)
 {
    mongoc_topology_t *topology;
    uint32_t server_id;
@@ -149,21 +145,11 @@ _handle_network_error (mongoc_cluster_t *cluster,
    EXIT;
 }
 
-
-static int32_t
-_int32_from_le (const void *data)
-{
-   BSON_ASSERT_PARAM (data);
-   return bson_iter_int32_unsafe (&(bson_iter_t){.raw = data});
-}
-
-
 static int32_t
 _compression_level_from_uri (int32_t compressor_id, const mongoc_uri_t *uri)
 {
    if (compressor_id == MONGOC_COMPRESSOR_ZLIB_ID) {
-      return mongoc_uri_get_option_as_int32 (
-         uri, MONGOC_URI_ZLIBCOMPRESSIONLEVEL, -1);
+      return mongoc_uri_get_option_as_int32 (uri, MONGOC_URI_ZLIBCOMPRESSIONLEVEL, -1);
    }
 
    return -1;
@@ -171,17 +157,14 @@ _compression_level_from_uri (int32_t compressor_id, const mongoc_uri_t *uri)
 
 
 size_t
-_mongoc_cluster_buffer_iovec (mongoc_iovec_t *iov,
-                              size_t iovcnt,
-                              int skip,
-                              char *buffer)
+_mongoc_cluster_buffer_iovec (mongoc_iovec_t *iov, size_t iovcnt, int skip, char *buffer)
 {
    size_t buffer_offset = 0;
    int total_iov_len = 0;
    size_t difference = 0;
 
    for (size_t n = 0u; n < iovcnt; n++) {
-      BSON_ASSERT (bson_in_range_unsigned (int, iov[n].iov_len));
+      BSON_ASSERT (mlib_in_range (int, iov[n].iov_len));
       const int iov_len = (int) iov[n].iov_len;
 
       total_iov_len += iov_len;
@@ -200,9 +183,7 @@ _mongoc_cluster_buffer_iovec (mongoc_iovec_t *iov,
          difference = 0u;
       }
 
-      memcpy (buffer + buffer_offset,
-              ((char *) iov[n].iov_base) + difference,
-              iov[n].iov_len - difference);
+      memcpy (buffer + buffer_offset, ((char *) iov[n].iov_base) + difference, iov[n].iov_len - difference);
       buffer_offset += iov[n].iov_len - difference;
    }
 
@@ -226,20 +207,19 @@ _bson_error_message_printf (bson_error_t *error, const char *format, ...)
    }
 }
 
-#define RUN_CMD_ERR_DECORATE                                       \
-   do {                                                            \
-      _bson_error_message_printf (                                 \
-         error,                                                    \
-         "Failed to send \"%s\" command with database \"%s\": %s", \
-         cmd->command_name,                                        \
-         cmd->db_name,                                             \
-         error->message);                                          \
+#define RUN_CMD_ERR_DECORATE                                                                \
+   do {                                                                                     \
+      _bson_error_message_printf (error,                                                    \
+                                  "Failed to send \"%s\" command with database \"%s\": %s", \
+                                  cmd->command_name,                                        \
+                                  cmd->db_name,                                             \
+                                  error->message);                                          \
    } while (0)
 
-#define RUN_CMD_ERR(_domain, _code, ...)                   \
-   do {                                                    \
-      bson_set_error (error, _domain, _code, __VA_ARGS__); \
-      RUN_CMD_ERR_DECORATE;                                \
+#define RUN_CMD_ERR(_domain, _code, ...)                      \
+   do {                                                       \
+      _mongoc_set_error (error, _domain, _code, __VA_ARGS__); \
+      RUN_CMD_ERR_DECORATE;                                   \
    } while (0)
 
 
@@ -248,11 +228,8 @@ static const int32_t message_header_length = 4u * sizeof (int32_t);
 
 
 static bool
-_mongoc_cluster_run_command_opquery_send (mongoc_cluster_t *cluster,
-                                          mongoc_cmd_t *cmd,
-                                          int32_t compressor_id,
-                                          mcd_rpc_message *rpc,
-                                          bson_error_t *error)
+_mongoc_cluster_run_command_opquery_send (
+   mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, int32_t compressor_id, mcd_rpc_message *rpc, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -271,8 +248,7 @@ _mongoc_cluster_run_command_opquery_send (mongoc_cluster_t *cluster,
    // For other cursor-typed commands like aggregate, only secondaryOk can be
    // set. Clear bits except secondaryOk; leave secondaryOk set only if it is
    // already.
-   const int32_t flags =
-      (int32_t) cmd->query_flags & MONGOC_OP_QUERY_FLAG_SECONDARY_OK;
+   const int32_t flags = (int32_t) cmd->query_flags & MONGOC_OP_QUERY_FLAG_SECONDARY_OK;
 
    {
       int32_t message_length = 0;
@@ -286,8 +262,7 @@ _mongoc_cluster_run_command_opquery_send (mongoc_cluster_t *cluster,
       message_length += mcd_rpc_op_query_set_full_collection_name (rpc, ns);
       message_length += mcd_rpc_op_query_set_number_to_skip (rpc, 0);
       message_length += mcd_rpc_op_query_set_number_to_return (rpc, -1);
-      message_length +=
-         mcd_rpc_op_query_set_query (rpc, bson_get_data (cmd->command));
+      message_length += mcd_rpc_op_query_set_query (rpc, bson_get_data (cmd->command));
 
       mcd_rpc_message_set_length (rpc, message_length);
    }
@@ -297,37 +272,30 @@ _mongoc_cluster_run_command_opquery_send (mongoc_cluster_t *cluster,
    BSON_ASSERT (iovecs);
 
    const bool is_compressible =
-      compressor_id != -1 && IS_NOT_COMMAND (HANDSHAKE_CMD_LEGACY_HELLO) &&
-      IS_NOT_COMMAND ("hello") && IS_NOT_COMMAND ("saslstart") &&
-      IS_NOT_COMMAND ("saslcontinue") && IS_NOT_COMMAND ("getnonce") &&
-      IS_NOT_COMMAND ("authenticate") && IS_NOT_COMMAND ("createuser") &&
-      IS_NOT_COMMAND ("updateuser");
+      compressor_id != -1 && IS_NOT_COMMAND (HANDSHAKE_CMD_LEGACY_HELLO) && IS_NOT_COMMAND ("hello") &&
+      IS_NOT_COMMAND ("saslstart") && IS_NOT_COMMAND ("saslcontinue") && IS_NOT_COMMAND ("getnonce") &&
+      IS_NOT_COMMAND ("authenticate") && IS_NOT_COMMAND ("createuser") && IS_NOT_COMMAND ("updateuser");
 
    void *compressed_data = NULL;
    size_t compressed_data_len = 0u;
 
-   if (is_compressible &&
-       !mcd_rpc_message_compress (
-          rpc,
-          compressor_id,
-          _compression_level_from_uri (compressor_id, cluster->uri),
-          &compressed_data,
-          &compressed_data_len,
-          error)) {
+   if (is_compressible && !mcd_rpc_message_compress (rpc,
+                                                     compressor_id,
+                                                     _compression_level_from_uri (compressor_id, cluster->uri),
+                                                     &compressed_data,
+                                                     &compressed_data_len,
+                                                     error)) {
       goto done;
    }
 
    if (cluster->client->in_exhaust) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_IN_EXHAUST,
-                      "a cursor derived from this client is in exhaust");
+      _mongoc_set_error (
+         error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_IN_EXHAUST, "a cursor derived from this client is in exhaust");
       goto done;
    }
 
    mcd_rpc_message_egress (rpc);
-   if (!_mongoc_stream_writev_full (
-          stream, iovecs, num_iovecs, cluster->sockettimeoutms, error)) {
+   if (!_mongoc_stream_writev_full (stream, iovecs, num_iovecs, cluster->sockettimeoutms, error)) {
       RUN_CMD_ERR_DECORATE;
       _handle_network_error (cluster, cmd->server_stream, error);
       goto done;
@@ -344,11 +312,8 @@ done:
 }
 
 static bool
-_mongoc_cluster_run_command_opquery_recv (mongoc_cluster_t *cluster,
-                                          mongoc_cmd_t *cmd,
-                                          mcd_rpc_message *rpc,
-                                          bson_t *reply,
-                                          bson_error_t *error)
+_mongoc_cluster_run_command_opquery_recv (
+   mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, mcd_rpc_message *rpc, bson_t *reply, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -366,52 +331,37 @@ _mongoc_cluster_run_command_opquery_recv (mongoc_cluster_t *cluster,
    void *decompressed_data = NULL;
    size_t decompressed_data_len = 0u;
 
-   if (!_mongoc_buffer_append_from_stream (
-          &buffer, stream, sizeof (int32_t), cluster->sockettimeoutms, error)) {
-      RUN_CMD_ERR (MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "socket error or timeout");
+   if (!_mongoc_buffer_append_from_stream (&buffer, stream, sizeof (int32_t), cluster->sockettimeoutms, error)) {
+      RUN_CMD_ERR (MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "socket error or timeout");
       _handle_network_error (cluster, cmd->server_stream, error);
       goto done;
    }
 
-   const int32_t message_length = _int32_from_le (buffer.data);
+   const int32_t message_length = mlib_read_i32le (buffer.data);
 
-   if (message_length < message_header_length ||
-       message_length > MONGOC_DEFAULT_MAX_MSG_SIZE) {
-      RUN_CMD_ERR (MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "invalid message length");
+   if (message_length < message_header_length || message_length > MONGOC_DEFAULT_MAX_MSG_SIZE) {
+      RUN_CMD_ERR (MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "invalid message length");
       _handle_network_error (cluster, cmd->server_stream, error);
       goto done;
    }
 
    const size_t remaining_bytes = (size_t) message_length - sizeof (int32_t);
 
-   if (!_mongoc_buffer_append_from_stream (
-          &buffer, stream, remaining_bytes, cluster->sockettimeoutms, error)) {
-      RUN_CMD_ERR (MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "socket error or timeout");
+   if (!_mongoc_buffer_append_from_stream (&buffer, stream, remaining_bytes, cluster->sockettimeoutms, error)) {
+      RUN_CMD_ERR (MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "socket error or timeout");
       _handle_network_error (cluster, cmd->server_stream, error);
       goto done;
    }
 
-   if (!mcd_rpc_message_from_data_in_place (
-          rpc, buffer.data, buffer.len, NULL)) {
-      RUN_CMD_ERR (MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "malformed reply from server");
+   if (!mcd_rpc_message_from_data_in_place (rpc, buffer.data, buffer.len, NULL)) {
+      RUN_CMD_ERR (MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "malformed reply from server");
       goto done;
    }
 
    mcd_rpc_message_ingress (rpc);
 
-   if (!mcd_rpc_message_decompress_if_necessary (
-          rpc, &decompressed_data, &decompressed_data_len)) {
-      RUN_CMD_ERR (MONGOC_ERROR_STREAM,
-                   MONGOC_ERROR_STREAM_SOCKET,
-                   "could not decompress server reply");
+   if (!mcd_rpc_message_decompress_if_necessary (rpc, &decompressed_data, &decompressed_data_len)) {
+      RUN_CMD_ERR (MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "could not decompress server reply");
       goto done;
    }
 
@@ -419,9 +369,7 @@ _mongoc_cluster_run_command_opquery_recv (mongoc_cluster_t *cluster,
       bson_t body;
 
       if (!mcd_rpc_message_get_body (rpc, &body)) {
-         RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "malformed reply from server");
+         RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "malformed reply from server");
          goto done;
       }
 
@@ -429,8 +377,7 @@ _mongoc_cluster_run_command_opquery_recv (mongoc_cluster_t *cluster,
       bson_destroy (&body);
    }
 
-   if (!_mongoc_cmd_check_ok (
-          reply, cluster->client->error_api_version, error)) {
+   if (!_mongoc_cmd_check_ok (reply, cluster->client->error_api_version, error)) {
       goto done;
    }
 
@@ -444,11 +391,8 @@ done:
 }
 
 static bool
-mongoc_cluster_run_command_opquery (mongoc_cluster_t *cluster,
-                                    mongoc_cmd_t *cmd,
-                                    int32_t compressor_id,
-                                    bson_t *reply,
-                                    bson_error_t *error)
+mongoc_cluster_run_command_opquery (
+   mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, int32_t compressor_id, bson_t *reply, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -465,15 +409,13 @@ mongoc_cluster_run_command_opquery (mongoc_cluster_t *cluster,
 
    mcd_rpc_message *const rpc = mcd_rpc_message_new ();
 
-   if (!_mongoc_cluster_run_command_opquery_send (
-          cluster, cmd, compressor_id, rpc, error)) {
+   if (!_mongoc_cluster_run_command_opquery_send (cluster, cmd, compressor_id, rpc, error)) {
       GOTO (done);
    }
 
    mcd_rpc_message_reset (rpc);
 
-   if (!_mongoc_cluster_run_command_opquery_recv (
-          cluster, cmd, rpc, reply, error)) {
+   if (!_mongoc_cluster_run_command_opquery_recv (cluster, cmd, rpc, reply, error)) {
       GOTO (done);
    }
 
@@ -482,9 +424,7 @@ mongoc_cluster_run_command_opquery (mongoc_cluster_t *cluster,
 done:
    if (!ret && error->code == 0) {
       /* generic error */
-      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
-                   MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                   "invalid reply from server");
+      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "invalid reply from server");
    }
 
    mcd_rpc_message_destroy (rpc);
@@ -492,26 +432,37 @@ done:
    RETURN (ret);
 }
 
-bool
+static bool
 _in_sharded_txn (const mongoc_client_session_t *session)
 {
    return session && _mongoc_client_session_in_txn_or_ending (session) &&
-          _mongoc_topology_get_type (session->client->topology) ==
-             MONGOC_TOPOLOGY_SHARDED;
+          _mongoc_topology_get_type (session->client->topology) == MONGOC_TOPOLOGY_SHARDED;
+}
+
+static bool
+_in_sharded_or_loadbalanced_txn (const mongoc_client_session_t *session)
+{
+   if (!session) {
+      return false;
+   }
+
+   if (!_mongoc_client_session_in_txn_or_ending (session)) {
+      return false;
+   }
+
+   mongoc_topology_description_type_t type = _mongoc_topology_get_type (session->client->topology);
+
+   return (type == MONGOC_TOPOLOGY_SHARDED) || (type == MONGOC_TOPOLOGY_LOAD_BALANCED);
 }
 
 static void
-_handle_txn_error_labels (bool cmd_ret,
-                          const bson_error_t *cmd_err,
-                          const mongoc_cmd_t *cmd,
-                          bson_t *reply)
+_handle_txn_error_labels (bool cmd_ret, const bson_error_t *cmd_err, const mongoc_cmd_t *cmd, bson_t *reply)
 {
    if (!cmd->is_txn_finish) {
       return;
    }
 
-   _mongoc_write_error_handle_labels (
-      cmd_ret, cmd_err, reply, cmd->server_stream->sd->max_wire_version);
+   _mongoc_write_error_handle_labels (cmd_ret, cmd_err, reply, cmd->server_stream->sd);
 }
 
 /*
@@ -533,15 +484,11 @@ _handle_txn_error_labels (bool cmd_ret,
  */
 
 bool
-mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster,
-                                      mongoc_cmd_t *cmd,
-                                      bson_t *reply,
-                                      bson_error_t *error)
+mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster, mongoc_cmd_t *cmd, bson_t *reply, bson_error_t *error)
 {
    bool retval;
    const int32_t request_id = ++cluster->request_id;
    uint32_t server_id;
-   mongoc_apm_callbacks_t *callbacks;
    mongoc_apm_command_started_t started_event;
    mongoc_apm_command_succeeded_t succeeded_event;
    mongoc_apm_command_failed_t failed_event;
@@ -553,12 +500,13 @@ mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster,
    bson_t encrypted = BSON_INITIALIZER;
    bson_t decrypted = BSON_INITIALIZER;
    mongoc_cmd_t encrypted_cmd;
-   bool is_redacted = false;
+   bool is_redacted_by_apm = false;
 
    server_stream = cmd->server_stream;
    server_id = server_stream->sd->id;
 
-   callbacks = &cluster->client->apm_callbacks;
+   const mongoc_log_and_monitor_instance_t *log_and_monitor = &cluster->client->topology->log_and_monitor;
+
    if (!reply) {
       reply = &reply_local;
    }
@@ -569,8 +517,7 @@ mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster,
    if (_mongoc_cse_is_enabled (cluster->client)) {
       bson_destroy (&encrypted);
 
-      retval = _mongoc_cse_auto_encrypt (
-         cluster->client, cmd, &encrypted_cmd, &encrypted, error);
+      retval = _mongoc_cse_auto_encrypt (cluster->client, cmd, &encrypted_cmd, &encrypted, error);
       cmd = &encrypted_cmd;
       if (!retval) {
          bson_init (reply);
@@ -578,70 +525,107 @@ mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster,
       }
    }
 
-   if (callbacks->started) {
-      mongoc_apm_command_started_init_with_cmd (&started_event,
-                                                cmd,
-                                                request_id,
-                                                &is_redacted,
-                                                cluster->client->apm_context);
+   mongoc_structured_log (
+      log_and_monitor->structured_log,
+      MONGOC_STRUCTURED_LOG_LEVEL_DEBUG,
+      MONGOC_STRUCTURED_LOG_COMPONENT_COMMAND,
+      "Command started",
+      int32 ("requestId", request_id),
+      server_description (server_stream->sd, SERVER_HOST, SERVER_PORT, SERVER_CONNECTION_ID, SERVICE_ID),
+      cmd (cmd, DATABASE_NAME, COMMAND_NAME, OPERATION_ID, COMMAND));
 
-      callbacks->started (&started_event);
+   if (log_and_monitor->apm_callbacks.started) {
+      mongoc_apm_command_started_init_with_cmd (
+         &started_event, cmd, request_id, &is_redacted_by_apm, log_and_monitor->apm_context);
+
+      log_and_monitor->apm_callbacks.started (&started_event);
       mongoc_apm_command_started_cleanup (&started_event);
    }
 
    retval = mongoc_cluster_run_opmsg (cluster, cmd, reply, error);
 
-   if (retval && callbacks->succeeded) {
+   if (retval) {
       bson_t fake_reply = BSON_INITIALIZER;
+      int64_t duration = bson_get_monotonic_time () - started;
+
       /*
        * Unacknowledged writes must provide a CommandSucceededEvent with an
        * {ok: 1} reply.
-       * https://github.com/mongodb/specifications/blob/master/source/command-logging-and-monitoring/command-logging-and-monitoring.rst#unacknowledged-acknowledged-writes
+       * https://github.com/mongodb/specifications/blob/master/source/command-logging-and-monitoring/command-logging-and-monitoring.md#unacknowledgedacknowledged-writes
        */
       if (!cmd->is_acknowledged) {
          bson_append_int32 (&fake_reply, "ok", 2, 1);
       }
-      mongoc_apm_command_succeeded_init (
-         &succeeded_event,
-         bson_get_monotonic_time () - started,
-         cmd->is_acknowledged ? reply : &fake_reply,
-         cmd->command_name,
-         request_id,
-         cmd->operation_id,
-         &server_stream->sd->host,
-         server_id,
-         &server_stream->sd->service_id,
-         server_stream->sd->server_connection_id,
-         is_redacted,
-         cluster->client->apm_context);
 
-      callbacks->succeeded (&succeeded_event);
-      mongoc_apm_command_succeeded_cleanup (&succeeded_event);
+      mongoc_structured_log (
+         log_and_monitor->structured_log,
+         MONGOC_STRUCTURED_LOG_LEVEL_DEBUG,
+         MONGOC_STRUCTURED_LOG_COMPONENT_COMMAND,
+         "Command succeeded",
+         int32 ("requestId", request_id),
+         monotonic_time_duration (duration),
+         server_description (server_stream->sd, SERVER_HOST, SERVER_PORT, SERVER_CONNECTION_ID, SERVICE_ID),
+         cmd (cmd, DATABASE_NAME, COMMAND_NAME, OPERATION_ID),
+         cmd_reply (cmd, cmd->is_acknowledged ? reply : &fake_reply));
+
+      if (log_and_monitor->apm_callbacks.succeeded) {
+         mongoc_apm_command_succeeded_init (&succeeded_event,
+                                            duration,
+                                            cmd->is_acknowledged ? reply : &fake_reply,
+                                            cmd->command_name,
+                                            cmd->db_name,
+                                            request_id,
+                                            cmd->operation_id,
+                                            &server_stream->sd->host,
+                                            server_id,
+                                            &server_stream->sd->service_id,
+                                            server_stream->sd->server_connection_id,
+                                            is_redacted_by_apm,
+                                            log_and_monitor->apm_context);
+
+         log_and_monitor->apm_callbacks.succeeded (&succeeded_event);
+         mongoc_apm_command_succeeded_cleanup (&succeeded_event);
+      }
+
       bson_destroy (&fake_reply);
-   }
-   if (!retval && callbacks->failed) {
-      mongoc_apm_command_failed_init (&failed_event,
-                                      bson_get_monotonic_time () - started,
-                                      cmd->command_name,
-                                      error,
-                                      reply,
-                                      request_id,
-                                      cmd->operation_id,
-                                      &server_stream->sd->host,
-                                      server_id,
-                                      &server_stream->sd->service_id,
-                                      server_stream->sd->server_connection_id,
-                                      is_redacted,
-                                      cluster->client->apm_context);
+   } else {
+      int64_t duration = bson_get_monotonic_time () - started;
 
-      callbacks->failed (&failed_event);
-      mongoc_apm_command_failed_cleanup (&failed_event);
+      mongoc_structured_log (
+         log_and_monitor->structured_log,
+         MONGOC_STRUCTURED_LOG_LEVEL_DEBUG,
+         MONGOC_STRUCTURED_LOG_COMPONENT_COMMAND,
+         "Command failed",
+         int32 ("requestId", request_id),
+         monotonic_time_duration (duration),
+         server_description (server_stream->sd, SERVER_HOST, SERVER_PORT, SERVER_CONNECTION_ID, SERVICE_ID),
+         cmd (cmd, DATABASE_NAME, COMMAND_NAME, OPERATION_ID),
+         cmd_failure (cmd, reply, error));
+
+      if (log_and_monitor->apm_callbacks.failed) {
+         mongoc_apm_command_failed_init (&failed_event,
+                                         duration,
+                                         cmd->command_name,
+                                         cmd->db_name,
+                                         error,
+                                         reply,
+                                         request_id,
+                                         cmd->operation_id,
+                                         &server_stream->sd->host,
+                                         server_id,
+                                         &server_stream->sd->service_id,
+                                         server_stream->sd->server_connection_id,
+                                         is_redacted_by_apm,
+                                         log_and_monitor->apm_context);
+
+         log_and_monitor->apm_callbacks.failed (&failed_event);
+         mongoc_apm_command_failed_cleanup (&failed_event);
+      }
    }
 
    if (retval && _mongoc_cse_is_enabled (cluster->client)) {
       bson_destroy (&decrypted);
-      retval = _mongoc_cse_auto_decrypt (
-         cluster->client, cmd->db_name, reply, &decrypted, error);
+      retval = _mongoc_cse_auto_decrypt (cluster->client, cmd->db_name, reply, &decrypted, error);
       bson_destroy (reply);
       bson_steal (reply, &decrypted);
       bson_init (&decrypted);
@@ -654,13 +638,12 @@ mongoc_cluster_run_command_monitored (mongoc_cluster_t *cluster,
 
    _handle_txn_error_labels (retval, error, cmd, reply);
 
-   if (retval && _in_sharded_txn (cmd->session) &&
+   if (retval && _in_sharded_or_loadbalanced_txn (cmd->session) &&
        bson_iter_init_find (&iter, reply, "recoveryToken")) {
       bson_destroy (cmd->session->recovery_token);
       if (BSON_ITER_HOLDS_DOCUMENT (&iter)) {
-         cmd->session->recovery_token =
-            bson_new_from_data (bson_iter_value (&iter)->value.v_doc.data,
-                                bson_iter_value (&iter)->value.v_doc.data_len);
+         cmd->session->recovery_token = bson_new_from_data (bson_iter_value (&iter)->value.v_doc.data,
+                                                            bson_iter_value (&iter)->value.v_doc.data_len);
       } else {
          MONGOC_ERROR ("Malformed recovery token from server");
          cmd->session->recovery_token = NULL;
@@ -684,8 +667,7 @@ fail_no_events:
 static bool
 _should_use_op_msg (const mongoc_cluster_t *cluster)
 {
-   return mongoc_cluster_uses_server_api (cluster) ||
-          mongoc_cluster_uses_loadbalanced (cluster);
+   return mongoc_cluster_uses_server_api (cluster) || mongoc_cluster_uses_loadbalanced (cluster);
 }
 
 
@@ -710,7 +692,7 @@ _should_use_op_msg (const mongoc_cluster_t *cluster)
 
 bool
 mongoc_cluster_run_command_private (mongoc_cluster_t *cluster,
-                                    mongoc_cmd_t *cmd,
+                                    const mongoc_cmd_t *cmd,
                                     bson_t *reply,
                                     bson_error_t *error)
 {
@@ -730,12 +712,10 @@ mongoc_cluster_run_command_private (mongoc_cluster_t *cluster,
 
    server_stream = cmd->server_stream;
 
-   if (_should_use_op_msg (cluster) ||
-       server_stream->sd->max_wire_version >= WIRE_VERSION_MIN) {
+   if (_should_use_op_msg (cluster) || server_stream->sd->max_wire_version >= WIRE_VERSION_MIN) {
       retval = mongoc_cluster_run_opmsg (cluster, cmd, reply, error);
    } else {
-      retval =
-         mongoc_cluster_run_command_opquery (cluster, cmd, -1, reply, error);
+      retval = mongoc_cluster_run_command_opquery (cluster, cmd, -1, reply, error);
    }
 
    _handle_not_primary_error (cluster, server_stream, reply);
@@ -744,8 +724,7 @@ mongoc_cluster_run_command_private (mongoc_cluster_t *cluster,
       bson_destroy (&reply_local);
    }
 
-   _mongoc_topology_update_last_used (cluster->client->topology,
-                                      server_stream->sd->id);
+   _mongoc_topology_update_last_used (cluster->client->topology, server_stream->sd->id);
 
    return retval;
 }
@@ -785,8 +764,7 @@ mongoc_cluster_run_command_parts (mongoc_cluster_t *cluster,
       return false;
    }
 
-   ret = mongoc_cluster_run_command_private (
-      cluster, &parts->assembled, reply, error);
+   ret = mongoc_cluster_run_command_private (cluster, &parts->assembled, reply, error);
    mongoc_cmd_parts_cleanup (parts);
    return ret;
 }
@@ -812,46 +790,33 @@ _stream_run_hello (mongoc_cluster_t *cluster,
                    const char *address,
                    uint32_t server_id,
                    bool negotiate_sasl_supported_mechs,
-                   mongoc_scram_cache_t *scram_cache,
                    mongoc_scram_t *scram,
                    bson_t *speculative_auth_response /* OUT */,
                    bson_error_t *error)
 {
-   bson_t handshake_command; /* Initialized by dup_handshake below */
-   mongoc_cmd_t hello_cmd;
-   bson_t reply;
-   int64_t start;
-   int64_t rtt_msec;
-   mongoc_server_description_t empty_sd;
-   mongoc_server_description_t *ret_handshake_sd;
-   mongoc_server_stream_t *server_stream;
-   bool r;
-   mongoc_ssl_opt_t *ssl_opts = NULL;
-   mc_shared_tpld td =
-      mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
+   mc_shared_tpld td = mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
 
    ENTRY;
 
    BSON_ASSERT (stream);
 
-   _mongoc_topology_dup_handshake_cmd (cluster->client->topology,
-                                       &handshake_command);
+   bson_t handshake_command;
+   _mongoc_topology_dup_handshake_cmd (cluster->client->topology, &handshake_command);
 
    if (cluster->requires_auth && speculative_auth_response) {
+      mongoc_ssl_opt_t *ssl_opts = NULL;
 #ifdef MONGOC_ENABLE_SSL
       ssl_opts = &cluster->client->ssl_opts;
 #endif
 
-      _mongoc_topology_scanner_add_speculative_authentication (
-         &handshake_command, cluster->uri, ssl_opts, scram_cache, scram);
+      _mongoc_topology_scanner_add_speculative_authentication (&handshake_command, cluster->uri, ssl_opts, scram);
    }
 
    if (negotiate_sasl_supported_mechs) {
-      _mongoc_handshake_append_sasl_supported_mechs (cluster->uri,
-                                                     &handshake_command);
+      _mongoc_handshake_append_sasl_supported_mechs (cluster->uri, &handshake_command);
    }
 
-   start = bson_get_monotonic_time ();
+   const int64_t start = bson_get_monotonic_time ();
    /* TODO CDRIVER-3654: do not use a mongoc_server_stream here.
     * Instead, use a plain stream. If a network error occurs, check the cluster
     * node's generation (which is the generation of the created connection) to
@@ -862,35 +827,40 @@ _stream_run_hello (mongoc_cluster_t *cluster,
     * Then _mongoc_cluster_stream_for_server also handles the error, and
     * invalidates again.
     */
+   mongoc_server_description_t empty_sd;
    mongoc_server_description_init (&empty_sd, address, server_id);
-   server_stream =
-      _mongoc_cluster_create_server_stream (td.ptr, &empty_sd, stream);
-
+   mongoc_server_stream_t *const server_stream = _mongoc_cluster_create_server_stream (td.ptr, &empty_sd, stream);
    mongoc_server_description_cleanup (&empty_sd);
 
-   /* Set up the shared parts of the mongo_cmd_t, which will later be converted
-   to either an op_msg or op_query: */
-   memset (&hello_cmd, 0, sizeof (hello_cmd));
-
+   mongoc_query_flags_t query_flags = MONGOC_QUERY_NONE;
    /* Use OP_QUERY for the handshake, unless the user has specified an
     * API version; the correct hello_cmd has already been selected: */
    if (!_should_use_op_msg (cluster)) {
       /* Complete OPCODE_QUERY setup: */
-      hello_cmd.query_flags = MONGOC_QUERY_SECONDARY_OK;
+      query_flags |= MONGOC_QUERY_SECONDARY_OK;
    } else {
       /* We're using OP_MSG, and require some additional doctoring: */
       bson_append_utf8 (&handshake_command, "$db", 3, "admin", 5);
    }
 
-   hello_cmd.db_name = "admin";
-   hello_cmd.command = &handshake_command;
-   hello_cmd.command_name = _mongoc_get_command_name (&handshake_command);
-   hello_cmd.server_stream = server_stream;
-   hello_cmd.is_acknowledged = true;
+   /* Set up the shared parts of the mongo_cmd_t, which will later be converted
+   to either an op_msg or op_query: */
+   const mongoc_cmd_t hello_cmd = {
+      .db_name = "admin",
+      .command = &handshake_command,
+      .command_name = _mongoc_get_command_name (&handshake_command),
+      .server_stream = server_stream,
+      .is_acknowledged = true,
+      .query_flags = query_flags,
+   };
 
-   if (!mongoc_cluster_run_command_private (
-          cluster, &hello_cmd, &reply, error)) {
+   bson_t reply;
+   // The final resulting server description
+   mongoc_server_description_t *ret_handshake_sd = NULL;
+   if (!mongoc_cluster_run_command_private (cluster, &hello_cmd, &reply, error)) {
+      // Command execution failed.
       if (negotiate_sasl_supported_mechs) {
+         // Negotiating a new SASL mechanism
          bsonParse (reply,
                     find (allOf (key ("ok"), isFalse), //
                           do ({
@@ -900,44 +870,38 @@ _stream_run_hello (mongoc_cluster_t *cluster,
                               * treat this an authentication error." */
                              error->domain = MONGOC_ERROR_CLIENT;
                              error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
+                             _mongoc_set_error_category (error, MONGOC_ERROR_CATEGORY);
                           })));
       }
+   } else {
+      // "hello" succeeded
 
-      mongoc_server_stream_cleanup (server_stream);
-      ret_handshake_sd = NULL;
-      goto done;
-   }
+      // Round-trip time for the hello command
+      const int64_t rtt_msec = (bson_get_monotonic_time () - start) / 1000;
 
-   rtt_msec = (bson_get_monotonic_time () - start) / 1000;
+      ret_handshake_sd = BSON_ALIGNED_ALLOC0 (mongoc_server_description_t);
+      mongoc_server_description_init (ret_handshake_sd, address, server_id);
+      /* send the error from run_command IN to handle_hello */
+      mongoc_server_description_handle_hello (ret_handshake_sd, &reply, rtt_msec, error);
 
-   ret_handshake_sd = BSON_ALIGNED_ALLOC0 (mongoc_server_description_t);
+      if (cluster->requires_auth && speculative_auth_response) {
+         _mongoc_topology_scanner_parse_speculative_authentication (&reply, speculative_auth_response);
+      }
 
-   mongoc_server_description_init (ret_handshake_sd, address, server_id);
-   /* send the error from run_command IN to handle_hello */
-   mongoc_server_description_handle_hello (
-      ret_handshake_sd, &reply, rtt_msec, error);
-
-   if (cluster->requires_auth && speculative_auth_response) {
-      _mongoc_topology_scanner_parse_speculative_authentication (
-         &reply, speculative_auth_response);
-   }
-
-   /* Note: This call will render our copy of the topology description to be
-    * stale */
-   r = _mongoc_topology_update_from_handshake (cluster->client->topology,
-                                               ret_handshake_sd);
-   if (!r) {
-      mongoc_server_description_reset (ret_handshake_sd);
-      bson_set_error (&ret_handshake_sd->error,
-                      MONGOC_ERROR_STREAM,
-                      MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
-                      "\"%s\" removed from topology",
-                      address);
+      /* Note: This call will render our copy of the topology description to be
+       * stale */
+      const bool update_okay = _mongoc_topology_update_from_handshake (cluster->client->topology, ret_handshake_sd);
+      if (!update_okay) {
+         mongoc_server_description_reset (ret_handshake_sd);
+         _mongoc_set_error (&ret_handshake_sd->error,
+                            MONGOC_ERROR_STREAM,
+                            MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
+                            "\"%s\" removed from topology",
+                            address);
+      }
    }
 
    mongoc_server_stream_cleanup (server_stream);
-
-done:
    bson_destroy (&handshake_command);
    bson_destroy (&reply);
    mc_tpld_drop_ref (&td);
@@ -966,7 +930,6 @@ static mongoc_server_description_t *
 _cluster_run_hello (mongoc_cluster_t *cluster,
                     mongoc_cluster_node_t *node,
                     uint32_t server_id,
-                    mongoc_scram_cache_t *scram_cache,
                     mongoc_scram_t *scram /* OUT */,
                     bson_t *speculative_auth_response /* OUT */,
                     bson_error_t *error /* OUT */)
@@ -984,7 +947,6 @@ _cluster_run_hello (mongoc_cluster_t *cluster,
                            node->connection_address,
                            server_id,
                            _mongoc_uri_requires_auth_negotiation (cluster->uri),
-                           scram_cache,
                            scram,
                            speculative_auth_response,
                            error);
@@ -1000,195 +962,6 @@ _cluster_run_hello (mongoc_cluster_t *cluster,
    }
 
    return sd;
-}
-
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_cluster_build_basic_auth_digest --
- *
- *       Computes the Basic Authentication digest using the credentials
- *       configured for @cluster and the @nonce provided.
- *
- *       The result should be freed by the caller using bson_free() when
- *       they are finished with it.
- *
- * Returns:
- *       A newly allocated string containing the digest.
- *
- * Side effects:
- *       None.
- *
- *--------------------------------------------------------------------------
- */
-
-static char *
-_mongoc_cluster_build_basic_auth_digest (mongoc_cluster_t *cluster,
-                                         const char *nonce)
-{
-   const char *username;
-   const char *password;
-   char *password_digest;
-   char *password_md5;
-   char *digest_in;
-   char *ret;
-
-   ENTRY;
-
-   /*
-    * The following generates the digest to be used for basic authentication
-    * with a MongoDB server. More information on the format can be found
-    * at the following location:
-    *
-    * https://www.mongodb.com/docs/meta-driver/latest/legacy/
-    *   implement-authentication-in-driver/
-    */
-
-   BSON_ASSERT (cluster);
-   BSON_ASSERT (cluster->uri);
-
-   username = mongoc_uri_get_username (cluster->uri);
-   password = mongoc_uri_get_password (cluster->uri);
-   password_digest = bson_strdup_printf ("%s:mongo:%s", username, password);
-   password_md5 = _mongoc_hex_md5 (password_digest);
-   digest_in = bson_strdup_printf ("%s%s%s", nonce, username, password_md5);
-   ret = _mongoc_hex_md5 (digest_in);
-   bson_free (digest_in);
-   bson_free (password_md5);
-   bson_free (password_digest);
-
-   RETURN (ret);
-}
-
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_cluster_auth_node_cr --
- *
- *       Performs authentication of @node using the credentials provided
- *       when configuring the @cluster instance.
- *
- *       This is the Challenge-Response mode of authentication.
- *
- * Returns:
- *       true if authentication was successful; otherwise false and
- *       @error is set.
- *
- * Side effects:
- *       None.
- *
- *--------------------------------------------------------------------------
- */
-
-static bool
-_mongoc_cluster_auth_node_cr (mongoc_cluster_t *cluster,
-                              mongoc_stream_t *stream,
-                              mongoc_server_description_t *sd,
-                              bson_error_t *error)
-{
-   mongoc_cmd_parts_t parts;
-   bson_iter_t iter;
-   const char *auth_source;
-   bson_t command;
-   bson_t reply;
-   char *digest;
-   char *nonce;
-   bool ret;
-   mongoc_server_stream_t *server_stream;
-   mc_shared_tpld td;
-
-   ENTRY;
-
-   BSON_ASSERT (cluster);
-   BSON_ASSERT (stream);
-
-   if (!(auth_source = mongoc_uri_get_auth_source (cluster->uri)) ||
-       (*auth_source == '\0')) {
-      auth_source = "admin";
-   }
-
-   /*
-    * To authenticate a node using basic authentication, we need to first
-    * get the nonce from the server. We use that to hash our password which
-    * is sent as a reply to the server. If everything went good we get a
-    * success notification back from the server.
-    */
-
-   /*
-    * Execute the getnonce command to fetch the nonce used for generating
-    * md5 digest of our password information.
-    */
-   bson_init (&command);
-   bson_append_int32 (&command, "getnonce", 8, 1);
-   mongoc_cmd_parts_init (&parts,
-                          cluster->client,
-                          auth_source,
-                          MONGOC_QUERY_SECONDARY_OK,
-                          &command);
-   parts.prohibit_lsid = true;
-
-   td = mc_tpld_take_ref (cluster->client->topology);
-   server_stream = _mongoc_cluster_create_server_stream (td.ptr, sd, stream);
-   mc_tpld_drop_ref (&td);
-
-   if (!mongoc_cluster_run_command_parts (
-          cluster, server_stream, &parts, &reply, error)) {
-      mongoc_server_stream_cleanup (server_stream);
-      bson_destroy (&command);
-      bson_destroy (&reply);
-      RETURN (false);
-   }
-   bson_destroy (&command);
-   if (!bson_iter_init_find_case (&iter, &reply, "nonce")) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_GETNONCE,
-                      "Invalid reply from getnonce");
-      bson_destroy (&reply);
-      RETURN (false);
-   }
-
-   /*
-    * Build our command to perform the authentication.
-    */
-   nonce = bson_iter_dup_utf8 (&iter, NULL);
-   digest = _mongoc_cluster_build_basic_auth_digest (cluster, nonce);
-   bson_init (&command);
-   bson_append_int32 (&command, "authenticate", 12, 1);
-   bson_append_utf8 (
-      &command, "user", 4, mongoc_uri_get_username (cluster->uri), -1);
-   bson_append_utf8 (&command, "nonce", 5, nonce, -1);
-   bson_append_utf8 (&command, "key", 3, digest, -1);
-   bson_destroy (&reply);
-   bson_free (nonce);
-   bson_free (digest);
-
-   /*
-    * Execute the authenticate command. mongoc_cluster_run_command_private
-    * checks for {ok: 1} in the response.
-    */
-   mongoc_cmd_parts_init (&parts,
-                          cluster->client,
-                          auth_source,
-                          MONGOC_QUERY_SECONDARY_OK,
-                          &command);
-   parts.prohibit_lsid = true;
-   ret = mongoc_cluster_run_command_parts (
-      cluster, server_stream, &parts, &reply, error);
-
-   if (!ret) {
-      /* error->message is already set */
-      error->domain = MONGOC_ERROR_CLIENT;
-      error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
-   }
-
-   mongoc_server_stream_cleanup (server_stream);
-   bson_destroy (&command);
-   bson_destroy (&reply);
-
-   RETURN (ret);
 }
 
 
@@ -1247,10 +1020,8 @@ _mongoc_cluster_auth_node_plain (mongoc_cluster_t *cluster,
    bson_free (str);
 
    if (buflen == -1) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                      "failed base64 encoding message");
+      _mongoc_set_error (
+         error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_AUTHENTICATE, "failed base64 encoding message");
       return false;
    }
 
@@ -1259,21 +1030,20 @@ _mongoc_cluster_auth_node_plain (mongoc_cluster_t *cluster,
    bson_append_utf8 (&b, "payload", 7, (const char *) buf, buflen);
    BSON_APPEND_INT32 (&b, "autoAuthorize", 1);
 
-   mongoc_cmd_parts_init (
-      &parts, cluster->client, "$external", MONGOC_QUERY_SECONDARY_OK, &b);
+   mongoc_cmd_parts_init (&parts, cluster->client, "$external", MONGOC_QUERY_SECONDARY_OK, &b);
    parts.prohibit_lsid = true;
 
    td = mc_tpld_take_ref (cluster->client->topology);
    server_stream = _mongoc_cluster_create_server_stream (td.ptr, sd, stream);
    mc_tpld_drop_ref (&td);
 
-   ret = mongoc_cluster_run_command_parts (
-      cluster, server_stream, &parts, &reply, error);
+   ret = mongoc_cluster_run_command_parts (cluster, server_stream, &parts, &reply, error);
    mongoc_server_stream_cleanup (server_stream);
    if (!ret) {
       /* error->message is already set */
       error->domain = MONGOC_ERROR_CLIENT;
       error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
+      _mongoc_set_error_category (error, MONGOC_ERROR_CATEGORY);
    }
 
    bson_destroy (&b);
@@ -1289,11 +1059,11 @@ _mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
                                    bson_error_t *error /* OUT */)
 {
 #ifndef MONGOC_ENABLE_SSL
-   bson_set_error (error,
-                   MONGOC_ERROR_CLIENT,
-                   MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                   "The MONGODB-X509 authentication mechanism requires "
-                   "libmongoc built with ENABLE_SSL");
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_CLIENT,
+                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                      "The MONGODB-X509 authentication mechanism requires "
+                      "libmongoc built with ENABLE_SSL");
    return false;
 #else
    const char *username_from_uri = NULL;
@@ -1306,21 +1076,20 @@ _mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
       TRACE ("%s", "X509: got username from URI");
    } else {
       if (!ssl_opts || !ssl_opts->pem_file) {
-         bson_set_error (error,
-                         MONGOC_ERROR_CLIENT,
-                         MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                         "cannot determine username for "
-                         "X-509 authentication.");
+         _mongoc_set_error (error,
+                            MONGOC_ERROR_CLIENT,
+                            MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                            "cannot determine username for "
+                            "X-509 authentication.");
          return false;
       }
 
-      username_from_subject =
-         mongoc_ssl_extract_subject (ssl_opts->pem_file, ssl_opts->pem_pwd);
+      username_from_subject = mongoc_ssl_extract_subject (ssl_opts->pem_file, ssl_opts->pem_pwd);
       if (!username_from_subject) {
-         bson_set_error (error,
-                         MONGOC_ERROR_CLIENT,
-                         MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                         "No username provided for X509 authentication.");
+         _mongoc_set_error (error,
+                            MONGOC_ERROR_CLIENT,
+                            MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                            "No username provided for X509 authentication.");
          return false;
       }
 
@@ -1330,10 +1099,7 @@ _mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
    bson_init (cmd);
    BSON_APPEND_INT32 (cmd, "authenticate", 1);
    BSON_APPEND_UTF8 (cmd, "mechanism", "MONGODB-X509");
-   BSON_APPEND_UTF8 (cmd,
-                     "user",
-                     username_from_uri ? username_from_uri
-                                       : username_from_subject);
+   BSON_APPEND_UTF8 (cmd, "user", username_from_uri ? username_from_uri : username_from_subject);
 
    bson_free (username_from_subject);
 
@@ -1349,11 +1115,11 @@ _mongoc_cluster_auth_node_x509 (mongoc_cluster_t *cluster,
                                 bson_error_t *error)
 {
 #ifndef MONGOC_ENABLE_SSL
-   bson_set_error (error,
-                   MONGOC_ERROR_CLIENT,
-                   MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                   "The MONGODB-X509 authentication mechanism requires "
-                   "libmongoc built with ENABLE_SSL");
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_CLIENT,
+                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                      "The MONGODB-X509 authentication mechanism requires "
+                      "libmongoc built with ENABLE_SSL");
    return false;
 #else
    mongoc_cmd_parts_t parts;
@@ -1366,25 +1132,23 @@ _mongoc_cluster_auth_node_x509 (mongoc_cluster_t *cluster,
    BSON_ASSERT (cluster);
    BSON_ASSERT (stream);
 
-   if (!_mongoc_cluster_get_auth_cmd_x509 (
-          cluster->uri, &cluster->client->ssl_opts, &cmd, error)) {
+   if (!_mongoc_cluster_get_auth_cmd_x509 (cluster->uri, &cluster->client->ssl_opts, &cmd, error)) {
       return false;
    }
 
-   mongoc_cmd_parts_init (
-      &parts, cluster->client, "$external", MONGOC_QUERY_SECONDARY_OK, &cmd);
+   mongoc_cmd_parts_init (&parts, cluster->client, "$external", MONGOC_QUERY_SECONDARY_OK, &cmd);
    parts.prohibit_lsid = true;
    td = mc_tpld_take_ref (cluster->client->topology);
    server_stream = _mongoc_cluster_create_server_stream (td.ptr, sd, stream);
    mc_tpld_drop_ref (&td);
 
-   ret = mongoc_cluster_run_command_parts (
-      cluster, server_stream, &parts, &reply, error);
+   ret = mongoc_cluster_run_command_parts (cluster, server_stream, &parts, &reply, error);
    mongoc_server_stream_cleanup (server_stream);
    if (!ret) {
       /* error->message is already set */
       error->domain = MONGOC_ERROR_CLIENT;
       error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
+      _mongoc_set_error_category (error, MONGOC_ERROR_CATEGORY);
    }
 
    bson_destroy (&cmd);
@@ -1410,16 +1174,9 @@ mongoc_cluster_uses_loadbalanced (const mongoc_cluster_t *cluster)
 
 #ifdef MONGOC_ENABLE_CRYPTO
 void
-_mongoc_cluster_init_scram (const mongoc_cluster_t *cluster,
-                            mongoc_scram_t *scram,
-                            mongoc_crypto_hash_algorithm_t algo)
+_mongoc_cluster_init_scram (const mongoc_cluster_t *cluster, mongoc_scram_t *scram, mongoc_crypto_hash_algorithm_t algo)
 {
    _mongoc_uri_init_scram (cluster->uri, scram, algo);
-
-   /* Apply previously cached SCRAM secrets if available */
-   if (cluster->scram_cache) {
-      _mongoc_scram_set_cache (scram, cluster->scram_cache);
-   }
 }
 
 /*
@@ -1451,8 +1208,7 @@ _mongoc_cluster_get_auth_cmd_scram (mongoc_crypto_hash_algorithm_t algo,
    uint32_t buflen = 0;
    bson_t options;
 
-   if (!_mongoc_scram_step (
-          scram, buf, buflen, buf, sizeof buf, &buflen, error)) {
+   if (!_mongoc_scram_step (scram, buf, buflen, buf, sizeof buf, &buflen, error)) {
       return false;
    }
 
@@ -1499,40 +1255,35 @@ _mongoc_cluster_get_auth_cmd_scram (mongoc_crypto_hash_algorithm_t algo,
  */
 
 static bool
-_mongoc_cluster_run_scram_command (
-   mongoc_cluster_t *cluster,
-   mongoc_stream_t *stream,
-   const mongoc_server_description_t *handshake_sd,
-   const bson_t *cmd,
-   bson_t *reply,
-   bson_error_t *error)
+_mongoc_cluster_run_scram_command (mongoc_cluster_t *cluster,
+                                   mongoc_stream_t *stream,
+                                   const mongoc_server_description_t *handshake_sd,
+                                   const bson_t *cmd,
+                                   bson_t *reply,
+                                   bson_error_t *error)
 {
    mongoc_cmd_parts_t parts;
    mongoc_server_stream_t *server_stream;
    const char *auth_source;
-   mc_shared_tpld td =
-      mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
+   mc_shared_tpld td = mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
 
-   if (!(auth_source = mongoc_uri_get_auth_source (cluster->uri)) ||
-       (*auth_source == '\0')) {
+   if (!(auth_source = mongoc_uri_get_auth_source (cluster->uri)) || (*auth_source == '\0')) {
       auth_source = "admin";
    }
 
-   mongoc_cmd_parts_init (
-      &parts, cluster->client, auth_source, MONGOC_QUERY_SECONDARY_OK, cmd);
+   mongoc_cmd_parts_init (&parts, cluster->client, auth_source, MONGOC_QUERY_SECONDARY_OK, cmd);
    parts.prohibit_lsid = true;
-   server_stream =
-      _mongoc_cluster_create_server_stream (td.ptr, handshake_sd, stream);
+   server_stream = _mongoc_cluster_create_server_stream (td.ptr, handshake_sd, stream);
    mc_tpld_drop_ref (&td);
 
-   if (!mongoc_cluster_run_command_parts (
-          cluster, server_stream, &parts, reply, error)) {
+   if (!mongoc_cluster_run_command_parts (cluster, server_stream, &parts, reply, error)) {
       mongoc_server_stream_cleanup (server_stream);
       bson_destroy (reply);
 
       /* error->message is already set */
       error->domain = MONGOC_ERROR_CLIENT;
       error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
+      _mongoc_set_error_category (error, MONGOC_ERROR_CATEGORY);
 
       return false;
    }
@@ -1562,14 +1313,13 @@ _mongoc_cluster_run_scram_command (
  */
 
 static bool
-_mongoc_cluster_auth_scram_start (
-   mongoc_cluster_t *cluster,
-   mongoc_stream_t *stream,
-   const mongoc_server_description_t *handshake_sd,
-   mongoc_crypto_hash_algorithm_t algo,
-   mongoc_scram_t *scram,
-   bson_t *reply,
-   bson_error_t *error)
+_mongoc_cluster_auth_scram_start (mongoc_cluster_t *cluster,
+                                  mongoc_stream_t *stream,
+                                  const mongoc_server_description_t *handshake_sd,
+                                  mongoc_crypto_hash_algorithm_t algo,
+                                  mongoc_scram_t *scram,
+                                  bson_t *reply,
+                                  bson_error_t *error)
 {
    bson_t cmd;
 
@@ -1579,12 +1329,12 @@ _mongoc_cluster_auth_scram_start (
       /* error->message is already set */
       error->domain = MONGOC_ERROR_CLIENT;
       error->code = MONGOC_ERROR_CLIENT_AUTHENTICATE;
+      _mongoc_set_error_category (error, MONGOC_ERROR_CATEGORY);
 
       return false;
    }
 
-   if (!_mongoc_cluster_run_scram_command (
-          cluster, stream, handshake_sd, &cmd, reply, error)) {
+   if (!_mongoc_cluster_run_scram_command (cluster, stream, handshake_sd, &cmd, reply, error)) {
       bson_destroy (&cmd);
 
       return false;
@@ -1639,10 +1389,7 @@ _mongoc_cluster_scram_handle_reply (mongoc_scram_t *scram,
    if (is_done) {
       if (scram->step < 2) {
          /* Prior to step 2, we haven't even received server proof. */
-         bson_set_error (error,
-                         MONGOC_ERROR_CLIENT,
-                         MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                         "Incorrect step for 'done'");
+         _mongoc_set_error (error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_AUTHENTICATE, "Incorrect step for 'done'");
          return false;
       }
       *done = true;
@@ -1651,35 +1398,26 @@ _mongoc_cluster_scram_handle_reply (mongoc_scram_t *scram,
       }
    }
 
-   if (!bson_iter_init_find (&iter, reply, "conversationId") ||
-       !BSON_ITER_HOLDS_INT32 (&iter) ||
-       !(*conv_id = bson_iter_int32 (&iter)) ||
-       !bson_iter_init_find (&iter, reply, "payload") ||
+   if (!bson_iter_init_find (&iter, reply, "conversationId") || !BSON_ITER_HOLDS_INT32 (&iter) ||
+       !(*conv_id = bson_iter_int32 (&iter)) || !bson_iter_init_find (&iter, reply, "payload") ||
        !BSON_ITER_HOLDS_BINARY (&iter)) {
       const char *errmsg = "Received invalid SCRAM reply from MongoDB server.";
 
       MONGOC_DEBUG ("SCRAM: authentication failed");
 
-      if (bson_iter_init_find (&iter, reply, "errmsg") &&
-          BSON_ITER_HOLDS_UTF8 (&iter)) {
+      if (bson_iter_init_find (&iter, reply, "errmsg") && BSON_ITER_HOLDS_UTF8 (&iter)) {
          errmsg = bson_iter_utf8 (&iter, NULL);
       }
 
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                      "%s",
-                      errmsg);
+      _mongoc_set_error (error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_AUTHENTICATE, "%s", errmsg);
       return false;
    }
 
    bson_iter_binary (&iter, &btype, buflen, (const uint8_t **) &tmpstr);
 
    if (*buflen > bufmax) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                      "SCRAM reply from MongoDB is too large.");
+      _mongoc_set_error (
+         error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_AUTHENTICATE, "SCRAM reply from MongoDB is too large.");
       return false;
    }
 
@@ -1708,13 +1446,12 @@ _mongoc_cluster_scram_handle_reply (mongoc_scram_t *scram,
  */
 
 static bool
-_mongoc_cluster_auth_scram_continue (
-   mongoc_cluster_t *cluster,
-   mongoc_stream_t *stream,
-   const mongoc_server_description_t *handshake_sd,
-   mongoc_scram_t *scram,
-   const bson_t *sasl_start_reply,
-   bson_error_t *error)
+_mongoc_cluster_auth_scram_continue (mongoc_cluster_t *cluster,
+                                     mongoc_stream_t *stream,
+                                     const mongoc_server_description_t *handshake_sd,
+                                     mongoc_scram_t *scram,
+                                     const bson_t *sasl_start_reply,
+                                     bson_error_t *error)
 {
    bson_t cmd;
    uint8_t buf[4096] = {0};
@@ -1723,20 +1460,13 @@ _mongoc_cluster_auth_scram_continue (
    bool done = false;
    bson_t reply_local;
 
-   if (!_mongoc_cluster_scram_handle_reply (scram,
-                                            sasl_start_reply,
-                                            &done,
-                                            &conv_id,
-                                            buf,
-                                            sizeof buf,
-                                            &buflen,
-                                            error)) {
+   if (!_mongoc_cluster_scram_handle_reply (
+          scram, sasl_start_reply, &done, &conv_id, buf, sizeof buf, &buflen, error)) {
       return false;
    }
 
    for (;;) {
-      if (!_mongoc_scram_step (
-             scram, buf, buflen, buf, sizeof buf, &buflen, error)) {
+      if (!_mongoc_scram_step (scram, buf, buflen, buf, sizeof buf, &buflen, error)) {
          return false;
       }
 
@@ -1752,22 +1482,14 @@ _mongoc_cluster_auth_scram_continue (
 
       TRACE ("SCRAM: authenticating (step %d)", scram->step);
 
-      if (!_mongoc_cluster_run_scram_command (
-             cluster, stream, handshake_sd, &cmd, &reply_local, error)) {
+      if (!_mongoc_cluster_run_scram_command (cluster, stream, handshake_sd, &cmd, &reply_local, error)) {
          bson_destroy (&cmd);
          return false;
       }
 
       bson_destroy (&cmd);
 
-      if (!_mongoc_cluster_scram_handle_reply (scram,
-                                               &reply_local,
-                                               &done,
-                                               &conv_id,
-                                               buf,
-                                               sizeof buf,
-                                               &buflen,
-                                               error)) {
+      if (!_mongoc_cluster_scram_handle_reply (scram, &reply_local, &done, &conv_id, buf, sizeof buf, &buflen, error)) {
          bson_destroy (&reply_local);
          return false;
       }
@@ -1780,13 +1502,6 @@ _mongoc_cluster_auth_scram_continue (
    }
 
    TRACE ("%s", "SCRAM: authenticated");
-
-   /* Save cached SCRAM secrets for future use */
-   if (cluster->scram_cache) {
-      _mongoc_scram_cache_destroy (cluster->scram_cache);
-   }
-
-   cluster->scram_cache = _mongoc_scram_get_cache (scram);
 
    return true;
 }
@@ -1824,13 +1539,11 @@ _mongoc_cluster_auth_node_scram (mongoc_cluster_t *cluster,
 
    _mongoc_cluster_init_scram (cluster, &scram, algo);
 
-   if (!_mongoc_cluster_auth_scram_start (
-          cluster, stream, handshake_sd, algo, &scram, &reply, error)) {
+   if (!_mongoc_cluster_auth_scram_start (cluster, stream, handshake_sd, algo, &scram, &reply, error)) {
       goto failure;
    }
 
-   if (!_mongoc_cluster_auth_scram_continue (
-          cluster, stream, handshake_sd, &scram, &reply, error)) {
+   if (!_mongoc_cluster_auth_scram_continue (cluster, stream, handshake_sd, &scram, &reply, error)) {
       bson_destroy (&reply);
 
       goto failure;
@@ -1856,15 +1569,14 @@ _mongoc_cluster_auth_node_scram_sha_1 (mongoc_cluster_t *cluster,
                                        bson_error_t *error)
 {
 #ifndef MONGOC_ENABLE_CRYPTO
-   bson_set_error (error,
-                   MONGOC_ERROR_CLIENT,
-                   MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                   "The SCRAM_SHA_1 authentication mechanism requires "
-                   "libmongoc built with ENABLE_SSL");
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_CLIENT,
+                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                      "The SCRAM_SHA_1 authentication mechanism requires "
+                      "libmongoc built with ENABLE_SSL");
    return false;
 #else
-   return _mongoc_cluster_auth_node_scram (
-      cluster, stream, sd, MONGOC_CRYPTO_ALGORITHM_SHA_1, error);
+   return _mongoc_cluster_auth_node_scram (cluster, stream, sd, MONGOC_CRYPTO_ALGORITHM_SHA_1, error);
 #endif
 }
 
@@ -1875,15 +1587,14 @@ _mongoc_cluster_auth_node_scram_sha_256 (mongoc_cluster_t *cluster,
                                          bson_error_t *error)
 {
 #ifndef MONGOC_ENABLE_CRYPTO
-   bson_set_error (error,
-                   MONGOC_ERROR_CLIENT,
-                   MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                   "The SCRAM_SHA_256 authentication mechanism requires "
-                   "libmongoc built with ENABLE_SSL");
+   _mongoc_set_error (error,
+                      MONGOC_ERROR_CLIENT,
+                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                      "The SCRAM_SHA_256 authentication mechanism requires "
+                      "libmongoc built with ENABLE_SSL");
    return false;
 #else
-   return _mongoc_cluster_auth_node_scram (
-      cluster, stream, sd, MONGOC_CRYPTO_ALGORITHM_SHA_256, error);
+   return _mongoc_cluster_auth_node_scram (cluster, stream, sd, MONGOC_CRYPTO_ALGORITHM_SHA_256, error);
 #endif
 }
 
@@ -1904,12 +1615,11 @@ _mongoc_cluster_auth_node_scram_sha_256 (mongoc_cluster_t *cluster,
  */
 
 static bool
-_mongoc_cluster_auth_node (
-   mongoc_cluster_t *cluster,
-   mongoc_stream_t *stream,
-   mongoc_server_description_t *sd,
-   const mongoc_handshake_sasl_supported_mechs_t *sasl_supported_mechs,
-   bson_error_t *error)
+_mongoc_cluster_auth_node (mongoc_cluster_t *cluster,
+                           mongoc_stream_t *stream,
+                           mongoc_server_description_t *sd,
+                           const mongoc_handshake_sasl_supported_mechs_t *sasl_supported_mechs,
+                           bson_error_t *error)
 {
    bool ret = false;
    const char *mechanism;
@@ -1935,15 +1645,12 @@ _mongoc_cluster_auth_node (
       }
    }
 
-   if (0 == strcasecmp (mechanism, "MONGODB-CR")) {
-      ret = _mongoc_cluster_auth_node_cr (cluster, stream, sd, error);
-   } else if (0 == strcasecmp (mechanism, "MONGODB-X509")) {
+   if (0 == strcasecmp (mechanism, "MONGODB-X509")) {
       ret = _mongoc_cluster_auth_node_x509 (cluster, stream, sd, error);
    } else if (0 == strcasecmp (mechanism, "SCRAM-SHA-1")) {
       ret = _mongoc_cluster_auth_node_scram_sha_1 (cluster, stream, sd, error);
    } else if (0 == strcasecmp (mechanism, "SCRAM-SHA-256")) {
-      ret =
-         _mongoc_cluster_auth_node_scram_sha_256 (cluster, stream, sd, error);
+      ret = _mongoc_cluster_auth_node_scram_sha_256 (cluster, stream, sd, error);
    } else if (0 == strcasecmp (mechanism, "GSSAPI")) {
       ret = _mongoc_cluster_auth_node_sasl (cluster, stream, sd, error);
    } else if (0 == strcasecmp (mechanism, "PLAIN")) {
@@ -1951,11 +1658,11 @@ _mongoc_cluster_auth_node (
    } else if (0 == strcasecmp (mechanism, "MONGODB-AWS")) {
       ret = _mongoc_cluster_auth_node_aws (cluster, stream, sd, error);
    } else {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_AUTHENTICATE,
-                      "Unknown authentication mechanism \"%s\".",
-                      mechanism);
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_CLIENT,
+                         MONGOC_ERROR_CLIENT_AUTHENTICATE,
+                         "Unknown authentication mechanism \"%s\".",
+                         mechanism);
    }
 
    if (!ret) {
@@ -1990,8 +1697,7 @@ mongoc_cluster_disconnect_node (mongoc_cluster_t *cluster, uint32_t server_id)
    if (topology->single_threaded) {
       mongoc_topology_scanner_node_t *scanner_node;
 
-      scanner_node =
-         mongoc_topology_scanner_get_node (topology->scanner, server_id);
+      scanner_node = mongoc_topology_scanner_get_node (topology->scanner, server_id);
 
       /* might never actually have connected */
       if (scanner_node && scanner_node->stream) {
@@ -2026,8 +1732,7 @@ _mongoc_cluster_node_dtor (void *data_, void *ctx_)
 }
 
 static mongoc_cluster_node_t *
-_mongoc_cluster_node_new (mongoc_stream_t *stream,
-                          const char *connection_address)
+_mongoc_cluster_node_new (mongoc_stream_t *stream, const char *connection_address)
 {
    mongoc_cluster_node_t *node;
 
@@ -2047,16 +1752,14 @@ _mongoc_cluster_node_new (mongoc_stream_t *stream,
 }
 
 static bool
-_mongoc_cluster_finish_speculative_auth (
-   mongoc_cluster_t *cluster,
-   mongoc_stream_t *stream,
-   mongoc_server_description_t *handshake_sd,
-   bson_t *speculative_auth_response,
-   mongoc_scram_t *scram,
-   bson_error_t *error)
+_mongoc_cluster_finish_speculative_auth (mongoc_cluster_t *cluster,
+                                         mongoc_stream_t *stream,
+                                         mongoc_server_description_t *handshake_sd,
+                                         bson_t *speculative_auth_response,
+                                         mongoc_scram_t *scram,
+                                         bson_error_t *error)
 {
-   const char *mechanism =
-      _mongoc_topology_scanner_get_speculative_auth_mechanism (cluster->uri);
+   const char *mechanism = _mongoc_topology_scanner_get_speculative_auth_mechanism (cluster->uri);
    bool ret = false;
    bool auth_handled = false;
 
@@ -2081,8 +1784,7 @@ _mongoc_cluster_finish_speculative_auth (
 #endif
 
 #ifdef MONGOC_ENABLE_CRYPTO
-   if (strcasecmp (mechanism, "SCRAM-SHA-1") == 0 ||
-       strcasecmp (mechanism, "SCRAM-SHA-256") == 0) {
+   if (strcasecmp (mechanism, "SCRAM-SHA-1") == 0 || strcasecmp (mechanism, "SCRAM-SHA-256") == 0) {
       /* Don't attempt authentication if scram objects have advanced past
        * saslStart */
       if (scram->step != 1) {
@@ -2091,12 +1793,8 @@ _mongoc_cluster_finish_speculative_auth (
 
       auth_handled = true;
 
-      ret = _mongoc_cluster_auth_scram_continue (cluster,
-                                                 stream,
-                                                 handshake_sd,
-                                                 scram,
-                                                 speculative_auth_response,
-                                                 error);
+      ret =
+         _mongoc_cluster_auth_scram_continue (cluster, stream, handshake_sd, scram, speculative_auth_response, error);
    }
 #endif
 
@@ -2161,8 +1859,7 @@ _cluster_add_node (mongoc_cluster_t *cluster,
    stream = _mongoc_client_create_stream (cluster->client, host, error);
 
    if (!stream) {
-      MONGOC_WARNING (
-         "Failed connection to %s (%s)", host->host_and_port, error->message);
+      MONGOC_WARNING ("Failed connection to %s (%s)", host->host_and_port, error->message);
       GOTO (error);
       /* TODO CDRIVER-3654: if this is a non-timeout network error and the
        * generation is not stale, mark the server unknown and increment the
@@ -2172,38 +1869,21 @@ _cluster_add_node (mongoc_cluster_t *cluster,
    /* take critical fields from a fresh hello */
    cluster_node = _mongoc_cluster_node_new (stream, host->host_and_port);
 
-   handshake_sd = _cluster_run_hello (cluster,
-                                      cluster_node,
-                                      server_id,
-                                      cluster->scram_cache,
-                                      &scram,
-                                      &speculative_auth_response,
-                                      error);
+   handshake_sd = _cluster_run_hello (cluster, cluster_node, server_id, &scram, &speculative_auth_response, error);
    if (!handshake_sd) {
       GOTO (error);
    }
 
-   _mongoc_handshake_parse_sasl_supported_mechs (
-      &handshake_sd->last_hello_response, &sasl_supported_mechs);
+   _mongoc_handshake_parse_sasl_supported_mechs (&handshake_sd->last_hello_response, &sasl_supported_mechs);
 
    if (cluster->requires_auth) {
       /* Complete speculative authentication */
-      bool is_auth =
-         _mongoc_cluster_finish_speculative_auth (cluster,
-                                                  stream,
-                                                  handshake_sd,
-                                                  &speculative_auth_response,
-                                                  &scram,
-                                                  error);
+      bool is_auth = _mongoc_cluster_finish_speculative_auth (
+         cluster, stream, handshake_sd, &speculative_auth_response, &scram, error);
 
-      if (!is_auth && !_mongoc_cluster_auth_node (cluster,
-                                                  cluster_node->stream,
-                                                  handshake_sd,
-                                                  &sasl_supported_mechs,
-                                                  error)) {
-         MONGOC_WARNING ("Failed authentication to %s (%s)",
-                         host->host_and_port,
-                         error->message);
+      if (!is_auth &&
+          !_mongoc_cluster_auth_node (cluster, cluster_node->stream, handshake_sd, &sasl_supported_mechs, error)) {
+         MONGOC_WARNING ("Failed authentication to %s (%s)", host->host_and_port, error->message);
          mongoc_server_description_destroy (handshake_sd);
          GOTO (error);
       }
@@ -2214,8 +1894,8 @@ _cluster_add_node (mongoc_cluster_t *cluster,
    /* Copy the latest connection pool generation.
     * TODO (CDRIVER-4078) do not store the generation counter on the server
     * description */
-   handshake_sd->generation = _mongoc_topology_get_connection_pool_generation (
-      td, server_id, &handshake_sd->service_id);
+   handshake_sd->generation =
+      _mongoc_topology_get_connection_pool_generation (td, server_id, &handshake_sd->service_id);
 
    bson_destroy (&speculative_auth_response);
    mongoc_set_add (cluster->nodes, server_id, cluster_node);
@@ -2243,9 +1923,7 @@ error:
 }
 
 static void
-node_not_found (const mongoc_topology_description_t *td,
-                uint32_t server_id,
-                bson_error_t *error /* OUT */)
+node_not_found (const mongoc_topology_description_t *td, uint32_t server_id, bson_error_t *error /* OUT */)
 {
    mongoc_server_description_t const *sd;
 
@@ -2262,11 +1940,11 @@ node_not_found (const mongoc_topology_description_t *td,
    if (sd->error.code) {
       memcpy (error, &sd->error, sizeof *error);
    } else {
-      bson_set_error (error,
-                      MONGOC_ERROR_STREAM,
-                      MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
-                      "Could not find node %s",
-                      sd->host.host_and_port);
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_STREAM,
+                         MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
+                         "Could not find node %s",
+                         sd->host.host_and_port);
    }
 }
 
@@ -2285,11 +1963,11 @@ stream_not_found (const mongoc_topology_description_t *td,
       if (sd && sd->error.code) {
          memcpy (error, &sd->error, sizeof *error);
       } else {
-         bson_set_error (error,
-                         MONGOC_ERROR_STREAM,
-                         MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
-                         "Could not find stream for node %s",
-                         connection_address);
+         _mongoc_set_error (error,
+                            MONGOC_ERROR_STREAM,
+                            MONGOC_ERROR_STREAM_NOT_ESTABLISHED,
+                            "Could not find stream for node %s",
+                            connection_address);
       }
    }
 }
@@ -2303,11 +1981,9 @@ _try_get_server_stream (mongoc_cluster_t *cluster,
 {
    if (cluster->client->topology->single_threaded) {
       /* in the single-threaded use case we share topology's streams */
-      return _cluster_fetch_stream_single (
-         cluster, td, server_id, reconnect_ok, error);
+      return _cluster_fetch_stream_single (cluster, td, server_id, reconnect_ok, error);
    } else {
-      return _cluster_fetch_stream_pooled (
-         cluster, td, server_id, reconnect_ok, error);
+      return _cluster_fetch_stream_pooled (cluster, td, server_id, reconnect_ok, error);
    }
 }
 
@@ -2319,8 +1995,7 @@ _mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
                                    bson_t *reply,
                                    bson_error_t *error /* OUT */)
 {
-   mongoc_topology_t *const topology =
-      BSON_ASSERT_PTR_INLINE (cluster)->client->topology;
+   mongoc_topology_t *const topology = BSON_ASSERT_PTR_INLINE (cluster)->client->topology;
    mongoc_server_stream_t *ret_server_stream;
    bson_error_t err_local;
    /* if fetch_stream fails we need a place to receive error details and pass
@@ -2333,8 +2008,7 @@ _mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
 
    td = mc_tpld_take_ref (topology);
 
-   ret_server_stream = _try_get_server_stream (
-      cluster, td.ptr, server_id, reconnect_ok, err_ptr);
+   ret_server_stream = _try_get_server_stream (cluster, td.ptr, server_id, reconnect_ok, err_ptr);
 
    if (!ret_server_stream) {
       /* TODO CDRIVER-3654. A null server stream could be due to:
@@ -2365,18 +2039,15 @@ _mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
          goto done;
       }
 
-      mongoc_topology_description_invalidate_server (
-         tdmod.new_td, server_id, err_ptr);
+      mongoc_topology_description_invalidate_server (tdmod.new_td, &topology->log_and_monitor, server_id, err_ptr);
       mongoc_cluster_disconnect_node (cluster, server_id);
       /* This is not load balanced mode, so there are no service IDs associated
-       * with connections. Pass kZeroServiceId to clear the entire connection
+       * with connections. Pass kZeroObjectId to clear the entire connection
        * pool to this server. */
-      _mongoc_topology_description_clear_connection_pool (
-         tdmod.new_td, server_id, &kZeroServiceId);
+      _mongoc_topology_description_clear_connection_pool (tdmod.new_td, server_id, &kZeroObjectId);
 
       if (!topology->single_threaded) {
-         _mongoc_topology_background_monitoring_cancel_check (topology,
-                                                              server_id);
+         _mongoc_topology_background_monitoring_cancel_check (topology, server_id);
       }
       mc_tpld_modify_commit (tdmod);
       ret_server_stream = NULL;
@@ -2387,11 +2058,11 @@ _mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
     * service id, disconnect and return an error. */
    if (td.ptr->type == MONGOC_TOPOLOGY_LOAD_BALANCED) {
       if (!mongoc_server_description_has_service_id (ret_server_stream->sd)) {
-         bson_set_error (error,
-                         MONGOC_ERROR_CLIENT,
-                         MONGOC_ERROR_CLIENT_INVALID_LOAD_BALANCER,
-                         "Driver attempted to initialize in load balancing "
-                         "mode, but the server does not support this mode.");
+         _mongoc_set_error (error,
+                            MONGOC_ERROR_CLIENT,
+                            MONGOC_ERROR_CLIENT_INVALID_LOAD_BALANCER,
+                            "Driver attempted to initialize in load balancing "
+                            "mode, but the server does not support this mode.");
          mongoc_server_stream_cleanup (ret_server_stream);
          mongoc_cluster_disconnect_node (cluster, server_id);
          _mongoc_bson_init_if_set (reply);
@@ -2415,9 +2086,9 @@ mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
                                   bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
-   BSON_ASSERT (cs || true);
-   BSON_ASSERT (reply || true);
-   BSON_ASSERT (error || true);
+   BSON_OPTIONAL_PARAM (cs);
+   BSON_OPTIONAL_PARAM (reply);
+   BSON_OPTIONAL_PARAM (error);
 
    ENTRY;
 
@@ -2425,17 +2096,16 @@ mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
 
    if (cs && cs->server_id && cs->server_id != server_id) {
       _mongoc_bson_init_if_set (reply);
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_SERVER_SELECTION_INVALID_ID,
-                      "Requested server id does not matched pinned server id");
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_SERVER_SELECTION_INVALID_ID,
+                         "Requested server id does not matched pinned server id");
       RETURN (NULL);
    }
 
 
    mongoc_server_stream_t *const server_stream =
-      _mongoc_cluster_stream_for_server (
-         cluster, server_id, reconnect_ok, cs, reply, error);
+      _mongoc_cluster_stream_for_server (cluster, server_id, reconnect_ok, cs, reply, error);
 
    if (_in_sharded_txn (cs)) {
       _mongoc_client_session_pin (cs, server_id);
@@ -2463,36 +2133,33 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
    mongoc_topology_scanner_node_t *scanner_node;
    char *address;
 
-   scanner_node = mongoc_topology_scanner_get_node (
-      cluster->client->topology->scanner, server_id);
+   scanner_node = mongoc_topology_scanner_get_node (cluster->client->topology->scanner, server_id);
    /* This could happen if a user explicitly passes a bad server id. */
    if (!scanner_node) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "Could not find server with id: %d",
-                      server_id);
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_COMMAND_INVALID_ARG,
+                         "Could not find server with id: %" PRIu32,
+                         server_id);
       return NULL;
    }
 
    /* Retired scanner nodes are removed at the end of a scan. If the node was
     * retired, that would indicate a bug. */
    if (scanner_node->retired) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "Unexpected, selecting server marked for removal: %s",
-                      scanner_node->host.host_and_port);
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_COMMAND_INVALID_ARG,
+                         "Unexpected, selecting server marked for removal: %s",
+                         scanner_node->host.host_and_port);
       return NULL;
    }
 
    if (scanner_node->stream) {
-      handshake_sd =
-         mongoc_server_description_new_copy (scanner_node->handshake_sd);
+      handshake_sd = mongoc_server_description_new_copy (scanner_node->handshake_sd);
    } else {
       if (!reconnect_ok) {
-         stream_not_found (
-            td, server_id, scanner_node->host.host_and_port, error);
+         stream_not_found (td, server_id, scanner_node->host.host_and_port, error);
          return NULL;
       }
 
@@ -2504,8 +2171,7 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
          return NULL;
       }
 
-      scanner_node = mongoc_topology_scanner_get_node (
-         cluster->client->topology->scanner, server_id);
+      scanner_node = mongoc_topology_scanner_get_node (cluster->client->topology->scanner, server_id);
 
       if (!scanner_node || !scanner_node->stream) {
          stream_not_found (td, server_id, address, error);
@@ -2514,8 +2180,7 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
       }
       bson_free (address);
 
-      handshake_sd =
-         mongoc_server_description_new_copy (scanner_node->handshake_sd);
+      handshake_sd = mongoc_server_description_new_copy (scanner_node->handshake_sd);
    }
 
    if (handshake_sd->type == MONGOC_SERVER_UNKNOWN) {
@@ -2527,13 +2192,12 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
    /* stream open but not auth'ed: first use since connect or reconnect */
    if (cluster->requires_auth && !scanner_node->has_auth) {
       /* Complete speculative authentication */
-      bool has_speculative_auth = _mongoc_cluster_finish_speculative_auth (
-         cluster,
-         scanner_node->stream,
-         handshake_sd,
-         &scanner_node->speculative_auth_response,
-         &scanner_node->scram,
-         &handshake_sd->error);
+      bool has_speculative_auth = _mongoc_cluster_finish_speculative_auth (cluster,
+                                                                           scanner_node->stream,
+                                                                           handshake_sd,
+                                                                           &scanner_node->speculative_auth_response,
+                                                                           &scanner_node->scram,
+                                                                           &handshake_sd->error);
 
 #ifdef MONGOC_ENABLE_CRYPTO
       _mongoc_scram_destroy (&scanner_node->scram);
@@ -2546,11 +2210,8 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
       }
 
       if (!has_speculative_auth &&
-          !_mongoc_cluster_auth_node (cluster,
-                                      scanner_node->stream,
-                                      handshake_sd,
-                                      &scanner_node->sasl_supported_mechs,
-                                      &handshake_sd->error)) {
+          !_mongoc_cluster_auth_node (
+             cluster, scanner_node->stream, handshake_sd, &scanner_node->sasl_supported_mechs, &handshake_sd->error)) {
          *error = handshake_sd->error;
          mongoc_server_description_destroy (handshake_sd);
          return NULL;
@@ -2562,8 +2223,8 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
    /* Copy the latest connection pool generation.
     * TODO (CDRIVER-4078) do not store the generation counter on the server
     * description */
-   handshake_sd->generation = _mongoc_topology_get_connection_pool_generation (
-      td, server_id, &handshake_sd->service_id);
+   handshake_sd->generation =
+      _mongoc_topology_get_connection_pool_generation (td, server_id, &handshake_sd->service_id);
    return mongoc_server_stream_new (td, handshake_sd, scanner_node->stream);
 }
 
@@ -2584,12 +2245,10 @@ _cluster_fetch_stream_single (mongoc_cluster_t *cluster,
  */
 
 bool
-mongoc_cluster_stream_valid (mongoc_cluster_t *cluster,
-                             mongoc_server_stream_t *server_stream)
+mongoc_cluster_stream_valid (mongoc_cluster_t *cluster, mongoc_server_stream_t *server_stream)
 {
    mongoc_server_stream_t *tmp_stream = NULL;
-   mongoc_topology_t *topology =
-      BSON_ASSERT_PTR_INLINE (cluster)->client->topology;
+   mongoc_topology_t *topology = BSON_ASSERT_PTR_INLINE (cluster)->client->topology;
    const mongoc_server_description_t *sd;
    bool ret = false;
    bson_error_t error;
@@ -2599,8 +2258,7 @@ mongoc_cluster_stream_valid (mongoc_cluster_t *cluster,
       goto done;
    }
 
-   tmp_stream = mongoc_cluster_stream_for_server (
-      cluster, server_stream->sd->id, false, NULL, NULL, NULL);
+   tmp_stream = mongoc_cluster_stream_for_server (cluster, server_stream->sd->id, false, NULL, NULL, NULL);
    if (!tmp_stream || tmp_stream->stream != server_stream->stream) {
       /* stream was freed, or has changed. */
       goto done;
@@ -2608,12 +2266,9 @@ mongoc_cluster_stream_valid (mongoc_cluster_t *cluster,
 
    /* Check that the server stream is still valid for the given server, and that
     * the server is still registered. */
-   sd = mongoc_topology_description_server_by_id_const (
-      td.ptr, server_stream->sd->id, &error);
-   if (!sd ||
-       server_stream->sd->generation <
-          _mongoc_topology_get_connection_pool_generation (
-             td.ptr, server_stream->sd->id, &server_stream->sd->service_id)) {
+   sd = mongoc_topology_description_server_by_id_const (td.ptr, server_stream->sd->id, &error);
+   if (!sd || server_stream->sd->generation < _mongoc_topology_get_connection_pool_generation (
+                                                 td.ptr, server_stream->sd->id, &server_stream->sd->service_id)) {
       /* No server description, or the pool has been cleared. */
       goto done;
    }
@@ -2626,13 +2281,11 @@ done:
 }
 
 mongoc_server_stream_t *
-_mongoc_cluster_create_server_stream (
-   mongoc_topology_description_t const *td,
-   const mongoc_server_description_t *handshake_sd,
-   mongoc_stream_t *stream)
+_mongoc_cluster_create_server_stream (mongoc_topology_description_t const *td,
+                                      const mongoc_server_description_t *handshake_sd,
+                                      mongoc_stream_t *stream)
 {
-   mongoc_server_description_t *const sd =
-      mongoc_server_description_new_copy (handshake_sd);
+   mongoc_server_description_t *const sd = mongoc_server_description_new_copy (handshake_sd);
    /* can't just use mongoc_topology_server_by_id(), since we must hold the
     * lock while copying topology->shared_descr.ptr->logical_time below */
    return mongoc_server_stream_new (td, sd, stream);
@@ -2650,8 +2303,7 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
    mongoc_server_description_t const *sd;
    bool has_server_description = false;
 
-   cluster_node =
-      (mongoc_cluster_node_t *) mongoc_set_get (cluster->nodes, server_id);
+   cluster_node = (mongoc_cluster_node_t *) mongoc_set_get (cluster->nodes, server_id);
 
    sd = mongoc_topology_description_server_by_id_const (td, server_id, error);
    if (sd) {
@@ -2663,11 +2315,9 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
       BSON_ASSERT (cluster_node->stream);
 
       connection_pool_generation =
-         _mongoc_topology_get_connection_pool_generation (
-            td, server_id, &cluster_node->handshake_sd->service_id);
+         _mongoc_topology_get_connection_pool_generation (td, server_id, &cluster_node->handshake_sd->service_id);
 
-      if (!has_server_description ||
-          cluster_node->handshake_sd->generation < connection_pool_generation) {
+      if (!has_server_description || cluster_node->handshake_sd->generation < connection_pool_generation) {
          /* Since the stream was created, connections to this server were
           * invalidated.
           * This may have happened if:
@@ -2678,8 +2328,7 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
           */
          mongoc_cluster_disconnect_node (cluster, server_id);
       } else {
-         return _mongoc_cluster_create_server_stream (
-            td, cluster_node->handshake_sd, cluster_node->stream);
+         return _mongoc_cluster_create_server_stream (td, cluster_node->handshake_sd, cluster_node->stream);
       }
    }
 
@@ -2691,8 +2340,7 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
 
    cluster_node = _cluster_add_node (cluster, td, server_id, error);
    if (cluster_node) {
-      return _mongoc_cluster_create_server_stream (
-         td, cluster_node->handshake_sd, cluster_node->stream);
+      return _mongoc_cluster_create_server_stream (td, cluster_node->handshake_sd, cluster_node->stream);
    } else {
       return NULL;
    }
@@ -2718,9 +2366,7 @@ _cluster_fetch_stream_pooled (mongoc_cluster_t *cluster,
  */
 
 void
-mongoc_cluster_init (mongoc_cluster_t *cluster,
-                     const mongoc_uri_t *uri,
-                     void *client)
+mongoc_cluster_init (mongoc_cluster_t *cluster, const mongoc_uri_t *uri, void *client)
 {
    ENTRY;
 
@@ -2731,16 +2377,12 @@ mongoc_cluster_init (mongoc_cluster_t *cluster,
 
    cluster->uri = mongoc_uri_copy (uri);
    cluster->client = (mongoc_client_t *) client;
-   cluster->requires_auth =
-      (mongoc_uri_get_username (uri) || mongoc_uri_get_auth_mechanism (uri));
+   cluster->requires_auth = (mongoc_uri_get_username (uri) || mongoc_uri_get_auth_mechanism (uri));
 
-   cluster->sockettimeoutms = mongoc_uri_get_option_as_int32 (
-      uri, MONGOC_URI_SOCKETTIMEOUTMS, MONGOC_DEFAULT_SOCKETTIMEOUTMS);
+   mongoc_cluster_reset_sockettimeoutms (cluster);
 
    cluster->socketcheckintervalms =
-      mongoc_uri_get_option_as_int32 (uri,
-                                      MONGOC_URI_SOCKETCHECKINTERVALMS,
-                                      MONGOC_TOPOLOGY_SOCKET_CHECK_INTERVAL_MS);
+      mongoc_uri_get_option_as_int32 (uri, MONGOC_URI_SOCKETCHECKINTERVALMS, MONGOC_TOPOLOGY_SOCKET_CHECK_INTERVAL_MS);
 
    /* TODO for single-threaded case we don't need this */
    cluster->nodes = mongoc_set_new (8, _mongoc_cluster_node_dtor, NULL);
@@ -2782,43 +2424,54 @@ mongoc_cluster_destroy (mongoc_cluster_t *cluster) /* INOUT */
 
    _mongoc_array_destroy (&cluster->iov);
 
-#ifdef MONGOC_ENABLE_CRYPTO
-   if (cluster->scram_cache) {
-      _mongoc_scram_cache_destroy (cluster->scram_cache);
-   }
-#endif
-
    EXIT;
+}
+
+void
+mongoc_cluster_set_sockettimeoutms (mongoc_cluster_t *cluster, int32_t timeoutms)
+{
+   BSON_ASSERT_PARAM (cluster);
+   cluster->sockettimeoutms = timeoutms;
+}
+
+void
+mongoc_cluster_reset_sockettimeoutms (mongoc_cluster_t *cluster)
+{
+   BSON_ASSERT_PARAM (cluster);
+   cluster->sockettimeoutms =
+      mongoc_uri_get_option_as_int32 (cluster->uri, MONGOC_URI_SOCKETTIMEOUTMS, MONGOC_DEFAULT_SOCKETTIMEOUTMS);
 }
 
 static uint32_t
 _mongoc_cluster_select_server_id (mongoc_client_session_t *cs,
                                   mongoc_topology_t *topology,
                                   mongoc_ss_optype_t optype,
+                                  const mongoc_ss_log_context_t *log_context,
                                   const mongoc_read_prefs_t *read_prefs,
                                   bool *must_use_primary,
+                                  const mongoc_deprioritized_servers_t *ds,
                                   bson_error_t *error)
 {
-   BSON_ASSERT (cs || true);
+   BSON_OPTIONAL_PARAM (cs);
    BSON_ASSERT_PARAM (topology);
-   BSON_ASSERT (read_prefs || true);
+   BSON_OPTIONAL_PARAM (read_prefs);
    BSON_ASSERT_PARAM (must_use_primary);
-   BSON_ASSERT (error || true);
+   BSON_OPTIONAL_PARAM (error);
 
    uint32_t server_id;
 
    if (_in_sharded_txn (cs)) {
       server_id = cs->server_id;
       if (!server_id) {
-         server_id = mongoc_topology_select_server_id (
-            topology, optype, read_prefs, must_use_primary, error);
+         server_id =
+            mongoc_topology_select_server_id (topology, optype, log_context, read_prefs, must_use_primary, ds, error);
          if (server_id) {
             _mongoc_client_session_pin (cs, server_id);
          }
       }
    } else {
-      server_id = mongoc_topology_select_server_id (
-         topology, optype, read_prefs, must_use_primary, error);
+      server_id =
+         mongoc_topology_select_server_id (topology, optype, log_context, read_prefs, must_use_primary, ds, error);
       /* Transactions Spec: Additionally, any non-transaction operation using a
        * pinned ClientSession MUST unpin the session and the operation MUST
        * perform normal server selection. */
@@ -2851,17 +2504,19 @@ _mongoc_cluster_select_server_id (mongoc_client_session_t *cs,
 static mongoc_server_stream_t *
 _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
                                    mongoc_ss_optype_t optype,
+                                   const mongoc_ss_log_context_t *log_context,
                                    const mongoc_read_prefs_t *read_prefs,
                                    mongoc_client_session_t *cs,
                                    bool is_retryable,
+                                   const mongoc_deprioritized_servers_t *ds,
                                    bson_t *reply,
                                    bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
-   BSON_ASSERT (read_prefs || true);
-   BSON_ASSERT (cs || true);
-   BSON_ASSERT (reply || true);
-   BSON_ASSERT (error || true);
+   BSON_OPTIONAL_PARAM (read_prefs);
+   BSON_OPTIONAL_PARAM (cs);
+   BSON_OPTIONAL_PARAM (reply);
+   BSON_OPTIONAL_PARAM (error);
 
    mongoc_server_stream_t *server_stream;
    uint32_t server_id;
@@ -2872,8 +2527,8 @@ _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
 
    BSON_ASSERT (cluster);
 
-   server_id = _mongoc_cluster_select_server_id (
-      cs, topology, optype, read_prefs, &must_use_primary, error);
+   server_id =
+      _mongoc_cluster_select_server_id (cs, topology, optype, log_context, read_prefs, &must_use_primary, ds, error);
 
    if (!server_id) {
       if (reply) {
@@ -2885,8 +2540,8 @@ _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
 
    if (!mongoc_cluster_check_interval (cluster, server_id)) {
       /* Server Selection Spec: try once more */
-      server_id = _mongoc_cluster_select_server_id (
-         cs, topology, optype, read_prefs, &must_use_primary, error);
+      server_id =
+         _mongoc_cluster_select_server_id (cs, topology, optype, log_context, read_prefs, &must_use_primary, ds, error);
 
       if (!server_id) {
          if (reply) {
@@ -2900,12 +2555,8 @@ _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
    bson_t first_reply;
    bson_error_t first_error = {0};
 
-   server_stream = _mongoc_cluster_stream_for_server (cluster,
-                                                      server_id,
-                                                      true /* reconnect_ok */,
-                                                      cs,
-                                                      &first_reply,
-                                                      &first_error);
+   server_stream =
+      _mongoc_cluster_stream_for_server (cluster, server_id, true /* reconnect_ok */, cs, &first_reply, &first_error);
 
    if (server_stream) {
       server_stream->must_use_primary = must_use_primary;
@@ -2914,20 +2565,14 @@ _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
 
    // Important: authentication errors are also considered retryable even if
    // they not considered a network error.
-   const bool retryable_error = _mongoc_error_is_network (&first_error) ||
-                                _mongoc_error_is_auth (&first_error);
+   const bool retryable_error = _mongoc_error_is_network (&first_error) || _mongoc_error_is_auth (&first_error);
 
    if (is_retryable && retryable_error) {
       bson_t retry_reply;
       bson_error_t retry_error = {0};
 
-      server_stream =
-         _mongoc_cluster_stream_for_server (cluster,
-                                            server_id,
-                                            true /* reconnect_ok */,
-                                            cs,
-                                            &retry_reply,
-                                            &retry_error);
+      server_stream = _mongoc_cluster_stream_for_server (
+         cluster, server_id, true /* reconnect_ok */, cs, &retry_reply, &retry_error);
 
       if (server_stream) {
          server_stream->must_use_primary = must_use_primary;
@@ -2968,8 +2613,10 @@ _mongoc_cluster_stream_for_optype (mongoc_cluster_t *cluster,
 
 mongoc_server_stream_t *
 mongoc_cluster_stream_for_reads (mongoc_cluster_t *cluster,
+                                 const mongoc_ss_log_context_t *log_context,
                                  const mongoc_read_prefs_t *read_prefs,
                                  mongoc_client_session_t *cs,
+                                 const mongoc_deprioritized_servers_t *ds,
                                  bson_t *reply,
                                  bson_error_t *error)
 {
@@ -2979,47 +2626,44 @@ mongoc_cluster_stream_for_reads (mongoc_cluster_t *cluster,
    // Retryable Reads Spec: This boolean option determines whether retryable
    // behavior will be applied to all read operations executed within the
    // MongoClient.
-   const bool is_retryable = mongoc_uri_get_option_as_bool (
-      cluster->uri, MONGOC_URI_RETRYREADS, MONGOC_DEFAULT_RETRYREADS);
+   const bool is_retryable =
+      mongoc_uri_get_option_as_bool (cluster->uri, MONGOC_URI_RETRYREADS, MONGOC_DEFAULT_RETRYREADS);
 
    return _mongoc_cluster_stream_for_optype (
-      cluster, MONGOC_SS_READ, prefs_override, cs, is_retryable, reply, error);
+      cluster, MONGOC_SS_READ, log_context, prefs_override, cs, is_retryable, ds, reply, error);
 }
 
 mongoc_server_stream_t *
 mongoc_cluster_stream_for_writes (mongoc_cluster_t *cluster,
+                                  const mongoc_ss_log_context_t *log_context,
                                   mongoc_client_session_t *cs,
+                                  const mongoc_deprioritized_servers_t *ds,
                                   bson_t *reply,
                                   bson_error_t *error)
 {
-   const bool is_retryable = mongoc_uri_get_option_as_bool (
-      cluster->uri, MONGOC_URI_RETRYWRITES, MONGOC_DEFAULT_RETRYWRITES);
+   const bool is_retryable =
+      mongoc_uri_get_option_as_bool (cluster->uri, MONGOC_URI_RETRYWRITES, MONGOC_DEFAULT_RETRYWRITES);
 
    return _mongoc_cluster_stream_for_optype (
-      cluster, MONGOC_SS_WRITE, NULL, cs, is_retryable, reply, error);
+      cluster, MONGOC_SS_WRITE, log_context, NULL, cs, is_retryable, ds, reply, error);
 }
 
 mongoc_server_stream_t *
-mongoc_cluster_stream_for_aggr_with_write (
-   mongoc_cluster_t *cluster,
-   const mongoc_read_prefs_t *read_prefs,
-   mongoc_client_session_t *cs,
-   bson_t *reply,
-   bson_error_t *error)
+mongoc_cluster_stream_for_aggr_with_write (mongoc_cluster_t *cluster,
+                                           const mongoc_ss_log_context_t *log_context,
+                                           const mongoc_read_prefs_t *read_prefs,
+                                           mongoc_client_session_t *cs,
+                                           bson_t *reply,
+                                           bson_error_t *error)
 {
    const mongoc_read_prefs_t *const prefs_override =
       _mongoc_client_session_in_txn (cs) ? cs->txn.opts.read_prefs : read_prefs;
 
-   const bool is_retryable = mongoc_uri_get_option_as_bool (
-      cluster->uri, MONGOC_URI_RETRYWRITES, MONGOC_DEFAULT_RETRYWRITES);
+   const bool is_retryable =
+      mongoc_uri_get_option_as_bool (cluster->uri, MONGOC_URI_RETRYWRITES, MONGOC_DEFAULT_RETRYWRITES);
 
-   return _mongoc_cluster_stream_for_optype (cluster,
-                                             MONGOC_SS_AGGREGATE_WITH_WRITE,
-                                             prefs_override,
-                                             cs,
-                                             is_retryable,
-                                             reply,
-                                             error);
+   return _mongoc_cluster_stream_for_optype (
+      cluster, MONGOC_SS_AGGREGATE_WITH_WRITE, log_context, prefs_override, cs, is_retryable, NULL, reply, error);
 }
 
 static bool
@@ -3093,15 +2737,11 @@ mongoc_cluster_get_max_bson_obj_size (mongoc_cluster_t *cluster)
    max_bson_obj_size = MONGOC_DEFAULT_BSON_OBJ_SIZE;
 
    if (!cluster->client->topology->single_threaded) {
-      mongoc_set_for_each (cluster->nodes,
-                           _mongoc_cluster_min_of_max_obj_size_nodes,
-                           &max_bson_obj_size);
+      mongoc_set_for_each (cluster->nodes, _mongoc_cluster_min_of_max_obj_size_nodes, &max_bson_obj_size);
    } else {
-      mc_shared_tpld td =
-         mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
-      mongoc_set_for_each_const (mc_tpld_servers_const (td.ptr),
-                                 _mongoc_cluster_min_of_max_obj_size_sds,
-                                 &max_bson_obj_size);
+      mc_shared_tpld td = mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
+      mongoc_set_for_each_const (
+         mc_tpld_servers_const (td.ptr), _mongoc_cluster_min_of_max_obj_size_sds, &max_bson_obj_size);
       mc_tpld_drop_ref (&td);
    }
 
@@ -3130,15 +2770,11 @@ mongoc_cluster_get_max_msg_size (mongoc_cluster_t *cluster)
    int32_t max_msg_size = MONGOC_DEFAULT_MAX_MSG_SIZE;
 
    if (!cluster->client->topology->single_threaded) {
-      mongoc_set_for_each (cluster->nodes,
-                           _mongoc_cluster_min_of_max_msg_size_nodes,
-                           &max_msg_size);
+      mongoc_set_for_each (cluster->nodes, _mongoc_cluster_min_of_max_msg_size_nodes, &max_msg_size);
    } else {
-      mc_shared_tpld td =
-         mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
-      mongoc_set_for_each_const (mc_tpld_servers_const (td.ptr),
-                                 _mongoc_cluster_min_of_max_msg_size_sds,
-                                 &max_msg_size);
+      mc_shared_tpld td = mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
+      mongoc_set_for_each_const (
+         mc_tpld_servers_const (td.ptr), _mongoc_cluster_min_of_max_msg_size_sds, &max_msg_size);
       mc_tpld_drop_ref (&td);
    }
 
@@ -3192,8 +2828,7 @@ mongoc_cluster_check_interval (mongoc_cluster_t *cluster, uint32_t server_id)
       return true;
    }
 
-   scanner_node =
-      mongoc_topology_scanner_get_node (topology->scanner, server_id);
+   scanner_node = mongoc_topology_scanner_get_node (topology->scanner, server_id);
 
    if (!scanner_node) {
       return false;
@@ -3215,41 +2850,33 @@ mongoc_cluster_check_interval (mongoc_cluster_t *cluster, uint32_t server_id)
    if (scanner_node->last_used + (1000 * CHECK_CLOSED_DURATION_MSEC) < now) {
       if (mongoc_stream_check_closed (stream)) {
          mc_tpld_modification tdmod;
-         bson_set_error (&error,
-                         MONGOC_ERROR_STREAM,
-                         MONGOC_ERROR_STREAM_SOCKET,
-                         "connection closed");
+         _mongoc_set_error (&error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "connection closed");
          mongoc_cluster_disconnect_node (cluster, server_id);
          tdmod = mc_tpld_modify_begin (topology);
          /* invalidate_server() is okay if 'server_id' was already removed. */
-         mongoc_topology_description_invalidate_server (
-            tdmod.new_td, server_id, &error);
+         mongoc_topology_description_invalidate_server (tdmod.new_td, &topology->log_and_monitor, server_id, &error);
          mc_tpld_modify_commit (tdmod);
          return false;
       }
    }
 
-   if (scanner_node->last_used + (1000 * cluster->socketcheckintervalms) <
-       now) {
+   if (scanner_node->last_used + (1000 * cluster->socketcheckintervalms) < now) {
       mc_shared_tpld td;
 
       bson_init (&command);
       BSON_APPEND_INT32 (&command, "ping", 1);
-      mongoc_cmd_parts_init (
-         &parts, cluster->client, "admin", MONGOC_QUERY_SECONDARY_OK, &command);
+      mongoc_cmd_parts_init (&parts, cluster->client, "admin", MONGOC_QUERY_SECONDARY_OK, &command);
       parts.prohibit_lsid = true;
 
-      td = mc_tpld_take_ref (cluster->client->topology);
-      server_stream =
-         _mongoc_cluster_create_server_stream (td.ptr, handshake_sd, stream);
+      td = mc_tpld_take_ref (topology);
+      server_stream = _mongoc_cluster_create_server_stream (td.ptr, handshake_sd, stream);
       mc_tpld_drop_ref (&td);
 
       if (!server_stream) {
          bson_destroy (&command);
          return false;
       }
-      r = mongoc_cluster_run_command_parts (
-         cluster, server_stream, &parts, NULL, &error);
+      r = mongoc_cluster_run_command_parts (cluster, server_stream, &parts, NULL, &error);
 
       mongoc_server_stream_cleanup (server_stream);
       bson_destroy (&command);
@@ -3257,10 +2884,9 @@ mongoc_cluster_check_interval (mongoc_cluster_t *cluster, uint32_t server_id)
       if (!r) {
          mc_tpld_modification tdmod;
          mongoc_cluster_disconnect_node (cluster, server_id);
-         tdmod = mc_tpld_modify_begin (cluster->client->topology);
+         tdmod = mc_tpld_modify_begin (topology);
          /* invalidate_server() is okay if 'server_id' was already removed. */
-         mongoc_topology_description_invalidate_server (
-            tdmod.new_td, server_id, &error);
+         mongoc_topology_description_invalidate_server (tdmod.new_td, &topology->log_and_monitor, server_id, &error);
          mc_tpld_modify_commit (tdmod);
       }
    }
@@ -3270,11 +2896,10 @@ mongoc_cluster_check_interval (mongoc_cluster_t *cluster, uint32_t server_id)
 
 
 bool
-mongoc_cluster_legacy_rpc_sendv_to_server (
-   mongoc_cluster_t *cluster,
-   mcd_rpc_message *rpc,
-   mongoc_server_stream_t *server_stream,
-   bson_error_t *error)
+mongoc_cluster_legacy_rpc_sendv_to_server (mongoc_cluster_t *cluster,
+                                           mcd_rpc_message *rpc,
+                                           mongoc_server_stream_t *server_stream,
+                                           bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (rpc);
@@ -3291,41 +2916,35 @@ mongoc_cluster_legacy_rpc_sendv_to_server (
    size_t num_iovecs = 0u;
 
    if (cluster->client->in_exhaust) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_IN_EXHAUST,
-                      "a cursor derived from this client is in exhaust");
+      _mongoc_set_error (
+         error, MONGOC_ERROR_CLIENT, MONGOC_ERROR_CLIENT_IN_EXHAUST, "a cursor derived from this client is in exhaust");
       GOTO (done);
    }
 
-   const int32_t compressor_id =
-      mongoc_server_description_compressor_id (server_stream->sd);
+   const int32_t compressor_id = mongoc_server_description_compressor_id (server_stream->sd);
 
-   if (compressor_id != -1 &&
-       !mcd_rpc_message_compress (
-          rpc,
-          compressor_id,
-          _compression_level_from_uri (compressor_id, cluster->uri),
-          &compressed_data,
-          &compressed_data_len,
-          error)) {
+   if (compressor_id != -1 && !mcd_rpc_message_compress (rpc,
+                                                         compressor_id,
+                                                         _compression_level_from_uri (compressor_id, cluster->uri),
+                                                         &compressed_data,
+                                                         &compressed_data_len,
+                                                         error)) {
       GOTO (done);
    }
 
    const uint32_t server_id = server_stream->sd->id;
-   const int32_t max_msg_size =
-      mongoc_server_stream_max_msg_size (server_stream);
+   const int32_t max_msg_size = mongoc_server_stream_max_msg_size (server_stream);
 
    const int32_t message_length = mcd_rpc_header_get_message_length (rpc);
 
    if (message_length > max_msg_size) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_TOO_BIG,
-                      "attempted to send an RPC message with length %" PRId32
-                      " which exceeds the maximum allowed length %" PRId32,
-                      message_length,
-                      max_msg_size);
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_CLIENT,
+                         MONGOC_ERROR_CLIENT_TOO_BIG,
+                         "attempted to send an RPC message with length %" PRId32
+                         " which exceeds the maximum allowed length %" PRId32,
+                         message_length,
+                         max_msg_size);
       GOTO (done);
    }
 
@@ -3333,11 +2952,7 @@ mongoc_cluster_legacy_rpc_sendv_to_server (
    BSON_ASSERT (iovecs);
 
    mcd_rpc_message_egress (rpc);
-   if (!_mongoc_stream_writev_full (server_stream->stream,
-                                    iovecs,
-                                    num_iovecs,
-                                    cluster->sockettimeoutms,
-                                    error)) {
+   if (!_mongoc_stream_writev_full (server_stream->stream, iovecs, num_iovecs, cluster->sockettimeoutms, error)) {
       GOTO (done);
    }
 
@@ -3373,34 +2988,26 @@ mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
 
    const size_t offset = buffer->len;
 
-   if (!_mongoc_buffer_append_from_stream (buffer,
-                                           server_stream->stream,
-                                           sizeof (int32_t),
-                                           cluster->sockettimeoutms,
-                                           error)) {
-      MONGOC_DEBUG (
-         "could not read message length, stream probably closed or timed out");
+   if (!_mongoc_buffer_append_from_stream (
+          buffer, server_stream->stream, sizeof (int32_t), cluster->sockettimeoutms, error)) {
+      MONGOC_DEBUG ("could not read message length, stream probably closed or timed out");
       mongoc_counter_protocol_ingress_error_inc ();
       _handle_network_error (cluster, server_stream, error);
       GOTO (done);
    }
 
-   const int32_t message_length = _int32_from_le (buffer->data + offset);
+   const int32_t message_length = mlib_read_i32le (buffer->data + offset);
 
-   const int32_t max_msg_size =
-      mongoc_server_stream_max_msg_size (server_stream);
+   const int32_t max_msg_size = mongoc_server_stream_max_msg_size (server_stream);
 
-   if (message_length < message_header_length ||
-       message_length > max_msg_size) {
-      bson_set_error (error,
-                      MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "message length %" PRId32
-                      " is not within valid range of %" PRId32 "-%" PRId32
-                      " bytes",
-                      message_header_length,
-                      message_length,
-                      server_stream->sd->max_msg_size);
+   if (message_length < message_header_length || message_length > max_msg_size) {
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_PROTOCOL,
+                         MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
+                         "message length %" PRId32 " is not within valid range of %" PRId32 "-%" PRId32 " bytes",
+                         message_header_length,
+                         message_length,
+                         server_stream->sd->max_msg_size);
       _handle_network_error (cluster, server_stream, error);
       mongoc_counter_protocol_ingress_error_inc ();
       GOTO (done);
@@ -3408,22 +3015,16 @@ mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
 
    const size_t remaining_bytes = (size_t) message_length - sizeof (int32_t);
 
-   if (!_mongoc_buffer_append_from_stream (buffer,
-                                           server_stream->stream,
-                                           remaining_bytes,
-                                           cluster->sockettimeoutms,
-                                           error)) {
+   if (!_mongoc_buffer_append_from_stream (
+          buffer, server_stream->stream, remaining_bytes, cluster->sockettimeoutms, error)) {
       _handle_network_error (cluster, server_stream, error);
       mongoc_counter_protocol_ingress_error_inc ();
       GOTO (done);
    }
 
-   if (!mcd_rpc_message_from_data_in_place (
-          rpc, buffer->data + offset, (size_t) message_length, NULL)) {
-      bson_set_error (error,
-                      MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "failed to decode reply from server");
+   if (!mcd_rpc_message_from_data_in_place (rpc, buffer->data + offset, (size_t) message_length, NULL)) {
+      _mongoc_set_error (
+         error, MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "failed to decode reply from server");
       _handle_network_error (cluster, server_stream, error);
       mongoc_counter_protocol_ingress_error_inc ();
       GOTO (done);
@@ -3434,19 +3035,15 @@ mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
    void *decompressed_data = NULL;
    size_t decompressed_data_len = 0u;
 
-   if (!mcd_rpc_message_decompress_if_necessary (
-          rpc, &decompressed_data, &decompressed_data_len)) {
-      bson_set_error (error,
-                      MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "could not decompress server reply");
+   if (!mcd_rpc_message_decompress_if_necessary (rpc, &decompressed_data, &decompressed_data_len)) {
+      _mongoc_set_error (
+         error, MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "could not decompress server reply");
       GOTO (done);
    }
 
    if (decompressed_data) {
       _mongoc_buffer_destroy (buffer);
-      _mongoc_buffer_init (
-         buffer, decompressed_data, decompressed_data_len, NULL, NULL);
+      _mongoc_buffer_init (buffer, decompressed_data, decompressed_data_len, NULL, NULL);
    }
 
    ret = true;
@@ -3458,9 +3055,9 @@ done:
 
 
 static void
-network_error_reply (bson_t *reply, mongoc_cmd_t *cmd)
+network_error_reply (bson_t *reply, const mongoc_cmd_t *cmd)
 {
-   bson_t labels;
+   bson_array_builder_t *labels;
 
    if (reply) {
       bson_init (reply);
@@ -3489,20 +3086,17 @@ network_error_reply (bson_t *reply, mongoc_cmd_t *cmd)
             return;
          }
 
-         BSON_APPEND_ARRAY_BEGIN (reply, "errorLabels", &labels);
-         BSON_APPEND_UTF8 (&labels, "0", TRANSIENT_TXN_ERR);
-         bson_append_array_end (reply, &labels);
+         BSON_APPEND_ARRAY_BUILDER_BEGIN (reply, "errorLabels", &labels);
+         bson_array_builder_append_utf8 (labels, TRANSIENT_TXN_ERR, -1);
+         bson_append_array_builder_end (reply, labels);
       }
    }
 }
 
 
 static bool
-_mongoc_cluster_run_opmsg_send (mongoc_cluster_t *cluster,
-                                mongoc_cmd_t *cmd,
-                                mcd_rpc_message *rpc,
-                                bson_t *reply,
-                                bson_error_t *error)
+_mongoc_cluster_run_opmsg_send (
+   mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, mcd_rpc_message *rpc, bson_t *reply, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -3512,41 +3106,39 @@ _mongoc_cluster_run_opmsg_send (mongoc_cluster_t *cluster,
 
    mongoc_server_stream_t *const server_stream = cmd->server_stream;
 
-   const uint32_t flags = cmd->is_acknowledged
-                             ? MONGOC_OP_MSG_FLAG_NONE
-                             : MONGOC_OP_MSG_FLAG_MORE_TO_COME;
+   const uint32_t flags = (cmd->is_acknowledged ? MONGOC_OP_MSG_FLAG_NONE : MONGOC_OP_MSG_FLAG_MORE_TO_COME) |
+                          (cmd->op_msg_is_exhaust ? MONGOC_OP_MSG_FLAG_EXHAUST_ALLOWED : MONGOC_OP_MSG_FLAG_NONE);
 
    {
       int32_t message_length = 0;
 
       message_length += mcd_rpc_header_set_message_length (rpc, 0);
-      message_length +=
-         mcd_rpc_header_set_request_id (rpc, ++cluster->request_id);
+      message_length += mcd_rpc_header_set_request_id (rpc, ++cluster->request_id);
       message_length += mcd_rpc_header_set_response_to (rpc, 0);
       message_length += mcd_rpc_header_set_op_code (rpc, MONGOC_OP_CODE_MSG);
 
-      mcd_rpc_op_msg_set_sections_count (rpc, cmd->payload ? 2u : 1u);
+      BSON_ASSERT (cmd->payloads_count <= MONGOC_CMD_PAYLOADS_COUNT_MAX);
+      // Reserve one section for the body (kind 0) and any needed sections for document sequences (kind 1)
+      mcd_rpc_op_msg_set_sections_count (rpc, 1u + cmd->payloads_count);
 
       message_length += mcd_rpc_op_msg_set_flag_bits (rpc, flags);
       message_length += mcd_rpc_op_msg_section_set_kind (rpc, 0u, 0);
-      message_length += mcd_rpc_op_msg_section_set_body (
-         rpc, 0u, bson_get_data (cmd->command));
+      message_length += mcd_rpc_op_msg_section_set_body (rpc, 0u, bson_get_data (cmd->command));
 
-      if (cmd->payload) {
-         BSON_ASSERT (bson_in_range_signed (size_t, cmd->payload_size));
+      for (size_t i = 0; i < cmd->payloads_count; i++) {
+         const mongoc_cmd_payload_t payload = cmd->payloads[i];
 
-         const size_t section_length = sizeof (int32_t) +
-                                       strlen (cmd->payload_identifier) + 1u +
-                                       (size_t) cmd->payload_size;
-         BSON_ASSERT (bson_in_range_unsigned (int32_t, section_length));
+         BSON_ASSERT (mlib_in_range (size_t, payload.size));
 
-         message_length += mcd_rpc_op_msg_section_set_kind (rpc, 1u, 1);
-         message_length += mcd_rpc_op_msg_section_set_length (
-            rpc, 1u, (int32_t) section_length);
-         message_length += mcd_rpc_op_msg_section_set_identifier (
-            rpc, 1u, cmd->payload_identifier);
-         message_length += mcd_rpc_op_msg_section_set_document_sequence (
-            rpc, 1u, cmd->payload, (size_t) cmd->payload_size);
+         const size_t section_length = sizeof (int32_t) + strlen (payload.identifier) + 1u + (size_t) payload.size;
+         BSON_ASSERT (mlib_in_range (int32_t, section_length));
+
+         size_t section_idx = 1u + i;
+         message_length += mcd_rpc_op_msg_section_set_kind (rpc, section_idx, 1);
+         message_length += mcd_rpc_op_msg_section_set_length (rpc, section_idx, (int32_t) section_length);
+         message_length += mcd_rpc_op_msg_section_set_identifier (rpc, section_idx, payload.identifier);
+         message_length +=
+            mcd_rpc_op_msg_section_set_document_sequence (rpc, section_idx, payload.documents, (size_t) payload.size);
       }
 
       mcd_rpc_message_set_length (rpc, message_length);
@@ -3556,20 +3148,16 @@ _mongoc_cluster_run_opmsg_send (mongoc_cluster_t *cluster,
    size_t compressed_data_len = 0u;
 
    if (mongoc_cmd_is_compressible (cmd)) {
-      const int32_t compressor_id =
-         mongoc_server_description_compressor_id (server_stream->sd);
+      const int32_t compressor_id = mongoc_server_description_compressor_id (server_stream->sd);
 
-      TRACE (
-         "Function '%s' is compressible: %d", cmd->command_name, compressor_id);
+      TRACE ("Function '%s' is compressible: %d", cmd->command_name, compressor_id);
 
-      if (compressor_id != -1 &&
-          !mcd_rpc_message_compress (
-             rpc,
-             compressor_id,
-             _compression_level_from_uri (compressor_id, cluster->uri),
-             &compressed_data,
-             &compressed_data_len,
-             error)) {
+      if (compressor_id != -1 && !mcd_rpc_message_compress (rpc,
+                                                            compressor_id,
+                                                            _compression_level_from_uri (compressor_id, cluster->uri),
+                                                            &compressed_data,
+                                                            &compressed_data_len,
+                                                            error)) {
          RUN_CMD_ERR_DECORATE;
          _handle_network_error (cluster, server_stream, error);
          server_stream->stream = NULL;
@@ -3580,13 +3168,11 @@ _mongoc_cluster_run_opmsg_send (mongoc_cluster_t *cluster,
 
    size_t num_iovecs = 0u;
    mongoc_iovec_t *const iovecs = mcd_rpc_message_to_iovecs (rpc, &num_iovecs);
+   BSON_ASSERT (iovecs);
 
    mcd_rpc_message_egress (rpc);
-   const bool res = _mongoc_stream_writev_full (server_stream->stream,
-                                                iovecs,
-                                                num_iovecs,
-                                                cluster->sockettimeoutms,
-                                                error);
+   const bool res =
+      _mongoc_stream_writev_full (server_stream->stream, iovecs, num_iovecs, cluster->sockettimeoutms, error);
 
    if (!res) {
       RUN_CMD_ERR_DECORATE;
@@ -3602,11 +3188,8 @@ _mongoc_cluster_run_opmsg_send (mongoc_cluster_t *cluster,
 }
 
 static bool
-_mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
-                                mongoc_cmd_t *cmd,
-                                mcd_rpc_message *rpc,
-                                bson_t *reply,
-                                bson_error_t *error)
+_mongoc_cluster_run_opmsg_recv (
+   mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, mcd_rpc_message *rpc, bson_t *reply, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -3621,13 +3204,9 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
    mongoc_buffer_t buffer;
    _mongoc_buffer_init (&buffer, NULL, 0, NULL, NULL);
 
-   if (!_mongoc_buffer_append_from_stream (&buffer,
-                                           server_stream->stream,
-                                           sizeof (int32_t),
-                                           cluster->sockettimeoutms,
-                                           error)) {
-      MONGOC_DEBUG (
-         "could not read message length, stream probably closed or timed out");
+   if (!_mongoc_buffer_append_from_stream (
+          &buffer, server_stream->stream, sizeof (int32_t), cluster->sockettimeoutms, error)) {
+      MONGOC_DEBUG ("could not read message length, stream probably closed or timed out");
       RUN_CMD_ERR_DECORATE;
       _handle_network_error (cluster, server_stream, error);
       server_stream->stream = NULL;
@@ -3635,15 +3214,12 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
       goto done;
    }
 
-   const int32_t message_length = _int32_from_le (buffer.data);
+   const int32_t message_length = mlib_read_i32le (buffer.data);
 
-   if (message_length < message_header_length ||
-       message_length > server_stream->sd->max_msg_size) {
+   if (message_length < message_header_length || message_length > server_stream->sd->max_msg_size) {
       RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
                    MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                   "message length %" PRId32
-                   " is not within valid range of %" PRId32 "-%" PRId32
-                   " bytes",
+                   "message length %" PRId32 " is not within valid range of %" PRId32 "-%" PRId32 " bytes",
                    message_header_length,
                    message_length,
                    server_stream->sd->max_msg_size);
@@ -3655,11 +3231,8 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
 
    const size_t remaining_bytes = (size_t) message_length - sizeof (int32_t);
 
-   if (!_mongoc_buffer_append_from_stream (&buffer,
-                                           server_stream->stream,
-                                           remaining_bytes,
-                                           cluster->sockettimeoutms,
-                                           error)) {
+   if (!_mongoc_buffer_append_from_stream (
+          &buffer, server_stream->stream, remaining_bytes, cluster->sockettimeoutms, error)) {
       RUN_CMD_ERR_DECORATE;
       _handle_network_error (cluster, server_stream, error);
       server_stream->stream = NULL;
@@ -3667,11 +3240,8 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
       goto done;
    }
 
-   if (!mcd_rpc_message_from_data_in_place (
-          rpc, buffer.data, buffer.len, NULL)) {
-      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
-                   MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                   "malformed server message");
+   if (!mcd_rpc_message_from_data_in_place (rpc, buffer.data, buffer.len, NULL)) {
+      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "malformed server message");
       _handle_network_error (cluster, server_stream, error);
       server_stream->stream = NULL;
       network_error_reply (reply, cmd);
@@ -3682,12 +3252,9 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
    void *decompressed_data = NULL;
    size_t decompressed_data_len = 0u;
 
-   if (!mcd_rpc_message_decompress_if_necessary (
-          rpc, &decompressed_data, &decompressed_data_len)) {
-      bson_set_error (error,
-                      MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "could not decompress message from server");
+   if (!mcd_rpc_message_decompress_if_necessary (rpc, &decompressed_data, &decompressed_data_len)) {
+      _mongoc_set_error (
+         error, MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "could not decompress message from server");
       _handle_network_error (cluster, server_stream, error);
       server_stream->stream = NULL;
       network_error_reply (reply, cmd);
@@ -3696,30 +3263,43 @@ _mongoc_cluster_run_opmsg_recv (mongoc_cluster_t *cluster,
 
    if (decompressed_data) {
       _mongoc_buffer_destroy (&buffer);
-      _mongoc_buffer_init (
-         &buffer, decompressed_data, decompressed_data_len, NULL, NULL);
+      _mongoc_buffer_init (&buffer, decompressed_data, decompressed_data_len, NULL, NULL);
+   }
+
+   // CDRIVER-5584
+   {
+      const int32_t op_code = mcd_rpc_header_get_op_code (rpc);
+
+      if (op_code != MONGOC_OP_CODE_MSG) {
+         RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
+                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
+                      "malformed message from server: expected opCode %" PRId32 ", got %" PRId32,
+                      MONGOC_OP_CODE_MSG,
+                      op_code);
+         _handle_network_error (cluster, server_stream, error);
+         server_stream->stream = NULL;
+         network_error_reply (reply, cmd);
+         goto done;
+      }
    }
 
    bson_t body;
 
    if (!mcd_rpc_message_get_body (rpc, &body)) {
-      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL,
-                   MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                   "malformed message from server");
+      RUN_CMD_ERR (MONGOC_ERROR_PROTOCOL, MONGOC_ERROR_PROTOCOL_INVALID_REPLY, "malformed message from server");
       _handle_network_error (cluster, server_stream, error);
       server_stream->stream = NULL;
       network_error_reply (reply, cmd);
       goto done;
    }
 
+   cluster->client->in_exhaust = (mcd_rpc_op_msg_get_flag_bits (rpc) & MONGOC_OP_MSG_FLAG_MORE_TO_COME) != 0u;
    _mongoc_topology_update_cluster_time (cluster->client->topology, &body);
 
-   ret =
-      _mongoc_cmd_check_ok (&body, cluster->client->error_api_version, error);
+   ret = _mongoc_cmd_check_ok (&body, cluster->client->error_api_version, error);
 
    if (cmd->session) {
-      _mongoc_client_session_handle_reply (
-         cmd->session, cmd->is_acknowledged, cmd->command_name, &body);
+      _mongoc_client_session_handle_reply (cmd->session, cmd->is_acknowledged, cmd->command_name, &body);
    }
 
    bson_copy_to (&body, reply);
@@ -3732,10 +3312,7 @@ done:
 }
 
 static bool
-mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster,
-                          mongoc_cmd_t *cmd,
-                          bson_t *reply,
-                          bson_error_t *error)
+mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster, const mongoc_cmd_t *cmd, bson_t *reply, bson_error_t *error)
 {
    BSON_ASSERT_PARAM (cluster);
    BSON_ASSERT_PARAM (cmd);
@@ -3743,19 +3320,16 @@ mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster,
    BSON_ASSERT_PARAM (error);
 
    if (!cmd->command_name) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "empty command document");
+      _mongoc_set_error (error, MONGOC_ERROR_COMMAND, MONGOC_ERROR_COMMAND_INVALID_ARG, "empty command document");
       bson_init (reply);
       return false;
    }
 
-   if (cluster->client->in_exhaust) {
-      bson_set_error (error,
-                      MONGOC_ERROR_CLIENT,
-                      MONGOC_ERROR_CLIENT_IN_EXHAUST,
-                      "a cursor derived from this client is in exhaust");
+   if (!cmd->op_msg_is_exhaust && cluster->client->in_exhaust) {
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_CLIENT,
+                         MONGOC_ERROR_CLIENT_IN_EXHAUST,
+                         "another cursor derived from this client is in exhaust");
       bson_init (reply);
       return false;
    }
@@ -3764,7 +3338,7 @@ mongoc_cluster_run_opmsg (mongoc_cluster_t *cluster,
 
    mcd_rpc_message *const rpc = mcd_rpc_message_new ();
 
-   if (!_mongoc_cluster_run_opmsg_send (cluster, cmd, rpc, reply, error)) {
+   if (!cluster->client->in_exhaust && !_mongoc_cluster_run_opmsg_send (cluster, cmd, rpc, reply, error)) {
       goto done;
    }
 
@@ -3790,142 +3364,6 @@ done:
 }
 
 
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_rpc_compress --
- *
- *       Takes a (little endian) rpc struct and creates a OP_COMPRESSED
- *       compressed opcode based on the provided compressor_id.
- *       The in-place updated rpc struct remains little endian.
- *
- * Side effects:
- *       Overwrites the RPC, and clears and overwrites the cluster buffer
- *       with the compressed results.
- *
- *--------------------------------------------------------------------------
- */
-
-char *
-_mongoc_rpc_compress (struct _mongoc_cluster_t *cluster,
-                      int32_t compressor_id,
-                      mongoc_rpc_t *rpc_le,
-                      bson_error_t *error)
-{
-   const size_t allocate = BSON_UINT32_FROM_LE (rpc_le->header.msg_len) - 16u;
-   BSON_ASSERT (allocate > 0u);
-
-   char *const data = bson_malloc0 (allocate);
-   const size_t size = _mongoc_cluster_buffer_iovec (
-      cluster->iov.data, cluster->iov.len, 16, data);
-   size_t output_length =
-      mongoc_compressor_max_compressed_length (compressor_id, size);
-
-   if (!output_length) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "Could not determine compression bounds for %s",
-                      mongoc_compressor_id_to_name (compressor_id));
-      bson_free (data);
-      return NULL;
-   }
-
-   int32_t compression_level = -1;
-
-   if (compressor_id == MONGOC_COMPRESSOR_ZLIB_ID) {
-      compression_level = mongoc_uri_get_option_as_int32 (
-         cluster->uri, MONGOC_URI_ZLIBCOMPRESSIONLEVEL, -1);
-   }
-
-   BSON_ASSERT (size > 0u);
-
-   char *const output = (char *) bson_malloc0 (output_length);
-   if (mongoc_compress (compressor_id,
-                        compression_level,
-                        data,
-                        size,
-                        output,
-                        &output_length)) {
-      rpc_le->header.msg_len = 0;
-      rpc_le->compressed.original_opcode =
-         BSON_UINT32_FROM_LE (rpc_le->header.opcode);
-      rpc_le->header.opcode = MONGOC_OPCODE_COMPRESSED;
-      rpc_le->header.request_id =
-         BSON_UINT32_FROM_LE (rpc_le->header.request_id);
-      rpc_le->header.response_to =
-         BSON_UINT32_FROM_LE (rpc_le->header.response_to);
-
-      BSON_ASSERT (bson_in_range_unsigned (int32_t, size));
-      BSON_ASSERT (bson_in_range_unsigned (int32_t, output_length));
-
-      rpc_le->compressed.uncompressed_size = (int32_t) size;
-      rpc_le->compressed.compressor_id = compressor_id;
-      rpc_le->compressed.compressed_message = (const uint8_t *) output;
-      rpc_le->compressed.compressed_message_len = (int32_t) output_length;
-      bson_free (data);
-
-
-      _mongoc_array_destroy (&cluster->iov);
-      _mongoc_array_init (&cluster->iov, sizeof (mongoc_iovec_t));
-      _mongoc_rpc_gather (rpc_le, &cluster->iov);
-      _mongoc_rpc_swab_to_le (rpc_le);
-      return output;
-   } else {
-      MONGOC_WARNING ("Could not compress data with %s",
-                      mongoc_compressor_id_to_name (compressor_id));
-   }
-   bson_free (data);
-   bson_free (output);
-   return NULL;
-}
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_rpc_decompress --
- *
- *       Takes a (little endian) rpc struct assumed to be OP_COMPRESSED
- *       and decompresses the opcode into its original opcode.
- *       The in-place updated rpc struct remains little endian.
- *
- * Side effects:
- *       Overwrites the RPC, along with the provided buf with the
- *       compressed results.
- *
- *--------------------------------------------------------------------------
- */
-
-bool
-_mongoc_rpc_decompress (mongoc_rpc_t *rpc_le, uint8_t *buf, size_t buflen)
-{
-   size_t uncompressed_size =
-      BSON_UINT32_FROM_LE (rpc_le->compressed.uncompressed_size);
-   bool ok;
-   size_t msg_len = BSON_UINT32_TO_LE (buflen);
-   const size_t original_uncompressed_size = uncompressed_size;
-
-   BSON_ASSERT (uncompressed_size <= buflen);
-   memcpy (buf, (void *) (&msg_len), 4);
-   memcpy (buf + 4, (void *) (&rpc_le->header.request_id), 4);
-   memcpy (buf + 8, (void *) (&rpc_le->header.response_to), 4);
-   memcpy (buf + 12, (void *) (&rpc_le->compressed.original_opcode), 4);
-
-   ok = mongoc_uncompress (rpc_le->compressed.compressor_id,
-                           rpc_le->compressed.compressed_message,
-                           rpc_le->compressed.compressed_message_len,
-                           buf + 16,
-                           &uncompressed_size);
-
-   BSON_ASSERT (original_uncompressed_size == uncompressed_size);
-
-   if (ok) {
-      return _mongoc_rpc_scatter (rpc_le, buf, buflen);
-   }
-
-   return false;
-}
-
 bool
 mcd_rpc_message_compress (mcd_rpc_message *rpc,
                           int32_t compressor_id,
@@ -3944,28 +3382,24 @@ mcd_rpc_message_compress (mcd_rpc_message *rpc,
    char *compressed_message = NULL;
    mongoc_iovec_t *iovecs = NULL;
 
-   const int32_t original_message_length =
-      mcd_rpc_header_get_message_length (rpc);
+   const int32_t original_message_length = mcd_rpc_header_get_message_length (rpc);
 
    // msgHeader consists of four int32 fields.
    const int32_t message_header_length = 4u * sizeof (int32_t);
 
    // compressedMessage does not include msgHeader fields.
    BSON_ASSERT (original_message_length >= message_header_length);
-   const size_t uncompressed_size =
-      (size_t) (original_message_length - message_header_length);
-   BSON_ASSERT (bson_in_range_unsigned (int32_t, uncompressed_size));
+   const size_t uncompressed_size = (size_t) (original_message_length - message_header_length);
+   BSON_ASSERT (mlib_in_range (int32_t, uncompressed_size));
 
-   const size_t estimated_compressed_size =
-      mongoc_compressor_max_compressed_length (compressor_id,
-                                               uncompressed_size);
+   const size_t estimated_compressed_size = mongoc_compressor_max_compressed_length (compressor_id, uncompressed_size);
 
    if (estimated_compressed_size == 0u) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "Could not determine compression bounds for %s",
-                      mongoc_compressor_id_to_name (compressor_id));
+      _mongoc_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_COMMAND_INVALID_ARG,
+                         "Could not determine compression bounds for %s",
+                         mongoc_compressor_id_to_name (compressor_id));
       goto fail;
    }
 
@@ -3979,10 +3413,8 @@ mcd_rpc_message_compress (mcd_rpc_message *rpc,
    BSON_ASSERT (iovecs);
 
    uncompressed_message = bson_malloc (uncompressed_size);
-   BSON_ASSERT (
-      _mongoc_cluster_buffer_iovec (
-         iovecs, num_iovecs, message_header_length, uncompressed_message) ==
-      uncompressed_size);
+   BSON_ASSERT (_mongoc_cluster_buffer_iovec (iovecs, num_iovecs, message_header_length, uncompressed_message) ==
+                uncompressed_size);
 
    compressed_message = bson_malloc (estimated_compressed_size);
 
@@ -3996,8 +3428,7 @@ mcd_rpc_message_compress (mcd_rpc_message *rpc,
                          uncompressed_size,
                          compressed_message,
                          &compressed_size)) {
-      MONGOC_WARNING ("Could not compress data with %s",
-                      mongoc_compressor_id_to_name (compressor_id));
+      MONGOC_WARNING ("Could not compress data with %s", mongoc_compressor_id_to_name (compressor_id));
       goto fail;
    }
 
@@ -4009,15 +3440,11 @@ mcd_rpc_message_compress (mcd_rpc_message *rpc,
       message_len += mcd_rpc_header_set_message_length (rpc, 0);
       message_len += mcd_rpc_header_set_request_id (rpc, request_id);
       message_len += mcd_rpc_header_set_response_to (rpc, response_to);
-      message_len +=
-         mcd_rpc_header_set_op_code (rpc, MONGOC_OP_CODE_COMPRESSED);
+      message_len += mcd_rpc_header_set_op_code (rpc, MONGOC_OP_CODE_COMPRESSED);
       message_len += mcd_rpc_op_compressed_set_original_opcode (rpc, op_code);
-      message_len += mcd_rpc_op_compressed_set_uncompressed_size (
-         rpc, (int32_t) uncompressed_size);
-      message_len +=
-         mcd_rpc_op_compressed_set_compressor_id (rpc, (uint8_t) compressor_id);
-      message_len += mcd_rpc_op_compressed_set_compressed_message (
-         rpc, compressed_message, compressed_size);
+      message_len += mcd_rpc_op_compressed_set_uncompressed_size (rpc, (int32_t) uncompressed_size);
+      message_len += mcd_rpc_op_compressed_set_compressor_id (rpc, (uint8_t) compressor_id);
+      message_len += mcd_rpc_op_compressed_set_compressed_message (rpc, compressed_message, compressed_size);
 
       mcd_rpc_message_set_length (rpc, message_len);
    }
@@ -4048,12 +3475,22 @@ mcd_rpc_message_decompress (mcd_rpc_message *rpc, void **data, size_t *data_len)
    // msgHeader consists of four int32 fields.
    const size_t message_header_length = 4u * sizeof (int32_t);
 
-   const size_t uncompressed_size =
-      (size_t) mcd_rpc_op_compressed_get_uncompressed_size (rpc);
+   const int32_t uncompressed_size_raw = mcd_rpc_op_compressed_get_uncompressed_size (rpc);
+
+   // Malformed message: invalid uncompressedSize.
+   if (BSON_UNLIKELY (uncompressed_size_raw < 0)) {
+      return false;
+   }
+
+   const size_t uncompressed_size = (size_t) uncompressed_size_raw;
+
+   // Malformed message: original message length is not representable.
+   if (BSON_UNLIKELY (uncompressed_size > SIZE_MAX - message_header_length)) {
+      return false;
+   }
 
    // uncompressedSize does not include msgHeader fields.
-   const size_t original_message_length =
-      message_header_length + uncompressed_size;
+   const size_t original_message_length = message_header_length + uncompressed_size;
    uint8_t *const ptr = bson_malloc (original_message_length);
 
    const int32_t message_length = original_message_length;
@@ -4062,42 +3499,31 @@ mcd_rpc_message_decompress (mcd_rpc_message *rpc, void **data, size_t *data_len)
    const int32_t op_code = mcd_rpc_op_compressed_get_original_opcode (rpc);
 
    // Populate the msgHeader fields.
-   {
-      uint32_t storage;
-
-      memcpy (&storage, &message_length, sizeof (storage));
-      storage = BSON_UINT32_TO_LE (storage);
-      memcpy (ptr + 0, &storage, sizeof (storage));
-
-      memcpy (&storage, &request_id, sizeof (storage));
-      storage = BSON_UINT32_TO_LE (storage);
-      memcpy (ptr + 4, &storage, sizeof (storage));
-
-      memcpy (&storage, &response_to, sizeof (storage));
-      storage = BSON_UINT32_TO_LE (storage);
-      memcpy (ptr + 8, &storage, sizeof (storage));
-
-      memcpy (&storage, &op_code, sizeof (storage));
-      storage = BSON_UINT32_TO_LE (storage);
-      memcpy (ptr + 12, &storage, sizeof (storage));
-   }
+   uint8_t *out = ptr;
+   out = mlib_write_i32le (out, message_length);
+   out = mlib_write_i32le (out, request_id);
+   out = mlib_write_i32le (out, response_to);
+   mlib_write_i32le (out, op_code);
 
    // This value may be passed as an argument to an in-out parameter depending
    // on the compressor, not just an out-parameter.
    size_t actual_uncompressed_size = uncompressed_size;
 
    // Populate the rest of the uncompressed message.
-   if (!mongoc_uncompress (
-          mcd_rpc_op_compressed_get_compressor_id (rpc),
-          mcd_rpc_op_compressed_get_compressed_message (rpc),
-          mcd_rpc_op_compressed_get_compressed_message_length (rpc),
-          ptr + message_header_length,
-          &actual_uncompressed_size)) {
+   if (!mongoc_uncompress (mcd_rpc_op_compressed_get_compressor_id (rpc),
+                           mcd_rpc_op_compressed_get_compressed_message (rpc),
+                           mcd_rpc_op_compressed_get_compressed_message_length (rpc),
+                           ptr + message_header_length,
+                           &actual_uncompressed_size)) {
       bson_free (ptr);
       return false;
    }
 
-   BSON_ASSERT (uncompressed_size == actual_uncompressed_size);
+   // Malformed message: size inconsistency.
+   if (BSON_UNLIKELY (uncompressed_size != actual_uncompressed_size)) {
+      bson_free (ptr);
+      return false;
+   }
 
    *data_len = original_message_length;
    *data = ptr; // Ownership transfer.
@@ -4107,50 +3533,8 @@ mcd_rpc_message_decompress (mcd_rpc_message *rpc, void **data, size_t *data_len)
    return mcd_rpc_message_from_data_in_place (rpc, *data, *data_len, NULL);
 }
 
-
-/* If rpc is OP_COMPRESSED, decompress it into buffer.
- *
- * Assumes rpc is still in network little-endian representation (i.e.
- * _mongoc_rpc_swab_to_le has not been called).
- * Returns true if rpc is not OP_COMPRESSED (and is a no-op) or if decompression
- * succeeds.
- * Return false and sets error otherwise.
- */
 bool
-_mongoc_rpc_decompress_if_necessary (mongoc_rpc_t *rpc,
-                                     mongoc_buffer_t *buffer /* IN/OUT */,
-                                     bson_error_t *error /* OUT */)
-{
-   uint8_t *buf = NULL;
-   size_t len;
-
-   if (BSON_UINT32_FROM_LE (rpc->header.opcode) != MONGOC_OPCODE_COMPRESSED) {
-      return true;
-   }
-
-   len = BSON_UINT32_FROM_LE (rpc->compressed.uncompressed_size) +
-         sizeof (mongoc_rpc_header_t);
-
-   buf = bson_malloc0 (len);
-   if (!_mongoc_rpc_decompress (rpc, buf, len)) {
-      bson_free (buf);
-      bson_set_error (error,
-                      MONGOC_ERROR_PROTOCOL,
-                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "Could not decompress server reply");
-      return false;
-   }
-
-   _mongoc_buffer_destroy (buffer);
-   _mongoc_buffer_init (buffer, buf, len, NULL, NULL);
-
-   return true;
-}
-
-bool
-mcd_rpc_message_decompress_if_necessary (mcd_rpc_message *rpc,
-                                         void **data,
-                                         size_t *data_len)
+mcd_rpc_message_decompress_if_necessary (mcd_rpc_message *rpc, void **data, size_t *data_len)
 {
    BSON_ASSERT_PARAM (rpc);
    BSON_ASSERT_PARAM (data);
@@ -4164,4 +3548,100 @@ mcd_rpc_message_decompress_if_necessary (mcd_rpc_message *rpc,
    }
 
    return mcd_rpc_message_decompress (rpc, data, data_len);
+}
+
+bool
+mongoc_cluster_run_retryable_write (mongoc_cluster_t *cluster,
+                                    mongoc_cmd_t *cmd,
+                                    bool is_retryable_write,
+                                    mongoc_server_stream_t **retry_server_stream,
+                                    bson_t *reply,
+                                    bson_error_t *error)
+{
+   BSON_ASSERT_PARAM (cluster);
+   BSON_ASSERT_PARAM (cmd);
+   BSON_ASSERT_PARAM (retry_server_stream);
+   BSON_ASSERT_PARAM (reply);
+   BSON_OPTIONAL_PARAM (error);
+
+   bool ret;
+   // `can_retry` is set to false on retry. A retry may only happen once.
+   bool can_retry = is_retryable_write;
+
+   // Increment the transaction number for the first attempt of each retryable write command.
+   if (is_retryable_write) {
+      bson_iter_t txn_number_iter;
+      BSON_ASSERT (bson_iter_init_find (&txn_number_iter, cmd->command, "txnNumber"));
+      bson_iter_overwrite_int64 (&txn_number_iter, ++cmd->session->server_session->txn_number);
+   }
+
+   // Store the original error and reply if needed.
+   struct {
+      bson_t reply;
+      bson_error_t error;
+      bool set;
+   } original_error = {.reply = {0}, .error = {0}, .set = false};
+
+   // Ensure `*retry_server_stream` is always valid or null.
+   *retry_server_stream = NULL;
+
+retry:
+   ret = mongoc_cluster_run_command_monitored (cluster, cmd, reply, error);
+
+   if (is_retryable_write) {
+      _mongoc_write_error_handle_labels (ret, error, reply, cmd->server_stream->sd);
+      _mongoc_write_error_update_if_unsupported_storage_engine (ret, error, reply);
+   }
+
+   // If a retryable error is encountered and the write is retryable, select a new writable stream and retry. If server
+   // selection fails or the selected server does not support retryable writes, fall through and allow the original
+   // error to be reported.
+   if (can_retry && _mongoc_write_error_get_type (reply) == MONGOC_WRITE_ERR_RETRY) {
+      can_retry = false; // Only retry once.
+
+      // Select a server.
+      {
+         mongoc_deprioritized_servers_t *const ds = mongoc_deprioritized_servers_new ();
+
+         // If talking to a sharded cluster, deprioritize the just-used mongos to prefer a new mongos for the retry.
+         mongoc_deprioritized_servers_add_if_sharded (ds, cmd->server_stream->topology_type, cmd->server_stream->sd);
+
+         const mongoc_ss_log_context_t ss_log_context = {
+            .operation = cmd->command_name, .has_operation_id = true, .operation_id = cmd->operation_id};
+         *retry_server_stream = mongoc_cluster_stream_for_writes (
+            cluster, &ss_log_context, cmd->session, ds, NULL /* reply */, NULL /* error */);
+
+         mongoc_deprioritized_servers_destroy (ds);
+      }
+
+      if (*retry_server_stream) {
+         cmd->server_stream = *retry_server_stream; // Non-owning.
+         {
+            // Store the original error and reply before retry.
+            BSON_ASSERT (!original_error.set); // Retry only happens once.
+            original_error.set = true;
+            bson_copy_to (reply, &original_error.reply);
+            if (error) {
+               original_error.error = *error;
+            }
+         }
+         bson_destroy (reply);
+         GOTO (retry);
+      }
+   }
+
+   // If a retry attempt fails with an error labeled NoWritesPerformed, drivers MUST return the original error.
+   if (original_error.set && mongoc_error_has_label (reply, "NoWritesPerformed")) {
+      if (error) {
+         *error = original_error.error;
+      }
+      bson_destroy (reply);
+      bson_copy_to (&original_error.reply, reply);
+   }
+
+   if (original_error.set) {
+      bson_destroy (&original_error.reply);
+   }
+
+   RETURN (ret);
 }

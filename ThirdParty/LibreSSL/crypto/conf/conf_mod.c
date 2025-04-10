@@ -1,4 +1,4 @@
-/* $OpenBSD: conf_mod.c,v 1.27 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: conf_mod.c,v 1.39 2024/08/31 09:26:18 tb Exp $ */
 /* Written by Stephen Henson (steve@openssl.org) for the OpenSSL
  * project 2001.
  */
@@ -63,21 +63,11 @@
 
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
-#include <openssl/dso.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
 
-#define DSO_mod_init_name "OPENSSL_init"
-#define DSO_mod_finish_name "OPENSSL_finish"
-
-/* This structure contains a data about supported modules.
- * entries in this table correspond to either dynamic or
- * static modules.
- */
-
+/* This structure contains data about supported modules. */
 struct conf_module_st {
-	/* DSO of this module or NULL if static */
-	DSO *dso;
 	/* Name of the module */
 	char *name;
 	/* Init function */
@@ -96,7 +86,7 @@ struct conf_module_st {
  */
 
 struct conf_imodule_st {
-	CONF_MODULE *pmod;
+	CONF_MODULE *mod;
 	char *name;
 	char *value;
 	unsigned long flags;
@@ -106,17 +96,16 @@ struct conf_imodule_st {
 static STACK_OF(CONF_MODULE) *supported_modules = NULL;
 static STACK_OF(CONF_IMODULE) *initialized_modules = NULL;
 
-static void module_free(CONF_MODULE *md);
+static void module_free(CONF_MODULE *mod);
+static void imodule_free(CONF_IMODULE *imod);
 static void module_finish(CONF_IMODULE *imod);
 static int module_run(const CONF *cnf, char *name, char *value,
     unsigned long flags);
-static CONF_MODULE *module_add(DSO *dso, const char *name,
-    conf_init_func *ifunc, conf_finish_func *ffunc);
+static int module_add(const char *name, conf_init_func *ifunc,
+    conf_finish_func *ffunc);
 static CONF_MODULE *module_find(char *name);
-static int module_init(CONF_MODULE *pmod, char *name, char *value,
+static int module_init(CONF_MODULE *mod, char *name, char *value,
     const CONF *cnf);
-static CONF_MODULE *module_load_dso(const CONF *cnf, char *name, char *value,
-    unsigned long flags);
 
 /* Main function: load modules from a CONF structure */
 
@@ -158,6 +147,7 @@ CONF_modules_load(const CONF *cnf, const char *appname, unsigned long flags)
 
 	return 1;
 }
+LCRYPTO_ALIAS(CONF_modules_load);
 
 int
 CONF_modules_load_file(const char *filename, const char *appname,
@@ -196,20 +186,15 @@ err:
 
 	return ret;
 }
+LCRYPTO_ALIAS(CONF_modules_load_file);
 
 static int
 module_run(const CONF *cnf, char *name, char *value, unsigned long flags)
 {
-	CONF_MODULE *md;
+	CONF_MODULE *mod;
 	int ret;
 
-	md = module_find(name);
-
-	/* Module not found: try to load DSO */
-	if (!md && !(flags & CONF_MFLAGS_NO_DSO))
-		md = module_load_dso(cnf, name, value, flags);
-
-	if (!md) {
+	if ((mod = module_find(name)) == NULL) {
 		if (!(flags & CONF_MFLAGS_SILENT)) {
 			CONFerror(CONF_R_UNKNOWN_MODULE_NAME);
 			ERR_asprintf_error_data("module=%s", name);
@@ -217,7 +202,7 @@ module_run(const CONF *cnf, char *name, char *value, unsigned long flags)
 		return -1;
 	}
 
-	ret = module_init(md, name, value, cnf);
+	ret = module_init(mod, name, value, cnf);
 
 	if (ret <= 0) {
 		if (!(flags & CONF_MFLAGS_SILENT)) {
@@ -231,79 +216,37 @@ module_run(const CONF *cnf, char *name, char *value, unsigned long flags)
 	return ret;
 }
 
-/* Load a module from a DSO */
-static CONF_MODULE *
-module_load_dso(const CONF *cnf, char *name, char *value, unsigned long flags)
+static int
+module_add(const char *name, conf_init_func *ifunc, conf_finish_func *ffunc)
 {
-	DSO *dso = NULL;
-	conf_init_func *ifunc;
-	conf_finish_func *ffunc;
-	char *path = NULL;
-	int errcode = 0;
-	CONF_MODULE *md;
-
-	/* Look for alternative path in module section */
-	path = NCONF_get_string(cnf, value, "path");
-	if (!path) {
-		ERR_clear_error();
-		path = name;
-	}
-	dso = DSO_load(NULL, path, NULL, 0);
-	if (!dso) {
-		errcode = CONF_R_ERROR_LOADING_DSO;
-		goto err;
-	}
-	ifunc = (conf_init_func *)DSO_bind_func(dso, DSO_mod_init_name);
-	if (!ifunc) {
-		errcode = CONF_R_MISSING_INIT_FUNCTION;
-		goto err;
-	}
-	ffunc = (conf_finish_func *)DSO_bind_func(dso, DSO_mod_finish_name);
-	/* All OK, add module */
-	md = module_add(dso, name, ifunc, ffunc);
-
-	if (!md)
-		goto err;
-
-	return md;
-
-err:
-	if (dso)
-		DSO_free(dso);
-	CONFerror(errcode);
-	ERR_asprintf_error_data("module=%s, path=%s", name, path);
-	return NULL;
-}
-
-/* add module to list */
-static CONF_MODULE *
-module_add(DSO *dso, const char *name, conf_init_func *ifunc,
-    conf_finish_func *ffunc)
-{
-	CONF_MODULE *tmod = NULL;
+	CONF_MODULE *mod = NULL;
+	int ret = 0;
 
 	if (name == NULL)
-		return NULL;
+		goto err;
+
 	if (supported_modules == NULL)
 		supported_modules = sk_CONF_MODULE_new_null();
 	if (supported_modules == NULL)
-		return NULL;
-	tmod = malloc(sizeof(CONF_MODULE));
-	if (tmod == NULL)
-		return NULL;
+		goto err;
 
-	tmod->dso = dso;
-	tmod->name = strdup(name);
-	tmod->init = ifunc;
-	tmod->finish = ffunc;
-	tmod->links = 0;
+	if ((mod = calloc(1, sizeof(*mod))) == NULL)
+		goto err;
+	if ((mod->name = strdup(name)) == NULL)
+		goto err;
+	mod->init = ifunc;
+	mod->finish = ffunc;
 
-	if (!sk_CONF_MODULE_push(supported_modules, tmod)) {
-		free(tmod);
-		return NULL;
-	}
+	if (!sk_CONF_MODULE_push(supported_modules, mod))
+		goto err;
+	mod = NULL;
 
-	return tmod;
+	ret = 1;
+
+ err:
+	module_free(mod);
+
+	return ret;
 }
 
 /* Find a module from the list. We allow module names of the
@@ -314,7 +257,7 @@ module_add(DSO *dso, const char *name, conf_init_func *ifunc,
 static CONF_MODULE *
 module_find(char *name)
 {
-	CONF_MODULE *tmod;
+	CONF_MODULE *mod;
 	int i, nchar;
 	char *p;
 
@@ -326,9 +269,9 @@ module_find(char *name)
 		nchar = strlen(name);
 
 	for (i = 0; i < sk_CONF_MODULE_num(supported_modules); i++) {
-		tmod = sk_CONF_MODULE_value(supported_modules, i);
-		if (!strncmp(tmod->name, name, nchar))
-			return tmod;
+		mod = sk_CONF_MODULE_value(supported_modules, i);
+		if (!strncmp(mod->name, name, nchar))
+			return mod;
 	}
 
 	return NULL;
@@ -336,64 +279,52 @@ module_find(char *name)
 
 /* initialize a module */
 static int
-module_init(CONF_MODULE *pmod, char *name, char *value, const CONF *cnf)
+module_init(CONF_MODULE *mod, char *name, char *value, const CONF *cnf)
 {
-	int ret = 1;
-	int init_called = 0;
 	CONF_IMODULE *imod = NULL;
+	int need_finish = 0;
+	int ret = -1;
 
-	/* Otherwise add initialized module to list */
-	imod = malloc(sizeof(CONF_IMODULE));
-	if (!imod)
+	if (name == NULL || value == NULL)
 		goto err;
 
-	imod->pmod = pmod;
-	imod->name = name ? strdup(name) : NULL;
-	imod->value = value ? strdup(value) : NULL;
-	imod->usr_data = NULL;
+	if ((imod = calloc(1, sizeof(*imod))) == NULL)
+		goto err;
 
-	if (!imod->name || !imod->value)
-		goto memerr;
+	imod->mod = mod;
 
-	/* Try to initialize module */
-	if (pmod->init) {
-		ret = pmod->init(imod, cnf);
-		init_called = 1;
-		/* Error occurred, exit */
-		if (ret <= 0)
+	if ((imod->name = strdup(name)) == NULL)
+		goto err;
+	if ((imod->value = strdup(value)) == NULL)
+		goto err;
+
+	if (mod->init != NULL) {
+		need_finish = 1;
+		if (mod->init(imod, cnf) <= 0)
 			goto err;
 	}
 
-	if (initialized_modules == NULL) {
+	if (initialized_modules == NULL)
 		initialized_modules = sk_CONF_IMODULE_new_null();
-		if (!initialized_modules) {
-			CONFerror(ERR_R_MALLOC_FAILURE);
-			goto err;
-		}
-	}
-
-	if (!sk_CONF_IMODULE_push(initialized_modules, imod)) {
-		CONFerror(ERR_R_MALLOC_FAILURE);
+	if (initialized_modules == NULL)
 		goto err;
-	}
 
-	pmod->links++;
+	if (!sk_CONF_IMODULE_push(initialized_modules, imod))
+		goto err;
+	imod = NULL;
+	need_finish = 0;
+
+	mod->links++;
+
+	ret = 1;
+
+ err:
+	if (need_finish && mod->finish != NULL)
+		mod->finish(imod);
+
+	imodule_free(imod);
 
 	return ret;
-
-err:
-	/* We've started the module so we'd better finish it */
-	if (pmod->finish && init_called)
-		pmod->finish(imod);
-
-memerr:
-	if (imod) {
-		free(imod->name);
-		free(imod->value);
-		free(imod);
-	}
-
-	return -1;
 }
 
 /* Unload any dynamic modules that have a link count of zero:
@@ -405,34 +336,46 @@ void
 CONF_modules_unload(int all)
 {
 	int i;
-	CONF_MODULE *md;
+	CONF_MODULE *mod;
 
 	CONF_modules_finish();
 
 	/* unload modules in reverse order */
 	for (i = sk_CONF_MODULE_num(supported_modules) - 1; i >= 0; i--) {
-		md = sk_CONF_MODULE_value(supported_modules, i);
-		/* If static or in use and 'all' not set ignore it */
-		if (((md->links > 0) || !md->dso) && !all)
+		mod = sk_CONF_MODULE_value(supported_modules, i);
+		if (!all)
 			continue;
 		/* Since we're working in reverse this is OK */
 		(void)sk_CONF_MODULE_delete(supported_modules, i);
-		module_free(md);
+		module_free(mod);
 	}
 	if (sk_CONF_MODULE_num(supported_modules) == 0) {
 		sk_CONF_MODULE_free(supported_modules);
 		supported_modules = NULL;
 	}
 }
+LCRYPTO_ALIAS(CONF_modules_unload);
 
 /* unload a single module */
 static void
-module_free(CONF_MODULE *md)
+module_free(CONF_MODULE *mod)
 {
-	if (md->dso)
-		DSO_free(md->dso);
-	free(md->name);
-	free(md);
+	if (mod == NULL)
+		return;
+
+	free(mod->name);
+	free(mod);
+}
+
+static void
+imodule_free(CONF_IMODULE *imod)
+{
+	if (imod == NULL)
+		return;
+
+	free(imod->name);
+	free(imod->value);
+	free(imod);
 }
 
 /* finish and free up all modules instances */
@@ -449,30 +392,26 @@ CONF_modules_finish(void)
 	sk_CONF_IMODULE_free(initialized_modules);
 	initialized_modules = NULL;
 }
+LCRYPTO_ALIAS(CONF_modules_finish);
 
 /* finish a module instance */
 
 static void
 module_finish(CONF_IMODULE *imod)
 {
-	if (imod->pmod->finish)
-		imod->pmod->finish(imod);
-	imod->pmod->links--;
-	free(imod->name);
-	free(imod->value);
-	free(imod);
+	if (imod->mod->finish)
+		imod->mod->finish(imod);
+	imod->mod->links--;
+
+	imodule_free(imod);
 }
 
 /* Add a static module to OpenSSL */
 
 int
-CONF_module_add(const char *name, conf_init_func *ifunc,
-    conf_finish_func *ffunc)
+CONF_module_add(const char *name, conf_init_func *ifunc, conf_finish_func *ffunc)
 {
-	if (module_add(NULL, name, ifunc, ffunc))
-		return 1;
-	else
-		return 0;
+	return module_add(name, ifunc, ffunc);
 }
 
 void
@@ -481,61 +420,62 @@ CONF_modules_free(void)
 	CONF_modules_finish();
 	CONF_modules_unload(1);
 }
+LCRYPTO_ALIAS(CONF_modules_free);
 
 /* Utility functions */
 
 const char *
-CONF_imodule_get_name(const CONF_IMODULE *md)
+CONF_imodule_get_name(const CONF_IMODULE *imod)
 {
-	return md->name;
+	return imod->name;
 }
 
 const char *
-CONF_imodule_get_value(const CONF_IMODULE *md)
+CONF_imodule_get_value(const CONF_IMODULE *imod)
 {
-	return md->value;
+	return imod->value;
 }
 
 void *
-CONF_imodule_get_usr_data(const CONF_IMODULE *md)
+CONF_imodule_get_usr_data(const CONF_IMODULE *imod)
 {
-	return md->usr_data;
+	return imod->usr_data;
 }
 
 void
-CONF_imodule_set_usr_data(CONF_IMODULE *md, void *usr_data)
+CONF_imodule_set_usr_data(CONF_IMODULE *imod, void *usr_data)
 {
-	md->usr_data = usr_data;
+	imod->usr_data = usr_data;
 }
 
 CONF_MODULE *
-CONF_imodule_get_module(const CONF_IMODULE *md)
+CONF_imodule_get_module(const CONF_IMODULE *imod)
 {
-	return md->pmod;
+	return imod->mod;
 }
 
 unsigned long
-CONF_imodule_get_flags(const CONF_IMODULE *md)
+CONF_imodule_get_flags(const CONF_IMODULE *imod)
 {
-	return md->flags;
+	return imod->flags;
 }
 
 void
-CONF_imodule_set_flags(CONF_IMODULE *md, unsigned long flags)
+CONF_imodule_set_flags(CONF_IMODULE *imod, unsigned long flags)
 {
-	md->flags = flags;
+	imod->flags = flags;
 }
 
 void *
-CONF_module_get_usr_data(CONF_MODULE *pmod)
+CONF_module_get_usr_data(CONF_MODULE *mod)
 {
-	return pmod->usr_data;
+	return mod->usr_data;
 }
 
 void
-CONF_module_set_usr_data(CONF_MODULE *pmod, void *usr_data)
+CONF_module_set_usr_data(CONF_MODULE *mod, void *usr_data)
 {
-	pmod->usr_data = usr_data;
+	mod->usr_data = usr_data;
 }
 
 /* Return default config file name */
@@ -550,6 +490,7 @@ CONF_get1_default_config_file(void)
 		return (NULL);
 	return file;
 }
+LCRYPTO_ALIAS(CONF_get1_default_config_file);
 
 /* This function takes a list separated by 'sep' and calls the
  * callback function giving the start and length of each member

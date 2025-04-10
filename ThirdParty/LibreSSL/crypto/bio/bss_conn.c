@@ -1,25 +1,25 @@
-/* $OpenBSD: bss_conn.c,v 1.35 2018/05/12 18:51:59 tb Exp $ */
+/* $OpenBSD: bss_conn.c,v 1.41 2024/04/19 09:54:36 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
  * The implementation was written so as to conform with Netscapes SSL.
- * 
+ *
  * This library is free for commercial and non-commercial use as long as
  * the following conditions are aheared to.  The following conditions
  * apply to all code found in this distribution, be it the RC4, RSA,
  * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
  * included with this distribution is covered by the same copyright terms
  * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- * 
+ *
  * Copyright remains Eric Young's, and as such any Copyright notices in
  * the code are not to be removed.
  * If this package is used in a product, Eric Young should be given attribution
  * as the author of the parts of the library used.
  * This can be in the form of a textual message at program startup or
  * in documentation (online or textual) provided with the package.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -34,10 +34,10 @@
  *     Eric Young (eay@cryptsoft.com)"
  *    The word 'cryptographic' can be left out if the rouines from the library
  *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from 
+ * 4. If you include any Windows specific code (or a derivative thereof) from
  *    the apps directory (application code) you must include an acknowledgement:
  *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -49,7 +49,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
@@ -70,6 +70,8 @@
 #include <openssl/buffer.h>
 #include <openssl/err.h>
 
+#include "bio_local.h"
+
 #define SOCKET_PROTOCOL IPPROTO_TCP
 
 typedef struct bio_connect_st {
@@ -85,12 +87,12 @@ typedef struct bio_connect_st {
 	struct sockaddr_in them;
 
 	/* int socket; this will be kept in bio->num so that it is
-	 * compatible with the bss_sock bio */ 
+	 * compatible with the bss_sock bio */
 
 	/* called when the connection is initially made
 	 *  callback(BIO,state,ret);  The callback should return
 	 * 'ret'.  state is for compatibility with the ssl info_callback */
-	int (*info_callback)(const BIO *bio, int state, int ret);
+	BIO_info_cb *info_callback;
 } BIO_CONNECT;
 
 static int conn_write(BIO *h, const char *buf, int num);
@@ -99,12 +101,12 @@ static int conn_puts(BIO *h, const char *str);
 static long conn_ctrl(BIO *h, int cmd, long arg1, void *arg2);
 static int conn_new(BIO *h);
 static int conn_free(BIO *data);
-static long conn_callback_ctrl(BIO *h, int cmd, bio_info_cb *);
+static long conn_callback_ctrl(BIO *h, int cmd, BIO_info_cb *);
 
 static int conn_state(BIO *b, BIO_CONNECT *c);
 static void conn_close_socket(BIO *data);
-BIO_CONNECT *BIO_CONNECT_new(void);
-void BIO_CONNECT_free(BIO_CONNECT *a);
+static BIO_CONNECT *BIO_CONNECT_new(void);
+static void BIO_CONNECT_free(BIO_CONNECT *a);
 
 static const BIO_METHOD methods_connectp = {
 	.type = BIO_TYPE_CONNECT,
@@ -124,7 +126,7 @@ conn_state(BIO *b, BIO_CONNECT *c)
 	int ret = -1, i;
 	unsigned long l;
 	char *p, *q;
-	int (*cb)(const BIO *, int, int) = NULL;
+	BIO_info_cb *cb = NULL;
 
 	if (c->info_callback != NULL)
 		cb = c->info_callback;
@@ -287,7 +289,7 @@ end:
 	return (ret);
 }
 
-BIO_CONNECT *
+static BIO_CONNECT *
 BIO_CONNECT_new(void)
 {
 	BIO_CONNECT *ret;
@@ -308,7 +310,7 @@ BIO_CONNECT_new(void)
 	return (ret);
 }
 
-void
+static void
 BIO_CONNECT_free(BIO_CONNECT *a)
 {
 	if (a == NULL)
@@ -324,6 +326,7 @@ BIO_s_connect(void)
 {
 	return (&methods_connectp);
 }
+LCRYPTO_ALIAS(BIO_s_connect);
 
 static int
 conn_new(BIO *bi)
@@ -521,9 +524,7 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 				BIO_set_conn_hostname(dbio,
 				    data->param_hostname);
 			BIO_set_nbio(dbio, data->nbio);
-			/* FIXME: the cast of the function seems unlikely to be a good idea */
-			(void)BIO_set_info_callback(dbio,
-			    (bio_info_cb *)data->info_callback);
+			(void)BIO_set_info_callback(dbio, data->info_callback);
 		}
 		break;
 	case BIO_CTRL_SET_CALLBACK:
@@ -538,9 +539,8 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 		break;
 	case BIO_CTRL_GET_CALLBACK:
 		{
-			int (**fptr)(const BIO *bio, int state, int xret);
+			BIO_info_cb **fptr = ptr;
 
-			fptr = (int (**)(const BIO *bio, int state, int xret))ptr;
 			*fptr = data->info_callback;
 		}
 		break;
@@ -552,7 +552,7 @@ conn_ctrl(BIO *b, int cmd, long num, void *ptr)
 }
 
 static long
-conn_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
+conn_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
 {
 	long ret = 1;
 	BIO_CONNECT *data;
@@ -561,9 +561,7 @@ conn_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
 
 	switch (cmd) {
 	case BIO_CTRL_SET_CALLBACK:
-		{
-			data->info_callback = (int (*)(const struct bio_st *, int, int))fp;
-		}
+		data->info_callback = (BIO_info_cb *)fp;
 		break;
 	default:
 		ret = 0;
@@ -597,4 +595,4 @@ BIO_new_connect(const char *str)
 		return (NULL);
 	}
 }
-
+LCRYPTO_ALIAS(BIO_new_connect);

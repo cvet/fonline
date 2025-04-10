@@ -1,4 +1,4 @@
-.\"	$OpenBSD: d2i_ASN1_OCTET_STRING.3,v 1.12 2018/03/27 17:35:50 schwarze Exp $
+.\"	$OpenBSD: d2i_ASN1_OCTET_STRING.3,v 1.20 2024/02/13 12:38:43 job Exp $
 .\"
 .\" Copyright (c) 2017 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: March 27 2018 $
+.Dd $Mdocdate: February 13 2024 $
 .Dt D2I_ASN1_OCTET_STRING 3
 .Os
 .Sh NAME
@@ -270,10 +270,9 @@ objects.
 For details about the semantics, examples, caveats, and bugs, see
 .Xr ASN1_item_d2i 3 .
 .Pp
-The format consists of one identifier octet,
-one or more length octets,
-and one or more content octets.
-The identifier octets and corresponding ASN.1 types are as follows:
+The format consists of one identifier byte, one or more length bytes,
+and one or more content bytes.
+The identifier bytes and corresponding ASN.1 types are as follows:
 .Bl -column ASN1_GENERALIZEDTIME identifier
 .It Em OpenSSL type Ta Em identifier Ta Em ASN.1 type
 .It Ta
@@ -317,7 +316,7 @@ and
 .Fn i2d_DIRECTORYSTRING
 that also accept IA5String, NumericString, BIT STRING, and SEQUENCE
 ASN.1 values as well as ASN.1 values with unknown identifier
-octets (0x07, 0x08, 0x09, 0x0b, 0x0d, 0x0e, 0x0f, 0x1d, and 0x1f).
+bytes (0x07, 0x08, 0x09, 0x0b, 0x0d, 0x0e, 0x0f, 0x1d, and 0x1f).
 Even though the standard requires the use of
 .Vt DirectoryString
 in the relative distinguished names described in
@@ -353,6 +352,21 @@ They are also used for certificate revocation lists; see
 .Xr X509_CRL_INFO_new 3 .
 When decoding, it accepts either GeneralizedTime or UTCTime.
 When encoding, it writes out the time type that is actually passed in.
+.Pp
+The following constants describe the ASN.1 tags that are valid
+when decoding with the above functions.
+See
+.Xr ASN1_tag2bit 3
+for more details about the
+.Dv B_ASN1_*
+constants.
+.Bl -column d2i_DIRECTORYSTRING() B_ASN1_DIRECTORYSTRING -offset indent
+.It decoding function      Ta mask constant
+.It Fn d2i_DIRECTORYSTRING Ta Dv B_ASN1_DIRECTORYSTRING
+.It Fn d2i_ASN1_PRINTABLE  Ta Dv B_ASN1_PRINTABLE
+.It Fn d2i_DISPLAYTEXT     Ta Dv B_ASN1_DISPLAYTEXT
+.It Fn d2i_ASN1_TIME       Ta Dv B_ASN1_TIME
+.El
 .Pp
 .Fn d2i_ASN1_UINTEGER
 is similar to
@@ -396,7 +410,7 @@ Certificate Revocation List (CRL) Profile
 .Fn d2i_ASN1_T61STRING ,
 .Fn i2d_ASN1_T61STRING ,
 .Fn d2i_ASN1_PRINTABLESTRING ,
-.Fn i2d_ASN1_PRINTABLESTRING
+.Fn i2d_ASN1_PRINTABLESTRING ,
 .Fn d2i_ASN1_PRINTABLE ,
 .Fn i2d_ASN1_PRINTABLE ,
 .Fn d2i_ASN1_UTCTIME ,
@@ -438,3 +452,10 @@ and
 .Fn i2d_ASN1_GENERALSTRING
 first appeared in OpenSSL 0.9.7 and have been available since
 .Ox 3.2 .
+.Sh CAVEATS
+Other implementations may accept or emit invalid DER encodings of
+GeneralizedTime and UTCTime.
+Portable applications should use
+.Fn ASN1_STRING_length
+to double check whether a given GeneralizedTime or UTCTime object is at least
+15 or 13 bytes, respectively.

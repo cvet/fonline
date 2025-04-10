@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 
 #ifndef MONGOC_COMPRESSION_PRIVATE_H
 #define MONGOC_COMPRESSION_PRIVATE_H
 
-#include "bson/bson.h"
+#include <bson/bson.h>
 
 /* Compressor IDs */
 #define MONGOC_COMPRESSOR_NOOP_ID 0

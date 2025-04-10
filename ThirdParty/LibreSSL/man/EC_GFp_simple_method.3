@@ -1,4 +1,4 @@
-.\"	$OpenBSD: EC_GFp_simple_method.3,v 1.9 2018/03/23 05:48:56 schwarze Exp $
+.\"	$OpenBSD: EC_GFp_simple_method.3,v 1.12 2023/04/27 08:47:04 tb Exp $
 .\"	OpenSSL b97fdb57 Nov 11 09:33:09 2016 +0100
 .\"
 .\" This file was written by Matt Caswell <matt@openssl.org>.
@@ -48,17 +48,12 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: March 23 2018 $
+.Dd $Mdocdate: April 27 2023 $
 .Dt EC_GFP_SIMPLE_METHOD 3
 .Os
 .Sh NAME
 .Nm EC_GFp_simple_method ,
 .Nm EC_GFp_mont_method ,
-.Nm EC_GFp_nist_method ,
-.Nm EC_GFp_nistp224_method ,
-.Nm EC_GFp_nistp256_method ,
-.Nm EC_GFp_nistp521_method ,
-.Nm EC_GF2m_simple_method ,
 .Nm EC_METHOD_get_field_type
 .Nd obtain EC_METHOD objects
 .Sh SYNOPSIS
@@ -67,16 +62,6 @@
 .Fn EC_GFp_simple_method void
 .Ft const EC_METHOD *
 .Fn EC_GFp_mont_method void
-.Ft const EC_METHOD *
-.Fn EC_GFp_nist_method void
-.Ft const EC_METHOD *
-.Fn EC_GFp_nistp224_method void
-.Ft const EC_METHOD *
-.Fn EC_GFp_nistp256_method void
-.Ft const EC_METHOD *
-.Fn EC_GFp_nistp521_method void
-.Ft const EC_METHOD *
-.Fn EC_GF2m_simple_method void
 .Ft int
 .Fo EC_METHOD_get_field_type
 .Fa "const EC_METHOD *meth"
@@ -99,9 +84,6 @@ structure that can be passed to
 It is important that the correct implementation type for the form
 of curve selected is used.
 .Pp
-For F2^m curves there is only one implementation choice,
-.Fn EC_GF2_simple_method .
-.Pp
 For Fp curves the lowest common denominator implementation is the
 .Fn EC_GFp_simple_method
 implementation.
@@ -109,26 +91,11 @@ All other implementations are based on this one.
 .Fn EC_GFp_mont_method
 adds the use of Montgomery multiplication (see
 .Xr BN_mod_mul_montgomery 3 ) .
-.Fn EC_GFp_nist_method
-offers an implementation optimised for use with NIST recommended
-curves.
-NIST curves are available through
-.Xr EC_GROUP_new_by_curve_name 3 .
-.Pp
-The functions
-.Fn EC_GFp_nistp224_method ,
-.Fn EC_GFp_nistp256_method ,
-and
-.Fn EC_GFp_nistp521_method
-offer 64-bit optimised implementations for the NIST P224, P256 and
-P521 curves respectively.
-Note, however, that these implementations are not available on all
-platforms.
 .Pp
 .Fn EC_METHOD_get_field_type
 identifies what type of field the
 .Vt EC_METHOD
-structure supports, which will be either F2^m or Fp.
+structure supports.
 If the field type is Fp, then the value
 .Dv NID_X9_62_prime_field
 is returned.
@@ -136,14 +103,12 @@ If the field type is F2^m, then the value
 .Dv NID_X9_62_characteristic_two_field
 is returned.
 These values are defined in the
-.In openssl/obj_mac.h
+.In openssl/objects.h
 header file.
 .Sh RETURN VALUES
 All
 .Fn EC_GFp*
-functions and
-.Fn EC_GF2m_simple_method
-always return a const pointer to an
+functions always return a const pointer to an
 .Vt EC_METHOD
 structure.
 .Pp
@@ -166,16 +131,6 @@ and
 first appeared in OpenSSL 0.9.7 and have been available since
 .Ox 3.2 .
 .Pp
-.Fn EC_GFp_nist_method ,
-.Fn EC_GF2m_simple_method ,
-and
 .Fn EC_METHOD_get_field_type
-first appeared in OpenSSL 0.9.8 and have been available since
+first appeared in OpenSSL 0.9.8 and has been available since
 .Ox 4.5 .
-.Pp
-.Fn EC_GFp_nistp224_method ,
-.Fn EC_GFp_nistp256_method ,
-and
-.Fn EC_GFp_nistp521_method
-first appeared in OpenSSL 1.0.1 and have been available since
-.Ox 5.3 .

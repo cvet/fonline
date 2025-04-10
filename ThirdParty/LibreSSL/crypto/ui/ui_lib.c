@@ -1,4 +1,4 @@
-/* $OpenBSD: ui_lib.c,v 1.44 2020/09/25 11:25:31 tb Exp $ */
+/* $OpenBSD: ui_lib.c,v 1.51 2023/02/16 08:38:17 tb Exp $ */
 /* Written by Richard Levitte (richard@levitte.org) for the OpenSSL
  * project 2001.
  */
@@ -64,7 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/ui.h>
 
-#include "ui_locl.h"
+#include "ui_local.h"
 
 static const UI_METHOD *default_UI_meth = NULL;
 
@@ -73,6 +73,7 @@ UI_new(void)
 {
 	return (UI_new_method(NULL));
 }
+LCRYPTO_ALIAS(UI_new);
 
 UI *
 UI_new_method(const UI_METHOD *method)
@@ -89,6 +90,7 @@ UI_new_method(const UI_METHOD *method)
 
 	return ret;
 }
+LCRYPTO_ALIAS(UI_new_method);
 
 static void
 free_string(UI_STRING *uis)
@@ -115,10 +117,12 @@ UI_free(UI *ui)
 {
 	if (ui == NULL)
 		return;
+
 	sk_UI_STRING_pop_free(ui->strings, free_string);
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_UI, ui, &ui->ex_data);
 	free(ui);
 }
+LCRYPTO_ALIAS(UI_free);
 
 static int
 allocate_string_stack(UI *ui)
@@ -265,6 +269,7 @@ UI_add_input_string(UI *ui, const char *prompt, int flags, char *result_buf,
 	return general_allocate_string(ui, prompt, 0, UIT_PROMPT, flags,
 	    result_buf, minsize, maxsize, NULL);
 }
+LCRYPTO_ALIAS(UI_add_input_string);
 
 /* Same as UI_add_input_string(), excepts it takes a copy of the prompt. */
 int
@@ -274,6 +279,7 @@ UI_dup_input_string(UI *ui, const char *prompt, int flags, char *result_buf,
 	return general_allocate_string(ui, prompt, 1, UIT_PROMPT, flags,
 	    result_buf, minsize, maxsize, NULL);
 }
+LCRYPTO_ALIAS(UI_dup_input_string);
 
 int
 UI_add_verify_string(UI *ui, const char *prompt, int flags, char *result_buf,
@@ -282,6 +288,7 @@ UI_add_verify_string(UI *ui, const char *prompt, int flags, char *result_buf,
 	return general_allocate_string(ui, prompt, 0, UIT_VERIFY, flags,
 	    result_buf, minsize, maxsize, test_buf);
 }
+LCRYPTO_ALIAS(UI_add_verify_string);
 
 int
 UI_dup_verify_string(UI *ui, const char *prompt, int flags,
@@ -290,6 +297,7 @@ UI_dup_verify_string(UI *ui, const char *prompt, int flags,
 	return general_allocate_string(ui, prompt, 1, UIT_VERIFY, flags,
 	    result_buf, minsize, maxsize, test_buf);
 }
+LCRYPTO_ALIAS(UI_dup_verify_string);
 
 int
 UI_add_input_boolean(UI *ui, const char *prompt, const char *action_desc,
@@ -298,6 +306,7 @@ UI_add_input_boolean(UI *ui, const char *prompt, const char *action_desc,
 	return general_allocate_boolean(ui, prompt, action_desc, ok_chars,
 	    cancel_chars, 0, UIT_BOOLEAN, flags, result_buf);
 }
+LCRYPTO_ALIAS(UI_add_input_boolean);
 
 int
 UI_dup_input_boolean(UI *ui, const char *prompt, const char *action_desc,
@@ -306,6 +315,7 @@ UI_dup_input_boolean(UI *ui, const char *prompt, const char *action_desc,
 	return general_allocate_boolean(ui, prompt, action_desc, ok_chars,
 	    cancel_chars, 1, UIT_BOOLEAN, flags, result_buf);
 }
+LCRYPTO_ALIAS(UI_dup_input_boolean);
 
 int
 UI_add_info_string(UI *ui, const char *text)
@@ -313,6 +323,7 @@ UI_add_info_string(UI *ui, const char *text)
 	return general_allocate_string(ui, text, 0, UIT_INFO, 0, NULL, 0, 0,
 	    NULL);
 }
+LCRYPTO_ALIAS(UI_add_info_string);
 
 int
 UI_dup_info_string(UI *ui, const char *text)
@@ -320,6 +331,7 @@ UI_dup_info_string(UI *ui, const char *text)
 	return general_allocate_string(ui, text, 1, UIT_INFO, 0, NULL, 0, 0,
 	    NULL);
 }
+LCRYPTO_ALIAS(UI_dup_info_string);
 
 int
 UI_add_error_string(UI *ui, const char *text)
@@ -327,6 +339,7 @@ UI_add_error_string(UI *ui, const char *text)
 	return general_allocate_string(ui, text, 0, UIT_ERROR, 0, NULL, 0, 0,
 	    NULL);
 }
+LCRYPTO_ALIAS(UI_add_error_string);
 
 int
 UI_dup_error_string(UI *ui, const char *text)
@@ -334,6 +347,7 @@ UI_dup_error_string(UI *ui, const char *text)
 	return general_allocate_string(ui, text, 1, UIT_ERROR, 0, NULL, 0, 0,
 	    NULL);
 }
+LCRYPTO_ALIAS(UI_dup_error_string);
 
 char *
 UI_construct_prompt(UI *ui, const char *object_desc, const char *object_name)
@@ -358,6 +372,7 @@ UI_construct_prompt(UI *ui, const char *object_desc, const char *object_name)
 
 	return prompt;
 }
+LCRYPTO_ALIAS(UI_construct_prompt);
 
 void *
 UI_add_user_data(UI *ui, void *user_data)
@@ -365,14 +380,17 @@ UI_add_user_data(UI *ui, void *user_data)
 	void *old_data = ui->user_data;
 
 	ui->user_data = user_data;
+
 	return old_data;
 }
+LCRYPTO_ALIAS(UI_add_user_data);
 
 void *
 UI_get0_user_data(UI *ui)
 {
 	return ui->user_data;
 }
+LCRYPTO_ALIAS(UI_get0_user_data);
 
 const char *
 UI_get0_result(UI *ui, int i)
@@ -387,6 +405,7 @@ UI_get0_result(UI *ui, int i)
 	}
 	return UI_get0_result_string(sk_UI_STRING_value(ui->strings, i));
 }
+LCRYPTO_ALIAS(UI_get0_result);
 
 static int
 print_error(const char *str, size_t len, void *arg)
@@ -460,6 +479,7 @@ UI_process(UI *ui)
 		return -1;
 	return ok;
 }
+LCRYPTO_ALIAS(UI_process);
 
 int
 UI_ctrl(UI *ui, int cmd, long i, void *p, void (*f) (void))
@@ -468,6 +488,7 @@ UI_ctrl(UI *ui, int cmd, long i, void *p, void (*f) (void))
 		UIerror(ERR_R_PASSED_NULL_PARAMETER);
 		return -1;
 	}
+
 	switch (cmd) {
 	case UI_CTRL_PRINT_ERRORS:
 		{
@@ -486,6 +507,7 @@ UI_ctrl(UI *ui, int cmd, long i, void *p, void (*f) (void))
 	UIerror(UI_R_UNKNOWN_CONTROL_COMMAND);
 	return -1;
 }
+LCRYPTO_ALIAS(UI_ctrl);
 
 int
 UI_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
@@ -494,212 +516,259 @@ UI_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
 	return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_UI, argl, argp,
 	    new_func, dup_func, free_func);
 }
+LCRYPTO_ALIAS(UI_get_ex_new_index);
 
 int
 UI_set_ex_data(UI *r, int idx, void *arg)
 {
 	return (CRYPTO_set_ex_data(&r->ex_data, idx, arg));
 }
+LCRYPTO_ALIAS(UI_set_ex_data);
 
 void *
 UI_get_ex_data(UI *r, int idx)
 {
 	return (CRYPTO_get_ex_data(&r->ex_data, idx));
 }
+LCRYPTO_ALIAS(UI_get_ex_data);
 
 void
-UI_set_default_method(const UI_METHOD *meth)
+UI_set_default_method(const UI_METHOD *method)
 {
-	default_UI_meth = meth;
+	default_UI_meth = method;
 }
+LCRYPTO_ALIAS(UI_set_default_method);
 
 const UI_METHOD *
 UI_get_default_method(void)
 {
-	if (default_UI_meth == NULL) {
+	if (default_UI_meth == NULL)
 		default_UI_meth = UI_OpenSSL();
-	}
+
 	return default_UI_meth;
 }
+LCRYPTO_ALIAS(UI_get_default_method);
 
 const UI_METHOD *
 UI_get_method(UI *ui)
 {
 	return ui->meth;
 }
+LCRYPTO_ALIAS(UI_get_method);
 
 const UI_METHOD *
-UI_set_method(UI *ui, const UI_METHOD *meth)
+UI_set_method(UI *ui, const UI_METHOD *method)
 {
-	ui->meth = meth;
+	ui->meth = method;
+
 	return ui->meth;
 }
-
+LCRYPTO_ALIAS(UI_set_method);
 
 UI_METHOD *
 UI_create_method(const char *name)
 {
-	UI_METHOD *ui_method = calloc(1, sizeof(UI_METHOD));
+	UI_METHOD *method = NULL;
 
-	if (ui_method && name)
-		ui_method->name = strdup(name);
+	if ((method = calloc(1, sizeof(UI_METHOD))) == NULL)
+		goto err;
 
-	return ui_method;
+	if (name != NULL) {
+		if ((method->name = strdup(name)) == NULL)
+			goto err;
+	}
+
+	return method;
+
+ err:
+	UI_destroy_method(method);
+
+	return NULL;
 }
+LCRYPTO_ALIAS(UI_create_method);
 
-/*
- * BIG FSCKING WARNING!!!!  If you use this on a statically allocated method
- * (that is, it hasn't been allocated using UI_create_method(), you deserve
- * anything Murphy can throw at you and more!  You have been warned.
- */
 void
-UI_destroy_method(UI_METHOD *ui_method)
+UI_destroy_method(UI_METHOD *method)
 {
-	free(ui_method->name);
-	ui_method->name = NULL;
-	free(ui_method);
+	if (method == NULL)
+		return;
+
+	free(method->name);
+	free(method);
 }
+LCRYPTO_ALIAS(UI_destroy_method);
 
 int
 UI_method_set_opener(UI_METHOD *method, int (*opener)(UI *ui))
 {
-	if (method) {
-		method->ui_open_session = opener;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_open_session = opener;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_opener);
 
 int
 UI_method_set_writer(UI_METHOD *method, int (*writer)(UI *ui, UI_STRING *uis))
 {
-	if (method) {
-		method->ui_write_string = writer;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_write_string = writer;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_writer);
 
 int
 UI_method_set_flusher(UI_METHOD *method, int (*flusher)(UI *ui))
 {
-	if (method) {
-		method->ui_flush = flusher;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_flush = flusher;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_flusher);
 
 int
 UI_method_set_reader(UI_METHOD *method, int (*reader)(UI *ui, UI_STRING *uis))
 {
-	if (method) {
-		method->ui_read_string = reader;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_read_string = reader;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_reader);
 
 int
 UI_method_set_closer(UI_METHOD *method, int (*closer)(UI *ui))
 {
-	if (method) {
-		method->ui_close_session = closer;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_close_session = closer;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_closer);
 
 int
 UI_method_set_prompt_constructor(UI_METHOD *method,
     char *(*prompt_constructor)(UI *ui, const char *object_desc,
     const char *object_name))
 {
-	if (method) {
-		method->ui_construct_prompt = prompt_constructor;
-		return 0;
-	}
-	return -1;
+	if (method == NULL)
+		return -1;
+
+	method->ui_construct_prompt = prompt_constructor;
+
+	return 0;
 }
+LCRYPTO_ALIAS(UI_method_set_prompt_constructor);
 
 int
 (*UI_method_get_opener(const UI_METHOD * method))(UI *)
 {
-	if (method)
-		return method->ui_open_session;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_open_session;
 }
+LCRYPTO_ALIAS(UI_method_get_opener);
 
 int
 (*UI_method_get_writer(const UI_METHOD *method))(UI *, UI_STRING *)
 {
-	if (method)
-		return method->ui_write_string;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_write_string;
 }
+LCRYPTO_ALIAS(UI_method_get_writer);
 
 int
 (*UI_method_get_flusher(const UI_METHOD *method)) (UI *)
 {
-	if (method)
-		return method->ui_flush;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_flush;
 }
+LCRYPTO_ALIAS(UI_method_get_flusher);
 
 int
 (*UI_method_get_reader(const UI_METHOD *method))(UI *, UI_STRING *)
 {
-	if (method)
-		return method->ui_read_string;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_read_string;
 }
+LCRYPTO_ALIAS(UI_method_get_reader);
 
 int
 (*UI_method_get_closer(const UI_METHOD *method))(UI *)
 {
-	if (method)
-		return method->ui_close_session;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_close_session;
 }
+LCRYPTO_ALIAS(UI_method_get_closer);
 
 char *
 (*UI_method_get_prompt_constructor(const UI_METHOD *method))(UI *, const char *,
     const char *)
 {
-	if (method)
-		return method->ui_construct_prompt;
-	return NULL;
+	if (method == NULL)
+		return NULL;
+
+	return method->ui_construct_prompt;
 }
+LCRYPTO_ALIAS(UI_method_get_prompt_constructor);
 
 enum UI_string_types
 UI_get_string_type(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return UIT_NONE;
+
 	return uis->type;
 }
+LCRYPTO_ALIAS(UI_get_string_type);
 
 int
 UI_get_input_flags(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return 0;
+
 	return uis->input_flags;
 }
+LCRYPTO_ALIAS(UI_get_input_flags);
 
 const char *
 UI_get0_output_string(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return NULL;
+
 	return uis->out_string;
 }
+LCRYPTO_ALIAS(UI_get0_output_string);
 
 const char *
 UI_get0_action_string(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return NULL;
+
 	switch (uis->type) {
 	case UIT_PROMPT:
 	case UIT_BOOLEAN:
@@ -708,12 +777,14 @@ UI_get0_action_string(UI_STRING *uis)
 		return NULL;
 	}
 }
+LCRYPTO_ALIAS(UI_get0_action_string);
 
 const char *
 UI_get0_result_string(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return NULL;
+
 	switch (uis->type) {
 	case UIT_PROMPT:
 	case UIT_VERIFY:
@@ -722,12 +793,14 @@ UI_get0_result_string(UI_STRING *uis)
 		return NULL;
 	}
 }
+LCRYPTO_ALIAS(UI_get0_result_string);
 
 const char *
 UI_get0_test_string(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return NULL;
+
 	switch (uis->type) {
 	case UIT_VERIFY:
 		return uis->_.string_data.test_buf;
@@ -735,12 +808,14 @@ UI_get0_test_string(UI_STRING *uis)
 		return NULL;
 	}
 }
+LCRYPTO_ALIAS(UI_get0_test_string);
 
 int
 UI_get_result_minsize(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return -1;
+
 	switch (uis->type) {
 	case UIT_PROMPT:
 	case UIT_VERIFY:
@@ -749,12 +824,14 @@ UI_get_result_minsize(UI_STRING *uis)
 		return -1;
 	}
 }
+LCRYPTO_ALIAS(UI_get_result_minsize);
 
 int
 UI_get_result_maxsize(UI_STRING *uis)
 {
-	if (!uis)
+	if (uis == NULL)
 		return -1;
+
 	switch (uis->type) {
 	case UIT_PROMPT:
 	case UIT_VERIFY:
@@ -763,6 +840,7 @@ UI_get_result_maxsize(UI_STRING *uis)
 		return -1;
 	}
 }
+LCRYPTO_ALIAS(UI_get_result_maxsize);
 
 int
 UI_set_result(UI *ui, UI_STRING *uis, const char *result)
@@ -772,8 +850,9 @@ UI_set_result(UI *ui, UI_STRING *uis, const char *result)
 
 	ui->flags &= ~UI_FLAG_REDOABLE;
 
-	if (!uis)
+	if (uis == NULL)
 		return -1;
+
 	switch (uis->type) {
 	case UIT_PROMPT:
 	case UIT_VERIFY:
@@ -825,3 +904,4 @@ UI_set_result(UI *ui, UI_STRING *uis, const char *result)
 	}
 	return 0;
 }
+LCRYPTO_ALIAS(UI_set_result);

@@ -58,7 +58,7 @@ public:
 
     [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fofx"; }
 
-    void BakeFiles(FileCollection&& files) override;
+    void BakeFiles(FileCollection files) override;
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);

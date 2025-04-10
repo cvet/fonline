@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_STREAM_GRIDFS_H
 #define MONGOC_STREAM_GRIDFS_H
 
 #include <bson/bson.h>
 
-#include "mongoc-macros.h"
-#include "mongoc-gridfs.h"
-#include "mongoc-stream.h"
+#include <mongoc/mongoc-macros.h>
+#include <mongoc/mongoc-gridfs.h>
+#include <mongoc/mongoc-stream.h>
 
 
 BSON_BEGIN_DECLS
 
 
 MONGOC_EXPORT (mongoc_stream_t *)
-mongoc_stream_gridfs_new (mongoc_gridfs_file_t *file)
-   BSON_GNUC_WARN_UNUSED_RESULT;
+mongoc_stream_gridfs_new (mongoc_gridfs_file_t *file) BSON_GNUC_WARN_UNUSED_RESULT;
 
 
 BSON_END_DECLS

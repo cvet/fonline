@@ -10,38 +10,18 @@
 ** and struct tm by A. Jesse Jiryu Davis for MongoDB, Inc.
 */
 
-#include "bson-compat.h"
-#include "bson-macros.h"
-#include "bson-timegm-private.h"
+#include <bson/bson-compat.h>
+#include <bson/bson-macros.h>
+#include <bson/bson-timegm-private.h>
 
-#include "errno.h"
-#include "string.h"
+#include <errno.h>
+#include <string.h>
 #include <stdint.h> /* for INT64_MAX and INT64_MIN */
 
-/* Unlike <ctype.h>'s isdigit, this also works if c < 0 | c > UCHAR_MAX. */
-#define is_digit(c) ((unsigned) (c) - '0' <= 9)
-
 #if 2 < __GNUC__ + (96 <= __GNUC_MINOR__)
-#define ATTRIBUTE_CONST __attribute__ ((const))
 #define ATTRIBUTE_PURE __attribute__ ((__pure__))
-#define ATTRIBUTE_FORMAT(spec) __attribute__ ((__format__ spec))
 #else
-#define ATTRIBUTE_CONST        /* empty */
-#define ATTRIBUTE_PURE         /* empty */
-#define ATTRIBUTE_FORMAT(spec) /* empty */
-#endif
-
-#if !defined _Noreturn && \
-   (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112)
-#if 2 < __GNUC__ + (8 <= __GNUC_MINOR__)
-#define _Noreturn __attribute__ ((__noreturn__))
-#else
-#define _Noreturn
-#endif
-#endif
-
-#if !defined(__STDC_VERSION__) && !defined restrict
-#define restrict /* empty */
+#define ATTRIBUTE_PURE /* empty */
 #endif
 
 #ifdef __clang__
@@ -88,88 +68,12 @@ static int64_t const time_t_max = INT64_MAX;
 #define SECSPERDAY ((int_fast32_t) SECSPERHOUR * HOURSPERDAY)
 #define MONSPERYEAR 12
 
-#define TM_SUNDAY 0
-#define TM_MONDAY 1
-#define TM_TUESDAY 2
-#define TM_WEDNESDAY 3
-#define TM_THURSDAY 4
-#define TM_FRIDAY 5
-#define TM_SATURDAY 6
-
-#define TM_JANUARY 0
-#define TM_FEBRUARY 1
-#define TM_MARCH 2
-#define TM_APRIL 3
-#define TM_MAY 4
-#define TM_JUNE 5
-#define TM_JULY 6
-#define TM_AUGUST 7
-#define TM_SEPTEMBER 8
-#define TM_OCTOBER 9
-#define TM_NOVEMBER 10
-#define TM_DECEMBER 11
-
 #define TM_YEAR_BASE 1900
 
 #define EPOCH_YEAR 1970
-#define EPOCH_WDAY TM_THURSDAY
+#define EPOCH_WDAY 4 /* TM_THURSDAY */
 
 #define isleap(y) (((y) % 4) == 0 && (((y) % 100) != 0 || ((y) % 400) == 0))
-
-/*
-** Since everything in isleap is modulo 400 (or a factor of 400), we know that
-**	isleap(y) == isleap(y % 400)
-** and so
-**	isleap(a + b) == isleap((a + b) % 400)
-** or
-**	isleap(a + b) == isleap(a % 400 + b % 400)
-** This is true even if % means modulo rather than Fortran remainder
-** (which is allowed by C89 but not C99).
-** We use this to avoid addition overflow problems.
-*/
-
-#define isleap_sum(a, b) isleap ((a) % 400 + (b) % 400)
-
-#ifndef TZ_ABBR_MAX_LEN
-#define TZ_ABBR_MAX_LEN 16
-#endif /* !defined TZ_ABBR_MAX_LEN */
-
-#ifndef TZ_ABBR_CHAR_SET
-#define TZ_ABBR_CHAR_SET \
-   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 :+-._"
-#endif /* !defined TZ_ABBR_CHAR_SET */
-
-#ifndef TZ_ABBR_ERR_CHAR
-#define TZ_ABBR_ERR_CHAR '_'
-#endif /* !defined TZ_ABBR_ERR_CHAR */
-
-#ifndef WILDABBR
-/*
-** Someone might make incorrect use of a time zone abbreviation:
-**	1.	They might reference tzname[0] before calling tzset (explicitly
-**		or implicitly).
-**	2.	They might reference tzname[1] before calling tzset (explicitly
-**		or implicitly).
-**	3.	They might reference tzname[1] after setting to a time zone
-**		in which Daylight Saving Time is never observed.
-**	4.	They might reference tzname[0] after setting to a time zone
-**		in which Standard Time is never observed.
-**	5.	They might reference tm.TM_ZONE after calling offtime.
-** What's best to do in the above cases is open to debate;
-** for now, we just set things up so that in any of the five cases
-** WILDABBR is used. Another possibility: initialize tzname[0] to the
-** string "tzname[0] used before set", and similarly for the other cases.
-** And another: initialize tzname[0] to "ERA", with an explanation in the
-** manual page of what this "time zone abbreviation" means (doing this so
-** that tzname[0] has the "normal" length of three characters).
-*/
-#define WILDABBR "   "
-#endif /* !defined WILDABBR */
-
-#ifdef TM_ZONE
-static const char wildabbr[] = WILDABBR;
-static const char gmt[] = "GMT";
-#endif
 
 struct ttinfo {            /* time type information */
    int_fast32_t tt_gmtoff; /* UT offset in seconds */
@@ -216,10 +120,6 @@ struct rule {
    int_fast32_t r_time; /* transition time of rule */
 };
 
-#define JULIAN_DAY 0            /* Jn - Julian day */
-#define DAY_OF_YEAR 1           /* n - day of year */
-#define MONTH_NTH_DAY_OF_WEEK 2 /* Mm.n.d - month, week, day of week */
-
 /*
 ** Prototypes for static functions.
 */
@@ -227,9 +127,7 @@ struct rule {
 static void
 gmtload (struct state *const sp);
 static struct bson_tm *
-gmtsub (const int64_t *const timep,
-        const int_fast32_t offset,
-        struct bson_tm *const tmp);
+gmtsub (const int64_t *const timep, const int_fast32_t offset, struct bson_tm *const tmp);
 static int64_t
 increment_overflow (int64_t *const ip, int64_t j);
 static int64_t
@@ -237,31 +135,21 @@ leaps_thru_end_of (const int64_t y) ATTRIBUTE_PURE;
 static int64_t
 increment_overflow32 (int_fast32_t *const lp, int64_t const m);
 static int64_t
-normalize_overflow32 (int_fast32_t *const tensptr,
-                      int64_t *const unitsptr,
-                      const int64_t base);
+normalize_overflow32 (int_fast32_t *const tensptr, int64_t *const unitsptr, const int64_t base);
 static int64_t
-normalize_overflow (int64_t *const tensptr,
-                    int64_t *const unitsptr,
-                    const int64_t base);
+normalize_overflow (int64_t *const tensptr, int64_t *const unitsptr, const int64_t base);
 static int64_t
 time1 (struct bson_tm *const tmp,
-       struct bson_tm *(*const funcp) (const int64_t *,
-                                       int_fast32_t,
-                                       struct bson_tm *),
+       struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
        const int_fast32_t offset);
 static int64_t
 time2 (struct bson_tm *const tmp,
-       struct bson_tm *(*const funcp) (const int64_t *,
-                                       int_fast32_t,
-                                       struct bson_tm *),
+       struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
        const int_fast32_t offset,
        int64_t *const okayp);
 static int64_t
 time2sub (struct bson_tm *const tmp,
-          struct bson_tm *(*const funcp) (const int64_t *,
-                                          int_fast32_t,
-                                          struct bson_tm *),
+          struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
           const int_fast32_t offset,
           int64_t *const okayp,
           const int64_t do_norm_secs);
@@ -278,9 +166,8 @@ static struct state gmtmem;
 
 static int gmt_is_set;
 
-static const int mon_lengths[2][MONSPERYEAR] = {
-   {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
-   {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+static const int mon_lengths[2][MONSPERYEAR] = {{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+                                                {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
 
 static const int year_lengths[2] = {DAYSPERNYEAR, DAYSPERLYEAR};
 
@@ -300,9 +187,7 @@ gmtload (struct state *const sp)
 */
 
 static struct bson_tm *
-gmtsub (const int64_t *const timep,
-        const int_fast32_t offset,
-        struct bson_tm *const tmp)
+gmtsub (const int64_t *const timep, const int_fast32_t offset, struct bson_tm *const tmp)
 {
    struct bson_tm *result;
 
@@ -311,14 +196,6 @@ gmtsub (const int64_t *const timep,
       gmtload (gmtptr);
    }
    result = timesub (timep, offset, gmtptr, tmp);
-#ifdef TM_ZONE
-   /*
-   ** Could get fancy here and deliver something such as
-   ** "UT+xxxx" or "UT-xxxx" if offset is non-zero,
-   ** but this is no time for a treasure hunt.
-   */
-   tmp->TM_ZONE = offset ? wildabbr : gmtptr ? gmtptr->chars : gmt;
-#endif /* defined TM_ZONE */
    return result;
 }
 
@@ -330,15 +207,11 @@ gmtsub (const int64_t *const timep,
 static int64_t
 leaps_thru_end_of (const int64_t y)
 {
-   return (y >= 0) ? (y / 4 - y / 100 + y / 400)
-                   : -(leaps_thru_end_of (-(y + 1)) + 1);
+   return (y >= 0) ? (y / 4 - y / 100 + y / 400) : -(leaps_thru_end_of (-(y + 1)) + 1);
 }
 
 static struct bson_tm *
-timesub (const int64_t *const timep,
-         const int_fast32_t offset,
-         const struct state *const sp,
-         struct bson_tm *const tmp)
+timesub (const int64_t *const timep, const int_fast32_t offset, const struct state *const sp, struct bson_tm *const tmp)
 {
    const struct lsinfo *lp;
    int64_t tdays;
@@ -357,11 +230,9 @@ timesub (const int64_t *const timep,
       lp = &sp->lsis[i];
       if (*timep >= lp->ls_trans) {
          if (*timep == lp->ls_trans) {
-            hit = ((i == 0 && lp->ls_corr > 0) ||
-                   lp->ls_corr > sp->lsis[i - 1].ls_corr);
+            hit = ((i == 0 && lp->ls_corr > 0) || lp->ls_corr > sp->lsis[i - 1].ls_corr);
             if (hit)
-               while (i > 0 &&
-                      sp->lsis[i].ls_trans == sp->lsis[i - 1].ls_trans + 1 &&
+               while (i > 0 && sp->lsis[i].ls_trans == sp->lsis[i - 1].ls_trans + 1 &&
                       sp->lsis[i].ls_corr == sp->lsis[i - 1].ls_corr + 1) {
                   ++hit;
                   --i;
@@ -429,10 +300,8 @@ timesub (const int64_t *const timep,
    /*
    ** The "extra" mods below avoid overflow problems.
    */
-   tmp->tm_wday =
-      EPOCH_WDAY +
-      ((y - EPOCH_YEAR) % DAYSPERWEEK) * (DAYSPERNYEAR % DAYSPERWEEK) +
-      leaps_thru_end_of (y - 1) - leaps_thru_end_of (EPOCH_YEAR - 1) + idays;
+   tmp->tm_wday = EPOCH_WDAY + ((y - EPOCH_YEAR) % DAYSPERWEEK) * (DAYSPERNYEAR % DAYSPERWEEK) +
+                  leaps_thru_end_of (y - 1) - leaps_thru_end_of (EPOCH_YEAR - 1) + idays;
    tmp->tm_wday %= DAYSPERWEEK;
    if (tmp->tm_wday < 0)
       tmp->tm_wday += DAYSPERWEEK;
@@ -504,27 +373,21 @@ increment_overflow32 (int_fast32_t *const lp, int64_t const m)
 }
 
 static int64_t
-normalize_overflow (int64_t *const tensptr,
-                    int64_t *const unitsptr,
-                    const int64_t base)
+normalize_overflow (int64_t *const tensptr, int64_t *const unitsptr, const int64_t base)
 {
    int64_t tensdelta;
 
-   tensdelta =
-      (*unitsptr >= 0) ? (*unitsptr / base) : (-1 - (-1 - *unitsptr) / base);
+   tensdelta = (*unitsptr >= 0) ? (*unitsptr / base) : (-1 - (-1 - *unitsptr) / base);
    *unitsptr -= tensdelta * base;
    return increment_overflow (tensptr, tensdelta);
 }
 
 static int64_t
-normalize_overflow32 (int_fast32_t *const tensptr,
-                      int64_t *const unitsptr,
-                      const int64_t base)
+normalize_overflow32 (int_fast32_t *const tensptr, int64_t *const unitsptr, const int64_t base)
 {
    int64_t tensdelta;
 
-   tensdelta =
-      (*unitsptr >= 0) ? (*unitsptr / base) : (-1 - (-1 - *unitsptr) / base);
+   tensdelta = (*unitsptr >= 0) ? (*unitsptr / base) : (-1 - (-1 - *unitsptr) / base);
    *unitsptr -= tensdelta * base;
    return increment_overflow32 (tensptr, tensdelta);
 }
@@ -536,19 +399,15 @@ tmcomp (const struct bson_tm *const atmp, const struct bson_tm *const btmp)
 
    if (atmp->tm_year != btmp->tm_year)
       return atmp->tm_year < btmp->tm_year ? -1 : 1;
-   if ((result = (atmp->tm_mon - btmp->tm_mon)) == 0 &&
-       (result = (atmp->tm_mday - btmp->tm_mday)) == 0 &&
-       (result = (atmp->tm_hour - btmp->tm_hour)) == 0 &&
-       (result = (atmp->tm_min - btmp->tm_min)) == 0)
+   if ((result = (atmp->tm_mon - btmp->tm_mon)) == 0 && (result = (atmp->tm_mday - btmp->tm_mday)) == 0 &&
+       (result = (atmp->tm_hour - btmp->tm_hour)) == 0 && (result = (atmp->tm_min - btmp->tm_min)) == 0)
       result = atmp->tm_sec - btmp->tm_sec;
    return result;
 }
 
 static int64_t
 time2sub (struct bson_tm *const tmp,
-          struct bson_tm *(*const funcp) (const int64_t *,
-                                          int_fast32_t,
-                                          struct bson_tm *),
+          struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
           const int_fast32_t offset,
           int64_t *const okayp,
           const int64_t do_norm_secs)
@@ -717,9 +576,7 @@ label:
 
 static int64_t
 time2 (struct bson_tm *const tmp,
-       struct bson_tm *(*const funcp) (const int64_t *,
-                                       int_fast32_t,
-                                       struct bson_tm *),
+       struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
        const int_fast32_t offset,
        int64_t *const okayp)
 {
@@ -736,9 +593,7 @@ time2 (struct bson_tm *const tmp,
 
 static int64_t
 time1 (struct bson_tm *const tmp,
-       struct bson_tm *(*const funcp) (const int64_t *,
-                                       int_fast32_t,
-                                       struct bson_tm *),
+       struct bson_tm *(*const funcp) (const int64_t *, int_fast32_t, struct bson_tm *),
        const int_fast32_t offset)
 {
    int64_t t;

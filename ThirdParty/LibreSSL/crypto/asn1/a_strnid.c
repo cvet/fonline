@@ -1,4 +1,4 @@
-/* $OpenBSD: a_strnid.c,v 1.21 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: a_strnid.c,v 1.31 2024/03/02 08:54:02 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -56,25 +56,22 @@
  *
  */
 
-#include <ctype.h>
-#include <stdio.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/objects.h>
 
-static STACK_OF(ASN1_STRING_TABLE) *stable = NULL;
-static void st_free(ASN1_STRING_TABLE *tbl);
-static int sk_table_cmp(const ASN1_STRING_TABLE * const *a,
-    const ASN1_STRING_TABLE * const *b);
-
-
-/* This is the global mask for the mbstring functions: this is use to
+/*
+ * XXX - unprotected global state
+ *
+ * This is the global mask for the mbstring functions: this is used to
  * mask out certain types (such as BMPString and UTF8String) because
  * certain software (e.g. Netscape) has problems with them.
  */
-
 static unsigned long global_mask = B_ASN1_UTF8STRING;
 
 void
@@ -82,14 +79,17 @@ ASN1_STRING_set_default_mask(unsigned long mask)
 {
 	global_mask = mask;
 }
+LCRYPTO_ALIAS(ASN1_STRING_set_default_mask);
 
 unsigned long
 ASN1_STRING_get_default_mask(void)
 {
 	return global_mask;
 }
+LCRYPTO_ALIAS(ASN1_STRING_get_default_mask);
 
-/* This function sets the default to various "flavours" of configuration.
+/*
+ * This function sets the default to various "flavours" of configuration
  * based on an ASCII string. Currently this is:
  * MASK:XXXX : a numerical mask value.
  * nobmp : Don't use BMPStrings (just Printable, T61).
@@ -103,28 +103,36 @@ ASN1_STRING_set_default_mask_asc(const char *p)
 {
 	unsigned long mask;
 	char *end;
+	int save_errno;
 
-	if (!strncmp(p, "MASK:", 5)) {
-		if (!p[5])
+	if (strncmp(p, "MASK:", 5) == 0) {
+		if (p[5] == '\0')
 			return 0;
+		save_errno = errno;
+		errno = 0;
 		mask = strtoul(p + 5, &end, 0);
-		if (*end)
+		if (errno == ERANGE && mask == ULONG_MAX)
 			return 0;
-	} else if (!strcmp(p, "nombstr"))
+		errno = save_errno;
+		if (*end != '\0')
+			return 0;
+	} else if (strcmp(p, "nombstr") == 0)
 		mask = ~((unsigned long)(B_ASN1_BMPSTRING|B_ASN1_UTF8STRING));
-	else if (!strcmp(p, "pkix"))
+	else if (strcmp(p, "pkix") == 0)
 		mask = ~((unsigned long)B_ASN1_T61STRING);
-	else if (!strcmp(p, "utf8only"))
+	else if (strcmp(p, "utf8only") == 0)
 		mask = B_ASN1_UTF8STRING;
-	else if (!strcmp(p, "default"))
+	else if (strcmp(p, "default") == 0)
 		mask = 0xFFFFFFFFL;
 	else
 		return 0;
 	ASN1_STRING_set_default_mask(mask);
 	return 1;
 }
+LCRYPTO_ALIAS(ASN1_STRING_set_default_mask_asc);
 
-/* The following function generates an ASN1_STRING based on limits in a table.
+/*
+ * The following function generates an ASN1_STRING based on limits in a table.
  * Frequently the types and length of an ASN1_STRING are restricted by a
  * corresponding OID. For example certificates and certificate requests.
  */
@@ -133,16 +141,17 @@ ASN1_STRING *
 ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in, int inlen,
     int inform, int nid)
 {
-	ASN1_STRING_TABLE *tbl;
+	const ASN1_STRING_TABLE *tbl;
 	ASN1_STRING *str = NULL;
 	unsigned long mask;
 	int ret;
-	if (!out)
+
+	if (out == NULL)
 		out = &str;
 	tbl = ASN1_STRING_TABLE_get(nid);
-	if (tbl) {
+	if (tbl != NULL) {
 		mask = tbl->mask;
-		if (!(tbl->flags & STABLE_NO_MASK))
+		if ((tbl->flags & STABLE_NO_MASK) == 0)
 			mask &= global_mask;
 		ret = ASN1_mbstring_ncopy(out, in, inlen, inform, mask,
 		    tbl->minsize, tbl->maxsize);
@@ -153,12 +162,9 @@ ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in, int inlen,
 		return NULL;
 	return *out;
 }
+LCRYPTO_ALIAS(ASN1_STRING_set_by_NID);
 
-/* Now the tables and helper functions for the string table:
- */
-
-/* size limits: this stuff is taken straight from RFC3280 */
-
+/* From RFC 5280, Appendix A.1. */
 #define ub_name				32768
 #define ub_common_name			64
 #define ub_locality_name		128
@@ -166,141 +172,158 @@ ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in, int inlen,
 #define ub_organization_name		64
 #define ub_organization_unit_name	64
 #define ub_title			64
-#define ub_email_address		128
+#define ub_email_address		128 /* XXX - bumped to 255 in RFC 5280 */
 #define ub_serial_number		64
 
-
-/* This table must be kept in NID order */
-
 static const ASN1_STRING_TABLE tbl_standard[] = {
-	{NID_commonName,		1, ub_common_name, DIRSTRING_TYPE, 0},
-	{NID_countryName,		2, 2, B_ASN1_PRINTABLESTRING, STABLE_NO_MASK},
-	{NID_localityName,		1, ub_locality_name, DIRSTRING_TYPE, 0},
-	{NID_stateOrProvinceName,	1, ub_state_name, DIRSTRING_TYPE, 0},
-	{NID_organizationName,		1, ub_organization_name, DIRSTRING_TYPE, 0},
-	{NID_organizationalUnitName,	1, ub_organization_unit_name, DIRSTRING_TYPE, 0},
-	{NID_pkcs9_emailAddress,	1, ub_email_address, B_ASN1_IA5STRING, STABLE_NO_MASK},
-	{NID_pkcs9_unstructuredName,	1, -1, PKCS9STRING_TYPE, 0},
-	{NID_pkcs9_challengePassword,	1, -1, PKCS9STRING_TYPE, 0},
-	{NID_pkcs9_unstructuredAddress,	1, -1, DIRSTRING_TYPE, 0},
-	{NID_givenName,			1, ub_name, DIRSTRING_TYPE, 0},
-	{NID_surname,			1, ub_name, DIRSTRING_TYPE, 0},
-	{NID_initials,			1, ub_name, DIRSTRING_TYPE, 0},
-	{NID_serialNumber,		1, ub_serial_number, B_ASN1_PRINTABLESTRING, STABLE_NO_MASK},
-	{NID_friendlyName,		-1, -1, B_ASN1_BMPSTRING, STABLE_NO_MASK},
-	{NID_name,			1, ub_name, DIRSTRING_TYPE, 0},
-	{NID_dnQualifier,		-1, -1, B_ASN1_PRINTABLESTRING, STABLE_NO_MASK},
-	{NID_domainComponent,		1, -1, B_ASN1_IA5STRING, STABLE_NO_MASK},
-	{NID_ms_csp_name,		-1, -1, B_ASN1_BMPSTRING, STABLE_NO_MASK}
+	{
+		.nid = NID_commonName,
+		.minsize = 1,
+		.maxsize = ub_common_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_countryName,
+		.minsize = 2,
+		.maxsize = 2,
+		.mask = B_ASN1_PRINTABLESTRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_localityName,
+		.minsize = 1,
+		.maxsize = ub_locality_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_stateOrProvinceName,
+		.minsize = 1,
+		.maxsize = ub_state_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_organizationName,
+		.minsize = 1,
+		.maxsize = ub_organization_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_organizationalUnitName,
+		.minsize = 1,
+		.maxsize = ub_organization_unit_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_pkcs9_emailAddress,
+		.minsize = 1,
+		.maxsize = ub_email_address,
+		.mask = B_ASN1_IA5STRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_pkcs9_unstructuredName,
+		.minsize = 1,
+		.maxsize = -1,
+		.mask = PKCS9STRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_pkcs9_challengePassword,
+		.minsize = 1,
+		.maxsize = -1,
+		.mask = PKCS9STRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_pkcs9_unstructuredAddress,
+		.minsize = 1,
+		.maxsize = -1,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_givenName,
+		.minsize = 1,
+		.maxsize = ub_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_surname,
+		.minsize = 1,
+		.maxsize = ub_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_initials,
+		.minsize = 1,
+		.maxsize = ub_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_serialNumber,
+		.minsize = 1,
+		.maxsize = ub_serial_number,
+		.mask = B_ASN1_PRINTABLESTRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_friendlyName,
+		.minsize = -1,
+		.maxsize = -1,
+		.mask = B_ASN1_BMPSTRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_name,
+		.minsize = 1,
+		.maxsize = ub_name,
+		.mask = DIRSTRING_TYPE,
+		.flags = 0,
+	},
+	{
+		.nid = NID_dnQualifier,
+		.minsize = -1,
+		.maxsize = -1,
+		.mask = B_ASN1_PRINTABLESTRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_domainComponent,
+		.minsize = 1,
+		.maxsize = -1,
+		.mask = B_ASN1_IA5STRING,
+		.flags = STABLE_NO_MASK,
+	},
+	{
+		.nid = NID_ms_csp_name,
+		.minsize = -1,
+		.maxsize = -1,
+		.mask = B_ASN1_BMPSTRING,
+		.flags = STABLE_NO_MASK,
+	},
 };
 
-static int
-sk_table_cmp(const ASN1_STRING_TABLE * const *a,
-    const ASN1_STRING_TABLE * const *b)
-{
-	return (*a)->nid - (*b)->nid;
-}
+#define N_STRING_TABLE_ENTRIES (sizeof(tbl_standard) / sizeof(tbl_standard[0]))
 
-static int table_cmp_BSEARCH_CMP_FN(const void *, const void *);
-static int table_cmp(ASN1_STRING_TABLE const *, ASN1_STRING_TABLE const *);
-static ASN1_STRING_TABLE *OBJ_bsearch_table(ASN1_STRING_TABLE *key, ASN1_STRING_TABLE const *base, int num);
-
-static int
-table_cmp(const ASN1_STRING_TABLE *a, const ASN1_STRING_TABLE *b)
-{
-	return a->nid - b->nid;
-}
-
-
-static int
-table_cmp_BSEARCH_CMP_FN(const void *a_, const void *b_)
-{
-	ASN1_STRING_TABLE const *a = a_;
-	ASN1_STRING_TABLE const *b = b_;
-	return table_cmp(a, b);
-}
-
-static ASN1_STRING_TABLE *
-OBJ_bsearch_table(ASN1_STRING_TABLE *key, ASN1_STRING_TABLE const *base, int num)
-{
-	return (ASN1_STRING_TABLE *)OBJ_bsearch_(key, base, num, sizeof(ASN1_STRING_TABLE),
-	    table_cmp_BSEARCH_CMP_FN);
-}
-
-ASN1_STRING_TABLE *
+const ASN1_STRING_TABLE *
 ASN1_STRING_TABLE_get(int nid)
 {
-	int idx;
-	ASN1_STRING_TABLE *ttmp;
-	ASN1_STRING_TABLE fnd;
+	size_t i;
 
-	fnd.nid = nid;
-	ttmp = OBJ_bsearch_table(&fnd, tbl_standard,
-	    sizeof(tbl_standard)/sizeof(ASN1_STRING_TABLE));
-	if (ttmp)
-		return ttmp;
-	if (!stable)
-		return NULL;
-	idx = sk_ASN1_STRING_TABLE_find(stable, &fnd);
-	if (idx < 0)
-		return NULL;
-	return sk_ASN1_STRING_TABLE_value(stable, idx);
-}
-
-int
-ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize, unsigned long mask,
-    unsigned long flags)
-{
-	ASN1_STRING_TABLE *tmp;
-	char new_nid = 0;
-
-	flags &= ~STABLE_FLAGS_MALLOC;
-	if (!stable)
-		stable = sk_ASN1_STRING_TABLE_new(sk_table_cmp);
-	if (!stable) {
-		ASN1error(ERR_R_MALLOC_FAILURE);
-		return 0;
+	for (i = 0; i < N_STRING_TABLE_ENTRIES; i++) {
+		const ASN1_STRING_TABLE *entry = &tbl_standard[i];
+		if (entry->nid == nid)
+			return entry;
 	}
-	if (!(tmp = ASN1_STRING_TABLE_get(nid))) {
-		tmp = malloc(sizeof(ASN1_STRING_TABLE));
-		if (!tmp) {
-			ASN1error(ERR_R_MALLOC_FAILURE);
-			return 0;
-		}
-		tmp->flags = flags | STABLE_FLAGS_MALLOC;
-		tmp->nid = nid;
-		new_nid = 1;
-	} else tmp->flags = (tmp->flags & STABLE_FLAGS_MALLOC) | flags;
-		if (minsize != -1)
-		tmp->minsize = minsize;
-	if (maxsize != -1)
-		tmp->maxsize = maxsize;
-	tmp->mask = mask;
-	if (new_nid) {
-		if (sk_ASN1_STRING_TABLE_push(stable, tmp) == 0) {
-			free(tmp);
-			ASN1error(ERR_R_MALLOC_FAILURE);
-			return 0;
-		}
-	}
-	return 1;
-}
 
-void
-ASN1_STRING_TABLE_cleanup(void)
-{
-	STACK_OF(ASN1_STRING_TABLE) *tmp;
-
-	tmp = stable;
-	if (!tmp)
-		return;
-	stable = NULL;
-	sk_ASN1_STRING_TABLE_pop_free(tmp, st_free);
+	return NULL;
 }
-
-static void
-st_free(ASN1_STRING_TABLE *tbl)
-{
-	if (tbl->flags & STABLE_FLAGS_MALLOC)
-		free(tbl);
-}
+LCRYPTO_ALIAS(ASN1_STRING_TABLE_get);

@@ -20,7 +20,6 @@ set(
 	gendsa.c
 	genpkey.c
 	genrsa.c
-	nseq.c
 	ocsp.c
 	openssl.c
 	passwd.c
@@ -43,7 +42,6 @@ set(
 	sess_id.c
 	smime.c
 	speed.c
-	spkac.c
 	ts.c
 	verify.c
 	version.c
@@ -61,24 +59,22 @@ if(WIN32)
 	set(OPENSSL_SRC ${OPENSSL_SRC} compat/poll_win.c)
 endif()
 
-check_function_exists(strtonum HAVE_STRTONUM)
-if(HAVE_STRTONUM AND CMAKE_SYSTEM_NAME MATCHES "Darwin" AND
-    CMAKE_HOST_SYSTEM_VERSION VERSION_GREATER_EQUAL 20)
-	add_definitions(-DHAVE_STRTONUM)
-else()
-	set(OPENSSL_SRC ${OPENSSL_SRC} compat/strtonum.c)
-endif()
-
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-        check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
-        if(NOT HAVE_CLOCK_GETTIME)
-                set(OPENSSL_SRC ${OPENSSL_SRC} compat/clock_gettime_osx.c)
-        endif()
+	check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
+	if(NOT HAVE_CLOCK_GETTIME)
+			set(OPENSSL_SRC ${OPENSSL_SRC} compat/clock_gettime_osx.c)
+	endif()
 endif()
 
 add_executable(openssl ${OPENSSL_SRC})
-target_include_directories(openssl PRIVATE . ../../include/compat)
-target_link_libraries(openssl ${OPENSSL_LIBS})
+target_include_directories(openssl
+	PRIVATE
+		.
+		../../include/compat
+	PUBLIC
+		../../include
+		${CMAKE_BINARY_DIR}/include)
+target_link_libraries(openssl ${OPENSSL_LIBS} compat_obj)
 
 if(ENABLE_LIBRESSL_INSTALL)
 	install(TARGETS openssl DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,16 @@
  */
 
 
-#include "bson-compat.h"
-#include "bson-macros.h"
-#include "bson-error.h"
-#include "bson-iso8601-private.h"
-#include "bson-json.h"
-#include "bson-timegm-private.h"
+#include <bson/bson-compat.h>
+#include <bson/bson-macros.h>
+#include <bson/bson-error.h>
+#include <bson/bson-iso8601-private.h>
+#include <bson/bson-json.h>
+#include <bson/bson-timegm-private.h>
 
 
 static bool
-get_tok (const char *terminals,
-         const char **ptr,
-         int32_t *remaining,
-         const char **out,
-         int32_t *out_len)
+get_tok (const char *terminals, const char **ptr, int32_t *remaining, const char **out, int32_t *out_len)
 {
    const char *terminal;
    bool found_terminal = false;
@@ -41,8 +37,7 @@ get_tok (const char *terminals,
    *out = *ptr;
    *out_len = -1;
 
-   for (; *remaining && !found_terminal;
-        (*ptr)++, (*remaining)--, (*out_len)++) {
+   for (; *remaining && !found_terminal; (*ptr)++, (*remaining)--, (*out_len)++) {
       for (terminal = terminals; *terminal; terminal++) {
          if (**ptr == *terminal) {
             found_terminal = true;
@@ -73,12 +68,7 @@ digits_only (const char *str, int32_t len)
 }
 
 static bool
-parse_num (const char *str,
-           int32_t len,
-           int32_t digits,
-           int32_t min,
-           int32_t max,
-           int32_t *out)
+parse_num (const char *str, int32_t len, int32_t digits, int32_t min, int32_t max, int32_t *out)
 {
    int i;
    int magnitude = 1;
@@ -102,10 +92,7 @@ parse_num (const char *str,
 }
 
 bool
-_bson_iso8601_date_parse (const char *str,
-                          int32_t len,
-                          int64_t *out,
-                          bson_error_t *error)
+_bson_iso8601_date_parse (const char *str, int32_t len, int64_t *out, bson_error_t *error)
 {
    const char *ptr;
    int32_t remaining = len;
@@ -139,25 +126,21 @@ _bson_iso8601_date_parse (const char *str,
 
    struct bson_tm posix_date = {0};
 
-#define DATE_PARSE_ERR(msg)                                \
-   bson_set_error (error,                                  \
-                   BSON_ERROR_JSON,                        \
-                   BSON_JSON_ERROR_READ_INVALID_PARAM,     \
-                   "Could not parse \"%s\" as date: " msg, \
-                   str);                                   \
+#define DATE_PARSE_ERR(msg)                                                                                     \
+   bson_set_error (                                                                                             \
+      error, BSON_ERROR_JSON, BSON_JSON_ERROR_READ_INVALID_PARAM, "Could not parse \"%s\" as date: " msg, str); \
    return false
 
 #define DEFAULT_DATE_PARSE_ERR                                                 \
    DATE_PARSE_ERR ("use ISO8601 format yyyy-mm-ddThh:mm plus timezone, either" \
-                   " \"Z\" or like \"+0500\"")
+                   " \"Z\" or like \"+0500\" or like \"+05:00\"")
 
    ptr = str;
 
    /* we have to match at least yyyy-mm-ddThh:mm */
    if (!(get_tok ("-", &ptr, &remaining, &year_ptr, &year_len) &&
          get_tok ("-", &ptr, &remaining, &month_ptr, &month_len) &&
-         get_tok ("T", &ptr, &remaining, &day_ptr, &day_len) &&
-         get_tok (":", &ptr, &remaining, &hour_ptr, &hour_len) &&
+         get_tok ("T", &ptr, &remaining, &day_ptr, &day_len) && get_tok (":", &ptr, &remaining, &hour_ptr, &hour_len) &&
          get_tok (":+-Z", &ptr, &remaining, &min_ptr, &min_len))) {
       DEFAULT_DATE_PARSE_ERR;
    }
@@ -231,7 +214,8 @@ _bson_iso8601_date_parse (const char *str,
          int32_t tz_hour;
          int32_t tz_min;
 
-         if (tz_len != 5 || !digits_only (tz_ptr + 1, 4)) {
+         if ((tz_len != 5 || !digits_only (tz_ptr + 1, 4)) &&
+             (tz_len != 6 || !digits_only (tz_ptr + 1, 2) || tz_ptr[3] != ':' || !digits_only (tz_ptr + 4, 2))) {
             DATE_PARSE_ERR ("could not parse timezone");
          }
 
@@ -239,14 +223,14 @@ _bson_iso8601_date_parse (const char *str,
             DATE_PARSE_ERR ("timezone hour must be at most 23");
          }
 
-         if (!parse_num (tz_ptr + 3, 2, -1, 0, 59, &tz_min)) {
+         int32_t tz_min_offset = tz_ptr[3] == ':' ? 1 : 0;
+         if (!parse_num (tz_ptr + 3 + tz_min_offset, 2, -1, 0, 59, &tz_min)) {
             DATE_PARSE_ERR ("timezone minute must be at most 59");
          }
 
          /* we inflect the meaning of a 'positive' timezone.  Those are hours
           * we have to subtract, and vice versa */
-         tz_adjustment =
-            (tz_ptr[0] == '-' ? 1 : -1) * ((tz_min * 60) + (tz_hour * 60 * 60));
+         tz_adjustment = (tz_ptr[0] == '-' ? 1 : -1) * ((tz_min * 60) + (tz_hour * 60 * 60));
 
          if (!(tz_adjustment > -86400 && tz_adjustment < 86400)) {
             DATE_PARSE_ERR ("timezone offset must be less than 24 hours");
@@ -294,40 +278,4 @@ _bson_iso8601_date_parse (const char *str,
    *out = millis;
 
    return true;
-}
-
-
-void
-_bson_iso8601_date_format (int64_t msec_since_epoch, bson_string_t *str)
-{
-   time_t t;
-   int64_t msecs_part;
-   char buf[64];
-
-   msecs_part = msec_since_epoch % 1000;
-   t = (time_t) (msec_since_epoch / 1000);
-
-#ifdef BSON_HAVE_GMTIME_R
-   {
-      struct tm posix_date;
-      gmtime_r (&t, &posix_date);
-      strftime (buf, sizeof buf, "%Y-%m-%dT%H:%M:%S", &posix_date);
-   }
-#elif defined(_MSC_VER)
-   {
-      /* Windows gmtime_s is thread-safe */
-      struct tm time_buf;
-      gmtime_s (&time_buf, &t);
-      strftime (buf, sizeof buf, "%Y-%m-%dT%H:%M:%S", &time_buf);
-   }
-#else
-   strftime (buf, sizeof buf, "%Y-%m-%dT%H:%M:%S", gmtime (&t));
-#endif
-
-   if (msecs_part) {
-      bson_string_append_printf (str, "%s.%03" PRId64 "Z", buf, msecs_part);
-   } else {
-      bson_string_append (str, buf);
-      bson_string_append_c (str, 'Z');
-   }
 }

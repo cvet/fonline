@@ -1,5 +1,8 @@
-.\"	$OpenBSD: lh_new.3,v 1.7 2020/03/28 22:40:58 schwarze Exp $
-.\"	OpenSSL 1bc74519 May 20 08:11:46 2016 -0400
+.\" $OpenBSD: lh_new.3,v 1.13 2024/03/05 22:15:29 tb Exp $
+.\" full merge up to:
+.\" OpenSSL doc/crypto/lhash.pod 1bc74519 May 20 08:11:46 2016 -0400
+.\" selective merge up to:
+.\" OpenSSL doc/man3/OPENSSL_LH_COMPFUNC.pod 24a535ea Sep 22 13:14:20 2020 +0100
 .\"
 .\" --------------------------------------------------------------------------
 .\" Major patches to this file were contributed by
@@ -115,7 +118,7 @@
 .\" copied and put under another distribution licence
 .\" [including the GNU Public Licence.]
 .\"
-.Dd $Mdocdate: March 28 2020 $
+.Dd $Mdocdate: March 5 2024 $
 .Dt LH_NEW 3
 .Os
 .Sh NAME
@@ -126,7 +129,12 @@
 .Nm lh_retrieve ,
 .Nm lh_doall ,
 .Nm lh_doall_arg ,
-.Nm lh_error
+.Nm lh_error ,
+.Nm LHASH_COMP_FN_TYPE ,
+.Nm LHASH_HASH_FN_TYPE ,
+.Nm LHASH_DOALL_FN_TYPE ,
+.Nm LHASH_DOALL_ARG_FN_TYPE ,
+.Nm lh_strhash
 .Nd dynamic hash table
 .Sh SYNOPSIS
 .In openssl/lhash.h
@@ -149,7 +157,7 @@
 .Fc
 .Ft <type> *
 .Fo lh_<type>_retrieve
-.Fa "LHASH_OF<type>) *table"
+.Fa "LHASH_OF(<type>) *table"
 .Fa "<type> *data"
 .Fc
 .Ft void
@@ -185,6 +193,10 @@
 .Fo (*LHASH_DOALL_ARG_FN_TYPE)
 .Fa "const void *"
 .Fa "const void *"
+.Fc
+.Ft unsigned long
+.Fo lh_strhash
+.Fa "const char *c"
 .Fc
 .Sh DESCRIPTION
 This library implements type-checked dynamic hash tables.
@@ -330,15 +342,8 @@ lh_STUFF_doall(hashtable, LHASH_DOALL_FN(STUFF_cleanup));
 lh_STUFF_free(hashtable);
 .Ed
 .Pp
-When doing this, be careful if you delete entries from the hash table in
-your callbacks: the table may decrease in size, moving the item that you
-are currently on down lower in the hash table \(em this could cause some
-entries to be skipped during the iteration.
-The second best solution to this problem is to set hash->down_load=0
-before you start (which will stop the hash table ever decreasing in
-size).
-The best solution is probably to avoid deleting items from the hash
-table inside a doall callback!
+A callback may delete entries from the hash table, however, it is
+not safe to insert new entries.
 .Pp
 .Fn lh_<type>_doall_arg
 is the same as
@@ -374,8 +379,6 @@ lh_STUFF_doall_arg(hashtable, LHASH_DOALL_ARG_FN(STUFF_print), BIO,
 .Pp
 .Fn lh_<type>_error
 can be used to determine if an error occurred in the last operation.
-.Fn lh_<type>_error
-is a macro.
 .Sh RETURN VALUES
 .Fn lh_<type>_new
 returns
@@ -476,7 +479,7 @@ The load is the number of items in the hash table divided by the size of
 the hash table.
 The default values are as follows.
 If (hash->up_load < load) => expand.
-if (hash->down_load > load) => contract.
+If (hash->down_load > load) => contract.
 The
 .Fa up_load
 has a default value of 1 and
@@ -491,12 +494,12 @@ variables.
 The 'load' is kept in a form which is multiplied by 256.
 So hash->up_load=8*256 will cause a load of 8 to be set.
 .Pp
-If you are interested in performance the field to watch is
+If you are interested in performance, the field to watch is
 .Fa num_comp_calls .
 The hash library keeps track of the 'hash' value for each item so when a
 lookup is done, the 'hashes' are compared, if there is a match, then a
 full compare is done, and hash->num_comp_calls is incremented.
-If num_comp_calls is not equal to num_delete plus num_retrieve it means
+If num_comp_calls is not equal to num_delete plus num_retrieve, it means
 that your hash function is generating hashes that are the same for
 different values.
 It is probably worth changing your hash function if this is the case
@@ -507,26 +510,23 @@ compares and 10 linked list traverses.
 This will be much less expensive that 10 calls to your compare function.
 .Pp
 .Fn lh_strhash
-is a demo string hashing function:
-.Pp
-.Dl unsigned long lh_strhash(const char *c);
-.Pp
+is a demo string hashing function.
 Since the LHASH routines would normally be passed structures, this
 routine would not normally be passed to
 .Fn lh_<type>_new ,
 rather it would be used in the function passed to
 .Fn lh_<type>_new .
 .Sh SEE ALSO
-.Xr crypto 3 ,
-.Xr lh_stats 3
+.Xr crypto 3
 .Sh HISTORY
 .Fn lh_new ,
 .Fn lh_free ,
 .Fn lh_insert ,
 .Fn lh_delete ,
 .Fn lh_retrieve ,
+.Fn lh_doall ,
 and
-.Fn lh_doall
+.Fn lh_strhash
 appeared in SSLeay 0.4 or earlier.
 .Fn lh_doall_arg
 first appeared in SSLeay 0.5.1.

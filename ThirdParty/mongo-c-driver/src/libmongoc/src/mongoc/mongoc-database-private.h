@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_DATABASE_PRIVATE_H
 #define MONGOC_DATABASE_PRIVATE_H
 
 #include <bson/bson.h>
 
-#include "mongoc-client.h"
-#include "mongoc-read-prefs.h"
-#include "mongoc-read-concern.h"
-#include "mongoc-write-concern.h"
+#include <mongoc/mongoc-client.h>
+#include <mongoc/mongoc-read-prefs.h>
+#include <mongoc/mongoc-read-concern.h>
+#include <mongoc/mongoc-write-concern.h>
 
 BSON_BEGIN_DECLS
 
@@ -50,22 +50,16 @@ _mongoc_database_new (mongoc_client_t *client,
  * encryptedFields is always initialized on return.
  */
 bool
-_mongoc_get_encryptedFields_from_map (mongoc_client_t *client,
-                                      const char *dbName,
-                                      const char *collName,
-                                      bson_t *encryptedFields,
-                                      bson_error_t *error);
+_mongoc_get_encryptedFields_from_map (
+   mongoc_client_t *client, const char *dbName, const char *collName, bson_t *encryptedFields, bson_error_t *error);
 
 /* _mongoc_get_encryptedFields_from_map checks the collection has an
  * encryptedFields by running listCollections.
  * encryptedFields is always initialized on return.
  */
 bool
-_mongoc_get_encryptedFields_from_server (mongoc_client_t *client,
-                                         const char *dbName,
-                                         const char *collName,
-                                         bson_t *encryptedFields,
-                                         bson_error_t *error);
+_mongoc_get_encryptedFields_from_server (
+   mongoc_client_t *client, const char *dbName, const char *collName, bson_t *encryptedFields, bson_error_t *error);
 
 /**
  * @brief Look up the encryptedFields to use for the given collection.
@@ -103,11 +97,10 @@ _mongoc_get_collection_encryptedFields (mongoc_client_t *client,
 /* _mongoc_get_encryptedField_state_collection returns the state collection
  * name. Returns NULL on error. */
 char *
-_mongoc_get_encryptedField_state_collection (
-   const bson_t *encryptedFields,
-   const char *data_collection,
-   const char *state_collection_suffix,
-   bson_error_t *error);
+_mongoc_get_encryptedField_state_collection (const bson_t *encryptedFields,
+                                             const char *data_collection,
+                                             const char *state_collection_suffix,
+                                             bson_error_t *error);
 
 BSON_END_DECLS
 

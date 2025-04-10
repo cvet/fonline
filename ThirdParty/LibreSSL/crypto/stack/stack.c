@@ -1,4 +1,4 @@
-/* $OpenBSD: stack.c,v 1.20 2018/04/01 00:36:28 schwarze Exp $ */
+/* $OpenBSD: stack.c,v 1.28 2024/03/02 11:20:36 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,16 +56,20 @@
  * [including the GNU Public Licence.]
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <openssl/objects.h>
 #include <openssl/stack.h>
 
+#include "stack_local.h"
+
 #undef MIN_NODES
 #define MIN_NODES	4
 
-#include <errno.h>
+#define OBJ_BSEARCH_VALUE_ON_NOMATCH		0x01
+#define OBJ_BSEARCH_FIRST_VALUE_ON_MATCH	0x02
 
 int
 (*sk_set_cmp_func(_STACK *sk, int (*c)(const void *, const void *)))(
@@ -79,6 +83,7 @@ int
 
 	return old;
 }
+LCRYPTO_ALIAS(sk_set_cmp_func);
 
 _STACK *
 sk_dup(_STACK *sk)
@@ -105,12 +110,14 @@ err:
 		sk_free(ret);
 	return (NULL);
 }
+LCRYPTO_ALIAS(sk_dup);
 
 _STACK *
 sk_new_null(void)
 {
 	return sk_new((int (*)(const void *, const void *))0);
 }
+LCRYPTO_ALIAS(sk_new_null);
 
 _STACK *
 sk_new(int (*c)(const void *, const void *))
@@ -134,6 +141,7 @@ err:
 	free(ret);
 	return (NULL);
 }
+LCRYPTO_ALIAS(sk_new);
 
 int
 sk_insert(_STACK *st, void *data, int loc)
@@ -160,6 +168,7 @@ sk_insert(_STACK *st, void *data, int loc)
 	st->sorted = 0;
 	return (st->num);
 }
+LCRYPTO_ALIAS(sk_insert);
 
 void *
 sk_delete_ptr(_STACK *st, void *p)
@@ -171,6 +180,7 @@ sk_delete_ptr(_STACK *st, void *p)
 			return (sk_delete(st, i));
 	return (NULL);
 }
+LCRYPTO_ALIAS(sk_delete_ptr);
 
 void *
 sk_delete(_STACK *st, int loc)
@@ -187,6 +197,40 @@ sk_delete(_STACK *st, int loc)
 	}
 	st->num--;
 	return (ret);
+}
+LCRYPTO_ALIAS(sk_delete);
+
+static const void *
+obj_bsearch_ex(const void *key, const void *base_, int num, int size,
+    int (*cmp)(const void *, const void *), int flags)
+{
+	const char *base = base_;
+	int l, h, i = 0, c = 0;
+	const char *p = NULL;
+
+	if (num == 0)
+		return (NULL);
+	l = 0;
+	h = num;
+	while (l < h) {
+		i = (l + h) / 2;
+		p = &(base[i * size]);
+		c = (*cmp)(key, p);
+		if (c < 0)
+			h = i;
+		else if (c > 0)
+			l = i + 1;
+		else
+			break;
+	}
+	if (c != 0 && !(flags & OBJ_BSEARCH_VALUE_ON_NOMATCH))
+		p = NULL;
+	else if (c == 0 && (flags & OBJ_BSEARCH_FIRST_VALUE_ON_MATCH)) {
+		while (i > 0 && (*cmp)(key, &(base[(i - 1) * size])) == 0)
+			i--;
+		p = &(base[i * size]);
+	}
+	return (p);
 }
 
 static int
@@ -207,7 +251,7 @@ internal_find(_STACK *st, void *data, int ret_val_options)
 	sk_sort(st);
 	if (data == NULL)
 		return (-1);
-	r = OBJ_bsearch_ex_(&data, st->data, st->num, sizeof(void *), st->comp,
+	r = obj_bsearch_ex(&data, st->data, st->num, sizeof(void *), st->comp,
 	    ret_val_options);
 	if (r == NULL)
 		return (-1);
@@ -219,24 +263,21 @@ sk_find(_STACK *st, void *data)
 {
 	return internal_find(st, data, OBJ_BSEARCH_FIRST_VALUE_ON_MATCH);
 }
-
-int
-sk_find_ex(_STACK *st, void *data)
-{
-	return internal_find(st, data, OBJ_BSEARCH_VALUE_ON_NOMATCH);
-}
+LCRYPTO_ALIAS(sk_find);
 
 int
 sk_push(_STACK *st, void *data)
 {
 	return (sk_insert(st, data, st->num));
 }
+LCRYPTO_ALIAS(sk_push);
 
 int
 sk_unshift(_STACK *st, void *data)
 {
 	return (sk_insert(st, data, 0));
 }
+LCRYPTO_ALIAS(sk_unshift);
 
 void *
 sk_shift(_STACK *st)
@@ -247,6 +288,7 @@ sk_shift(_STACK *st)
 		return (NULL);
 	return (sk_delete(st, 0));
 }
+LCRYPTO_ALIAS(sk_shift);
 
 void *
 sk_pop(_STACK *st)
@@ -257,6 +299,7 @@ sk_pop(_STACK *st)
 		return (NULL);
 	return (sk_delete(st, st->num - 1));
 }
+LCRYPTO_ALIAS(sk_pop);
 
 void
 sk_zero(_STACK *st)
@@ -268,6 +311,7 @@ sk_zero(_STACK *st)
 	memset(st->data, 0, sizeof(st->data)*st->num);
 	st->num = 0;
 }
+LCRYPTO_ALIAS(sk_zero);
 
 void
 sk_pop_free(_STACK *st, void (*func)(void *))
@@ -281,6 +325,7 @@ sk_pop_free(_STACK *st, void (*func)(void *))
 			func(st->data[i]);
 	sk_free(st);
 }
+LCRYPTO_ALIAS(sk_pop_free);
 
 void
 sk_free(_STACK *st)
@@ -290,6 +335,7 @@ sk_free(_STACK *st)
 	free(st->data);
 	free(st);
 }
+LCRYPTO_ALIAS(sk_free);
 
 int
 sk_num(const _STACK *st)
@@ -298,6 +344,7 @@ sk_num(const _STACK *st)
 		return -1;
 	return st->num;
 }
+LCRYPTO_ALIAS(sk_num);
 
 void *
 sk_value(const _STACK *st, int i)
@@ -306,6 +353,7 @@ sk_value(const _STACK *st, int i)
 		return NULL;
 	return st->data[i];
 }
+LCRYPTO_ALIAS(sk_value);
 
 void *
 sk_set(_STACK *st, int i, void *value)
@@ -315,6 +363,7 @@ sk_set(_STACK *st, int i, void *value)
 	st->sorted = 0;
 	return (st->data[i] = value);
 }
+LCRYPTO_ALIAS(sk_set);
 
 void
 sk_sort(_STACK *st)
@@ -332,11 +381,22 @@ sk_sort(_STACK *st)
 		st->sorted = 1;
 	}
 }
+LCRYPTO_ALIAS(sk_sort);
 
 int
 sk_is_sorted(const _STACK *st)
 {
-	if (!st)
+	if (st == NULL)
 		return 1;
-	return st->sorted;
+
+	if (st->sorted)
+		return 1;
+
+	/* If there is no comparison function we cannot sort. */
+	if (st->comp == NULL)
+		return 0;
+
+	/* Lists with zero or one elements are always sorted. */
+	return st->num <= 1;
 }
+LCRYPTO_ALIAS(sk_is_sorted);

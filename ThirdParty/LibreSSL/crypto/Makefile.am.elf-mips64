@@ -1,0 +1,17 @@
+ASM_MIPS64_ELF = aes/aes-mips.S
+ASM_MIPS64_ELF += bn/bn-mips.S
+ASM_MIPS64_ELF += bn/mont-mips.S
+ASM_MIPS64_ELF += sha/sha1-mips.S
+ASM_MIPS64_ELF += sha/sha512-mips.S
+ASM_MIPS64_ELF += sha/sha256-mips.S
+
+EXTRA_DIST += $(ASM_MIPS64_ELF)
+
+if HOST_ASM_ELF_MIPS64
+libcrypto_la_CPPFLAGS += -DAES_ASM
+libcrypto_la_CPPFLAGS += -DOPENSSL_BN_ASM_MONT
+libcrypto_la_CPPFLAGS += -DSHA1_ASM
+libcrypto_la_CPPFLAGS += -DSHA256_ASM
+libcrypto_la_CPPFLAGS += -DSHA512_ASM
+libcrypto_la_SOURCES += $(ASM_MIPS64_ELF)
+endif

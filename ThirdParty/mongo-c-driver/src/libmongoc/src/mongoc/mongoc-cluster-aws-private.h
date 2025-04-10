@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-present MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_CLUSTER_AWS_PRIVATE_H
 #define MONGOC_CLUSTER_AWS_PRIVATE_H
 
-#include "bson/bson.h"
-#include "mcd-time.h"
-#include "mongoc/mongoc-cluster-private.h"
-#include "common-thread-private.h" // bson_mutex_t
+#include <bson/bson.h>
+#include <mongoc/mcd-time.h>
+#include <mongoc/mongoc-cluster-private.h>
+#include <common-thread-private.h> // bson_mutex_t
 
 bool
 _mongoc_cluster_auth_node_aws (mongoc_cluster_t *cluster,
@@ -82,8 +82,7 @@ _mongoc_aws_credentials_cache_unlock (void);
 // _mongoc_aws_credentials_cache_put_nolock is a non-locking variant of
 // _mongoc_aws_credentials_cache_put.
 void
-_mongoc_aws_credentials_cache_put_nolock (
-   const _mongoc_aws_credentials_t *creds);
+_mongoc_aws_credentials_cache_put_nolock (const _mongoc_aws_credentials_t *creds);
 
 // _mongoc_aws_credentials_cache_put adds credentials into the global cache.
 void
@@ -121,21 +120,15 @@ _mongoc_aws_credentials_cache_cleanup (void);
 
 
 bool
-_mongoc_aws_credentials_obtain (mongoc_uri_t *uri,
-                                _mongoc_aws_credentials_t *creds,
-                                bson_error_t *error);
+_mongoc_aws_credentials_obtain (mongoc_uri_t *uri, _mongoc_aws_credentials_t *creds, bson_error_t *error);
 
 void
-_mongoc_aws_credentials_copy_to (const _mongoc_aws_credentials_t *src,
-                                 _mongoc_aws_credentials_t *dst);
+_mongoc_aws_credentials_copy_to (const _mongoc_aws_credentials_t *src, _mongoc_aws_credentials_t *dst);
 
 void
 _mongoc_aws_credentials_cleanup (_mongoc_aws_credentials_t *creds);
 
 bool
-_mongoc_validate_and_derive_region (char *sts_fqdn,
-                                    size_t sts_fqdn_len,
-                                    char **region,
-                                    bson_error_t *error);
+_mongoc_validate_and_derive_region (char *sts_fqdn, size_t sts_fqdn_len, char **region, bson_error_t *error);
 
 #endif /* MONGOC_CLUSTER_AWS_PRIVATE_H */

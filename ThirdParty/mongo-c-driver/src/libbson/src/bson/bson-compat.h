@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_COMPAT_H
@@ -31,16 +31,16 @@
 #endif
 #endif
 
-#include "bson-config.h"
-#include "bson-macros.h"
+#include <bson/bson-config.h>
+#include <bson/bson-macros.h>
 
 
 #ifdef BSON_OS_WIN32
-#if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0600)
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0601)
 #undef _WIN32_WINNT
 #endif
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
+#define _WIN32_WINNT 0x0601
 #endif
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -64,7 +64,7 @@
 #endif
 
 
-#include "bson-macros.h"
+#include <bson/bson-macros.h>
 
 
 #include <errno.h>
@@ -133,8 +133,7 @@ typedef SSIZE_T ssize_t;
 /* Derive the maximum representable value of signed integer type T using the
  * formula 2^(N - 1) - 1 where N is the number of bits in type T. This assumes
  * T is represented using two's complement. */
-#define BSON_NUMERIC_LIMITS_MAX_SIGNED(T) \
-   ((T) ((((size_t) 0x01u) << (sizeof (T) * (size_t) CHAR_BIT - 1u)) - 1u))
+#define BSON_NUMERIC_LIMITS_MAX_SIGNED(T) ((T) ((((size_t) 0x01u) << (sizeof (T) * (size_t) CHAR_BIT - 1u)) - 1u))
 
 /* Derive the minimum representable value of signed integer type T as one less
  * than the negation of its maximum representable value. This assumes T is
@@ -170,20 +169,6 @@ typedef signed char bool;
 #endif
 
 
-#if defined(__GNUC__)
-#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
-#define bson_sync_synchronize() __sync_synchronize ()
-#elif defined(__i386__) || defined(__i486__) || defined(__i586__) || \
-   defined(__i686__) || defined(__x86_64__)
-#define bson_sync_synchronize() asm volatile ("mfence" ::: "memory")
-#else
-#define bson_sync_synchronize() asm volatile ("sync" ::: "memory")
-#endif
-#elif defined(_MSC_VER)
-#define bson_sync_synchronize() MemoryBarrier ()
-#endif
-
-
 #if !defined(va_copy) && defined(__va_copy)
 #define va_copy(dst, src) __va_copy (dst, src)
 #endif
@@ -204,6 +189,10 @@ typedef signed char bool;
 #define BSON_IF_MSVC(...)
 /** Expands the arguments if compiling with GCC or Clang, otherwise empty */
 #define BSON_IF_GNU_LIKE(...) __VA_ARGS__
+#else
+/** Unsupported compiler. **/
+#define BSON_IF_MSVC(...)
+#define BSON_IF_GNU_LIKE(...)
 #endif
 
 #ifdef BSON_OS_WIN32

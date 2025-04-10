@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_genn.c,v 1.2 2020/12/08 15:06:42 tb Exp $ */
+/* $OpenBSD: x509_genn.c,v 1.7 2024/07/08 14:47:44 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -90,6 +90,7 @@ const ASN1_ITEM OTHERNAME_it = {
 	.size = sizeof(OTHERNAME),
 	.sname = "OTHERNAME",
 };
+LCRYPTO_ALIAS(OTHERNAME_it);
 
 
 OTHERNAME *
@@ -98,24 +99,28 @@ d2i_OTHERNAME(OTHERNAME **a, const unsigned char **in, long len)
 	return (OTHERNAME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &OTHERNAME_it);
 }
+LCRYPTO_ALIAS(d2i_OTHERNAME);
 
 int
 i2d_OTHERNAME(OTHERNAME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &OTHERNAME_it);
 }
+LCRYPTO_ALIAS(i2d_OTHERNAME);
 
 OTHERNAME *
 OTHERNAME_new(void)
 {
 	return (OTHERNAME *)ASN1_item_new(&OTHERNAME_it);
 }
+LCRYPTO_ALIAS(OTHERNAME_new);
 
 void
 OTHERNAME_free(OTHERNAME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &OTHERNAME_it);
 }
+LCRYPTO_ALIAS(OTHERNAME_free);
 
 /* Uses explicit tagging since DIRECTORYSTRING is a CHOICE type */
 static const ASN1_TEMPLATE EDIPARTYNAME_seq_tt[] = {
@@ -144,6 +149,7 @@ const ASN1_ITEM EDIPARTYNAME_it = {
 	.size = sizeof(EDIPARTYNAME),
 	.sname = "EDIPARTYNAME",
 };
+LCRYPTO_ALIAS(EDIPARTYNAME_it);
 
 
 EDIPARTYNAME *
@@ -152,24 +158,28 @@ d2i_EDIPARTYNAME(EDIPARTYNAME **a, const unsigned char **in, long len)
 	return (EDIPARTYNAME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &EDIPARTYNAME_it);
 }
+LCRYPTO_ALIAS(d2i_EDIPARTYNAME);
 
 int
 i2d_EDIPARTYNAME(EDIPARTYNAME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &EDIPARTYNAME_it);
 }
+LCRYPTO_ALIAS(i2d_EDIPARTYNAME);
 
 EDIPARTYNAME *
 EDIPARTYNAME_new(void)
 {
 	return (EDIPARTYNAME *)ASN1_item_new(&EDIPARTYNAME_it);
 }
+LCRYPTO_ALIAS(EDIPARTYNAME_new);
 
 void
 EDIPARTYNAME_free(EDIPARTYNAME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &EDIPARTYNAME_it);
 }
+LCRYPTO_ALIAS(EDIPARTYNAME_free);
 
 static const ASN1_TEMPLATE GENERAL_NAME_ch_tt[] = {
 	{
@@ -248,6 +258,7 @@ const ASN1_ITEM GENERAL_NAME_it = {
 	.size = sizeof(GENERAL_NAME),
 	.sname = "GENERAL_NAME",
 };
+LCRYPTO_ALIAS(GENERAL_NAME_it);
 
 
 GENERAL_NAME *
@@ -256,24 +267,28 @@ d2i_GENERAL_NAME(GENERAL_NAME **a, const unsigned char **in, long len)
 	return (GENERAL_NAME *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &GENERAL_NAME_it);
 }
+LCRYPTO_ALIAS(d2i_GENERAL_NAME);
 
 int
 i2d_GENERAL_NAME(GENERAL_NAME *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &GENERAL_NAME_it);
 }
+LCRYPTO_ALIAS(i2d_GENERAL_NAME);
 
 GENERAL_NAME *
 GENERAL_NAME_new(void)
 {
 	return (GENERAL_NAME *)ASN1_item_new(&GENERAL_NAME_it);
 }
+LCRYPTO_ALIAS(GENERAL_NAME_new);
 
 void
 GENERAL_NAME_free(GENERAL_NAME *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &GENERAL_NAME_it);
 }
+LCRYPTO_ALIAS(GENERAL_NAME_free);
 
 static const ASN1_TEMPLATE GENERAL_NAMES_item_tt = {
 	.flags = ASN1_TFLG_SEQUENCE_OF,
@@ -292,6 +307,7 @@ const ASN1_ITEM GENERAL_NAMES_it = {
 	.size = 0,
 	.sname = "GENERAL_NAMES",
 };
+LCRYPTO_ALIAS(GENERAL_NAMES_it);
 
 
 GENERAL_NAMES *
@@ -300,30 +316,35 @@ d2i_GENERAL_NAMES(GENERAL_NAMES **a, const unsigned char **in, long len)
 	return (GENERAL_NAMES *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &GENERAL_NAMES_it);
 }
+LCRYPTO_ALIAS(d2i_GENERAL_NAMES);
 
 int
 i2d_GENERAL_NAMES(GENERAL_NAMES *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &GENERAL_NAMES_it);
 }
+LCRYPTO_ALIAS(i2d_GENERAL_NAMES);
 
 GENERAL_NAMES *
 GENERAL_NAMES_new(void)
 {
 	return (GENERAL_NAMES *)ASN1_item_new(&GENERAL_NAMES_it);
 }
+LCRYPTO_ALIAS(GENERAL_NAMES_new);
 
 void
 GENERAL_NAMES_free(GENERAL_NAMES *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &GENERAL_NAMES_it);
 }
+LCRYPTO_ALIAS(GENERAL_NAMES_free);
 
 GENERAL_NAME *
 GENERAL_NAME_dup(GENERAL_NAME *a)
 {
 	return ASN1_item_dup(&GENERAL_NAME_it, a);
 }
+LCRYPTO_ALIAS(GENERAL_NAME_dup);
 
 static int
 EDIPARTYNAME_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b)
@@ -366,7 +387,7 @@ GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
 		return -1;
 	switch (a->type) {
 	case GEN_X400:
-		result = ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
+		result = ASN1_STRING_cmp(a->d.x400Address, b->d.x400Address);
 		break;
 
 	case GEN_EDIPARTY:
@@ -397,6 +418,7 @@ GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
 	}
 	return result;
 }
+LCRYPTO_ALIAS(GENERAL_NAME_cmp);
 
 /* Returns 0 if they are equal, != 0 otherwise. */
 int
@@ -413,6 +435,7 @@ OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b)
 	result = ASN1_TYPE_cmp(a->value, b->value);
 	return result;
 }
+LCRYPTO_ALIAS(OTHERNAME_cmp);
 
 void
 GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value)
@@ -450,6 +473,7 @@ GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value)
 	}
 	a->type = type;
 }
+LCRYPTO_ALIAS(GENERAL_NAME_set0_value);
 
 void *
 GENERAL_NAME_get0_value(GENERAL_NAME *a, int *ptype)
@@ -484,6 +508,7 @@ GENERAL_NAME_get0_value(GENERAL_NAME *a, int *ptype)
 		return NULL;
 	}
 }
+LCRYPTO_ALIAS(GENERAL_NAME_get0_value);
 
 int
 GENERAL_NAME_set0_othername(GENERAL_NAME *gen, ASN1_OBJECT *oid,
@@ -499,6 +524,7 @@ GENERAL_NAME_set0_othername(GENERAL_NAME *gen, ASN1_OBJECT *oid,
 	GENERAL_NAME_set0_value(gen, GEN_OTHERNAME, oth);
 	return 1;
 }
+LCRYPTO_ALIAS(GENERAL_NAME_set0_othername);
 
 int
 GENERAL_NAME_get0_otherName(GENERAL_NAME *gen, ASN1_OBJECT **poid,
@@ -512,3 +538,4 @@ GENERAL_NAME_get0_otherName(GENERAL_NAME *gen, ASN1_OBJECT **poid,
 		*pvalue = gen->d.otherName->value;
 	return 1;
 }
+LCRYPTO_ALIAS(GENERAL_NAME_get0_otherName);

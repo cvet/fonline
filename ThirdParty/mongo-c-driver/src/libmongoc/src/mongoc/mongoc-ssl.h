@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SSL_H
 #define MONGOC_SSL_H
 
 #include <bson/bson.h>
 
-#include "mongoc-macros.h"
+#include <mongoc/mongoc-macros.h>
 
 BSON_BEGIN_DECLS
 

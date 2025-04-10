@@ -313,6 +313,10 @@ INSTANTIATE_TEST_SUITE_P(
         "GL_EXT_texture_array.frag",
         "index_outside_sample_mask_range.frag",
         "positive_infinity.frag",
+        "matrixCompMult.vert",
+        "ps_uint_int.frag",
+        "ps_sample.frag",
+        "tes_patch.tese",
     })),
     FileNameAsCustomTestSuffix
 );

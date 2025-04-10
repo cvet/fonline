@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_prn.c,v 1.8 2015/07/16 02:16:19 miod Exp $ */
+/* $OpenBSD: ocsp_prn.c,v 1.11 2024/08/28 06:18:44 tb Exp $ */
 /* Written by Tom Titchener <Tom_Titchener@groove.net> for the OpenSSL
  * project. */
 
@@ -65,14 +65,20 @@
 #include <openssl/err.h>
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
+#include <openssl/x509.h>
+
+#include "ocsp_local.h"
 
 static int
 ocsp_certid_print(BIO *bp, OCSP_CERTID* a, int indent)
 {
+	const ASN1_OBJECT *aobj;
+
 	BIO_printf(bp, "%*sCertificate ID:\n", indent, "");
 	indent += 2;
 	BIO_printf(bp, "%*sHash Algorithm: ", indent, "");
-	i2a_ASN1_OBJECT(bp, a->hashAlgorithm->algorithm);
+	X509_ALGOR_get0(&aobj, NULL, NULL, a->hashAlgorithm);
+	i2a_ASN1_OBJECT(bp, aobj);
 	BIO_printf(bp, "\n%*sIssuer Name Hash: ", indent, "");
 	i2a_ASN1_STRING(bp, a->issuerNameHash, V_ASN1_OCTET_STRING);
 	BIO_printf(bp, "\n%*sIssuer Key Hash: ", indent, "");
@@ -112,6 +118,7 @@ OCSP_response_status_str(long s)
 	};
 	return table2string(s, rstat_tbl, 6);
 }
+LCRYPTO_ALIAS(OCSP_response_status_str);
 
 const char *
 OCSP_cert_status_str(long s)
@@ -123,6 +130,7 @@ OCSP_cert_status_str(long s)
 	};
 	return table2string(s, cstat_tbl, 3);
 }
+LCRYPTO_ALIAS(OCSP_cert_status_str);
 
 const char *
 OCSP_crl_reason_str(long s)
@@ -139,6 +147,7 @@ OCSP_crl_reason_str(long s)
 	};
 	return table2string(s, reason_tbl, 8);
 }
+LCRYPTO_ALIAS(OCSP_crl_reason_str);
 
 int
 OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST* o, unsigned long flags)
@@ -190,6 +199,7 @@ OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST* o, unsigned long flags)
 err:
 	return 0;
 }
+LCRYPTO_ALIAS(OCSP_REQUEST_print);
 
 int
 OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE* o, unsigned long flags)
@@ -310,3 +320,4 @@ err:
 	OCSP_BASICRESP_free(br);
 	return ret;
 }
+LCRYPTO_ALIAS(OCSP_RESPONSE_print);

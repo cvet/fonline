@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_OPENSSL_PRIVATE_H
 #define MONGOC_OPENSSL_PRIVATE_H
@@ -24,11 +24,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "mongoc-ssl.h"
-#include "mongoc-stream-tls-openssl-private.h"
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-stream-tls-openssl-private.h>
 
-#if (OPENSSL_VERSION_NUMBER >= 0x10001000L) && !defined(OPENSSL_NO_OCSP) && \
-   !defined(LIBRESSL_VERSION_NUMBER)
+#if (OPENSSL_VERSION_NUMBER >= 0x10001000L) && !defined(OPENSSL_NO_OCSP) && !defined(LIBRESSL_VERSION_NUMBER)
 #define MONGOC_ENABLE_OCSP_OPENSSL
 #endif
 
@@ -36,9 +35,7 @@
 BSON_BEGIN_DECLS
 
 bool
-_mongoc_openssl_check_peer_hostname (SSL *ssl,
-                                     const char *host,
-                                     bool allow_invalid_hostname);
+_mongoc_openssl_check_peer_hostname (SSL *ssl, const char *host, bool allow_invalid_hostname);
 SSL_CTX *
 _mongoc_openssl_ctx_new (mongoc_ssl_opt_t *opt);
 char *

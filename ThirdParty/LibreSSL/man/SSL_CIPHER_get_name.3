@@ -1,4 +1,4 @@
-.\" $OpenBSD: SSL_CIPHER_get_name.3,v 1.12 2021/05/12 15:12:35 tb Exp $
+.\" $OpenBSD: SSL_CIPHER_get_name.3,v 1.17 2024/07/16 10:19:38 tb Exp $
 .\" full merge up to: OpenSSL b97fdb57 Nov 11 09:33:09 2016 +0100
 .\" selective merge up to: OpenSSL 61f805c1 Jan 16 01:01:46 2018 +0800
 .\"
@@ -52,7 +52,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: May 12 2021 $
+.Dd $Mdocdate: July 16 2024 $
 .Dt SSL_CIPHER_GET_NAME 3
 .Os
 .Sh NAME
@@ -61,6 +61,7 @@
 .Nm SSL_CIPHER_get_version ,
 .Nm SSL_CIPHER_get_cipher_nid ,
 .Nm SSL_CIPHER_get_digest_nid ,
+.Nm SSL_CIPHER_get_handshake_digest ,
 .Nm SSL_CIPHER_get_kx_nid ,
 .Nm SSL_CIPHER_get_auth_nid ,
 .Nm SSL_CIPHER_is_aead ,
@@ -80,6 +81,8 @@
 .Fn SSL_CIPHER_get_cipher_nid "const SSL_CIPHER *cipher"
 .Ft int
 .Fn SSL_CIPHER_get_digest_nid "const SSL_CIPHER *cipher"
+.Ft "const EVP_MD *"
+.Fn SSL_CIPHER_get_handshake_digest "const SSL_CIPHER *cipher"
 .Ft int
 .Fn SSL_CIPHER_get_kx_nid "const SSL_CIPHER *cipher"
 .Ft int
@@ -132,6 +135,14 @@ If there is no digest (e.g. for AEAD cipher suites), then
 .Dv NID_undef
 is returned.
 .Pp
+.Fn SSL_CIPHER_get_handshake_digest
+returns the
+.Vt EVP_MD
+object representing the digest used during a TLS handshake with the cipher
+.Fa c ,
+which may be different to the digest used in the message authentication code
+for encrypted records.
+.Pp
 .Fn SSL_CIPHER_get_kx_nid
 returns the key exchange NID corresponding to the method used by the
 .Fa cipher .
@@ -180,7 +191,7 @@ returns the ID of the given
 which must not be
 .Dv NULL .
 The ID here is an OpenSSL-specific concept, which stores a prefix
-of 0x0300 in the higher two bytes and the IANA-specified chipher
+of 0x0300 in the higher two bytes and the IANA-specified cipher
 suite ID in the lower two bytes.
 For instance, TLS_RSA_WITH_NULL_MD5 has IANA ID "0x00, 0x01", so
 .Fn SSL_CIPHER_get_id
@@ -259,8 +270,8 @@ Encryption method with number of secret bits:
 .Sy RC4(128) ,
 .Sy AES(128) ,
 .Sy AES(256) ,
-.Sy AESCGM(128) ,
-.Sy AESCGM(256) ,
+.Sy AESGCM(128) ,
+.Sy AESGCM(256) ,
 .Sy Camellia(128) ,
 .Sy Camellia(256) ,
 .Sy ChaCha20-Poly1305 ,
@@ -306,6 +317,12 @@ and
 .Fn SSL_CIPHER_get_auth_nid
 return an NID constant or
 .Dv NID_undef
+if an error occurred.
+.Fn SSL_CIPHER_get_handshake_digest
+returns a valid
+.Vt EVP_MD
+object or
+.Dv NULL
 if an error occurred.
 .Pp
 .Fn SSL_CIPHER_is_aead
@@ -369,6 +386,9 @@ first appeared in OpenSSL 1.1.0 and have been available since
 .Fn SSL_CIPHER_find
 first appeared in OpenSSL 1.1.0 and has been available since
 .Ox 7.0 .
+.Fn SSL_CIPHER_get_handshake_digest
+first appeared in OpenSSL 1.1.1 and has been available since
+.Ox 7.6 .
 .Sh BUGS
 If
 .Fn SSL_CIPHER_description

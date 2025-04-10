@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_READ_CONCERN_H
 #define MONGOC_READ_CONCERN_H
 
 #include <bson/bson.h>
 
-#include "mongoc-macros.h"
+#include <mongoc/mongoc-macros.h>
 
 BSON_BEGIN_DECLS
 
@@ -38,15 +38,13 @@ typedef struct _mongoc_read_concern_t mongoc_read_concern_t;
 MONGOC_EXPORT (mongoc_read_concern_t *)
 mongoc_read_concern_new (void) BSON_GNUC_WARN_UNUSED_RESULT;
 MONGOC_EXPORT (mongoc_read_concern_t *)
-mongoc_read_concern_copy (const mongoc_read_concern_t *read_concern)
-   BSON_GNUC_WARN_UNUSED_RESULT;
+mongoc_read_concern_copy (const mongoc_read_concern_t *read_concern) BSON_GNUC_WARN_UNUSED_RESULT;
 MONGOC_EXPORT (void)
 mongoc_read_concern_destroy (mongoc_read_concern_t *read_concern);
 MONGOC_EXPORT (const char *)
 mongoc_read_concern_get_level (const mongoc_read_concern_t *read_concern);
 MONGOC_EXPORT (bool)
-mongoc_read_concern_set_level (mongoc_read_concern_t *read_concern,
-                               const char *level);
+mongoc_read_concern_set_level (mongoc_read_concern_t *read_concern, const char *level);
 MONGOC_EXPORT (bool)
 mongoc_read_concern_append (mongoc_read_concern_t *read_concern, bson_t *doc);
 MONGOC_EXPORT (bool)

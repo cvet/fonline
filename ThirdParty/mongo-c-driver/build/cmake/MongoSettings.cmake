@@ -18,6 +18,7 @@ Define a new configure-time build setting::
         [DEFAULT [[DEVEL] [VALUE <value> | EVAL <code>]] ...]
         [OPTIONS [<opts> ...]]
         [VALIDATE [CODE <code>]]
+        [VISIBLE_IF <cond>]
         [ADVANCED]
     )
 
@@ -64,6 +65,13 @@ VALIDATE [CODE <code>]
 ADVANCED
     - If specified, the cache variable will be marked as an advanced setting
 
+VISIBLE_IF <cond>
+    - If specified, then `<cond>` should be a quoted CMake condition (e.g.
+      [[FOO AND NOT BAR]]). If the condition evaluates to a false value, then
+      the setting will be hidden from the user. NOTE that the setting will still
+      retain its original value and be available as a variable in the CMake
+      code!
+
 ]==]
 function(mongo_setting setting_NAME setting_DOC)
     list(APPEND CMAKE_MESSAGE_CONTEXT mongo setting "${setting_NAME}")
@@ -76,7 +84,7 @@ function(mongo_setting setting_NAME setting_DOC)
     cmake_parse_arguments(
         PARSE_ARGV 2 setting
         "ADVANCED"
-        "TYPE"
+        "TYPE;VISIBLE_IF"
         "OPTIONS;DEFAULT;VALIDATE")
     # Check for unknown arguments:
     foreach(arg IN LISTS setting_UNPARSED_ARGUMENTS)
@@ -178,6 +186,19 @@ function(mongo_setting setting_NAME setting_DOC)
             message(FATAL_ERROR "Unrecognized VALIDATE options: ${validate_UNPARSED_ARGUMENTS}")
         endif()
     endif()
+
+    if(DEFINED setting_VISIBLE_IF)
+        string(JOIN "\n" code
+            "set(avail FALSE)"
+            "if(${setting_VISIBLE_IF})"
+            "  set(avail TRUE)"
+            "endif()")
+        _mongo_eval_cmake(avail "${code}")
+        if(NOT avail)
+            # Hide the option by making it INTERNAL
+            set_property(CACHE "${setting_NAME}" PROPERTY TYPE INTERNAL)
+        endif()
+    endif()
 endfunction()
 
 #[[ Implements DEFAULT setting value logic ]]
@@ -249,10 +270,14 @@ function(mongo_bool_setting name doc)
 endfunction()
 
 # Set the variable named by 'out' to the 'if_true' or 'if_false' value based on 'cond'
-function(_mongo_pick out if_true if_false cond)
+function(mongo_pick out if_true if_false cond)
     string(REPLACE "'" "\"" cond "${cond}")
-    _mongo_eval_cmake("res" "set(res [[${if_false}]])\nif(${cond})\nset(res [[${if_true}]])\nendif()")
-    set("${out}" "${res}" PARENT_SCOPE)
+    mongo_bool01(b "${cond}")
+    if(b)
+        set("${out}" "${if_true}" PARENT_SCOPE)
+    else()
+        set("${out}" "${if_false}" PARENT_SCOPE)
+    endif()
 endfunction()
 
 # Evaluate CMake code <code>, and lift the given variables into the caller's scope.
@@ -273,6 +298,84 @@ function(_mongo_eval_cmake get_variables code)
         if(DEFINED "${__varname}")
             message(TRACE "Eval variable result: ${__varname}=${${__varname}}")
             set("${__varname}" "${${__varname}}" PARENT_SCOPE)
+        endif()
+    endforeach()
+endfunction()
+
+#[==[
+    mongo_bool01(<var> <cond>)
+
+Evaluate a condition and store the boolean result as a "0" or a "1".
+
+Parameters:
+
+<var>
+    - The name of the variable to define in the caller's scope.
+
+<cond>
+    - `...cond` The condition to evaluate. It must be a single string that
+      contains wraps the syntax of a CMake `if()` command
+
+Example: Evaluate Boolean Logic
+###############################
+
+    mongo_bool01(is_mingw [[WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"]])
+
+Note the quoting and use of [[]]-bracket strings
+
+]==]
+function(mongo_bool01 var code)
+    if(ARGN)
+        message(FATAL_ERROR "Too many arguments passed to mongo_bool01")
+    endif()
+    string(CONCAT fullcode
+        "if(${code})\n"
+        "  set(bool 1)\n"
+        "else()\n"
+        "  set(bool 0)\n"
+        "endif()\n")
+    _mongo_eval_cmake(bool "${fullcode}")
+    set("${var}" "${bool}" PARENT_SCOPE)
+endfunction()
+
+#[==[
+Append usage requirement properties to a set of targets.
+
+    mongo_target_requirements(
+        [<target> [...]]
+        [INCLUDE_DIRECTORIES [spec...]]
+        [LINK_LIBRARIES [spec...]]
+        [COMPILE_DEFINITIONS [spec...]]
+        [COMPILE_OPTIONS [spec...]]
+        [LINK_OPTIONS [spec...]]
+        [SOURCES [spec...]]
+    )
+
+]==]
+function(mongo_target_requirements)
+    set(properties
+        INCLUDE_DIRECTORIES LINK_LIBRARIES COMPILE_DEFINITIONS
+        COMPILE_OPTIONS LINK_OPTIONS SOURCES
+    )
+    cmake_parse_arguments(PARSE_ARGV 0 ARG "" "" "${properties}")
+    foreach(target IN LISTS ARG_UNPARSED_ARGUMENTS)
+        if(ARG_INCLUDE_DIRECTORIES)
+            target_include_directories("${target}" ${ARG_INCLUDE_DIRECTORIES})
+        endif()
+        if(ARG_LINK_LIBRARIES)
+            target_link_libraries("${target}" ${ARG_LINK_LIBRARIES})
+        endif()
+        if(ARG_COMPILE_DEFINITIONS)
+            target_compile_definitions("${target}" ${ARG_COMPILE_DEFINITIONS})
+        endif()
+        if(ARG_COMPILE_OPTIONS)
+            target_compile_options("${target}" ${ARG_COMPILE_OPTIONS})
+        endif()
+        if(ARG_LINK_OPTIONS)
+            target_link_options("${target}" ${ARG_LINK_OPTIONS})
+        endif()
+        if(ARG_SOURCES)
+            target_sources("${target}" ${ARG_SOURCES})
         endif()
     endforeach()
 endfunction()

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SSPI_PRIVATE_H
 #define MONGOC_SSPI_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-sasl-private.h"
+#include <mongoc/mongoc-sasl-private.h>
 
 
 BSON_BEGIN_DECLS
@@ -67,19 +67,14 @@ _mongoc_sspi_auth_sspi_client_init (WCHAR *service,
                                     ULONG plen,
                                     mongoc_sspi_client_state_t *state);
 int
-_mongoc_sspi_auth_sspi_client_step (mongoc_sspi_client_state_t *state,
-                                    SEC_CHAR *challenge);
+_mongoc_sspi_auth_sspi_client_step (mongoc_sspi_client_state_t *state, SEC_CHAR *challenge);
 
 int
-_mongoc_sspi_auth_sspi_client_unwrap (mongoc_sspi_client_state_t *state,
-                                      SEC_CHAR *challenge);
+_mongoc_sspi_auth_sspi_client_unwrap (mongoc_sspi_client_state_t *state, SEC_CHAR *challenge);
 
 int
-_mongoc_sspi_auth_sspi_client_wrap (mongoc_sspi_client_state_t *state,
-                                    SEC_CHAR *data,
-                                    SEC_CHAR *user,
-                                    ULONG ulen,
-                                    INT protect);
+_mongoc_sspi_auth_sspi_client_wrap (
+   mongoc_sspi_client_state_t *state, SEC_CHAR *data, SEC_CHAR *user, ULONG ulen, INT protect);
 
 
 BSON_END_DECLS

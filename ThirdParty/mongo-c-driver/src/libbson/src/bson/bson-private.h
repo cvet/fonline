@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,16 @@
  * limitations under the License.
  */
 
-#include "bson-prelude.h"
+#include <bson/bson-prelude.h>
 
 
 #ifndef BSON_PRIVATE_H
 #define BSON_PRIVATE_H
 
 
-#include "bson-macros.h"
-#include "bson-memory.h"
-#include "bson-types.h"
-
-
-#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
-#define BEGIN_IGNORE_DEPRECATIONS  \
-   _Pragma ("GCC diagnostic push") \
-      _Pragma ("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-#define END_IGNORE_DEPRECATIONS _Pragma ("GCC diagnostic pop")
-#elif defined(__clang__)
-#define BEGIN_IGNORE_DEPRECATIONS    \
-   _Pragma ("clang diagnostic push") \
-      _Pragma ("clang diagnostic ignored \"-Wdeprecated-declarations\"")
-#define END_IGNORE_DEPRECATIONS _Pragma ("clang diagnostic pop")
-#else
-#define BEGIN_IGNORE_DEPRECATIONS
-#define END_IGNORE_DEPRECATIONS
-#endif
+#include <bson/bson-macros.h>
+#include <bson/bson-memory.h>
+#include <bson/bson-types.h>
 
 
 BSON_BEGIN_DECLS
@@ -56,28 +40,19 @@ typedef enum {
 } bson_flags_t;
 
 
-#ifdef BSON_MEMCHECK
-#define BSON_INLINE_DATA_SIZE (120 - sizeof (char *))
-#else
 #define BSON_INLINE_DATA_SIZE 120
-#endif
 
 
-BSON_ALIGNED_BEGIN (128)
+BSON_ALIGNED_BEGIN (BSON_ALIGN_OF_PTR)
 typedef struct {
    bson_flags_t flags;
    uint32_t len;
-#ifdef BSON_MEMCHECK
-   char *canary;
-#endif
    uint8_t data[BSON_INLINE_DATA_SIZE];
-} bson_impl_inline_t BSON_ALIGNED_END (128);
+} bson_impl_inline_t BSON_ALIGNED_END (BSON_ALIGN_OF_PTR);
 
 
 BSON_STATIC_ASSERT2 (impl_inline_t, sizeof (bson_impl_inline_t) == 128);
 
-
-BSON_ALIGNED_BEGIN (128)
 typedef struct {
    bson_flags_t flags; /* flags describing the bson_t */
    /* len is part of the public bson_t declaration. It is not
@@ -94,13 +69,16 @@ typedef struct {
    size_t alloclen;           /* length of buffer that we own. */
    bson_realloc_func realloc; /* our realloc implementation */
    void *realloc_func_ctx;    /* context for our realloc func */
-} bson_impl_alloc_t BSON_ALIGNED_END (128);
+} bson_impl_alloc_t;
 
 
 BSON_STATIC_ASSERT2 (impl_alloc_t, sizeof (bson_impl_alloc_t) <= 128);
 
+// Ensure both `bson_t` implementations have the same alignment requirement:
+BSON_STATIC_ASSERT2 (impls_match_alignment, BSON_ALIGNOF (bson_impl_inline_t) == BSON_ALIGNOF (bson_impl_alloc_t));
+// Ensure `bson_t` has same alignment requirement as implementations:
+BSON_STATIC_ASSERT2 (impls_match_alignment, BSON_ALIGNOF (bson_t) == BSON_ALIGNOF (bson_impl_alloc_t));
 
-#define BSON_REGEX_OPTIONS_SORTED "ilmsux"
 
 BSON_END_DECLS
 

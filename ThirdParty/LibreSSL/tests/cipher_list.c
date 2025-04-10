@@ -1,4 +1,4 @@
-/*	$OpenBSD: cipher_list.c,v 1.10 2021/01/09 12:39:22 tb Exp $	*/
+/*	$OpenBSD: cipher_list.c,v 1.14 2022/12/17 16:05:28 jsing Exp $	*/
 /*
  * Copyright (c) 2015 Doug Hogan <doug@openbsd.org>
  * Copyright (c) 2015 Joel Sing <jsing@openbsd.org>
@@ -39,7 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "ssl_locl.h"
+#include "ssl_local.h"
 
 #include "tests.h"
 
@@ -49,6 +49,12 @@ static uint8_t cipher_bytes[] = {
 	0xcc, 0xaa,	/* DHE-RSA-CHACHA20-POLY1305 */
 	0x00, 0x9c,	/* AES128-GCM-SHA256 */
 	0x00, 0x3d,	/* AES256-SHA256 */
+};
+
+static uint8_t cipher_bytes_seclevel3[] = {
+	0xcc, 0xa8,	/* ECDHE-ECDSA-CHACHA20-POLY1305 */
+	0xcc, 0xa9,	/* ECDHE-RSA-CHACHA20-POLY1305 */
+	0xcc, 0xaa,	/* DHE-RSA-CHACHA20-POLY1305 */
 };
 
 static uint16_t cipher_values[] = {
@@ -85,7 +91,8 @@ ssl_bytes_to_list_alloc(SSL *s, STACK_OF(SSL_CIPHER) **ciphers)
 }
 
 static int
-ssl_list_to_bytes_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers)
+ssl_list_to_bytes_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers,
+    const uint8_t *cb, size_t cb_len)
 {
 	CBB cbb;
 	unsigned char *buf = NULL;
@@ -94,27 +101,31 @@ ssl_list_to_bytes_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers)
 
 	/* Space for cipher bytes, plus reneg SCSV and two spare bytes. */
 	CHECK(sk_SSL_CIPHER_num(*ciphers) == N_CIPHERS);
-	buflen = sizeof(cipher_bytes) + 2 + 2;
+	buflen = cb_len + 2 + 2;
 	CHECK((buf = calloc(1, buflen)) != NULL);
 
-	CHECK(CBB_init_fixed(&cbb, buf, buflen));
-	CHECK(ssl_cipher_list_to_bytes(s, *ciphers, &cbb));
-	CHECK(CBB_finish(&cbb, NULL, &outlen));
+	/* Clear renegotiate so it adds SCSV */
+	s->renegotiate = 0;
 
-	CHECK_GOTO(outlen > 0 && outlen == buflen - 2);
-	CHECK_GOTO(memcmp(buf, cipher_bytes, sizeof(cipher_bytes)) == 0);
+	CHECK_GOTO(CBB_init_fixed(&cbb, buf, buflen));
+	CHECK_GOTO(ssl_cipher_list_to_bytes(s, *ciphers, &cbb));
+	CHECK_GOTO(CBB_finish(&cbb, NULL, &outlen));
+
+	CHECK_GOTO(outlen > 0 && outlen == cb_len + 2);
+	CHECK_GOTO(memcmp(buf, cb, cb_len) == 0);
 	CHECK_GOTO(buf[buflen - 4] == 0x00 && buf[buflen - 3] == 0xff);
 	CHECK_GOTO(buf[buflen - 2] == 0x00 && buf[buflen - 1] == 0x00);
 
 	ret = 1;
 
-err:
+ err:
 	free(buf);
 	return ret;
 }
 
 static int
-ssl_list_to_bytes_no_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers)
+ssl_list_to_bytes_no_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers,
+    const uint8_t *cb, size_t cb_len)
 {
 	CBB cbb;
 	unsigned char *buf = NULL;
@@ -123,25 +134,25 @@ ssl_list_to_bytes_no_scsv(SSL *s, STACK_OF(SSL_CIPHER) **ciphers)
 
 	/* Space for cipher bytes and two spare bytes */
 	CHECK(sk_SSL_CIPHER_num(*ciphers) == N_CIPHERS);
-	buflen = sizeof(cipher_bytes) + 2;
+	buflen = cb_len + 2;
 	CHECK((buf = calloc(1, buflen)) != NULL);
 	buf[buflen - 2] = 0xfe;
 	buf[buflen - 1] = 0xab;
 
 	/* Set renegotiate so it doesn't add SCSV */
-	s->internal->renegotiate = 1;
+	s->renegotiate = 1;
 
-	CHECK(CBB_init_fixed(&cbb, buf, buflen));
-	CHECK(ssl_cipher_list_to_bytes(s, *ciphers, &cbb));
-	CHECK(CBB_finish(&cbb, NULL, &outlen));
+	CHECK_GOTO(CBB_init_fixed(&cbb, buf, buflen));
+	CHECK_GOTO(ssl_cipher_list_to_bytes(s, *ciphers, &cbb));
+	CHECK_GOTO(CBB_finish(&cbb, NULL, &outlen));
 
-	CHECK_GOTO(outlen > 0 && outlen == buflen - 2);
-	CHECK_GOTO(memcmp(buf, cipher_bytes, sizeof(cipher_bytes)) == 0);
+	CHECK_GOTO(outlen > 0 && outlen == cb_len);
+	CHECK_GOTO(memcmp(buf, cb, cb_len) == 0);
 	CHECK_GOTO(buf[buflen - 2] == 0xfe && buf[buflen - 1] == 0xab);
 
 	ret = 1;
 
-err:
+ err:
 	free(buf);
 	return ret;
 }
@@ -180,19 +191,35 @@ main(void)
 	/* Use TLSv1.2 client to get all ciphers. */
 	CHECK_GOTO((ctx = SSL_CTX_new(TLSv1_2_client_method())) != NULL);
 	CHECK_GOTO((s = SSL_new(ctx)) != NULL);
+	SSL_set_security_level(s, 2);
 
 	if (!ssl_bytes_to_list_alloc(s, &ciphers))
 		goto err;
-	if (!ssl_list_to_bytes_scsv(s, &ciphers))
+	if (!ssl_list_to_bytes_scsv(s, &ciphers, cipher_bytes,
+	    sizeof(cipher_bytes)))
 		goto err;
-	if (!ssl_list_to_bytes_no_scsv(s, &ciphers))
+	if (!ssl_list_to_bytes_no_scsv(s, &ciphers, cipher_bytes,
+	    sizeof(cipher_bytes)))
 		goto err;
 	if (!ssl_bytes_to_list_invalid(s, &ciphers))
 		goto err;
 
+	sk_SSL_CIPHER_free(ciphers);
+	ciphers = NULL;
+
+	SSL_set_security_level(s, 3);
+	if (!ssl_bytes_to_list_alloc(s, &ciphers))
+		goto err;
+	if (!ssl_list_to_bytes_scsv(s, &ciphers, cipher_bytes_seclevel3,
+	    sizeof(cipher_bytes_seclevel3)))
+		goto err;
+	if (!ssl_list_to_bytes_no_scsv(s, &ciphers, cipher_bytes_seclevel3,
+	    sizeof(cipher_bytes_seclevel3)))
+		goto err;
+
 	rv = 0;
 
-err:
+ err:
 	sk_SSL_CIPHER_free(ciphers);
 	SSL_CTX_free(ctx);
 	SSL_free(s);

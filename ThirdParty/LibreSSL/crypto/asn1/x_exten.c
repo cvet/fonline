@@ -1,4 +1,4 @@
-/* $OpenBSD: x_exten.c,v 1.16 2015/07/24 15:09:52 jsing Exp $ */
+/* $OpenBSD: x_exten.c,v 1.22 2024/07/08 14:48:49 beck Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -61,6 +61,8 @@
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 
+#include "x509_local.h"
+
 static const ASN1_TEMPLATE X509_EXTENSION_seq_tt[] = {
 	{
 		.offset = offsetof(X509_EXTENSION, object),
@@ -88,6 +90,7 @@ const ASN1_ITEM X509_EXTENSION_it = {
 	.size = sizeof(X509_EXTENSION),
 	.sname = "X509_EXTENSION",
 };
+LCRYPTO_ALIAS(X509_EXTENSION_it);
 
 static const ASN1_TEMPLATE X509_EXTENSIONS_item_tt = {
 	.flags = ASN1_TFLG_SEQUENCE_OF,
@@ -106,6 +109,7 @@ const ASN1_ITEM X509_EXTENSIONS_it = {
 	.size = 0,
 	.sname = "X509_EXTENSIONS",
 };
+LCRYPTO_ALIAS(X509_EXTENSIONS_it);
 
 
 X509_EXTENSION *
@@ -114,24 +118,28 @@ d2i_X509_EXTENSION(X509_EXTENSION **a, const unsigned char **in, long len)
 	return (X509_EXTENSION *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &X509_EXTENSION_it);
 }
+LCRYPTO_ALIAS(d2i_X509_EXTENSION);
 
 int
 i2d_X509_EXTENSION(X509_EXTENSION *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &X509_EXTENSION_it);
 }
+LCRYPTO_ALIAS(i2d_X509_EXTENSION);
 
 X509_EXTENSION *
 X509_EXTENSION_new(void)
 {
 	return (X509_EXTENSION *)ASN1_item_new(&X509_EXTENSION_it);
 }
+LCRYPTO_ALIAS(X509_EXTENSION_new);
 
 void
 X509_EXTENSION_free(X509_EXTENSION *a)
 {
 	ASN1_item_free((ASN1_VALUE *)a, &X509_EXTENSION_it);
 }
+LCRYPTO_ALIAS(X509_EXTENSION_free);
 
 X509_EXTENSIONS *
 d2i_X509_EXTENSIONS(X509_EXTENSIONS **a, const unsigned char **in, long len)
@@ -139,15 +147,18 @@ d2i_X509_EXTENSIONS(X509_EXTENSIONS **a, const unsigned char **in, long len)
 	return (X509_EXTENSIONS *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
 	    &X509_EXTENSIONS_it);
 }
+LCRYPTO_ALIAS(d2i_X509_EXTENSIONS);
 
 int
 i2d_X509_EXTENSIONS(X509_EXTENSIONS *a, unsigned char **out)
 {
 	return ASN1_item_i2d((ASN1_VALUE *)a, out, &X509_EXTENSIONS_it);
 }
+LCRYPTO_ALIAS(i2d_X509_EXTENSIONS);
 
 X509_EXTENSION *
 X509_EXTENSION_dup(X509_EXTENSION *x)
 {
 	return ASN1_item_dup(&X509_EXTENSION_it, x);
 }
+LCRYPTO_ALIAS(X509_EXTENSION_dup);

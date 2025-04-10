@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MongoDB, Inc.
+ * Copyright 2009-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include "mongoc-prelude.h"
+#include <mongoc/mongoc-prelude.h>
 
 #ifndef MONGOC_SSL_PRIVATE_H
 #define MONGOC_SSL_PRIVATE_H
 
 #include <bson/bson.h>
-#include "mongoc-uri-private.h"
+#include <common-string-private.h>
+#include <mongoc/mongoc-uri-private.h>
 
 
 BSON_BEGIN_DECLS
@@ -34,17 +35,12 @@ char *
 mongoc_ssl_extract_subject (const char *filename, const char *passphrase);
 
 void
-_mongoc_ssl_opts_from_uri (mongoc_ssl_opt_t *ssl_opt,
-                           _mongoc_internal_tls_opts_t *internal,
-                           mongoc_uri_t *uri);
+_mongoc_ssl_opts_from_uri (mongoc_ssl_opt_t *ssl_opt, _mongoc_internal_tls_opts_t *internal, mongoc_uri_t *uri);
 void
-_mongoc_ssl_opts_copy_to (const mongoc_ssl_opt_t *src,
-                          mongoc_ssl_opt_t *dst,
-                          bool copy_internal);
+_mongoc_ssl_opts_copy_to (const mongoc_ssl_opt_t *src, mongoc_ssl_opt_t *dst, bool copy_internal);
 
 bool
-_mongoc_ssl_opts_disable_certificate_revocation_check (
-   const mongoc_ssl_opt_t *ssl_opt);
+_mongoc_ssl_opts_disable_certificate_revocation_check (const mongoc_ssl_opt_t *ssl_opt);
 
 bool
 _mongoc_ssl_opts_disable_ocsp_endpoint_check (const mongoc_ssl_opt_t *ssl_opt);
@@ -56,12 +52,10 @@ _mongoc_ssl_opts_cleanup (mongoc_ssl_opt_t *opt, bool free_internal);
  * from a BSON document. It is used to parse TLS options for the KMIP KMS
  * provider in CSFLE.
  * - ssl_opt must be a zero'd out ssl_opt struct.
- * - errmsg must be an initialized bson_string_t.
+ * - errmsg must be an initialized mcommon_string_append_t.
  * - Returns false on error and appends to errmsg. */
 bool
-_mongoc_ssl_opts_from_bson (mongoc_ssl_opt_t *ssl_opt,
-                            const bson_t *bson,
-                            bson_string_t *errmsg);
+_mongoc_ssl_opts_from_bson (mongoc_ssl_opt_t *ssl_opt, const bson_t *bson, mcommon_string_append_t *errmsg);
 
 BSON_END_DECLS
 

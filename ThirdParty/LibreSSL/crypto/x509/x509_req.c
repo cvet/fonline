@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_req.c,v 1.21 2018/05/13 06:48:00 tb Exp $ */
+/* $OpenBSD: x509_req.c,v 1.43 2024/08/31 10:16:52 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -70,199 +70,158 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
-X509_REQ *
-X509_to_X509_REQ(X509 *x, EVP_PKEY *pkey, const EVP_MD *md)
-{
-	X509_REQ *ret;
-	X509_REQ_INFO *ri;
-	int i;
-	EVP_PKEY *pktmp;
+#include "asn1_local.h"
+#include "evp_local.h"
+#include "x509_local.h"
 
-	ret = X509_REQ_new();
-	if (ret == NULL) {
+X509_REQ *
+X509_to_X509_REQ(X509 *x509, EVP_PKEY *signing_key, const EVP_MD *signing_md)
+{
+	X509_REQ *req;
+	X509_NAME *subject;
+	EVP_PKEY *public_key;
+
+	if ((req = X509_REQ_new()) == NULL) {
 		X509error(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
-	ri = ret->req_info;
-
-	if ((ri->version = ASN1_INTEGER_new()) == NULL)
+	if ((subject = X509_get_subject_name(x509)) == NULL)
 		goto err;
-	if (ASN1_INTEGER_set(ri->version, 0) == 0)
+	if (!X509_REQ_set_subject_name(req, subject))
 		goto err;
 
-	if (!X509_REQ_set_subject_name(ret, X509_get_subject_name(x)))
+	if ((public_key = X509_get0_pubkey(x509)) == NULL)
+		goto err;
+	if (!X509_REQ_set_pubkey(req, public_key))
 		goto err;
 
-	if ((pktmp = X509_get_pubkey(x)) == NULL)
-		goto err;
-
-	i = X509_REQ_set_pubkey(ret, pktmp);
-	EVP_PKEY_free(pktmp);
-	if (!i)
-		goto err;
-
-	if (pkey != NULL) {
-		if (!X509_REQ_sign(ret, pkey, md))
+	if (signing_key != NULL) {
+		if (!X509_REQ_sign(req, signing_key, signing_md))
 			goto err;
 	}
-	return (ret);
 
-err:
-	X509_REQ_free(ret);
-	return (NULL);
+	return req;
+
+ err:
+	X509_REQ_free(req);
+
+	return NULL;
 }
+LCRYPTO_ALIAS(X509_to_X509_REQ);
 
 EVP_PKEY *
 X509_REQ_get_pubkey(X509_REQ *req)
 {
-	if ((req == NULL) || (req->req_info == NULL))
-		return (NULL);
-	return (X509_PUBKEY_get(req->req_info->pubkey));
+	if (req == NULL || req->req_info == NULL)
+		return NULL;
+	return X509_PUBKEY_get(req->req_info->pubkey);
 }
+LCRYPTO_ALIAS(X509_REQ_get_pubkey);
+
+EVP_PKEY *
+X509_REQ_get0_pubkey(X509_REQ *req)
+{
+	if (req == NULL || req->req_info == NULL)
+		return NULL;
+	return X509_PUBKEY_get0(req->req_info->pubkey);
+}
+LCRYPTO_ALIAS(X509_REQ_get0_pubkey);
 
 int
-X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k)
+X509_REQ_check_private_key(X509_REQ *req, EVP_PKEY *pkey)
 {
-	EVP_PKEY *xk = NULL;
-	int ok = 0;
+	EVP_PKEY *req_pubkey = NULL;
+	int ret;
 
-	xk = X509_REQ_get_pubkey(x);
-	switch (EVP_PKEY_cmp(xk, k)) {
-	case 1:
-		ok = 1;
-		break;
+	if ((req_pubkey = X509_REQ_get0_pubkey(req)) == NULL)
+		return 0;
+
+	if ((ret = EVP_PKEY_cmp(req_pubkey, pkey)) == 1)
+		return 1;
+
+	switch (ret) {
 	case 0:
 		X509error(X509_R_KEY_VALUES_MISMATCH);
-		break;
+		return 0;
 	case -1:
 		X509error(X509_R_KEY_TYPE_MISMATCH);
-		break;
+		return 0;
 	case -2:
 #ifndef OPENSSL_NO_EC
-		if (k->type == EVP_PKEY_EC) {
+		if (pkey->type == EVP_PKEY_EC) {
 			X509error(ERR_R_EC_LIB);
-			break;
+			return 0;
 		}
 #endif
 #ifndef OPENSSL_NO_DH
-		if (k->type == EVP_PKEY_DH) {
+		if (pkey->type == EVP_PKEY_DH) {
 			/* No idea */
 			X509error(X509_R_CANT_CHECK_DH_KEY);
-			break;
+			return 0;
 		}
 #endif
 		X509error(X509_R_UNKNOWN_KEY_TYPE);
+		return 0;
 	}
 
-	EVP_PKEY_free(xk);
-	return (ok);
+	return 0;
 }
-
-/* It seems several organisations had the same idea of including a list of
- * extensions in a certificate request. There are at least two OIDs that are
- * used and there may be more: so the list is configurable.
- */
-
-static int ext_nid_list[] = {NID_ext_req, NID_ms_ext_req, NID_undef};
-
-static int *ext_nids = ext_nid_list;
+LCRYPTO_ALIAS(X509_REQ_check_private_key);
 
 int
-X509_REQ_extension_nid(int req_nid)
+X509_REQ_extension_nid(int nid)
 {
-	int i, nid;
-
-	for (i = 0; ; i++) {
-		nid = ext_nids[i];
-		if (nid == NID_undef)
-			return 0;
-		else if (req_nid == nid)
-			return 1;
-	}
+	return nid == NID_ext_req || nid == NID_ms_ext_req;
 }
-
-int *
-X509_REQ_get_extension_nids(void)
-{
-	return ext_nids;
-}
-
-void
-X509_REQ_set_extension_nids(int *nids)
-{
-	ext_nids = nids;
-}
+LCRYPTO_ALIAS(X509_REQ_extension_nid);
 
 STACK_OF(X509_EXTENSION) *
 X509_REQ_get_extensions(X509_REQ *req)
 {
 	X509_ATTRIBUTE *attr;
 	ASN1_TYPE *ext = NULL;
-	int idx, *pnid;
-	const unsigned char *p;
+	int idx;
 
-	if ((req == NULL) || (req->req_info == NULL) || !ext_nids)
-		return (NULL);
-	for (pnid = ext_nids; *pnid != NID_undef; pnid++) {
-		idx = X509_REQ_get_attr_by_NID(req, *pnid, -1);
-		if (idx == -1)
-			continue;
-		attr = X509_REQ_get_attr(req, idx);
-		if (attr->single)
-			ext = attr->value.single;
-		else if (sk_ASN1_TYPE_num(attr->value.set))
-			ext = sk_ASN1_TYPE_value(attr->value.set, 0);
-		break;
-	}
-	if (!ext || (ext->type != V_ASN1_SEQUENCE))
+	if (req == NULL || req->req_info == NULL)
 		return NULL;
-	p = ext->value.sequence->data;
-	return (STACK_OF(X509_EXTENSION) *)ASN1_item_d2i(NULL, &p,
-	    ext->value.sequence->length, &X509_EXTENSIONS_it);
-}
 
-/* Add a STACK_OF extensions to a certificate request: allow alternative OIDs
- * in case we want to create a non standard one.
+	if ((idx = X509_REQ_get_attr_by_NID(req, NID_ext_req, -1)) == -1)
+		idx = X509_REQ_get_attr_by_NID(req, NID_ms_ext_req, -1);
+	if (idx == -1)
+		return NULL;
+
+	if ((attr = X509_REQ_get_attr(req, idx)) == NULL)
+		return NULL;
+	if ((ext = X509_ATTRIBUTE_get0_type(attr, 0)) == NULL)
+		return NULL;
+
+	return ASN1_TYPE_unpack_sequence(&X509_EXTENSIONS_it, ext);
+}
+LCRYPTO_ALIAS(X509_REQ_get_extensions);
+
+/*
+ * Add a STACK_OF extensions to a certificate request: allow alternative OIDs
+ * in case we want to create a non-standard one.
  */
 
 int
 X509_REQ_add_extensions_nid(X509_REQ *req, STACK_OF(X509_EXTENSION) *exts,
     int nid)
 {
-	ASN1_TYPE *at = NULL;
-	X509_ATTRIBUTE *attr = NULL;
+	unsigned char *ext = NULL;
+	int extlen;
+	int ret;
 
-	if (!(at = ASN1_TYPE_new()) ||
-	    !(at->value.sequence = ASN1_STRING_new()))
-		goto err;
+	if ((extlen = i2d_X509_EXTENSIONS(exts, &ext)) <= 0)
+		return 0;
 
-	at->type = V_ASN1_SEQUENCE;
-	/* Generate encoding of extensions */
-	at->value.sequence->length = ASN1_item_i2d((ASN1_VALUE *)exts,
-	    &at->value.sequence->data, &X509_EXTENSIONS_it);
-	if (!(attr = X509_ATTRIBUTE_new()))
-		goto err;
-	if (!(attr->value.set = sk_ASN1_TYPE_new_null()))
-		goto err;
-	if (!sk_ASN1_TYPE_push(attr->value.set, at))
-		goto err;
-	at = NULL;
-	attr->single = 0;
-	attr->object = OBJ_nid2obj(nid);
-	if (!req->req_info->attributes) {
-		if (!(req->req_info->attributes = sk_X509_ATTRIBUTE_new_null()))
-			goto err;
-	}
-	if (!sk_X509_ATTRIBUTE_push(req->req_info->attributes, attr))
-		goto err;
-	return 1;
+	ret = X509_REQ_add1_attr_by_NID(req, nid, V_ASN1_SEQUENCE, ext, extlen);
+	free(ext);
 
-err:
-	X509_ATTRIBUTE_free(attr);
-	ASN1_TYPE_free(at);
-	return 0;
+	return ret;
 }
+LCRYPTO_ALIAS(X509_REQ_add_extensions_nid);
 
 /* This is the normal usage: use the "official" OID */
 int
@@ -270,20 +229,23 @@ X509_REQ_add_extensions(X509_REQ *req, STACK_OF(X509_EXTENSION) *exts)
 {
 	return X509_REQ_add_extensions_nid(req, exts, NID_ext_req);
 }
+LCRYPTO_ALIAS(X509_REQ_add_extensions);
 
 /* Request attribute functions */
 
 int
 X509_REQ_get_attr_count(const X509_REQ *req)
 {
-	return X509at_get_attr_count(req->req_info->attributes);
+	return sk_X509_ATTRIBUTE_num(req->req_info->attributes);
 }
+LCRYPTO_ALIAS(X509_REQ_get_attr_count);
 
 int
 X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid, int lastpos)
 {
 	return X509at_get_attr_by_NID(req->req_info->attributes, nid, lastpos);
 }
+LCRYPTO_ALIAS(X509_REQ_get_attr_by_NID);
 
 int
 X509_REQ_get_attr_by_OBJ(const X509_REQ *req, const ASN1_OBJECT *obj,
@@ -291,18 +253,21 @@ X509_REQ_get_attr_by_OBJ(const X509_REQ *req, const ASN1_OBJECT *obj,
 {
 	return X509at_get_attr_by_OBJ(req->req_info->attributes, obj, lastpos);
 }
+LCRYPTO_ALIAS(X509_REQ_get_attr_by_OBJ);
 
 X509_ATTRIBUTE *
 X509_REQ_get_attr(const X509_REQ *req, int loc)
 {
-	return X509at_get_attr(req->req_info->attributes, loc);
+	return sk_X509_ATTRIBUTE_value(req->req_info->attributes, loc);
 }
+LCRYPTO_ALIAS(X509_REQ_get_attr);
 
 X509_ATTRIBUTE *
 X509_REQ_delete_attr(X509_REQ *req, int loc)
 {
-	return X509at_delete_attr(req->req_info->attributes, loc);
+	return sk_X509_ATTRIBUTE_delete(req->req_info->attributes, loc);
 }
+LCRYPTO_ALIAS(X509_REQ_delete_attr);
 
 int
 X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr)
@@ -311,6 +276,7 @@ X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr)
 		return 1;
 	return 0;
 }
+LCRYPTO_ALIAS(X509_REQ_add1_attr);
 
 int
 X509_REQ_add1_attr_by_OBJ(X509_REQ *req, const ASN1_OBJECT *obj, int type,
@@ -321,6 +287,7 @@ X509_REQ_add1_attr_by_OBJ(X509_REQ *req, const ASN1_OBJECT *obj, int type,
 		return 1;
 	return 0;
 }
+LCRYPTO_ALIAS(X509_REQ_add1_attr_by_OBJ);
 
 int
 X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid, int type,
@@ -331,6 +298,7 @@ X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid, int type,
 		return 1;
 	return 0;
 }
+LCRYPTO_ALIAS(X509_REQ_add1_attr_by_NID);
 
 int
 X509_REQ_add1_attr_by_txt(X509_REQ *req, const char *attrname, int type,
@@ -341,3 +309,12 @@ X509_REQ_add1_attr_by_txt(X509_REQ *req, const char *attrname, int type,
 		return 1;
 	return 0;
 }
+LCRYPTO_ALIAS(X509_REQ_add1_attr_by_txt);
+
+int
+i2d_re_X509_REQ_tbs(X509_REQ *req, unsigned char **pp)
+{
+	req->req_info->enc.modified = 1;
+	return i2d_X509_REQ_INFO(req->req_info, pp);
+}
+LCRYPTO_ALIAS(i2d_re_X509_REQ_tbs);
