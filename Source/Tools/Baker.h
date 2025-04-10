@@ -61,7 +61,7 @@ public:
     [[nodiscard]] static auto SetupBakers(const BakerSettings& settings, const BakeCheckerCallback& bake_checker, const WriteDataCallback& write_data) -> vector<unique_ptr<BaseBaker>>;
     [[nodiscard]] virtual auto IsExtSupported(string_view ext) const -> bool = 0;
 
-    virtual void BakeFiles(FileCollection&& files) = 0;
+    virtual void BakeFiles(FileCollection files) = 0;
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred; }
@@ -79,6 +79,7 @@ public:
     Baker(Baker&&) noexcept = default;
     auto operator=(const Baker&) = delete;
     auto operator=(Baker&&) noexcept = delete;
+    ~Baker() = default;
 
     void BakeAll();
 

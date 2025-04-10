@@ -55,7 +55,7 @@ public:
 
     [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fo3d" || ext == "fbx" || ext == "obj"; }
 
-    void BakeFiles(FileCollection&& files) override;
+    void BakeFiles(FileCollection files) override;
 
 private:
     [[nodiscard]] auto BakeFbxFile(string_view fname, const File& file) -> vector<uint8>;

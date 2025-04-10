@@ -88,7 +88,7 @@ public:
     [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
 
     void AddLoader(const LoadFunc& loader, const vector<string_view>& file_extensions);
-    void BakeFiles(FileCollection&& files) override;
+    void BakeFiles(FileCollection files) override;
 
 private:
     void BakeCollection(string_view fname, const FrameCollection& collection);

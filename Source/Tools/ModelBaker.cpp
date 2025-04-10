@@ -222,7 +222,7 @@ ModelBaker::~ModelBaker()
     STACK_TRACE_ENTRY();
 }
 
-void ModelBaker::BakeFiles(FileCollection&& files)
+void ModelBaker::BakeFiles(FileCollection files)
 {
     STACK_TRACE_ENTRY();
 
@@ -316,7 +316,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint
 
     writer.Write<uint>(static_cast<uint>(animations.size()));
 
-    for (auto& loaded_animation : animations) {
+    for (const auto& loaded_animation : animations) {
         loaded_animation->Save(writer);
     }
 
@@ -367,7 +367,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 mesh_triangles_count += triangles_count;
                 RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
 
-                for (size_t i = 0; i < triangles_count * 3; i++) {
+                for (size_t i = 0; i < static_cast<size_t>(triangles_count) * 3; i++) {
                     const uint32_t index = triangle_indices[i];
                     auto& v = mesh->Vertices.emplace_back();
 
@@ -492,7 +492,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         }
     }
 
-    for (auto i = 0; i < fbx_node->children.count; i++) {
+    for (size_t i = 0; i < fbx_node->children.count; i++) {
         ConvertFbxMeshes(root_bone, bone->Children[i].get(), fbx_node->children[i]);
     }
 }

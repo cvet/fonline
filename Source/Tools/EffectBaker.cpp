@@ -62,7 +62,7 @@ EffectBaker::~EffectBaker()
     glslang::FinalizeProcess();
 }
 
-void EffectBaker::BakeFiles(FileCollection&& files)
+void EffectBaker::BakeFiles(FileCollection files)
 {
     STACK_TRACE_ENTRY();
 
