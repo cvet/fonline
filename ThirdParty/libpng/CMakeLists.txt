@@ -351,7 +351,7 @@ endif()
 # Find an AWK language processor.
 # Start with specific AWK implementations like gawk and nawk, which are
 # known to work with our scripts, then fall back to the system awk.
-find_program(AWK NAMES gawk nawk awk)
+#! find_program(AWK NAMES gawk nawk awk) #! (FOnline Patch)
 if(AWK)
   message(STATUS "Found AWK program: ${AWK}")
 else()

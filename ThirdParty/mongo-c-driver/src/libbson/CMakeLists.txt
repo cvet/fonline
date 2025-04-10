@@ -365,7 +365,7 @@ install(
    DESTINATION "${BSON_INSTALL_CMAKEDIR}"
 )
 
-include (CPack)
+#! include (CPack) (FOnlinePatch)
 
 if (MONGO_FUZZ)
    add_subdirectory(fuzz)
