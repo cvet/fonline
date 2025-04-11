@@ -1227,10 +1227,6 @@ auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_compo
         key = rule.value();
     }
 
-    if (const auto separator = property_name.find('.'); separator != string::npos) {
-        key[separator] = '_';
-    }
-
     if (const auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
         return it->second;
     }
@@ -1323,7 +1319,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
         prop->_component = _hashResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
-        prop->_propName[dot_pos] = '_';
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
 
         if (!prop->_component) {
@@ -1388,45 +1383,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             }
 
             prop->_scriptFuncType = flags[i + 2];
-            i += 2;
-        }
-        else if (flags[i] == "Max") {
-            check_next_param();
-
-            if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
-                throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
-            }
-
-            if (prop->IsBaseTypeInt()) {
-                prop->_maxValueI = strex(flags[i + 2]).toInt64();
-            }
-            else {
-                prop->_maxValueF = strex(flags[i + 2]).toDouble();
-            }
-
-            prop->_checkMaxValue = true;
-            i += 2;
-        }
-        else if (flags[i] == "Min") {
-            check_next_param();
-
-            if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
-                throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
-            }
-
-            if (prop->IsBaseTypeInt()) {
-                prop->_minValueI = strex(flags[i + 2]).toInt64();
-            }
-            else {
-                prop->_minValueF = strex(flags[i + 2]).toDouble();
-            }
-
-            prop->_checkMinValue = true;
-            i += 2;
-        }
-        else if (flags[i] == "Quest") {
-            // Todo: restore quest variables
-            check_next_param();
             i += 2;
         }
         else if (flags[i] == "NullGetterForProto") {
@@ -1496,7 +1452,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
         auto new_size = space_pos + prop->GetBaseSize();
 
-        new_size += 8u - new_size % 8u;
+        new_size += 8 - new_size % 8;
 
         if (new_size > space.size()) {
             space.resize(new_size);
@@ -1509,7 +1465,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         pod_data_base_offset = space_pos;
 
         _wholePodDataSize = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size();
-        RUNTIME_ASSERT((_wholePodDataSize % 8u) == 0);
+        RUNTIME_ASSERT((_wholePodDataSize % 8) == 0);
     }
 
     // Complex property data index
