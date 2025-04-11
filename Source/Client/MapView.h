@@ -398,8 +398,8 @@ private:
     vector<ucolor> _hexTargetLight {};
     time_point _hexLightTime {};
 
-    int _prevMapDayTime {};
-    int _prevGlobalDayTime {};
+    int _prevMapDayTime {-1};
+    int _prevGlobalDayTime {-1};
     ucolor _prevMapDayColor {};
     ucolor _prevGlobalDayColor {};
     ucolor _mapDayColor {};

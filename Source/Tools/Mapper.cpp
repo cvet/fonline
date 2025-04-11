@@ -456,6 +456,9 @@ void FOMapper::ProcessMapperInput()
                     if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time += 60;
+                        while (day_time > 2880) {
+                            day_time -= 1440;
+                        }
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
                     }
@@ -464,6 +467,9 @@ void FOMapper::ProcessMapperInput()
                     if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
+                        while (day_time < 0) {
+                            day_time += 1440;
+                        }
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
                     }
