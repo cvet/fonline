@@ -333,19 +333,19 @@ genericFuncdefs = set()
 propertyComponents = set()
 
 symTok = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
-def tokenize(text, specialBehForProp=False):
+def tokenize(text, anySymbols=[]):
     if text is None:
         return []
     text = text.strip()
     result = []
     curTok = ''
     def flushTok():
-        if curTok:
-            result.append(curTok)
+        if curTok.strip():
+            result.append(curTok.strip())
         return ''
     for ch in text:
         if ch in symTok:
-            if specialBehForProp and len(result) in [2, 3]:
+            if len(result) in anySymbols:
                 curTok += ch
                 continue
             curTok = flushTok()
@@ -917,7 +917,9 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = tokenize(tagInfo, True)
+                tok = tokenize(tagInfo)
+                assert len(tok) >= 3, 'Expected 3 or more tokens in tag info'
+                tok = tokenize(tagInfo, anySymbols=([3] if tok[2] == 'const' else [2]))
                 entity = tok[0]
                 assert entity in gameEntities, entity
                 access = tok[1]
@@ -1100,7 +1102,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                ruleArgs = tokenize(tagInfo)
+                ruleArgs = tokenize(tagInfo, anySymbols=[2, 3])
                 assert len(ruleArgs) and ruleArgs[0] in ['Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
                 assert len(ruleArgs) == 4, 'Invalid migration rule args'
                 assert not len([t for t in codeGenTags['MigrationRule'] if t[0][0:3] == ruleArgs[0:3]]), 'Migration rule already added'
