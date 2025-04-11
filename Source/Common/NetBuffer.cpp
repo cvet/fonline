@@ -517,7 +517,7 @@ auto NetInBuffer::NeedProcess() -> bool
     // Unknown message
     if (msg_len == 0) {
         ResetBuf();
-        throw NetBufferException("Unknown message", msg);
+        throw UnknownMessageException("Unknown message", msg);
     }
 
     // Fixed size

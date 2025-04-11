@@ -1009,9 +1009,11 @@ struct ExceptionStackTraceData
     string StackTrace {};
 };
 
+#define DECLARE_EXCEPTION(exception_name) DECLARE_EXCEPTION_EXT(exception_name, BaseEngineException)
+
 // Todo: pass name to exceptions context args
-#define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public BaseEngineException \
+#define DECLARE_EXCEPTION_EXT(exception_name, base_exception_name) \
+    class exception_name : public base_exception_name \
     { \
     public: \
         exception_name() = delete; \
@@ -1020,20 +1022,20 @@ struct ExceptionStackTraceData
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(string_view message, Args&&... args) noexcept : \
-            BaseEngineException(#exception_name, nullptr, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, nullptr, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
         exception_name(ExceptionStackTraceData data, string_view message, Args&&... args) noexcept : \
-            BaseEngineException(#exception_name, &data, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, &data, message, std::forward<Args>(args)...) \
         { \
         } \
         exception_name(const exception_name& other) noexcept : \
-            BaseEngineException(other) \
+            base_exception_name(other) \
         { \
         } \
         exception_name(exception_name&& other) noexcept : \
-            BaseEngineException(other) \
+            base_exception_name(std::move(other)) \
         { \
         } \
     }
