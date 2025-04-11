@@ -558,13 +558,19 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             for (auto* player : copy_hold_ref(_unloginedPlayers)) {
+                auto* connection = player->Connection.get();
+
                 try {
-                    ProcessConnection(player->Connection.get());
+                    ProcessConnection(connection);
                     ProcessUnloginedPlayer(player);
+                }
+                catch (const UnknownMessageException&) {
+                    WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
+                    connection->HardDisconnect();
                 }
                 catch (const NetBufferException& ex) {
                     ReportExceptionAndContinue(ex);
-                    player->Connection->HardDisconnect();
+                    connection->HardDisconnect();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
