@@ -68,6 +68,11 @@ DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
 
+struct NetConnection::Impl
+{
+    z_stream ZStream {};
+};
+
 NetConnection::NetConnection(ServerNetworkSettings& settings) :
     InBuf(settings.NetBufferSize),
     OutBuf(settings.NetBufferSize),
@@ -78,24 +83,23 @@ NetConnection::NetConnection(ServerNetworkSettings& settings) :
     _outBuf.resize(_settings.NetBufferSize);
 
     if (!settings.DisableZlibCompression) {
-        auto* zstream = SafeAlloc::MakeRaw<z_stream_s>();
-        MemFill(zstream, 0, sizeof(z_stream_s));
-
-        _zStream = unique_del_ptr<z_stream_s>(zstream, [](z_stream_s* zstream_) {
-            deflateEnd(zstream_);
-            delete zstream_;
+        _impl = unique_del_ptr<Impl>(SafeAlloc::MakeRaw<Impl>(), [](Impl* impl) {
+            deflateEnd(&impl->ZStream);
+            delete impl;
         });
 
-        _zStream->zalloc = [](voidpf, uInt items, uInt size) -> void* {
+        MemFill(&_impl->ZStream, 0, sizeof(z_stream));
+
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
             constexpr SafeAllocator<uint8> allocator;
             return allocator.allocate(static_cast<size_t>(items) * size);
         };
-        _zStream->zfree = [](voidpf, voidpf address) {
+        _impl->ZStream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8> allocator;
             allocator.deallocate(static_cast<uint8*>(address), 0);
         };
 
-        const auto result = deflateInit(_zStream.get(), Z_BEST_SPEED);
+        const auto result = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
         RUNTIME_ASSERT(result == Z_OK);
     }
 }
@@ -104,7 +108,7 @@ void NetConnection::DisableCompression()
 {
     STACK_TRACE_ENTRY();
 
-    _zStream.reset();
+    _impl.reset();
 }
 
 void NetConnection::Dispatch()
@@ -151,7 +155,7 @@ auto NetConnection::SendCallback() -> const_span<uint8>
     size_t out_len;
 
     // Compress
-    if (_zStream) {
+    if (_impl) {
         const auto to_compr = OutBuf.GetEndPos();
 
         _outBuf.resize(to_compr + 32);
@@ -160,16 +164,16 @@ auto NetConnection::SendCallback() -> const_span<uint8>
             _outBuf.shrink_to_fit();
         }
 
-        _zStream->next_in = static_cast<Bytef*>(OutBuf.GetData());
-        _zStream->avail_in = static_cast<uInt>(to_compr);
-        _zStream->next_out = static_cast<Bytef*>(_outBuf.data());
-        _zStream->avail_out = static_cast<uInt>(_outBuf.size());
+        _impl->ZStream.next_in = static_cast<Bytef*>(OutBuf.GetData());
+        _impl->ZStream.avail_in = static_cast<uInt>(to_compr);
+        _impl->ZStream.next_out = static_cast<Bytef*>(_outBuf.data());
+        _impl->ZStream.avail_out = static_cast<uInt>(_outBuf.size());
 
-        const auto result = deflate(_zStream.get(), Z_SYNC_FLUSH);
+        const auto result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(result == Z_OK);
 
-        const auto compr = static_cast<size_t>(_zStream->next_out - _outBuf.data());
-        const auto real = static_cast<size_t>(_zStream->next_in - OutBuf.GetData());
+        const auto compr = static_cast<size_t>(_impl->ZStream.next_out - _outBuf.data());
+        const auto real = static_cast<size_t>(_impl->ZStream.next_in - OutBuf.GetData());
         out_len = compr;
 
         OutBuf.DiscardWriteBuf(real);

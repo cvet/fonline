@@ -40,8 +40,6 @@
 
 DECLARE_EXCEPTION(NetworkException);
 
-struct z_stream_s;
-
 class NetConnection : public std::enable_shared_from_this<NetConnection>
 {
 public:
@@ -83,7 +81,8 @@ protected:
     std::atomic_bool _isDisconnected {};
 
 private:
-    unique_del_ptr<z_stream_s> _zStream {};
+    struct Impl;
+    unique_del_ptr<Impl> _impl {};
     vector<uint8> _outBuf {};
 };
 
