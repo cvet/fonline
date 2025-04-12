@@ -40,15 +40,15 @@
 
 DECLARE_EXCEPTION(NetworkException);
 
-class NetConnection : public std::enable_shared_from_this<NetConnection>
+class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    NetConnection() = delete;
-    NetConnection(const NetConnection&) = delete;
-    NetConnection(NetConnection&&) noexcept = delete;
-    auto operator=(const NetConnection&) = delete;
-    auto operator=(NetConnection&&) noexcept = delete;
-    virtual ~NetConnection() = default;
+    NetworkServerConnection() = delete;
+    NetworkServerConnection(const NetworkServerConnection&) = delete;
+    NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
+    auto operator=(const NetworkServerConnection&) = delete;
+    auto operator=(NetworkServerConnection&&) noexcept = delete;
+    virtual ~NetworkServerConnection() = default;
 
     [[nodiscard]] auto GetIp() const noexcept -> uint { return _ip; }
     [[nodiscard]] auto GetHost() const noexcept -> string_view { return _host; }
@@ -67,7 +67,7 @@ public:
     std::mutex OutBufLocker {};
 
 protected:
-    explicit NetConnection(ServerNetworkSettings& settings);
+    explicit NetworkServerConnection(ServerNetworkSettings& settings);
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
@@ -86,41 +86,27 @@ private:
     vector<uint8> _outBuf {};
 };
 
-class DummyNetConnection : public NetConnection
+class NetworkServer
 {
 public:
-    explicit DummyNetConnection(ServerNetworkSettings& settings) :
-        NetConnection(settings)
-    {
-        _host = "Dummy";
-        _isDisconnected = true;
-    }
-    DummyNetConnection(const DummyNetConnection&) = delete;
-    DummyNetConnection(DummyNetConnection&&) noexcept = delete;
-    auto operator=(const DummyNetConnection&) = delete;
-    auto operator=(DummyNetConnection&&) noexcept = delete;
-    ~DummyNetConnection() override = default;
+    using NewConnectionCallback = std::function<void(shared_ptr<NetworkServerConnection>)>;
 
-protected:
-    void DispatchImpl() override { }
-    void DisconnectImpl() override { }
-};
-
-class NetServerBase
-{
-public:
-    using ConnectionCallback = std::function<void(shared_ptr<NetConnection>)>;
-
-    NetServerBase() = default;
-    NetServerBase(const NetServerBase&) = delete;
-    NetServerBase(NetServerBase&&) noexcept = delete;
-    auto operator=(const NetServerBase&) = delete;
-    auto operator=(NetServerBase&&) noexcept = delete;
-    virtual ~NetServerBase() = default;
+    NetworkServer() = default;
+    NetworkServer(const NetworkServer&) = delete;
+    NetworkServer(NetworkServer&&) noexcept = delete;
+    auto operator=(const NetworkServer&) = delete;
+    auto operator=(NetworkServer&&) noexcept = delete;
+    virtual ~NetworkServer() = default;
 
     virtual void Shutdown() = 0;
 
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
-    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> unique_ptr<NetServerBase>;
+    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+#if FO_HAVE_ASIO
+    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+#endif
+#if FO_HAVE_WEB_SOCKETS
+    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+#endif
+
+    [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>;
 };

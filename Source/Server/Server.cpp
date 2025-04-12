@@ -37,7 +37,6 @@
 #include "Application.h"
 #include "GenericUtils.h"
 #include "ImGuiStuff.h"
-#include "NetworkServer.h"
 #include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
@@ -156,17 +155,20 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Start networking");
 
-        if (auto conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto conn_server = NetServerBase::StartTcpServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+#if FO_HAVE_ASIO
+        if (auto conn_server = NetworkServer::StartTcpServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
-
-        if (auto conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+#endif
+#if FO_HAVE_WEB_SOCKETS
+        if (auto conn_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
+#endif
 
         return std::nullopt;
     });
@@ -971,7 +973,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     return result;
 }
 
-void FOServer::OnNewConnection(shared_ptr<NetConnection> net_connection)
+void FOServer::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
     STACK_TRACE_ENTRY();
 

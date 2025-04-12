@@ -44,13 +44,13 @@
     } \
     (conn)->Dispatch()
 
-class NetConnection;
+class NetworkServerConnection;
 
 class ClientConnection final
 {
 public:
     ClientConnection() = delete;
-    explicit ClientConnection(shared_ptr<NetConnection> net_connection);
+    explicit ClientConnection(shared_ptr<NetworkServerConnection> net_connection);
     ClientConnection(const ClientConnection&) = delete;
     ClientConnection(ClientConnection&&) noexcept = delete;
     auto operator=(const ClientConnection&) = delete;
@@ -85,6 +85,6 @@ public:
     uint UpdateFilePortion {};
 
 private:
-    shared_ptr<NetConnection> _netConnection;
+    shared_ptr<NetworkServerConnection> _netConnection;
     bool _gracefulDisconnected {};
 };

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: improve ban system
-
 #pragma once
 
 #include "Common.h"
@@ -51,14 +49,13 @@
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
+#include "NetworkServer.h"
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ServerInitException);
-
-class NetServerBase;
 
 class FOServer final : public FOEngineBase
 {
@@ -227,7 +224,7 @@ private:
 
     void SyncPoint();
 
-    void OnNewConnection(shared_ptr<NetConnection> net_connection);
+    void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
 
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
@@ -302,7 +299,7 @@ private:
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
-    vector<unique_ptr<NetServerBase>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<unique_ptr<ClientConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
     vector<Player*> _unloginedPlayers {};

@@ -36,7 +36,7 @@
 #include "NetworkServer.h"
 #include "TextPack.h"
 
-ClientConnection::ClientConnection(shared_ptr<NetConnection> net_connection) :
+ClientConnection::ClientConnection(shared_ptr<NetworkServerConnection> net_connection) :
     InBuf {net_connection->InBuf},
     InBufLocker {net_connection->InBufLocker},
     OutBuf {net_connection->OutBuf},

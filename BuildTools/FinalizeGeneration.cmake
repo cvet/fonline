@@ -18,7 +18,7 @@ endif()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
-if(NOT FO_DISBALE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
+if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     StatusMessage("+ Rpmalloc")
     set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     set(FO_RPMALLOC_SOURCE
@@ -280,18 +280,22 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Asio & Websockets
-if(NOT FO_DISBALE_ASIO AND NOT FO_ANDROID AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ Asio")
     set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     include_directories("${FO_ASIO_DIR}/include")
 
-    StatusMessage("+ Websockets")
-    set(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
-    include_directories("${FO_WEBSOCKETS_DIR}")
+    if (NOT FO_DISABLE_WEB_SOCKETS)
+        StatusMessage("+ Websockets")
+        set(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
+        include_directories("${FO_WEBSOCKETS_DIR}")
+        add_compile_definitions(FO_HAVE_WEB_SOCKETS=1)
+    endif()
 
     add_compile_definitions(FO_HAVE_ASIO=1)
 else()
     add_compile_definitions(FO_HAVE_ASIO=0)
+    add_compile_definitions(FO_HAVE_WEB_SOCKETS=0)
 endif()
 
 # MongoDB & Bson
@@ -311,7 +315,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(ENABLE_CLIENT_SIDE_ENCRYPTION OFF CACHE STRING "Forced by FOnline" FORCE)
     set(USE_BUNDLED_UTF8PROC ON CACHE BOOL "Forced by FOnline" FORCE)
 
-    if(NOT FO_DISBALE_MONGO AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+    if(NOT FO_DISABLE_MONGO AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
         StatusMessage("+ MongoDB")
         set(ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE)
         add_compile_definitions(FO_HAVE_MONGO=1)
@@ -340,7 +344,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Unqlite
-if(NOT FO_DISBALE_UNQLITE AND NOT FO_WEB)
+if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
     StatusMessage("+ Unqlite")
     set(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
     add_subdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
@@ -724,6 +728,9 @@ list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/MapManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/MapManager.h"
     "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-Asio.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-Interthread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-WebSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
