@@ -47,11 +47,6 @@
 #include "ClientScripting.h"
 #define FOEngine FOClient
 #define SCRIPTING_CLASS ClientScriptSystem
-#elif SINGLE_SCRIPTING
-#include "Single.h"
-#include "SingleScripting.h"
-#define FOEngine FOSingle
-#define SCRIPTING_CLASS SingleScriptSystem
 #elif MAPPER_SCRIPTING
 #include "Mapper.h"
 #include "MapperScripting.h"

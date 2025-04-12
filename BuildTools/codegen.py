@@ -16,8 +16,6 @@ parser.add_argument('-devname', dest='devname', required=True, help='dev game na
 parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
 parser.add_argument('-gameversion', dest='gameversion', required=True, help='game version')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
-parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
-parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
 parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
 parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
@@ -26,11 +24,9 @@ parser.add_argument('-csharp', dest='csharp', action='store_true', help='generat
 parser.add_argument('-monoassembly', dest='monoassembly', action='append', default=[], help='assembly name')
 parser.add_argument('-monoserverref', dest='monoserverref', action='append', default=[], help='mono assembly server reference')
 parser.add_argument('-monoclientref', dest='monoclientref', action='append', default=[], help='mono assembly client reference')
-parser.add_argument('-monosingleref', dest='monosingleref', action='append', default=[], help='mono assembly singleplayer reference')
 parser.add_argument('-monomapperref', dest='monomapperref', action='append', default=[], help='mono assembly mapper reference')
 parser.add_argument('-monoserversource', dest='monoserversource', action='append', default=[], help='csharp server file path')
 parser.add_argument('-monoclientsource', dest='monoclientsource', action='append', default=[], help='csharp client file path')
-parser.add_argument('-monosinglesource', dest='monosinglesource', action='append', default=[], help='csharp sp file path')
 parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
 parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
@@ -39,8 +35,6 @@ parser.add_argument('-genoutput', dest='genoutput', required=True, help='generat
 parser.add_argument('-ascontentoutput', dest='ascontentoutput', help='generated angel script content script output dir')
 parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
 args = parser.parse_args()
-
-assert (args.singleplayer or args.multiplayer) and not (args.singleplayer and args.multiplayer), 'Singleplayer/Multiplayer mismatch'
 
 def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
@@ -109,30 +103,23 @@ genFileList = ['EmbeddedResources-Include.h',
         'DataRegistration-Server.cpp',
         'DataRegistration-Client.cpp',
         'DataRegistration-Mapper.cpp',
-        'DataRegistration-Single.cpp',
         'DataRegistration-Baker.cpp',
         'DataRegistration-ServerCompiler.cpp',
         'DataRegistration-ClientCompiler.cpp',
         'DataRegistration-MapperCompiler.cpp',
-        'DataRegistration-SingleCompiler.cpp',
         'AngelScriptScripting-Server.cpp',
         'AngelScriptScripting-Client.cpp',
         'AngelScriptScripting-Mapper.cpp',
-        'AngelScriptScripting-Single.cpp',
         'AngelScriptScripting-ServerCompiler.cpp',
         'AngelScriptScripting-ServerCompilerValidation.cpp',
         'AngelScriptScripting-ClientCompiler.cpp',
         'AngelScriptScripting-MapperCompiler.cpp',
-        'AngelScriptScripting-SingleCompiler.cpp',
-        'AngelScriptScripting-SingleCompilerValidation.cpp',
         'MonoScripting-Server.cpp',
         'MonoScripting-Client.cpp',
         'MonoScripting-Mapper.cpp',
-        'MonoScripting-Single.cpp',
         'NativeScripting-Server.cpp',
         'NativeScripting-Client.cpp',
-        'NativeScripting-Mapper.cpp',
-        'NativeScripting-Single.cpp']
+        'NativeScripting-Mapper.cpp']
 
 # Parse meta information
 codeGenTags = {
@@ -1555,7 +1542,7 @@ def genDataRegistration(target, isASCompiler):
             return gameEntitiesInfo[entity]['Server'] is not None
         if entityTarget in ['Client', 'Mapper']:
             return gameEntitiesInfo[entity]['Client'] is not None
-        if entityTarget in ['Baker', 'Single']:
+        if entityTarget in ['Baker']:
             return True
         assert False, entityTarget
     
@@ -1756,9 +1743,6 @@ def genDataRegistration(target, isASCompiler):
         elif target == 'Client':
             insertCodeGenLines(registerLines, 'ClientRegister')
             insertCodeGenLines(globalLines, 'Global')
-        elif target == 'Single':
-            insertCodeGenLines(registerLines, 'SingleRegister')
-            insertCodeGenLines(globalLines, 'Global')
         elif target == 'Mapper':
             insertCodeGenLines(registerLines, 'MapperRegister')
             insertCodeGenLines(globalLines, 'Global')
@@ -1771,20 +1755,17 @@ def genDataRegistration(target, isASCompiler):
         insertCodeGenLines(globalLines, 'Global')
     
     if target == 'Server':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Client':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1', '#define SINGLE_REGISTRATION 0',
-                '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
-    elif target == 'Single':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 1',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Mapper':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 1', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Baker':
         assert not isASCompiler
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 1', '#define COMPILER_MODE 0'], 'Defines')
 
 try:
@@ -1794,17 +1775,11 @@ try:
     if args.angelscript:
         genDataRegistration('Mapper', True)
     
-    if args.multiplayer:
-        genDataRegistration('Server', False)
-        genDataRegistration('Client', False)
-        if args.angelscript:
-            genDataRegistration('Server', True)
-            genDataRegistration('Client', True)
-    
-    if args.singleplayer:
-        genDataRegistration('Single', False)
-        if args.angelscript:
-            genDataRegistration('Single', True)
+    genDataRegistration('Server', False)
+    genDataRegistration('Client', False)
+    if args.angelscript:
+        genDataRegistration('Server', True)
+        genDataRegistration('Client', True)
     
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
@@ -1998,7 +1973,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         
         defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
         defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
-        defineLines.append('#define SINGLE_SCRIPTING ' + ('1' if target == 'Single' else '0'))
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
         defineLines.append('#define COMPILER_VALIDATION_MODE ' + ('1' if isASCompilerValidation else '0'))
@@ -2615,7 +2589,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         
         defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
         defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
-        defineLines.append('#define SINGLE_SCRIPTING ' + ('1' if target == 'Single' else '0'))
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
 
         # Modify file content (from bottom to top)
@@ -2625,31 +2598,20 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         assert False, 'Native generation not implemented'
 
 try:
-    if args.multiplayer:
-        genCode('AngelScript', 'Server')
-        genCode('AngelScript', 'Client')
-        genCode('AngelScript', 'Server', True)
-        genCode('AngelScript', 'Server', True, True)
-        genCode('AngelScript', 'Client', True)
-    if args.singleplayer:
-        genCode('AngelScript', 'Single')
-        genCode('AngelScript', 'Single', True)
-        genCode('AngelScript', 'Single', True, True)
+    genCode('AngelScript', 'Server')
+    genCode('AngelScript', 'Client')
+    genCode('AngelScript', 'Server', True)
+    genCode('AngelScript', 'Server', True, True)
+    genCode('AngelScript', 'Client', True)
     genCode('AngelScript', 'Mapper')
     genCode('AngelScript', 'Mapper', True)
     
-    if args.multiplayer:
-        genCode('Mono', 'Server')
-        genCode('Mono', 'Client')
-    if args.singleplayer:
-        genCode('Mono', 'Single')
+    genCode('Mono', 'Server')
+    genCode('Mono', 'Client')
     genCode('Mono', 'Mapper')
     
-    if args.multiplayer:
-        genCode('Native', 'Server')
-        genCode('Native', 'Client')
-    if args.singleplayer:
-        genCode('Native', 'Single')
+    genCode('Native', 'Server')
+    genCode('Native', 'Client')
     genCode('Native', 'Mapper')
     
 except Exception as ex:
@@ -2684,7 +2646,7 @@ if args.angelscript and args.ascontentoutput:
         showError('Can\'t generate scripts', ex)
 
 # Markdown
-def genApiMarkdown(target):
+def genApiMarkdown():
     createFile('SCRIPT_API.md', args.mdpath)
     writeFile('# ' + args.devname + ' Script API')
     writeFile('')
@@ -2745,62 +2707,43 @@ def genApiMarkdown(target):
         for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
             ent, access, type, name, flags, comm = propTag
             if ent == entity:
-                if target == 'Multiplayer':
-                    writeFile('* `' + access + ' ' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
-                else:
-                    writeFile('* `' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
+                writeFile('* `' + access + ' ' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
                 writeComm(comm, 0)
-        if target == 'Multiplayer':
-            writeFile('### ' + entity + ' server events')
-            writeFile('')
-            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
-                targ, ent, evName, evArgs, evFlags, comm = evTag
-                if ent == entity and targ == 'Server':
-                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' client events')
-            writeFile('')
-            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
-                targ, ent, evName, evArgs, evFlags, comm = evTag
-                if ent == entity and targ == 'Client':
-                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' common methods')
-            writeFile('')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comm = methodTag
-                if ent == entity and targ == 'Common':
-                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' server methods')
-            writeFile('')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comm = methodTag
-                if ent == entity and targ == 'Server':
-                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' client methods')
-            writeFile('')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comm = methodTag
-                if ent == entity and targ == 'Client':
-                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                    writeComm(comm, 0)
-        elif target == 'Singleplayer':
-            writeFile('### ' + entity + ' events')
-            writeFile('')
-            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
-                targ, ent, evName, evArgs, evFlags, comm = evTag
-                if ent == entity:
-                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' methods')
-            writeFile('')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comm = methodTag
-                if ent == entity and targ != 'Mapper':
-                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                    writeComm(comm, 0)
+        writeFile('### ' + entity + ' server events')
+        writeFile('')
+        for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+            targ, ent, evName, evArgs, evFlags, comm = evTag
+            if ent == entity and targ == 'Server':
+                writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                writeComm(comm, 0)
+        writeFile('### ' + entity + ' client events')
+        writeFile('')
+        for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+            targ, ent, evName, evArgs, evFlags, comm = evTag
+            if ent == entity and targ == 'Client':
+                writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                writeComm(comm, 0)
+        writeFile('### ' + entity + ' common methods')
+        writeFile('')
+        for methodTag in codeGenTags['ExportMethod']:
+            targ, ent, name, ret, params, exportFlags, comm = methodTag
+            if ent == entity and targ == 'Common':
+                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                writeComm(comm, 0)
+        writeFile('### ' + entity + ' server methods')
+        writeFile('')
+        for methodTag in codeGenTags['ExportMethod']:
+            targ, ent, name, ret, params, exportFlags, comm = methodTag
+            if ent == entity and targ == 'Server':
+                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                writeComm(comm, 0)
+        writeFile('### ' + entity + ' client methods')
+        writeFile('')
+        for methodTag in codeGenTags['ExportMethod']:
+            targ, ent, name, ret, params, exportFlags, comm = methodTag
+            if ent == entity and targ == 'Client':
+                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                writeComm(comm, 0)
         if entity == 'Game':
             writeFile('### ' + entity + ' mapper events')
             writeFile('')
@@ -2871,10 +2814,7 @@ def genApiMarkdown(target):
 
 if args.markdown:
     try:
-        if args.multiplayer:
-            genApiMarkdown('Multiplayer')
-        if args.singleplayer:
-            genApiMarkdown('Singleplayer')
+        genApiMarkdown()
     
     except Exception as ex:
         showError('Can\'t generate markdown representation', ex)
@@ -2994,13 +2934,6 @@ def genApi(target):
                 writeMethod(i, None)
             for i in nativeMeta.methods['globalclient']:
                 writeMethod(i, None)
-        elif target == 'Single':
-            for i in nativeMeta.methods['globalcommon']:
-                writeMethod(i, None)
-            for i in nativeMeta.methods['globalserver']:
-                writeMethod(i, None)
-            for i in nativeMeta.methods['globalclient']:
-                writeMethod(i, None)
         elif target == 'Mapper':
             for i in nativeMeta.methods['globalmapper']:
                 writeMethod(i, None)
@@ -3026,10 +2959,10 @@ def genApi(target):
             for i in nativeMeta.properties[entity.lower()]:
                 writeProp(i, entity)
             writeFile('')
-            if target == 'Server' or target == 'Single':
+            if target == 'Server':
                 for i in nativeMeta.methods[entity.lower()]:
                     writeMethod(i, entity)
-            if target == 'Client' or target == 'Single':
+            if target == 'Client':
                 for i in nativeMeta.methods[entity.lower() + 'view']:
                     writeMethod(i, entity)
             writeFile('};')
@@ -3211,13 +3144,6 @@ def genApi(target):
                 writeMethod(i, None, extCalls)
             for i in monoMeta.methods['globalclient']:
                 writeMethod(i, None, extCalls)
-        elif target == 'Single':
-            for i in monoMeta.methods['globalcommon']:
-                writeMethod(i, None, extCalls)
-            for i in monoMeta.methods['globalserver']:
-                writeMethod(i, None, extCalls)
-            for i in monoMeta.methods['globalclient']:
-                writeMethod(i, None, extCalls)
         elif target == 'Mapper':
             for i in monoMeta.methods['globalcommon']:
                 writeMethod(i, None, extCalls)
@@ -3251,13 +3177,6 @@ def genApi(target):
             elif target == 'Client':
                 for i in monoMeta.properties[entity.lower()]:
                     writeProp(i, entity, extCalls)
-                for i in monoMeta.methods[entity.lower() + 'view']:
-                    writeMethod(i, entity, extCalls)
-            elif target == 'Single':
-                for i in monoMeta.properties[entity.lower()]:
-                    writeProp(i, entity, extCalls)
-                for i in monoMeta.methods[entity.lower()]:
-                    writeMethod(i, entity, extCalls)
                 for i in monoMeta.methods[entity.lower() + 'view']:
                     writeMethod(i, entity, extCalls)
             elif target == 'Mapper':
@@ -3320,13 +3239,6 @@ def genApi(target):
                 writeEvent(e)
             for e in monoMeta.events['client']:
                 writeEventExt(e)
-        elif target == 'Single':
-            for ename in ['server', 'client']:
-                for e in monoMeta.events[ename]:
-                    writeEvent(e)
-            for ename in ['server', 'client']:
-                for e in monoMeta.events[ename]:
-                    writeEventExt(e)
         elif target == 'Mapper':
             for e in monoMeta.events['mapper']:
                 writeEvent(e)
@@ -3447,10 +3359,6 @@ def genApi(target):
                 for src in args.monoclientsource:
                     if src.split(',')[0] == assembly:
                         writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
-            elif target == 'Single':
-                for src in args.monosinglesource:
-                    if src.split(',')[0] == assembly:
-                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
             elif target == 'Mapper':
                 for src in args.monomappersource:
                     if src.split(',')[0] == assembly:
@@ -3487,10 +3395,6 @@ def genApi(target):
                 for ref in args.monoclientref:
                     if ref.split(',')[0] == assembly:
                         addRef(ref.split(',')[1])
-            elif target == 'Single':
-                for ref in args.monoclientref:
-                    if ref.split(',')[0] == assembly:
-                        addRef(ref.split(',')[1])
             elif target == 'Mapper':
                 for ref in args.monomapperref:
                     if ref.split(',')[0] == assembly:
@@ -3504,11 +3408,8 @@ def genApi(target):
 csprojects = []
 """
 try:
-    if args.multiplayer:
-        genApi('Server')
-        genApi('Client')
-    if args.singleplayer:
-        genApi('Single')
+    genApi('Server')
+    genApi('Client')
     if args.mapper:
         genApi('Mapper')
         

@@ -34,8 +34,6 @@
 #include "ServerScripting.h"
 #include "Server.h"
 
-#if !FO_SINGLEPLAYER
-
 ServerScriptSystem::ServerScriptSystem(FOServer* engine) :
     _engine {engine}
 {
@@ -56,5 +54,3 @@ void ServerScriptSystem::InitSubsystems()
     InitAngelScriptScripting();
     InitMonoScripting();
 }
-
-#endif

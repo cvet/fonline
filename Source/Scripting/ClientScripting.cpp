@@ -34,8 +34,6 @@
 #include "ClientScripting.h"
 #include "Client.h"
 
-#if !FO_SINGLEPLAYER
-
 ClientScriptSystem::ClientScriptSystem(FOClient* engine) :
     _engine {engine}
 {
@@ -56,5 +54,3 @@ void ClientScriptSystem::InitSubsystems()
     InitAngelScriptScripting();
     InitMonoScripting();
 }
-
-#endif

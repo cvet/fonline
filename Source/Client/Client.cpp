@@ -44,11 +44,7 @@
 #include "Version-Include.h"
 
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode) :
-#if !FO_SINGLEPLAYER
     FOEngineBase(settings, mapper_mode ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative),
-#else
-    FOEngineBase(settings, PropertiesRelationType::BothRelative),
-#endif
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, *this),
     ResMngr(Resources, SprMngr, *this),
@@ -107,7 +103,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         return;
     }
 
-#if !FO_SINGLEPLAYER
     if (const auto restore_info = Resources.ReadFile("RestoreInfo.fobin")) {
         extern void Client_RegisterData(FOEngineBase*, const vector<uint8>&);
         Client_RegisterData(this, restore_info.GetData());
@@ -118,7 +113,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     ScriptSys = SafeAlloc::MakeUnique<ClientScriptSystem>(this);
     ScriptSys->InitSubsystems();
-#endif
 
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadTexts(Resources);
@@ -392,13 +386,11 @@ void FOClient::TryAutoLogin()
 
     _isAutoLogin = true;
 
-#if !FO_SINGLEPLAYER
     if (OnAutoLogin.Fire(auto_login_args[0], auto_login_args[1]) && _initNetReason == INIT_NET_REASON_NONE) {
         _loginName = auto_login_args[0];
         _loginPassword = auto_login_args[1];
         _initNetReason = INIT_NET_REASON_LOGIN;
     }
-#endif
 }
 
 void FOClient::MainLoop()
@@ -449,9 +441,7 @@ void FOClient::MainLoop()
 
     TimeEventMngr.ProcessTimeEvents();
 
-#if !FO_SINGLEPLAYER
     OnLoop.Fire();
-#endif
 
     if (CurMap != nullptr) {
         CurMap->Process();
