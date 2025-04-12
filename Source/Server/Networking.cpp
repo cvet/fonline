@@ -70,215 +70,149 @@ DISABLE_WARNINGS_POP()
 
 NetConnection::NetConnection(ServerNetworkSettings& settings) :
     InBuf(settings.NetBufferSize),
-    OutBuf(settings.NetBufferSize)
+    OutBuf(settings.NetBufferSize),
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
+
+    _outBuf.resize(_settings.NetBufferSize);
+
+    if (!settings.DisableZlibCompression) {
+        auto* zstream = SafeAlloc::MakeRaw<z_stream_s>();
+        MemFill(zstream, 0, sizeof(z_stream_s));
+
+        _zStream = unique_del_ptr<z_stream_s>(zstream, [](z_stream_s* zstream_) {
+            deflateEnd(zstream_);
+            delete zstream_;
+        });
+
+        _zStream->zalloc = [](voidpf, uInt items, uInt size) -> void* {
+            constexpr SafeAllocator<uint8> allocator;
+            return allocator.allocate(static_cast<size_t>(items) * size);
+        };
+        _zStream->zfree = [](voidpf, voidpf address) {
+            constexpr SafeAllocator<uint8> allocator;
+            allocator.deallocate(static_cast<uint8*>(address), 0);
+        };
+
+        const auto result = deflateInit(_zStream.get(), Z_BEST_SPEED);
+        RUNTIME_ASSERT(result == Z_OK);
+    }
 }
 
-class NetConnectionImpl : public NetConnection
+void NetConnection::DisableCompression()
 {
-public:
-    explicit NetConnectionImpl(ServerNetworkSettings& settings) :
-        NetConnection(settings),
-        _settings {settings}
-    {
-        STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
-        _outBuf.resize(_settings.NetBufferSize);
+    _zStream.reset();
+}
 
-        if (!settings.DisableZlibCompression) {
-            _zStream = {};
-            _zStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
-                constexpr SafeAllocator<uint8> allocator;
-                return allocator.allocate(static_cast<size_t>(items) * size);
-            };
-            _zStream.zfree = [](voidpf, voidpf address) {
-                constexpr SafeAllocator<uint8> allocator;
-                allocator.deallocate(static_cast<uint8*>(address), 0);
-            };
+void NetConnection::Dispatch()
+{
+    STACK_TRACE_ENTRY();
 
-            const auto result = deflateInit(&_zStream, Z_BEST_SPEED);
-            RUNTIME_ASSERT(result == Z_OK);
-
-            _zStreamActive = true;
-        }
+    if (_isDisconnected) {
+        return;
     }
 
-    NetConnectionImpl() = delete;
-    NetConnectionImpl(const NetConnectionImpl&) = delete;
-    NetConnectionImpl(NetConnectionImpl&&) noexcept = delete;
-    auto operator=(const NetConnectionImpl&) = delete;
-    auto operator=(NetConnectionImpl&&) noexcept = delete;
-
-    ~NetConnectionImpl() override
+    // Nothing to send
     {
-        STACK_TRACE_ENTRY();
-
-        if (_zStreamActive) {
-            deflateEnd(&_zStream);
-        }
-    }
-
-    [[nodiscard]] auto GetIp() const noexcept -> uint override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return _ip;
-    }
-
-    [[nodiscard]] auto GetHost() const noexcept -> string_view override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return _host;
-    }
-
-    [[nodiscard]] auto GetPort() const noexcept -> uint16 override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return _port;
-    }
-
-    [[nodiscard]] auto IsDisconnected() const noexcept -> bool override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return _isDisconnected;
-    }
-
-    void DisableCompression() override
-    {
-        STACK_TRACE_ENTRY();
-
-        if (_zStreamActive) {
-            deflateEnd(&_zStream);
-            _zStreamActive = false;
-        }
-    }
-
-    void Dispatch() override
-    {
-        STACK_TRACE_ENTRY();
-
-        if (_isDisconnected) {
-            return;
-        }
-
-        // Nothing to send
-        {
-            std::scoped_lock locker(OutBufLocker);
-
-            if (OutBuf.IsEmpty()) {
-                return;
-            }
-        }
-
-        DispatchImpl();
-    }
-
-    void Disconnect() override
-    {
-        STACK_TRACE_ENTRY();
-
-        bool expected = false;
-
-        if (_isDisconnected.compare_exchange_strong(expected, true)) {
-            DisconnectImpl();
-        }
-    }
-
-protected:
-    virtual void DispatchImpl() = 0;
-    virtual void DisconnectImpl() = 0;
-
-    auto SendCallback() -> const_span<uint8>
-    {
-        STACK_TRACE_ENTRY();
-
         std::scoped_lock locker(OutBufLocker);
 
         if (OutBuf.IsEmpty()) {
-            return {};
-        }
-
-        size_t out_len;
-
-        // Compress
-        if (_zStreamActive) {
-            const auto to_compr = OutBuf.GetEndPos();
-
-            _outBuf.resize(to_compr + 32);
-
-            if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
-                _outBuf.shrink_to_fit();
-            }
-
-            _zStream.next_in = static_cast<Bytef*>(OutBuf.GetData());
-            _zStream.avail_in = static_cast<uInt>(to_compr);
-            _zStream.next_out = static_cast<Bytef*>(_outBuf.data());
-            _zStream.avail_out = static_cast<uInt>(_outBuf.size());
-
-            const auto result = deflate(&_zStream, Z_SYNC_FLUSH);
-            RUNTIME_ASSERT(result == Z_OK);
-
-            const auto compr = static_cast<size_t>(_zStream.next_out - _outBuf.data());
-            const auto real = static_cast<size_t>(_zStream.next_in - OutBuf.GetData());
-            out_len = compr;
-
-            OutBuf.DiscardWriteBuf(real);
-        }
-        // Without compressing
-        else {
-            const auto len = OutBuf.GetEndPos();
-
-            _outBuf.resize(len);
-
-            if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
-                _outBuf.shrink_to_fit();
-            }
-
-            MemCopy(_outBuf.data(), OutBuf.GetData(), len);
-            out_len = len;
-
-            OutBuf.DiscardWriteBuf(len);
-        }
-
-        // Normalize buffer size
-        if (OutBuf.IsEmpty()) {
-            OutBuf.ResetBuf();
-        }
-
-        RUNTIME_ASSERT(out_len > 0);
-        return {_outBuf.data(), out_len};
-    }
-
-    void ReceiveCallback(const uint8* buf, size_t len)
-    {
-        STACK_TRACE_ENTRY();
-
-        std::scoped_lock locker(InBufLocker);
-
-        if (InBuf.GetReadPos() + len < _settings.FloodSize) {
-            InBuf.AddData(buf, len);
-        }
-        else {
-            InBuf.ResetBuf();
-            Disconnect();
+            return;
         }
     }
 
-    ServerNetworkSettings& _settings;
-    uint _ip {};
-    string _host {};
-    uint16 _port {};
-    std::atomic_bool _isDisconnected {};
+    DispatchImpl();
+}
 
-private:
-    bool _zStreamActive {};
-    z_stream _zStream {};
-    vector<uint8> _outBuf {};
-};
+void NetConnection::Disconnect()
+{
+    STACK_TRACE_ENTRY();
+
+    bool expected = false;
+
+    if (_isDisconnected.compare_exchange_strong(expected, true)) {
+        DisconnectImpl();
+    }
+}
+
+auto NetConnection::SendCallback() -> const_span<uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(OutBufLocker);
+
+    if (OutBuf.IsEmpty()) {
+        return {};
+    }
+
+    size_t out_len;
+
+    // Compress
+    if (_zStream) {
+        const auto to_compr = OutBuf.GetEndPos();
+
+        _outBuf.resize(to_compr + 32);
+
+        if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
+            _outBuf.shrink_to_fit();
+        }
+
+        _zStream->next_in = static_cast<Bytef*>(OutBuf.GetData());
+        _zStream->avail_in = static_cast<uInt>(to_compr);
+        _zStream->next_out = static_cast<Bytef*>(_outBuf.data());
+        _zStream->avail_out = static_cast<uInt>(_outBuf.size());
+
+        const auto result = deflate(_zStream.get(), Z_SYNC_FLUSH);
+        RUNTIME_ASSERT(result == Z_OK);
+
+        const auto compr = static_cast<size_t>(_zStream->next_out - _outBuf.data());
+        const auto real = static_cast<size_t>(_zStream->next_in - OutBuf.GetData());
+        out_len = compr;
+
+        OutBuf.DiscardWriteBuf(real);
+    }
+    // Without compressing
+    else {
+        const auto len = OutBuf.GetEndPos();
+
+        _outBuf.resize(len);
+
+        if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
+            _outBuf.shrink_to_fit();
+        }
+
+        MemCopy(_outBuf.data(), OutBuf.GetData(), len);
+        out_len = len;
+
+        OutBuf.DiscardWriteBuf(len);
+    }
+
+    // Normalize buffer size
+    if (OutBuf.IsEmpty()) {
+        OutBuf.ResetBuf();
+    }
+
+    RUNTIME_ASSERT(out_len > 0);
+    return {_outBuf.data(), out_len};
+}
+
+void NetConnection::ReceiveCallback(const uint8* buf, size_t len)
+{
+    STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(InBufLocker);
+
+    if (InBuf.GetReadPos() + len < _settings.FloodSize) {
+        InBuf.AddData(buf, len);
+    }
+    else {
+        InBuf.ResetBuf();
+        Disconnect();
+    }
+}
 
 #if FO_HAVE_ASIO
 class NetTcpServer : public NetServerBase
@@ -355,11 +289,11 @@ private:
     std::thread _runThread {};
 };
 
-class NetConnectionAsio final : public NetConnectionImpl
+class NetConnectionAsio final : public NetConnection
 {
 public:
     NetConnectionAsio(ServerNetworkSettings& settings, unique_ptr<asio::ip::tcp::socket> socket) :
-        NetConnectionImpl(settings),
+        NetConnection(settings),
         _socket {std::move(socket)}
     {
         STACK_TRACE_ENTRY();
@@ -501,14 +435,14 @@ private:
 };
 
 template<typename WebSockets>
-class NetConnectionWebSocket final : public NetConnectionImpl
+class NetConnectionWebSocket final : public NetConnection
 {
     using connection_ptr = typename WebSockets::connection_ptr;
     using message_ptr = typename WebSockets::message_ptr;
 
 public:
     NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) :
-        NetConnectionImpl(settings),
+        NetConnection(settings),
         _server {server},
         _connection {std::move(connection)}
     {
@@ -882,11 +816,11 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 #endif
 }
 
-class InterthreadConnection : public NetConnectionImpl
+class InterthreadConnection : public NetConnection
 {
 public:
     InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) :
-        NetConnectionImpl(settings),
+        NetConnection(settings),
         _send {std::move(send)}
     {
         STACK_TRACE_ENTRY();

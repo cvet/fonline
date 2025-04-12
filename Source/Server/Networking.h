@@ -40,31 +40,51 @@
 
 DECLARE_EXCEPTION(NetworkException);
 
+struct z_stream_s;
+
 class NetConnection : public std::enable_shared_from_this<NetConnection>
 {
 public:
-    explicit NetConnection(ServerNetworkSettings& settings);
+    NetConnection() = delete;
     NetConnection(const NetConnection&) = delete;
     NetConnection(NetConnection&&) noexcept = delete;
     auto operator=(const NetConnection&) = delete;
     auto operator=(NetConnection&&) noexcept = delete;
     virtual ~NetConnection() = default;
 
-    [[nodiscard]] virtual auto GetIp() const noexcept -> uint = 0;
-    [[nodiscard]] virtual auto GetHost() const noexcept -> string_view = 0;
-    [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 = 0;
-    [[nodiscard]] virtual auto IsDisconnected() const noexcept -> bool = 0;
-    [[nodiscard]] virtual auto IsWebConnection() const noexcept -> bool = 0;
-    [[nodiscard]] virtual auto IsInterthreadConnection() const noexcept -> bool = 0;
+    [[nodiscard]] auto GetIp() const noexcept -> uint { return _ip; }
+    [[nodiscard]] auto GetHost() const noexcept -> string_view { return _host; }
+    [[nodiscard]] auto GetPort() const noexcept -> uint16 { return _port; }
+    [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
+    [[nodiscard]] virtual auto IsWebConnection() const noexcept -> bool { return false; }
+    [[nodiscard]] virtual auto IsInterthreadConnection() const noexcept -> bool { return false; }
 
-    virtual void DisableCompression() = 0;
-    virtual void Dispatch() = 0;
-    virtual void Disconnect() = 0;
+    void DisableCompression();
+    void Dispatch();
+    void Disconnect();
 
     NetInBuffer InBuf;
     std::mutex InBufLocker {};
     NetOutBuffer OutBuf;
     std::mutex OutBufLocker {};
+
+protected:
+    explicit NetConnection(ServerNetworkSettings& settings);
+    virtual void DispatchImpl() = 0;
+    virtual void DisconnectImpl() = 0;
+
+    auto SendCallback() -> const_span<uint8>;
+    void ReceiveCallback(const uint8* buf, size_t len);
+
+    ServerNetworkSettings& _settings;
+    uint _ip {};
+    string _host {};
+    uint16 _port {};
+    std::atomic_bool _isDisconnected {};
+
+private:
+    unique_del_ptr<z_stream_s> _zStream {};
+    vector<uint8> _outBuf {};
 };
 
 class DummyNetConnection : public NetConnection
@@ -73,6 +93,8 @@ public:
     explicit DummyNetConnection(ServerNetworkSettings& settings) :
         NetConnection(settings)
     {
+        _host = "Dummy";
+        _isDisconnected = true;
     }
     DummyNetConnection(const DummyNetConnection&) = delete;
     DummyNetConnection(DummyNetConnection&&) noexcept = delete;
@@ -80,16 +102,9 @@ public:
     auto operator=(DummyNetConnection&&) noexcept = delete;
     ~DummyNetConnection() override = default;
 
-    auto GetIp() const noexcept -> uint override { return 0; }
-    auto GetHost() const noexcept -> string_view override { return "Dummy"; }
-    auto GetPort() const noexcept -> uint16 override { return 0; }
-    auto IsDisconnected() const noexcept -> bool override { return false; }
-    auto IsWebConnection() const noexcept -> bool override { return false; }
-    auto IsInterthreadConnection() const noexcept -> bool override { return false; }
-
-    void DisableCompression() override { }
-    void Dispatch() override { }
-    void Disconnect() override { }
+protected:
+    void DispatchImpl() override { }
+    void DisconnectImpl() override { }
 };
 
 class NetServerBase
