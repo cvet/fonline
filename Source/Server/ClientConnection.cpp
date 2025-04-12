@@ -32,9 +32,8 @@
 //
 
 #include "ClientConnection.h"
-
 #include "Log.h"
-#include "Networking.h"
+#include "NetworkServer.h"
 #include "TextPack.h"
 
 ClientConnection::ClientConnection(shared_ptr<NetConnection> net_connection) :

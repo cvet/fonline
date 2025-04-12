@@ -33,7 +33,7 @@
 
 // Todo: catch exceptions in network servers
 
-#include "Networking.h"
+#include "NetworkServer.h"
 #include "Application.h"
 #include "Log.h"
 #include "Settings.h"

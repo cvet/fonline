@@ -35,7 +35,7 @@
 
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "Networking.h"
+#include "NetworkServer.h"
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"

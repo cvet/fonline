@@ -37,7 +37,7 @@
 #include "Application.h"
 #include "GenericUtils.h"
 #include "ImGuiStuff.h"
-#include "Networking.h"
+#include "NetworkServer.h"
 #include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
