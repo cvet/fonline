@@ -697,7 +697,7 @@ FO_SCRIPT_API Critter* Server_Game_GetCritter(FOServer* server, ident_t crId)
     return server->EntityMngr.GetCritter(crId);
 }
 
-///@ ExportMethod ExcludeInSingleplayer PassOwnership
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
     if (name.empty()) {
@@ -1033,7 +1033,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
     return items;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
 {
     const auto& players = server->EntityMngr.GetPlayers();
@@ -1048,7 +1048,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
     return result;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(FOServer* server)
 {
     return server->DbStorage.GetAllIds(server->PlayersCollectionName);

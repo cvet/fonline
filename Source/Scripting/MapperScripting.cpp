@@ -34,8 +34,6 @@
 #include "MapperScripting.h"
 #include "Mapper.h"
 
-#if !FO_SINGLEPLAYER
-
 MapperScriptSystem::MapperScriptSystem(FOMapper* engine) :
     _engine {engine}
 {
@@ -56,5 +54,3 @@ void MapperScriptSystem::InitSubsystems()
     InitAngelScriptScripting();
     InitMonoScripting();
 }
-
-#endif

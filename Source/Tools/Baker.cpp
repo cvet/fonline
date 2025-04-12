@@ -67,7 +67,6 @@ public:
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
-#if !FO_SINGLEPLAYER
 struct AngelScriptCompiler_ServerScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
@@ -80,16 +79,6 @@ struct AngelScriptCompiler_ClientScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
-#else
-struct AngelScriptCompiler_SingleScriptSystem : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-struct AngelScriptCompiler_SingleScriptSystem_Validation : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
-};
-#endif
 struct AngelScriptCompiler_MapperScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
@@ -379,18 +368,13 @@ void Baker::BakeAll()
 
                 while (script_files.MoveNext() && all_scripts_up_to_date) {
                     auto file = script_files.GetCurFileHeader();
-#if !FO_SINGLEPLAYER
+
                     if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
                     if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
-#else
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("AngelScript/RootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
-                        all_scripts_up_to_date = false;
-                    }
-#endif
                     if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("MapperAngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
@@ -401,7 +385,6 @@ void Baker::BakeAll()
                 WriteLog("Scripts up to date, skip");
             }
 
-#if !FO_SINGLEPLAYER
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile server scripts");
                 AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
@@ -412,12 +395,7 @@ void Baker::BakeAll()
                 WriteLog("Compile client scripts");
                 AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
             }
-#else
-            if (!all_scripts_up_to_date) {
-                WriteLog("Compile game scripts");
-                AngelScriptCompiler_SingleScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
-            }
-#endif
+
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile mapper scripts");
                 AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
@@ -437,11 +415,7 @@ void Baker::BakeAll()
         // Validation engine
         FOEngineBase* validation_engine = nullptr;
 #if FO_ANGELSCRIPT_SCRIPTING
-#if !FO_SINGLEPLAYER
         AngelScriptCompiler_ServerScriptSystem_Validation compiler_script_sys;
-#else
-        AngelScriptCompiler_SingleScriptSystem_Validation compiler_script_sys;
-#endif
 #endif
         auto validation_engine_destroyer = ScopeCallback([&validation_engine]() noexcept {
             if (validation_engine != nullptr) {
@@ -454,11 +428,7 @@ void Baker::BakeAll()
             WriteLog("Compile AngelScript scripts");
 
 #if FO_ANGELSCRIPT_SCRIPTING
-#if !FO_SINGLEPLAYER
             compiler_script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-#else
-            compiler_script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-#endif
 #endif
         }
         catch (const std::exception& ex) {
@@ -489,11 +459,9 @@ void Baker::BakeAll()
                 if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
                     all_configs_up_to_date = false;
                 }
-#if !FO_SINGLEPLAYER
                 if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
                     all_configs_up_to_date = false;
                 }
-#endif
             }
 
             if (!all_configs_up_to_date) {
@@ -533,13 +501,11 @@ void Baker::BakeAll()
                     auto focfg = ConfigFile(file.GetPath(), final_content);
 
                     string config_content;
-#if !FO_SINGLEPLAYER
                     extern auto GetServerSettings() -> unordered_set<string>;
                     extern auto GetClientSettings() -> unordered_set<string>;
                     auto server_settings = GetServerSettings();
                     auto client_settings = GetClientSettings();
                     string client_config_content;
-#endif
 
                     for (auto&& [key, value] : focfg.GetSection("")) {
                         if (key.front() == '$') {
@@ -570,7 +536,6 @@ void Baker::BakeAll()
 
                         config_content += strex("{}={}\n", key, resolved_value);
 
-#if !FO_SINGLEPLAYER
                         const auto is_server_setting = server_settings.count(key) != 0;
                         const auto is_client_setting = client_settings.count(key) != 0;
                         if (is_server_setting) {
@@ -584,7 +549,6 @@ void Baker::BakeAll()
                             WriteLog("Unknown setting {} = {}", key, resolved_value);
                             settings_errors++;
                         }
-#endif
                     }
 
                     if (settings_errors != 0) {
@@ -599,9 +563,7 @@ void Baker::BakeAll()
                     };
 
                     write_config("", file.GetName(), config_content);
-#if !FO_SINGLEPLAYER
                     write_config("Client_", file.GetName(), client_config_content);
-#endif
                 }
             }
 
@@ -637,11 +599,8 @@ void Baker::BakeAll()
 #endif
 
             if (!parse_protos) {
-#if !FO_SINGLEPLAYER
                 const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("FullProtos/FullProtos.foprob"));
-#else
-                const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("Protos/Protos.foprob"));
-#endif
+
                 if (last_write_time > 0) {
                     const auto check_up_to_date = [last_write_time, &resources = baker_engine.Resources](string_view ext) -> bool {
                         auto files = resources.FilterFiles(ext);
@@ -820,7 +779,6 @@ void Baker::BakeAll()
                         throw GenericException("Map validation error(s)");
                     }
 
-#if !FO_SINGLEPLAYER
                     // Server side
                     {
                         vector<uint8> map_data;
@@ -841,6 +799,7 @@ void Baker::BakeAll()
                         auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                         RUNTIME_ASSERT(map_bin_file_write_ok);
                     }
+
                     // Client side
                     {
                         vector<uint8> map_data;
@@ -859,19 +818,6 @@ void Baker::BakeAll()
                         auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                         RUNTIME_ASSERT(map_bin_file_write_ok);
                     }
-#else
-                    vector<uint8> map_data;
-                    auto final_writer = DataWriter(map_data);
-                    final_writer.Write<uint>(map_cr_count);
-                    final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
-                    final_writer.Write<uint>(map_item_count);
-                    final_writer.WritePtr(map_item_data.data(), map_item_data.size());
-
-                    auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
-                    RUNTIME_ASSERT(map_bin_file);
-                    auto map_bin_file_write_ok = map_bin_file.Write(map_data);
-                    RUNTIME_ASSERT(map_bin_file_write_ok);
-#endif
                 };
 
                 vector<std::future<void>> map_bakings;
@@ -909,13 +855,9 @@ void Baker::BakeAll()
                 };
 
                 WriteLog("Write protos");
-#if !FO_SINGLEPLAYER
                 write_protos(proto_mngr, "FullProtos/FullProtos.foprob");
                 write_protos(server_proto_mngr, "ServerProtos/ServerProtos.foprob");
                 write_protos(client_proto_mngr, "ClientProtos/ClientProtos.foprob");
-#else
-                write_protos(proto_mngr, "Protos/Protos.foprob");
-#endif
             }
 
             WriteLog("Bake protos complete");

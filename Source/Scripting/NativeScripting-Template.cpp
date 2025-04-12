@@ -38,7 +38,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #include "ServerScripting.h"
 #elif FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
@@ -46,7 +46,7 @@
 #include "MapperScripting.h"
 #endif
 
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #include "Server.h"
 #define FO_API_COMMON_IMPL 1
 #define FO_API_SERVER_IMPL 1
@@ -138,7 +138,7 @@ inline vector<ScriptEntity*> MarshalBack(vector<Entity*> obj)
     return {};
 }
 
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 inline ScriptPlayer* MarshalBack(Player* obj)
 {
     return 0;
@@ -284,7 +284,7 @@ inline T MarshalBack(T value)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)_mainObjPtr; \
     FOServer* _common = _server
@@ -308,7 +308,7 @@ inline T MarshalBack(T value)
 class ScriptPlayer : public ScriptEntity
 {
 public:
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define THIS_ARG Player* _player = (Player*)_thisPtr
 #define FO_API_PLAYER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_PLAYER_METHOD_IMPL 1
@@ -334,7 +334,7 @@ public:
 class ScriptItem : public ScriptEntity
 {
 public:
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define THIS_ARG Item* _item = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL 1
@@ -360,7 +360,7 @@ public:
 class ScriptCritter : public ScriptEntity
 {
 public:
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define THIS_ARG Critter* _critter = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL 1
@@ -386,7 +386,7 @@ public:
 class ScriptMap : public ScriptEntity
 {
 public:
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define THIS_ARG Map* _map = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL 1
@@ -412,7 +412,7 @@ public:
 class ScriptLocation : public ScriptEntity
 {
 public:
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define THIS_ARG Location* _location = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL 1
@@ -441,7 +441,7 @@ public:
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL 1
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SERVER_SCRIPTING
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL 1
 #elif FO_CLIENT_SCRIPTING

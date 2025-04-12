@@ -34,9 +34,6 @@
 // Todo: support restoring file downloading from interrupted position
 
 #include "Updater.h"
-
-#if !FO_SINGLEPLAYER
-
 #include "ClientScripting.h"
 #include "DefaultSprites.h"
 #include "Log.h"
@@ -368,5 +365,3 @@ void Updater::GetNextFile()
 
     _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
 }
-
-#endif

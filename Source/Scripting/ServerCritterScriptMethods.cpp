@@ -63,7 +63,7 @@ FO_SCRIPT_API bool Server_Critter_IsMoving(Critter* self)
     return self->IsMoving() || self->TargetMoving.State == MovingState::InProgress;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Critter_GetPlayer(Critter* self)
 {
     return self->GetPlayer();
@@ -699,7 +699,7 @@ FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, in
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_Animate(Critter* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem, bool clearSequence, bool delayPlay)
 {
     self->SendAndBroadcast_Animate(stateAnim, actionAnim, dynamic_cast<Item*>(contextItem), clearSequence, delayPlay);
@@ -749,7 +749,7 @@ FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, const vector<Item*>& 
     self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
 {
     if (!self->GetControlledByPlayer()) {
@@ -761,7 +761,7 @@ FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
 {
     if (!self->GetControlledByPlayer()) {

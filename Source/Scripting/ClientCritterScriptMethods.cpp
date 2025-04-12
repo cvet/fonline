@@ -43,25 +43,25 @@ FO_SCRIPT_API void Client_Critter_SetName(CritterView* self, string_view name)
     self->SetName(name);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsOffline(CritterView* self)
 {
     return self->GetControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAlive(CritterView* self)
 {
     return self->IsAlive();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsKnockout(CritterView* self)
 {
     return self->IsKnockout();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsDead(CritterView* self)
 {
     return self->IsDead();
@@ -73,7 +73,7 @@ FO_SCRIPT_API bool Client_Critter_IsOnMap(CritterView* self)
     return dynamic_cast<CritterHexView*>(self) != nullptr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsMoving(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
@@ -165,7 +165,7 @@ FO_SCRIPT_API void Client_Critter_StopAnim(CritterView* self)
     hex_cr->ClearAnim();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
     uint result = 0;
@@ -179,13 +179,13 @@ FO_SCRIPT_API uint Client_Critter_CountItem(CritterView* self, hstring protoId)
     return result;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
     return self->GetInvItem(itemId);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
@@ -216,7 +216,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
     return nullptr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
 {
     for (auto* item : self->GetInvItems()) {
@@ -228,7 +228,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent 
     return nullptr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
@@ -242,13 +242,13 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty p
     return nullptr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
     return self->GetInvItems();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
 {
     vector<ItemView*> items;
@@ -263,7 +263,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemC
     return items;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);

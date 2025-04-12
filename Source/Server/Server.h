@@ -60,7 +60,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer : SINGLEPLAYER_VIRTUAL public FOEngineBase
+class FOServer final : public FOEngineBase
 {
     friend class ServerScriptSystem;
 

@@ -9,5 +9,4 @@ Tools/*.cpp Tools/*.h ^
 Scripting/*.cpp Scripting/*.h ^
 Scripting/AngelScript/*.fos ^
 Frontend/*.cpp Frontend/*.h ^
-Singleplayer/*.cpp Singleplayer/*.h ^
 Tests/*.cpp
