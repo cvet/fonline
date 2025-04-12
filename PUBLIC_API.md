@@ -57,20 +57,14 @@ I.e. build win/linux/mac/etc binaries in different places but collect output in 
 
 `FO_BUILD_CLIENT (default: NO)`
 
-Produce multiplayer client binaries.  
+Produce client binaries.  
 Binaries will be placed in `output/Client` directory in separate directory named as `platform-arch-configuration` (i.e. Windows-win64-Debug).  
 These binaries later will be consumed by packager.
 
 `FO_BUILD_SERVER (default: NO)`
 
-Produce multiplayer server binaries.  
+Produce server binaries.  
 Binaries will be placed in `output/Server` directory in separate directory named as `platform-arch-configuration` (i.e. Linux-x64-Release).
-These binaries later will be consumed by packager.
-
-`FO_BUILD_SINGLE (default: NO)`
-
-Produce singleplayer binaries.  
-Binaries will be placed in `output/Single` directory in separate directory named as `platform-arch-configuration` (i.e. Web-wasm-Release).
 These binaries later will be consumed by packager.
 
 `FO_BUILD_MAPPER (default: NO)`
@@ -113,7 +107,6 @@ CMake contributions included to main CMakeLists.txt scope.
   + NICE_NAME - representative name of game, any characters allowed
   + AUTHOR_NAME - authoring
   + GAME_VERSION - any string that describe current version of game
-  + SINGLEPLAYER - set YES if you work on singleplayer game
   + NATIVE_SCRIPTING - allow native C++ scripting
   + ANGELSCRIPT_SCRIPTING - allow AngelScript scripting
   + MONO_SCRIPTING - allow Mono C# scripting
@@ -132,9 +125,7 @@ CMake contributions included to main CMakeLists.txt scope.
 
 Because developers can contribute to script API provided document describes only clear engine script API without any contribution.  
 Script API documents:
-* [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
-* [Singleplayer Script API](https://fonline.ru/SINGLEPLAYER_SCRIPT_API)
-* [Mapper Script API](https://fonline.ru/MAPPER_SCRIPT_API)
+...
 
 ### Internal file formats
 

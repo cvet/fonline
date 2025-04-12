@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#if !FO_SINGLEPLAYER
-
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
@@ -98,5 +96,3 @@ private:
     vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
-
-#endif

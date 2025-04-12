@@ -41,8 +41,6 @@ jobs:
         - win32-client
         - win64-client
         - win64-server
-        - win32-single
-        - win64-single
         - win64-editor
         - win64-mapper
         - win64-ascompiler
@@ -63,11 +61,6 @@ jobs:
         - web-client
         - linux-server
         - linux-gcc-server
-        - linux-single
-        - linux-gcc-single
-        - android-arm-single
-        - android-arm64-single
-        - web-single
         - linux-editor
         - linux-gcc-editor
         - linux-mapper
@@ -97,8 +90,6 @@ jobs:
         app:
         - mac-client
         - ios-client
-        - mac-single
-        - ios-single
     steps:
     - uses: actions/checkout@v4
     - run: BuildTools/validate.sh ${{matrix.app}}

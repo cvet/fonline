@@ -111,7 +111,7 @@ constexpr int INIT_NET_REASON_REG = 2;
 constexpr int INIT_NET_REASON_LOAD = 3;
 constexpr int INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : SINGLEPLAYER_VIRTUAL public FOEngineBase, public AnimationResolver
+class FOClient : public FOEngineBase, public AnimationResolver
 {
     friend class ClientScriptSystem;
 

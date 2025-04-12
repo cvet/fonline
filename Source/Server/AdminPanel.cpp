@@ -32,9 +32,6 @@
 //
 
 #include "AdminPanel.h"
-
-#if !FO_SINGLEPLAYER
-
 #include "Application.h"
 #include "Log.h"
 #include "NetBuffer.h"
@@ -348,12 +345,3 @@ label_Finish:
         delete session;
     }
 }
-
-#else
-
-void InitAdminManager(FOServer* server, uint16 port)
-{
-    STACK_TRACE_ENTRY();
-}
-
-#endif

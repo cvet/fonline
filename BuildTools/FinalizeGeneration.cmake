@@ -1,29 +1,13 @@
 cmake_minimum_required(VERSION 3.22)
 
 # Force some variables for internal debugging purposes
-if(NOT ${FO_FORCE_SINGLEPLAYER} STREQUAL "")
-    set(FO_SINGLEPLAYER ${FO_FORCE_SINGLEPLAYER})
-endif()
-
 if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
     set(FO_ENABLE_3D ${FO_FORCE_ENABLE_3D})
 endif()
 
 # Configuration checks
-if(FO_CODE_COVERAGE AND(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SINGLE OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
+if(FO_CODE_COVERAGE AND(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
     AbortMessage("Code coverge build can not be mixed with other builds")
-endif()
-
-if(FO_BUILD_SINGLE AND(FO_BUILD_SERVER OR FO_BUILD_CLIENT))
-    AbortMessage("Singleplayer/Multiplayer configuration mismatch")
-endif()
-
-if(FO_SINGLEPLAYER AND(FO_BUILD_SERVER OR FO_BUILD_CLIENT))
-    AbortMessage("No client or server builds in singleplayer mode")
-endif()
-
-if(NOT FO_SINGLEPLAYER AND FO_BUILD_SINGLE)
-    AbortMessage("No single build in multiplayer mode")
 endif()
 
 if(FO_BUILD_ASCOMPILER AND NOT FO_ANGELSCRIPT_SCRIPTING)
@@ -269,7 +253,7 @@ list(APPEND FO_COMMON_LIBS fmt)
 DisableLibWarnings(fmt)
 
 # LibreSSL
-if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT FO_SINGLEPLAYER)
+if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ LibreSSL")
     set(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
     set(LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
@@ -292,7 +276,7 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
 endif()
 
 # Asio & Websockets
-if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT FO_ANDROID AND NOT FO_SINGLEPLAYER)
+if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT FO_ANDROID)
     StatusMessage("+ Asio")
     set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     include_directories("${FO_ASIO_DIR}/include")
@@ -307,7 +291,7 @@ else()
 endif()
 
 # MongoDB & Bson
-if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO_BUILD_SINGLE)
+if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ Bson")
     set(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
@@ -323,7 +307,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
     set(ENABLE_CLIENT_SIDE_ENCRYPTION OFF CACHE STRING "Forced by FOnline" FORCE)
     set(USE_BUNDLED_UTF8PROC ON CACHE BOOL "Forced by FOnline" FORCE)
 
-    if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND NOT FO_SINGLEPLAYER)
+    if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         StatusMessage("+ MongoDB")
         set(ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE)
         add_compile_definitions(FO_HAVE_MONGO=1)
@@ -816,38 +800,23 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientLocationScriptMethods.cpp")
 
-if(NOT FO_SINGLEPLAYER)
-    list(APPEND FO_SERVER_SOURCE
-        ${FO_SERVER_BASE_SOURCE}
-        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp")
+list(APPEND FO_SERVER_SOURCE
+    ${FO_SERVER_BASE_SOURCE}
+    "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp")
 
-    list(APPEND FO_CLIENT_SOURCE
-        ${FO_CLIENT_BASE_SOURCE}
-        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp")
-
-else()
-    list(APPEND FO_SINGLE_SOURCE
-        ${FO_SERVER_BASE_SOURCE}
-        ${FO_CLIENT_BASE_SOURCE}
-        "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.cpp"
-        "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.h"
-        "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
-endif()
+list(APPEND FO_CLIENT_SOURCE
+    ${FO_CLIENT_BASE_SOURCE}
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp")
 
 list(APPEND FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
@@ -892,34 +861,26 @@ list(APPEND FO_BAKER_SOURCE
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp")
+
+    list(APPEND FO_ASCOMPILER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
+
+    list(APPEND FO_ASCOMPILER_SOURCE
         "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
-
-    if(NOT FO_SINGLEPLAYER)
-        list(APPEND FO_ASCOMPILER_SOURCE
-            "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
-            "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
-            "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
-            "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
-    else()
-        list(APPEND FO_ASCOMPILER_SOURCE
-            "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.cpp"
-            "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
-            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp")
-    endif()
 endif()
 
 list(APPEND FO_SOURCE_META_FILES
-    "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.h"
     "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
     "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
@@ -995,19 +956,12 @@ if(FO_MONO_SCRIPTING)
     list(APPEND FO_CODEGEN_COMMAND_ARGS -csharp)
 endif()
 
-if(NOT FO_SINGLEPLAYER)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -multiplayer)
-else()
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -singleplayer)
-endif()
-
 foreach(entry ${FO_MONO_ASSEMBLIES})
     list(APPEND FO_CODEGEN_COMMAND_ARGS -monoassembly ${entry})
 
     foreach(ref ${MonoAssembly_${entry}_CommonRefs})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}")
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}")
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}")
     endforeach()
 
@@ -1019,10 +973,6 @@ foreach(entry ${FO_MONO_ASSEMBLIES})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}")
     endforeach()
 
-    foreach(ref ${MonoAssembly_${entry}_SingleRefs})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}")
-    endforeach()
-
     foreach(ref ${MonoAssembly_${entry}_MapperRefs})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}")
     endforeach()
@@ -1030,7 +980,6 @@ foreach(entry ${FO_MONO_ASSEMBLIES})
     foreach(src ${MonoAssembly_${entry}_CommonSource})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}")
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}")
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}")
         list(APPEND FO_MONO_SOURCE ${src})
     endforeach()
@@ -1042,11 +991,6 @@ foreach(entry ${FO_MONO_ASSEMBLIES})
 
     foreach(src ${MonoAssembly_${entry}_ClientSource})
         list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}")
-        list(APPEND FO_MONO_SOURCE ${src})
-    endforeach()
-
-    foreach(src ${MonoAssembly_${entry}_SingleSource})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}")
         list(APPEND FO_MONO_SOURCE ${src})
     endforeach()
 
@@ -1101,32 +1045,25 @@ list(APPEND FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
 
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 
@@ -1158,7 +1095,7 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SINGLE OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ AppHeadless")
     add_library(AppHeadless STATIC EXCLUDE_FROM_ALL
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
@@ -1189,7 +1126,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 endif()
 
-if(NOT FO_SINGLEPLAYER AND(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ ClientLib")
     add_library(ClientLib STATIC EXCLUDE_FROM_ALL ${FO_CLIENT_SOURCE})
     add_dependencies(ClientLib ${FO_GEN_DEPENDENCIES})
@@ -1197,20 +1134,12 @@ if(NOT FO_SINGLEPLAYER AND(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER
     list(APPEND FO_CORE_LIBS_GROUP ClientLib)
 endif()
 
-if(NOT FO_SINGLEPLAYER AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ ServerLib")
     add_library(ServerLib STATIC EXCLUDE_FROM_ALL ${FO_SERVER_SOURCE})
     add_dependencies(ServerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(ServerLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP ServerLib)
-endif()
-
-if(FO_SINGLEPLAYER AND(FO_BUILD_SINGLE OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
-    StatusMessage("+ SingleLib")
-    add_library(SingleLib STATIC EXCLUDE_FROM_ALL ${FO_SINGLE_SOURCE})
-    add_dependencies(SingleLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(SingleLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP SingleLib)
 endif()
 
 if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1248,7 +1177,7 @@ endif()
 # Applications
 StatusMessage("Applications:")
 
-if(NOT FO_SINGLEPLAYER AND FO_BUILD_CLIENT)
+if(FO_BUILD_CLIENT)
     if(NOT FO_BUILD_LIBRARY)
         StatusMessage("+ ${FO_DEV_NAME}_Client")
         list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Client")
@@ -1270,7 +1199,7 @@ if(NOT FO_SINGLEPLAYER AND FO_BUILD_CLIENT)
     WriteBuildHash(${FO_DEV_NAME}_Client)
 endif()
 
-if(NOT FO_SINGLEPLAYER AND FO_BUILD_SERVER)
+if(FO_BUILD_SERVER)
     StatusMessage("+ ${FO_DEV_NAME}_Server")
     list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Server")
     add_executable(${FO_DEV_NAME}_Server WIN32 "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp" ${FO_RC_FILE})
@@ -1310,26 +1239,6 @@ if(NOT FO_SINGLEPLAYER AND FO_BUILD_SERVER)
     endif()
 endif()
 
-if(FO_SINGLEPLAYER AND FO_BUILD_SINGLE)
-    if(NOT FO_BUILD_LIBRARY)
-        StatusMessage("+ ${FO_DEV_NAME}")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}")
-        add_executable(${FO_DEV_NAME} WIN32 "${FO_ENGINE_ROOT}/Source/Applications/SingleApp.cpp" ${FO_RC_FILE})
-        set_target_properties(${FO_DEV_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    else()
-        StatusMessage("+ ${FO_DEV_NAME} (shared library)")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}")
-        add_library(${FO_DEV_NAME} SHARED "${FO_ENGINE_ROOT}/Source/Applications/SingleApp.cpp")
-        set_target_properties(${FO_DEV_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT})
-    endif()
-
-    add_dependencies(${FO_DEV_NAME} ${FO_GEN_DEPENDENCIES})
-    set_target_properties(${FO_DEV_NAME} PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}")
-    set_target_properties(${FO_DEV_NAME} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME} "AppFrontend" "SingleLib")
-    WriteBuildHash(${FO_DEV_NAME})
-endif()
-
 if(FO_BUILD_EDITOR)
     StatusMessage("+ ${FO_DEV_NAME}_Editor")
     list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Editor")
@@ -1338,12 +1247,7 @@ if(FO_BUILD_EDITOR)
     set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Editor")
     set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
     target_link_libraries(${FO_DEV_NAME}_Editor "AppFrontend" "EditorLib" "MapperLib" "BakerLib")
-
-    if(NOT FO_SINGLEPLAYER)
-        target_link_libraries(${FO_DEV_NAME}_Editor "ClientLib" "ServerLib")
-    else()
-        target_link_libraries(${FO_DEV_NAME}_Editor "SingleLib")
-    endif()
+    target_link_libraries(${FO_DEV_NAME}_Editor "ClientLib" "ServerLib")
 
     if(FO_ANGELSCRIPT_SCRIPTING)
         target_link_libraries(${FO_DEV_NAME}_Editor "ASCompilerLib")
@@ -1360,12 +1264,7 @@ if(FO_BUILD_MAPPER)
     set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Mapper")
     set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
     target_link_libraries(${FO_DEV_NAME}_Mapper "AppFrontend" "MapperLib")
-
-    if(NOT FO_SINGLEPLAYER)
-        target_link_libraries(${FO_DEV_NAME}_Mapper "ClientLib")
-    else()
-        target_link_libraries(${FO_DEV_NAME}_Mapper "SingleLib")
-    endif()
+    target_link_libraries(${FO_DEV_NAME}_Mapper "ClientLib")
 
     WriteBuildHash(${FO_DEV_NAME}_Mapper)
 endif()
@@ -1415,18 +1314,13 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         set_target_properties(${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1")
         target_link_libraries(${target} "BakerLib" "EditorLib" "MapperLib" "${FO_TESTING_LIBS}")
 
-        if(NOT FO_SINGLEPLAYER)
-            target_sources(${target} PRIVATE
-                "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp"
-                "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp"
-                "${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp"
-                "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
-                "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp")
-            target_link_libraries(${target} "ClientLib" "ServerLib")
-        else()
-            target_sources(${target} PRIVATE "${FO_ENGINE_ROOT}/Source/Applications/SingleApp.cpp")
-            target_link_libraries(${target} "SingleLib")
-        endif()
+        target_sources(${target} PRIVATE
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp"
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp"
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp"
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
+            "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp")
+        target_link_libraries(${target} "ClientLib" "ServerLib")
 
         if(FO_ANGELSCRIPT_SCRIPTING)
             target_link_libraries(${target} "ASCompilerLib")

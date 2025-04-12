@@ -158,7 +158,7 @@ FO_SCRIPT_API void Client_Map_RebuildFog(MapView* self)
     self->RebuildFog();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {
@@ -222,7 +222,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, m
     return items;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
     if (!critterId) {
@@ -237,13 +237,13 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterI
     return cr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self)
 {
     return vec_static_cast<CritterView*>(self->GetCritters());
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
 {
     vector<CritterView*> critters;
@@ -257,7 +257,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, Critter
     return critters;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring pid, CritterFindType findType)
 {
     vector<CritterView*> critters;
@@ -280,7 +280,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
     return critters;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, uint radius, CritterFindType findType)
 {
     if (!self->GetSize().IsValidPos(hex)) {
@@ -304,7 +304,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
     return critters;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
@@ -321,7 +321,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
     return vec_static_cast<CritterView*>(critters);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
@@ -338,7 +338,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
     return vec_static_cast<CritterView*>(critters);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint dist)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
@@ -355,7 +355,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
     toHex = pre_block;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
@@ -391,7 +391,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
     return result->DirSteps;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
     if (!self->GetSize().IsValidPos(toHex)) {
@@ -429,7 +429,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
     return result->DirSteps;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, uint cut)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
@@ -462,7 +462,7 @@ FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos to
     return static_cast<uint>(result->DirSteps.size());
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, uint cut)
 {
     if (!self->GetSize().IsValidPos(toHex)) {
@@ -542,7 +542,7 @@ FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, b
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, uint steps)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {

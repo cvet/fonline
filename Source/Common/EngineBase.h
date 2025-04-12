@@ -47,12 +47,6 @@
 
 DECLARE_EXCEPTION(DataRegistrationException);
 
-#if FO_SINGLEPLAYER
-#define SINGLEPLAYER_VIRTUAL virtual
-#else
-#define SINGLEPLAYER_VIRTUAL
-#endif
-
 class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
 {
 public:

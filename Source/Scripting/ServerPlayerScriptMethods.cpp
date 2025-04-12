@@ -35,13 +35,13 @@
 
 #include "Server.h"
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
 {
     return self->GetControlledCritter();

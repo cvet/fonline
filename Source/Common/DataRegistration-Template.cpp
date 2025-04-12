@@ -150,17 +150,6 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
     engine->FinalizeDataRegistration();
 }
 
-#elif SINGLE_REGISTRATION
-
-void Single_RegisterData(FOEngineBase* engine)
-{
-    STACK_TRACE_ENTRY();
-
-    ///@ CodeGen SingleRegister
-
-    engine->FinalizeDataRegistration();
-}
-
 #elif MAPPER_REGISTRATION
 
 void Mapper_RegisterData(FOEngineBase* engine)
@@ -229,8 +218,6 @@ auto Baker_GetRestoreInfo() -> vector<uint8>
 void AngelScript_ServerCompiler_RegisterData(FOEngineBase* engine)
 #elif CLIENT_REGISTRATION
 void AngelScript_ClientCompiler_RegisterData(FOEngineBase* engine)
-#elif SINGLE_REGISTRATION
-void AngelScript_SingleCompiler_RegisterData(FOEngineBase* engine)
 #elif MAPPER_REGISTRATION
 void AngelScript_MapperCompiler_RegisterData(FOEngineBase* engine)
 #endif

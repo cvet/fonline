@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#if !FO_SINGLEPLAYER
-
 #include "ScriptSystem.h"
 
 class FOServer;
@@ -62,5 +60,3 @@ private:
 
     FOServer* _engine;
 };
-
-#endif

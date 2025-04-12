@@ -85,7 +85,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
     if (self->GetEngine()->CurMap == nullptr) {
@@ -119,7 +119,7 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
     return self->GetInnerItems();

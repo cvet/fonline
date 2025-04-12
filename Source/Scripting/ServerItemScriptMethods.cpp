@@ -185,7 +185,7 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
     return map;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
 {
     switch (self->GetOwnership()) {

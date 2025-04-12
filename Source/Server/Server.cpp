@@ -45,11 +45,7 @@
 #include "Version-Include.h"
 
 FOServer::FOServer(GlobalSettings& settings) :
-#if !FO_SINGLEPLAYER
     FOEngineBase(settings, PropertiesRelationType::ServerRelative),
-#else
-    FOEngineBase(settings, PropertiesRelationType::BothRelative),
-#endif
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -143,7 +139,6 @@ FOServer::FOServer(GlobalSettings& settings) :
     _starter.AddJob([this] {
         STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
 
-#if !FO_SINGLEPLAYER
         WriteLog("Initialize script system");
 
         extern void Server_RegisterData(FOEngineBase*);
@@ -151,7 +146,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         ScriptSys = SafeAlloc::MakeUnique<ServerScriptSystem>(this);
         ScriptSys->InitSubsystems();
-#endif
 
         return std::nullopt;
     });
@@ -160,7 +154,6 @@ FOServer::FOServer(GlobalSettings& settings) :
     _starter.AddJob([this] {
         STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
-#if !FO_SINGLEPLAYER
         WriteLog("Start networking");
 
         if (auto conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
@@ -174,7 +167,6 @@ FOServer::FOServer(GlobalSettings& settings) :
         if (auto conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
-#endif
 
         return std::nullopt;
     });
@@ -1839,12 +1831,6 @@ void FOServer::ProcessCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-#if FO_SINGLEPLAYER
-    if (GameTime.IsGameplayPaused()) {
-        return;
-    }
-#endif
-
     // Moving
     if (!cr->IsDestroyed()) {
         ProcessCritterMoving(cr);
@@ -2410,11 +2396,11 @@ void FOServer::Process_Register(Player* unlogined_player)
         }
     }
 
-#if !FO_SINGLEPLAYER
     auto disallow_text_pack = TextPackName::None;
     uint disallow_str_num = 0;
     string lexems;
     const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_text_pack, disallow_str_num, lexems);
+
     if (!allow) {
         if (disallow_text_pack != TextPackName::None && disallow_str_num != 0) {
             unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, disallow_str_num, lexems);
@@ -2422,10 +2408,10 @@ void FOServer::Process_Register(Player* unlogined_player)
         else {
             unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
         }
+
         unlogined_player->Connection->GracefulDisconnect();
         return;
     }
-#endif
 
     // Register
     auto reg_ip = AnyData::Array();
@@ -2501,7 +2487,6 @@ void FOServer::Process_Login(Player* unlogined_player)
         return;
     }
 
-#if !FO_SINGLEPLAYER
     // Request script
     {
         auto disallow_msg_num = TextPackName::None;
@@ -2520,7 +2505,6 @@ void FOServer::Process_Login(Player* unlogined_player)
             return;
         }
     }
-#endif
 
     // Switch from unlogined to logined
     Player* player = EntityMngr.GetPlayer(player_id);

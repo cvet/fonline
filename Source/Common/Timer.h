@@ -71,15 +71,8 @@ public:
     [[nodiscard]] auto DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
     [[nodiscard]] auto ServerToDateTime(tick_t server_time) const noexcept -> DateTimeStamp;
 
-#if FO_SINGLEPLAYER
-    [[nodiscard]] auto IsGameplayPaused() const noexcept -> bool;
-#endif
-
     void SetServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
     auto FrameAdvance() -> bool;
-#if FO_SINGLEPLAYER
-    void SetGameplayPause(bool pause);
-#endif
 
 private:
     TimerSettings& _settings;
@@ -95,10 +88,6 @@ private:
     int _serverTimeMultiplier {};
     tick_t _serverTimeBase {};
     tick_t _serverTime {};
-
-#if FO_SINGLEPLAYER
-    bool _isGameplayPaused {};
-#endif
 };
 
 class Timer final // Todo: remove Timer class, use directly std::chrono instead

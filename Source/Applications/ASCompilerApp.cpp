@@ -39,7 +39,6 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 
-#if !FO_SINGLEPLAYER
 struct AngelScriptCompiler_ServerScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
@@ -48,12 +47,6 @@ struct AngelScriptCompiler_ClientScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
 };
-#else
-struct AngelScriptCompiler_SingleScriptSystem final : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-#endif
 struct AngelScriptCompiler_MapperScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(const FileSystem& resources);
@@ -73,12 +66,8 @@ int main(int argc, char** argv)
         InitApp(argc, argv);
         LogDisableTags();
 
-#if !FO_SINGLEPLAYER
         auto server_failed = false;
         auto client_failed = false;
-#else
-        auto single_failed = false;
-#endif
         auto mapper_failed = false;
 
         FileSystem resources;
@@ -86,7 +75,6 @@ int main(int argc, char** argv)
             resources.AddDataSource(dir, DataSourceType::DirRoot);
         }
 
-#if !FO_SINGLEPLAYER
         WriteLog("Compile server scripts");
 
         try {
@@ -112,20 +100,6 @@ int main(int argc, char** argv)
 
             client_failed = true;
         }
-#else
-        WriteLog("Compile game scripts");
-
-        try {
-            AngelScriptCompiler_SingleScriptSystem().InitAngelScriptScripting(resources);
-        }
-        catch (const std::exception& ex) {
-            if (CompilerPassedMessages.empty()) {
-                ReportExceptionAndExit(ex);
-            }
-
-            single_failed = true;
-        }
-#endif
 
         WriteLog("Compile mapper scripts");
 
@@ -140,19 +114,11 @@ int main(int argc, char** argv)
             mapper_failed = true;
         }
 
-#if !FO_SINGLEPLAYER
         WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
         WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
-#else
-        WriteLog("Game scripts compilation {}!", single_failed ? "failed" : "succeeded");
-#endif
         WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
 
-#if !FO_SINGLEPLAYER
         if (server_failed || client_failed || mapper_failed) {
-#else
-        if (single_failed || mapper_failed) {
-#endif
             ExitApp(false);
         }
 

@@ -55,9 +55,6 @@
 #elif CLIENT_SCRIPTING
 #include "Client.h"
 #include "ClientScripting.h"
-#elif SINGLE_SCRIPTING
-#include "Single.h"
-#include "SingleScripting.h"
 #elif MAPPER_SCRIPTING
 #include "Mapper.h"
 #include "MapperScripting.h"
@@ -102,8 +99,6 @@
 #define BaseEntity ServerEntity
 #elif CLIENT_SCRIPTING
 #define BaseEntity ClientEntity
-#elif SINGLE_SCRIPTING
-#define BaseEntity ServerEntity
 #elif MAPPER_SCRIPTING
 #define BaseEntity ClientEntity
 #endif
@@ -115,9 +110,6 @@
 #elif CLIENT_SCRIPTING
 #define FOEngine FOClient
 #define SCRIPTING_CLASS ClientScriptSystem
-#elif SINGLE_SCRIPTING
-#define FOEngine FOSingle
-#define SCRIPTING_CLASS SingleScriptSystem
 #elif MAPPER_SCRIPTING
 #define FOEngine FOMapper
 #define SCRIPTING_CLASS MapperScriptSystem
@@ -130,9 +122,6 @@
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompiler
 #define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem
-#elif SINGLE_SCRIPTING
-#define FOEngine AngelScriptSingleCompiler
-#define SCRIPTING_CLASS AngelScriptCompiler_SingleScriptSystem
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompiler
 #define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem
@@ -144,9 +133,6 @@
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompilerValidation
 #define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem_Validation
-#elif SINGLE_SCRIPTING
-#define FOEngine AngelScriptSingleCompilerValidation
-#define SCRIPTING_CLASS AngelScriptCompiler_SingleScriptSystem_Validation
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompilerValidation
 #define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem_Validation
@@ -157,7 +143,6 @@
 #if COMPILER_MODE
 class FOServer;
 class FOClient;
-class FOSingle;
 class FOMapper;
 
 class BaseEntity;
@@ -203,15 +188,6 @@ public:
 
         extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
         AngelScript_ClientCompiler_RegisterData(this);
-    }
-#elif SINGLE_SCRIPTING
-    FOEngine() :
-        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
-    {
-        STACK_TRACE_ENTRY();
-
-        extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
-        AngelScript_SingleCompiler_RegisterData(this);
     }
 #elif MAPPER_SCRIPTING
     FOEngine() :
@@ -4246,8 +4222,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
 #elif CLIENT_SCRIPTING
     game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
-#elif SINGLE_SCRIPTING
-    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
 #elif MAPPER_SCRIPTING
     game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
 #endif
@@ -4256,8 +4230,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     File script_file = game_engine->Resources.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
     File script_file = game_engine->Resources.ReadFile("ClientRootModule.fosb");
-#elif SINGLE_SCRIPTING
-    File script_file = game_engine->Resources.ReadFile("RootModule.fosb");
 #elif MAPPER_SCRIPTING
     File script_file = game_engine->Resources.ReadFile("MapperRootModule.fosb");
 #endif
@@ -4574,14 +4546,9 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     Preprocessor::Define("SERVER 0");
     Preprocessor::Define("CLIENT 0");
     Preprocessor::Define("MAPPER 0");
-    Preprocessor::Define("SINGLE 0");
 #if SERVER_SCRIPTING
     Preprocessor::Define("SERVER 1");
 #elif CLIENT_SCRIPTING
-    Preprocessor::Define("CLIENT 1");
-#elif SINGLE_SCRIPTING
-    Preprocessor::Define("SINGLE 1");
-    Preprocessor::Define("SERVER 1");
     Preprocessor::Define("CLIENT 1");
 #elif MAPPER_SCRIPTING
     Preprocessor::Define("MAPPER 1");
@@ -4643,8 +4610,6 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
     const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ServerAngelScript/ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
     const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ClientAngelScript/ClientRootModule.fosb");
-#elif SINGLE_SCRIPTING
-    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("SingleAngelScript/SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
     const string script_out_path = strex(App->Settings.BakeOutput).combinePath("MapperAngelScript/MapperRootModule.fosb");
 #endif

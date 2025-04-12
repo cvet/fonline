@@ -71,7 +71,7 @@ FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
     return client->IsConnected();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     UNUSED_VARIABLE(client);
@@ -96,7 +96,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, C
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
 {
     UNUSED_VARIABLE(client);
@@ -120,7 +120,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, It
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
 {
     UNUSED_VARIABLE(client);
@@ -145,7 +145,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, It
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
 {
     UNUSED_VARIABLE(client);
@@ -170,7 +170,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, Cri
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
 {
     UNUSED_VARIABLE(client);
@@ -191,7 +191,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mp
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
 {
     UNUSED_VARIABLE(client);
@@ -212,7 +212,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterVi
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
 {
     UNUSED_VARIABLE(client);
@@ -232,7 +232,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView*
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
 {
     UNUSED_VARIABLE(client);
@@ -270,7 +270,7 @@ FO_SCRIPT_API CritterView* Client_Game_GetChosen(FOClient* client)
     return client->GetChosen();
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
 {
     if (!itemId) {
@@ -319,7 +319,7 @@ FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
     return item != nullptr && !item->IsDestroyed() ? item : nullptr;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId)
 {
     if (!crId) {
@@ -339,7 +339,7 @@ FO_SCRIPT_API CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId
     }
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, CritterFindType findType)
 {
     vector<CritterView*> critters;
@@ -361,7 +361,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, Cri
     return critters;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hstring pid, CritterFindType findType)
 {
     vector<CritterView*> critters;
@@ -402,7 +402,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hst
     return critters;
 }
 
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
 {
     UNUSED_VARIABLE(client);

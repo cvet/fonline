@@ -53,10 +53,6 @@ void GameTimer::SetServerTime(uint16 year, uint16 month, uint16 day, uint16 hour
 {
     STACK_TRACE_ENTRY();
 
-#if FO_SINGLEPLAYER
-    _isGameplayPaused = false;
-#endif
-
     _serverTimeMultiplier = multiplier;
     _gameplayTimeBase = _gameplayTimeFrame = _frameTime;
 
@@ -87,12 +83,6 @@ auto GameTimer::FrameAdvance() -> bool
 
     _frameDeltaTime = _frameTime - prev_frame_time;
     _gameplayDeltaTime = GameplayTime() - prev_gameplay_time;
-
-#if FO_SINGLEPLAYER
-    if (_isGameplayPaused) {
-        return false;
-    }
-#endif
 
     const auto whole_dt = time_duration_to_ms<tick_t::underlying_type>(GameplayTime() - _gameplayTimeBase);
     const auto server_time = tick_t {static_cast<tick_t::underlying_type>(_serverTimeBase.underlying_value() + (whole_dt / 1000 * _serverTimeMultiplier + whole_dt % 1000 * _serverTimeMultiplier / 1000))};
@@ -137,12 +127,6 @@ auto GameTimer::GameplayTime() const noexcept -> time_point
 {
     NO_STACK_TRACE_ENTRY();
 
-#if FO_SINGLEPLAYER
-    if (_isGameplayPaused) {
-        return _gameplayTimeBase;
-    }
-#endif
-
     return _gameplayTimeBase + (FrameTime() - _gameplayTimeFrame);
 }
 
@@ -179,28 +163,6 @@ auto GameTimer::ServerToDateTime(tick_t server_time) const noexcept -> DateTimeS
 
     return Timer::FullTimeToDateTime(ft);
 }
-
-#if FO_SINGLEPLAYER
-void GameTimer::SetGameplayPause(bool pause)
-{
-    STACK_TRACE_ENTRY();
-
-    if (_isGameplayPaused == pause) {
-        return;
-    }
-
-    _gameplayTimeBase = GameplayTime();
-    _gameplayTimeFrame = _frameTime;
-    _isGameplayPaused = pause;
-}
-
-auto GameTimer::IsGameplayPaused() const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _isGameplayPaused;
-}
-#endif
 
 auto Timer::CurTime() noexcept -> time_point
 {

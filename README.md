@@ -28,8 +28,6 @@
 ## Features
 
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
-* Multiplayer mode with authoritative server
-* Singleplayer mode (one binary, no network connections)
 * Supporting of hexagonal and square map tiling
 * Prerendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (supported C++17 and C++20)
@@ -146,7 +144,7 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 
 ### Footprint
 
-Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client/singleplayer output.  
+Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client output.  
 Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.  
 This process in terms of fonline engine called `Baking`.  
 Also as you can see all third-party dependencies linked statically to final executable and this frees up end user from installing additional runtime to play in your game.  
@@ -175,7 +173,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Improve more unit tests and gain code coverage to at least 80% [15%]
 * C#/Mono scripting layer [30%]
 * DirectX rendering [done]
-* Singleplayer mode [70%]
 * Particle system [done]
 * Metal rendering for macOS/iOS [1%]
 
@@ -187,7 +184,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: fix all PVS Studio warnings
 * Common: SHA replace to openssl SHA
 * Common: wrap fonline code to namespace
-* Common: ident_t 8 byte integer
 * Common: hash_t 8 byte integer
 * Common: tick_t 8 byte integer
 * Common: c-style arrays to std::array
@@ -199,15 +195,16 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
 * Common: split meanings of int8/char and uint8/byte in code
 * Common: improve named enums
+* Common: export any_t with ExportType
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 * Common: pass name to exceptions context args
 * Common: recursion guard for EventDispatcher
+* Common: move IRect to irect
+* Common: move FRect to frect
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
-* Common: rework built-in string messages
 * Common: optimize copy() to pass placement storage for value
-* Common: const string& -> string_view after moving to C++20 (unordered_map heterogenous lookup)
 * Common: schedule job repeat with last duration?
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
@@ -221,7 +218,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: synchronize effects showing (for example shot and kill)
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
+* Client: fix static_assert(std::is_standard_layout_v<VideoPlayback>);
 * Client: make IfaceAnim scriptable object
+* Client: move screen fading to scripts
+* Client: move screen quake effect to scripts
 * CritterHexView: fidget animation to scripts
 * CritterView: incapsulate AttachedCritters
 * DefaultSprites: incapsulate sprite sheet data
@@ -229,6 +229,7 @@ Please follow these instructions to understand how to use this engine by design:
 * HexView: incapsulate hex view fileds
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * MapSprite: : incapsulate all sprite data
+* MapView: fix static_assert(std::is_standard_layout_v<SpritePattern>);
 * ParticleSprites: optimize sprite atlas filling
 * RenderTarget: optimize sprite atlas filling
 * ResourceManager: why I disable offset adding?
@@ -246,11 +247,13 @@ Please follow these instructions to understand how to use this engine by design:
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
-* DeferredCalls: improve deferred calls
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
 * Entity: entity events map key to hstring
+* EntityProperties: exclude item properties from engine:
+* EntityProperties: exclude critter properties from engine:
+* EntityProperties: exclude map properties from engine:
 * EntityProperties: implement Location InitScript
 * GeometryHelper: remove hex offset limit
 * GeometryHelper: move all geometry helper methods to static
@@ -258,18 +261,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Log: add timestamps and process id and thread id to file logs
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
-* Properties: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
 * Properties: validate property name identifier
-* Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * PropertiesSerializator: maybe need some optional warning for unknown/wrong properties
-* PropertiesSerializator: check if converted value fits to target bounds
-* PropertiesSerializator: validate integer value to fit in enum range
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
 * Settings-Include: move LegBones to fo3d settings
-* Settings-Include: move resource files control (include/exclude/pack rules) to cmake
 * Settings: improve editable entries
 * Timer: remove Timer class, use directly std::chrono instead
 * Application: move all these statics to App class fields
@@ -278,6 +276,7 @@ Please follow these instructions to understand how to use this engine by design:
 * AngelScriptScripting-Template: GetASObjectInfo add detailed info about object
 * ClientCritterScriptMethods: improve run particles for 2D animations
 * ClientCritterScriptMethods: improve animation callbacks for 2D animations
+* ClientGlobalScriptMethods: improve SetScreenKeyboard
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * ServerMapScriptMethods: notify clients about manual hex block
@@ -288,15 +287,11 @@ Please follow these instructions to understand how to use this engine by design:
 * CritterManager: find better place for critter in square geometry
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * EntityManager: load global map critters
-* Location: EntranceScriptBindId
-* Location: encapsulate Location data
 * Map: make movable checks without critter removing
 * Map: optimize iterms radius search by using GetHexOffsets
 * Map: optimize critters radius search by using GetHexOffsets
 * MapManager: if path finding not be reworked than migrate magic number to scripts
-* MapManager: make dynamic path growth and move max value to settings
 * Networking: catch exceptions in network servers
-* Player: restore automaps
 * Player: incapsulate Player data
 * Player: allow attach many critters to sigle player
 * Server: validate player moving path
@@ -306,13 +301,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: don't remeber but need check (IsPlaneNoTalk)
-* Server: maybe prohibit bulk creation of non-stacked items
 * Server: improve ban system
 * Server: run network listeners dynamically, without restriction, based on server settings
-* ServerDeferredCalls: improve deferred calls
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * EffectBaker: enable auto map bindings
-* ImageBaker: swap colors of fo palette once in header
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet

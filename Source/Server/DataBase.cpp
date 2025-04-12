@@ -45,7 +45,7 @@
 #endif
 
 DISABLE_WARNINGS_PUSH()
-#if FO_HAVE_MONGO && !FO_SINGLEPLAYER
+#if FO_HAVE_MONGO
 #include "mongoc/mongoc.h"
 #endif
 #include "bson/bson.h"
@@ -970,7 +970,7 @@ private:
 };
 #endif
 
-#if FO_HAVE_MONGO && !FO_SINGLEPLAYER
+#if FO_HAVE_MONGO
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -1405,7 +1405,7 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
             return DataBase(SafeAlloc::MakeRaw<DbUnQLite>(settings, options[1]));
         }
 #endif
-#if FO_HAVE_MONGO && !FO_SINGLEPLAYER
+#if FO_HAVE_MONGO
         if (options.front() == "Mongo" && options.size() == 3) {
             return DataBase(SafeAlloc::MakeRaw<DbMongo>(settings, options[1], options[2]));
         }
