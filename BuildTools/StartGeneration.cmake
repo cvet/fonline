@@ -31,6 +31,11 @@ DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CM
 DeclareOption(FO_INFO_MARKDOWN_OUTPUT "Path where information markdown files will be stored" "")
 DeclareOption(FO_CPP_STANDARD "C++ standard for engine compilation (17 (default) or 20)" 17)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
+DeclareOption(FO_DISBALE_RPMALLOC "Force disable using of Rpmalloc" OFF)
+DeclareOption(FO_DISBALE_JSON "Force disable using of Json" OFF)
+DeclareOption(FO_DISBALE_MONGO "Force disable using of Mongo" OFF)
+DeclareOption(FO_DISBALE_UNQLITE "Force disable using of Unqlite" OFF)
+DeclareOption(FO_DISBALE_ASIO "Force disable using of Asio" OFF)
 
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Client binaries" OFF)
