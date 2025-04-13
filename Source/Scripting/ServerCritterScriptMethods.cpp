@@ -757,7 +757,7 @@ FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
     }
 
     if (auto* player = self->GetPlayer(); player != nullptr) {
-        player->Connection->GracefulDisconnect();
+        player->GetConnection()->GracefulDisconnect();
     }
 }
 

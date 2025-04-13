@@ -2327,13 +2327,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         for p in rcArgs:
                             globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                         if target == 'Server':
-                            globalLines.append('    auto* conn = self->Connection.get();')
-                            globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
-                            globalLines.append('    WriteRpcHeader(conn->OutBuf, rpc_num);')
+                            globalLines.append('    auto* conn = self->GetConnection();')
+                            globalLines.append('    auto out_buf = conn->WriteBuf();')
+                            globalLines.append('    WriteRpcHeader(*out_buf, rpc_num);')
                             for p in rcArgs:
-                                globalLines.append('    WriteNetBuf(conn->OutBuf, in_' + p[1] + ');')
-                            globalLines.append('    WriteRpcFooter(conn->OutBuf);')
-                            globalLines.append('    CONNECTION_OUTPUT_END(conn);')
+                                globalLines.append('    WriteNetBuf(*out_buf, in_' + p[1] + ');')
+                            globalLines.append('    WriteRpcFooter(*out_buf);')
                         else:
                             globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
                             globalLines.append('    WriteRpcHeader(conn.OutBuf, rpc_num);')
@@ -2379,15 +2378,16 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if target == 'Server':
-                            globalLines.append('    [[maybe_unused]] auto* conn = self->Connection.get();')
+                            globalLines.append('    [[maybe_unused]] auto* connection = self->GetConnection();')
+                            globalLines.append('    [[maybe_unused]] auto in_buf = connection->ReadBuf();')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
-                                globalLines.append('    ReadNetBuf(conn->InBuf, arg_' + p[1] + ', *self->GetEngine());')
+                                globalLines.append('    ReadNetBuf(*in_buf, arg_' + p[1] + ', *self->GetEngine());')
                         else:
-                            globalLines.append('    [[maybe_unused]] auto& conn = self->GetEngine()->GetConnection();')
+                            globalLines.append('    [[maybe_unused]] auto& connection = self->GetEngine()->GetConnection();')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
-                                globalLines.append('    ReadNetBuf(conn.InBuf, arg_' + p[1] + ', *self->GetEngine());')
+                                globalLines.append('    ReadNetBuf(connection.InBuf, arg_' + p[1] + ', *self->GetEngine());')
                         for p in rcArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
                         globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')

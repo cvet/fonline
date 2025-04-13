@@ -36,26 +36,18 @@
 #include "Common.h"
 
 #include "NetBuffer.h"
+#include "NetworkServer.h"
 
-#define CONNECTION_OUTPUT_BEGIN(conn) \
-    { \
-        std::scoped_lock conn_locker__((conn)->OutBufLocker)
-#define CONNECTION_OUTPUT_END(conn) \
-    } \
-    (conn)->Dispatch()
-
-class NetworkServerConnection;
-
-class ClientConnection final
+class ServerConnection final
 {
 public:
-    ClientConnection() = delete;
-    explicit ClientConnection(shared_ptr<NetworkServerConnection> net_connection);
-    ClientConnection(const ClientConnection&) = delete;
-    ClientConnection(ClientConnection&&) noexcept = delete;
-    auto operator=(const ClientConnection&) = delete;
-    auto operator=(ClientConnection&&) noexcept = delete;
-    ~ClientConnection();
+    ServerConnection() = delete;
+    explicit ServerConnection(shared_ptr<NetworkServerConnection> net_connection);
+    ServerConnection(const ServerConnection&) = delete;
+    ServerConnection(ServerConnection&&) noexcept = delete;
+    auto operator=(const ServerConnection&) = delete;
+    auto operator=(ServerConnection&&) noexcept = delete;
+    ~ServerConnection();
 
     [[nodiscard]] auto GetIp() const noexcept -> uint;
     [[nodiscard]] auto GetHost() const noexcept -> string_view;
@@ -65,18 +57,15 @@ public:
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool;
     [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool;
 
+    auto WriteBuf() { return _netConnection->LockOutBuf(); }
+    auto ReadBuf() { return _netConnection->LockInBuf(); }
+
     void DisableCompression();
-    void Dispatch();
+    void DispatchOutBuf();
     void HardDisconnect();
     void GracefulDisconnect();
 
-    // Todo: make auto-RAII locker for InBuf/InBufLocker writing/reading
-    NetInBuffer& InBuf;
-    std::mutex& InBufLocker;
-    NetOutBuffer& OutBuf;
-    std::mutex& OutBufLocker;
-
-    // Todo: incapsulate ClientConnection data
+    // Todo: incapsulate ServerConnection data
     bool WasHandshake {};
     time_point PingNextTime {};
     bool PingOk {true};

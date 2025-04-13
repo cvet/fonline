@@ -41,13 +41,13 @@ struct NetworkServerConnection::Impl
 };
 
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
-    InBuf(settings.NetBufferSize),
-    OutBuf(settings.NetBufferSize),
-    _settings {settings}
+    _settings {settings},
+    _inBuf(settings.NetBufferSize),
+    _outBuf(settings.NetBufferSize)
 {
     STACK_TRACE_ENTRY();
 
-    _outBuf.resize(_settings.NetBufferSize);
+    _outFinalBuf.resize(_settings.NetBufferSize);
 
     if (!settings.DisableZlibCompression) {
         _impl = unique_del_ptr<Impl>(SafeAlloc::MakeRaw<Impl>(), [](Impl* impl) {
@@ -71,14 +71,14 @@ NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings
     }
 }
 
-void NetworkServerConnection::DisableCompression()
+void NetworkServerConnection::DisableOutBufCompression()
 {
     STACK_TRACE_ENTRY();
 
     _impl.reset();
 }
 
-void NetworkServerConnection::Dispatch()
+void NetworkServerConnection::DispatchOutBuf()
 {
     STACK_TRACE_ENTRY();
 
@@ -88,9 +88,9 @@ void NetworkServerConnection::Dispatch()
 
     // Nothing to send
     {
-        std::scoped_lock locker(OutBufLocker);
+        std::scoped_lock locker(_outBufLocker);
 
-        if (OutBuf.IsEmpty()) {
+        if (_outBuf.IsEmpty()) {
             return;
         }
     }
@@ -113,9 +113,9 @@ auto NetworkServerConnection::SendCallback() -> const_span<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(OutBufLocker);
+    std::scoped_lock locker(_outBufLocker);
 
-    if (OutBuf.IsEmpty()) {
+    if (_outBuf.IsEmpty()) {
         return {};
     }
 
@@ -123,64 +123,64 @@ auto NetworkServerConnection::SendCallback() -> const_span<uint8>
 
     // Compress
     if (_impl) {
-        const auto to_compr = OutBuf.GetEndPos();
+        const auto to_compr = _outBuf.GetEndPos();
 
-        _outBuf.resize(to_compr + 32);
+        _outFinalBuf.resize(to_compr + 32);
 
-        if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
-            _outBuf.shrink_to_fit();
+        if (_outFinalBuf.size() <= _settings.NetBufferSize && _outFinalBuf.capacity() > _settings.NetBufferSize) {
+            _outFinalBuf.shrink_to_fit();
         }
 
-        _impl->ZStream.next_in = static_cast<Bytef*>(OutBuf.GetData());
+        _impl->ZStream.next_in = static_cast<Bytef*>(_outBuf.GetData());
         _impl->ZStream.avail_in = static_cast<uInt>(to_compr);
-        _impl->ZStream.next_out = static_cast<Bytef*>(_outBuf.data());
-        _impl->ZStream.avail_out = static_cast<uInt>(_outBuf.size());
+        _impl->ZStream.next_out = static_cast<Bytef*>(_outFinalBuf.data());
+        _impl->ZStream.avail_out = static_cast<uInt>(_outFinalBuf.size());
 
         const auto result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(result == Z_OK);
 
-        const auto compr = static_cast<size_t>(_impl->ZStream.next_out - _outBuf.data());
-        const auto real = static_cast<size_t>(_impl->ZStream.next_in - OutBuf.GetData());
+        const auto compr = static_cast<size_t>(_impl->ZStream.next_out - _outFinalBuf.data());
+        const auto real = static_cast<size_t>(_impl->ZStream.next_in - _outBuf.GetData());
         out_len = compr;
 
-        OutBuf.DiscardWriteBuf(real);
+        _outBuf.DiscardWriteBuf(real);
     }
     // Without compressing
     else {
-        const auto len = OutBuf.GetEndPos();
+        const auto len = _outBuf.GetEndPos();
 
-        _outBuf.resize(len);
+        _outFinalBuf.resize(len);
 
-        if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
-            _outBuf.shrink_to_fit();
+        if (_outFinalBuf.size() <= _settings.NetBufferSize && _outFinalBuf.capacity() > _settings.NetBufferSize) {
+            _outFinalBuf.shrink_to_fit();
         }
 
-        MemCopy(_outBuf.data(), OutBuf.GetData(), len);
+        MemCopy(_outFinalBuf.data(), _outBuf.GetData(), len);
         out_len = len;
 
-        OutBuf.DiscardWriteBuf(len);
+        _outBuf.DiscardWriteBuf(len);
     }
 
     // Normalize buffer size
-    if (OutBuf.IsEmpty()) {
-        OutBuf.ResetBuf();
+    if (_outBuf.IsEmpty()) {
+        _outBuf.ResetBuf();
     }
 
     RUNTIME_ASSERT(out_len > 0);
-    return {_outBuf.data(), out_len};
+    return {_outFinalBuf.data(), out_len};
 }
 
 void NetworkServerConnection::ReceiveCallback(const uint8* buf, size_t len)
 {
     STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(InBufLocker);
+    std::scoped_lock locker(_inBufLocker);
 
-    if (InBuf.GetReadPos() + len < _settings.FloodSize) {
-        InBuf.AddData(buf, len);
+    if (_inBuf.GetReadPos() + len < _settings.FloodSize) {
+        _inBuf.AddData(buf, len);
     }
     else {
-        InBuf.ResetBuf();
+        _inBuf.ResetBuf();
         Disconnect();
     }
 }
@@ -192,7 +192,7 @@ public:
         NetworkServerConnection(settings)
     {
         _host = "Dummy";
-        _isDisconnected = true;
+        Disconnect();
     }
     DummyNetConnection(const DummyNetConnection&) = delete;
     DummyNetConnection(DummyNetConnection&&) noexcept = delete;

@@ -31,106 +31,100 @@
 // SOFTWARE.
 //
 
-#include "ClientConnection.h"
+#include "ServerConnection.h"
 #include "Log.h"
-#include "NetworkServer.h"
 #include "TextPack.h"
 
-ClientConnection::ClientConnection(shared_ptr<NetworkServerConnection> net_connection) :
-    InBuf {net_connection->InBuf},
-    InBufLocker {net_connection->InBufLocker},
-    OutBuf {net_connection->OutBuf},
-    OutBufLocker {net_connection->OutBufLocker},
+ServerConnection::ServerConnection(shared_ptr<NetworkServerConnection> net_connection) :
     _netConnection {std::move(net_connection)}
 {
     STACK_TRACE_ENTRY();
 }
 
-ClientConnection::~ClientConnection()
+ServerConnection::~ServerConnection()
 {
     STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
 }
 
-auto ClientConnection::GetIp() const noexcept -> uint
+auto ServerConnection::GetIp() const noexcept -> uint
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetIp();
 }
 
-auto ClientConnection::GetHost() const noexcept -> string_view
+auto ServerConnection::GetHost() const noexcept -> string_view
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetHost();
 }
 
-auto ClientConnection::GetPort() const noexcept -> uint16
+auto ServerConnection::GetPort() const noexcept -> uint16
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetPort();
 }
 
-auto ClientConnection::IsHardDisconnected() const noexcept -> bool
+auto ServerConnection::IsHardDisconnected() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsDisconnected();
 }
 
-auto ClientConnection::IsGracefulDisconnected() const noexcept -> bool
+auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
 }
 
-auto ClientConnection::IsWebConnection() const noexcept -> bool
+auto ServerConnection::IsWebConnection() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsWebConnection();
 }
 
-auto ClientConnection::IsInterthreadConnection() const noexcept -> bool
+auto ServerConnection::IsInterthreadConnection() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsInterthreadConnection();
 }
 
-void ClientConnection::DisableCompression()
+void ServerConnection::DisableCompression()
 {
     STACK_TRACE_ENTRY();
 
-    _netConnection->Dispatch();
+    _netConnection->DispatchOutBuf();
 }
 
-void ClientConnection::Dispatch()
+void ServerConnection::DispatchOutBuf()
 {
     STACK_TRACE_ENTRY();
 
-    _netConnection->Dispatch();
+    _netConnection->DispatchOutBuf();
 }
 
-void ClientConnection::HardDisconnect()
+void ServerConnection::HardDisconnect()
 {
     STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
 }
 
-void ClientConnection::GracefulDisconnect()
+void ServerConnection::GracefulDisconnect()
 {
     STACK_TRACE_ENTRY();
 
     _gracefulDisconnected = true;
 
-    CONNECTION_OUTPUT_BEGIN(this);
-    OutBuf.StartMsg(NETMSG_DISCONNECT);
-    OutBuf.EndMsg();
-    CONNECTION_OUTPUT_END(this);
+    auto out_buf = WriteBuf();
+    out_buf->StartMsg(NETMSG_DISCONNECT);
+    out_buf->EndMsg();
 }

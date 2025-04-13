@@ -722,7 +722,7 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 
     // Load from db
     auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ClientConnection>(dummy_net_conn));
+    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(dummy_net_conn));
     player->SetName(name);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {

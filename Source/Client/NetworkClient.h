@@ -40,79 +40,16 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(ServerConnectionException);
+DECLARE_EXCEPTION(NetworkClientException);
 
-// Proxy types
-constexpr auto PROXY_SOCKS4 = 1;
-constexpr auto PROXY_SOCKS5 = 2;
-constexpr auto PROXY_HTTP = 3;
-
-class ServerConnection final
+class NetworkClientConnection final
 {
 public:
-    using ConnectCallback = std::function<void(bool success)>;
-    using DisconnectCallback = std::function<void()>;
-    using MessageCallback = std::function<void()>;
-
-    ServerConnection() = delete;
-    explicit ServerConnection(ClientNetworkSettings& settings);
-    ServerConnection(const ServerConnection&) = delete;
-    ServerConnection(ServerConnection&&) noexcept = delete;
-    auto operator=(const ServerConnection&) = delete;
-    auto operator=(ServerConnection&&) noexcept = delete;
-    ~ServerConnection();
-
-    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
-    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
-    [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
-    [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
-    [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
-
-    void AddConnectHandler(ConnectCallback handler);
-    void AddDisconnectHandler(DisconnectCallback handler);
-    void AddMessageHandler(uint msg, MessageCallback handler);
-    void Connect();
-    void Process();
-    void Disconnect();
-
-    NetInBuffer& InBuf {_netIn};
-    NetOutBuffer& OutBuf {_netOut};
-
-private:
-    struct Impl;
-
-    void ConnectToHost();
-    void ProcessConnection();
-    auto ReceiveData(bool unpack) -> bool;
-    auto DispatchData() -> bool;
-    auto CheckSocketStatus(bool for_write) -> bool;
-
-    void Net_SendHandshake();
-    void Net_OnPing();
-
-    ClientNetworkSettings& _settings;
-    unique_ptr<Impl> _impl;
-    ConnectCallback _connectCallback {};
-    DisconnectCallback _disconnectCallback {};
-    vector<uint8> _incomeBuf {};
-    NetInBuffer _netIn;
-    NetOutBuffer _netOut;
-    bool _isConnecting {};
-    bool _isConnected {};
-    size_t _bytesSend {};
-    size_t _bytesReceived {};
-    size_t _bytesRealReceived {};
-    unordered_map<uint, MessageCallback> _handlers {};
-    time_point _pingTime {};
-    time_point _pingCallTime {};
-    size_t _msgCount {};
-    bool _interthreadCommunication {};
-    InterthreadDataCallback _interthreadSend {};
-    vector<uint8> _interthreadReceived {};
-    std::mutex _interthreadReceivedLocker {};
-    std::atomic_bool _interthreadRequestDisconnect {};
-    optional<time_point> _artificalLagTime {};
-#if FO_DEBUG
-    vector<uint> _msgHistory {};
-#endif
+    NetworkClientConnection() = delete;
+    explicit NetworkClientConnection(ClientNetworkSettings& settings);
+    NetworkClientConnection(const NetworkClientConnection&) = delete;
+    NetworkClientConnection(NetworkClientConnection&&) noexcept = delete;
+    auto operator=(const NetworkClientConnection&) = delete;
+    auto operator=(NetworkClientConnection&&) noexcept = delete;
+    ~NetworkClientConnection();
 };

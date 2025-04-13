@@ -117,7 +117,7 @@ public:
         STACK_TRACE_ENTRY();
 
         if (InterthreadListeners.count(_virtualPort) != 0) {
-            throw NetworkException("Port is busy", _virtualPort);
+            throw NetworkServerException("Port is busy", _virtualPort);
         }
 
         InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {

@@ -32,7 +32,6 @@
 //
 
 #include "Client.h"
-#include "ClientConnection.h"
 #include "ClientScripting.h"
 #include "DefaultSprites.h"
 #include "GenericUtils.h"

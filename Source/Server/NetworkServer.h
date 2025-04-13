@@ -38,11 +38,35 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(NetworkException);
+DECLARE_EXCEPTION(NetworkServerException);
 
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
+    template<typename T>
+    [[nodiscard]] class NetBufAccessor
+    {
+    public:
+        NetBufAccessor(T* net_buf, std::mutex* locker) :
+            _netBuf {net_buf},
+            _locker {locker}
+        {
+            _locker->lock();
+        }
+        NetBufAccessor() = delete;
+        NetBufAccessor(const NetBufAccessor&) = delete;
+        NetBufAccessor(NetBufAccessor&&) noexcept = default;
+        auto operator=(const NetBufAccessor&) = delete;
+        auto operator=(NetBufAccessor&&) noexcept = delete;
+        ~NetBufAccessor() { _locker->unlock(); }
+        FORCE_INLINE auto operator->() noexcept -> T* { return _netBuf; }
+        FORCE_INLINE auto operator*() noexcept -> T& { return *_netBuf; }
+
+    private:
+        T* _netBuf;
+        std::mutex* _locker;
+    };
+
     NetworkServerConnection() = delete;
     NetworkServerConnection(const NetworkServerConnection&) = delete;
     NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
@@ -50,21 +74,19 @@ public:
     auto operator=(NetworkServerConnection&&) noexcept = delete;
     virtual ~NetworkServerConnection() = default;
 
-    [[nodiscard]] auto GetIp() const noexcept -> uint { return _ip; }
-    [[nodiscard]] auto GetHost() const noexcept -> string_view { return _host; }
-    [[nodiscard]] auto GetPort() const noexcept -> uint16 { return _port; }
-    [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
+    [[nodiscard]] virtual auto GetIp() const noexcept -> uint { return _ip; }
+    [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
+    [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
     [[nodiscard]] virtual auto IsWebConnection() const noexcept -> bool { return false; }
     [[nodiscard]] virtual auto IsInterthreadConnection() const noexcept -> bool { return false; }
+    [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
-    void DisableCompression();
-    void Dispatch();
+    [[nodiscard]] auto LockInBuf() -> NetBufAccessor<NetInBuffer> { return NetBufAccessor(&_inBuf, &_inBufLocker); }
+    [[nodiscard]] auto LockOutBuf() -> NetBufAccessor<NetOutBuffer> { return NetBufAccessor(&_outBuf, &_outBufLocker); }
+
+    void DisableOutBufCompression();
+    void DispatchOutBuf();
     void Disconnect();
-
-    NetInBuffer InBuf;
-    std::mutex InBufLocker {};
-    NetOutBuffer OutBuf;
-    std::mutex OutBufLocker {};
 
 protected:
     explicit NetworkServerConnection(ServerNetworkSettings& settings);
@@ -78,12 +100,18 @@ protected:
     uint _ip {};
     string _host {};
     uint16 _port {};
-    std::atomic_bool _isDisconnected {};
 
 private:
     struct Impl;
     unique_del_ptr<Impl> _impl {};
-    vector<uint8> _outBuf {};
+
+    NetInBuffer _inBuf;
+    std::mutex _inBufLocker {};
+    NetOutBuffer _outBuf;
+    std::mutex _outBufLocker {};
+    vector<uint8> _outFinalBuf {};
+
+    std::atomic_bool _isDisconnected {};
 };
 
 class NetworkServer
@@ -102,7 +130,7 @@ public:
 
     [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #if FO_HAVE_ASIO
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 #if FO_HAVE_WEB_SOCKETS
     [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;

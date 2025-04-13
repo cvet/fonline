@@ -64,7 +64,7 @@ public:
             error = _socket->set_option(asio::ip::tcp::no_delay(true), error);
         }
 
-        _inBuf.resize(_settings.NetBufferSize);
+        _inBufData.resize(_settings.NetBufferSize);
     }
 
     NetworkServerConnection_Asio() = delete;
@@ -104,7 +104,7 @@ public:
         return false;
     }
 
-    void StartRead()
+    void StartAsyncRead()
     {
         STACK_TRACE_ENTRY();
 
@@ -112,6 +112,19 @@ public:
     }
 
 private:
+    void AsyncReadComplete(std::error_code error, size_t bytes)
+    {
+        STACK_TRACE_ENTRY();
+
+        if (!error) {
+            ReceiveCallback(_inBufData.data(), bytes);
+            NextAsyncRead();
+        }
+        else {
+            Disconnect();
+        }
+    }
+
     void NextAsyncRead()
     {
         STACK_TRACE_ENTRY();
@@ -121,19 +134,24 @@ private:
             thiz_->AsyncReadComplete(error, bytes);
         };
 
-        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), read_handler);
+        async_read(*_socket, asio::buffer(_inBufData), asio::transfer_at_least(1), read_handler);
     }
 
-    void AsyncReadComplete(std::error_code error, size_t bytes)
+    void StartAsyncWrite()
     {
         STACK_TRACE_ENTRY();
 
-        if (!error) {
-            ReceiveCallback(_inBuf.data(), bytes);
-            NextAsyncRead();
-        }
-        else {
-            Disconnect();
+        bool expected = false;
+
+        if (_writePending.compare_exchange_strong(expected, true)) {
+            const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+                auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                thiz_->AsyncWriteComplete(error, bytes);
+            };
+
+            // Just initiate async write
+            uint8 dummy = 0;
+            async_write(*_socket, asio::buffer(&dummy, 0), write_handler);
         }
     }
 
@@ -143,13 +161,31 @@ private:
 
         UNUSED_VARIABLE(bytes);
 
-        _writePending = false;
-
         if (!error) {
-            DispatchImpl();
+            NextAsyncWrite();
         }
         else {
+            _writePending = false;
             Disconnect();
+        }
+    }
+
+    void NextAsyncWrite()
+    {
+        STACK_TRACE_ENTRY();
+
+        const auto buf = SendCallback();
+
+        if (!buf.empty()) {
+            const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+                auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                thiz_->AsyncWriteComplete(error, bytes);
+            };
+
+            async_write(*_socket, asio::buffer(buf.data(), buf.size()), write_handler);
+        }
+        else {
+            _writePending = false;
         }
     }
 
@@ -157,23 +193,7 @@ private:
     {
         STACK_TRACE_ENTRY();
 
-        bool expected = false;
-
-        if (_writePending.compare_exchange_strong(expected, true)) {
-            const auto buf = SendCallback();
-
-            if (!buf.empty()) {
-                const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
-                    auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-                    thiz_->AsyncWriteComplete(error, bytes);
-                };
-
-                async_write(*_socket, asio::buffer(buf.data(), buf.size()), write_handler);
-            }
-            else {
-                _writePending = false;
-            }
-        }
+        StartAsyncWrite();
     }
 
     void DisconnectImpl() override
@@ -187,7 +207,7 @@ private:
 
     unique_ptr<asio::ip::tcp::socket> _socket {};
     std::atomic_bool _writePending {};
-    std::vector<uint8> _inBuf {};
+    std::vector<uint8> _inBufData {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -249,7 +269,7 @@ private:
 
         if (!error) {
             auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
-            connection->StartRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
+            connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
             _connectionCallback(std::move(connection));
         }
         else {
@@ -266,7 +286,7 @@ private:
     std::thread _runThread {};
 };
 
-auto NetworkServer::StartTcpServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     STACK_TRACE_ENTRY();
 

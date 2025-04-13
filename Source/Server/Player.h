@@ -35,9 +35,9 @@
 
 #include "Common.h"
 
-#include "ClientConnection.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "ServerConnection.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -50,7 +50,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, ident_t id, unique_ptr<ClientConnection> connection, const Properties* props = nullptr) noexcept;
+    Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -58,14 +58,13 @@ public:
     ~Player() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetIp() const noexcept -> uint;
-    [[nodiscard]] auto GetHost() const noexcept -> string_view;
-    [[nodiscard]] auto GetPort() const noexcept -> uint16;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr; }
     [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr; }
+    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);
+    void SwapConnection(Player* other) noexcept;
 
     void Send_LoginSuccess();
     void Send_Moving(const Critter* from_cr);
@@ -114,7 +113,6 @@ public:
     ENTITY_EVENT(OnLogout);
 
     // Todo: incapsulate Player data
-    unique_ptr<ClientConnection> Connection {};
     uint8 Access {ACCESS_CLIENT};
     string LastSay {};
     uint LastSayEqualCount {};
@@ -122,9 +120,10 @@ public:
     const Property* SendIgnoreProperty {};
 
 private:
-    void SendItem(const Item* item, bool owned, bool with_slot, bool with_inner_entities);
-    void SendInnerEntities(const Entity* holder, bool owned);
+    void SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool with_slot, bool with_inner_entities);
+    void SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool owned);
 
+    unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
     Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
     time_point _talkNextTime {};

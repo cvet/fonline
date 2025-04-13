@@ -94,5 +94,5 @@ FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, ui
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Player_IsWebConnected(Player* self)
 {
-    return self->Connection->IsWebConnection();
+    return self->GetConnection()->IsWebConnection();
 }

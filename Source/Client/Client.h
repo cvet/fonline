@@ -39,6 +39,7 @@
 
 #include "3dStuff.h"
 #include "CacheStorage.h"
+#include "ClientConnection.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
@@ -50,7 +51,6 @@
 #include "LocationView.h"
 #include "MapView.h"
 #include "NetBuffer.h"
-#include "NetworkClient.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
@@ -131,7 +131,7 @@ public:
 
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
-    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection& { return _conn; }
+    [[nodiscard]] auto GetConnection() noexcept -> ClientConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() noexcept -> CritterView*;
     [[nodiscard]] auto GetMapChosen() noexcept -> CritterHexView*;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
@@ -380,7 +380,7 @@ protected:
     void OnSetItemOpened(Entity* entity, const Property* prop);
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
-    ServerConnection _conn;
+    ClientConnection _conn;
 
     EventUnsubscriber _eventUnsubscriber {};
 

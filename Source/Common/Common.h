@@ -1391,6 +1391,22 @@ private:
     T _callback;
 };
 
+// Stack unwind detector
+class StackUnwindDetector
+{
+public:
+    StackUnwindDetector() = default;
+    StackUnwindDetector(const StackUnwindDetector&) = delete;
+    StackUnwindDetector(StackUnwindDetector&&) noexcept = delete;
+    auto operator=(const StackUnwindDetector&) = delete;
+    auto operator=(StackUnwindDetector&&) noexcept = delete;
+    ~StackUnwindDetector() = default;
+    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+
+private:
+    int _initCount {std::uncaught_exceptions()};
+};
+
 // Float safe comparator
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 [[nodiscard]] constexpr auto float_abs(T f) noexcept -> T

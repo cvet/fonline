@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "ClientConnection.h"
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
@@ -53,6 +52,7 @@
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
+#include "ServerConnection.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ServerInitException);
@@ -228,12 +228,12 @@ private:
 
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
-    void ProcessConnection(ClientConnection* connection);
+    void ProcessConnection(ServerConnection* connection);
 
-    void Process_Handshake(ClientConnection* connection);
-    void Process_Ping(ClientConnection* connection);
-    void Process_UpdateFile(ClientConnection* connection);
-    void Process_UpdateFileData(ClientConnection* connection);
+    void Process_Handshake(ServerConnection* connection);
+    void Process_Ping(ServerConnection* connection);
+    void Process_UpdateFile(ServerConnection* connection);
+    void Process_UpdateFileData(ServerConnection* connection);
     void Process_Register(Player* unlogined_player);
     void Process_Login(Player* unlogined_player);
     void Process_Move(Player* player);
@@ -300,7 +300,7 @@ private:
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<unique_ptr<ClientConnection>> _newConnections {};
+    vector<shared_ptr<NetworkServerConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
     vector<Player*> _unloginedPlayers {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};

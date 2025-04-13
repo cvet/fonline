@@ -35,11 +35,11 @@
 
 #include "Common.h"
 
+#include "ClientConnection.h"
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "NetworkClient.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
@@ -78,7 +78,7 @@ private:
     void Net_OnUpdateFileData();
 
     ClientSettings& _settings;
-    ServerConnection _conn;
+    ClientConnection _conn;
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;
