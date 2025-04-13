@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "ServerConnection.h"
+#include "NetworkClient.h"
 #include "ClientScripting.h"
 #include "GenericUtils.h"
 #include "Log.h"

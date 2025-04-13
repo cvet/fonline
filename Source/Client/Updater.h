@@ -39,7 +39,7 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "ServerConnection.h"
+#include "NetworkClient.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
