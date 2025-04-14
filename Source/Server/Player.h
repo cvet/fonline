@@ -122,6 +122,7 @@ public:
 private:
     void SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool owned);
+    void SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr);
 
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};

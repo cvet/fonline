@@ -162,10 +162,12 @@ void Player::Send_AddCritter(const Critter* cr)
         }
     }
 
-    out_buf.Unlock(); // Todo: send moving in Send_AddCritter
-
     if (cr->IsMoving()) {
-        Send_Moving(cr);
+        out_buf->Write(true);
+        SendCritterMoving(*out_buf, cr);
+    }
+    else {
+        out_buf->Write(false);
     }
 }
 
@@ -231,36 +233,14 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity);
+    RUNTIME_ASSERT(prop);
 
     if (SendIgnoreEntity == entity && SendIgnoreProperty == prop) {
         return;
     }
 
-    uint additional_args = 0;
-    switch (type) {
-    case NetProperty::Critter:
-        additional_args = 1;
-        break;
-    case NetProperty::MapItem:
-        additional_args = 1;
-        break;
-    case NetProperty::CritterItem:
-        additional_args = 2;
-        break;
-    case NetProperty::ChosenItem:
-        additional_args = 1;
-        break;
-    case NetProperty::CustomEntity:
-        additional_args = 1;
-        break;
-    default:
-        break;
-    }
-
     const auto& props = entity->GetProperties();
-
     props.ValidateForRawData(prop);
-
     const auto prop_raw_data = props.GetRawData(prop);
 
     auto out_buf = _connection->WriteMsg(NETMSG_PROPERTY);
@@ -303,23 +283,7 @@ void Player::Send_Moving(const Critter* from_cr)
         auto out_buf = _connection->WriteMsg(NETMSG_CRITTER_MOVE);
 
         out_buf->Write(from_cr->GetId());
-        out_buf->Write(static_cast<uint>(std::ceil(from_cr->Moving.WholeTime)));
-        out_buf->Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime + from_cr->Moving.OffsetTime));
-        out_buf->Write(from_cr->Moving.Speed);
-        out_buf->Write(from_cr->Moving.StartHex);
-        out_buf->Write(static_cast<uint16>(from_cr->Moving.Steps.size()));
-
-        for (const auto step : from_cr->Moving.Steps) {
-            out_buf->Write(step);
-        }
-
-        out_buf->Write(static_cast<uint16>(from_cr->Moving.ControlSteps.size()));
-
-        for (const auto control_step : from_cr->Moving.ControlSteps) {
-            out_buf->Write(control_step);
-        }
-
-        out_buf->Write(from_cr->Moving.EndHexOffset);
+        SendCritterMoving(*out_buf, from_cr);
     }
     else {
         auto out_buf = _connection->WriteMsg(NETMSG_CRITTER_POS);
@@ -900,8 +864,6 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!holder->HasInnerEntities()) {
         out_buf.Write(static_cast<uint16>(0));
         return;
@@ -946,4 +908,29 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
             SendInnerEntities(out_buf, entity, owned);
         }
     }
+}
+
+void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    out_buf.Write(static_cast<uint>(std::ceil(cr->Moving.WholeTime)));
+    out_buf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime));
+    out_buf.Write(cr->Moving.Speed);
+    out_buf.Write(cr->Moving.StartHex);
+    out_buf.Write(static_cast<uint16>(cr->Moving.Steps.size()));
+
+    for (const auto step : cr->Moving.Steps) {
+        out_buf.Write(step);
+    }
+
+    out_buf.Write(static_cast<uint16>(cr->Moving.ControlSteps.size()));
+
+    for (const auto control_step : cr->Moving.ControlSteps) {
+        out_buf.Write(control_step);
+    }
+
+    out_buf.Write(cr->Moving.EndHexOffset);
 }

@@ -1068,6 +1068,13 @@ void FOClient::Net_OnAddCritter()
         }
     }
 
+    // Initial moving
+    const auto is_moving = _conn.InBuf.Read<bool>();
+
+    if (is_moving) {
+        ReceiveCritterMoving(hex_cr);
+    }
+
     if (hex_offset != ipos16 {} && hex_cr != nullptr) {
         hex_cr->RefreshOffs();
     }
@@ -1295,100 +1302,13 @@ void FOClient::Net_OnCritterMove()
     NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto whole_time = _conn.InBuf.Read<uint>();
-    const auto offset_time = _conn.InBuf.Read<uint>();
-    const auto speed = _conn.InBuf.Read<uint16>();
-    const auto start_hex = _conn.InBuf.Read<mpos>();
-
-    const auto steps_count = _conn.InBuf.Read<uint16>();
-    vector<uint8> steps;
-    steps.resize(steps_count);
-    for (auto i = 0; i < steps_count; i++) {
-        steps[i] = _conn.InBuf.Read<uint8>();
-    }
-
-    const auto control_steps_count = _conn.InBuf.Read<uint16>();
-    vector<uint16> control_steps;
-    control_steps.resize(control_steps_count);
-    for (auto i = 0; i < control_steps_count; i++) {
-        control_steps[i] = _conn.InBuf.Read<uint16>();
-    }
-
-    const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
-
-    if (CurMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
     auto* cr = CurMap->GetCritter(cr_id);
-    if (cr == nullptr) {
-        return;
+
+    ReceiveCritterMoving(cr);
+
+    if (cr != nullptr) {
+        cr->AnimateStay();
     }
-
-    cr->ClearMove();
-
-    cr->Moving.Speed = speed;
-    cr->Moving.StartTime = GameTime.FrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
-    cr->Moving.WholeTime = static_cast<float>(whole_time);
-    cr->Moving.Steps = steps;
-    cr->Moving.ControlSteps = control_steps;
-    cr->Moving.StartHex = start_hex;
-    cr->Moving.StartHexOffset = cr->GetHexOffset();
-    cr->Moving.EndHexOffset = end_hex_offset;
-
-    if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
-        cr->Moving.StartHexOffset = {static_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), static_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
-    }
-
-    cr->Moving.WholeDist = 0.0f;
-
-    mpos next_start_hex = start_hex;
-    uint16 control_step_begin = 0;
-
-    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hex = next_start_hex;
-
-        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], CurMap->GetSize());
-            RUNTIME_ASSERT(move_ok);
-        }
-
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
-
-        if (i == 0) {
-            ox -= cr->Moving.StartHexOffset.x;
-            oy -= cr->Moving.StartHexOffset.y;
-        }
-        if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndHexOffset.x;
-            oy += cr->Moving.EndHexOffset.y;
-        }
-
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
-
-        cr->Moving.WholeDist += dist;
-
-        control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hex = hex;
-
-        cr->Moving.EndHex = hex;
-    }
-
-    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
-    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
-
-    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
-
-    cr->AnimateStay();
 }
 
 void FOClient::Net_OnCritterMoveSpeed()
@@ -2469,6 +2389,106 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
     holder->AddInnerEntity(entry, entity);
 
     return entity;
+}
+
+void FOClient::ReceiveCritterMoving(CritterHexView* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const auto whole_time = _conn.InBuf.Read<uint>();
+    const auto offset_time = _conn.InBuf.Read<uint>();
+    const auto speed = _conn.InBuf.Read<uint16>();
+    const auto start_hex = _conn.InBuf.Read<mpos>();
+
+    const auto steps_count = _conn.InBuf.Read<uint16>();
+    vector<uint8> steps;
+    steps.resize(steps_count);
+    for (auto i = 0; i < steps_count; i++) {
+        steps[i] = _conn.InBuf.Read<uint8>();
+    }
+
+    const auto control_steps_count = _conn.InBuf.Read<uint16>();
+    vector<uint16> control_steps;
+    control_steps.resize(control_steps_count);
+    for (auto i = 0; i < control_steps_count; i++) {
+        control_steps[i] = _conn.InBuf.Read<uint16>();
+    }
+
+    const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    cr->ClearMove();
+
+    cr->Moving.Speed = speed;
+    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
+    cr->Moving.WholeTime = static_cast<float>(whole_time);
+    cr->Moving.Steps = steps;
+    cr->Moving.ControlSteps = control_steps;
+    cr->Moving.StartHex = start_hex;
+    cr->Moving.StartHexOffset = cr->GetHexOffset();
+    cr->Moving.EndHexOffset = end_hex_offset;
+
+    if (offset_time == 0 && start_hex != cr->GetHex()) {
+        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
+        cr->Moving.StartHexOffset = {static_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), static_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
+    }
+
+    cr->Moving.WholeDist = 0.0f;
+
+    mpos next_start_hex = start_hex;
+    uint16 control_step_begin = 0;
+
+    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
+        auto hex = next_start_hex;
+
+        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], CurMap->GetSize());
+            RUNTIME_ASSERT(move_ok);
+        }
+
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+
+        if (i == 0) {
+            ox -= cr->Moving.StartHexOffset.x;
+            oy -= cr->Moving.StartHexOffset.y;
+        }
+        if (i == cr->Moving.ControlSteps.size() - 1) {
+            ox += cr->Moving.EndHexOffset.x;
+            oy += cr->Moving.EndHexOffset.y;
+        }
+
+        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+
+        cr->Moving.WholeDist += dist;
+
+        control_step_begin = cr->Moving.ControlSteps[i];
+        next_start_hex = hex;
+
+        cr->Moving.EndHex = hex;
+    }
+
+    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
+
+    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 }
 
 auto FOClient::GetEntity(ident_t id) -> ClientEntity*

@@ -361,6 +361,7 @@ protected:
     void OnMapText(string_view str, mpos hex, ucolor color);
     void ReceiveCustomEntities(Entity* holder);
     auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*;
+    void ReceiveCritterMoving(CritterHexView* cr);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
