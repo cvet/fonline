@@ -125,9 +125,10 @@ void ClientConnection::AddMessageHandler(uint msg, MessageCallback handler)
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(handler);
-    RUNTIME_ASSERT(_handlers.count(msg) == 0);
+    RUNTIME_ASSERT(CheckNetMsgSignature(msg));
+    RUNTIME_ASSERT(_handlers.count(ExtractNetMsgNumber(msg)) == 0);
 
-    _handlers.emplace(msg, std::move(handler));
+    _handlers.emplace(ExtractNetMsgNumber(msg), std::move(handler));
 }
 
 void ClientConnection::Connect()
@@ -140,7 +141,7 @@ void ClientConnection::Connect()
     try {
         ConnectToHost();
     }
-    catch (const NetworkClientException& ex) {
+    catch (const ClientConnectionException& ex) {
         WriteLog("Connecting error: {}", ex.what());
         Disconnect();
         _connectCallback(false);
@@ -163,7 +164,7 @@ void ClientConnection::Process()
     try {
         ProcessConnection();
     }
-    catch (const NetworkClientException& ex) {
+    catch (const ClientConnectionException& ex) {
         WriteLog("Connection error: {}", ex.what());
         Disconnect();
     }
@@ -194,7 +195,9 @@ void ClientConnection::ProcessConnection()
     if (_isConnected) {
         if (ReceiveData(true)) {
             while (_isConnected && _netIn.NeedProcess()) {
-                const auto msg = _netIn.Read<uint>();
+                const auto msg = ExtractNetMsgNumber(_netIn.Read<uint>());
+                const auto msg_len = _netIn.Read<uint>();
+                UNUSED_VARIABLE(msg_len);
 
 #if FO_DEBUG
                 _msgHistory.insert(_msgHistory.begin(), msg);
@@ -206,11 +209,12 @@ void ClientConnection::ProcessConnection()
                 }
 
                 const auto it = _handlers.find(msg);
+
                 if (it != _handlers.end()) {
                     it->second();
                 }
                 else {
-                    throw NetworkClientException("No handler for message", msg);
+                    throw ClientConnectionException("No handler for message", msg);
                 }
             }
 
@@ -285,10 +289,10 @@ auto ClientConnection::CheckSocketStatus(bool for_write) -> bool
             return false;
         }
 
-        throw NetworkClientException("Socket error", _impl->GetLastSocketError());
+        throw ClientConnectionException("Socket error", _impl->GetLastSocketError());
     }
     else {
-        throw NetworkClientException("Socket select error", _impl->GetLastSocketError());
+        throw ClientConnectionException("Socket select error", _impl->GetLastSocketError());
     }
 }
 
@@ -368,7 +372,7 @@ void ClientConnection::ConnectToHost()
 #if FO_WINDOWS
     WSADATA wsa;
     if (::WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        throw NetworkClientException("WSAStartup error", _impl->GetLastSocketError());
+        throw ClientConnectionException("WSAStartup error", _impl->GetLastSocketError());
     }
 #endif
 
@@ -384,7 +388,7 @@ void ClientConnection::ConnectToHost()
     constexpr auto sock_type = SOCK_STREAM;
 #endif
     if ((_impl->NetSock = ::socket(PF_INET, sock_type, IPPROTO_TCP)) == INVALID_SOCKET) {
-        throw NetworkClientException("Create socket error", _impl->GetLastSocketError());
+        throw ClientConnectionException("Create socket error", _impl->GetLastSocketError());
     }
 
     // Nagle
@@ -409,7 +413,7 @@ void ClientConnection::ConnectToHost()
         if (::fcntl(_impl->NetSock, F_SETFL, flags | O_NONBLOCK))
 #endif
         {
-            throw NetworkClientException("Can't set non-blocking mode to socket", _impl->GetLastSocketError());
+            throw ClientConnectionException("Can't set non-blocking mode to socket", _impl->GetLastSocketError());
         }
 
         const auto r = ::connect(_impl->NetSock, reinterpret_cast<sockaddr*>(&_impl->SockAddr), sizeof(sockaddr_in));
@@ -419,19 +423,19 @@ void ClientConnection::ConnectToHost()
         if (r == SOCKET_ERROR && errno != EINPROGRESS)
 #endif
         {
-            throw NetworkClientException("Can't connect to the game server", _impl->GetLastSocketError());
+            throw ClientConnectionException("Can't connect to the game server", _impl->GetLastSocketError());
         }
     }
     else {
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
         // Proxy connect
         if (::connect(_impl->NetSock, reinterpret_cast<sockaddr*>(&_impl->ProxyAddr), sizeof(sockaddr_in)) != 0) {
-            throw NetworkClientException("Can't connect to proxy server", _impl->GetLastSocketError());
+            throw ClientConnectionException("Can't connect to proxy server", _impl->GetLastSocketError());
         }
 
         auto send_recv = [this]() {
             if (!DispatchData()) {
-                throw NetworkClientException("Net output error");
+                throw ClientConnectionException("Net output error");
             }
 
             const auto time = Timer::CurTime();
@@ -442,7 +446,7 @@ void ClientConnection::ConnectToHost()
                 }
 
                 if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
-                    throw NetworkClientException("Proxy answer timeout");
+                    throw ClientConnectionException("Proxy answer timeout");
                 }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -474,13 +478,13 @@ void ClientConnection::ConnectToHost()
             if (b2 != 0x5A) {
                 switch (b2) {
                 case 0x5B:
-                    throw NetworkClientException("Proxy connection error, request rejected or failed");
+                    throw ClientConnectionException("Proxy connection error, request rejected or failed");
                 case 0x5C:
-                    throw NetworkClientException("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
+                    throw ClientConnectionException("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
                 case 0x5D:
-                    throw NetworkClientException("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
+                    throw ClientConnectionException("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
                 default:
-                    throw NetworkClientException("Proxy connection error, unknown error", b2);
+                    throw ClientConnectionException("Proxy connection error, unknown error", b2);
                 }
             }
         }
@@ -506,11 +510,11 @@ void ClientConnection::ConnectToHost()
                 b1 = _netIn.Read<uint8>(); // Subnegotiation version
                 b2 = _netIn.Read<uint8>(); // Status
                 if (b2 != 0) {
-                    throw NetworkClientException("Invalid proxy user or password");
+                    throw ClientConnectionException("Invalid proxy user or password");
                 }
             }
             else if (b2 != 0) { // Other authorization
-                throw NetworkClientException("Socks server connect fail");
+                throw ClientConnectionException("Socks server connect fail");
             }
 
             // Connect
@@ -529,23 +533,23 @@ void ClientConnection::ConnectToHost()
             if (b2 != 0) {
                 switch (b2) {
                 case 1:
-                    throw NetworkClientException("Proxy connection error, SOCKS-server error");
+                    throw ClientConnectionException("Proxy connection error, SOCKS-server error");
                 case 2:
-                    throw NetworkClientException("Proxy connection error, connections fail by proxy rules");
+                    throw ClientConnectionException("Proxy connection error, connections fail by proxy rules");
                 case 3:
-                    throw NetworkClientException("Proxy connection error, network is not aviable");
+                    throw ClientConnectionException("Proxy connection error, network is not aviable");
                 case 4:
-                    throw NetworkClientException("Proxy connection error, host is not aviable");
+                    throw ClientConnectionException("Proxy connection error, host is not aviable");
                 case 5:
-                    throw NetworkClientException("Proxy connection error, connection denied");
+                    throw ClientConnectionException("Proxy connection error, connection denied");
                 case 6:
-                    throw NetworkClientException("Proxy connection error, TTL expired");
+                    throw ClientConnectionException("Proxy connection error, TTL expired");
                 case 7:
-                    throw NetworkClientException("Proxy connection error, command not supported");
+                    throw ClientConnectionException("Proxy connection error, command not supported");
                 case 8:
-                    throw NetworkClientException("Proxy connection error, address type not supported");
+                    throw ClientConnectionException("Proxy connection error, address type not supported");
                 default:
-                    throw NetworkClientException("Proxy connection error, unknown error", b2);
+                    throw ClientConnectionException("Proxy connection error, unknown error", b2);
                 }
             }
         }
@@ -566,18 +570,18 @@ void ClientConnection::ConnectToHost()
             buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
 
             if (buf.find(" 200 ") == string::npos) {
-                throw NetworkClientException("Proxy connection error", buf);
+                throw ClientConnectionException("Proxy connection error", buf);
             }
         }
         else {
-            throw NetworkClientException("Unknown proxy type", _settings.ProxyType);
+            throw ClientConnectionException("Unknown proxy type", _settings.ProxyType);
         }
 
         _netIn.ResetBuf();
         _netOut.ResetBuf();
 
 #else
-        throw NetworkClientException("Proxy connection is not supported on this platform");
+        throw ClientConnectionException("Proxy connection is not supported on this platform");
 #endif
     }
 
@@ -676,7 +680,7 @@ auto ClientConnection::DispatchData() -> bool
             if (len <= 0)
 #endif
             {
-                throw NetworkClientException("Socket error while send to server", _impl->GetLastSocketError());
+                throw ClientConnectionException("Socket error while send to server", _impl->GetLastSocketError());
             }
 
             actual_send = numeric_cast<size_t>(len);
@@ -726,10 +730,10 @@ auto ClientConnection::ReceiveData(bool unpack) -> bool
         if (len == SOCKET_ERROR)
 #endif
         {
-            throw NetworkClientException("Socket error while receive from server", _impl->GetLastSocketError());
+            throw ClientConnectionException("Socket error while receive from server", _impl->GetLastSocketError());
         }
         if (len == 0) {
-            throw NetworkClientException("Socket is closed");
+            throw ClientConnectionException("Socket is closed");
         }
 
         whole_len = len;
@@ -754,10 +758,10 @@ auto ClientConnection::ReceiveData(bool unpack) -> bool
                     break;
                 }
 
-                throw NetworkClientException("Socket error (2) while receive from server", _impl->GetLastSocketError());
+                throw ClientConnectionException("Socket error (2) while receive from server", _impl->GetLastSocketError());
             }
             if (len == 0) {
-                throw NetworkClientException("Socket is closed (2)");
+                throw ClientConnectionException("Socket is closed (2)");
             }
 
             whole_len += len;
@@ -819,7 +823,7 @@ void ClientConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, 
         const auto* h = ::gethostbyname(string(host).c_str()); // NOLINT(concurrency-mt-unsafe)
 
         if (h == nullptr) {
-            throw NetworkClientException("Can't resolve remote host", host, GetLastSocketError());
+            throw ClientConnectionException("Can't resolve remote host", host, GetLastSocketError());
         }
 
         MemCopy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));

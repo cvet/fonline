@@ -224,7 +224,6 @@ void Updater::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -300,7 +299,6 @@ void Updater::Net_OnUpdateFileData()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
     _updateFileBuf.resize(data_size);

@@ -336,7 +336,7 @@ protected:
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
     void Net_OnPlaceToGameComplete();
-    void Net_OnProperty(uint data_size);
+    void Net_OnProperty();
     void Net_OnCritterDir();
     void Net_OnCritterMove();
     void Net_OnCritterMoveSpeed();

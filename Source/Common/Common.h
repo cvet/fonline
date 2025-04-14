@@ -2188,6 +2188,7 @@ static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+static constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 // Float constants
 constexpr auto PI_FLOAT = 3.14159265f;
@@ -2374,6 +2375,77 @@ static constexpr auto CMD_LOG = 37;
 #define STR_NET_BAN_REASON (1047)
 #define STR_NET_LOGIN_SCRIPT_FAIL (1048)
 #define STR_NET_PERMANENT_DEATH (1049)
+
+// Network messages
+static constexpr auto MakeNetMsgHeader(uint number) -> uint
+{
+    STRONG_ASSERT(number <= 255);
+    return 0xF0F0AB00u | number;
+}
+static constexpr auto ExtractNetMsgNumber(uint msg) -> uint
+{
+    return msg & 0x000000FFu;
+}
+static constexpr auto CheckNetMsgSignature(uint msg) -> bool
+{
+    return (msg & 0xFFFFFF00u) == 0xF0F0AB00u;
+}
+
+static constexpr uint NETMSG_HANDSHAKE = MakeNetMsgHeader(9);
+static constexpr uint NETMSG_DISCONNECT = MakeNetMsgHeader(10);
+static constexpr uint NETMSG_LOGIN = MakeNetMsgHeader(1);
+static constexpr uint NETMSG_LOGIN_SUCCESS = MakeNetMsgHeader(2);
+static constexpr uint NETMSG_WRONG_NET_PROTO = MakeNetMsgHeader(8);
+static constexpr uint NETMSG_REGISTER = MakeNetMsgHeader(3);
+static constexpr uint NETMSG_REGISTER_SUCCESS = MakeNetMsgHeader(4);
+static constexpr uint NETMSG_PING = MakeNetMsgHeader(5);
+static constexpr uint NETMSG_PLACE_TO_GAME_COMPLETE = MakeNetMsgHeader(7);
+static constexpr uint NETMSG_UPDATE_FILES_LIST = MakeNetMsgHeader(15);
+static constexpr uint NETMSG_GET_UPDATE_FILE = MakeNetMsgHeader(16);
+static constexpr uint NETMSG_GET_UPDATE_FILE_DATA = MakeNetMsgHeader(17);
+static constexpr uint NETMSG_UPDATE_FILE_DATA = MakeNetMsgHeader(18);
+static constexpr uint NETMSG_ADD_CRITTER = MakeNetMsgHeader(11);
+static constexpr uint NETMSG_REMOVE_CRITTER = MakeNetMsgHeader(13);
+static constexpr uint NETMSG_SEND_COMMAND = MakeNetMsgHeader(21);
+static constexpr uint NETMSG_SEND_TEXT = MakeNetMsgHeader(31);
+static constexpr uint NETMSG_CRITTER_TEXT = MakeNetMsgHeader(32);
+static constexpr uint NETMSG_MSG = MakeNetMsgHeader(33);
+static constexpr uint NETMSG_MSG_LEX = MakeNetMsgHeader(34);
+static constexpr uint NETMSG_MAP_TEXT = MakeNetMsgHeader(35);
+static constexpr uint NETMSG_MAP_TEXT_MSG = MakeNetMsgHeader(36);
+static constexpr uint NETMSG_MAP_TEXT_MSG_LEX = MakeNetMsgHeader(37);
+static constexpr uint NETMSG_DIR = MakeNetMsgHeader(41);
+static constexpr uint NETMSG_CRITTER_DIR = MakeNetMsgHeader(42);
+static constexpr uint NETMSG_SEND_MOVE = MakeNetMsgHeader(45);
+static constexpr uint NETMSG_SEND_STOP_MOVE = MakeNetMsgHeader(46);
+static constexpr uint NETMSG_CRITTER_MOVE = MakeNetMsgHeader(47);
+static constexpr uint NETMSG_CRITTER_MOVE_SPEED = MakeNetMsgHeader(48);
+static constexpr uint NETMSG_CRITTER_POS = MakeNetMsgHeader(49);
+static constexpr uint NETMSG_CRITTER_ATTACHMENTS = MakeNetMsgHeader(50);
+static constexpr uint NETMSG_CRITTER_TELEPORT = MakeNetMsgHeader(52);
+static constexpr uint NETMSG_CHOSEN_ADD_ITEM = MakeNetMsgHeader(65);
+static constexpr uint NETMSG_CHOSEN_REMOVE_ITEM = MakeNetMsgHeader(66);
+static constexpr uint NETMSG_ADD_ITEM_ON_MAP = MakeNetMsgHeader(71);
+static constexpr uint NETMSG_REMOVE_ITEM_FROM_MAP = MakeNetMsgHeader(74);
+static constexpr uint NETMSG_ANIMATE_ITEM = MakeNetMsgHeader(75);
+static constexpr uint NETMSG_SOME_ITEMS = MakeNetMsgHeader(83);
+static constexpr uint NETMSG_CRITTER_ACTION = MakeNetMsgHeader(91);
+static constexpr uint NETMSG_CRITTER_MOVE_ITEM = MakeNetMsgHeader(93);
+static constexpr uint NETMSG_CRITTER_ANIMATE = MakeNetMsgHeader(95);
+static constexpr uint NETMSG_CRITTER_SET_ANIMS = MakeNetMsgHeader(96);
+static constexpr uint NETMSG_EFFECT = MakeNetMsgHeader(98);
+static constexpr uint NETMSG_FLY_EFFECT = MakeNetMsgHeader(99);
+static constexpr uint NETMSG_PLAY_SOUND = MakeNetMsgHeader(101);
+static constexpr uint NETMSG_SEND_TALK_NPC = MakeNetMsgHeader(109);
+static constexpr uint NETMSG_TALK_NPC = MakeNetMsgHeader(111);
+static constexpr uint NETMSG_TIME_SYNC = MakeNetMsgHeader(117);
+static constexpr uint NETMSG_LOAD_MAP = MakeNetMsgHeader(121);
+static constexpr uint NETMSG_REMOTE_CALL = MakeNetMsgHeader(128);
+static constexpr uint NETMSG_VIEW_MAP = MakeNetMsgHeader(131);
+static constexpr uint NETMSG_ADD_CUSTOM_ENTITY = MakeNetMsgHeader(180);
+static constexpr uint NETMSG_REMOVE_CUSTOM_ENTITY = MakeNetMsgHeader(181);
+static constexpr uint NETMSG_PROPERTY = MakeNetMsgHeader(190);
+static constexpr uint NETMSG_SEND_PROPERTY = MakeNetMsgHeader(200);
 
 // Foreach helper
 template<typename T>

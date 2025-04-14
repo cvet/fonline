@@ -671,7 +671,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/NetBuffer.h"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.h"
-    "${FO_ENGINE_ROOT}/Source/Common/NetProtocol-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Platform.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"

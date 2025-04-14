@@ -145,19 +145,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), [this] { Net_OnProperty(1); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), [this] { Net_OnProperty(1); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 0), [this] { Net_OnProperty(2); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 1), [this] { Net_OnProperty(2); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 2), [this] { Net_OnProperty(2); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 0), [this] { Net_OnProperty(4); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 1), [this] { Net_OnProperty(4); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 2), [this] { Net_OnProperty(4); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 0), [this] { Net_OnProperty(8); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 1), [this] { Net_OnProperty(8); });
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 2), [this] { Net_OnProperty(8); });
-    _conn.AddMessageHandler(NETMSG_COMPLEX_PROPERTY, [this] { Net_OnProperty(0); });
+    _conn.AddMessageHandler(NETMSG_PROPERTY, [this] { Net_OnProperty(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_TEXT, [this] { Net_OnText(); });
     _conn.AddMessageHandler(NETMSG_MSG, [this] { Net_OnTextMsg(false); });
     _conn.AddMessageHandler(NETMSG_MSG_LEX, [this] { Net_OnTextMsg(true); });
@@ -820,38 +808,11 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     RUNTIME_ASSERT(entity);
 
     const auto& props = entity->GetProperties();
-
     props.ValidateForRawData(prop);
-
     const auto prop_raw_data = props.GetRawData(prop);
-    const auto is_pod = prop->IsPlainData();
 
-    uint additional_args = 0;
-
-    switch (type) {
-    case NetProperty::Critter:
-        additional_args = 1;
-        break;
-    case NetProperty::MapItem:
-        additional_args = 1;
-        break;
-    case NetProperty::CritterItem:
-        additional_args = 2;
-        break;
-    case NetProperty::ChosenItem:
-        additional_args = 1;
-        break;
-    default:
-        break;
-    }
-
-    if (is_pod) {
-        _conn.OutBuf.StartMsg(NETMSG_SEND_POD_PROPERTY(prop_raw_data.size(), additional_args));
-    }
-    else {
-        _conn.OutBuf.StartMsg(NETMSG_SEND_COMPLEX_PROPERTY);
-    }
-
+    _conn.OutBuf.StartMsg(NETMSG_SEND_PROPERTY);
+    _conn.OutBuf.Write(static_cast<uint>(prop_raw_data.size()));
     _conn.OutBuf.Write(static_cast<char>(type));
 
     switch (type) {
@@ -902,7 +863,6 @@ void FOClient::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -977,7 +937,6 @@ void FOClient::Net_OnLoginSuccess()
 
     AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_LOGINOK));
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto encrypt_key = _conn.InBuf.Read<uint>();
     const auto player_id = _conn.InBuf.Read<ident_t>();
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
@@ -1002,8 +961,6 @@ void FOClient::Net_OnLoginSuccess()
 void FOClient::Net_OnAddCritter()
 {
     STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(*this);
@@ -1190,7 +1147,6 @@ void FOClient::Net_OnText()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto how_say = _conn.InBuf.Read<uint8>();
     const auto text = _conn.InBuf.Read<string>();
@@ -1215,10 +1171,6 @@ void FOClient::Net_OnText()
 void FOClient::Net_OnTextMsg(bool with_lexems)
 {
     STACK_TRACE_ENTRY();
-
-    if (with_lexems) {
-        [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-    }
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto how_say = _conn.InBuf.Read<uint8>();
@@ -1269,7 +1221,6 @@ void FOClient::Net_OnMapText()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text = _conn.InBuf.Read<string>();
@@ -1303,7 +1254,6 @@ void FOClient::Net_OnMapTextMsgLex()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto color = _conn.InBuf.Read<ucolor>();
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
@@ -1343,7 +1293,6 @@ void FOClient::Net_OnCritterMove()
 
     NON_CONST_METHOD_HINT();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto whole_time = _conn.InBuf.Read<uint>();
     const auto offset_time = _conn.InBuf.Read<uint>();
@@ -1483,7 +1432,6 @@ void FOClient::Net_OnCritterAction()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
     const auto action_ext = _conn.InBuf.Read<int>();
@@ -1528,7 +1476,6 @@ void FOClient::Net_OnCritterMoveItem()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
     const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
@@ -1624,7 +1571,6 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
     const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
@@ -1791,7 +1737,6 @@ void FOClient::Net_OnCritterAttachments()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto is_attached = _conn.InBuf.Read<bool>();
     const auto attach_master = _conn.InBuf.Read<ident_t>();
@@ -1848,7 +1793,6 @@ void FOClient::Net_OnChosenAddItem()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
     const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
@@ -1925,7 +1869,6 @@ void FOClient::Net_OnAddItemOnMap()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
@@ -2065,7 +2008,6 @@ void FOClient::Net_OnPlaySound()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     // Todo: synchronize effects showing (for example shot and kill)
     [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<ident_t>();
     const auto sound_name = _conn.InBuf.Read<string>();
@@ -2095,39 +2037,32 @@ void FOClient::Net_OnPlaceToGameComplete()
     WriteLog("Map loaded");
 }
 
-void FOClient::Net_OnProperty(uint data_size)
+void FOClient::Net_OnProperty()
 {
     STACK_TRACE_ENTRY();
 
-    const uint msg_len = data_size == 0 ? _conn.InBuf.Read<uint>() : 0;
+    const auto data_size = _conn.InBuf.Read<uint>();
     const auto type = _conn.InBuf.Read<NetProperty>();
 
     ident_t cr_id;
     ident_t item_id;
     ident_t entity_id;
 
-    uint additional_args = 0;
-
     switch (type) {
     case NetProperty::CritterItem:
-        additional_args = 2;
         cr_id = _conn.InBuf.Read<ident_t>();
         item_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::Critter:
-        additional_args = 1;
         cr_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::MapItem:
-        additional_args = 1;
         item_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::ChosenItem:
-        additional_args = 1;
         item_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::CustomEntity:
-        additional_args = 1;
         entity_id = _conn.InBuf.Read<ident_t>();
         break;
     default:
@@ -2137,17 +2072,7 @@ void FOClient::Net_OnProperty(uint data_size)
     const auto property_index = _conn.InBuf.Read<uint16>();
 
     PropertyRawData prop_data;
-
-    if (data_size != 0) {
-        _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
-    }
-    else {
-        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(type) - additional_args * sizeof(ident_t) - sizeof(uint16);
-
-        if (len != 0) {
-            _conn.InBuf.Pop(prop_data.Alloc(len), len);
-        }
-    }
+    _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
 
     Entity* entity = nullptr;
 
@@ -2236,7 +2161,6 @@ void FOClient::Net_OnChosenTalk()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto is_npc = _conn.InBuf.Read<bool>();
     const auto talk_cr_id = _conn.InBuf.Read<ident_t>();
     const auto talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
@@ -2303,7 +2227,6 @@ void FOClient::Net_OnLoadMap()
 
     WriteLog("Change map");
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto loc_id = _conn.InBuf.Read<ident_t>();
     const auto map_id = _conn.InBuf.Read<ident_t>();
     const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
@@ -2346,7 +2269,6 @@ void FOClient::Net_OnSomeItems()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto context_param = any_t {_conn.InBuf.Read<string>()};
     const auto items_count = _conn.InBuf.Read<uint>();
 
@@ -2395,7 +2317,6 @@ void FOClient::Net_OnRemoteCall()
 
     NON_CONST_METHOD_HINT();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto rpc_num = _conn.InBuf.Read<uint>();
 
     ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
@@ -2405,7 +2326,6 @@ void FOClient::Net_OnAddCustomEntity()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto holder_id = _conn.InBuf.Read<ident_t>();
     const auto holder_entry = _conn.InBuf.Read<hstring>(*this);
     const auto id = _conn.InBuf.Read<ident_t>();

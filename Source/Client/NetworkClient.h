@@ -40,7 +40,6 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(NetworkClientException);
 
 class NetworkClientConnection final
 {

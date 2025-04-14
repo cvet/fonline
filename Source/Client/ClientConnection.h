@@ -41,6 +41,8 @@
 #include "NetworkClient.h"
 #include "Settings.h"
 
+DECLARE_EXCEPTION(ClientConnectionException);
+
 // Proxy types
 constexpr auto PROXY_SOCKS4 = 1;
 constexpr auto PROXY_SOCKS5 = 2;

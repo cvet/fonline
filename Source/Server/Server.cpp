@@ -1151,28 +1151,8 @@ void FOServer::ProcessPlayer(Player* player)
         case NETMSG_REMOTE_CALL:
             Process_RemoteCall(player);
             break;
-        case NETMSG_SEND_POD_PROPERTY(1, 0):
-        case NETMSG_SEND_POD_PROPERTY(1, 1):
-        case NETMSG_SEND_POD_PROPERTY(1, 2):
-            Process_Property(player, 1);
-            break;
-        case NETMSG_SEND_POD_PROPERTY(2, 0):
-        case NETMSG_SEND_POD_PROPERTY(2, 1):
-        case NETMSG_SEND_POD_PROPERTY(2, 2):
-            Process_Property(player, 2);
-            break;
-        case NETMSG_SEND_POD_PROPERTY(4, 0):
-        case NETMSG_SEND_POD_PROPERTY(4, 1):
-        case NETMSG_SEND_POD_PROPERTY(4, 2):
-            Process_Property(player, 4);
-            break;
-        case NETMSG_SEND_POD_PROPERTY(8, 0):
-        case NETMSG_SEND_POD_PROPERTY(8, 1):
-        case NETMSG_SEND_POD_PROPERTY(8, 2):
-            Process_Property(player, 8);
-            break;
-        case NETMSG_SEND_COMPLEX_PROPERTY:
-            Process_Property(player, 0);
+        case NETMSG_SEND_PROPERTY:
+            Process_Property(player);
             break;
         default:
             in_buf->SkipMsg(msg);
@@ -1227,7 +1207,6 @@ void FOServer::Process_Text(Player* player)
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    [[maybe_unused]] const auto msg_len = in_buf->Read<uint>();
     auto how_say = in_buf->Read<uint8>();
     const auto str = in_buf->Read<string>();
 
@@ -1358,7 +1337,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
     auto* player_cr = player->GetControlledCritter();
 
-    [[maybe_unused]] const auto msg_len = buf.Read<uint>();
     const auto cmd = buf.Read<uint8>();
 
     auto sstr = string(player_cr != nullptr ? "" : admin_panel);
@@ -2266,6 +2244,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
+
     if (!outdated) {
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
@@ -2366,7 +2345,6 @@ void FOServer::Process_Register(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    [[maybe_unused]] const auto msg_len = in_buf->Read<uint>();
     const auto name = in_buf->Read<string>();
     const auto password = in_buf->Read<string>();
 
@@ -2468,7 +2446,6 @@ void FOServer::Process_Login(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    [[maybe_unused]] const auto msg_len = in_buf->Read<uint>();
     const auto name = in_buf->Read<string>();
     const auto password = in_buf->Read<string>();
 
@@ -2657,7 +2634,6 @@ void FOServer::Process_Move(Player* player)
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    [[maybe_unused]] const auto msg_len = in_buf->Read<uint>();
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
     const auto speed = in_buf->Read<uint16>();
@@ -2865,7 +2841,7 @@ void FOServer::Process_Dir(Player* player)
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
-void FOServer::Process_Property(Player* player, uint data_size)
+void FOServer::Process_Property(Player* player)
 {
     STACK_TRACE_ENTRY();
 
@@ -2874,10 +2850,12 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     Critter* cr = player->GetControlledCritter();
 
-    [[maybe_unused]] uint msg_len = 0;
+    const auto data_size = in_buf->Read<uint>();
 
-    if (data_size == 0) {
-        msg_len = in_buf->Read<uint>();
+    // Todo: control max size explicitly, add option to property registration
+    if (data_size > 0xFFFF) {
+        // For now 64Kb for all
+        throw GenericException("Property len > 0xFFFF");
     }
 
     const auto type = in_buf->Read<NetProperty>();
@@ -2885,23 +2863,18 @@ void FOServer::Process_Property(Player* player, uint data_size)
     ident_t cr_id;
     ident_t item_id;
 
-    uint additional_args = 0;
     switch (type) {
     case NetProperty::CritterItem:
-        additional_args = 2;
         cr_id = in_buf->Read<ident_t>();
         item_id = in_buf->Read<ident_t>();
         break;
     case NetProperty::Critter:
-        additional_args = 1;
         cr_id = in_buf->Read<ident_t>();
         break;
     case NetProperty::MapItem:
-        additional_args = 1;
         item_id = in_buf->Read<ident_t>();
         break;
     case NetProperty::ChosenItem:
-        additional_args = 1;
         item_id = in_buf->Read<ident_t>();
         break;
     default:
@@ -2911,23 +2884,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     const auto property_index = in_buf->Read<uint16>();
 
     PropertyRawData prop_data;
-
-    if (data_size != 0) {
-        in_buf->Pop(prop_data.Alloc(data_size), data_size);
-    }
-    else {
-        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
-        // Todo: control max size explicitly, add option to property registration
-        if (len > 0xFFFF) {
-            // For now 64Kb for all
-            BreakIntoDebugger("len > 0xFFFF");
-            return;
-        }
-
-        if (len != 0) {
-            in_buf->Pop(prop_data.Alloc(len), len);
-        }
-    }
+    in_buf->Pop(prop_data.Alloc(data_size), data_size);
 
     auto is_public = false;
     const Property* prop = nullptr;
@@ -4603,7 +4560,6 @@ void FOServer::Process_RemoteCall(Player* player)
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    [[maybe_unused]] const auto msg_len = in_buf->Read<uint>();
     const auto rpc_num = in_buf->Read<uint>();
 
     ScriptSys->HandleRemoteCall(rpc_num, player);

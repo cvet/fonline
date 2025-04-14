@@ -243,7 +243,7 @@ private:
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
-    void Process_Property(Player* player, uint data_size);
+    void Process_Property(Player* player);
     void Process_RemoteCall(Player* player);
 
     void OnSaveEntityValue(Entity* entity, const Property* prop);

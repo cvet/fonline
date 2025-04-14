@@ -269,13 +269,9 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 
     auto out_buf = _connection->WriteBuf();
 
-    if (is_pod) {
-        out_buf->StartMsg(NETMSG_POD_PROPERTY(prop_raw_data.size(), additional_args));
-    }
-    else {
-        out_buf->StartMsg(NETMSG_COMPLEX_PROPERTY);
-    }
+    out_buf->StartMsg(NETMSG_PROPERTY);
 
+    out_buf->Write(static_cast<uint>(prop_raw_data.size()));
     out_buf->Write(type);
 
     switch (type) {

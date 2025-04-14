@@ -35,9 +35,6 @@
 
 #include "Common.h"
 
-// ReSharper disable once CppUnusedIncludeDirective
-#include "NetProtocol-Include.h"
-
 DECLARE_EXCEPTION(NetBufferException);
 DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
 
