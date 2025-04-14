@@ -81,8 +81,13 @@ public:
     [[nodiscard]] virtual auto IsInterthreadConnection() const noexcept -> bool { return false; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
-    [[nodiscard]] auto LockInBuf() -> NetBufAccessor<NetInBuffer> { return NetBufAccessor(&_inBuf, &_inBufLocker); }
-    [[nodiscard]] auto LockOutBuf() -> NetBufAccessor<NetOutBuffer> { return NetBufAccessor(&_outBuf, &_outBufLocker); }
+    void LockInBuf() { _inBufLocker.lock(); }
+    void UnlockInBuf() noexcept { _inBufLocker.unlock(); }
+    void LockOutBuf() { _outBufLocker.lock(); }
+    void UnlockOutBuf() noexcept { _outBufLocker.unlock(); }
+
+    [[nodiscard]] auto GetInBuf() -> NetInBuffer& { return _inBuf; }
+    [[nodiscard]] auto GetOutBuf() -> NetOutBuffer& { return _outBuf; }
 
     void DisableOutBufCompression();
     void DispatchOutBuf();

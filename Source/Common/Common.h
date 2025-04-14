@@ -1397,7 +1397,7 @@ class StackUnwindDetector
 public:
     StackUnwindDetector() = default;
     StackUnwindDetector(const StackUnwindDetector&) = delete;
-    StackUnwindDetector(StackUnwindDetector&&) noexcept = delete;
+    StackUnwindDetector(StackUnwindDetector&&) noexcept = default;
     auto operator=(const StackUnwindDetector&) = delete;
     auto operator=(StackUnwindDetector&&) noexcept = delete;
     ~StackUnwindDetector() = default;

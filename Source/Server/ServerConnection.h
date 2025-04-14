@@ -41,6 +41,47 @@
 class ServerConnection final
 {
 public:
+    class OutBufAccessor
+    {
+    public:
+        explicit OutBufAccessor(ServerConnection* owner, uint msg);
+        OutBufAccessor() = delete;
+        OutBufAccessor(const OutBufAccessor&) = delete;
+        OutBufAccessor(OutBufAccessor&&) noexcept = default;
+        auto operator=(const OutBufAccessor&) = delete;
+        auto operator=(OutBufAccessor&&) noexcept = delete;
+        ~OutBufAccessor();
+        FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf; }
+        FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
+        void Unlock() noexcept;
+
+    private:
+        ServerConnection* _owner;
+        NetOutBuffer* _outBuf;
+        uint _msg;
+        StackUnwindDetector _isStackUnwinding {};
+    };
+
+    class InBufAccessor
+    {
+    public:
+        explicit InBufAccessor(ServerConnection* owner);
+        InBufAccessor() = delete;
+        InBufAccessor(const InBufAccessor&) = delete;
+        InBufAccessor(InBufAccessor&&) noexcept = default;
+        auto operator=(const InBufAccessor&) = delete;
+        auto operator=(InBufAccessor&&) noexcept = delete;
+        ~InBufAccessor();
+        FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf; }
+        FORCE_INLINE auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
+        void Lock();
+        void Unlock() noexcept;
+
+    private:
+        ServerConnection* _owner;
+        NetInBuffer* _inBuf {};
+    };
+
     ServerConnection() = delete;
     explicit ServerConnection(shared_ptr<NetworkServerConnection> net_connection);
     ServerConnection(const ServerConnection&) = delete;
@@ -57,8 +98,9 @@ public:
     [[nodiscard]] auto IsWebConnection() const noexcept -> bool;
     [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool;
 
-    auto WriteBuf() { return _netConnection->LockOutBuf(); }
-    auto ReadBuf() { return _netConnection->LockInBuf(); }
+    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, 0); }
+    auto WriteMsg(uint msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
+    auto ReadBuf() -> InBufAccessor { return InBufAccessor(this); }
 
     void DisableCompression();
     void DispatchOutBuf();

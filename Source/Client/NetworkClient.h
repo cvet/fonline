@@ -40,7 +40,6 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-
 class NetworkClientConnection final
 {
 public:

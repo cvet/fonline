@@ -2383,6 +2383,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
                                 globalLines.append('    ReadNetBuf(*in_buf, arg_' + p[1] + ', *self->GetEngine());')
+                            globalLines.append('    in_buf.Unlock();')
                         else:
                             globalLines.append('    [[maybe_unused]] auto& connection = self->GetEngine()->GetConnection();')
                             for p in rcArgs:

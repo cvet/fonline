@@ -35,6 +35,82 @@
 #include "Log.h"
 #include "TextPack.h"
 
+ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, uint msg) :
+    _owner {owner},
+    _outBuf {&_owner->_netConnection->GetOutBuf()},
+    _msg {msg}
+{
+    STACK_TRACE_ENTRY();
+
+    _owner->_netConnection->LockOutBuf();
+
+    if (_msg != 0) {
+        _outBuf->StartMsg(_msg);
+    }
+}
+
+ServerConnection::OutBufAccessor::~OutBufAccessor()
+{
+    STACK_TRACE_ENTRY();
+
+    Unlock();
+}
+
+void ServerConnection::OutBufAccessor::Unlock() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    if (_outBuf != nullptr) {
+        if (!_isStackUnwinding) {
+            if (_msg != 0) {
+                _outBuf->EndMsg();
+            }
+
+            _owner->_netConnection->UnlockOutBuf();
+            _owner->_netConnection->DispatchOutBuf();
+        }
+        else {
+            _owner->_netConnection->UnlockOutBuf();
+        }
+
+        _outBuf = nullptr;
+    }
+}
+
+ServerConnection::InBufAccessor::InBufAccessor(ServerConnection* owner) :
+    _owner {owner}
+{
+    STACK_TRACE_ENTRY();
+
+    Lock();
+}
+
+ServerConnection::InBufAccessor::~InBufAccessor()
+{
+    STACK_TRACE_ENTRY();
+
+    Unlock();
+}
+
+void ServerConnection::InBufAccessor::Lock()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_inBuf);
+    _owner->_netConnection->LockInBuf();
+    _inBuf = &_owner->_netConnection->GetInBuf();
+}
+
+void ServerConnection::InBufAccessor::Unlock() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    if (_inBuf != nullptr) {
+        _owner->_netConnection->UnlockInBuf();
+        _inBuf = nullptr;
+    }
+}
+
 ServerConnection::ServerConnection(shared_ptr<NetworkServerConnection> net_connection) :
     _netConnection {std::move(net_connection)}
 {
@@ -124,7 +200,5 @@ void ServerConnection::GracefulDisconnect()
 
     _gracefulDisconnected = true;
 
-    auto out_buf = WriteBuf();
-    out_buf->StartMsg(NETMSG_DISCONNECT);
-    out_buf->EndMsg();
+    WriteMsg(NETMSG_DISCONNECT);
 }

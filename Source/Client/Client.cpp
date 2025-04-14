@@ -764,6 +764,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
 
     if (cr->Moving.Steps.size() > 500) {
+        BreakIntoDebugger();
         cr->ClearMove();
         return;
     }

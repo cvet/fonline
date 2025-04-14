@@ -1018,35 +1018,16 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 
         const auto msg = in_buf->Read<uint>();
 
+        in_buf.Unlock();
+
+        bool skip_msg = false;
+
         if (!connection->WasHandshake) {
-            switch (msg) {
-            case 0xFFFFFFFF: {
-                // At least 16 bytes should be sent for backward compatibility,
-                // even if answer data will change its meaning
-                connection->DisableCompression();
-
-                {
-                    auto out_buf = connection->WriteBuf();
-                    out_buf->Write(static_cast<uint>(_stats.CurOnline));
-                    out_buf->Write(time_duration_to_ms<uint>(_stats.Uptime));
-                    out_buf->Write(static_cast<uint>(0));
-                    out_buf->Write(static_cast<uint8>(0));
-                    out_buf->Write(static_cast<uint8>(0xF0));
-                    out_buf->Write(static_cast<uint16>(0xFFFF));
-                    connection->DispatchOutBuf();
-                }
-
-                connection->HardDisconnect();
-                break;
-            }
-
-            case NETMSG_HANDSHAKE:
+            if (msg == NETMSG_HANDSHAKE) {
                 Process_Handshake(connection);
-                break;
-
-            default:
-                in_buf->SkipMsg(msg);
-                break;
+            }
+            else {
+                skip_msg = true;
             }
         }
         else {
@@ -1073,9 +1054,15 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 break;
 
             default:
-                in_buf->SkipMsg(msg);
+                skip_msg = true;
                 break;
             }
+        }
+
+        in_buf.Lock();
+
+        if (skip_msg) {
+            in_buf->SkipMsg(msg);
         }
 
         if (IsRunInDebugger() && connection->IsInterthreadConnection() && !in_buf->NeedProcess()) {
@@ -1126,6 +1113,10 @@ void FOServer::ProcessPlayer(Player* player)
 
         const auto msg = in_buf->Read<uint>();
 
+        in_buf.Unlock();
+
+        bool skip_msg = false;
+
         switch (msg) {
         case NETMSG_PING:
             Process_Ping(connection);
@@ -1155,8 +1146,14 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Property(player);
             break;
         default:
-            in_buf->SkipMsg(msg);
+            skip_msg = true;
             break;
+        }
+
+        in_buf.Lock();
+
+        if (skip_msg) {
+            in_buf->SkipMsg(msg);
         }
 
         connection->LastActivityTime = GameTime.FrameTime();
@@ -1189,10 +1186,8 @@ void FOServer::ProcessConnection(ServerConnection* connection)
             return;
         }
 
-        auto out_buf = connection->WriteBuf();
-        out_buf->StartMsg(NETMSG_PING);
+        auto out_buf = connection->WriteMsg(NETMSG_PING);
         out_buf->Write(false);
-        out_buf->EndMsg();
 
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
         connection->PingOk = false;
@@ -2249,16 +2244,15 @@ void FOServer::Process_Handshake(ServerConnection* connection)
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
-    auto out_buf = connection->WriteBuf();
-    out_buf->SetEncryptKey(encrypt_key);
-    out_buf->StartMsg(NETMSG_UPDATE_FILES_LIST);
+    connection->WriteBuf()->SetEncryptKey(encrypt_key);
+
+    auto out_buf = connection->WriteMsg(NETMSG_UPDATE_FILES_LIST);
     out_buf->Write(outdated);
     out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
     out_buf->Push(_updateFilesDesc);
     if (!outdated) {
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
     }
-    out_buf->EndMsg();
 
     connection->WasHandshake = true;
 }
@@ -2278,10 +2272,8 @@ void FOServer::Process_Ping(ServerConnection* connection)
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
     }
     else {
-        auto out_buf = connection->WriteBuf();
-        out_buf->StartMsg(NETMSG_PING);
+        auto out_buf = connection->WriteMsg(NETMSG_PING);
         out_buf->Write(true);
-        out_buf->EndMsg();
     }
 }
 
@@ -2329,11 +2321,9 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
         connection->UpdateFileIndex = -1;
     }
 
-    auto out_buf = connection->WriteBuf();
-    out_buf->StartMsg(NETMSG_UPDATE_FILE_DATA);
+    auto out_buf = connection->WriteMsg(NETMSG_UPDATE_FILE_DATA);
     out_buf->Write(update_portion);
     out_buf->Push(&update_file_data[offset], update_portion);
-    out_buf->EndMsg();
 }
 
 void FOServer::Process_Register(Player* unlogined_player)
@@ -2432,9 +2422,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Notify
     unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REG_SUCCESS);
 
-    auto out_buf = connection->WriteBuf();
-    out_buf->StartMsg(NETMSG_REGISTER_SUCCESS);
-    out_buf->EndMsg();
+    connection->WriteMsg(NETMSG_REGISTER_SUCCESS);
 }
 
 void FOServer::Process_Login(Player* unlogined_player)
