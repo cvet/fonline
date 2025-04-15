@@ -32,3 +32,96 @@
 //
 
 #include "NetworkClient.h"
+#include "Log.h"
+
+NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings) :
+    _settings {settings}
+{
+    STACK_TRACE_ENTRY();
+
+    _incomeBuf.resize(_settings.NetBufferSize);
+    _isConnecting = true;
+}
+
+NetworkClientConnection::~NetworkClientConnection()
+{
+    STACK_TRACE_ENTRY();
+
+    Disconnect();
+}
+
+auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_isConnecting && !_isConnected) {
+        return false;
+    }
+
+    try {
+        return CheckStatusImpl(for_write);
+    }
+    catch (...) {
+        Disconnect();
+        throw;
+    }
+}
+
+auto NetworkClientConnection::SendData(const_span<uint8> buf) -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_isConnecting && !_isConnected) {
+        return 0;
+    }
+
+    try {
+        const auto send_len = SendDataImpl(buf);
+        _bytesSend += send_len;
+        return send_len;
+    }
+    catch (...) {
+        Disconnect();
+        throw;
+    }
+}
+
+auto NetworkClientConnection::ReceiveData() -> const_span<uint8>
+{
+    if (!_isConnecting && !_isConnected) {
+        return {};
+    }
+
+    try {
+        const auto recv_len = ReceiveDataImpl(_incomeBuf);
+        _bytesReceived += recv_len;
+        return {_incomeBuf.data(), recv_len};
+    }
+    catch (...) {
+        Disconnect();
+        throw;
+    }
+}
+
+void NetworkClientConnection::Disconnect() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_isConnecting && !_isConnected) {
+        return;
+    }
+
+    if (_isConnecting) {
+        WriteLog("Can't connect to the server");
+
+        _isConnecting = false;
+    }
+
+    if (_isConnected) {
+        WriteLog("Disconnect from the server");
+
+        _isConnected = false;
+    }
+
+    DisconnectImpl();
+}

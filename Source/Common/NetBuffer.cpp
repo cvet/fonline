@@ -34,6 +34,7 @@
 #include "NetBuffer.h"
 #include "Entity.h"
 #include "GenericUtils.h"
+#include "Log.h"
 
 NetBuffer::NetBuffer(size_t buf_len)
 {
@@ -124,7 +125,7 @@ void NetBuffer::GrowBuf(size_t len)
     _bufData.resize(new_len);
 }
 
-void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const
+void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -199,21 +200,22 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
     }
 }
 
-void NetOutBuffer::StartMsg(uint msg)
+void NetOutBuffer::StartMsg(NetMessage msg)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_msgStarted);
 
     _msgStarted = true;
-    _startedMsg = msg;
     _startedBufPos = _bufEndPos;
 
-    Push(&msg, sizeof(msg));
+    Write(NETMSG_SIGNATURE);
 
     // Will be overwrited in message finalization
     constexpr uint msg_len = 0;
-    Push(&msg_len, sizeof(msg_len));
+    Write(msg_len);
+
+    Write(msg);
 }
 
 void NetOutBuffer::EndMsg()
@@ -225,16 +227,20 @@ void NetOutBuffer::EndMsg()
 
     _msgStarted = false;
 
-    const auto actual_msg_len = static_cast<uint>(_bufEndPos - _startedBufPos);
-    EncryptKey(-static_cast<int>(actual_msg_len));
+    // Move to message start position
+    const auto msg_len = static_cast<uint>(_bufEndPos - _startedBufPos);
+    EncryptKey(-static_cast<int>(msg_len));
 
-    uint msg = 0;
-    CopyBuf(_bufData.data() + _startedBufPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
-    RUNTIME_ASSERT(msg == _startedMsg);
+    // Verify signature
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _startedBufPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
+    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
 
-    CopyBuf(&actual_msg_len, _bufData.data() + _startedBufPos + sizeof(uint), EncryptKey(0), sizeof(actual_msg_len));
+    // Write actual message length
+    CopyBuf(&msg_len, _bufData.data() + _startedBufPos + sizeof(msg_signature), EncryptKey(0), sizeof(msg_len));
 
-    EncryptKey(static_cast<int>(actual_msg_len - sizeof(msg)));
+    // Return to the end
+    EncryptKey(static_cast<int>(msg_len - sizeof(msg_signature)));
 }
 
 void NetInBuffer::ResetBuf() noexcept
@@ -325,6 +331,31 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8>>& props_data)
     }
 }
 
+auto NetInBuffer::ReadMsg() -> NetMessage
+{
+    STACK_TRACE_ENTRY();
+
+    if (_bufReadPos + sizeof(uint) + sizeof(uint) + sizeof(NetMessage) > _bufEndPos) {
+        throw NetBufferException("Invalid msg read length", _bufReadPos, _bufEndPos);
+    }
+
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
+    _bufReadPos += sizeof(msg_signature);
+    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+
+    uint msg_len;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_len, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
+    _bufReadPos += sizeof(msg_len);
+    RUNTIME_ASSERT(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
+
+    NetMessage msg;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
+    _bufReadPos += sizeof(NetMessage);
+
+    return msg;
+}
+
 auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
@@ -346,44 +377,33 @@ auto NetInBuffer::NeedProcess() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    uint msg = 0;
-
-    if (_bufReadPos + sizeof(msg) > _bufEndPos) {
+    // Check signature
+    if (_bufReadPos + sizeof(uint) > _bufEndPos) {
         return false;
     }
 
-    CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(0), sizeof(msg));
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(0), sizeof(msg_signature));
 
-    if (!CheckNetMsgSignature(msg)) {
+    if (msg_signature != NETMSG_SIGNATURE) {
         ResetBuf();
-        throw UnknownMessageException("Unknown message", msg);
+        throw UnknownMessageException("Invalid message signature", msg_signature);
     }
 
-    uint msg_len = 0;
-
-    if (_bufReadPos + sizeof(msg) + sizeof(msg_len) > _bufEndPos) {
+    // Check length
+    if (_bufReadPos + sizeof(uint) + sizeof(uint) > _bufEndPos) {
         return false;
     }
 
-    EncryptKey(sizeof(msg));
-    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
-    EncryptKey(-static_cast<int>(sizeof(msg)));
+    uint msg_len;
+    EncryptKey(sizeof(msg_signature));
+    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg_signature), &msg_len, EncryptKey(0), sizeof(msg_len));
+    EncryptKey(-static_cast<int>(sizeof(msg_signature)));
+
+    if (msg_len < sizeof(uint) + sizeof(uint) + sizeof(NetMessage)) {
+        ResetBuf();
+        throw UnknownMessageException("Invalid message length", msg_len);
+    }
 
     return _bufReadPos + msg_len <= _bufEndPos;
-}
-
-void NetInBuffer::SkipMsg(uint msg)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(CheckNetMsgSignature(msg));
-
-    uint msg_len = 0;
-    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
-
-    EncryptKey(-static_cast<int>(sizeof(msg)));
-    RUNTIME_ASSERT(_bufReadPos + msg_len <= _bufEndPos);
-
-    _bufReadPos += msg_len;
-    EncryptKey(static_cast<int>(msg_len));
 }

@@ -781,6 +781,8 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.h"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Interthread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Sockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.h"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.h"

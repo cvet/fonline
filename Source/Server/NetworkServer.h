@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "GenericUtils.h"
 #include "NetBuffer.h"
 #include "Settings.h"
 
@@ -43,30 +44,6 @@ DECLARE_EXCEPTION(NetworkServerException);
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    template<typename T>
-    [[nodiscard]] class NetBufAccessor
-    {
-    public:
-        NetBufAccessor(T* net_buf, std::mutex* locker) :
-            _netBuf {net_buf},
-            _locker {locker}
-        {
-            _locker->lock();
-        }
-        NetBufAccessor() = delete;
-        NetBufAccessor(const NetBufAccessor&) = delete;
-        NetBufAccessor(NetBufAccessor&&) noexcept = default;
-        auto operator=(const NetBufAccessor&) = delete;
-        auto operator=(NetBufAccessor&&) noexcept = delete;
-        ~NetBufAccessor() { _locker->unlock(); }
-        FORCE_INLINE auto operator->() noexcept -> T* { return _netBuf; }
-        FORCE_INLINE auto operator*() noexcept -> T& { return *_netBuf; }
-
-    private:
-        T* _netBuf;
-        std::mutex* _locker;
-    };
-
     NetworkServerConnection() = delete;
     NetworkServerConnection(const NetworkServerConnection&) = delete;
     NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
@@ -77,8 +54,6 @@ public:
     [[nodiscard]] virtual auto GetIp() const noexcept -> uint { return _ip; }
     [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
-    [[nodiscard]] virtual auto IsWebConnection() const noexcept -> bool { return false; }
-    [[nodiscard]] virtual auto IsInterthreadConnection() const noexcept -> bool { return false; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
     void LockInBuf() { _inBufLocker.lock(); }
@@ -89,7 +64,6 @@ public:
     [[nodiscard]] auto GetInBuf() -> NetInBuffer& { return _inBuf; }
     [[nodiscard]] auto GetOutBuf() -> NetOutBuffer& { return _outBuf; }
 
-    void DisableOutBufCompression();
     void DispatchOutBuf();
     void Disconnect();
 
@@ -107,15 +81,12 @@ protected:
     uint16 _port {};
 
 private:
-    struct Impl;
-    unique_del_ptr<Impl> _impl {};
-
     NetInBuffer _inBuf;
     std::mutex _inBufLocker {};
     NetOutBuffer _outBuf;
     std::mutex _outBufLocker {};
     vector<uint8> _outFinalBuf {};
-
+    StreamCompressor _compressor {};
     std::atomic_bool _isDisconnected {};
 };
 

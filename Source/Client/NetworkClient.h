@@ -31,23 +31,49 @@
 // SOFTWARE.
 //
 
-// Todo: automatically reconnect on network failures
-
-#pragma once
+// #pragma once
 
 #include "Common.h"
 
-#include "NetBuffer.h"
 #include "Settings.h"
 
-class NetworkClientConnection final
+DECLARE_EXCEPTION(NetworkClientException);
+
+class NetworkClientConnection : std::enable_shared_from_this<NetworkClientConnection>
 {
 public:
-    NetworkClientConnection() = delete;
     explicit NetworkClientConnection(ClientNetworkSettings& settings);
     NetworkClientConnection(const NetworkClientConnection&) = delete;
     NetworkClientConnection(NetworkClientConnection&&) noexcept = delete;
     auto operator=(const NetworkClientConnection&) = delete;
     auto operator=(NetworkClientConnection&&) noexcept = delete;
-    ~NetworkClientConnection();
+    virtual ~NetworkClientConnection();
+
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
+    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
+    [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
+    [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+
+    auto CheckStatus(bool for_write) -> bool;
+    auto SendData(const_span<uint8> buf) -> size_t;
+    auto ReceiveData() -> const_span<uint8>;
+    void Disconnect() noexcept;
+
+    [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>;
+
+protected:
+    virtual auto CheckStatusImpl(bool for_write) -> bool = 0;
+    virtual auto SendDataImpl(const_span<uint8> buf) -> size_t = 0;
+    virtual auto ReceiveDataImpl(vector<uint8>& buf) -> size_t = 0;
+    virtual void DisconnectImpl() noexcept = 0;
+
+    ClientNetworkSettings& _settings;
+    bool _isConnecting {};
+    bool _isConnected {};
+
+private:
+    size_t _bytesSend {};
+    size_t _bytesReceived {};
+    vector<uint8> _incomeBuf {};
 };

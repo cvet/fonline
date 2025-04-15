@@ -44,6 +44,7 @@ public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
     static constexpr size_t STRING_LEN_SIZE = sizeof(uint16);
     static constexpr size_t ARRAY_LEN_SIZE = sizeof(uint16);
+    static constexpr uint NETMSG_SIGNATURE = 0xF0FAF0FA;
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -62,7 +63,7 @@ public:
 
 protected:
     auto EncryptKey(int move) noexcept -> uint8;
-    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const;
+    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept;
 
     vector<uint8> _bufData {};
     size_t _defaultBufLen {};
@@ -115,12 +116,11 @@ public:
 
     void WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes);
 
-    void StartMsg(uint msg);
+    void StartMsg(NetMessage msg);
     void EndMsg();
 
 private:
     bool _msgStarted {};
-    uint _startedMsg {};
     size_t _startedBufPos {};
 };
 
@@ -143,7 +143,6 @@ public:
 
     void AddData(const void* buf, size_t len);
     void SetEndPos(size_t pos);
-    void SkipMsg(uint msg);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
     void ResetBuf() noexcept override;
@@ -174,6 +173,8 @@ public:
     }
 
     void ReadPropsData(vector<vector<uint8>>& props_data);
+
+    auto ReadMsg() -> NetMessage;
 
 private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;

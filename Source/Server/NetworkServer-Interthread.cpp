@@ -36,67 +36,18 @@
 class NetworkServerConnection_Interthread : public NetworkServerConnection
 {
 public:
-    NetworkServerConnection_Interthread(ServerNetworkSettings& settings, InterthreadDataCallback send) :
-        NetworkServerConnection(settings),
-        _send {std::move(send)}
-    {
-        STACK_TRACE_ENTRY();
-    }
-
+    explicit NetworkServerConnection_Interthread(ServerNetworkSettings& settings, InterthreadDataCallback send);
     NetworkServerConnection_Interthread(const NetworkServerConnection_Interthread&) = delete;
     NetworkServerConnection_Interthread(NetworkServerConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_Interthread&) = delete;
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
 
-    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return false;
-    }
-
-    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return true;
-    }
-
-    void Receive(const_span<uint8> buf)
-    {
-        STACK_TRACE_ENTRY();
-
-        if (!buf.empty()) {
-            ReceiveCallback(buf.data(), buf.size());
-        }
-        else {
-            _send = nullptr;
-            Disconnect();
-        }
-    }
+    void Receive(const_span<uint8> buf);
 
 private:
-    void DispatchImpl() override
-    {
-        STACK_TRACE_ENTRY();
-
-        const auto buf = SendCallback();
-
-        if (!buf.empty()) {
-            _send(buf);
-        }
-    }
-
-    void DisconnectImpl() override
-    {
-        STACK_TRACE_ENTRY();
-
-        if (_send) {
-            _send({});
-            _send = nullptr;
-        }
-    }
+    void DispatchImpl() override;
+    void DisconnectImpl() override;
 
     InterthreadDataCallback _send;
 };
@@ -104,6 +55,7 @@ private:
 class InterthreadServer : public NetworkServer
 {
 public:
+    explicit InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback);
     InterthreadServer() = delete;
     InterthreadServer(const InterthreadServer&) = delete;
     InterthreadServer(InterthreadServer&&) noexcept = delete;
@@ -111,29 +63,7 @@ public:
     auto operator=(InterthreadServer&&) noexcept = delete;
     ~InterthreadServer() override = default;
 
-    InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-        _virtualPort {static_cast<uint16>(settings.ServerPort)}
-    {
-        STACK_TRACE_ENTRY();
-
-        if (InterthreadListeners.count(_virtualPort) != 0) {
-            throw NetworkServerException("Port is busy", _virtualPort);
-        }
-
-        InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
-            auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
-            callback_(conn);
-            return [conn_ = conn](const_span<uint8> buf) mutable { conn_->Receive(buf); };
-        });
-    }
-
-    void Shutdown() override
-    {
-        STACK_TRACE_ENTRY();
-
-        RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
-        InterthreadListeners.erase(_virtualPort);
-    }
+    void Shutdown() override;
 
 private:
     uint16 _virtualPort;
@@ -144,4 +74,69 @@ auto NetworkServer::StartInterthreadServer(ServerNetworkSettings& settings, NewC
     STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
+}
+
+NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ServerNetworkSettings& settings, InterthreadDataCallback send) :
+    NetworkServerConnection(settings),
+    _send {std::move(send)}
+{
+    STACK_TRACE_ENTRY();
+}
+
+void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
+{
+    STACK_TRACE_ENTRY();
+
+    if (!buf.empty()) {
+        ReceiveCallback(buf.data(), buf.size());
+    }
+    else {
+        _send = nullptr;
+        Disconnect();
+    }
+}
+
+void NetworkServerConnection_Interthread::DispatchImpl()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto buf = SendCallback();
+
+    if (!buf.empty()) {
+        _send(buf);
+    }
+}
+
+void NetworkServerConnection_Interthread::DisconnectImpl()
+{
+    STACK_TRACE_ENTRY();
+
+    if (_send) {
+        _send({});
+        _send = nullptr;
+    }
+}
+
+InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
+    _virtualPort {static_cast<uint16>(settings.ServerPort)}
+{
+    STACK_TRACE_ENTRY();
+
+    if (InterthreadListeners.count(_virtualPort) != 0) {
+        throw NetworkServerException("Port is busy", _virtualPort);
+    }
+
+    InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
+        auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
+        callback_(conn);
+        return [conn_ = conn](const_span<uint8> buf) mutable { conn_->Receive(buf); };
+    });
+}
+
+void InterthreadServer::Shutdown()
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
+    InterthreadListeners.erase(_virtualPort);
 }

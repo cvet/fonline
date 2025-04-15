@@ -1878,7 +1878,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 {
     STACK_TRACE_ENTRY();
 
-    out_buf.StartMsg(NETMSG_REMOTE_CALL);
+    out_buf.StartMsg(NetMessage::REMOTE_CALL);
     out_buf.Write(rpc_num);
 }
 

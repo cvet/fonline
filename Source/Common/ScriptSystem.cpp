@@ -137,6 +137,7 @@ void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
     STACK_TRACE_ENTRY();
 
     const auto it = _rpcReceivers.find(rpc_num);
+
     if (it == _rpcReceivers.end()) {
         throw ScriptException("Invalid remote call", rpc_num);
     }

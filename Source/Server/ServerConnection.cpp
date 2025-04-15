@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "TextPack.h"
 
-ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, uint msg) :
+ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
     _owner {owner},
     _outBuf {&_owner->_netConnection->GetOutBuf()},
     _msg {msg}
@@ -44,8 +44,8 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, uint m
 
     _owner->_netConnection->LockOutBuf();
 
-    if (_msg != 0) {
-        _outBuf->StartMsg(_msg);
+    if (_msg) {
+        _outBuf->StartMsg(_msg.value());
     }
 }
 
@@ -62,7 +62,7 @@ void ServerConnection::OutBufAccessor::Unlock() noexcept
 
     if (_outBuf != nullptr) {
         if (!_isStackUnwinding) {
-            if (_msg != 0) {
+            if (_msg) {
                 _outBuf->EndMsg();
             }
 
@@ -159,20 +159,6 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     return _gracefulDisconnected;
 }
 
-auto ServerConnection::IsWebConnection() const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _netConnection->IsWebConnection();
-}
-
-auto ServerConnection::IsInterthreadConnection() const noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _netConnection->IsInterthreadConnection();
-}
-
 void ServerConnection::DisableCompression()
 {
     STACK_TRACE_ENTRY();
@@ -200,5 +186,5 @@ void ServerConnection::GracefulDisconnect()
 
     _gracefulDisconnected = true;
 
-    WriteMsg(NETMSG_DISCONNECT);
+    WriteMsg(NetMessage::DISCONNECT);
 }

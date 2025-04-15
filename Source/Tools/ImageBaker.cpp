@@ -1496,7 +1496,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         if (packed) {
             // Unpack with zlib
             auto unpacked_len = file.GetLEUInt();
-            auto unpacked_data = Compressor::Uncompress({file.GetCurBuf(), data_len}, unpacked_len / data_len + 1);
+            auto unpacked_data = Compressor::Decompress({file.GetCurBuf(), data_len}, unpacked_len / data_len + 1);
 
             if (unpacked_data.empty()) {
                 throw ImageBakerException("Can't unpack SPR data", fname);
@@ -1987,7 +1987,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
         auto* buf = const_cast<uint8*>(file.GetBuf());
         *reinterpret_cast<uint16*>(buf) = 0x9C78;
 
-        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
+        const auto data = Compressor::Decompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
 
         if (data.empty()) {
             throw ImageBakerException("Can't unpack MOS file", fname);
@@ -2114,7 +2114,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
         auto* buf = const_cast<uint8*>(file.GetBuf());
         *reinterpret_cast<uint16*>(buf) = 0x9C78;
 
-        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
+        const auto data = Compressor::Decompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
 
         if (data.empty()) {
             throw ImageBakerException("Cab't unpack BAM file", fname);

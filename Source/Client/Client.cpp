@@ -127,48 +127,48 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     OnStart.Fire();
 
     // Connection handlers
-    _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
-    _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, [this] { Net_OnWrongNetProto(); });
-    _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
-    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [this] { Net_OnRegisterSuccess(); });
-    _conn.AddMessageHandler(NETMSG_PLACE_TO_GAME_COMPLETE, [this] { Net_OnPlaceToGameComplete(); });
-    _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
-    _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, [this] { Net_OnCritterAction(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_SPEED, [this] { Net_OnCritterMoveSpeed(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
-    _conn.AddMessageHandler(NETMSG_PROPERTY, [this] { Net_OnProperty(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_TEXT, [this] { Net_OnText(); });
-    _conn.AddMessageHandler(NETMSG_MSG, [this] { Net_OnTextMsg(false); });
-    _conn.AddMessageHandler(NETMSG_MSG_LEX, [this] { Net_OnTextMsg(true); });
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT, [this] { Net_OnMapText(); });
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, [this] { Net_OnMapTextMsg(); });
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, [this] { Net_OnMapTextMsgLex(); });
-    _conn.AddMessageHandler(NETMSG_CHOSEN_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
-    _conn.AddMessageHandler(NETMSG_CHOSEN_REMOVE_ITEM, [this] { Net_OnChosenRemoveItem(); });
-    _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
-    _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
-    _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
-    _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
-    _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
-    _conn.AddMessageHandler(NETMSG_REMOTE_CALL, [this] { Net_OnRemoteCall(); });
-    _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
-    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM_FROM_MAP, [this] { Net_OnRemoveItemFromMap(); });
-    _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
-    _conn.AddMessageHandler(NETMSG_EFFECT, [this] { Net_OnEffect(); });
-    _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
-    _conn.AddMessageHandler(NETMSG_PLAY_SOUND, [this] { Net_OnPlaySound(); });
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
-    _conn.AddMessageHandler(NETMSG_ADD_CUSTOM_ENTITY, [this] { Net_OnAddCustomEntity(); });
-    _conn.AddMessageHandler(NETMSG_REMOVE_CUSTOM_ENTITY, [this] { Net_OnRemoveCustomEntity(); });
+    _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NetMessage::WRONG_NET_PROTO, [this] { Net_OnWrongNetProto(); });
+    _conn.AddMessageHandler(NetMessage::LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
+    _conn.AddMessageHandler(NetMessage::REGISTER_SUCCESS, [this] { Net_OnRegisterSuccess(); });
+    _conn.AddMessageHandler(NetMessage::PLACE_TO_GAME_COMPLETE, [this] { Net_OnPlaceToGameComplete(); });
+    _conn.AddMessageHandler(NetMessage::ADD_CRITTER, [this] { Net_OnAddCritter(); });
+    _conn.AddMessageHandler(NetMessage::REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_ACTION, [this] { Net_OnCritterAction(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_MOVE_SPEED, [this] { Net_OnCritterMoveSpeed(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_DIR, [this] { Net_OnCritterDir(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_POS, [this] { Net_OnCritterPos(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_ATTACHMENTS, [this] { Net_OnCritterAttachments(); });
+    _conn.AddMessageHandler(NetMessage::PROPERTY, [this] { Net_OnProperty(); });
+    _conn.AddMessageHandler(NetMessage::CRITTER_TEXT, [this] { Net_OnText(); });
+    _conn.AddMessageHandler(NetMessage::MSG, [this] { Net_OnTextMsg(false); });
+    _conn.AddMessageHandler(NetMessage::MSG_LEX, [this] { Net_OnTextMsg(true); });
+    _conn.AddMessageHandler(NetMessage::MAP_TEXT, [this] { Net_OnMapText(); });
+    _conn.AddMessageHandler(NetMessage::MAP_TEXT_MSG, [this] { Net_OnMapTextMsg(); });
+    _conn.AddMessageHandler(NetMessage::MAP_TEXT_MSG_LEX, [this] { Net_OnMapTextMsgLex(); });
+    _conn.AddMessageHandler(NetMessage::CHOSEN_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
+    _conn.AddMessageHandler(NetMessage::CHOSEN_REMOVE_ITEM, [this] { Net_OnChosenRemoveItem(); });
+    _conn.AddMessageHandler(NetMessage::TALK_NPC, [this] { Net_OnChosenTalk(); });
+    _conn.AddMessageHandler(NetMessage::TIME_SYNC, [this] { Net_OnTimeSync(); });
+    _conn.AddMessageHandler(NetMessage::VIEW_MAP, [this] { Net_OnViewMap(); });
+    _conn.AddMessageHandler(NetMessage::LOAD_MAP, [this] { Net_OnLoadMap(); });
+    _conn.AddMessageHandler(NetMessage::SOME_ITEMS, [this] { Net_OnSomeItems(); });
+    _conn.AddMessageHandler(NetMessage::REMOTE_CALL, [this] { Net_OnRemoteCall(); });
+    _conn.AddMessageHandler(NetMessage::ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
+    _conn.AddMessageHandler(NetMessage::REMOVE_ITEM_FROM_MAP, [this] { Net_OnRemoveItemFromMap(); });
+    _conn.AddMessageHandler(NetMessage::ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
+    _conn.AddMessageHandler(NetMessage::EFFECT, [this] { Net_OnEffect(); });
+    _conn.AddMessageHandler(NetMessage::FLY_EFFECT, [this] { Net_OnFlyEffect(); });
+    _conn.AddMessageHandler(NetMessage::PLAY_SOUND, [this] { Net_OnPlaySound(); });
+    _conn.AddMessageHandler(NetMessage::UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::ADD_CUSTOM_ENTITY, [this] { Net_OnAddCustomEntity(); });
+    _conn.AddMessageHandler(NetMessage::REMOVE_CUSTOM_ENTITY, [this] { Net_OnRemoveCustomEntity(); });
 
     // Properties that sending to clients
     {
@@ -238,7 +238,12 @@ FOClient::~FOClient()
     STACK_TRACE_ENTRY();
 
     safe_call([] { App->Render.SetRenderTarget(nullptr); });
-    safe_call([this] { _conn.Disconnect(); });
+
+    safe_call([this] {
+        _conn.SetConnectHandler(nullptr);
+        _conn.SetDisconnectHandler(nullptr);
+        _conn.Disconnect();
+    });
 
     if (_chosen != nullptr) {
         _chosen->Release();
@@ -708,7 +713,7 @@ void FOClient::Net_SendLogIn()
 
     WriteLog("Player login");
 
-    _conn.OutBuf.StartMsg(NETMSG_LOGIN);
+    _conn.OutBuf.StartMsg(NetMessage::LOGIN);
     _conn.OutBuf.Write(_loginName);
     _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
@@ -724,7 +729,7 @@ void FOClient::Net_SendCreatePlayer()
 
     WriteLog("Player registration");
 
-    _conn.OutBuf.StartMsg(NETMSG_REGISTER);
+    _conn.OutBuf.StartMsg(NetMessage::REGISTER);
     _conn.OutBuf.Write(_loginName);
     _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
@@ -736,7 +741,7 @@ void FOClient::Net_SendText(string_view send_str, uint8 how_say)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf.StartMsg(NETMSG_SEND_TEXT);
+    _conn.OutBuf.StartMsg(NetMessage::SEND_TEXT);
     _conn.OutBuf.Write(how_say);
     _conn.OutBuf.Write(send_str);
     _conn.OutBuf.EndMsg();
@@ -748,7 +753,7 @@ void FOClient::Net_SendDir(CritterHexView* cr)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf.StartMsg(NETMSG_DIR);
+    _conn.OutBuf.StartMsg(NetMessage::DIR);
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->GetDirAngle());
@@ -769,7 +774,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    _conn.OutBuf.StartMsg(NETMSG_SEND_MOVE);
+    _conn.OutBuf.StartMsg(NetMessage::SEND_MOVE);
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->Moving.Speed);
@@ -792,7 +797,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf.StartMsg(NETMSG_SEND_STOP_MOVE);
+    _conn.OutBuf.StartMsg(NetMessage::SEND_STOP_MOVE);
     _conn.OutBuf.Write(CurMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->GetHex());
@@ -812,7 +817,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     props.ValidateForRawData(prop);
     const auto prop_raw_data = props.GetRawData(prop);
 
-    _conn.OutBuf.StartMsg(NETMSG_SEND_PROPERTY);
+    _conn.OutBuf.StartMsg(NetMessage::SEND_PROPERTY);
     _conn.OutBuf.Write(static_cast<uint>(prop_raw_data.size()));
     _conn.OutBuf.Write(static_cast<char>(type));
 
@@ -853,7 +858,7 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf.StartMsg(NETMSG_SEND_TALK_NPC);
+    _conn.OutBuf.StartMsg(NetMessage::SEND_TALK_NPC);
     _conn.OutBuf.Write(cr_id);
     _conn.OutBuf.Write(dlg_pack_id);
     _conn.OutBuf.Write(answer);
@@ -938,7 +943,6 @@ void FOClient::Net_OnLoginSuccess()
 
     AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_LOGINOK));
 
-    const auto encrypt_key = _conn.InBuf.Read<uint>();
     const auto player_id = _conn.InBuf.Read<ident_t>();
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     _conn.InBuf.ReadPropsData(_playerPropertiesData);
@@ -953,8 +957,6 @@ void FOClient::Net_OnLoginSuccess()
 
     RUNTIME_ASSERT(!HasInnerEntities());
     ReceiveCustomEntities(this);
-
-    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     OnLoginSuccess.Fire();
 }

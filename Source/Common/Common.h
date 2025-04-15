@@ -220,8 +220,125 @@ using std::variant;
 
 // Smart pointers
 template<typename T>
+class raw_ptr
+{
+    static_assert(std::is_class_v<T>);
+
+    template<typename U>
+    friend class raw_ptr;
+
+public:
+    FORCE_INLINE constexpr raw_ptr() noexcept :
+        _ptr(nullptr)
+    {
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(nullptr_t) noexcept :
+        _ptr(nullptr)
+    {
+    }
+    FORCE_INLINE auto operator=(nullptr_t) noexcept -> raw_ptr&
+    {
+        _ptr = nullptr;
+        return *this;
+    }
+    FORCE_INLINE explicit constexpr raw_ptr(T* p) noexcept :
+        _ptr(p)
+    {
+    }
+    FORCE_INLINE auto operator=(T* p) noexcept -> raw_ptr&
+    {
+        _ptr = p;
+        return *this;
+    }
+
+    FORCE_INLINE raw_ptr(raw_ptr&& p) noexcept
+    {
+        _ptr = p._ptr;
+        p._ptr = nullptr;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(raw_ptr<U>&& p) noexcept
+    {
+        _ptr = p._ptr;
+        p._ptr = nullptr;
+    }
+    FORCE_INLINE auto operator=(raw_ptr&& p) noexcept -> raw_ptr&
+    {
+        _ptr = std::move(p._ptr);
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(raw_ptr<U>&& p) noexcept -> raw_ptr&
+    {
+        _ptr = std::move(p._ptr);
+        return *this;
+    }
+
+#if 0 // Copy constructible/assignable
+    FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept :
+        _ptr(p._ptr)
+    {
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept :
+        _ptr(p._ptr)
+    {
+    }
+    FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr&
+    {
+        _ptr = p._ptr;
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr&
+    {
+        _ptr = p._ptr;
+        return *this;
+    }
+#else
+    FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept = delete;
+    FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr& = delete;
+#endif
+
+#if 0 // Implicit conversion to pointer
+    // ReSharper disable once CppNonExplicitConversionOperator
+    FORCE_INLINE operator T*() noexcept { return _ptr; }
+    // ReSharper disable once CppNonExplicitConversionOperator
+    FORCE_INLINE operator const T*() const noexcept { return _ptr; }
+#endif
+
+    FORCE_INLINE ~raw_ptr() noexcept = default;
+
+    [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const raw_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const raw_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+    FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr.reset(p); }
+
+private:
+    T* _ptr;
+};
+
+template<typename T>
 class propagate_const
 {
+    static_assert(std::is_class_v<T>);
+
     template<typename U>
     friend class propagate_const;
 
@@ -2377,75 +2494,64 @@ static constexpr auto CMD_LOG = 37;
 #define STR_NET_PERMANENT_DEATH (1049)
 
 // Network messages
-static constexpr auto MakeNetMsgHeader(uint number) -> uint
+enum class NetMessage : uint8
 {
-    STRONG_ASSERT(number <= 255);
-    return 0xF0F0AB00u | number;
-}
-static constexpr auto ExtractNetMsgNumber(uint msg) -> uint
-{
-    return msg & 0x000000FFu;
-}
-static constexpr auto CheckNetMsgSignature(uint msg) -> bool
-{
-    return (msg & 0xFFFFFF00u) == 0xF0F0AB00u;
-}
-
-static constexpr uint NETMSG_HANDSHAKE = MakeNetMsgHeader(9);
-static constexpr uint NETMSG_DISCONNECT = MakeNetMsgHeader(10);
-static constexpr uint NETMSG_LOGIN = MakeNetMsgHeader(1);
-static constexpr uint NETMSG_LOGIN_SUCCESS = MakeNetMsgHeader(2);
-static constexpr uint NETMSG_WRONG_NET_PROTO = MakeNetMsgHeader(8);
-static constexpr uint NETMSG_REGISTER = MakeNetMsgHeader(3);
-static constexpr uint NETMSG_REGISTER_SUCCESS = MakeNetMsgHeader(4);
-static constexpr uint NETMSG_PING = MakeNetMsgHeader(5);
-static constexpr uint NETMSG_PLACE_TO_GAME_COMPLETE = MakeNetMsgHeader(7);
-static constexpr uint NETMSG_UPDATE_FILES_LIST = MakeNetMsgHeader(15);
-static constexpr uint NETMSG_GET_UPDATE_FILE = MakeNetMsgHeader(16);
-static constexpr uint NETMSG_GET_UPDATE_FILE_DATA = MakeNetMsgHeader(17);
-static constexpr uint NETMSG_UPDATE_FILE_DATA = MakeNetMsgHeader(18);
-static constexpr uint NETMSG_ADD_CRITTER = MakeNetMsgHeader(11);
-static constexpr uint NETMSG_REMOVE_CRITTER = MakeNetMsgHeader(13);
-static constexpr uint NETMSG_SEND_COMMAND = MakeNetMsgHeader(21);
-static constexpr uint NETMSG_SEND_TEXT = MakeNetMsgHeader(31);
-static constexpr uint NETMSG_CRITTER_TEXT = MakeNetMsgHeader(32);
-static constexpr uint NETMSG_MSG = MakeNetMsgHeader(33);
-static constexpr uint NETMSG_MSG_LEX = MakeNetMsgHeader(34);
-static constexpr uint NETMSG_MAP_TEXT = MakeNetMsgHeader(35);
-static constexpr uint NETMSG_MAP_TEXT_MSG = MakeNetMsgHeader(36);
-static constexpr uint NETMSG_MAP_TEXT_MSG_LEX = MakeNetMsgHeader(37);
-static constexpr uint NETMSG_DIR = MakeNetMsgHeader(41);
-static constexpr uint NETMSG_CRITTER_DIR = MakeNetMsgHeader(42);
-static constexpr uint NETMSG_SEND_MOVE = MakeNetMsgHeader(45);
-static constexpr uint NETMSG_SEND_STOP_MOVE = MakeNetMsgHeader(46);
-static constexpr uint NETMSG_CRITTER_MOVE = MakeNetMsgHeader(47);
-static constexpr uint NETMSG_CRITTER_MOVE_SPEED = MakeNetMsgHeader(48);
-static constexpr uint NETMSG_CRITTER_POS = MakeNetMsgHeader(49);
-static constexpr uint NETMSG_CRITTER_ATTACHMENTS = MakeNetMsgHeader(50);
-static constexpr uint NETMSG_CRITTER_TELEPORT = MakeNetMsgHeader(52);
-static constexpr uint NETMSG_CHOSEN_ADD_ITEM = MakeNetMsgHeader(65);
-static constexpr uint NETMSG_CHOSEN_REMOVE_ITEM = MakeNetMsgHeader(66);
-static constexpr uint NETMSG_ADD_ITEM_ON_MAP = MakeNetMsgHeader(71);
-static constexpr uint NETMSG_REMOVE_ITEM_FROM_MAP = MakeNetMsgHeader(74);
-static constexpr uint NETMSG_ANIMATE_ITEM = MakeNetMsgHeader(75);
-static constexpr uint NETMSG_SOME_ITEMS = MakeNetMsgHeader(83);
-static constexpr uint NETMSG_CRITTER_ACTION = MakeNetMsgHeader(91);
-static constexpr uint NETMSG_CRITTER_MOVE_ITEM = MakeNetMsgHeader(93);
-static constexpr uint NETMSG_CRITTER_ANIMATE = MakeNetMsgHeader(95);
-static constexpr uint NETMSG_CRITTER_SET_ANIMS = MakeNetMsgHeader(96);
-static constexpr uint NETMSG_EFFECT = MakeNetMsgHeader(98);
-static constexpr uint NETMSG_FLY_EFFECT = MakeNetMsgHeader(99);
-static constexpr uint NETMSG_PLAY_SOUND = MakeNetMsgHeader(101);
-static constexpr uint NETMSG_SEND_TALK_NPC = MakeNetMsgHeader(109);
-static constexpr uint NETMSG_TALK_NPC = MakeNetMsgHeader(111);
-static constexpr uint NETMSG_TIME_SYNC = MakeNetMsgHeader(117);
-static constexpr uint NETMSG_LOAD_MAP = MakeNetMsgHeader(121);
-static constexpr uint NETMSG_REMOTE_CALL = MakeNetMsgHeader(128);
-static constexpr uint NETMSG_VIEW_MAP = MakeNetMsgHeader(131);
-static constexpr uint NETMSG_ADD_CUSTOM_ENTITY = MakeNetMsgHeader(180);
-static constexpr uint NETMSG_REMOVE_CUSTOM_ENTITY = MakeNetMsgHeader(181);
-static constexpr uint NETMSG_PROPERTY = MakeNetMsgHeader(190);
-static constexpr uint NETMSG_SEND_PROPERTY = MakeNetMsgHeader(200);
+    HANDSHAKE = 9,
+    DISCONNECT = 10,
+    LOGIN = 1,
+    LOGIN_SUCCESS = 2,
+    WRONG_NET_PROTO = 8,
+    REGISTER = 3,
+    REGISTER_SUCCESS = 4,
+    PING = 5,
+    PLACE_TO_GAME_COMPLETE = 7,
+    UPDATE_FILES_LIST = 15,
+    GET_UPDATE_FILE = 16,
+    GET_UPDATE_FILE_DATA = 17,
+    UPDATE_FILE_DATA = 18,
+    ADD_CRITTER = 11,
+    REMOVE_CRITTER = 13,
+    SEND_COMMAND = 21,
+    SEND_TEXT = 31,
+    CRITTER_TEXT = 32,
+    MSG = 33,
+    MSG_LEX = 34,
+    MAP_TEXT = 35,
+    MAP_TEXT_MSG = 36,
+    MAP_TEXT_MSG_LEX = 37,
+    DIR = 41,
+    CRITTER_DIR = 42,
+    SEND_MOVE = 45,
+    SEND_STOP_MOVE = 46,
+    CRITTER_MOVE = 47,
+    CRITTER_MOVE_SPEED = 48,
+    CRITTER_POS = 49,
+    CRITTER_ATTACHMENTS = 50,
+    CRITTER_TELEPORT = 52,
+    CHOSEN_ADD_ITEM = 65,
+    CHOSEN_REMOVE_ITEM = 66,
+    ADD_ITEM_ON_MAP = 71,
+    REMOVE_ITEM_FROM_MAP = 74,
+    ANIMATE_ITEM = 75,
+    SOME_ITEMS = 83,
+    CRITTER_ACTION = 91,
+    CRITTER_MOVE_ITEM = 93,
+    CRITTER_ANIMATE = 95,
+    CRITTER_SET_ANIMS = 96,
+    EFFECT = 98,
+    FLY_EFFECT = 99,
+    PLAY_SOUND = 101,
+    SEND_TALK_NPC = 109,
+    TALK_NPC = 111,
+    TIME_SYNC = 117,
+    LOAD_MAP = 121,
+    REMOTE_CALL = 128,
+    VIEW_MAP = 131,
+    ADD_CUSTOM_ENTITY = 180,
+    REMOVE_CUSTOM_ENTITY = 181,
+    PROPERTY = 190,
+    SEND_PROPERTY = 200,
+};
 
 // Foreach helper
 template<typename T>

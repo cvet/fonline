@@ -276,11 +276,18 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
     return h;
 }
 
+auto Compressor::CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return initial_size * 110 / 100 + 12;
+}
+
 auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    auto buf_len = static_cast<uLongf>(data.size() * 110 / 100 + 12);
+    auto buf_len = static_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
     auto buf = vector<uint8>(buf_len);
 
     if (compress2(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
@@ -292,7 +299,7 @@ auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
     return buf;
 }
 
-auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
+auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -301,6 +308,7 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
 
     while (true) {
         const auto result = uncompress(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()));
+
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
             buf.resize(buf_len);
@@ -660,4 +668,152 @@ static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool
     }
 
     return true;
+}
+
+struct StreamCompressor::Impl
+{
+    z_stream ZStream {};
+};
+
+StreamCompressor::StreamCompressor() noexcept = default;
+StreamCompressor::StreamCompressor(StreamCompressor&&) noexcept = default;
+auto StreamCompressor::operator=(StreamCompressor&&) noexcept -> StreamCompressor& = default;
+
+StreamCompressor::~StreamCompressor()
+{
+    STACK_TRACE_ENTRY();
+
+    Reset();
+}
+
+auto StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_impl) {
+        _impl = SafeAlloc::MakeUnique<Impl>();
+        MemFill(&_impl->ZStream, 0, sizeof(z_stream));
+
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
+            constexpr SafeAllocator<uint8> allocator;
+            return allocator.allocate(static_cast<size_t>(items) * size);
+        };
+        _impl->ZStream.zfree = [](voidpf, voidpf address) {
+            constexpr SafeAllocator<uint8> allocator;
+            allocator.deallocate(static_cast<uint8*>(address), 0);
+        };
+
+        const auto deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
+        RUNTIME_ASSERT(deflate_init == Z_OK);
+    }
+
+    if (temp_buf.size() < 1024) {
+        temp_buf.resize(1024);
+    }
+    while (temp_buf.size() < Compressor::CalculateMaxCompressedBufSize(buf.size())) {
+        temp_buf.resize(temp_buf.size() * 2);
+    }
+
+    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
+    _impl->ZStream.avail_in = static_cast<uInt>(buf.size());
+    _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data());
+    _impl->ZStream.avail_out = static_cast<uInt>(temp_buf.size());
+
+    const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
+    RUNTIME_ASSERT(deflate_result == Z_OK);
+
+    const auto writed_len = static_cast<size_t>(_impl->ZStream.next_in - buf.data());
+    RUNTIME_ASSERT(writed_len == buf.size());
+
+    const auto compr_len = static_cast<size_t>(_impl->ZStream.next_out - temp_buf.data());
+    return {temp_buf.data(), compr_len};
+}
+
+void StreamCompressor::Reset() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    if (_impl) {
+        deflateEnd(&_impl->ZStream);
+        _impl.reset();
+    }
+}
+
+struct StreamDecompressor::Impl
+{
+    z_stream ZStream {};
+};
+
+StreamDecompressor::StreamDecompressor() noexcept = default;
+StreamDecompressor::StreamDecompressor(StreamDecompressor&&) noexcept = default;
+auto StreamDecompressor::operator=(StreamDecompressor&&) noexcept -> StreamDecompressor& = default;
+
+StreamDecompressor::~StreamDecompressor()
+{
+    STACK_TRACE_ENTRY();
+
+    Reset();
+}
+
+auto StreamDecompressor::Uncompress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_impl) {
+        _impl = SafeAlloc::MakeUnique<Impl>();
+        MemFill(&_impl->ZStream, 0, sizeof(z_stream));
+
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
+            constexpr SafeAllocator<uint8> allocator;
+            return allocator.allocate(static_cast<size_t>(items) * size);
+        };
+        _impl->ZStream.zfree = [](voidpf, voidpf address) {
+            constexpr SafeAllocator<uint8> allocator;
+            allocator.deallocate(static_cast<uint8*>(address), 0);
+        };
+
+        const auto inflate_init = inflateInit(&_impl->ZStream);
+        RUNTIME_ASSERT(inflate_init == Z_OK);
+    }
+
+    if (temp_buf.size() < 1024) {
+        temp_buf.resize(1024);
+    }
+    while (temp_buf.size() < buf.size() * 2) {
+        temp_buf.resize(temp_buf.size() * 2);
+    }
+
+    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
+    _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
+    _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data());
+    _impl->ZStream.avail_out = numeric_cast<uInt>(temp_buf.size());
+
+    const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
+    RUNTIME_ASSERT(first_inflate == Z_OK);
+
+    auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(temp_buf.data());
+
+    while (_impl->ZStream.avail_in != 0) {
+        temp_buf.resize(temp_buf.size() * 2);
+
+        _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data() + uncompr_len);
+        _impl->ZStream.avail_out = numeric_cast<uInt>(temp_buf.size() - uncompr_len);
+
+        const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
+        RUNTIME_ASSERT(next_inflate == Z_OK);
+
+        uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(temp_buf.data());
+    }
+
+    return {temp_buf.data(), uncompr_len};
+}
+
+void StreamDecompressor::Reset() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    if (_impl) {
+        inflateEnd(&_impl->ZStream);
+        _impl.reset();
+    }
 }

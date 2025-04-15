@@ -44,21 +44,21 @@ public:
     class OutBufAccessor
     {
     public:
-        explicit OutBufAccessor(ServerConnection* owner, uint msg);
+        explicit OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg);
         OutBufAccessor() = delete;
         OutBufAccessor(const OutBufAccessor&) = delete;
         OutBufAccessor(OutBufAccessor&&) noexcept = default;
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor();
-        FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf; }
+        FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
         FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
         void Unlock() noexcept;
 
     private:
-        ServerConnection* _owner;
-        NetOutBuffer* _outBuf;
-        uint _msg;
+        raw_ptr<ServerConnection> _owner;
+        raw_ptr<NetOutBuffer> _outBuf;
+        optional<NetMessage> _msg;
         StackUnwindDetector _isStackUnwinding {};
     };
 
@@ -72,14 +72,14 @@ public:
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor();
-        FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf; }
+        FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
         FORCE_INLINE auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock();
         void Unlock() noexcept;
 
     private:
-        ServerConnection* _owner;
-        NetInBuffer* _inBuf {};
+        raw_ptr<ServerConnection> _owner;
+        raw_ptr<NetInBuffer> _inBuf {};
     };
 
     ServerConnection() = delete;
@@ -95,11 +95,9 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
-    [[nodiscard]] auto IsWebConnection() const noexcept -> bool;
-    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool;
 
-    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, 0); }
-    auto WriteMsg(uint msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
+    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
+    auto WriteMsg(NetMessage msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
     auto ReadBuf() -> InBufAccessor { return InBufAccessor(this); }
 
     void DisableCompression();

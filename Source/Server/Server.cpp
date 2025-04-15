@@ -1011,63 +1011,50 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         return;
     }
 
-    in_buf->ShrinkReadBuf();
-
     if (in_buf->NeedProcess()) {
-        connection->LastActivityTime = GameTime.FrameTime();
-
-        const auto msg = in_buf->Read<uint>();
+        const auto msg = in_buf->ReadMsg();
 
         in_buf.Unlock();
 
-        bool skip_msg = false;
-
         if (!connection->WasHandshake) {
-            if (msg == NETMSG_HANDSHAKE) {
+            if (msg == NetMessage::HANDSHAKE) {
                 Process_Handshake(connection);
             }
             else {
-                skip_msg = true;
+                throw GenericException("Expected handshake message", msg);
             }
         }
         else {
             switch (msg) {
-            case NETMSG_PING:
+            case NetMessage::PING:
                 Process_Ping(connection);
                 break;
-            case NETMSG_GET_UPDATE_FILE:
+            case NetMessage::GET_UPDATE_FILE:
                 Process_UpdateFile(connection);
                 break;
-            case NETMSG_GET_UPDATE_FILE_DATA:
+            case NetMessage::GET_UPDATE_FILE_DATA:
                 Process_UpdateFileData(connection);
                 break;
 
-            case NETMSG_REGISTER:
-                Process_Register(unlogined_player);
-                break;
-            case NETMSG_REMOTE_CALL:
+            case NetMessage::REMOTE_CALL:
                 Process_RemoteCall(unlogined_player);
                 break;
-
-            case NETMSG_LOGIN:
-                Process_Login(unlogined_player);
+            case NetMessage::REGISTER:
+                Process_Register(unlogined_player);
+                break;
+            case NetMessage::LOGIN:
+                Process_Login(unlogined_player); // Maybe invalidated in method call
                 break;
 
             default:
-                skip_msg = true;
-                break;
+                throw GenericException("Unexpected unlogined player message", msg);
             }
         }
 
         in_buf.Lock();
+        in_buf->ShrinkReadBuf();
 
-        if (skip_msg) {
-            in_buf->SkipMsg(msg);
-        }
-
-        if (IsRunInDebugger() && connection->IsInterthreadConnection() && !in_buf->NeedProcess()) {
-            RUNTIME_ASSERT(in_buf->GetReadPos() == in_buf->GetEndPos());
-        }
+        connection->LastActivityTime = GameTime.FrameTime();
     }
 }
 
@@ -1102,59 +1089,51 @@ void FOServer::ProcessPlayer(Player* player)
     while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
         auto in_buf = connection->ReadBuf();
 
-        in_buf->ShrinkReadBuf();
-
         if (!in_buf->NeedProcess()) {
-            if (IsRunInDebugger() && connection->IsInterthreadConnection()) {
-                RUNTIME_ASSERT(in_buf->GetReadPos() == in_buf->GetEndPos());
-            }
             break;
         }
 
-        const auto msg = in_buf->Read<uint>();
+        const auto msg = in_buf->ReadMsg();
 
         in_buf.Unlock();
 
-        bool skip_msg = false;
-
         switch (msg) {
-        case NETMSG_PING:
+        case NetMessage::PING:
             Process_Ping(connection);
             break;
-        case NETMSG_SEND_TEXT:
+
+        case NetMessage::SEND_TEXT:
             Process_Text(player);
             break;
-        case NETMSG_SEND_COMMAND:
+        case NetMessage::SEND_COMMAND:
+            in_buf.Lock();
             Process_Command(*in_buf, [player](auto s) { player->Send_Text(nullptr, strex(s).trim(), SAY_NETMSG); }, player, "");
+            in_buf.Unlock();
             break;
-        case NETMSG_DIR:
+        case NetMessage::DIR:
             Process_Dir(player);
             break;
-        case NETMSG_SEND_MOVE:
+        case NetMessage::SEND_MOVE:
             Process_Move(player);
             break;
-        case NETMSG_SEND_STOP_MOVE:
+        case NetMessage::SEND_STOP_MOVE:
             Process_StopMove(player);
             break;
-        case NETMSG_SEND_TALK_NPC:
+        case NetMessage::SEND_TALK_NPC:
             Process_Dialog(player);
             break;
-        case NETMSG_REMOTE_CALL:
+        case NetMessage::REMOTE_CALL:
             Process_RemoteCall(player);
             break;
-        case NETMSG_SEND_PROPERTY:
+        case NetMessage::SEND_PROPERTY:
             Process_Property(player);
             break;
         default:
-            skip_msg = true;
-            break;
+            throw GenericException("Unexpected player message", msg);
         }
 
         in_buf.Lock();
-
-        if (skip_msg) {
-            in_buf->SkipMsg(msg);
-        }
+        in_buf->ShrinkReadBuf();
 
         connection->LastActivityTime = GameTime.FrameTime();
     }
@@ -1186,7 +1165,8 @@ void FOServer::ProcessConnection(ServerConnection* connection)
             return;
         }
 
-        auto out_buf = connection->WriteMsg(NETMSG_PING);
+        auto out_buf = connection->WriteMsg(NetMessage::PING);
+
         out_buf->Write(false);
 
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
@@ -1204,6 +1184,8 @@ void FOServer::Process_Text(Player* player)
 
     auto how_say = in_buf->Read<uint8>();
     const auto str = in_buf->Read<string>();
+
+    in_buf.Unlock();
 
     if (!cr->IsAlive() && how_say >= SAY_NORM && how_say <= SAY_RADIO) {
         how_say = SAY_WHISP;
@@ -2230,12 +2212,10 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     // Begin data encrypting
     const auto encrypt_key = in_buf->Read<uint>();
-
-    uint8 padding[28] = {};
-    in_buf->Pop(padding, sizeof(padding));
-    UNUSED_VARIABLE(padding);
-
+    RUNTIME_ASSERT(encrypt_key != 0);
     in_buf->SetEncryptKey(encrypt_key);
+
+    in_buf.Unlock();
 
     vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
@@ -2246,10 +2226,12 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     connection->WriteBuf()->SetEncryptKey(encrypt_key);
 
-    auto out_buf = connection->WriteMsg(NETMSG_UPDATE_FILES_LIST);
+    auto out_buf = connection->WriteMsg(NetMessage::UPDATE_FILES_LIST);
+
     out_buf->Write(outdated);
     out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
     out_buf->Push(_updateFilesDesc);
+
     if (!outdated) {
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
     }
@@ -2267,12 +2249,15 @@ void FOServer::Process_Ping(ServerConnection* connection)
 
     const auto answer = in_buf->Read<bool>();
 
+    in_buf.Unlock();
+
     if (answer) {
         connection->PingOk = true;
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
     }
     else {
-        auto out_buf = connection->WriteMsg(NETMSG_PING);
+        auto out_buf = connection->WriteMsg(NetMessage::PING);
+
         out_buf->Write(true);
     }
 }
@@ -2284,6 +2269,8 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     const auto file_index = in_buf->Read<uint>();
+
+    in_buf.Unlock();
 
     if (file_index >= _updateFilesData.size()) {
         WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
@@ -2321,7 +2308,8 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
         connection->UpdateFileIndex = -1;
     }
 
-    auto out_buf = connection->WriteMsg(NETMSG_UPDATE_FILE_DATA);
+    auto out_buf = connection->WriteMsg(NetMessage::UPDATE_FILE_DATA);
+
     out_buf->Write(update_portion);
     out_buf->Push(&update_file_data[offset], update_portion);
 }
@@ -2337,6 +2325,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     const auto name = in_buf->Read<string>();
     const auto password = in_buf->Read<string>();
+
+    in_buf.Unlock();
 
     // Check data
     if (!strex(name).isValidUtf8() || name.find('*') != string::npos) {
@@ -2422,7 +2412,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Notify
     unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REG_SUCCESS);
 
-    connection->WriteMsg(NETMSG_REGISTER_SUCCESS);
+    connection->WriteMsg(NetMessage::REGISTER_SUCCESS);
 }
 
 void FOServer::Process_Login(Player* unlogined_player)
@@ -2436,6 +2426,8 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     const auto name = in_buf->Read<string>();
     const auto password = in_buf->Read<string>();
+
+    in_buf.Unlock();
 
     // If only cache checking than disconnect
     if (name.empty()) {
@@ -2630,6 +2622,7 @@ void FOServer::Process_Move(Player* player)
     const auto steps_count = in_buf->Read<uint16>();
     vector<uint8> steps;
     steps.resize(steps_count);
+
     for (auto i = 0; i < steps_count; i++) {
         steps[i] = in_buf->Read<uint8>();
     }
@@ -2637,19 +2630,24 @@ void FOServer::Process_Move(Player* player)
     const auto control_steps_count = in_buf->Read<uint16>();
     vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
+
     for (auto i = 0; i < control_steps_count; i++) {
         control_steps[i] = in_buf->Read<uint16>();
     }
 
     const auto end_hex_offset = in_buf->Read<ipos16>();
 
+    in_buf.Unlock();
+
     auto* map = EntityMngr.GetMap(map_id);
+
     if (map == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
+
     if (cr == nullptr) {
         BreakIntoDebugger();
         return;
@@ -2761,6 +2759,8 @@ void FOServer::Process_StopMove(Player* player)
     [[maybe_unused]] const auto hex_oy = in_buf->Read<int16>();
     [[maybe_unused]] const auto dir_angle = in_buf->Read<int16>();
 
+    in_buf.Unlock();
+
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
@@ -2804,6 +2804,8 @@ void FOServer::Process_Dir(Player* player)
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
     const auto dir_angle = in_buf->Read<int16>();
+
+    in_buf.Unlock();
 
     auto* map = EntityMngr.GetMap(map_id);
 
@@ -2873,6 +2875,8 @@ void FOServer::Process_Property(Player* player)
 
     PropertyRawData prop_data;
     in_buf->Pop(prop_data.Alloc(data_size), data_size);
+
+    in_buf.Unlock();
 
     auto is_public = false;
     const Property* prop = nullptr;
@@ -4334,6 +4338,8 @@ void FOServer::Process_Dialog(Player* player)
     const auto dlg_pack_id = in_buf->Read<hstring>(*this);
     const auto num_answer = in_buf->Read<uint8>();
 
+    in_buf.Unlock();
+
     if (cr->Talk.Type == TalkType::None) {
         BreakIntoDebugger();
         CrMngr.CloseTalk(cr);
@@ -4549,6 +4555,8 @@ void FOServer::Process_RemoteCall(Player* player)
     auto in_buf = connection->ReadBuf();
 
     const auto rpc_num = in_buf->Read<uint>();
+
+    in_buf.Unlock();
 
     ScriptSys->HandleRemoteCall(rpc_num, player);
 }

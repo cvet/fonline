@@ -67,131 +67,21 @@ class NetworkServerConnection_WebSockets final : public NetworkServerConnection
     using message_ptr = typename web_server_t::message_ptr;
 
 public:
-    NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection) :
-        NetworkServerConnection(settings),
-        _server {server},
-        _connection {std::move(connection)}
-    {
-        STACK_TRACE_ENTRY();
-
-        const auto& address = _connection->get_raw_socket().remote_endpoint().address();
-        _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
-        _host = address.to_string();
-        _port = _connection->get_raw_socket().remote_endpoint().port();
-
-        if (settings.DisableTcpNagle) {
-            asio::error_code error;
-            _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
-        }
-
-        _connection->set_message_handler([this](auto&&, auto&& msg) { OnMessage(msg); });
-        _connection->set_fail_handler([this](auto&& hdl) { OnFail(hdl); });
-        _connection->set_close_handler([this](auto&& hdl) { OnClose(hdl); });
-        _connection->set_http_handler([this](auto&& hdl) { OnHttp(hdl); });
-    }
-
-    NetworkServerConnection_WebSockets() = delete;
+    explicit NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection);
     NetworkServerConnection_WebSockets(const NetworkServerConnection_WebSockets&) = delete;
     NetworkServerConnection_WebSockets(NetworkServerConnection_WebSockets&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_WebSockets&) = delete;
     auto operator=(NetworkServerConnection_WebSockets&&) noexcept = delete;
-
-    ~NetworkServerConnection_WebSockets() override
-    {
-        STACK_TRACE_ENTRY();
-
-        try {
-            std::error_code error;
-            _connection->terminate(error);
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-    }
-
-    [[nodiscard]] auto IsWebConnection() const noexcept -> bool override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return true;
-    }
-
-    [[nodiscard]] auto IsInterthreadConnection() const noexcept -> bool override
-    {
-        NO_STACK_TRACE_ENTRY();
-
-        return false;
-    }
+    ~NetworkServerConnection_WebSockets() override;
 
 private:
-    void OnMessage(const message_ptr& msg)
-    {
-        STACK_TRACE_ENTRY();
+    void OnMessage(const message_ptr& msg);
+    void OnFail(const websocketpp::connection_hdl& hdl);
+    void OnClose(const websocketpp::connection_hdl& hdl);
+    void OnHttp(const websocketpp::connection_hdl& hdl);
 
-        const auto& payload = msg->get_payload();
-
-        if (!payload.empty()) {
-            ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
-        }
-    }
-
-    void OnFail(const websocketpp::connection_hdl& hdl)
-    {
-        STACK_TRACE_ENTRY();
-
-        UNUSED_VARIABLE(hdl);
-
-        WriteLog("Failed: {}", _connection->get_ec().message());
-        Disconnect();
-    }
-
-    void OnClose(const websocketpp::connection_hdl& hdl)
-    {
-        STACK_TRACE_ENTRY();
-
-        UNUSED_VARIABLE(hdl);
-
-        Disconnect();
-    }
-
-    void OnHttp(const websocketpp::connection_hdl& hdl)
-    {
-        STACK_TRACE_ENTRY();
-
-        UNUSED_VARIABLE(hdl);
-
-        // Prevent use this feature
-        Disconnect();
-    }
-
-    void DispatchImpl() override
-    {
-        STACK_TRACE_ENTRY();
-
-        const auto buf = SendCallback();
-
-        if (!buf.empty()) {
-            const std::error_code error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
-
-            if (!error) {
-                DispatchImpl();
-            }
-            else {
-                Disconnect();
-            }
-        }
-    }
-
-    void DisconnectImpl() override
-    {
-        STACK_TRACE_ENTRY();
-
-        std::error_code error;
-        _connection->terminate(error);
-    }
+    void DispatchImpl() override;
+    void DisconnectImpl() override;
 
     web_server_t* _server {};
     connection_ptr _connection {};
@@ -203,106 +93,21 @@ class NetworkServer_WebSockets : public NetworkServer
     using web_server_t = std::conditional_t<Secured, web_sockets_tls, web_sockets_no_tls>;
 
 public:
-    NetworkServer_WebSockets() = delete;
+    explicit NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback);
     NetworkServer_WebSockets(const NetworkServer_WebSockets&) = delete;
     NetworkServer_WebSockets(NetworkServer_WebSockets&&) noexcept = delete;
     auto operator=(const NetworkServer_WebSockets&) = delete;
     auto operator=(NetworkServer_WebSockets&&) noexcept = delete;
     ~NetworkServer_WebSockets() override = default;
 
-    NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-        _settings {settings}
-    {
-        STACK_TRACE_ENTRY();
-
-        if constexpr (Secured) {
-            if (settings.WssPrivateKey.empty()) {
-                throw GenericException("'WssPrivateKey' not provided");
-            }
-            if (settings.WssCertificate.empty()) {
-                throw GenericException("'WssCertificate' not provided");
-            }
-        }
-
-        _connectionCallback = std::move(callback);
-
-        _server.init_asio();
-        _server.set_open_handler([this](auto&& hdl) { OnOpen(hdl); });
-        _server.set_validate_handler([this](auto&& hdl) { return OnValidate(hdl); });
-
-        if constexpr (Secured) {
-            _server.set_tls_init_handler([this](auto&& hdl) { return OnTlsInit(hdl); });
-        }
-
-        _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
-        _server.start_accept();
-
-        _runThread = std::thread(&NetworkServer_WebSockets::Run, this);
-    }
-
-    void Shutdown() override
-    {
-        STACK_TRACE_ENTRY();
-
-        _server.stop();
-        _runThread.join();
-    }
+    void Shutdown() override;
 
 private:
-    void Run()
-    {
-        STACK_TRACE_ENTRY();
+    void Run();
+    void OnOpen(const websocketpp::connection_hdl& hdl);
 
-        try {
-            _server.run();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-    }
-
-    void OnOpen(const websocketpp::connection_hdl& hdl)
-    {
-        STACK_TRACE_ENTRY();
-
-        std::error_code error;
-        auto&& connection = _server.get_con_from_hdl(hdl, error);
-
-        if (!error) {
-            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, &_server, std::move(connection)));
-        }
-    }
-
-    [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool
-    {
-        STACK_TRACE_ENTRY();
-
-        std::error_code error;
-        auto&& connection = _server.get_con_from_hdl(hdl, error);
-
-        if (error) {
-            return false;
-        }
-
-        connection->select_subprotocol("binary", error);
-        return !error;
-    }
-
-    [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>
-    {
-        STACK_TRACE_ENTRY();
-
-        UNUSED_VARIABLE(hdl);
-
-        auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
-        ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
-        ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
-        ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
-        return ctx;
-    }
+    [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
+    [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
     ServerNetworkSettings& _settings;
     NewConnectionCallback _connectionCallback {};
@@ -324,6 +129,218 @@ auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewCo
 
         return SafeAlloc::MakeUnique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
     }
+}
+
+template<bool Secured>
+NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection) :
+    NetworkServerConnection(settings),
+    _server {server},
+    _connection {std::move(connection)}
+{
+    STACK_TRACE_ENTRY();
+
+    const auto& address = _connection->get_raw_socket().remote_endpoint().address();
+    _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+    _host = address.to_string();
+    _port = _connection->get_raw_socket().remote_endpoint().port();
+
+    if (settings.DisableTcpNagle) {
+        asio::error_code error;
+        _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
+    }
+
+    _connection->set_message_handler([this](auto&&, auto&& msg) { OnMessage(msg); });
+    _connection->set_fail_handler([this](auto&& hdl) { OnFail(hdl); });
+    _connection->set_close_handler([this](auto&& hdl) { OnClose(hdl); });
+    _connection->set_http_handler([this](auto&& hdl) { OnHttp(hdl); });
+}
+
+template<bool Secured>
+NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets()
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        std::error_code error;
+        _connection->terminate(error);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& msg)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto& payload = msg->get_payload();
+
+    if (!payload.empty()) {
+        ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
+    }
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(hdl);
+
+    WriteLog("Failed: {}", _connection->get_ec().message());
+    Disconnect();
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::OnClose(const websocketpp::connection_hdl& hdl)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(hdl);
+
+    Disconnect();
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::connection_hdl& hdl)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(hdl);
+
+    // Prevent use this feature
+    Disconnect();
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto buf = SendCallback();
+
+    if (!buf.empty()) {
+        const std::error_code error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+
+        if (!error) {
+            DispatchImpl();
+        }
+        else {
+            Disconnect();
+        }
+    }
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
+{
+    STACK_TRACE_ENTRY();
+
+    std::error_code error;
+    _connection->terminate(error);
+}
+
+template<bool Secured>
+NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
+    _settings {settings}
+{
+    STACK_TRACE_ENTRY();
+
+    if constexpr (Secured) {
+        if (settings.WssPrivateKey.empty()) {
+            throw GenericException("'WssPrivateKey' not provided");
+        }
+        if (settings.WssCertificate.empty()) {
+            throw GenericException("'WssCertificate' not provided");
+        }
+    }
+
+    _connectionCallback = std::move(callback);
+
+    _server.init_asio();
+    _server.set_open_handler([this](auto&& hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](auto&& hdl) { return OnValidate(hdl); });
+
+    if constexpr (Secured) {
+        _server.set_tls_init_handler([this](auto&& hdl) { return OnTlsInit(hdl); });
+    }
+
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
+    _server.start_accept();
+
+    _runThread = std::thread(&NetworkServer_WebSockets::Run, this);
+}
+
+template<bool Secured>
+void NetworkServer_WebSockets<Secured>::Shutdown()
+{
+    STACK_TRACE_ENTRY();
+
+    _server.stop();
+    _runThread.join();
+}
+
+template<bool Secured>
+void NetworkServer_WebSockets<Secured>::Run()
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        _server.run();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        UNKNOWN_EXCEPTION();
+    }
+}
+
+template<bool Secured>
+void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl& hdl)
+{
+    STACK_TRACE_ENTRY();
+
+    std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (!error) {
+        _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, &_server, std::move(connection)));
+    }
+}
+
+template<bool Secured>
+auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    std::error_code error;
+    auto&& connection = _server.get_con_from_hdl(hdl, error);
+
+    if (error) {
+        return false;
+    }
+
+    connection->select_subprotocol("binary", error);
+    return !error;
+}
+
+template<bool Secured>
+auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(hdl);
+
+    auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
+    ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
+    ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
+    ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
+    return ctx;
 }
 
 #endif

@@ -33,13 +33,6 @@
 
 #include "NetworkServer.h"
 
-#include "zlib.h"
-
-struct NetworkServerConnection::Impl
-{
-    z_stream ZStream {};
-};
-
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
     _settings {settings},
     _inBuf(settings.NetBufferSize),
@@ -48,34 +41,6 @@ NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings
     STACK_TRACE_ENTRY();
 
     _outFinalBuf.resize(_settings.NetBufferSize);
-
-    if (!settings.DisableZlibCompression) {
-        _impl = unique_del_ptr<Impl>(SafeAlloc::MakeRaw<Impl>(), [](Impl* impl) {
-            deflateEnd(&impl->ZStream);
-            delete impl;
-        });
-
-        MemFill(&_impl->ZStream, 0, sizeof(z_stream));
-
-        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
-            constexpr SafeAllocator<uint8> allocator;
-            return allocator.allocate(static_cast<size_t>(items) * size);
-        };
-        _impl->ZStream.zfree = [](voidpf, voidpf address) {
-            constexpr SafeAllocator<uint8> allocator;
-            allocator.deallocate(static_cast<uint8*>(address), 0);
-        };
-
-        const auto result = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
-        RUNTIME_ASSERT(result == Z_OK);
-    }
-}
-
-void NetworkServerConnection::DisableOutBufCompression()
-{
-    STACK_TRACE_ENTRY();
-
-    _impl.reset();
 }
 
 void NetworkServerConnection::DispatchOutBuf()
@@ -122,37 +87,18 @@ auto NetworkServerConnection::SendCallback() -> const_span<uint8>
     size_t out_len;
 
     // Compress
-    if (_impl) {
-        const auto to_compr = _outBuf.GetEndPos();
+    if (!_settings.DisableZlibCompression) {
+        const auto compr_buf = _compressor.Compress({_outBuf.GetData(), _outBuf.GetEndPos()}, _outFinalBuf);
+        out_len = compr_buf.size();
 
-        _outFinalBuf.resize(to_compr + 32);
-
-        if (_outFinalBuf.size() <= _settings.NetBufferSize && _outFinalBuf.capacity() > _settings.NetBufferSize) {
-            _outFinalBuf.shrink_to_fit();
-        }
-
-        _impl->ZStream.next_in = static_cast<Bytef*>(_outBuf.GetData());
-        _impl->ZStream.avail_in = static_cast<uInt>(to_compr);
-        _impl->ZStream.next_out = static_cast<Bytef*>(_outFinalBuf.data());
-        _impl->ZStream.avail_out = static_cast<uInt>(_outFinalBuf.size());
-
-        const auto result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
-        RUNTIME_ASSERT(result == Z_OK);
-
-        const auto compr = static_cast<size_t>(_impl->ZStream.next_out - _outFinalBuf.data());
-        const auto real = static_cast<size_t>(_impl->ZStream.next_in - _outBuf.GetData());
-        out_len = compr;
-
-        _outBuf.DiscardWriteBuf(real);
+        _outBuf.DiscardWriteBuf(_outBuf.GetEndPos());
     }
     // Without compressing
     else {
         const auto len = _outBuf.GetEndPos();
 
-        _outFinalBuf.resize(len);
-
-        if (_outFinalBuf.size() <= _settings.NetBufferSize && _outFinalBuf.capacity() > _settings.NetBufferSize) {
-            _outFinalBuf.shrink_to_fit();
+        while (_outFinalBuf.size() < len) {
+            _outFinalBuf.resize(_outFinalBuf.size() * 2);
         }
 
         MemCopy(_outFinalBuf.data(), _outBuf.GetData(), len);
