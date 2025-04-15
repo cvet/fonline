@@ -87,7 +87,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         return false;
     }
 
-    auto msg = NetMessage::SEND_COMMAND;
+    auto msg = NetMessage::SendCommand;
 
     RUNTIME_ASSERT(pbuf);
     auto& buf = *pbuf;

@@ -84,8 +84,8 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     // Network handlers
     _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
     _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
-    _conn.AddMessageHandler(NetMessage::UPDATE_FILE_DATA, [this] { Net_OnUpdateFileData(); });
+    _conn.AddMessageHandler(NetMessage::UpdateFilesList, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
 
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
@@ -317,7 +317,7 @@ void Updater::Net_OnUpdateFileData()
     update_file.RemaningSize -= data_size;
 
     if (update_file.RemaningSize > 0u) {
-        _conn.OutBuf.StartMsg(NetMessage::GET_UPDATE_FILE_DATA);
+        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFileData);
         _conn.OutBuf.EndMsg();
         _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
@@ -350,7 +350,7 @@ void Updater::GetNextFile()
     if (!_filesToUpdate.empty()) {
         const auto& next_update_file = _filesToUpdate.front();
 
-        _conn.OutBuf.StartMsg(NetMessage::GET_UPDATE_FILE);
+        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFile);
         _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 

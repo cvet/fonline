@@ -47,8 +47,8 @@ ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
-    AddMessageHandler(NetMessage::DISCONNECT, [this] { Disconnect(); });
-    AddMessageHandler(NetMessage::PING, [this] { Net_OnPing(); });
+    AddMessageHandler(NetMessage::Disconnect, [this] { Disconnect(); });
+    AddMessageHandler(NetMessage::Ping, [this] { Net_OnPing(); });
 }
 
 void ClientConnection::SetConnectHandler(ConnectCallback handler)
@@ -218,7 +218,7 @@ void ClientConnection::ProcessConnection()
     }
 
     if (_netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
-        _netOut.StartMsg(NetMessage::PING);
+        _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(false);
         _netOut.EndMsg();
         _pingTime = Timer::CurTime();
@@ -320,7 +320,7 @@ void ClientConnection::Net_SendHandshake()
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
-    _netOut.StartMsg(NetMessage::HANDSHAKE);
+    _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
@@ -342,7 +342,7 @@ void ClientConnection::Net_OnPing()
         _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
     }
     else {
-        _netOut.StartMsg(NetMessage::PING);
+        _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(true);
         _netOut.EndMsg();
     }

@@ -186,5 +186,5 @@ void ServerConnection::GracefulDisconnect()
 
     _gracefulDisconnected = true;
 
-    WriteMsg(NetMessage::DISCONNECT);
+    WriteMsg(NetMessage::Disconnect);
 }

@@ -1017,7 +1017,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         in_buf.Unlock();
 
         if (!connection->WasHandshake) {
-            if (msg == NetMessage::HANDSHAKE) {
+            if (msg == NetMessage::Handshake) {
                 Process_Handshake(connection);
             }
             else {
@@ -1026,23 +1026,23 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         }
         else {
             switch (msg) {
-            case NetMessage::PING:
+            case NetMessage::Ping:
                 Process_Ping(connection);
                 break;
-            case NetMessage::GET_UPDATE_FILE:
+            case NetMessage::GetUpdateFile:
                 Process_UpdateFile(connection);
                 break;
-            case NetMessage::GET_UPDATE_FILE_DATA:
+            case NetMessage::GetUpdateFileData:
                 Process_UpdateFileData(connection);
                 break;
 
-            case NetMessage::REMOTE_CALL:
+            case NetMessage::RemoteCall:
                 Process_RemoteCall(unlogined_player);
                 break;
-            case NetMessage::REGISTER:
+            case NetMessage::Register:
                 Process_Register(unlogined_player);
                 break;
-            case NetMessage::LOGIN:
+            case NetMessage::Login:
                 Process_Login(unlogined_player); // Maybe invalidated in method call
                 break;
 
@@ -1098,34 +1098,34 @@ void FOServer::ProcessPlayer(Player* player)
         in_buf.Unlock();
 
         switch (msg) {
-        case NetMessage::PING:
+        case NetMessage::Ping:
             Process_Ping(connection);
             break;
 
-        case NetMessage::SEND_TEXT:
+        case NetMessage::SendText:
             Process_Text(player);
             break;
-        case NetMessage::SEND_COMMAND:
+        case NetMessage::SendCommand:
             in_buf.Lock();
             Process_Command(*in_buf, [player](auto s) { player->Send_Text(nullptr, strex(s).trim(), SAY_NETMSG); }, player, "");
             in_buf.Unlock();
             break;
-        case NetMessage::DIR:
+        case NetMessage::SendCritterDir:
             Process_Dir(player);
             break;
-        case NetMessage::SEND_MOVE:
+        case NetMessage::SendCritterMove:
             Process_Move(player);
             break;
-        case NetMessage::SEND_STOP_MOVE:
+        case NetMessage::SendStopCritterMove:
             Process_StopMove(player);
             break;
-        case NetMessage::SEND_TALK_NPC:
+        case NetMessage::SendTalkNpc:
             Process_Dialog(player);
             break;
-        case NetMessage::REMOTE_CALL:
+        case NetMessage::RemoteCall:
             Process_RemoteCall(player);
             break;
-        case NetMessage::SEND_PROPERTY:
+        case NetMessage::SendProperty:
             Process_Property(player);
             break;
         default:
@@ -1165,7 +1165,7 @@ void FOServer::ProcessConnection(ServerConnection* connection)
             return;
         }
 
-        auto out_buf = connection->WriteMsg(NetMessage::PING);
+        auto out_buf = connection->WriteMsg(NetMessage::Ping);
 
         out_buf->Write(false);
 
@@ -2226,7 +2226,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     connection->WriteBuf()->SetEncryptKey(encrypt_key);
 
-    auto out_buf = connection->WriteMsg(NetMessage::UPDATE_FILES_LIST);
+    auto out_buf = connection->WriteMsg(NetMessage::UpdateFilesList);
 
     out_buf->Write(outdated);
     out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
@@ -2256,7 +2256,7 @@ void FOServer::Process_Ping(ServerConnection* connection)
         connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
     }
     else {
-        auto out_buf = connection->WriteMsg(NetMessage::PING);
+        auto out_buf = connection->WriteMsg(NetMessage::Ping);
 
         out_buf->Write(true);
     }
@@ -2308,7 +2308,7 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
         connection->UpdateFileIndex = -1;
     }
 
-    auto out_buf = connection->WriteMsg(NetMessage::UPDATE_FILE_DATA);
+    auto out_buf = connection->WriteMsg(NetMessage::UpdateFileData);
 
     out_buf->Write(update_portion);
     out_buf->Push(&update_file_data[offset], update_portion);
@@ -2412,7 +2412,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Notify
     unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REG_SUCCESS);
 
-    connection->WriteMsg(NetMessage::REGISTER_SUCCESS);
+    connection->WriteMsg(NetMessage::RegisterSuccess);
 }
 
 void FOServer::Process_Login(Player* unlogined_player)
