@@ -277,9 +277,8 @@ void ClientConnection::SendData()
             break;
         }
 
-        auto* send_buf = _netOut.GetData();
-        const auto send_buf_size = _netOut.GetEndPos();
-        const auto actual_send = _netConnection->SendData({send_buf, send_buf_size});
+        const auto send_buf = _netOut.GetData();
+        const auto actual_send = _netConnection->SendData(send_buf);
 
         _netOut.DiscardWriteBuf(actual_send);
         _bytesSend += actual_send;
@@ -297,13 +296,13 @@ auto ClientConnection::ReceiveData() -> bool
         _netIn.ShrinkReadBuf();
 
         if (!_settings.DisableZlibCompression) {
-            const auto uncompr_buf = _decompressor.Uncompress(recv_buf, _unpackedIncomeBuf);
-            _netIn.AddData(uncompr_buf.data(), uncompr_buf.size());
+            _decompressor.Decompress(recv_buf, _unpackedReceivedBuf);
+            _netIn.AddData(_unpackedReceivedBuf);
             _bytesReceived += recv_buf.size();
-            _bytesRealReceived += uncompr_buf.size();
+            _bytesRealReceived += _unpackedReceivedBuf.size();
         }
         else {
-            _netIn.AddData(recv_buf.data(), recv_buf.size());
+            _netIn.AddData(recv_buf);
             _bytesReceived += recv_buf.size();
             _bytesRealReceived += recv_buf.size();
         }

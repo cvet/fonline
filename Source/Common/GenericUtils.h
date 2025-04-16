@@ -106,7 +106,7 @@ public:
     auto operator=(StreamCompressor&&) noexcept -> StreamCompressor&;
     ~StreamCompressor();
 
-    auto Compress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>;
+    void Compress(const_span<uint8> buf, vector<uint8>& result);
     void Reset() noexcept;
 
 private:
@@ -124,7 +124,7 @@ public:
     auto operator=(StreamDecompressor&&) noexcept -> StreamDecompressor&;
     ~StreamDecompressor();
 
-    auto Uncompress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>;
+    void Decompress(const_span<uint8> buf, vector<uint8>& result);
     void Reset() noexcept;
 
 private:

@@ -50,10 +50,9 @@ public:
         OutBufAccessor(OutBufAccessor&&) noexcept = default;
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
-        ~OutBufAccessor();
+        ~OutBufAccessor() noexcept(false);
         FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
         FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
-        void Unlock() noexcept;
 
     private:
         raw_ptr<ServerConnection> _owner;
@@ -83,7 +82,7 @@ public:
     };
 
     ServerConnection() = delete;
-    explicit ServerConnection(shared_ptr<NetworkServerConnection> net_connection);
+    explicit ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection);
     ServerConnection(const ServerConnection&) = delete;
     ServerConnection(ServerConnection&&) noexcept = delete;
     auto operator=(const ServerConnection&) = delete;
@@ -96,12 +95,10 @@ public:
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
 
-    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
     auto WriteMsg(NetMessage msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
+    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
     auto ReadBuf() -> InBufAccessor { return InBufAccessor(this); }
 
-    void DisableCompression();
-    void DispatchOutBuf();
     void HardDisconnect();
     void GracefulDisconnect();
 
@@ -114,6 +111,17 @@ public:
     uint UpdateFilePortion {};
 
 private:
+    void StartAsyncSend();
+    auto AsyncSendData() -> const_span<uint8>;
+    void AsyncReceiveData(const_span<uint8> buf);
+
+    ServerNetworkSettings& _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
+    NetInBuffer _inBuf;
+    std::mutex _inBufLocker {};
+    NetOutBuffer _outBuf;
+    std::mutex _outBufLocker {};
+    vector<uint8> _sendBuf {};
+    StreamCompressor _compressor {};
     bool _gracefulDisconnected {};
 };

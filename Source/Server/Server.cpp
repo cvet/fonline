@@ -546,7 +546,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     while (!_newConnections.empty()) {
                         auto conn = std::move(_newConnections.back());
                         _newConnections.pop_back();
-                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(conn)));
+                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn)));
                     }
                 }
             }

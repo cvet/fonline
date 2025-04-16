@@ -88,7 +88,7 @@ void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
     STACK_TRACE_ENTRY();
 
     if (!buf.empty()) {
-        ReceiveCallback(buf.data(), buf.size());
+        ReceiveCallback(buf);
     }
     else {
         _send = nullptr;

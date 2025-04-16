@@ -96,7 +96,7 @@ private:
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
     StreamDecompressor _decompressor {};
-    vector<uint8> _unpackedIncomeBuf {};
+    vector<uint8> _unpackedReceivedBuf {};
     size_t _bytesSend {};
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};

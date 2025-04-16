@@ -53,8 +53,8 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> uint8* { return _bufData.data(); }
-    [[nodiscard]] auto GetEndPos() const noexcept -> size_t { return _bufEndPos; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
@@ -138,10 +138,9 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufData.size() - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
-    void AddData(const void* buf, size_t len);
+    void AddData(const_span<uint8> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);

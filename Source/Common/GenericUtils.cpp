@@ -686,7 +686,7 @@ StreamCompressor::~StreamCompressor()
     Reset();
 }
 
-auto StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>
+void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 {
     STACK_TRACE_ENTRY();
 
@@ -707,17 +707,12 @@ auto StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& temp_buf) 
         RUNTIME_ASSERT(deflate_init == Z_OK);
     }
 
-    if (temp_buf.size() < 1024) {
-        temp_buf.resize(1024);
-    }
-    while (temp_buf.size() < Compressor::CalculateMaxCompressedBufSize(buf.size())) {
-        temp_buf.resize(temp_buf.size() * 2);
-    }
+    result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
 
     _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
     _impl->ZStream.avail_in = static_cast<uInt>(buf.size());
-    _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data());
-    _impl->ZStream.avail_out = static_cast<uInt>(temp_buf.size());
+    _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
+    _impl->ZStream.avail_out = static_cast<uInt>(result.size());
 
     const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
     RUNTIME_ASSERT(deflate_result == Z_OK);
@@ -725,8 +720,8 @@ auto StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& temp_buf) 
     const auto writed_len = static_cast<size_t>(_impl->ZStream.next_in - buf.data());
     RUNTIME_ASSERT(writed_len == buf.size());
 
-    const auto compr_len = static_cast<size_t>(_impl->ZStream.next_out - temp_buf.data());
-    return {temp_buf.data(), compr_len};
+    const auto compr_len = static_cast<size_t>(_impl->ZStream.next_out - result.data());
+    result.resize(compr_len);
 }
 
 void StreamCompressor::Reset() noexcept
@@ -755,7 +750,7 @@ StreamDecompressor::~StreamDecompressor()
     Reset();
 }
 
-auto StreamDecompressor::Uncompress(const_span<uint8> buf, vector<uint8>& temp_buf) -> const_span<uint8>
+void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result)
 {
     STACK_TRACE_ENTRY();
 
@@ -776,36 +771,31 @@ auto StreamDecompressor::Uncompress(const_span<uint8> buf, vector<uint8>& temp_b
         RUNTIME_ASSERT(inflate_init == Z_OK);
     }
 
-    if (temp_buf.size() < 1024) {
-        temp_buf.resize(1024);
-    }
-    while (temp_buf.size() < buf.size() * 2) {
-        temp_buf.resize(temp_buf.size() * 2);
-    }
+    result.resize(std::max(result.capacity(), buf.size() * 2));
 
     _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
     _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
-    _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data());
-    _impl->ZStream.avail_out = numeric_cast<uInt>(temp_buf.size());
+    _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
+    _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
     RUNTIME_ASSERT(first_inflate == Z_OK);
 
-    auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(temp_buf.data());
+    auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
 
     while (_impl->ZStream.avail_in != 0) {
-        temp_buf.resize(temp_buf.size() * 2);
+        result.resize(result.size() * 2);
 
-        _impl->ZStream.next_out = static_cast<Bytef*>(temp_buf.data() + uncompr_len);
-        _impl->ZStream.avail_out = numeric_cast<uInt>(temp_buf.size() - uncompr_len);
+        _impl->ZStream.next_out = static_cast<Bytef*>(result.data() + uncompr_len);
+        _impl->ZStream.avail_out = numeric_cast<uInt>(result.size() - uncompr_len);
 
         const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(next_inflate == Z_OK);
 
-        uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(temp_buf.data());
+        uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
     }
 
-    return {temp_buf.data(), uncompr_len};
+    result.resize(uncompr_len);
 }
 
 void StreamDecompressor::Reset() noexcept

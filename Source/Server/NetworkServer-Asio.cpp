@@ -149,7 +149,7 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
     STACK_TRACE_ENTRY();
 
     if (!error) {
-        ReceiveCallback(_inBufData.data(), bytes);
+        ReceiveCallback({_inBufData.data(), bytes});
         NextAsyncRead();
     }
     else {
@@ -176,14 +176,7 @@ void NetworkServerConnection_Asio::StartAsyncWrite()
     bool expected = false;
 
     if (_writePending.compare_exchange_strong(expected, true)) {
-        const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
-            auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-            thiz_->AsyncWriteComplete(error, bytes);
-        };
-
-        // Just initiate async write
-        uint8 dummy = 0;
-        async_write(*_socket, asio::buffer(&dummy, 0), write_handler);
+        NextAsyncWrite();
     }
 }
 

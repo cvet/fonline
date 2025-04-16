@@ -44,6 +44,9 @@ DECLARE_EXCEPTION(NetworkServerException);
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
+    using AsyncSendCallback = std::function<const_span<uint8>()>;
+    using AsyncReceiveCallback = std::function<void(const_span<uint8>)>;
+
     NetworkServerConnection() = delete;
     NetworkServerConnection(const NetworkServerConnection&) = delete;
     NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
@@ -56,24 +59,18 @@ public:
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
-    void LockInBuf() { _inBufLocker.lock(); }
-    void UnlockInBuf() noexcept { _inBufLocker.unlock(); }
-    void LockOutBuf() { _outBufLocker.lock(); }
-    void UnlockOutBuf() noexcept { _outBufLocker.unlock(); }
-
-    [[nodiscard]] auto GetInBuf() -> NetInBuffer& { return _inBuf; }
-    [[nodiscard]] auto GetOutBuf() -> NetOutBuffer& { return _outBuf; }
-
-    void DispatchOutBuf();
+    void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive);
+    void Dispatch();
     void Disconnect();
 
 protected:
     explicit NetworkServerConnection(ServerNetworkSettings& settings);
+
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
     auto SendCallback() -> const_span<uint8>;
-    void ReceiveCallback(const uint8* buf, size_t len);
+    void ReceiveCallback(const_span<uint8> buf);
 
     ServerNetworkSettings& _settings;
     uint _ip {};
@@ -81,12 +78,11 @@ protected:
     uint16 _port {};
 
 private:
-    NetInBuffer _inBuf;
-    std::mutex _inBufLocker {};
-    NetOutBuffer _outBuf;
-    std::mutex _outBufLocker {};
-    vector<uint8> _outFinalBuf {};
-    StreamCompressor _compressor {};
+    AsyncSendCallback _sendCallback {};
+    std::atomic_bool _sendCallbackSet {};
+    AsyncReceiveCallback _receiveCallback {};
+    vector<uint8> _initReceiveBuf {};
+    std::mutex _receiveLocker {};
     std::atomic_bool _isDisconnected {};
 };
 

@@ -37,40 +37,39 @@
 
 ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
     _owner {owner},
-    _outBuf {&_owner->_netConnection->GetOutBuf()},
+    _outBuf {&_owner->_outBuf},
     _msg {msg}
 {
     STACK_TRACE_ENTRY();
 
-    _owner->_netConnection->LockOutBuf();
+    _owner->_outBufLocker.lock();
 
     if (_msg) {
         _outBuf->StartMsg(_msg.value());
     }
 }
 
-ServerConnection::OutBufAccessor::~OutBufAccessor()
-{
-    STACK_TRACE_ENTRY();
-
-    Unlock();
-}
-
-void ServerConnection::OutBufAccessor::Unlock() noexcept
+ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 {
     STACK_TRACE_ENTRY();
 
     if (_outBuf != nullptr) {
         if (!_isStackUnwinding) {
             if (_msg) {
-                _outBuf->EndMsg();
+                try {
+                    _outBuf->EndMsg();
+                }
+                catch (...) {
+                    _owner->_outBufLocker.unlock();
+                    throw;
+                }
             }
 
-            _owner->_netConnection->UnlockOutBuf();
-            _owner->_netConnection->DispatchOutBuf();
+            _owner->_outBufLocker.unlock();
+            _owner->StartAsyncSend();
         }
         else {
-            _owner->_netConnection->UnlockOutBuf();
+            _owner->_outBufLocker.unlock();
         }
 
         _outBuf = nullptr;
@@ -97,8 +96,8 @@ void ServerConnection::InBufAccessor::Lock()
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_inBuf);
-    _owner->_netConnection->LockInBuf();
-    _inBuf = &_owner->_netConnection->GetInBuf();
+    _owner->_inBufLocker.lock();
+    _inBuf = &_owner->_inBuf;
 }
 
 void ServerConnection::InBufAccessor::Unlock() noexcept
@@ -106,15 +105,22 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
     STACK_TRACE_ENTRY();
 
     if (_inBuf != nullptr) {
-        _owner->_netConnection->UnlockInBuf();
+        _owner->_inBufLocker.unlock();
         _inBuf = nullptr;
     }
 }
 
-ServerConnection::ServerConnection(shared_ptr<NetworkServerConnection> net_connection) :
-    _netConnection {std::move(net_connection)}
+ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection) :
+    _settings {settings},
+    _netConnection {std::move(net_connection)},
+    _inBuf(_settings.NetBufferSize),
+    _outBuf(_settings.NetBufferSize)
 {
     STACK_TRACE_ENTRY();
+
+    auto send = [this]() -> const_span<uint8> { return AsyncSendData(); };
+    auto receive = [this](const_span<uint8> buf) { AsyncReceiveData(buf); };
+    _netConnection->SetAsyncCallbacks(send, receive);
 }
 
 ServerConnection::~ServerConnection()
@@ -159,18 +165,45 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     return _gracefulDisconnected;
 }
 
-void ServerConnection::DisableCompression()
+void ServerConnection::StartAsyncSend()
 {
     STACK_TRACE_ENTRY();
 
-    _netConnection->DispatchOutBuf();
+    _netConnection->Dispatch();
 }
 
-void ServerConnection::DispatchOutBuf()
+auto ServerConnection::AsyncSendData() -> const_span<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    _netConnection->DispatchOutBuf();
+    std::scoped_lock locker(_outBufLocker);
+
+    if (_outBuf.IsEmpty()) {
+        return {};
+    }
+
+    const auto raw_buf = _outBuf.GetData();
+
+    if (!_settings.DisableZlibCompression) {
+        _compressor.Compress(raw_buf, _sendBuf);
+    }
+    else {
+        _sendBuf.assign(raw_buf.begin(), raw_buf.end());
+    }
+
+    _outBuf.DiscardWriteBuf(raw_buf.size());
+
+    RUNTIME_ASSERT(!_sendBuf.empty());
+    return _sendBuf;
+}
+
+void ServerConnection::AsyncReceiveData(const_span<uint8> buf)
+{
+    STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(_inBufLocker);
+
+    _inBuf.AddData(buf);
 }
 
 void ServerConnection::HardDisconnect()

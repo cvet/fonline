@@ -34,30 +34,45 @@
 #include "NetworkServer.h"
 
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
-    _settings {settings},
-    _inBuf(settings.NetBufferSize),
-    _outBuf(settings.NetBufferSize)
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
-
-    _outFinalBuf.resize(_settings.NetBufferSize);
 }
 
-void NetworkServerConnection::DispatchOutBuf()
+void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_sendCallbackSet);
+    RUNTIME_ASSERT(send);
+    RUNTIME_ASSERT(receive);
 
     if (_isDisconnected) {
         return;
     }
 
-    // Nothing to send
-    {
-        std::scoped_lock locker(_outBufLocker);
+    _sendCallback = std::move(send);
+    _sendCallbackSet = true;
 
-        if (_outBuf.IsEmpty()) {
-            return;
+    {
+        std::scoped_lock locker(_receiveLocker);
+
+        _receiveCallback = std::move(receive);
+
+        if (!_initReceiveBuf.empty()) {
+            _receiveCallback(_initReceiveBuf);
+            _initReceiveBuf.clear();
+            _initReceiveBuf.shrink_to_fit();
         }
+    }
+}
+
+void NetworkServerConnection::Dispatch()
+{
+    STACK_TRACE_ENTRY();
+
+    if (_isDisconnected) {
+        return;
     }
 
     DispatchImpl();
@@ -74,60 +89,29 @@ void NetworkServerConnection::Disconnect()
     }
 }
 
+// ReSharper disable once CppMemberFunctionMayBeConst
 auto NetworkServerConnection::SendCallback() -> const_span<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_outBufLocker);
-
-    if (_outBuf.IsEmpty()) {
+    if (!_sendCallbackSet) {
         return {};
     }
 
-    size_t out_len;
-
-    // Compress
-    if (!_settings.DisableZlibCompression) {
-        const auto compr_buf = _compressor.Compress({_outBuf.GetData(), _outBuf.GetEndPos()}, _outFinalBuf);
-        out_len = compr_buf.size();
-
-        _outBuf.DiscardWriteBuf(_outBuf.GetEndPos());
-    }
-    // Without compressing
-    else {
-        const auto len = _outBuf.GetEndPos();
-
-        while (_outFinalBuf.size() < len) {
-            _outFinalBuf.resize(_outFinalBuf.size() * 2);
-        }
-
-        MemCopy(_outFinalBuf.data(), _outBuf.GetData(), len);
-        out_len = len;
-
-        _outBuf.DiscardWriteBuf(len);
-    }
-
-    // Normalize buffer size
-    if (_outBuf.IsEmpty()) {
-        _outBuf.ResetBuf();
-    }
-
-    RUNTIME_ASSERT(out_len > 0);
-    return {_outFinalBuf.data(), out_len};
+    return _sendCallback();
 }
 
-void NetworkServerConnection::ReceiveCallback(const uint8* buf, size_t len)
+void NetworkServerConnection::ReceiveCallback(const_span<uint8> buf)
 {
     STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_inBufLocker);
+    std::scoped_lock locker(_receiveLocker);
 
-    if (_inBuf.GetReadPos() + len < _settings.FloodSize) {
-        _inBuf.AddData(buf, len);
+    if (_receiveCallback) {
+        _receiveCallback(buf);
     }
     else {
-        _inBuf.ResetBuf();
-        Disconnect();
+        _initReceiveBuf.insert(_initReceiveBuf.end(), buf.begin(), buf.end());
     }
 }
 

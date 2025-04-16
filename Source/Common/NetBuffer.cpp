@@ -252,17 +252,17 @@ void NetInBuffer::ResetBuf() noexcept
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(const void* buf, size_t len)
+void NetInBuffer::AddData(const_span<uint8> buf)
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0) {
+    if (buf.empty()) {
         return;
     }
 
-    GrowBuf(len);
-    CopyBuf(buf, _bufData.data() + _bufEndPos, 0, len);
-    _bufEndPos += len;
+    GrowBuf(buf.size());
+    CopyBuf(buf.data(), _bufData.data() + _bufEndPos, 0, buf.size());
+    _bufEndPos += buf.size();
 }
 
 void NetInBuffer::SetEndPos(size_t pos)

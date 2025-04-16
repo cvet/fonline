@@ -180,7 +180,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
+        ReceiveCallback({reinterpret_cast<const uint8*>(payload.data()), payload.length()});
     }
 }
 
