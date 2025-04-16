@@ -402,46 +402,6 @@ private:
     mutable int _refCounter {1};
 };
 
-class ProtoEntity : public Entity
-{
-public:
-    [[nodiscard]] auto GetName() const noexcept -> string_view override;
-    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
-    [[nodiscard]] auto HasComponent(hstring name) const noexcept -> bool;
-    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const noexcept -> bool;
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _components; }
-
-    void EnableComponent(hstring component);
-
-    string CollectionName {};
-
-protected:
-    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
-
-    const hstring _protoId;
-    unordered_set<hstring> _components {};
-    unordered_set<hstring::hash_t> _componentHashes {};
-};
-
-class EntityWithProto
-{
-public:
-    EntityWithProto() = delete;
-    EntityWithProto(const EntityWithProto&) = delete;
-    EntityWithProto(EntityWithProto&&) noexcept = delete;
-    auto operator=(const EntityWithProto&) = delete;
-    auto operator=(EntityWithProto&&) noexcept = delete;
-
-    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
-    [[nodiscard]] auto GetProto() const noexcept -> const ProtoEntity*;
-
-protected:
-    explicit EntityWithProto(const ProtoEntity* proto) noexcept;
-    virtual ~EntityWithProto();
-
-    const ProtoEntity* _proto;
-};
-
 class EntityEventBase
 {
 public:

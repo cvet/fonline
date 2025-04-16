@@ -33,6 +33,82 @@
 
 #include "EntityProtos.h"
 
+ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
+    Entity(registrator, props),
+    _protoId {proto_id}
+{
+    STACK_TRACE_ENTRY();
+
+    STRONG_ASSERT(_protoId);
+}
+
+auto ProtoEntity::GetName() const noexcept -> string_view
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _protoId.as_str();
+}
+
+auto ProtoEntity::GetProtoId() const noexcept -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _protoId;
+}
+
+void ProtoEntity::EnableComponent(hstring component)
+{
+    STACK_TRACE_ENTRY();
+
+    _components.emplace(component);
+    _componentHashes.emplace(component.as_hash());
+}
+
+auto ProtoEntity::HasComponent(hstring name) const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _components.find(name) != _components.end();
+}
+
+auto ProtoEntity::HasComponent(hstring::hash_t hash) const noexcept -> bool
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _componentHashes.find(hash) != _componentHashes.end();
+}
+
+EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
+    _proto {proto}
+{
+    STACK_TRACE_ENTRY();
+
+    STRONG_ASSERT(_proto);
+
+    _proto->AddRef();
+}
+
+EntityWithProto::~EntityWithProto()
+{
+    STACK_TRACE_ENTRY();
+
+    _proto->Release();
+}
+
+auto EntityWithProto::GetProtoId() const noexcept -> hstring
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _proto->GetProtoId();
+}
+
+auto EntityWithProto::GetProto() const noexcept -> const ProtoEntity*
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _proto;
+}
+
 ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     ProtoEntity(proto_id, registrator, props),
     ItemProperties(GetInitRef())
