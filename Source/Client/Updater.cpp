@@ -82,10 +82,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
-    _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
-    _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILE_DATA, [this] { Net_OnUpdateFileData(); });
+    _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NetMessage::UpdateFilesList, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
 
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
@@ -224,7 +224,6 @@ void Updater::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -300,7 +299,6 @@ void Updater::Net_OnUpdateFileData()
 {
     STACK_TRACE_ENTRY();
 
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
     _updateFileBuf.resize(data_size);
@@ -317,8 +315,9 @@ void Updater::Net_OnUpdateFileData()
     // Get next portion or finalize data
     RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
     update_file.RemaningSize -= data_size;
+
     if (update_file.RemaningSize > 0u) {
-        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE_DATA);
+        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFileData);
         _conn.OutBuf.EndMsg();
         _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
@@ -351,7 +350,7 @@ void Updater::GetNextFile()
     if (!_filesToUpdate.empty()) {
         const auto& next_update_file = _filesToUpdate.front();
 
-        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE);
+        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFile);
         _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 

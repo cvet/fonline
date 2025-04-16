@@ -1799,8 +1799,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(value.size() <= 0xFFFF);
-    out_buf.Write(static_cast<uint16>(value.size()));
+    out_buf.Write(numeric_cast<uint>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value);
@@ -1815,8 +1814,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(value.size() <= 0xFFFF);
-    out_buf.Write(static_cast<uint16>(value.size()));
+    out_buf.Write(numeric_cast<uint>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value.first);
@@ -1845,10 +1843,10 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
 {
     STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint16>();
+    const auto inner_values_count = in_buf.Read<uint>();
     value.reserve(inner_values_count);
 
-    for (uint16 i = 0; i < inner_values_count; i++) {
+    for (uint i = 0; i < inner_values_count; i++) {
         T inner_value;
         ReadNetBuf(in_buf, inner_value, hash_resolver);
         value.emplace_back(inner_value);
@@ -1863,9 +1861,9 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 {
     STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint16>();
+    const auto inner_values_count = in_buf.Read<uint>();
 
-    for (uint16 i = 0; i < inner_values_count; i++) {
+    for (uint i = 0; i < inner_values_count; i++) {
         T inner_value_first;
         ReadNetBuf(in_buf, inner_value_first, hash_resolver);
         U inner_value_second;
@@ -1878,7 +1876,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 {
     STACK_TRACE_ENTRY();
 
-    out_buf.StartMsg(NETMSG_REMOTE_CALL);
+    out_buf.StartMsg(NetMessage::RemoteCall);
     out_buf.Write(rpc_num);
 }
 

@@ -35,9 +35,6 @@
 
 #include "Common.h"
 
-// ReSharper disable once CppUnusedIncludeDirective
-#include "NetProtocol-Include.h"
-
 DECLARE_EXCEPTION(NetBufferException);
 DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
 
@@ -45,8 +42,7 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr size_t STRING_LEN_SIZE = sizeof(uint16);
-    static constexpr size_t ARRAY_LEN_SIZE = sizeof(uint16);
+    static constexpr uint NETMSG_SIGNATURE = 0x011E9422;
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -55,8 +51,8 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> uint8* { return _bufData.data(); }
-    [[nodiscard]] auto GetEndPos() const noexcept -> size_t { return _bufEndPos; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
@@ -65,7 +61,7 @@ public:
 
 protected:
     auto EncryptKey(int move) noexcept -> uint8;
-    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const;
+    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept;
 
     vector<uint8> _bufData {};
     size_t _defaultBufLen {};
@@ -103,8 +99,7 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
     void Write(T value)
     {
-        RUNTIME_ASSERT(value.length() <= std::numeric_limits<uint16>::max());
-        const auto len = static_cast<uint16>(value.length());
+        const auto len = numeric_cast<uint>(value.length());
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -118,12 +113,11 @@ public:
 
     void WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes);
 
-    void StartMsg(uint msg);
+    void StartMsg(NetMessage msg);
     void EndMsg();
 
 private:
     bool _msgStarted {};
-    uint _startedMsg {};
     size_t _startedBufPos {};
 };
 
@@ -141,12 +135,10 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const noexcept -> size_t { return _bufData.size() - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
-    void AddData(const void* buf, size_t len);
+    void AddData(const_span<uint8> buf);
     void SetEndPos(size_t pos);
-    void SkipMsg(uint msg);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
     void ResetBuf() noexcept override;
@@ -163,7 +155,7 @@ public:
     [[nodiscard]] auto Read() -> string
     {
         string result;
-        uint16 len = 0;
+        uint len = 0;
         Pop(&len, sizeof(len));
         result.resize(len);
         Pop(result.data(), len);
@@ -177,6 +169,8 @@ public:
     }
 
     void ReadPropsData(vector<vector<uint8>>& props_data);
+
+    auto ReadMsg() -> NetMessage;
 
 private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;

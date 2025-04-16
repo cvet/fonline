@@ -34,153 +34,7 @@
 #include "NetBuffer.h"
 #include "Entity.h"
 #include "GenericUtils.h"
-
-static auto GetMsgSize(uint msg) -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    switch (msg) {
-    case 0xFFFFFFFF:
-        return 16;
-    case NETMSG_DISCONNECT:
-        return NETMSG_DISCONNECT_SIZE;
-    case NETMSG_WRONG_NET_PROTO:
-        return NETMSG_WRONG_NET_PROTO_SIZE;
-    case NETMSG_REGISTER_SUCCESS:
-        return NETMSG_REGISTER_SUCCESS_SIZE;
-    case NETMSG_PING:
-        return NETMSG_PING_SIZE;
-    case NETMSG_PLACE_TO_GAME_COMPLETE:
-        return NETMSG_PLACE_TO_GAME_COMPLETE_SIZE;
-    case NETMSG_HANDSHAKE:
-        return NETMSG_HANDSHAKE_SIZE;
-    case NETMSG_GET_UPDATE_FILE:
-        return NETMSG_GET_UPDATE_FILE_SIZE;
-    case NETMSG_GET_UPDATE_FILE_DATA:
-        return NETMSG_GET_UPDATE_FILE_DATA_SIZE;
-    case NETMSG_REMOVE_CRITTER:
-        return NETMSG_REMOVE_CRITTER_SIZE;
-    case NETMSG_MSG:
-        return NETMSG_MSG_SIZE;
-    case NETMSG_MAP_TEXT_MSG:
-        return NETMSG_MAP_TEXT_MSG_SIZE;
-    case NETMSG_DIR:
-        return NETMSG_DIR_SIZE;
-    case NETMSG_CRITTER_DIR:
-        return NETMSG_CRITTER_DIR_SIZE;
-    case NETMSG_CRITTER_MOVE_SPEED:
-        return NETMSG_CRITTER_MOVE_SPEED_SIZE;
-    case NETMSG_SEND_STOP_MOVE:
-        return NETMSG_SEND_STOP_MOVE_SIZE;
-    case NETMSG_CRITTER_POS:
-        return NETMSG_CRITTER_POS_SIZE;
-    case NETMSG_CRITTER_TELEPORT:
-        return NETMSG_CRITTER_TELEPORT_SIZE;
-    case NETMSG_CHOSEN_REMOVE_ITEM:
-        return NETMSG_CHOSEN_REMOVE_ITEM_SIZE;
-    case NETMSG_REMOVE_ITEM_FROM_MAP:
-        return NETMSG_REMOVE_ITEM_FROM_MAP_SIZE;
-    case NETMSG_ANIMATE_ITEM:
-        return NETMSG_ANIMATE_ITEM_SIZE;
-    case NETMSG_CRITTER_SET_ANIMS:
-        return NETMSG_CRITTER_SET_ANIMS_SIZE;
-    case NETMSG_EFFECT:
-        return NETMSG_EFFECT_SIZE;
-    case NETMSG_FLY_EFFECT:
-        return NETMSG_FLY_EFFECT_SIZE;
-    case NETMSG_SEND_TALK_NPC:
-        return NETMSG_SEND_TALK_NPC_SIZE;
-    case NETMSG_TIME_SYNC:
-        return NETMSG_TIME_SYNC_SIZE;
-    case NETMSG_VIEW_MAP:
-        return NETMSG_VIEW_MAP_SIZE;
-    case NETMSG_REMOVE_CUSTOM_ENTITY:
-        return NETMSG_REMOVE_CUSTOM_ENTITY_SIZE;
-    case NETMSG_SEND_POD_PROPERTY(1, 0):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 0);
-    case NETMSG_SEND_POD_PROPERTY(2, 0):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 0);
-    case NETMSG_SEND_POD_PROPERTY(4, 0):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 0);
-    case NETMSG_SEND_POD_PROPERTY(8, 0):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 0);
-    case NETMSG_SEND_POD_PROPERTY(1, 1):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 1);
-    case NETMSG_SEND_POD_PROPERTY(2, 1):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 1);
-    case NETMSG_SEND_POD_PROPERTY(4, 1):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 1);
-    case NETMSG_SEND_POD_PROPERTY(8, 1):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 1);
-    case NETMSG_SEND_POD_PROPERTY(1, 2):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 2);
-    case NETMSG_SEND_POD_PROPERTY(2, 2):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 2);
-    case NETMSG_SEND_POD_PROPERTY(4, 2):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 2);
-    case NETMSG_SEND_POD_PROPERTY(8, 2):
-        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 2);
-    case NETMSG_POD_PROPERTY(1, 0):
-        return NETMSG_POD_PROPERTY_SIZE(1, 0);
-    case NETMSG_POD_PROPERTY(2, 0):
-        return NETMSG_POD_PROPERTY_SIZE(2, 0);
-    case NETMSG_POD_PROPERTY(4, 0):
-        return NETMSG_POD_PROPERTY_SIZE(4, 0);
-    case NETMSG_POD_PROPERTY(8, 0):
-        return NETMSG_POD_PROPERTY_SIZE(8, 0);
-    case NETMSG_POD_PROPERTY(1, 1):
-        return NETMSG_POD_PROPERTY_SIZE(1, 1);
-    case NETMSG_POD_PROPERTY(2, 1):
-        return NETMSG_POD_PROPERTY_SIZE(2, 1);
-    case NETMSG_POD_PROPERTY(4, 1):
-        return NETMSG_POD_PROPERTY_SIZE(4, 1);
-    case NETMSG_POD_PROPERTY(8, 1):
-        return NETMSG_POD_PROPERTY_SIZE(8, 1);
-    case NETMSG_POD_PROPERTY(1, 2):
-        return NETMSG_POD_PROPERTY_SIZE(1, 2);
-    case NETMSG_POD_PROPERTY(2, 2):
-        return NETMSG_POD_PROPERTY_SIZE(2, 2);
-    case NETMSG_POD_PROPERTY(4, 2):
-        return NETMSG_POD_PROPERTY_SIZE(4, 2);
-    case NETMSG_POD_PROPERTY(8, 2):
-        return NETMSG_POD_PROPERTY_SIZE(8, 2);
-
-    case NETMSG_UPDATE_FILE_DATA:
-    case NETMSG_LOGIN:
-    case NETMSG_LOGIN_SUCCESS:
-    case NETMSG_LOAD_MAP:
-    case NETMSG_REGISTER:
-    case NETMSG_UPDATE_FILES_LIST:
-    case NETMSG_ADD_CRITTER:
-    case NETMSG_SEND_COMMAND:
-    case NETMSG_SEND_TEXT:
-    case NETMSG_CRITTER_TEXT:
-    case NETMSG_MSG_LEX:
-    case NETMSG_MAP_TEXT:
-    case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_CHOSEN_ADD_ITEM:
-    case NETMSG_ADD_ITEM_ON_MAP:
-    case NETMSG_SOME_ITEMS:
-    case NETMSG_CRITTER_MOVE_ITEM:
-    case NETMSG_PLAY_SOUND:
-    case NETMSG_TALK_NPC:
-    case NETMSG_REMOTE_CALL:
-    case NETMSG_COMPLEX_PROPERTY:
-    case NETMSG_SEND_COMPLEX_PROPERTY:
-    case NETMSG_SEND_MOVE:
-    case NETMSG_CRITTER_MOVE:
-    case NETMSG_CRITTER_ATTACHMENTS:
-    case NETMSG_ADD_CUSTOM_ENTITY:
-    case NETMSG_CRITTER_ACTION:
-    case NETMSG_CRITTER_ANIMATE:
-        return static_cast<uint>(-1);
-    default:
-        break;
-    }
-
-    BreakIntoDebugger();
-    return 0;
-}
+#include "Log.h"
 
 NetBuffer::NetBuffer(size_t buf_len)
 {
@@ -271,7 +125,7 @@ void NetBuffer::GrowBuf(size_t len)
     _bufData.resize(new_len);
 }
 
-void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const
+void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept
 {
     STACK_TRACE_ENTRY();
 
@@ -346,25 +200,22 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
     }
 }
 
-void NetOutBuffer::StartMsg(uint msg)
+void NetOutBuffer::StartMsg(NetMessage msg)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_msgStarted);
 
     _msgStarted = true;
-    _startedMsg = msg;
     _startedBufPos = _bufEndPos;
 
-    Push(&msg, sizeof(msg));
+    Write(NETMSG_SIGNATURE);
 
-    const uint msg_len = GetMsgSize(msg);
-    RUNTIME_ASSERT(msg_len != 0);
+    // Will be overwrited in message finalization
+    constexpr uint msg_len = 0;
+    Write(msg_len);
 
-    if (msg_len == static_cast<uint>(-1)) {
-        // Will be overwrited in message finalization
-        Push(&msg_len, sizeof(msg_len));
-    }
+    Write(msg);
 }
 
 void NetOutBuffer::EndMsg()
@@ -376,23 +227,20 @@ void NetOutBuffer::EndMsg()
 
     _msgStarted = false;
 
-    const auto actual_msg_len = static_cast<uint>(_bufEndPos - _startedBufPos);
-    EncryptKey(-static_cast<int>(actual_msg_len));
+    // Move to message start position
+    const auto msg_len = static_cast<uint>(_bufEndPos - _startedBufPos);
+    EncryptKey(-static_cast<int>(msg_len));
 
-    uint msg = 0;
-    CopyBuf(_bufData.data() + _startedBufPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
-    RUNTIME_ASSERT(msg == _startedMsg);
+    // Verify signature
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _startedBufPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
+    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
 
-    uint intended_msg_len = GetMsgSize(msg);
-    RUNTIME_ASSERT(intended_msg_len != 0);
+    // Write actual message length
+    CopyBuf(&msg_len, _bufData.data() + _startedBufPos + sizeof(msg_signature), EncryptKey(0), sizeof(msg_len));
 
-    if (intended_msg_len == static_cast<uint>(-1)) {
-        intended_msg_len = actual_msg_len;
-        CopyBuf(&actual_msg_len, _bufData.data() + _startedBufPos + sizeof(uint), EncryptKey(0), sizeof(actual_msg_len));
-    }
-
-    EncryptKey(static_cast<int>(actual_msg_len - sizeof(msg)));
-    RUNTIME_ASSERT(actual_msg_len == intended_msg_len);
+    // Return to the end
+    EncryptKey(static_cast<int>(msg_len - sizeof(msg_signature)));
 }
 
 void NetInBuffer::ResetBuf() noexcept
@@ -404,17 +252,17 @@ void NetInBuffer::ResetBuf() noexcept
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(const void* buf, size_t len)
+void NetInBuffer::AddData(const_span<uint8> buf)
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0) {
+    if (buf.empty()) {
         return;
     }
 
-    GrowBuf(len);
-    CopyBuf(buf, _bufData.data() + _bufEndPos, 0, len);
-    _bufEndPos += len;
+    GrowBuf(buf.size());
+    CopyBuf(buf.data(), _bufData.data() + _bufEndPos, 0, buf.size());
+    _bufEndPos += buf.size();
 }
 
 void NetInBuffer::SetEndPos(size_t pos)
@@ -483,6 +331,31 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8>>& props_data)
     }
 }
 
+auto NetInBuffer::ReadMsg() -> NetMessage
+{
+    STACK_TRACE_ENTRY();
+
+    if (_bufReadPos + sizeof(uint) + sizeof(uint) + sizeof(NetMessage) > _bufEndPos) {
+        throw NetBufferException("Invalid msg read length", _bufReadPos, _bufEndPos);
+    }
+
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
+    _bufReadPos += sizeof(msg_signature);
+    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+
+    uint msg_len;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_len, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
+    _bufReadPos += sizeof(msg_len);
+    RUNTIME_ASSERT(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
+
+    NetMessage msg;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
+    _bufReadPos += sizeof(NetMessage);
+
+    return msg;
+}
+
 auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
@@ -504,61 +377,33 @@ auto NetInBuffer::NeedProcess() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    uint msg = 0;
-
-    if (_bufReadPos + sizeof(msg) > _bufEndPos) {
+    // Check signature
+    if (_bufReadPos + sizeof(uint) > _bufEndPos) {
         return false;
     }
 
-    CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(0), sizeof(msg));
+    uint msg_signature;
+    CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(0), sizeof(msg_signature));
 
-    uint msg_len = GetMsgSize(msg);
-
-    // Unknown message
-    if (msg_len == 0) {
+    if (msg_signature != NETMSG_SIGNATURE) {
         ResetBuf();
-        throw UnknownMessageException("Unknown message", msg);
+        throw UnknownMessageException("Invalid message signature", msg_signature);
     }
 
-    // Fixed size
-    if (msg_len != static_cast<uint>(-1)) {
-        return _bufReadPos + msg_len <= _bufEndPos;
-    }
-
-    // Variadic size
-    if (_bufReadPos + sizeof(msg) + sizeof(msg_len) > _bufEndPos) {
+    // Check length
+    if (_bufReadPos + sizeof(uint) + sizeof(uint) > _bufEndPos) {
         return false;
     }
 
-    EncryptKey(sizeof(msg));
-    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
-    EncryptKey(-static_cast<int>(sizeof(msg)));
+    uint msg_len;
+    EncryptKey(sizeof(msg_signature));
+    CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg_signature), &msg_len, EncryptKey(0), sizeof(msg_len));
+    EncryptKey(-static_cast<int>(sizeof(msg_signature)));
+
+    if (msg_len < sizeof(uint) + sizeof(uint) + sizeof(NetMessage)) {
+        ResetBuf();
+        throw UnknownMessageException("Invalid message length", msg_len);
+    }
 
     return _bufReadPos + msg_len <= _bufEndPos;
-}
-
-void NetInBuffer::SkipMsg(uint msg)
-{
-    STACK_TRACE_ENTRY();
-
-    _bufReadPos -= sizeof(msg);
-    EncryptKey(-static_cast<int>(sizeof(msg)));
-
-    uint msg_len = GetMsgSize(msg);
-
-    // Unknown message
-    if (msg_len == 0) {
-        ResetBuf();
-        return;
-    }
-
-    // Variadic size
-    if (msg_len == static_cast<uint>(-1)) {
-        EncryptKey(sizeof(msg));
-        CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(0), sizeof(msg_len));
-        EncryptKey(-static_cast<int>(sizeof(msg)));
-    }
-
-    _bufReadPos += msg_len;
-    EncryptKey(static_cast<int>(msg_len));
 }

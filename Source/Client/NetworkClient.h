@@ -31,68 +31,49 @@
 // SOFTWARE.
 //
 
-#pragma once
+// #pragma once
 
 #include "Common.h"
 
-#include "ClientConnection.h"
-#include "DiskFileSystem.h"
-#include "EffectManager.h"
-#include "FileSystem.h"
-#include "GenericUtils.h"
 #include "Settings.h"
-#include "SpriteManager.h"
 
-class Updater final
+DECLARE_EXCEPTION(NetworkClientException);
+
+class NetworkClientConnection
 {
 public:
-    Updater() = delete;
-    explicit Updater(GlobalSettings& settings, AppWindow* window);
-    Updater(const Updater&) = delete;
-    Updater(Updater&&) noexcept = delete;
-    auto operator=(const Updater&) = delete;
-    auto operator=(Updater&&) noexcept = delete;
-    ~Updater() = default;
+    explicit NetworkClientConnection(ClientNetworkSettings& settings);
+    NetworkClientConnection(const NetworkClientConnection&) = delete;
+    NetworkClientConnection(NetworkClientConnection&&) noexcept = delete;
+    auto operator=(const NetworkClientConnection&) = delete;
+    auto operator=(NetworkClientConnection&&) noexcept = delete;
+    virtual ~NetworkClientConnection();
 
-    [[nodiscard]] auto Process() -> bool;
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
+    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
+    [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
+    [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+
+    auto CheckStatus(bool for_write) -> bool;
+    auto SendData(const_span<uint8> buf) -> size_t;
+    auto ReceiveData() -> const_span<uint8>;
+    void Disconnect() noexcept;
+
+    [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
+
+protected:
+    virtual auto CheckStatusImpl(bool for_write) -> bool = 0;
+    virtual auto SendDataImpl(const_span<uint8> buf) -> size_t = 0;
+    virtual auto ReceiveDataImpl(vector<uint8>& buf) -> size_t = 0;
+    virtual void DisconnectImpl() noexcept = 0;
+
+    ClientNetworkSettings& _settings;
+    bool _isConnecting {};
+    bool _isConnected {};
 
 private:
-    struct UpdateFile
-    {
-        uint Index {};
-        string Name;
-        size_t Size {};
-        size_t RemaningSize {};
-        uint Hash {};
-    };
-
-    [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
-
-    void AddText(uint str_num, string_view num_str_str);
-    void Abort(uint str_num, string_view num_str_str);
-    void GetNextFile();
-
-    void Net_OnConnect(bool success);
-    void Net_OnDisconnect();
-    void Net_OnUpdateFilesResponse();
-    void Net_OnUpdateFileData();
-
-    ClientSettings& _settings;
-    ClientConnection _conn;
-    FileSystem _resources {};
-    GameTimer _gameTime;
-    EffectManager _effectMngr;
-    HashStorage _hashStorage {};
-    SpriteManager _sprMngr;
-    time_point _startTime {};
-    bool _aborted {};
-    vector<string> _messages {};
-    bool _fileListReceived {};
-    vector<UpdateFile> _filesToUpdate {};
-    uint _filesWholeSize {};
-    unique_ptr<DiskFile> _tempFile {};
-    vector<uint8> _updateFileBuf {};
-    shared_ptr<Sprite> _splashPic {};
-    vector<vector<uint8>> _globalsPropertiesData {};
-    size_t _bytesRealReceivedCheckpoint {};
+    size_t _bytesSend {};
+    size_t _bytesReceived {};
+    vector<uint8> _incomeBuf {};
 };
