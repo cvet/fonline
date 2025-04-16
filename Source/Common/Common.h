@@ -328,7 +328,6 @@ public:
     [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
-    FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr.reset(p); }
 
 private:
     T* _ptr;
