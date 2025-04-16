@@ -1727,23 +1727,23 @@ public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
     explicit DataWriter(vector<uint8>& buf) noexcept :
-        _dataBuf {buf}
+        _dataBuf {&buf}
     {
-        _dataBuf.reserve(BUF_RESERVE_SIZE);
+        _dataBuf->reserve(BUF_RESERVE_SIZE);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     void Write(std::enable_if_t<true, T> data) noexcept
     {
         ResizeBuf(sizeof(T));
-        *reinterpret_cast<T*>(_dataBuf.data() + _dataBuf.size() - sizeof(T)) = data;
+        *reinterpret_cast<T*>(_dataBuf->data() + _dataBuf->size() - sizeof(T)) = data;
     }
 
     template<typename T>
     void WritePtr(const T* data) noexcept
     {
         ResizeBuf(sizeof(T));
-        MemCopy(_dataBuf.data() + _dataBuf.size() - sizeof(T), data, sizeof(T));
+        MemCopy(_dataBuf->data() + _dataBuf->size() - sizeof(T), data, sizeof(T));
     }
 
     template<typename T>
@@ -1751,21 +1751,21 @@ public:
     {
         if (size != 0) {
             ResizeBuf(size);
-            MemCopy(_dataBuf.data() + _dataBuf.size() - size, data, size);
+            MemCopy(_dataBuf->data() + _dataBuf->size() - size, data, size);
         }
     }
 
 private:
     void ResizeBuf(size_t size) noexcept
     {
-        while (size > _dataBuf.capacity() - _dataBuf.size()) {
-            _dataBuf.reserve(_dataBuf.capacity() * 2);
+        while (size > _dataBuf->capacity() - _dataBuf->size()) {
+            _dataBuf->reserve(_dataBuf->capacity() * 2);
         }
 
-        _dataBuf.resize(_dataBuf.size() + size);
+        _dataBuf->resize(_dataBuf->size() + size);
     }
 
-    vector<uint8>& _dataBuf;
+    raw_ptr<vector<uint8>> _dataBuf;
 };
 
 // Flex rect

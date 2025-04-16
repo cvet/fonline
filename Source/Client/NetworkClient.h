@@ -39,7 +39,7 @@
 
 DECLARE_EXCEPTION(NetworkClientException);
 
-class NetworkClientConnection : std::enable_shared_from_this<NetworkClientConnection>
+class NetworkClientConnection
 {
 public:
     explicit NetworkClientConnection(ClientNetworkSettings& settings);
@@ -59,8 +59,8 @@ public:
     auto ReceiveData() -> const_span<uint8>;
     void Disconnect() noexcept;
 
-    [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>;
-    [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
 
 protected:
     virtual auto CheckStatusImpl(bool for_write) -> bool = 0;

@@ -44,11 +44,6 @@
 
 DECLARE_EXCEPTION(ClientConnectionException);
 
-// Proxy types
-constexpr auto PROXY_SOCKS4 = 1;
-constexpr auto PROXY_SOCKS5 = 2;
-constexpr auto PROXY_HTTP = 3;
-
 class ClientConnection final
 {
 public:
@@ -89,7 +84,7 @@ private:
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;
-    shared_ptr<NetworkClientConnection> _netConnection {};
+    unique_ptr<NetworkClientConnection> _netConnection {};
     bool _connectingHandled {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};

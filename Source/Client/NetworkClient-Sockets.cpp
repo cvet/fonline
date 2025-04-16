@@ -34,6 +34,7 @@
 #include "NetworkClient.h"
 
 #include "Log.h"
+#include "Timer.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
@@ -53,6 +54,11 @@
 #define SD_SEND SHUT_WR
 #define SD_BOTH SHUT_RDWR
 #endif
+
+// Proxy types
+constexpr auto PROXY_SOCKS4 = 1;
+constexpr auto PROXY_SOCKS5 = 2;
+constexpr auto PROXY_HTTP = 3;
 
 class NetworkClientConnection_Sockets final : public NetworkClientConnection
 {
@@ -80,11 +86,11 @@ private:
     fd_set _netSockSet {};
 };
 
-auto NetworkClientConnection::CreateSocketsConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
 {
     STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeShared<NetworkClientConnection_Sockets>(settings);
+    return SafeAlloc::MakeUnique<NetworkClientConnection_Sockets>(settings);
 }
 
 NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSettings& settings) :
@@ -178,156 +184,152 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     else {
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
         // Proxy connect
-        /*if (::connect(_netSock, reinterpret_cast<sockaddr*>(&_proxyAddr), sizeof(sockaddr_in)) != 0) {
-                throw NetworkClientException("Can't connect to proxy server", GetLastSocketError());
+        if (::connect(_netSock, reinterpret_cast<sockaddr*>(&_proxyAddr), sizeof(sockaddr_in)) != 0) {
+            throw NetworkClientException("Can't connect to proxy server", GetLastSocketError());
+        }
+
+        auto send_recv = [this](const_span<uint8> buf) -> vector<uint8> {
+            if (!SendData(buf)) {
+                throw NetworkClientException("Net output error");
             }
 
-            auto send_recv = [this]() {
-                if (!DispatchData()) {
-                    throw NetworkClientException("Net output error");
+            const auto time = Timer::CurTime();
+
+            while (true) {
+                if (CheckStatus(false)) {
+                    const auto result_buf = ReceiveData();
+                    return vector<uint8>(result_buf.begin(), result_buf.end());
                 }
 
-                const auto time = Timer::CurTime();
-
-                while (true) {
-                    if (ReceiveData(false)) {
-                        break;
-                    }
-
-                    if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
-                        throw NetworkClientException("Proxy answer timeout");
-                    }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
+                    throw NetworkClientException("Proxy answer timeout");
                 }
-            };
 
-            uint8 b1 = 0;
-            uint8 b2 = 0;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        };
 
-            UNUSED_VARIABLE(b1);
+        vector<uint8> send_buf;
+        vector<uint8> recv_buf;
+        uint8 b1 = 0;
+        uint8 b2 = 0;
+        UNUSED_VARIABLE(b1);
 
-            _netIn.ResetBuf();
-            _netOut.ResetBuf();
+        // Authentication
+        if (_settings.ProxyType == PROXY_SOCKS4) {
+            // Connect
+            auto writer = DataWriter(send_buf);
+            writer.Write<uint8>(numeric_cast<uint8>(4)); // Socks version
+            writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
+            writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
+            writer.Write<uint>(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint8>(numeric_cast<uint8>(0));
 
-            // Authentication
-            if (_settings.ProxyType == PROXY_SOCKS4) {
-                // Connect
-                _netOut.Write(numeric_cast<uint8>(4)); // Socks version
-                _netOut.Write(numeric_cast<uint8>(1)); // Connect command
-                _netOut.Write(numeric_cast<uint16>(_sockAddr.sin_port));
-                _netOut.Write(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
-                _netOut.Write(numeric_cast<uint8>(0));
+            recv_buf = send_recv(send_buf);
 
-                send_recv();
+            auto reader = DataReader(recv_buf);
+            b1 = reader.Read<uint8>(); // Null byte
+            b2 = reader.Read<uint8>(); // Answer code
 
-                b1 = _netIn.Read<uint8>(); // Null byte
-                b2 = _netIn.Read<uint8>(); // Answer code
-
-                if (b2 != 0x5A) {
-                    switch (b2) {
-                    case 0x5B:
-                        throw NetworkClientException("Proxy connection error, request rejected or failed");
-                    case 0x5C:
-                        throw NetworkClientException("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
-                    case 0x5D:
-                        throw NetworkClientException("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
-                    default:
-                        throw NetworkClientException("Proxy connection error, unknown error", b2);
-                    }
+            if (b2 != 0x5A) {
+                switch (b2) {
+                case 0x5B:
+                    throw NetworkClientException("Proxy connection error, request rejected or failed");
+                case 0x5C:
+                    throw NetworkClientException("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
+                case 0x5D:
+                    throw NetworkClientException("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
+                default:
+                    throw NetworkClientException("Proxy connection error, unknown error", b2);
                 }
             }
-            else if (_settings.ProxyType == PROXY_SOCKS5) {
-                _netOut.Write(numeric_cast<uint8>(5)); // Socks version
-                _netOut.Write(numeric_cast<uint8>(1)); // Count methods
-                _netOut.Write(numeric_cast<uint8>(2)); // Method
+        }
+        else if (_settings.ProxyType == PROXY_SOCKS5) {
+            auto writer = DataWriter(send_buf);
+            writer.Write<uint8>(numeric_cast<uint8>(5)); // Socks version
+            writer.Write<uint8>(numeric_cast<uint8>(1)); // Count methods
+            writer.Write<uint8>(numeric_cast<uint8>(2)); // Method
 
-                send_recv();
+            recv_buf = send_recv(send_buf);
 
-                b1 = _netIn.Read<uint8>(); // Socks version
-                b2 = _netIn.Read<uint8>(); // Method
+            auto reader = DataReader(recv_buf);
+            b1 = reader.Read<uint8>(); // Socks version
+            b2 = reader.Read<uint8>(); // Method
 
-                if (b2 == 2) { // User/Password
-                    _netOut.Write(numeric_cast<uint8>(1)); // Subnegotiation version
-                    _netOut.Write(numeric_cast<uint8>(_settings.ProxyUser.length())); // Name length
-                    _netOut.Push(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
-                    _netOut.Write(numeric_cast<uint8>(_settings.ProxyPass.length())); // Pass length
-                    _netOut.Push(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
+            if (b2 == 2) { // User/Password
+                send_buf.clear();
+                writer = DataWriter(send_buf);
+                writer.Write<uint8>(numeric_cast<uint8>(1)); // Subnegotiation version
+                writer.Write<uint8>(numeric_cast<uint8>(_settings.ProxyUser.length())); // Name length
+                writer.WritePtr(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
+                writer.Write<uint8>(numeric_cast<uint8>(_settings.ProxyPass.length())); // Pass length
+                writer.WritePtr(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
 
-                    send_recv();
+                recv_buf = send_recv(send_buf);
 
-                    b1 = _netIn.Read<uint8>(); // Subnegotiation version
-                    b2 = _netIn.Read<uint8>(); // Status
-                    if (b2 != 0) {
-                        throw NetworkClientException("Invalid proxy user or password");
-                    }
-                }
-                else if (b2 != 0) { // Other authorization
-                    throw NetworkClientException("Socks server connect fail");
-                }
-
-                // Connect
-                _netOut.Write(numeric_cast<uint8>(5)); // Socks version
-                _netOut.Write(numeric_cast<uint8>(1)); // Connect command
-                _netOut.Write(numeric_cast<uint8>(0)); // Reserved
-                _netOut.Write(numeric_cast<uint8>(1)); // IP v4 address
-                _netOut.Write(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
-                _netOut.Write(numeric_cast<uint16>(_sockAddr.sin_port));
-
-                send_recv();
-
-                b1 = _netIn.Read<uint8>(); // Socks version
-                b2 = _netIn.Read<uint8>(); // Answer code
+                reader = DataReader(recv_buf);
+                b1 = reader.Read<uint8>(); // Subnegotiation version
+                b2 = reader.Read<uint8>(); // Status
 
                 if (b2 != 0) {
-                    switch (b2) {
-                    case 1:
-                        throw NetworkClientException("Proxy connection error, SOCKS-server error");
-                    case 2:
-                        throw NetworkClientException("Proxy connection error, connections fail by proxy rules");
-                    case 3:
-                        throw NetworkClientException("Proxy connection error, network is not aviable");
-                    case 4:
-                        throw NetworkClientException("Proxy connection error, host is not aviable");
-                    case 5:
-                        throw NetworkClientException("Proxy connection error, connection denied");
-                    case 6:
-                        throw NetworkClientException("Proxy connection error, TTL expired");
-                    case 7:
-                        throw NetworkClientException("Proxy connection error, command not supported");
-                    case 8:
-                        throw NetworkClientException("Proxy connection error, address type not supported");
-                    default:
-                        throw NetworkClientException("Proxy connection error, unknown error", b2);
-                    }
+                    throw NetworkClientException("Invalid proxy user or password");
                 }
             }
-            else if (_settings.ProxyType == PROXY_HTTP) {
-                string buf;
-
-                {
-                    static std::mutex inet_ntoa_locker;
-                    auto locker = std::scoped_lock {inet_ntoa_locker};
-
-                    buf = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_sockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
-                }
-
-                _netOut.Push(buf.c_str(), buf.length());
-
-                send_recv();
-
-                buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
-
-                if (buf.find(" 200 ") == string::npos) {
-                    throw NetworkClientException("Proxy connection error", buf);
-                }
-            }
-            else {
-                throw NetworkClientException("Unknown proxy type", _settings.ProxyType);
+            else if (b2 != 0) { // Other authorization
+                throw NetworkClientException("Socks server connect fail");
             }
 
-            _netIn.ResetBuf();
-            _netOut.ResetBuf();*/
+            // Connect
+            send_buf.clear();
+            writer = DataWriter(send_buf);
+            writer.Write<uint8>(numeric_cast<uint8>(5)); // Socks version
+            writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
+            writer.Write<uint8>(numeric_cast<uint8>(0)); // Reserved
+            writer.Write<uint8>(numeric_cast<uint8>(1)); // IP v4 address
+            writer.Write<uint>(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
+
+            recv_buf = send_recv(send_buf);
+
+            reader = DataReader(recv_buf);
+            b1 = reader.Read<uint8>(); // Socks version
+            b2 = reader.Read<uint8>(); // Answer code
+
+            if (b2 != 0) {
+                switch (b2) {
+                case 1:
+                    throw NetworkClientException("Proxy connection error, SOCKS-server error");
+                case 2:
+                    throw NetworkClientException("Proxy connection error, connections fail by proxy rules");
+                case 3:
+                    throw NetworkClientException("Proxy connection error, network is not aviable");
+                case 4:
+                    throw NetworkClientException("Proxy connection error, host is not aviable");
+                case 5:
+                    throw NetworkClientException("Proxy connection error, connection denied");
+                case 6:
+                    throw NetworkClientException("Proxy connection error, TTL expired");
+                case 7:
+                    throw NetworkClientException("Proxy connection error, command not supported");
+                case 8:
+                    throw NetworkClientException("Proxy connection error, address type not supported");
+                default:
+                    throw NetworkClientException("Proxy connection error, unknown error", b2);
+                }
+            }
+        }
+        else if (_settings.ProxyType == PROXY_HTTP) {
+            const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_sockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
+            const auto result = send_recv({reinterpret_cast<const uint8*>(request.data()), request.length()});
+            const auto result_str = string(reinterpret_cast<const char*>(result.data()), result.size());
+
+            if (result_str.find(" 200 ") == string::npos) {
+                throw NetworkClientException("Proxy connection error", request);
+            }
+        }
+        else {
+            throw NetworkClientException("Unknown proxy type", _settings.ProxyType);
+        }
 
 #else
         throw NetworkClientException("Proxy connection is not supported on this platform");

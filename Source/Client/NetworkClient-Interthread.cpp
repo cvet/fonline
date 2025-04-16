@@ -57,11 +57,11 @@ private:
     std::atomic_bool _interthreadRequestDisconnect {};
 };
 
-auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> shared_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
 {
     STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeShared<NetworkClientConnection_Interthread>(settings);
+    return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
 }
 
 NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientNetworkSettings& settings) :

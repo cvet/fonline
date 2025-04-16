@@ -42,9 +42,7 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr size_t STRING_LEN_SIZE = sizeof(uint16);
-    static constexpr size_t ARRAY_LEN_SIZE = sizeof(uint16);
-    static constexpr uint NETMSG_SIGNATURE = 0xF0FAF0FA;
+    static constexpr uint NETMSG_SIGNATURE = 0x011E9422;
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -101,8 +99,7 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
     void Write(T value)
     {
-        RUNTIME_ASSERT(value.length() <= std::numeric_limits<uint16>::max());
-        const auto len = static_cast<uint16>(value.length());
+        const auto len = numeric_cast<uint>(value.length());
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -158,7 +155,7 @@ public:
     [[nodiscard]] auto Read() -> string
     {
         string result;
-        uint16 len = 0;
+        uint len = 0;
         Pop(&len, sizeof(len));
         result.resize(len);
         Pop(result.data(), len);
