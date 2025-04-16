@@ -220,8 +220,124 @@ using std::variant;
 
 // Smart pointers
 template<typename T>
+class raw_ptr
+{
+    static_assert(std::is_class_v<T>);
+
+    template<typename U>
+    friend class raw_ptr;
+
+public:
+    FORCE_INLINE constexpr raw_ptr() noexcept :
+        _ptr(nullptr)
+    {
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(nullptr_t) noexcept :
+        _ptr(nullptr)
+    {
+    }
+    FORCE_INLINE auto operator=(nullptr_t) noexcept -> raw_ptr&
+    {
+        _ptr = nullptr;
+        return *this;
+    }
+    FORCE_INLINE explicit constexpr raw_ptr(T* p) noexcept :
+        _ptr(p)
+    {
+    }
+    FORCE_INLINE auto operator=(T* p) noexcept -> raw_ptr&
+    {
+        _ptr = p;
+        return *this;
+    }
+
+    FORCE_INLINE raw_ptr(raw_ptr&& p) noexcept
+    {
+        _ptr = p._ptr;
+        p._ptr = nullptr;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(raw_ptr<U>&& p) noexcept
+    {
+        _ptr = p._ptr;
+        p._ptr = nullptr;
+    }
+    FORCE_INLINE auto operator=(raw_ptr&& p) noexcept -> raw_ptr&
+    {
+        _ptr = std::move(p._ptr);
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(raw_ptr<U>&& p) noexcept -> raw_ptr&
+    {
+        _ptr = std::move(p._ptr);
+        return *this;
+    }
+
+#if 0 // Copy constructible/assignable
+    FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept :
+        _ptr(p._ptr)
+    {
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept :
+        _ptr(p._ptr)
+    {
+    }
+    FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr&
+    {
+        _ptr = p._ptr;
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr&
+    {
+        _ptr = p._ptr;
+        return *this;
+    }
+#else
+    FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept = delete;
+    FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& = delete;
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr& = delete;
+#endif
+
+#if 0 // Implicit conversion to pointer
+    // ReSharper disable once CppNonExplicitConversionOperator
+    FORCE_INLINE operator T*() noexcept { return _ptr; }
+    // ReSharper disable once CppNonExplicitConversionOperator
+    FORCE_INLINE operator const T*() const noexcept { return _ptr; }
+#endif
+
+    FORCE_INLINE ~raw_ptr() noexcept = default;
+
+    [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const raw_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const raw_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+
+private:
+    T* _ptr;
+};
+
+template<typename T>
 class propagate_const
 {
+    static_assert(std::is_class_v<T>);
+
     template<typename U>
     friend class propagate_const;
 
@@ -1391,6 +1507,22 @@ private:
     T _callback;
 };
 
+// Stack unwind detector
+class StackUnwindDetector
+{
+public:
+    StackUnwindDetector() = default;
+    StackUnwindDetector(const StackUnwindDetector&) = delete;
+    StackUnwindDetector(StackUnwindDetector&&) noexcept = default;
+    auto operator=(const StackUnwindDetector&) = delete;
+    auto operator=(StackUnwindDetector&&) noexcept = delete;
+    ~StackUnwindDetector() = default;
+    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+
+private:
+    int _initCount {std::uncaught_exceptions()};
+};
+
 // Float safe comparator
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 [[nodiscard]] constexpr auto float_abs(T f) noexcept -> T
@@ -1594,23 +1726,23 @@ public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
     explicit DataWriter(vector<uint8>& buf) noexcept :
-        _dataBuf {buf}
+        _dataBuf {&buf}
     {
-        _dataBuf.reserve(BUF_RESERVE_SIZE);
+        _dataBuf->reserve(BUF_RESERVE_SIZE);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     void Write(std::enable_if_t<true, T> data) noexcept
     {
         ResizeBuf(sizeof(T));
-        *reinterpret_cast<T*>(_dataBuf.data() + _dataBuf.size() - sizeof(T)) = data;
+        *reinterpret_cast<T*>(_dataBuf->data() + _dataBuf->size() - sizeof(T)) = data;
     }
 
     template<typename T>
     void WritePtr(const T* data) noexcept
     {
         ResizeBuf(sizeof(T));
-        MemCopy(_dataBuf.data() + _dataBuf.size() - sizeof(T), data, sizeof(T));
+        MemCopy(_dataBuf->data() + _dataBuf->size() - sizeof(T), data, sizeof(T));
     }
 
     template<typename T>
@@ -1618,21 +1750,21 @@ public:
     {
         if (size != 0) {
             ResizeBuf(size);
-            MemCopy(_dataBuf.data() + _dataBuf.size() - size, data, size);
+            MemCopy(_dataBuf->data() + _dataBuf->size() - size, data, size);
         }
     }
 
 private:
     void ResizeBuf(size_t size) noexcept
     {
-        while (size > _dataBuf.capacity() - _dataBuf.size()) {
-            _dataBuf.reserve(_dataBuf.capacity() * 2);
+        while (size > _dataBuf->capacity() - _dataBuf->size()) {
+            _dataBuf->reserve(_dataBuf->capacity() * 2);
         }
 
-        _dataBuf.resize(_dataBuf.size() + size);
+        _dataBuf->resize(_dataBuf->size() + size);
     }
 
-    vector<uint8>& _dataBuf;
+    raw_ptr<vector<uint8>> _dataBuf;
 };
 
 // Flex rect
@@ -2172,6 +2304,7 @@ static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+static constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 // Float constants
 constexpr auto PI_FLOAT = 3.14159265f;
@@ -2358,6 +2491,66 @@ static constexpr auto CMD_LOG = 37;
 #define STR_NET_BAN_REASON (1047)
 #define STR_NET_LOGIN_SCRIPT_FAIL (1048)
 #define STR_NET_PERMANENT_DEATH (1049)
+
+// Network messages
+enum class NetMessage : uint8
+{
+    Handshake = 1,
+    Disconnect = 2,
+    Login = 3,
+    LoginSuccess = 4,
+    WrongNetProto = 5,
+    Register = 6,
+    RegisterSuccess = 7,
+    Ping = 8,
+    PlaceToGameComplete = 9,
+    UpdateFilesList = 10,
+    GetUpdateFile = 11,
+    GetUpdateFileData = 12,
+    UpdateFileData = 13,
+    AddCritter = 15,
+    RemoveCritter = 16,
+    SendCommand = 21,
+    SendText = 31,
+    Text = 32,
+    TextMsg = 33,
+    TextMsgLex = 34,
+    MapText = 35,
+    MapTextMsg = 36,
+    MapTextMsgLex = 37,
+    SendCritterDir = 41,
+    CritterDir = 42,
+    SendCritterMove = 45,
+    SendStopCritterMove = 46,
+    CritterMove = 47,
+    CritterMoveSpeed = 48,
+    CritterPos = 49,
+    CritterAttachments = 50,
+    CritterTeleport = 52,
+    ChosenAddItem = 65,
+    ChosenRemoveItem = 66,
+    AddItemOnMap = 71,
+    RemoveItemFromMap = 74,
+    AnimateItem = 75,
+    SomeItems = 83,
+    CritterAction = 91,
+    CritterMoveItem = 93,
+    CritterAnimate = 95,
+    CritterSetAnims = 96,
+    Effect = 100,
+    FlyEffect = 101,
+    PlaySound = 102,
+    SendTalkNpc = 103,
+    TalkNpc = 105,
+    TimeSync = 107,
+    LoadMap = 109,
+    RemoteCall = 111,
+    ViewMap = 115,
+    AddCustomEntity = 116,
+    RemoveCustomEntity = 117,
+    Property = 120,
+    SendProperty = 121,
+};
 
 // Foreach helper
 template<typename T>

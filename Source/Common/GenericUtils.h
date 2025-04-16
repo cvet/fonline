@@ -62,8 +62,9 @@ class Compressor final
 public:
     Compressor() = delete;
 
+    [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
     [[nodiscard]] static auto Compress(const_span<uint8> data) -> vector<uint8>;
-    [[nodiscard]] static auto Uncompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>;
+    [[nodiscard]] static auto Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>;
 };
 
 class GenericUtils final
@@ -93,4 +94,40 @@ public:
 
     static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool;
     static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool;
+};
+
+class StreamCompressor final
+{
+public:
+    StreamCompressor() noexcept;
+    StreamCompressor(const StreamCompressor&) = delete;
+    StreamCompressor(StreamCompressor&&) noexcept;
+    auto operator=(const StreamCompressor&) = delete;
+    auto operator=(StreamCompressor&&) noexcept -> StreamCompressor&;
+    ~StreamCompressor();
+
+    void Compress(const_span<uint8> buf, vector<uint8>& result);
+    void Reset() noexcept;
+
+private:
+    struct Impl;
+    unique_ptr<Impl> _impl;
+};
+
+class StreamDecompressor final
+{
+public:
+    StreamDecompressor() noexcept;
+    StreamDecompressor(const StreamDecompressor&) = delete;
+    StreamDecompressor(StreamDecompressor&&) noexcept;
+    auto operator=(const StreamDecompressor&) = delete;
+    auto operator=(StreamDecompressor&&) noexcept -> StreamDecompressor&;
+    ~StreamDecompressor();
+
+    void Decompress(const_span<uint8> buf, vector<uint8>& result);
+    void Reset() noexcept;
+
+private:
+    struct Impl;
+    unique_ptr<Impl> _impl;
 };

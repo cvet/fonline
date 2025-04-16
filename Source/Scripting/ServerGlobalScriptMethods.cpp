@@ -35,7 +35,7 @@
 
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "Networking.h"
+#include "NetworkServer.h"
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
@@ -721,8 +721,8 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
     }
 
     // Load from db
-    auto dummy_net_conn = SafeAlloc::MakeShared<DummyNetConnection>(server->Settings);
-    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ClientConnection>(dummy_net_conn));
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
     player->SetName(name);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {

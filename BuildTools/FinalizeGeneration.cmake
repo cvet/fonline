@@ -18,7 +18,7 @@ endif()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
-if(NOT FO_DISBALE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
+if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     StatusMessage("+ Rpmalloc")
     set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     set(FO_RPMALLOC_SOURCE
@@ -280,18 +280,22 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Asio & Websockets
-if(NOT FO_DISBALE_ASIO AND NOT FO_ANDROID AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
     StatusMessage("+ Asio")
     set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     include_directories("${FO_ASIO_DIR}/include")
 
-    StatusMessage("+ Websockets")
-    set(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
-    include_directories("${FO_WEBSOCKETS_DIR}")
+    if (NOT FO_DISABLE_WEB_SOCKETS)
+        StatusMessage("+ Websockets")
+        set(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
+        include_directories("${FO_WEBSOCKETS_DIR}")
+        add_compile_definitions(FO_HAVE_WEB_SOCKETS=1)
+    endif()
 
     add_compile_definitions(FO_HAVE_ASIO=1)
 else()
     add_compile_definitions(FO_HAVE_ASIO=0)
+    add_compile_definitions(FO_HAVE_WEB_SOCKETS=0)
 endif()
 
 # MongoDB & Bson
@@ -311,7 +315,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(ENABLE_CLIENT_SIDE_ENCRYPTION OFF CACHE STRING "Forced by FOnline" FORCE)
     set(USE_BUNDLED_UTF8PROC ON CACHE BOOL "Forced by FOnline" FORCE)
 
-    if(NOT FO_DISBALE_MONGO AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+    if(NOT FO_DISABLE_MONGO AND (FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
         StatusMessage("+ MongoDB")
         set(ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE)
         add_compile_definitions(FO_HAVE_MONGO=1)
@@ -340,7 +344,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Unqlite
-if(NOT FO_DISBALE_UNQLITE AND NOT FO_WEB)
+if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
     StatusMessage("+ Unqlite")
     set(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
     add_subdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
@@ -667,7 +671,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/NetBuffer.h"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.h"
-    "${FO_ENGINE_ROOT}/Source/Common/NetProtocol-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Platform.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"
@@ -703,8 +706,6 @@ list(APPEND FO_COMMON_SOURCE
 list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/AdminPanel.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/AdminPanel.h"
-    "${FO_ENGINE_ROOT}/Source/Server/ClientConnection.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/ClientConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/CritterManager.cpp"
@@ -723,12 +724,17 @@ list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Map.h"
     "${FO_ENGINE_ROOT}/Source/Server/MapManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/MapManager.h"
-    "${FO_ENGINE_ROOT}/Source/Server/Networking.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/Networking.h"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-Asio.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-Interthread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer-WebSockets.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
@@ -746,6 +752,8 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/3dStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientConnection.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientConnection.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ClientEntity.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.cpp"
@@ -772,6 +780,10 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"
     "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.h"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Interthread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Sockets.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.h"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ParticleSprites.h"
     "${FO_ENGINE_ROOT}/Source/Client/PlayerView.cpp"
@@ -780,8 +792,6 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/RenderTarget.h"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.h"
-    "${FO_ENGINE_ROOT}/Source/Client/ServerConnection.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Client/SoundManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SoundManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.cpp"

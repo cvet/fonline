@@ -90,9 +90,3 @@ FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, ui
 {
     self->Send_TextMsgLex(nullptr, SAY_NETMSG, textPack, numStr, lexems);
 }
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Player_IsWebConnected(Player* self)
-{
-    return self->Connection->IsWebConnection();
-}

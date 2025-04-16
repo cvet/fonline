@@ -92,7 +92,6 @@ FIXED_SETTING(uint, UpdateFileSendSize, 1000000);
 FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);
-FIXED_SETTING(uint, FloodSize, 2048);
 FIXED_SETTING(uint, ArtificalLags, 0);
 SETTING_GROUP_END();
 

@@ -31,13 +31,10 @@
 // SOFTWARE.
 //
 
-// Todo: improve ban system
-
 #pragma once
 
 #include "Common.h"
 
-#include "ClientConnection.h"
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
@@ -51,14 +48,14 @@
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
+#include "NetworkServer.h"
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
+#include "ServerConnection.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ServerInitException);
-
-class NetServerBase;
 
 class FOServer final : public FOEngineBase
 {
@@ -227,16 +224,16 @@ private:
 
     void SyncPoint();
 
-    void OnNewConnection(shared_ptr<NetConnection> net_connection);
+    void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
 
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
-    void ProcessConnection(ClientConnection* connection);
+    void ProcessConnection(ServerConnection* connection);
 
-    void Process_Handshake(ClientConnection* connection);
-    void Process_Ping(ClientConnection* connection);
-    void Process_UpdateFile(ClientConnection* connection);
-    void Process_UpdateFileData(ClientConnection* connection);
+    void Process_Handshake(ServerConnection* connection);
+    void Process_Ping(ServerConnection* connection);
+    void Process_UpdateFile(ServerConnection* connection);
+    void Process_UpdateFileData(ServerConnection* connection);
     void Process_Register(Player* unlogined_player);
     void Process_Login(Player* unlogined_player);
     void Process_Move(Player* player);
@@ -246,7 +243,7 @@ private:
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
-    void Process_Property(Player* player, uint data_size);
+    void Process_Property(Player* player);
     void Process_RemoteCall(Player* player);
 
     void OnSaveEntityValue(Entity* entity, const Property* prop);
@@ -302,8 +299,8 @@ private:
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
-    vector<unique_ptr<NetServerBase>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<unique_ptr<ClientConnection>> _newConnections {};
+    vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<shared_ptr<NetworkServerConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
     vector<Player*> _unloginedPlayers {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
