@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "EntityProtos.h"
 
 class FOServer;
 
