@@ -55,15 +55,15 @@ public:
     [[nodiscard]] auto CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t;
 
     void InitPersistentTimeEvents(Entity* entity);
-    auto StartTimeEvent(Entity* entity, bool persistent, hstring func_name, tick_t delay, tick_t repeat, vector<any_t> data) -> uint;
-    void ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<tick_t> repeat, optional<vector<any_t>> data);
+    auto StartTimeEvent(Entity* entity, bool persistent, hstring func_name, time_duration_t delay, time_duration_t repeat, vector<any_t> data) -> uint;
+    void ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<time_duration_t> repeat, optional<vector<any_t>> data);
     void StopTimeEvent(Entity* entity, hstring func_name, uint id);
     void ProcessTimeEvents();
 
 private:
     void AddEntityTimeEventPolling(Entity* entity);
     void RemoveEntityTimeEventPolling(Entity* entity);
-    void ProcessEntityTimeEvents(Entity* entity, tick_t time);
+    void ProcessEntityTimeEvents(Entity* entity, server_time_t time);
     void FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te);
 
     FOEngineBase* _engine;

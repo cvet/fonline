@@ -74,7 +74,7 @@ private:
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
-    void Net_OnUpdateFilesResponse();
+    void Net_OnHandshakeAnswer();
     void Net_OnUpdateFileData();
 
     ClientSettings& _settings;
@@ -84,7 +84,7 @@ private:
     EffectManager _effectMngr;
     HashStorage _hashStorage {};
     SpriteManager _sprMngr;
-    time_point _startTime {};
+    time_point_t _startTime {};
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};

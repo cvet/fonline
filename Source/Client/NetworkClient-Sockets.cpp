@@ -34,7 +34,6 @@
 #include "NetworkClient.h"
 
 #include "Log.h"
-#include "Timer.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
@@ -193,7 +192,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                 throw NetworkClientException("Net output error");
             }
 
-            const auto time = Timer::CurTime();
+            const auto time = time_point_t::now();
 
             while (true) {
                 if (CheckStatus(false)) {
@@ -201,7 +200,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                     return vector<uint8>(result_buf.begin(), result_buf.end());
                 }
 
-                if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
+                if (time_point_t::now() - time >= std::chrono::milliseconds {10000}) {
                     throw NetworkClientException("Proxy answer timeout");
                 }
 

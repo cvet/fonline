@@ -812,7 +812,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
         }
         else {
-            _endTime = time_point {};
+            _endTime = time_point_t::zero;
         }
 
         // Force redraw
@@ -1075,14 +1075,14 @@ auto ModelInstance::GetSpeed() const -> float
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto ModelInstance::GetTime() const -> time_point
+auto ModelInstance::GetTime() const -> time_point_t
 {
     STACK_TRACE_ENTRY();
 
     if (_useGameplayTimer) {
-        return _modelMngr._gameTime.GameplayTime();
+        return _modelMngr._gameTime.GetFrameTime();
     }
-    return _modelMngr._gameTime.FrameTime();
+    return _modelMngr._gameTime.GetFrameTime();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -1832,7 +1832,7 @@ void ModelInstance::Draw()
     STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * time_duration_to_ms<float>(time - _lastDrawTime);
+    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float>();
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -2102,7 +2102,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
     return ipos {x, y};
 }
 
-auto ModelInstance::GetAnimDuration() const -> time_duration
+auto ModelInstance::GetAnimDuration() const -> time_duration_t
 {
     STACK_TRACE_ENTRY();
 

@@ -238,6 +238,7 @@ public:
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
+#define SCRIPT_METHOD_PR(type, name, params, ret) WRAP_MFN_PR(type, name, params, ret)
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
 #else
 #define SCRIPT_GENERIC(name) asFUNCTION(name)
@@ -247,6 +248,7 @@ public:
 #define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD(type, name) asMETHOD(type, name)
+#define SCRIPT_METHOD_PR(type, name, params, ret) asMETHODPR(type, name, params, ret)
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
 #endif
 
@@ -303,7 +305,7 @@ struct ASContextExtendedData
     unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
     std::string Info {};
     asIScriptContext* Parent {};
-    time_point SuspendEndTime {};
+    time_point_t SuspendEndTime {};
     Entity* ValidCheck {};
 #if FO_TRACY
     vector<TracyCZoneCtx> TracyExecutionCalls {};
@@ -504,7 +506,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
         vector<asIScriptContext*> resume_contexts;
         vector<asIScriptContext*> finish_contexts;
-        const auto time = GameEngine->GameTime.FrameTime();
+        const auto time = GameEngine->GameTime.GetFrameTime();
 
         for (auto* ctx : BusyContexts) {
             const auto& ctx_ext = GET_CONTEXT_EXT(ctx);
@@ -867,11 +869,17 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     if (type_name == "any") {
         return strex("{}", *static_cast<const any_t*>(ptr));
     }
-    if (type_name == IDENT_T_NAME) {
+    if (type_name == IDENT_NAME) {
         return strex("{}", *static_cast<const ident_t*>(ptr));
     }
-    if (type_name == TICK_T_NAME) {
-        return strex("{}", *static_cast<const tick_t*>(ptr));
+    if (type_name == TIME_DURATION_NAME) {
+        return strex("{}", *static_cast<const time_duration_t*>(ptr));
+    }
+    if (type_name == TIME_POINT_NAME) {
+        return strex("{}", *static_cast<const time_point_t*>(ptr));
+    }
+    if (type_name == SERVER_TIME_NAME) {
+        return strex("{}", *static_cast<const server_time_t*>(ptr));
     }
 
     return strex("{}", type_name);
@@ -2170,7 +2178,7 @@ static void Global_Yield(uint time)
     RUNTIME_ASSERT(ctx);
     auto* game_engine = static_cast<FOEngine*>(ctx->GetEngine()->GetUserData());
     auto& ctx_ext = GET_CONTEXT_EXT(ctx);
-    ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
+    ctx_ext.SuspendEndTime = game_engine->GameTime.GetFrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 
 #else
@@ -3172,6 +3180,37 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 #endif
 }
 
+template<typename T>
+static void Time_ConstructWithPlace(T* self, int64 value, int place)
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    if (place == 0) {
+        new (self) T {std::chrono::nanoseconds {value}};
+    }
+    else if (place == 1) {
+        new (self) T {std::chrono::microseconds {value}};
+    }
+    else if (place == 2) {
+        new (self) T {std::chrono::milliseconds {value}};
+    }
+    else if (place == 3) {
+        new (self) T {std::chrono::seconds {value}};
+    }
+    else {
+        throw ScriptException("Invalid time place", place);
+    }
+
+    new (self) T {value};
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(value, place);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
 static void Ipos_ConstructXandY(ipos* self, int x, int y)
 {
     NO_STACK_TRACE_ENTRY();
@@ -3858,6 +3897,47 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
     AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
 
+    // Register time_duration
+    REGISTER_HARD_STRONG_TYPE(TIME_DURATION_NAME, time_duration_t);
+    AS_VERIFY(engine->RegisterObjectBehaviour("time_duration", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<time_duration_t>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "int opCmp(const time_duration &in) const", SCRIPT_METHOD(time_duration_t, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "time_duration& opAddAssign(const time_duration &in)", SCRIPT_METHOD_PR(time_duration_t, operator+=, (const time_duration_t&), time_duration_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "time_duration& opSubAssign(const time_duration &in)", SCRIPT_METHOD_PR(time_duration_t, operator-=, (const time_duration_t&), time_duration_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "time_duration opAdd(const time_duration &in) const", SCRIPT_METHOD_PR(time_duration_t, operator+, (const time_duration_t&) const noexcept, time_duration_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "time_duration opSub(const time_duration &in) const", SCRIPT_METHOD_PR(time_duration_t, operator-, (const time_duration_t&) const noexcept, time_duration_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "int64 get_nanoseconds() const", SCRIPT_METHOD(time_duration_t, nanoseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "int64 get_microseconds() const", SCRIPT_METHOD(time_duration_t, microseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "int64 get_milliseconds() const", SCRIPT_METHOD(time_duration_t, milliseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_duration", "int64 get_seconds() const", SCRIPT_METHOD(time_duration_t, seconds), SCRIPT_METHOD_CONV));
+
+    // Register time_point
+    REGISTER_HARD_STRONG_TYPE(TIME_POINT_NAME, time_point_t);
+    AS_VERIFY(engine->RegisterObjectBehaviour("time_point", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<time_point_t>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "int opCmp(const time_point &in) const", SCRIPT_METHOD(time_point_t, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_point& opAddAssign(const time_duration &in)", SCRIPT_METHOD_PR(time_point_t, operator+=, (const time_duration_t&), time_point_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_point& opSubAssign(const time_duration &in)", SCRIPT_METHOD_PR(time_point_t, operator-=, (const time_duration_t&), time_point_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_point opAdd(const time_duration &in) const", SCRIPT_METHOD_PR(time_point_t, operator+, (const time_duration_t&) const noexcept, time_point_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_point opSub(const time_duration &in) const", SCRIPT_METHOD_PR(time_point_t, operator-, (const time_duration_t&) const noexcept, time_point_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_duration opSub(const time_point &in) const", SCRIPT_METHOD_PR(time_point_t, operator-, (const time_point_t&) const noexcept, time_duration_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "int64 get_nanoseconds() const", SCRIPT_METHOD(time_point_t, nanoseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "int64 get_microseconds() const", SCRIPT_METHOD(time_point_t, microseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "int64 get_milliseconds() const", SCRIPT_METHOD(time_point_t, milliseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "int64 get_seconds() const", SCRIPT_METHOD(time_point_t, seconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("time_point", "time_duration get_timeSinceEpoch() const", SCRIPT_METHOD(time_point_t, duration_value), SCRIPT_METHOD_CONV));
+
+    // Register server_time
+    REGISTER_HARD_STRONG_TYPE(SERVER_TIME_NAME, server_time_t);
+    AS_VERIFY(engine->RegisterObjectBehaviour("server_time", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<server_time_t>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "int opCmp(const server_time &in) const", SCRIPT_METHOD(server_time_t, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "server_time& opAddAssign(const time_duration &in)", SCRIPT_METHOD_PR(server_time_t, operator+=, (const time_duration_t&), server_time_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "server_time& opSubAssign(const time_duration &in)", SCRIPT_METHOD_PR(server_time_t, operator-=, (const time_duration_t&), server_time_t&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "server_time opAdd(const time_duration &in) const", SCRIPT_METHOD_PR(server_time_t, operator+, (const time_duration_t&) const noexcept, server_time_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "server_time opSub(const time_duration &in) const", SCRIPT_METHOD_PR(server_time_t, operator-, (const time_duration_t&) const noexcept, server_time_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "time_duration opSub(const server_time &in) const", SCRIPT_METHOD_PR(server_time_t, operator-, (const server_time_t&) const noexcept, time_duration_t), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "int64 get_milliseconds() const", SCRIPT_METHOD(server_time_t, milliseconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "int64 get_seconds() const", SCRIPT_METHOD(server_time_t, seconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("server_time", "time_duration get_timeSinceEpoch() const", SCRIPT_METHOD(server_time_t, duration_value), SCRIPT_METHOD_CONV));
+
     // Register ipos
     REGISTER_HARD_STRONG_TYPE("ipos", ipos);
     AS_VERIFY(engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
@@ -3961,7 +4041,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3971,7 +4051,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
@@ -4010,7 +4090,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, IDENT_T_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, IDENT_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \

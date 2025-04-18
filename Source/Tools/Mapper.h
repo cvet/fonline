@@ -57,7 +57,6 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
-#include "Timer.h"
 
 DECLARE_EXCEPTION(MapperException);
 
@@ -342,7 +341,7 @@ public:
     int ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};
     string ConsoleLastKeyText {};
-    time_point ConsoleKeyTime {};
+    time_point_t ConsoleKeyTime {};
     int ConsoleAccelerate {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};

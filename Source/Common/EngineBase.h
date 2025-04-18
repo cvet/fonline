@@ -82,6 +82,8 @@ public:
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
+    void FrameAdvance();
+
     GlobalSettings& Settings;
     GeometryHelper Geometry;
     GameTimer GameTime;

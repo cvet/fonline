@@ -51,8 +51,10 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<uint64>("uint64");
     MapEnginePlainType<float>("float");
     MapEnginePlainType<double>("double");
-    MapEnginePlainType<ident_t>(IDENT_T_NAME);
-    MapEnginePlainType<tick_t>(TICK_T_NAME);
+    MapEnginePlainType<ident_t>(IDENT_NAME);
+    MapEnginePlainType<time_duration_t>(TIME_DURATION_NAME);
+    MapEnginePlainType<time_point_t>(TIME_POINT_NAME);
+    MapEnginePlainType<server_time_t>(SERVER_TIME_NAME);
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize>("isize");
     MapEnginePlainType<ipos>("ipos");

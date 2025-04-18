@@ -38,7 +38,6 @@
 #include "NetCommand.h"
 #include "Server.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
@@ -66,7 +65,7 @@ struct Session
     int RefCount {};
     SOCKET Sock {};
     sockaddr_in From {};
-    DateTimeStamp StartWork {};
+    time_point_t StartWork {};
     bool Authorized {};
 };
 
@@ -158,7 +157,7 @@ static void AdminManager(FOServer* server, uint16 port)
                     s->RefCount = 2;
                     s->Sock = sock;
                     s->From = from;
-                    s->StartWork = Timer::GetCurrentDateTime();
+                    s->StartWork = time_point_t::now();
                     s->Authorized = false;
                     sessions.push_back(s);
                     std::thread(AdminWork, server, s).detach();
@@ -168,7 +167,8 @@ static void AdminManager(FOServer* server, uint16 port)
 
         // Manage sessions
         if (!sessions.empty()) {
-            const auto cur_dt = Timer::GetCurrentDateTime();
+            const auto cur_time = time_point_t::now();
+
             for (auto it = sessions.begin(); it != sessions.end();) {
                 auto* s = *it;
                 auto erase = false;
@@ -179,7 +179,7 @@ static void AdminManager(FOServer* server, uint16 port)
                 }
 
                 // Drop long not authorized connections
-                if (!s->Authorized && Timer::GetTimeDifference(cur_dt, s->StartWork) > 60) {
+                if (!s->Authorized && s->StartWork - cur_time > std::chrono::seconds {60}) {
                     // 1 minute
                     erase = true;
                 }
@@ -218,7 +218,7 @@ static void AdminWork(FOServer* server, Session* session)
     // Data
     string admin_name = "Not authorized";
 
-    // Welcome string
+    // Welcome to string
     const string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
     const auto welcome_len = static_cast<int>(welcome.length()) + 1;
     if (::send(session->Sock, welcome.c_str(), welcome_len, 0) != welcome_len) {
@@ -243,9 +243,7 @@ static void AdminWork(FOServer* server, Session* session)
             goto label_Finish;
         }
 
-        if (len > 200) {
-            len = 200;
-        }
+        len = std::min(len, 200);
 
         cmd_raw[len] = 0;
         string cmd = strex(cmd_raw).trim();
@@ -253,6 +251,7 @@ static void AdminWork(FOServer* server, Session* session)
         // Authorization
         if (!session->Authorized) {
             auto pos = -1;
+
             for (size_t i = 0, j = server->Settings.AccessAdmin.size(); i < j; i++) {
                 if (server->Settings.AccessAdmin[i] == cmd) {
                     pos = static_cast<int>(i);

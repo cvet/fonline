@@ -237,9 +237,9 @@ if(FO_ENABLE_3D AND(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_COD
     DisableLibWarnings(ufbx)
 endif()
 
-# Nlohmann Json
+# Json
 if(NOT FO_DISABLE_JSON)
-    StatusMessage("+ Nlohmann Json")
+    StatusMessage("+ Json")
     set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
     include_directories("${FO_JSON_DIR}")
     add_compile_definitions(FO_HAVE_JSON=1)
@@ -492,6 +492,9 @@ include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")
 
 # unordered_dense
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
+
+# date
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/date/include")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)

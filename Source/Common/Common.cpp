@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "Platform.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "Version-Include.h"
 
 #if FO_MAC
@@ -58,6 +57,11 @@
 #include "WinApiUndef-Include.h"
 
 static bool ExceptionMessageBox = false;
+
+const time_duration_t time_duration_t::zero;
+const time_duration_t time_duration_t::step = resolution(1);
+const time_point_t time_point_t::zero;
+const server_time_t server_time_t::zero;
 
 // ReSharper disable once CppInconsistentNaming
 const ucolor ucolor::clear;
@@ -573,8 +577,8 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     STACK_TRACE_ENTRY();
 
     const auto traceback = GetStackTrace();
-    const auto dt = Timer::GetCurrentDateTime();
-    const string fname = strex("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const auto time = time_point_t::now().desc();
+    const string fname = strex("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, time.year, time.month, time.day, time.hour, time.minute, time.second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
         file.Write(strex("{}\n", appendix));
@@ -584,11 +588,73 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
         file.Write(strex("\tName        {}\n", FO_DEV_NAME));
         file.Write(strex("\tVersion     {}\n", FO_GAME_VERSION));
         file.Write(strex("\tOS          Windows\n"));
-        file.Write(strex("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
+        file.Write(strex("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", time.year, time.month, time.day, time.hour, time.minute, time.second));
         file.Write(strex("\n"));
         file.Write(traceback);
         file.Write(strex("\n"));
     }
+}
+
+auto make_time_desc(time_duration_t time_offset) -> time_desc_t
+{
+    STACK_TRACE_ENTRY();
+
+    time_desc_t result;
+
+    const auto now_sys = std::chrono::system_clock::now();
+    const auto time_sys = now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value());
+
+    const auto ymd_days = date::floor<date::days>(time_sys);
+    const auto ymd = date::year_month_day(date::sys_days(ymd_days.time_since_epoch()));
+
+    if (!ymd.ok()) {
+        throw GenericException("Invalid year/month/day");
+    }
+
+    auto rest_day = time_sys - ymd_days;
+
+    const auto hours = std::chrono::duration_cast<std::chrono::hours>(rest_day);
+    rest_day -= hours;
+    const auto minutes = std::chrono::duration_cast<std::chrono::minutes>(rest_day);
+    rest_day -= minutes;
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(rest_day);
+    rest_day -= seconds;
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(rest_day);
+    rest_day -= milliseconds;
+    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(rest_day);
+    rest_day -= microseconds;
+    const auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day);
+
+    result.year = static_cast<int>(ymd.year());
+    result.month = static_cast<int>(static_cast<uint>(ymd.month()));
+    result.day = static_cast<int>(static_cast<uint>(ymd.day()));
+    result.hour = static_cast<int>(hours.count());
+    result.minute = static_cast<int>(minutes.count());
+    result.second = static_cast<int>(seconds.count());
+    result.millisecond = static_cast<int>(milliseconds.count());
+    result.microsecond = static_cast<int>(microseconds.count());
+    result.nanosecond = static_cast<int>(nanoseconds.count());
+
+    return result;
+}
+
+auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> time_duration_t
+{
+    STACK_TRACE_ENTRY();
+
+    const auto ymd = date::year_month_day {date::year {year}, date::month {numeric_cast<uint>(month)}, date::day {numeric_cast<uint>(day)}};
+
+    if (!ymd.ok()) {
+        throw GenericException("Invalid year/month/day");
+    }
+
+    const auto days_sys = date::sys_days {ymd};
+    const auto time_of_day = std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond};
+    const auto target_sys = date::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day};
+    const auto now_sys = std::chrono::system_clock::now();
+    const auto delta = target_sys - now_sys;
+
+    return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }
 
 FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
@@ -599,13 +665,6 @@ FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
     STACK_TRACE_ENTRY();
 }
 
-auto FrameBalancer::GetLoopDuration() const -> time_duration
-{
-    STACK_TRACE_ENTRY();
-
-    return _loopDuration;
-}
-
 void FrameBalancer::StartLoop()
 {
     STACK_TRACE_ENTRY();
@@ -614,7 +673,7 @@ void FrameBalancer::StartLoop()
         return;
     }
 
-    _loopStart = Timer::CurTime();
+    _loopStart = time_point_t::now();
 }
 
 void FrameBalancer::EndLoop()
@@ -625,7 +684,7 @@ void FrameBalancer::EndLoop()
         return;
     }
 
-    _loopDuration = Timer::CurTime() - _loopStart;
+    _loopDuration = time_point_t::now() - _loopStart;
 
     if (_sleep >= 0) {
         if (_sleep == 0) {
@@ -636,23 +695,23 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const auto target_time = time_duration {std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)}};
+        const time_duration_t target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)};
         const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
 
-        if (idle_time > std::chrono::milliseconds {0}) {
-            const auto sleep_start = Timer::CurTime();
+        if (idle_time > time_duration_t::zero) {
+            const auto sleep_start = time_point_t::now();
 
-            std::this_thread::sleep_for(idle_time);
+            std::this_thread::sleep_for(idle_time.value());
 
-            const auto sleep_duration = Timer::CurTime() - sleep_start;
+            const auto sleep_duration = time_point_t::now() - sleep_start;
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < -std::chrono::milliseconds {1000}) {
-                _idleTimeBalance = -std::chrono::milliseconds {1000};
+            if (_idleTimeBalance < time_duration_t(-std::chrono::milliseconds {1000})) {
+                _idleTimeBalance = time_duration_t(-std::chrono::milliseconds {1000});
             }
         }
     }
@@ -714,21 +773,21 @@ void WorkThread::AddJob(Job job)
     AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
 }
 
-void WorkThread::AddJob(time_duration delay, Job job)
+void WorkThread::AddJob(time_duration_t delay, Job job)
 {
     STACK_TRACE_ENTRY();
 
     AddJobInternal(delay, std::move(job), false);
 }
 
-void WorkThread::AddJobInternal(time_duration delay, Job job, bool no_notify)
+void WorkThread::AddJobInternal(time_duration_t delay, Job job, bool no_notify)
 {
     STACK_TRACE_ENTRY();
 
     {
         std::unique_lock locker(_dataLocker);
 
-        const auto fire_time = Timer::CurTime() + delay;
+        const auto fire_time = time_point_t::now() + delay;
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
             _jobs.emplace_back(fire_time, std::move(job));
@@ -815,7 +874,7 @@ void WorkThread::ThreadEntry() noexcept
                 }
 
                 if (!_jobs.empty()) {
-                    const auto cur_time = Timer::CurTime();
+                    const auto cur_time = time_point_t::now();
 
                     for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {

@@ -41,7 +41,6 @@
 #include "Map.h"
 #include "Player.h"
 #include "Settings.h"
-#include "Timer.h"
 
 class FOServer;
 class ProtoManager;

@@ -79,11 +79,10 @@ public:
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
 
-    auto Lock(optional<time_duration> max_wait_time) -> bool;
+    auto Lock(optional<time_duration_t> max_wait_time) -> bool;
     void Unlock();
     void DrawGui(string_view server_name);
 
-    void SetServerTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
@@ -188,8 +187,8 @@ public:
 private:
     struct ServerStats
     {
-        time_point ServerStartTime {};
-        time_duration Uptime {};
+        time_point_t ServerStartTime {};
+        time_duration_t Uptime {};
 
         int64 BytesSend {};
         int64 BytesRecv {};
@@ -201,15 +200,15 @@ private:
         size_t CurOnline {};
 
         size_t LoopsCount {};
-        time_duration LoopLastTime {};
-        time_duration LoopMinTime {};
-        time_duration LoopMaxTime {};
+        time_duration_t LoopLastTime {};
+        time_duration_t LoopMinTime {};
+        time_duration_t LoopMaxTime {};
 
-        deque<pair<time_point, time_duration>> LoopTimeStamps {};
-        time_duration LoopWholeAvgTime {};
-        time_duration LoopAvgTime {};
+        deque<pair<time_point_t, time_duration_t>> LoopTimeStamps {};
+        time_duration_t LoopWholeAvgTime {};
+        time_duration_t LoopAvgTime {};
 
-        time_point LoopCounterBegin {};
+        time_point_t LoopCounterBegin {};
         size_t LoopCounter {};
         size_t LoopsPerSecond {};
     };
@@ -292,7 +291,7 @@ private:
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     unique_ptr<DiskFile> _healthFile {};
-    map<uint, time_point> _regIp {};
+    map<uint, time_point_t> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};

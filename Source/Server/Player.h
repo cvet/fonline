@@ -127,5 +127,5 @@ private:
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
     Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
-    time_point _talkNextTime {};
+    time_point_t _talkNextTime {};
 };

@@ -454,24 +454,22 @@ void FOMapper::ProcessMapperInput()
                     break;
                 case KeyCode::Add:
                     if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetGlobalDayTime();
+                        int day_time = GetGlobalDayTime();
                         day_time += 60;
                         while (day_time > 2880) {
                             day_time -= 1440;
                         }
-                        SetMinute(day_time % 60);
-                        SetHour(day_time / 60 % 24);
+                        SetGlobalDayTime(day_time);
                     }
                     break;
                 case KeyCode::Subtract:
                     if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetGlobalDayTime();
+                        int day_time = GetGlobalDayTime();
                         day_time -= 60;
                         while (day_time < 0) {
                             day_time += 1440;
                         }
-                        SetMinute(day_time % 60);
-                        SetHour(day_time / 60 % 24);
+                        SetGlobalDayTime(day_time);
                     }
                     break;
                 case KeyCode::Tab:
@@ -490,29 +488,8 @@ void FOMapper::ProcessMapperInput()
                 case KeyCode::F9:
                     ObjFix = !ObjFix;
                     break;
-                case KeyCode::F10:
-                    if (CurMap != nullptr) {
-                        // CurMap->SwitchShowRain();
-                    }
-                    break;
                 case KeyCode::F11:
                     SprMngr.GetAtlasMngr().DumpAtlases();
-                    break;
-                case KeyCode::Add:
-                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetGlobalDayTime();
-                        day_time += 1;
-                        SetMinute(day_time % 60);
-                        SetHour(day_time / 60 % 24);
-                    }
-                    break;
-                case KeyCode::Subtract:
-                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetGlobalDayTime();
-                        day_time -= 60;
-                        SetMinute(day_time % 60);
-                        SetHour(day_time / 60 % 24);
-                    }
                     break;
                 case KeyCode::C0:
                 case KeyCode::Numpad0:
@@ -728,17 +705,7 @@ void FOMapper::MapperMainLoop()
 {
     STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance();
-
-    // FPS counter
-    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
-        Settings.FPS = _fpsCounter;
-        _fpsCounter = 0;
-        _fpsTime = GameTime.FrameTime();
-    }
-    else {
-        _fpsCounter++;
-    }
+    FrameAdvance();
 
     OnLoop.Fire();
     ConsoleProcess();
@@ -1052,7 +1019,7 @@ void FOMapper::IntDraw()
             hex_thru = true;
         }
 
-        auto day_time = CurMap->GetGlobalDayTime();
+        auto day_time = GetGlobalDayTime();
 
         DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             strex("Map '{}'\n"
@@ -1061,7 +1028,7 @@ void FOMapper::IntDraw()
                   "Fps {}\n"
                   "Tile layer {}\n"
                   "{}",
-                CurMap->GetName(), hex_thru ? hex : mpos {}, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
+                CurMap->GetName(), hex_thru ? hex : mpos {}, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -2772,7 +2739,7 @@ void FOMapper::ConsoleDraw()
         SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
 
         auto str = ConsoleStr;
-        str.insert(ConsoleCur, time_duration_to_ms<uint>(GameTime.FrameTime().time_since_epoch()) % 800 < 400 ? "!" : ".");
+        str.insert(ConsoleCur, time_duration_t(GameTime.GetFrameTime().duration_value()).to_ms<uint>() % 800 < 400 ? "!" : ".");
         DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -2851,7 +2818,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
         Keyb.FillChar(dik, dik_text, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
         ConsoleLastKey = dik;
         ConsoleLastKeyText = dik_text;
-        ConsoleKeyTime = GameTime.FrameTime();
+        ConsoleKeyTime = GameTime.GetFrameTime();
         ConsoleAccelerate = 1;
         return;
     }
@@ -2873,8 +2840,8 @@ void FOMapper::ConsoleProcess()
         return;
     }
 
-    if (time_duration_to_ms<int>(GameTime.FrameTime() - ConsoleKeyTime) >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
-        ConsoleKeyTime = GameTime.FrameTime();
+    if ((GameTime.GetFrameTime() - ConsoleKeyTime).to_ms<int>() >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
+        ConsoleKeyTime = GameTime.GetFrameTime();
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
         Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
     }
@@ -2998,7 +2965,7 @@ void FOMapper::ParseCommand(string_view command)
             // Nigh		23.00 -  4.59	1380
             vector<int> arr = {300, 600, 1140, 1380};
             vector<uint8> arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-            pmap->SetDayTime(arr);
+            pmap->SetDayColorTime(arr);
             pmap->SetDayColor(arr2);
 
             auto* map = SafeAlloc::MakeRaw<MapView>(this, ident_t {}, pmap);
@@ -3109,15 +3076,6 @@ void FOMapper::ShowMap(MapView* map)
 
     CurMap = map;
 
-    if (const auto day_time = CurMap->GetCurDayTime(); day_time >= 0) {
-        SetHour(day_time / 60 % 24);
-        SetMinute(day_time % 60);
-    }
-    else {
-        SetHour(12);
-        SetMinute(0);
-    }
-
     RefreshCurProtos();
 }
 
@@ -3217,9 +3175,8 @@ void FOMapper::AddMess(string_view message_text)
     STACK_TRACE_ENTRY();
 
     const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
-
-    const auto dt = Timer::GetCurrentDateTime();
-    const string mess_time = strex("{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second);
+    const auto time = time_point_t::now().desc();
+    const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
     MessBox.push_back({0, str, mess_time});
     MessBoxScroll = 0;

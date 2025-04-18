@@ -244,9 +244,14 @@ class Serializator
         return Set(value.value);
     }
 
-    Serializator Set(const tick_t& value)
+    Serializator Set(const time_duration& value)
     {
-        return Set(value.value);
+        return Set(value.nanoseconds);
+    }
+
+    Serializator Set(const server_time& value)
+    {
+        return Set(value.milliseconds);
     }
 
     Serializator Set(const ucolor& value)
@@ -598,9 +603,19 @@ class Serializator
         return this;
     }
 
-    Serializator Get(tick_t& value)
+    Serializator Get(time_duration& value)
     {
-        Get(value.value);
+        int64 i = 0;
+        Get(i);
+        value = time_duration(i, Time::NanosecondsPlace);
+        return this;
+    }
+
+    Serializator Get(server_time& value)
+    {
+        int64 i = 0;
+        Get(i);
+        value = server_time(i, Time::MillisecondsPlace);
         return this;
     }
 

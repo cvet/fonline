@@ -435,21 +435,21 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, time_duration_t duration)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, false);
+    client->ScreenFade(duration, fromColor, toColor, false);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration, bool appendEffect)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, time_duration_t duration, bool appendEffect)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, appendEffect);
+    client->ScreenFade(duration, fromColor, toColor, appendEffect);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
+FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, time_duration_t duration)
 {
-    client->ScreenQuake(noise, std::chrono::milliseconds {duration.underlying_value()});
+    client->ScreenQuake(noise, duration);
 }
 
 ///@ ExportMethod
@@ -459,14 +459,14 @@ FO_SCRIPT_API bool Client_Game_PlaySound(FOClient* client, string_view soundName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
+FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, time_duration_t repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, std::chrono::milliseconds {repeatTime.underlying_value()});
+    return client->SndMngr.PlayMusic(musicName, repeatTime);
 }
 
 ///@ ExportMethod

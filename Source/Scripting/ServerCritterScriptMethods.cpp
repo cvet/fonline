@@ -889,14 +889,14 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API tick_t Server_Critter_GetPlayerOfflineTime(Critter* self)
+FO_SCRIPT_API time_duration_t Server_Critter_GetPlayerOfflineTime(Critter* self)
 {
-    return tick_t {time_duration_to_ms<tick_t::underlying_type>(self->GetOfflineTime())};
+    return self->GetOfflineTime();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_RefreshDialogTime(Critter* self)
 {
-    self->Talk.StartTime = self->GetEngine()->GameTime.GameplayTime();
+    self->Talk.StartTime = self->GetEngine()->GameTime.GetFrameTime();
     self->Talk.TalkTime = std::chrono::milliseconds {self->Talk.Barter ? self->GetEngine()->Settings.DlgBarterMaxTime : self->GetEngine()->Settings.DlgTalkMaxTime};
 }

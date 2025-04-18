@@ -37,17 +37,7 @@
 
 #include "Settings.h"
 
-struct DateTimeStamp
-{
-    uint16 Year {}; // 1601 .. 30827
-    uint16 Month {}; // 1 .. 12
-    uint16 DayOfWeek {}; // 0 .. 6
-    uint16 Day {}; // 1 .. 31
-    uint16 Hour {}; // 0 .. 23
-    uint16 Minute {}; // 0 .. 59
-    uint16 Second {}; // 0 .. 59
-    uint16 Milliseconds {}; // 0 .. 999
-};
+DECLARE_EXCEPTION(ServerTimeNotSetException);
 
 class GameTimer final
 {
@@ -60,46 +50,25 @@ public:
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
-    [[nodiscard]] auto GetTime(bool gameplay_timer) const noexcept -> time_point;
-    [[nodiscard]] auto GetDeltaTime(bool gameplay_timer) const noexcept -> time_duration;
-    [[nodiscard]] auto FrameTime() const noexcept -> time_point;
-    [[nodiscard]] auto FrameDeltaTime() const noexcept -> time_duration;
-    [[nodiscard]] auto GameplayTime() const noexcept -> time_point;
-    [[nodiscard]] auto GameplayDeltaTime() const noexcept -> time_duration;
+    [[nodiscard]] auto GetFrameTime() const noexcept -> time_point_t { return _frameTime; }
+    [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> time_duration_t { return _frameDeltaTime; }
+    [[nodiscard]] auto GetServerTime() const -> server_time_t;
+    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int { return _fps; }
 
-    [[nodiscard]] auto GetServerTime() const noexcept -> tick_t;
-    [[nodiscard]] auto DateToServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const noexcept -> tick_t;
-    [[nodiscard]] auto ServerToDateTime(tick_t server_time) const noexcept -> DateTimeStamp;
-
-    void SetServerTime(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
-    auto FrameAdvance() -> bool;
+    void SetServerTime(server_time_t time);
+    void FrameAdvance();
 
 private:
     TimerSettings& _settings;
 
-    time_point _frameTime {};
-    time_duration _frameDeltaTime {};
-    time_point _gameplayTimeBase {};
-    time_point _gameplayTimeFrame {};
-    time_duration _gameplayDeltaTime {};
-    time_duration _debuggingOffset {};
+    time_point_t _frameTime {};
+    time_duration_t _frameDeltaTime {};
+    time_duration_t _debuggingOffset {};
 
-    uint64 _servetTimeStartYear {};
-    int _serverTimeMultiplier {};
-    tick_t _serverTimeBase {};
-    tick_t _serverTime {};
-};
+    server_time_t _serverTime {};
+    time_point_t _serverTimeSet {};
 
-class Timer final // Todo: remove Timer class, use directly std::chrono instead
-{
-public:
-    Timer() = delete;
-
-    [[nodiscard]] static auto CurTime() noexcept -> time_point;
-    [[nodiscard]] static auto GetCurrentDateTime() -> DateTimeStamp;
-    [[nodiscard]] static auto DateTimeToFullTime(const DateTimeStamp& dt) noexcept -> uint64;
-    [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) noexcept -> DateTimeStamp;
-    [[nodiscard]] static auto GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) noexcept -> int;
-    [[nodiscard]] static auto AdvanceTime(const DateTimeStamp& dt, int seconds) noexcept -> DateTimeStamp;
-    [[nodiscard]] static auto GameTimeMonthDays(uint16 year, uint16 month) noexcept -> int;
+    int _fps {};
+    time_point_t _fpsMeasureTime {};
+    int _fpsMeasureCounter {};
 };

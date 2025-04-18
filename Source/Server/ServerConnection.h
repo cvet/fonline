@@ -104,9 +104,9 @@ public:
 
     // Todo: incapsulate ServerConnection data
     bool WasHandshake {};
-    time_point PingNextTime {};
+    time_point_t PingNextTime {};
     bool PingOk {true};
-    time_point LastActivityTime {};
+    time_point_t LastActivityTime {};
     int UpdateFileIndex {-1};
     uint UpdateFilePortion {};
 

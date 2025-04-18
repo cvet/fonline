@@ -49,7 +49,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 {
     STACK_TRACE_ENTRY();
 
-    _startTime = Timer::CurTime();
+    _startTime = time_point_t::now();
 
     _resources.AddDataSource(_settings.EmbeddedResources);
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
@@ -84,7 +84,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     // Network handlers
     _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
     _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::UpdateFilesList, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
 
     // Connect
@@ -121,6 +121,8 @@ auto Updater::Process() -> bool
 {
     STACK_TRACE_ENTRY();
 
+    _gameTime.FrameAdvance();
+
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
@@ -143,6 +145,7 @@ auto Updater::Process() -> bool
 
         for (const auto& update_file : _filesToUpdate) {
             auto cur_bytes = update_file.Size - update_file.RemaningSize;
+
             if (&update_file == &_filesToUpdate.front()) {
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
@@ -157,8 +160,9 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = time_duration_to_ms<uint>(Timer::CurTime() - _startTime);
-    const auto dots = static_cast<int>(std::fmod(time_duration_to_ms<double>(Timer::CurTime() - _startTime) / 100.0, 50.0)) + 1;
+    const auto elapsed_time = (time_point_t::now() - _startTime).to_ms<uint>();
+    const auto dots = static_cast<int>(std::fmod((time_point_t::now() - _startTime).to_ms<double>() / 100.0, 50.0)) + 1;
+
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";
     }
@@ -220,7 +224,7 @@ void Updater::Abort(uint str_num, string_view num_str_str)
     }
 }
 
-void Updater::Net_OnUpdateFilesResponse()
+void Updater::Net_OnHandshakeAnswer()
 {
     STACK_TRACE_ENTRY();
 
@@ -231,14 +235,15 @@ void Updater::Net_OnUpdateFilesResponse()
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
-    if (!outdated) {
-        _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    }
-
     if (outdated) {
         Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
         return;
     }
+
+    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+    const auto server_time = _conn.InBuf.Read<server_time_t>();
+
+    _gameTime.SetServerTime(server_time);
 
     RUNTIME_ASSERT(!_fileListReceived);
     _fileListReceived = true;

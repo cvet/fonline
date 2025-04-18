@@ -45,7 +45,7 @@ Player::Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connec
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
     _connection {std::move(connection)},
-    _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
+    _talkNextTime {_engine->GameTime.GetFrameTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
 {
     STACK_TRACE_ENTRY();
 }
@@ -502,8 +502,9 @@ void Player::Send_Talk()
         const auto all_answers = static_cast<uint8>(_controlledCr->Talk.CurDialog.Answers.size());
 
         auto talk_time = _controlledCr->Talk.TalkTime;
-        if (talk_time != time_duration {}) {
-            const auto diff = _engine->GameTime.GameplayTime() - _controlledCr->Talk.StartTime;
+
+        if (talk_time) {
+            const auto diff = _engine->GameTime.GetFrameTime() - _controlledCr->Talk.StartTime;
             talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds {1};
         }
 
@@ -519,7 +520,7 @@ void Player::Send_Talk()
         for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
             out_buf->Write(answer.TextId);
         }
-        out_buf->Write(time_duration_to_ms<uint>(talk_time));
+        out_buf->Write(talk_time.to_ms<uint>());
     }
 }
 
@@ -531,13 +532,7 @@ void Player::Send_TimeSync()
 
     auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
 
-    out_buf->Write(_engine->GetYear());
-    out_buf->Write(_engine->GetMonth());
-    out_buf->Write(_engine->GetDay());
-    out_buf->Write(_engine->GetHour());
-    out_buf->Write(_engine->GetMinute());
-    out_buf->Write(_engine->GetSecond());
-    out_buf->Write(_engine->GetTimeMultiplier());
+    out_buf->Write(_engine->GameTime.GetServerTime());
 }
 
 void Player::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)
@@ -912,7 +907,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
     NON_CONST_METHOD_HINT();
 
     out_buf.Write(static_cast<uint>(std::ceil(cr->Moving.WholeTime)));
-    out_buf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime));
+    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint>());
     out_buf.Write(cr->Moving.Speed);
     out_buf.Write(cr->Moving.StartHex);
     out_buf.Write(static_cast<uint16>(cr->Moving.Steps.size()));

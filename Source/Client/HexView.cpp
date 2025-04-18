@@ -37,7 +37,6 @@
 #include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
-#include "Timer.h"
 
 HexView::HexView(MapView* map) :
     _map {map}
@@ -101,7 +100,7 @@ auto HexView::IsFinished() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _finishing && _map->GetEngine()->GameTime.GameplayTime() >= _finishingTime;
+    return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
 void HexView::ProcessFading()
@@ -122,9 +121,9 @@ void HexView::SetFade(bool fade_up)
 {
     STACK_TRACE_ENTRY();
 
-    const auto time = _map->GetEngine()->GameTime.GameplayTime();
+    const auto time = _map->GetEngine()->GameTime.GetFrameTime();
 
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration {0});
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration_t::zero);
     _fadeUp = fade_up;
     _fading = true;
 
@@ -136,8 +135,8 @@ void HexView::EvaluateCurAlpha()
     STACK_TRACE_ENTRY();
 
     if (_fading) {
-        const auto time = _map->GetEngine()->GameTime.GameplayTime();
-        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
+        const auto time = _map->GetEngine()->GameTime.GetFrameTime();
+        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).to_ms<uint>() : 0);
 
         if (fading_proc == 100) {
             _fading = false;

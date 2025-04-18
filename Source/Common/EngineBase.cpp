@@ -517,3 +517,14 @@ auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hst
 
     return result;
 }
+
+void FOEngineBase::FrameAdvance()
+{
+    STACK_TRACE_ENTRY();
+
+    GameTime.FrameAdvance();
+    SetServerTime(GameTime.GetServerTime());
+    SetFrameTime(GameTime.GetFrameTime());
+    SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
+    SetFramesPerSecond(GameTime.GetFramesPerSecond());
+}

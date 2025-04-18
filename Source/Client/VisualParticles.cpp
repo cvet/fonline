@@ -180,11 +180,11 @@ auto ParticleSystem::GetDrawSize() const -> isize
     return {max_draw_width, max_draw_height};
 }
 
-auto ParticleSystem::GetTime() const -> time_point
+auto ParticleSystem::GetTime() const -> time_point_t
 {
     STACK_TRACE_ENTRY();
 
-    return _particleMngr._gameTime.GameplayTime();
+    return _particleMngr._gameTime.GetFrameTime();
 }
 
 auto ParticleSystem::NeedDraw() const -> bool
@@ -276,7 +276,7 @@ void ParticleSystem::Draw()
     STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = time_duration_to_ms<float>(time - _lastDrawTime) * 0.001f;
+    const auto dt = (time - _lastDrawTime).to_ms<float>() * 0.001f;
 
     _lastDrawTime = time;
     _forceDraw = false;

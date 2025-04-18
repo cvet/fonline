@@ -356,18 +356,19 @@ void MapView::Process()
 
     // Map time and color
     {
-        const auto map_day_time = GetMapDayTime();
-        const auto global_day_time = GetGlobalDayTime();
+        const auto global_day_time = _engine->GetGlobalDayTime();
+        const auto fixed_map_day_time = GetFixedDayTime();
+        const auto map_day_time = fixed_map_day_time != 0 ? fixed_map_day_time : global_day_time;
 
         if (map_day_time != _prevMapDayTime || global_day_time != _prevGlobalDayTime) {
             _prevMapDayTime = map_day_time;
             _prevGlobalDayTime = global_day_time;
 
-            const auto day_time = GetDayTime();
+            const auto day_color_time = GetDayColorTime();
             const auto day_color = GetDayColor();
 
-            _mapDayColor = GenericUtils::GetColorDay(day_time, day_color, map_day_time, &_mapDayLightCapacity);
-            _globalDayColor = GenericUtils::GetColorDay(day_time, day_color, global_day_time, &_globalDayLightCapacity);
+            _mapDayColor = GenericUtils::GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
+            _globalDayColor = GenericUtils::GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
 
             if (_mapDayColor != _prevMapDayColor) {
                 _prevMapDayColor = _mapDayColor;
@@ -433,7 +434,7 @@ void MapView::Process()
     }
 }
 
-void MapView::AddMapText(string_view str, mpos hex, ucolor color, time_duration show_time, bool fade, ipos offset)
+void MapView::AddMapText(string_view str, mpos hex, ucolor color, time_duration_t show_time, bool fade, ipos offset)
 {
     STACK_TRACE_ENTRY();
 
@@ -441,8 +442,8 @@ void MapView::AddMapText(string_view str, mpos hex, ucolor color, time_duration 
     map_text.Hex = hex;
     map_text.Color = color != ucolor::clear ? color : COLOR_TEXT;
     map_text.Fade = fade;
-    map_text.StartTime = _engine->GameTime.GameplayTime();
-    map_text.Duration = show_time != time_duration {} ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
+    map_text.StartTime = _engine->GameTime.GetFrameTime();
+    map_text.Duration = show_time ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
     map_text.Text = str;
     map_text.Pos = GetRectForText(hex);
     map_text.EndPos = IRect(map_text.Pos, offset.x, offset.y);
@@ -1565,7 +1566,7 @@ void MapView::ProcessLighting()
         const auto prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
-            const auto elapsed_time = time_duration_div(_engine->GameTime.GameplayTime() - ls->Time, time_duration {std::chrono::milliseconds {200}});
+            const auto elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float>(std::chrono::milliseconds {200});
 
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
@@ -1745,7 +1746,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, uint distanc
     else {
         if (ls->CurIntensity != ls->TargetIntensity) {
             ls->StartIntensity = ls->CurIntensity;
-            ls->Time = _engine->GameTime.GameplayTime();
+            ls->Time = _engine->GameTime.GetFrameTime();
         }
     }
 
@@ -1765,7 +1766,7 @@ void MapView::FinishLightSource(ident_t id)
             ls->Finishing = true;
             ls->StartIntensity = ls->CurIntensity;
             ls->TargetIntensity = 0;
-            ls->Time = _engine->GameTime.GameplayTime();
+            ls->Time = _engine->GameTime.GetFrameTime();
         }
     }
 }
@@ -2843,7 +2844,7 @@ void MapView::DrawMapTexts()
         cr->DrawName();
     }
 
-    const auto time = _engine->GameTime.GameplayTime();
+    const auto time = _engine->GameTime.GetFrameTime();
 
     for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
         const auto& map_text = *it;
@@ -2852,8 +2853,8 @@ void MapView::DrawMapTexts()
             const auto& field = _hexField->GetCellForReading(map_text.Hex);
 
             if (field.IsView) {
-                const auto dt = time_duration_to_ms<uint>(time - map_text.StartTime);
-                const auto percent = GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration), dt);
+                const auto dt = (time - map_text.StartTime).to_ms<uint>();
+                const auto percent = GenericUtils::Percent(map_text.Duration.to_ms<uint>(), dt);
                 const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, static_cast<int>(percent));
                 const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
                 const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
@@ -2866,10 +2867,11 @@ void MapView::DrawMapTexts()
                     const auto alpha = 255 * (100 - percent) / 100;
                     color.comp.a = static_cast<uint8>(alpha);
                 }
-                else if (map_text.Duration > std::chrono::milliseconds {500}) {
-                    const auto hide = time_duration_to_ms<uint>(map_text.Duration - std::chrono::milliseconds {200});
+                else if (map_text.Duration > std::chrono::milliseconds(500)) {
+                    const auto hide = (map_text.Duration - std::chrono::milliseconds(200)).to_ms<uint>();
+
                     if (dt >= hide) {
-                        const auto alpha = 255 * (100 - GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration) - hide, dt - hide)) / 100;
+                        const auto alpha = 255 * (100 - GenericUtils::Percent(map_text.Duration.to_ms<uint>() - hide, dt - hide)) / 100;
                         color.comp.a = static_cast<uint8>(alpha);
                     }
                 }
@@ -3044,13 +3046,13 @@ auto MapView::Scroll() -> bool
     float time_k = 1.0f;
 
     if (_engine->Settings.ScrollDelay != 0) {
-        const auto time = _engine->GameTime.FrameTime();
+        const auto time = _engine->GameTime.GetFrameTime();
 
         if (time - _scrollLastTime < std::chrono::milliseconds {_engine->Settings.ScrollDelay / 2}) {
             return false;
         }
 
-        time_k = time_duration_to_ms<float>(time - _scrollLastTime) / static_cast<float>(_engine->Settings.ScrollDelay);
+        time_k = (time - _scrollLastTime).to_ms<float>() / static_cast<float>(_engine->Settings.ScrollDelay);
         _scrollLastTime = time;
     }
 
@@ -4443,26 +4445,6 @@ void MapView::SetShootBorders(bool enabled, uint dist)
         _shootBordersDist = dist;
         RebuildFog();
     }
-}
-
-auto MapView::GetGlobalDayTime() const noexcept -> int
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _engine->GetHour() * 60 + _engine->GetMinute();
-}
-
-auto MapView::GetMapDayTime() const noexcept -> int
-{
-    NO_STACK_TRACE_ENTRY();
-
-    if (_mapperMode) {
-        return GetGlobalDayTime();
-    }
-
-    const auto map_time = GetCurDayTime();
-
-    return map_time >= 0 ? map_time : GetGlobalDayTime();
 }
 
 auto MapView::GetDrawList() noexcept -> MapSpriteList&

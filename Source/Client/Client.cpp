@@ -94,8 +94,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     ResMngr.IndexFiles();
 
-    GameTime.FrameAdvance();
-    _fpsTime = GameTime.FrameTime();
+    FrameAdvance();
     Settings.MousePos = App->Input.GetMousePosition();
 
     if (mapper_mode) {
@@ -166,7 +165,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NetMessage::Effect, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NetMessage::FlyEffect, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
-    _conn.AddMessageHandler(NetMessage::UpdateFilesList, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this] { Net_OnRemoveCustomEntity(); });
 
@@ -389,17 +388,7 @@ void FOClient::MainLoop()
 {
     STACK_TRACE_ENTRY();
 
-    const auto time_changed = GameTime.FrameAdvance();
-
-    // FPS counter
-    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
-        Settings.FPS = _fpsCounter;
-        _fpsCounter = 0;
-        _fpsTime = GameTime.FrameTime();
-    }
-    else {
-        _fpsCounter++;
-    }
+    FrameAdvance();
 
 #if FO_TRACY
     TracyPlot("Client FPS", static_cast<int64>(Settings.FPS));
@@ -412,27 +401,9 @@ void FOClient::MainLoop()
     }
 
     _conn.Process();
-
-    // Input
     ProcessInputEvents();
-
-    // Game time
-    if (time_changed) {
-        const auto st = GameTime.ServerToDateTime(GameTime.GetServerTime());
-
-        SetYear(st.Year);
-        SetMonth(st.Month);
-        SetDay(st.Day);
-        SetHour(st.Hour);
-        SetMinute(st.Minute);
-        SetSecond(st.Second);
-    }
-
-    // Logic
     ScriptSys->Process();
-
     TimeEventMngr.ProcessTimeEvents();
-
     OnLoop.Fire();
 
     if (CurMap != nullptr) {
@@ -467,20 +438,22 @@ void FOClient::MainLoop()
     }
 }
 
-void FOClient::ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back)
+void FOClient::ScreenFade(time_duration_t time, ucolor from_color, ucolor to_color, bool push_back)
 {
     STACK_TRACE_ENTRY();
 
     if (!push_back || _screenFadingEffects.empty()) {
-        _screenFadingEffects.push_back({GameTime.FrameTime(), time, from_color, to_color});
+        _screenFadingEffects.push_back({GameTime.GetFrameTime(), time, from_color, to_color});
     }
     else {
-        time_point last_tick;
+        time_point_t last_tick;
+
         for (const auto& e : _screenFadingEffects) {
             if (e.BeginTime + e.Duration > last_tick) {
                 last_tick = e.BeginTime + e.Duration;
             }
         }
+
         _screenFadingEffects.push_back({last_tick, time, from_color, to_color});
     }
 }
@@ -497,13 +470,13 @@ void FOClient::ProcessScreenEffectFading()
     for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
         auto& screen_effect = *it;
 
-        if (GameTime.FrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
+        if (GameTime.GetFrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
             it = _screenFadingEffects.erase(it);
             continue;
         }
 
-        if (GameTime.FrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(time_duration_to_ms<uint>(screen_effect.Duration), time_duration_to_ms<uint>(GameTime.FrameTime() - screen_effect.BeginTime)) + 1;
+        if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
+            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<uint>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<uint>()) + 1;
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -514,6 +487,7 @@ void FOClient::ProcessScreenEffectFading()
             }
 
             const auto color = ucolor {static_cast<uint8>(res[0]), static_cast<uint8>(res[1]), static_cast<uint8>(res[2]), static_cast<uint8>(res[3])};
+
             for (auto i = 0; i < 6; i++) {
                 full_screen_quad[i].PointColor = color;
             }
@@ -525,7 +499,7 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
-void FOClient::ScreenQuake(int noise, time_duration time)
+void FOClient::ScreenQuake(int noise, time_duration_t time)
 {
     STACK_TRACE_ENTRY();
 
@@ -534,19 +508,19 @@ void FOClient::ScreenQuake(int noise, time_duration time)
 
     _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time_duration_to_ms<float>(time) / 30.0f);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float>() / 30.0f);
 
     Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
     Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
-    _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+    _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 }
 
 void FOClient::ProcessScreenEffectQuake()
 {
     STACK_TRACE_ENTRY();
 
-    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GameplayTime() >= _quakeScreenOffsNextTime) {
+    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
         Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
         Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
 
@@ -570,7 +544,7 @@ void FOClient::ProcessScreenEffectQuake()
         Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
         Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
-        _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+        _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -865,7 +839,7 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_OnUpdateFilesResponse()
+void FOClient::Net_OnHandshakeAnswer()
 {
     STACK_TRACE_ENTRY();
 
@@ -881,9 +855,11 @@ void FOClient::Net_OnUpdateFilesResponse()
     }
 
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+    const auto server_time = _conn.InBuf.Read<server_time_t>();
 
     RestoreData(_globalsPropertiesData);
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+    GameTime.SetServerTime(server_time);
+    SetServerTime(server_time);
 
     if (!data.empty()) {
         FileSystem resources;
@@ -948,7 +924,6 @@ void FOClient::Net_OnLoginSuccess()
     _conn.InBuf.ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
 
     RUNTIME_ASSERT(_curPlayer);
     RUNTIME_ASSERT(!_curPlayer->GetId());
@@ -1340,10 +1315,10 @@ void FOClient::Net_OnCritterMoveSpeed()
     }
 
     const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
-    const auto elapsed_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime);
+    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>();
 
     cr->Moving.WholeTime /= diff;
-    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
     cr->Moving.Speed = speed;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
@@ -2116,7 +2091,7 @@ void FOClient::Net_OnChosenTalk()
         answers.emplace_back(std::move(str));
     }
 
-    const auto talk_time = _conn.InBuf.Read<tick_t>();
+    const auto talk_time = _conn.InBuf.Read<uint>();
 
     OnDialogData.Fire(talk_cr_id, talk_dlg_id, text, answers, talk_time);
 }
@@ -2125,23 +2100,10 @@ void FOClient::Net_OnTimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    const auto year = _conn.InBuf.Read<uint16>();
-    const auto month = _conn.InBuf.Read<uint16>();
-    const auto day = _conn.InBuf.Read<uint16>();
-    const auto hour = _conn.InBuf.Read<uint16>();
-    const auto minute = _conn.InBuf.Read<uint16>();
-    const auto second = _conn.InBuf.Read<uint16>();
-    const auto multiplier = _conn.InBuf.Read<uint16>();
+    const auto server_time = _conn.InBuf.Read<server_time_t>();
 
-    SetYear(year);
-    SetMonth(month);
-    SetDay(day);
-    SetHour(hour);
-    SetMinute(minute);
-    SetSecond(second);
-    SetTimeMultiplier(multiplier);
-
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+    GameTime.SetServerTime(server_time);
+    SetServerTime(server_time);
 }
 
 void FOClient::Net_OnLoadMap()
@@ -2433,7 +2395,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->ClearMove();
 
     cr->Moving.Speed = speed;
-    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
     cr->Moving.WholeTime = static_cast<float>(whole_time);
     cr->Moving.Steps = steps;
@@ -3172,7 +3134,7 @@ void FOClient::LmapPrepareMap()
         pix_y = 0;
     }
 
-    _lmapPrepareNextTime = GameTime.FrameTime() + std::chrono::milliseconds {1000};
+    _lmapPrepareNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {1000};
 }
 
 void FOClient::CleanupSpriteCache()
@@ -3276,29 +3238,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
     }
-    else if (cmd == "SaveLog" && args.size() == 3) {
-        //              if( file_name == "" )
-        //              {
-        //                      DateTime dt;
-        //                      Timer::GetCurrentDateTime(dt);
-        //                      char     log_path[TEMP_BUF_SIZE];
-        //                      X_str(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-        //                              dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-        //              }
-
-        //              for (uint i = 0; i < MessBox.size(); ++i)
-        //              {
-        //                      MessBoxMessage& m = MessBox[i];
-        //                      // Skip
-        //                      if (IsMainScreen(SCREEN_GAME) && std::find(MessBoxFilters.begin(), MessBoxFilters.end(),
-        //                      m.Type) != MessBoxFilters.end())
-        //                              continue;
-        //                      // Concat
-        //                      Str::Copy(cur_mess, m.Mess);
-        //                      Str::EraseWords(cur_mess, '|', ' ');
-        //                      fmt_log += MessBox[i].Time + string(cur_mess);
-        //              }
-    }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
         const auto is_cr = strex(args[1]).toBool();
         const auto cr_id = is_cr ? ident_t {strex(args[2]).toInt64()} : ident_t {};
@@ -3322,7 +3261,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             _lmapWMap[3] = y2;
             LmapPrepareMap();
         }
-        else if (GameTime.FrameTime() >= _lmapPrepareNextTime) {
+        else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
             LmapPrepareMap();
         }
 
@@ -3421,7 +3360,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
     if (try_move) {
         cr->Moving.Steps = steps;
         cr->Moving.ControlSteps = control_steps;
-        cr->Moving.StartTime = GameTime.FrameTime();
+        cr->Moving.StartTime = GameTime.GetFrameTime();
         cr->Moving.Speed = static_cast<uint16>(speed);
         cr->Moving.StartHex = cr->GetHex();
         cr->Moving.EndHex = hex;
@@ -3542,7 +3481,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         SndMngr.StopMusic();
 
         if (!names[1].empty()) {
-            SndMngr.PlayMusic(names[1], std::chrono::milliseconds {0});
+            SndMngr.PlayMusic(names[1], time_duration_t::zero);
         }
     }
 }

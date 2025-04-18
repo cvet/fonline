@@ -116,8 +116,8 @@ struct TalkData
     hstring DialogPackId {};
     Dialog CurDialog {};
     uint LastDialogId {};
-    time_point StartTime {};
-    time_duration TalkTime {};
+    time_point_t StartTime {};
+    time_duration_t TalkTime {};
     bool Barter {};
     bool IgnoreDistance {};
     string Lexems {};
