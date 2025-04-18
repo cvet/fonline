@@ -6,6 +6,7 @@
 * Assimp (math only) - [assimp-5.0.1](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-3.8.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
+* date - [date-3.0.3](https://github.com/HowardHinnant/date)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-1.4.309.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
