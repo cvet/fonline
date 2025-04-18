@@ -2739,7 +2739,7 @@ void FOMapper::ConsoleDraw()
         SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
 
         auto str = ConsoleStr;
-        str.insert(ConsoleCur, time_duration_t(GameTime.GetFrameTime().duration_value()).to_ms<uint>() % 800 < 400 ? "!" : ".");
+        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<uint>() % 800 < 400 ? "!" : ".");
         DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -3175,7 +3175,7 @@ void FOMapper::AddMess(string_view message_text)
     STACK_TRACE_ENTRY();
 
     const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
-    const auto time = time_point_t::now().desc();
+    const auto time = nanotime::now().desc();
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
     MessBox.push_back({0, str, mess_time});

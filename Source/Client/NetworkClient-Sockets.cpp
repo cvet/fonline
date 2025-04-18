@@ -192,7 +192,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                 throw NetworkClientException("Net output error");
             }
 
-            const auto time = time_point_t::now();
+            const auto time = nanotime::now();
 
             while (true) {
                 if (CheckStatus(false)) {
@@ -200,7 +200,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                     return vector<uint8>(result_buf.begin(), result_buf.end());
                 }
 
-                if (time_point_t::now() - time >= std::chrono::milliseconds {10000}) {
+                if (nanotime::now() - time >= std::chrono::milliseconds {10000}) {
                     throw NetworkClientException("Proxy answer timeout");
                 }
 

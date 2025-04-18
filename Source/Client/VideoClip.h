@@ -51,14 +51,14 @@ public:
     [[nodiscard]] auto IsStopped() const noexcept -> bool;
     [[nodiscard]] auto IsPaused() const noexcept -> bool;
     [[nodiscard]] auto IsLooped() const noexcept -> bool;
-    [[nodiscard]] auto GetTime() const -> time_duration_t;
+    [[nodiscard]] auto GetTime() const -> timespan;
     [[nodiscard]] auto GetSize() const -> isize;
 
     void Stop();
     void Pause();
     void Resume();
     void SetLooped(bool enabled);
-    void SetTime(time_duration_t time);
+    void SetTime(timespan time);
     auto RenderFrame() -> const vector<ucolor>&;
 
 private:

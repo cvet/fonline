@@ -244,7 +244,7 @@ void TextureAtlasManager::DumpAtlases() const
         atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
     }
 
-    const auto time = time_point_t::now().desc();
+    const auto time = nanotime::now().desc();
     const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);

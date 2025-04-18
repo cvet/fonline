@@ -282,7 +282,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(state_anim, action_anim)) {
-            _animSequence.push_back(CritterAnim {nullptr, time_duration_t::zero, 0, 0, state_anim, action_anim, fixed_context_item});
+            _animSequence.push_back(CritterAnim {nullptr, timespan::zero, 0, 0, state_anim, action_anim, fixed_context_item});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);

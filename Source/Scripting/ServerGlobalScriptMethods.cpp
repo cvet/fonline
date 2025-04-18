@@ -42,25 +42,25 @@
 #include "StringUtils.h"
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, time_duration_t delay, ScriptFuncName<void> func)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
 {
     server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, time_duration_t delay, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
     server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, time_duration_t delay, time_duration_t repeat, ScriptFuncName<void> func)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
     server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, time_duration_t delay, time_duration_t repeat, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
     server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
 }
@@ -1075,10 +1075,10 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SetServerTime(FOServer* server, server_time_t time)
+FO_SCRIPT_API void Server_Game_SetSynchronizedTime(FOServer* server, synctime time)
 {
-    server->GameTime.SetServerTime(time);
-    server->SetServerTime(time);
+    server->GameTime.SetSynchronizedTime(time);
+    server->SetSynchronizedTime(time);
 }
 
 ///@ ExportMethod

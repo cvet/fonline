@@ -438,7 +438,7 @@ void FOClient::MainLoop()
     }
 }
 
-void FOClient::ScreenFade(time_duration_t time, ucolor from_color, ucolor to_color, bool push_back)
+void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
 {
     STACK_TRACE_ENTRY();
 
@@ -446,7 +446,7 @@ void FOClient::ScreenFade(time_duration_t time, ucolor from_color, ucolor to_col
         _screenFadingEffects.push_back({GameTime.GetFrameTime(), time, from_color, to_color});
     }
     else {
-        time_point_t last_tick;
+        nanotime last_tick;
 
         for (const auto& e : _screenFadingEffects) {
             if (e.BeginTime + e.Duration > last_tick) {
@@ -499,7 +499,7 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
-void FOClient::ScreenQuake(int noise, time_duration_t time)
+void FOClient::ScreenQuake(int noise, timespan time)
 {
     STACK_TRACE_ENTRY();
 
@@ -855,11 +855,11 @@ void FOClient::Net_OnHandshakeAnswer()
     }
 
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    const auto server_time = _conn.InBuf.Read<server_time_t>();
+    const auto time = _conn.InBuf.Read<synctime>();
 
     RestoreData(_globalsPropertiesData);
-    GameTime.SetServerTime(server_time);
-    SetServerTime(server_time);
+    GameTime.SetSynchronizedTime(time);
+    SetSynchronizedTime(time);
 
     if (!data.empty()) {
         FileSystem resources;
@@ -2100,10 +2100,10 @@ void FOClient::Net_OnTimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    const auto server_time = _conn.InBuf.Read<server_time_t>();
+    const auto time = _conn.InBuf.Read<synctime>();
 
-    GameTime.SetServerTime(server_time);
-    SetServerTime(server_time);
+    GameTime.SetSynchronizedTime(time);
+    SetSynchronizedTime(time);
 }
 
 void FOClient::Net_OnLoadMap()
@@ -3481,7 +3481,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         SndMngr.StopMusic();
 
         if (!names[1].empty()) {
-            SndMngr.PlayMusic(names[1], time_duration_t::zero);
+            SndMngr.PlayMusic(names[1], timespan::zero);
         }
     }
 }

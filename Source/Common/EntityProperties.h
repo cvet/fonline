@@ -48,7 +48,7 @@ public:
     }
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, server_time_t, ServerTime);
+    ENTITY_PROPERTY(PrivateCommon, synctime, SynchronizedTime);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
     ///@ ExportProperty ReadOnly
@@ -56,13 +56,13 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateCommon, time_point_t, FrameTime);
+    ENTITY_PROPERTY(PrivateCommon, nanotime, FrameTime);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateCommon, time_duration_t, FrameDeltaTime);
+    ENTITY_PROPERTY(PrivateCommon, timespan, FrameDeltaTime);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateClient, int, FramesPerSecond);
+    ENTITY_PROPERTY(PrivateCommon, int, FramesPerSecond);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, GlobalDayTime);
+    ENTITY_PROPERTY(PrivateClient, int, GlobalDayTime);
 };
 
 class PlayerProperties : public EntityProperties

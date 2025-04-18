@@ -52,9 +52,9 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<float>("float");
     MapEnginePlainType<double>("double");
     MapEnginePlainType<ident_t>(IDENT_NAME);
-    MapEnginePlainType<time_duration_t>(TIME_DURATION_NAME);
-    MapEnginePlainType<time_point_t>(TIME_POINT_NAME);
-    MapEnginePlainType<server_time_t>(SERVER_TIME_NAME);
+    MapEnginePlainType<timespan>(TIMESPAN_NAME);
+    MapEnginePlainType<nanotime>(NANOTIME_NAME);
+    MapEnginePlainType<synctime>(SYNCTIME_NAME);
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize>("isize");
     MapEnginePlainType<ipos>("ipos");

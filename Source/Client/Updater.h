@@ -84,7 +84,7 @@ private:
     EffectManager _effectMngr;
     HashStorage _hashStorage {};
     SpriteManager _sprMngr;
-    time_point_t _startTime {};
+    nanotime _startTime {};
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};

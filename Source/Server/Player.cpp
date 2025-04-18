@@ -532,7 +532,7 @@ void Player::Send_TimeSync()
 
     auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
 
-    out_buf->Write(_engine->GameTime.GetServerTime());
+    out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
 
 void Player::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)

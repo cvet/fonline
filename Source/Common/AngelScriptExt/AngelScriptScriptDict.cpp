@@ -57,9 +57,9 @@ struct SDictCache
     int StringTypeId {};
     int HStringTypeId {};
     int IdentTypeId {};
-    int TimeDurationTypeId {};
-    int TimePointTypeId {};
-    int ServerTimeTypeId {};
+    int TimespanTypeId {};
+    int NanotimeTypeId {};
+    int SynctimeTypeId {};
 
     // This is called from RegisterScriptDictionary
     static SDictCache* GetOrCreate(asIScriptEngine* engine)
@@ -76,12 +76,12 @@ struct SDictCache
             RUNTIME_ASSERT(cache->HStringTypeId > 0);
             cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(IDENT_NAME);
             RUNTIME_ASSERT(cache->IdentTypeId > 0);
-            cache->TimeDurationTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TIME_DURATION_NAME);
-            RUNTIME_ASSERT(cache->TimeDurationTypeId > 0);
-            cache->TimePointTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TIME_POINT_NAME);
-            RUNTIME_ASSERT(cache->TimePointTypeId > 0);
-            cache->ServerTimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(SERVER_TIME_NAME);
-            RUNTIME_ASSERT(cache->ServerTimeTypeId > 0);
+            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TIMESPAN_NAME);
+            RUNTIME_ASSERT(cache->TimespanTypeId > 0);
+            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(NANOTIME_NAME);
+            RUNTIME_ASSERT(cache->NanotimeTypeId > 0);
+            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(SYNCTIME_NAME);
+            RUNTIME_ASSERT(cache->SynctimeTypeId > 0);
         }
         return cache;
     }
@@ -864,19 +864,19 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
         return aStrong.underlying_value() < bStrong.underlying_value();
     }
-    if (typeId == cache->TimeDurationTypeId) {
-        const time_duration_t& aStrong = *static_cast<const time_duration_t*>(a);
-        const time_duration_t& bStrong = *static_cast<const time_duration_t*>(b);
+    if (typeId == cache->TimespanTypeId) {
+        const timespan& aStrong = *static_cast<const timespan*>(a);
+        const timespan& bStrong = *static_cast<const timespan*>(b);
         return aStrong < bStrong;
     }
-    if (typeId == cache->TimePointTypeId) {
-        const time_point_t& aStrong = *static_cast<const time_point_t*>(a);
-        const time_point_t& bStrong = *static_cast<const time_point_t*>(b);
+    if (typeId == cache->NanotimeTypeId) {
+        const nanotime& aStrong = *static_cast<const nanotime*>(a);
+        const nanotime& bStrong = *static_cast<const nanotime*>(b);
         return aStrong < bStrong;
     }
-    if (typeId == cache->ServerTimeTypeId) {
-        const server_time_t& aStrong = *static_cast<const server_time_t*>(a);
-        const server_time_t& bStrong = *static_cast<const server_time_t*>(b);
+    if (typeId == cache->SynctimeTypeId) {
+        const synctime& aStrong = *static_cast<const synctime*>(a);
+        const synctime& bStrong = *static_cast<const synctime*>(b);
         return aStrong < bStrong;
     }
 
@@ -936,19 +936,19 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
         return aStrong.underlying_value() == bStrong.underlying_value();
     }
-    if (typeId == cache->TimeDurationTypeId) {
-        const time_duration_t& aStrong = *static_cast<const time_duration_t*>(a);
-        const time_duration_t& bStrong = *static_cast<const time_duration_t*>(b);
+    if (typeId == cache->TimespanTypeId) {
+        const timespan& aStrong = *static_cast<const timespan*>(a);
+        const timespan& bStrong = *static_cast<const timespan*>(b);
         return aStrong == bStrong;
     }
-    if (typeId == cache->TimePointTypeId) {
-        const time_point_t& aStrong = *static_cast<const time_point_t*>(a);
-        const time_point_t& bStrong = *static_cast<const time_point_t*>(b);
+    if (typeId == cache->NanotimeTypeId) {
+        const nanotime& aStrong = *static_cast<const nanotime*>(a);
+        const nanotime& bStrong = *static_cast<const nanotime*>(b);
         return aStrong == bStrong;
     }
-    if (typeId == cache->ServerTimeTypeId) {
-        const server_time_t& aStrong = *static_cast<const server_time_t*>(a);
-        const server_time_t& bStrong = *static_cast<const server_time_t*>(b);
+    if (typeId == cache->SynctimeTypeId) {
+        const synctime& aStrong = *static_cast<const synctime*>(a);
+        const synctime& bStrong = *static_cast<const synctime*>(b);
         return aStrong == bStrong;
     }
 

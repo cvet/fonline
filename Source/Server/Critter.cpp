@@ -58,11 +58,11 @@ Critter::~Critter()
     }
 }
 
-auto Critter::GetOfflineTime() const -> time_duration_t
+auto Critter::GetOfflineTime() const -> timespan
 {
     STACK_TRACE_ENTRY();
 
-    return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : time_duration_t::zero;
+    return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
 
 auto Critter::IsAlive() const noexcept -> bool

@@ -523,8 +523,12 @@ void FOEngineBase::FrameAdvance()
     STACK_TRACE_ENTRY();
 
     GameTime.FrameAdvance();
-    SetServerTime(GameTime.GetServerTime());
+
     SetFrameTime(GameTime.GetFrameTime());
     SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
     SetFramesPerSecond(GameTime.GetFramesPerSecond());
+
+    if (GameTime.IsTimeSynchronized()) {
+        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+    }
 }

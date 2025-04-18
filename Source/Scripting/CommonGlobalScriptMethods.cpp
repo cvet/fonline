@@ -676,41 +676,23 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(FOEngineBase*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API time_point_t Common_Game_GetFrameTime(FOEngineBase* engine)
-{
-    return engine->GameTime.GetFrameTime();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API time_duration_t Common_Game_GetFrameDeltaTime(FOEngineBase* engine)
-{
-    return engine->GameTime.GetFrameDeltaTime();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API server_time_t Common_Game_GetServerTime(FOEngineBase* engine)
-{
-    return engine->GameTime.GetServerTime();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API time_point_t Common_Game_GetPrecisionTime(FOEngineBase* engine)
+FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(FOEngineBase* engine)
 {
     UNUSED_VARIABLE(engine);
 
-    return time_point_t::now();
+    return nanotime::now();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API time_point_t Common_Game_PackTime(FOEngineBase* engine, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond)
+FO_SCRIPT_API nanotime Common_Game_PackTime(FOEngineBase* engine, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond)
 {
     UNUSED_VARIABLE(engine);
 
-    return time_point_t::make(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+    return nanotime::make(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackTime(FOEngineBase* engine, time_point_t time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond, int& microsecond, int& nanosecond)
+FO_SCRIPT_API void Common_Game_UnpackTime(FOEngineBase* engine, nanotime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond, int& microsecond, int& nanosecond)
 {
     UNUSED_VARIABLE(engine);
 
@@ -727,19 +709,19 @@ FO_SCRIPT_API void Common_Game_UnpackTime(FOEngineBase* engine, time_point_t tim
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API server_time_t Common_Game_PackServerTime(FOEngineBase* engine, int year, int month, int day, int hour, int minute, int second, int millisecond)
+FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(FOEngineBase* engine, int year, int month, int day, int hour, int minute, int second, int millisecond)
 {
     UNUSED_VARIABLE(engine);
 
-    return engine->GameTime.GetServerTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0);
+    return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackServerTime(FOEngineBase* engine, server_time_t time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond)
+FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(FOEngineBase* engine, synctime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond)
 {
     UNUSED_VARIABLE(engine);
 
-    const auto time_desc = make_time_desc(time - engine->GameTime.GetServerTime());
+    const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime());
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -750,37 +732,37 @@ FO_SCRIPT_API void Common_Game_UnpackServerTime(FOEngineBase* engine, server_tim
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, ScriptFuncName<void> func)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, data);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, time_duration_t repeat, ScriptFuncName<void> func)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, time_duration_t repeat, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, time_duration_t delay, time_duration_t repeat, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
+FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, data);
 }
@@ -834,25 +816,25 @@ FO_SCRIPT_API void Common_Game_StopTimeEvent(FOEngineBase* engine, uint id)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void> func, time_duration_t repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, any_t> func, time_duration_t repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, any_t> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func, time_duration_t repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, uint id, time_duration_t repeat)
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, uint id, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
 }
@@ -890,7 +872,7 @@ FO_SCRIPT_API void Common_Game_StopCurrentTimeEvent(FOEngineBase* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(FOEngineBase* engine, time_duration_t repeat)
+FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(FOEngineBase* engine, timespan repeat)
 {
     if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
         engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, repeat, std::nullopt);

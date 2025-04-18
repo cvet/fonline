@@ -434,7 +434,7 @@ void MapView::Process()
     }
 }
 
-void MapView::AddMapText(string_view str, mpos hex, ucolor color, time_duration_t show_time, bool fade, ipos offset)
+void MapView::AddMapText(string_view str, mpos hex, ucolor color, timespan show_time, bool fade, ipos offset)
 {
     STACK_TRACE_ENTRY();
 

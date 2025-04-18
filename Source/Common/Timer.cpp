@@ -39,16 +39,16 @@ GameTimer::GameTimer(TimerSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
-    _frameTime = time_point_t::now();
+    _frameTime = nanotime::now();
     _fpsMeasureTime = _frameTime;
 }
 
-void GameTimer::SetServerTime(server_time_t time)
+void GameTimer::SetSynchronizedTime(synctime time) noexcept
 {
     STACK_TRACE_ENTRY();
 
-    _serverTime = time;
-    _serverTimeSet = _frameTime;
+    _syncTimeBase = time;
+    _syncTimeSet = _frameTime;
 }
 
 void GameTimer::FrameAdvance()
@@ -56,7 +56,7 @@ void GameTimer::FrameAdvance()
     STACK_TRACE_ENTRY();
 
     const auto prev_frame_time = _frameTime;
-    const auto now_time = time_point_t::now();
+    const auto now_time = nanotime::now();
 
     // Skip time spent under debugger
     if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
@@ -85,13 +85,13 @@ void GameTimer::FrameAdvance()
     }
 }
 
-auto GameTimer::GetServerTime() const -> server_time_t
+auto GameTimer::GetSynchronizedTime() const -> synctime
 {
     STACK_TRACE_ENTRY();
 
-    if (!_serverTime) {
-        throw ServerTimeNotSetException("Server time is not set");
+    if (!_syncTimeBase) {
+        throw TimeNotSyncException("Time is not synchronized yet");
     }
 
-    return _serverTime + (_frameTime - _serverTimeSet);
+    return _syncTimeBase + (_frameTime - _syncTimeSet);
 }

@@ -57,7 +57,7 @@ FO_SCRIPT_API void Client_Map_DrawMapTexts(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_Message(MapView* self, string_view text, mpos hex, time_duration_t showTime, ucolor color, bool fade, ipos endOffset)
+FO_SCRIPT_API void Client_Map_Message(MapView* self, string_view text, mpos hex, timespan showTime, ucolor color, bool fade, ipos endOffset)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Hex is out of map bounds");

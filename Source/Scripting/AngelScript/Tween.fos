@@ -80,7 +80,7 @@ class Tween
     private
     uint pps;
     private
-    time_point startTick;
+    nanotime startTick;
 };
 
 }

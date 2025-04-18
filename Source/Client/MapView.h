@@ -103,7 +103,7 @@ public:
         ipos LastOffset {};
         vector<tuple<mpos, uint8, bool>> FanHexes {}; // Hex, Alpha, UseOffsets
         vector<mpos> MarkedHexes {};
-        time_point_t Time {};
+        nanotime Time {};
         bool Finishing {};
     };
 
@@ -178,7 +178,7 @@ public:
     void DrawMap();
     void DrawMapTexts();
 
-    void AddMapText(string_view str, mpos hex, ucolor color, time_duration_t show_time, bool fade, ipos offset);
+    void AddMapText(string_view str, mpos hex, ucolor color, timespan show_time, bool fade, ipos offset);
     auto GetRectForText(mpos hex) -> IRect;
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
@@ -280,8 +280,8 @@ private:
     struct MapText
     {
         mpos Hex {};
-        time_point_t StartTime {};
-        time_duration_t Duration {};
+        nanotime StartTime {};
+        timespan Duration {};
         string Text {};
         ucolor Color {};
         bool Fade {};
@@ -353,7 +353,7 @@ private:
 
     MapSpriteList _mapSprites;
 
-    time_point_t _scrollLastTime {};
+    nanotime _scrollLastTime {};
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
@@ -394,7 +394,7 @@ private:
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
-    time_point_t _hexLightTime {};
+    nanotime _hexLightTime {};
 
     int _prevMapDayTime {-1};
     int _prevGlobalDayTime {-1};

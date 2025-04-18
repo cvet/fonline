@@ -58,10 +58,10 @@
 
 static bool ExceptionMessageBox = false;
 
-const time_duration_t time_duration_t::zero;
-const time_duration_t time_duration_t::step = resolution(1);
-const time_point_t time_point_t::zero;
-const server_time_t server_time_t::zero;
+const timespan timespan::zero;
+const timespan timespan::step = resolution(1);
+const nanotime nanotime::zero;
+const synctime synctime::zero;
 
 // ReSharper disable once CppInconsistentNaming
 const ucolor ucolor::clear;
@@ -577,7 +577,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     STACK_TRACE_ENTRY();
 
     const auto traceback = GetStackTrace();
-    const auto time = time_point_t::now().desc();
+    const auto time = nanotime::now().desc();
     const string fname = strex("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, time.year, time.month, time.day, time.hour, time.minute, time.second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
@@ -595,7 +595,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-auto make_time_desc(time_duration_t time_offset) -> time_desc_t
+auto make_time_desc(timespan time_offset) -> time_desc_t
 {
     STACK_TRACE_ENTRY();
 
@@ -638,7 +638,7 @@ auto make_time_desc(time_duration_t time_offset) -> time_desc_t
     return result;
 }
 
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> time_duration_t
+auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> timespan
 {
     STACK_TRACE_ENTRY();
 
@@ -673,7 +673,7 @@ void FrameBalancer::StartLoop()
         return;
     }
 
-    _loopStart = time_point_t::now();
+    _loopStart = nanotime::now();
 }
 
 void FrameBalancer::EndLoop()
@@ -684,7 +684,7 @@ void FrameBalancer::EndLoop()
         return;
     }
 
-    _loopDuration = time_point_t::now() - _loopStart;
+    _loopDuration = nanotime::now() - _loopStart;
 
     if (_sleep >= 0) {
         if (_sleep == 0) {
@@ -695,23 +695,23 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const time_duration_t target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)};
+        const timespan target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)};
         const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
 
-        if (idle_time > time_duration_t::zero) {
-            const auto sleep_start = time_point_t::now();
+        if (idle_time > timespan::zero) {
+            const auto sleep_start = nanotime::now();
 
             std::this_thread::sleep_for(idle_time.value());
 
-            const auto sleep_duration = time_point_t::now() - sleep_start;
+            const auto sleep_duration = nanotime::now() - sleep_start;
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < time_duration_t(-std::chrono::milliseconds {1000})) {
-                _idleTimeBalance = time_duration_t(-std::chrono::milliseconds {1000});
+            if (_idleTimeBalance < timespan(-std::chrono::milliseconds {1000})) {
+                _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
             }
         }
     }
@@ -773,21 +773,21 @@ void WorkThread::AddJob(Job job)
     AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
 }
 
-void WorkThread::AddJob(time_duration_t delay, Job job)
+void WorkThread::AddJob(timespan delay, Job job)
 {
     STACK_TRACE_ENTRY();
 
     AddJobInternal(delay, std::move(job), false);
 }
 
-void WorkThread::AddJobInternal(time_duration_t delay, Job job, bool no_notify)
+void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
 {
     STACK_TRACE_ENTRY();
 
     {
         std::unique_lock locker(_dataLocker);
 
-        const auto fire_time = time_point_t::now() + delay;
+        const auto fire_time = nanotime::now() + delay;
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
             _jobs.emplace_back(fire_time, std::move(job));
@@ -874,7 +874,7 @@ void WorkThread::ThreadEntry() noexcept
                 }
 
                 if (!_jobs.empty()) {
-                    const auto cur_time = time_point_t::now();
+                    const auto cur_time = nanotime::now();
 
                     for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {

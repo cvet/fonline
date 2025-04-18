@@ -812,7 +812,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
         }
         else {
-            _endTime = time_point_t::zero;
+            _endTime = nanotime::zero;
         }
 
         // Force redraw
@@ -1075,7 +1075,7 @@ auto ModelInstance::GetSpeed() const -> float
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto ModelInstance::GetTime() const -> time_point_t
+auto ModelInstance::GetTime() const -> nanotime
 {
     STACK_TRACE_ENTRY();
 
@@ -2102,7 +2102,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
     return ipos {x, y};
 }
 
-auto ModelInstance::GetAnimDuration() const -> time_duration_t
+auto ModelInstance::GetAnimDuration() const -> timespan
 {
     STACK_TRACE_ENTRY();
 

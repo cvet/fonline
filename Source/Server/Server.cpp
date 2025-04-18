@@ -413,15 +413,15 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             if (globals_doc.Empty()) {
                 DbStorage.Insert(GameCollectionName, ident_t {1}, {});
+                SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
             }
             else {
                 if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
                     throw ServerInitException("Failed to load globals document");
                 }
-
-                GameTime.SetServerTime(GetServerTime());
             }
 
+            GameTime.SetSynchronizedTime(GetSynchronizedTime());
             FrameAdvance();
             TimeEventMngr.InitPersistentTimeEvents(this);
 
@@ -497,8 +497,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
         _loopBalancer.StartLoop();
 
-        _stats.LoopCounterBegin = time_point_t::now();
-        _stats.ServerStartTime = time_point_t::now();
+        _stats.LoopCounterBegin = nanotime::now();
+        _stats.ServerStartTime = nanotime::now();
 
         // Sync point
         _mainWorker.AddJob([this] {
@@ -657,7 +657,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _loopBalancer.EndLoop();
             _loopBalancer.StartLoop();
 
-            const auto cur_time = time_point_t::now();
+            const auto cur_time = nanotime::now();
             const auto loop_duration = _loopBalancer.GetLoopDuration();
 
             // Calculate loop average time
@@ -787,7 +787,7 @@ FOServer::~FOServer()
     }
 }
 
-auto FOServer::Lock(optional<time_duration_t> max_wait_time) -> bool
+auto FOServer::Lock(optional<timespan> max_wait_time) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -872,7 +872,7 @@ void FOServer::DrawGui(string_view server_name)
         }
         else {
             if (Settings.LockMaxWaitTime != 0) {
-                const auto max_wait_time = time_duration_t {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+                const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
                 if (!Lock(max_wait_time)) {
                     ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
                     WriteLog("Server hanged (no response more than {})", max_wait_time);
@@ -925,8 +925,8 @@ auto FOServer::GetHealthInfo() const -> string
     string buf;
     buf.reserve(2048);
 
-    buf += strex("System time: {}\n", time_point_t::now());
-    buf += strex("Server time: {}\n", GameTime.GetServerTime().duration_value());
+    buf += strex("System time: {}\n", nanotime::now());
+    buf += strex("Sync time: {}\n", GetSynchronizedTime());
     buf += strex("Server uptime: {}\n", _stats.Uptime);
     buf += strex("Connections: {}\n", _stats.CurOnline);
     buf += strex("Players: {}\n", EntityMngr.GetPlayersCount());
@@ -2183,7 +2183,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     if (!outdated) {
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
-        out_buf->Write(GetServerTime());
+        out_buf->Write(GameTime.GetSynchronizedTime());
     }
 
     connection->WasHandshake = true;
@@ -2314,7 +2314,7 @@ void FOServer::Process_Register(Player* unlogined_player)
 
             if (tick - last_reg < reg_tick) {
                 unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REGISTRATION_IP_WAIT);
-                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, strex("$time{}", (time_duration_t(reg_tick) - (tick - last_reg)).to_ms<uint>() / 60000 + 1));
+                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, strex("$time{}", (timespan(reg_tick) - (tick - last_reg)).to_ms<uint>() / 60000 + 1));
                 connection->GracefulDisconnect();
                 return;
             }

@@ -123,7 +123,7 @@ void HexView::SetFade(bool fade_up)
 
     const auto time = _map->GetEngine()->GameTime.GetFrameTime();
 
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration_t::zero);
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : timespan::zero);
     _fadeUp = fade_up;
     _fading = true;
 

@@ -82,7 +82,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player; }
     [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player; }
-    [[nodiscard]] auto GetOfflineTime() const -> time_duration_t;
+    [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
     [[nodiscard]] auto IsKnockout() const noexcept -> bool;
@@ -254,8 +254,8 @@ public:
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
-        time_point_t StartTime {};
-        time_duration_t OffsetTime {};
+        nanotime StartTime {};
+        timespan OffsetTime {};
         mpos StartHex {};
         mpos EndHex {};
         float WholeTime {};
@@ -268,7 +268,7 @@ public:
 
 private:
     Player* _player {};
-    time_point_t _playerDetachTime {};
+    nanotime _playerDetachTime {};
     vector<Item*> _invItems {};
-    time_point_t _talkNextTime {};
+    nanotime _talkNextTime {};
 };

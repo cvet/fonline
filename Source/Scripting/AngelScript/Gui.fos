@@ -1573,7 +1573,7 @@ class Text : Object
     }
 };
 
-const time_duration PasswordShowTime = Time::Milliseconds(1000);
+const timespan PasswordShowTime = Time::Milliseconds(1000);
 class TextInput : Text
 {
     uint get_InputLength() final
@@ -1592,7 +1592,7 @@ class TextInput : Text
     uint _InputLength;
     bool _IsTextPassword;
     string _PasswordChar;
-    time_point _PasswordTime;
+    nanotime _PasswordTime;
     int _CarriagePos;
 
     void _Construct() override
@@ -1666,7 +1666,7 @@ class TextInput : Text
             _Text = _Text.substr(0, _Text.length() - 1);
         }
         if (_IsTextPassword) {
-            _PasswordTime = (_Text.length() > oldLen ? Game.FrameTime : ZERO_TIME_POINT);
+            _PasswordTime = (_Text.length() > oldLen ? Game.FrameTime : ZERO_NANOTIME);
         }
 
         Text::Input(key, text);
@@ -1760,7 +1760,7 @@ class TextInput : Text
     {
         _IsTextPassword = (passwordChar.length() == 1);
         _PasswordChar = passwordChar;
-        _PasswordTime = ZERO_TIME_POINT;
+        _PasswordTime = ZERO_NANOTIME;
     }
 
     void SetCarriage(bool enable)
@@ -2623,7 +2623,7 @@ class MessageBox : Text
         int millisecond = 0;
         int microsecond = 0;
         int nanosecond = 0;
-        time_point time = Game.GetPrecisionTime();
+        nanotime time = Game.GetPrecisionTime();
         Game.UnpackTime(time, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
 
         string messageTime = (hour <= 9 ? "0" : "") + hour + ":" + (minute <= 9 ? "0" : "") + minute + ":" + (second <= 9 ? "0" : "") + second + " ";
@@ -3163,7 +3163,7 @@ Screen CursorScreen;
 
 Object FocusedObject;
 Object PressedObject;
-time_point PressedObjectRepeatTime;
+nanotime PressedObjectRepeatTime;
 Object LastPressedObject;
 Object HoveredObject;
 
@@ -3800,7 +3800,7 @@ void EngineCallback_Loop()
     GetPressedObject(); // Refresh state
 
     if (PressedObject != null) {
-        time_point tick = Game.FrameTime;
+        nanotime tick = Game.FrameTime;
 
         if (tick >= PressedObjectRepeatTime && PressedObject.IsMouseHit()) {
             PressedObjectRepeatTime = tick + Time::Milliseconds(40);

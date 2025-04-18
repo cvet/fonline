@@ -144,8 +144,8 @@ public:
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFade(time_duration_t time, ucolor from_color, ucolor to_color, bool push_back);
-    void ScreenQuake(int noise, time_duration_t time);
+    void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
+    void ScreenQuake(int noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
@@ -288,8 +288,8 @@ protected:
 
     struct ScreenFadingData
     {
-        time_point_t BeginTime {};
-        time_duration_t Duration {};
+        nanotime BeginTime {};
+        timespan Duration {};
         ucolor StartColor {};
         ucolor EndColor {};
     };
@@ -419,13 +419,13 @@ protected:
     float _quakeScreenOffsX {};
     float _quakeScreenOffsY {};
     float _quakeScreenOffsStep {};
-    time_point_t _quakeScreenOffsNextTime {};
+    nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
-    time_point_t _lmapPrepareNextTime {};
+    nanotime _lmapPrepareNextTime {};
 
     unique_ptr<VideoClip> _video {};
     unique_ptr<RenderTexture> _videoTex {};

@@ -341,7 +341,7 @@ public:
     int ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};
     string ConsoleLastKeyText {};
-    time_point_t ConsoleKeyTime {};
+    nanotime ConsoleKeyTime {};
     int ConsoleAccelerate {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};

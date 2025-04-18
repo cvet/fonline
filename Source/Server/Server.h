@@ -79,7 +79,7 @@ public:
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
 
-    auto Lock(optional<time_duration_t> max_wait_time) -> bool;
+    auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
     void DrawGui(string_view server_name);
 
@@ -187,8 +187,8 @@ public:
 private:
     struct ServerStats
     {
-        time_point_t ServerStartTime {};
-        time_duration_t Uptime {};
+        nanotime ServerStartTime {};
+        timespan Uptime {};
 
         int64 BytesSend {};
         int64 BytesRecv {};
@@ -200,15 +200,15 @@ private:
         size_t CurOnline {};
 
         size_t LoopsCount {};
-        time_duration_t LoopLastTime {};
-        time_duration_t LoopMinTime {};
-        time_duration_t LoopMaxTime {};
+        timespan LoopLastTime {};
+        timespan LoopMinTime {};
+        timespan LoopMaxTime {};
 
-        deque<pair<time_point_t, time_duration_t>> LoopTimeStamps {};
-        time_duration_t LoopWholeAvgTime {};
-        time_duration_t LoopAvgTime {};
+        deque<pair<nanotime, timespan>> LoopTimeStamps {};
+        timespan LoopWholeAvgTime {};
+        timespan LoopAvgTime {};
 
-        time_point_t LoopCounterBegin {};
+        nanotime LoopCounterBegin {};
         size_t LoopCounter {};
         size_t LoopsPerSecond {};
     };
@@ -291,7 +291,7 @@ private:
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     unique_ptr<DiskFile> _healthFile {};
-    map<uint, time_point_t> _regIp {};
+    map<uint, nanotime> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};

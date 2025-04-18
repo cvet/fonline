@@ -435,19 +435,19 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, time_duration_t duration)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, timespan duration)
 {
     client->ScreenFade(duration, fromColor, toColor, false);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, time_duration_t duration, bool appendEffect)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, timespan duration, bool appendEffect)
 {
     client->ScreenFade(duration, fromColor, toColor, appendEffect);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, time_duration_t duration)
+FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, timespan duration)
 {
     client->ScreenQuake(noise, duration);
 }
@@ -459,7 +459,7 @@ FO_SCRIPT_API bool Client_Game_PlaySound(FOClient* client, string_view soundName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, time_duration_t repeatTime)
+FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();

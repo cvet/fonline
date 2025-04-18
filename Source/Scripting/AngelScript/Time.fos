@@ -6,34 +6,34 @@ const int MicrosecondsPlace = 1;
 const int MillisecondsPlace = 2;
 const int SecondsPlace = 3;
 
-time_duration Asap()
+timespan Asap()
 {
-    return time_duration(0, NanosecondsPlace);
+    return timespan(0, NanosecondsPlace);
 }
-time_duration Milliseconds(int value)
+timespan Milliseconds(int value)
 {
-    return time_duration(value, MillisecondsPlace);
+    return timespan(value, MillisecondsPlace);
 }
-time_duration Seconds(int value)
+timespan Seconds(int value)
 {
-    return time_duration(value, SecondsPlace);
+    return timespan(value, SecondsPlace);
 }
-time_duration Minutes(int value)
+timespan Minutes(int value)
 {
-    return time_duration(value * 60, SecondsPlace);
+    return timespan(value * 60, SecondsPlace);
 }
-time_duration Hours(int value)
+timespan Hours(int value)
 {
-    return time_duration(value * 3600, SecondsPlace);
+    return timespan(value * 3600, SecondsPlace);
 }
-time_duration Days(int value)
+timespan Days(int value)
 {
-    return time_duration(value * 86400, SecondsPlace);
+    return timespan(value * 86400, SecondsPlace);
 }
 
-bool IsTimeoutActive(server_time timeout)
+bool IsTimeoutActive(synctime timeout)
 {
-    return timeout > Game.ServerTime;
+    return timeout > Game.SynchronizedTime;
 }
 
 }

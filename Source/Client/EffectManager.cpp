@@ -84,8 +84,8 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     if (effect->NeedTimeBuf) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
-        time_buf->FrameTime[0] = time_duration_t(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
-        time_buf->GameTime[0] = time_duration_t(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
+        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
+        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
     }
 
     if (effect->NeedRandomValueBuf) {

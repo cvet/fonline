@@ -180,7 +180,7 @@ auto ParticleSystem::GetDrawSize() const -> isize
     return {max_draw_width, max_draw_height};
 }
 
-auto ParticleSystem::GetTime() const -> time_point_t
+auto ParticleSystem::GetTime() const -> nanotime
 {
     STACK_TRACE_ENTRY();
 

@@ -96,8 +96,8 @@ public:
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
-        time_point_t StartTime {};
-        time_duration_t OffsetTime {};
+        nanotime StartTime {};
+        timespan OffsetTime {};
         mpos StartHex {};
         mpos EndHex {};
         float WholeTime {};
@@ -110,7 +110,7 @@ private:
     struct CritterAnim
     {
         const SpriteSheet* AnimFrames {};
-        time_duration_t AnimDuration {};
+        timespan AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
         CritterStateAnim StateAnim {};
@@ -130,19 +130,19 @@ private:
     void SetAnimSpr(const SpriteSheet* anim, uint frm_index);
 
     bool _needReset {};
-    time_point_t _resetTime {};
+    nanotime _resetTime {};
 
     uint _curFrmIndex {};
-    time_point_t _animStartTime {};
+    nanotime _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    time_point_t _fidgetTime {};
+    nanotime _fidgetTime {};
 
     ipos _offsAnim {};
     fpos _offsExt {};
     fpos _offsExtSpeed {};
-    time_point_t _offsExtNextTime {};
+    nanotime _offsExtNextTime {};
 
 #if FO_ENABLE_3D
     shared_ptr<ModelSprite> _modelSpr {};

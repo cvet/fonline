@@ -62,10 +62,10 @@ struct VideoClip::Impl
     StreamStates Streams {};
     vector<ucolor> RenderedTextureData {};
     int CurFrame {};
-    time_duration_t AverageRenderTime {};
-    time_point_t StartTime {};
-    time_point_t RenderTime {};
-    time_point_t PauseTime {};
+    timespan AverageRenderTime {};
+    nanotime StartTime {};
+    nanotime RenderTime {};
+    nanotime PauseTime {};
 };
 
 VideoClip::VideoClip(vector<uint8> video_data) :
@@ -116,7 +116,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
     _impl->RenderedTextureData.resize(static_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
 
-    _impl->StartTime = time_point_t::now();
+    _impl->StartTime = nanotime::now();
 }
 
 VideoClip::~VideoClip()
@@ -160,7 +160,7 @@ auto VideoClip::IsLooped() const noexcept -> bool
     return _impl->Looped;
 }
 
-auto VideoClip::GetTime() const -> time_duration_t
+auto VideoClip::GetTime() const -> timespan
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -194,7 +194,7 @@ void VideoClip::Pause()
     STACK_TRACE_ENTRY();
 
     _impl->Paused = true;
-    _impl->PauseTime = time_point_t::now();
+    _impl->PauseTime = nanotime::now();
 }
 
 void VideoClip::Resume()
@@ -202,10 +202,10 @@ void VideoClip::Resume()
     STACK_TRACE_ENTRY();
 
     if (_impl->Stopped) {
-        _impl->StartTime = time_point_t::now();
+        _impl->StartTime = nanotime::now();
     }
     else if (_impl->Paused) {
-        _impl->StartTime = time_point_t::now() - GetTime();
+        _impl->StartTime = nanotime::now() - GetTime();
     }
 
     _impl->Stopped = false;
@@ -219,11 +219,11 @@ void VideoClip::SetLooped(bool enabled)
     _impl->Looped = enabled;
 }
 
-void VideoClip::SetTime(time_duration_t time)
+void VideoClip::SetTime(timespan time)
 {
     STACK_TRACE_ENTRY();
 
-    _impl->StartTime = time_point_t::now() - time;
+    _impl->StartTime = nanotime::now() - time;
 }
 
 auto VideoClip::RenderFrame() -> const vector<ucolor>&
@@ -234,7 +234,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         return _impl->RenderedTextureData;
     }
 
-    const auto start_frame_render = time_point_t::now();
+    const auto start_frame_render = nanotime::now();
 
     if (_impl->Paused) {
         _impl->RenderTime = _impl->PauseTime;
@@ -337,7 +337,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Store render time
-    const auto frame_render_duration = time_point_t::now() - start_frame_render;
+    const auto frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds {0}) {
         _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<double>() / 2.0)};

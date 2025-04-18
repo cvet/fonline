@@ -258,7 +258,7 @@ public:
     [[nodiscard]] auto GetViewSize() const noexcept -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
-    [[nodiscard]] auto GetAnimDuration() const -> time_duration_t;
+    [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
     void SetupFrame(isize draw_size);
@@ -300,7 +300,7 @@ private:
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
-    [[nodiscard]] auto GetTime() const -> time_point_t;
+    [[nodiscard]] auto GetTime() const -> nanotime;
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(const ModelInstance* cur);
@@ -331,8 +331,8 @@ private:
     unique_ptr<ModelAnimationController> _moveAnimController {};
     int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
-    time_point_t _lastDrawTime {};
-    time_point_t _endTime {};
+    nanotime _lastDrawTime {};
+    nanotime _endTime {};
     mat44 _matRot {};
     mat44 _matScale {};
     mat44 _matScaleBase {};

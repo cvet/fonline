@@ -73,7 +73,7 @@ private:
     ipos _effStartOffset {};
     fpos _effCurOffset {};
     uint _effDist {};
-    time_point_t _effUpdateLastTime {};
+    nanotime _effUpdateLastTime {};
     uint8 _effDir {};
     vector<mpos> _effSteps {};
 };

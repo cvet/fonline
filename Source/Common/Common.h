@@ -831,55 +831,55 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
-///@ ExportValueType time_duration time_duration_t HardStrong Layout = int64-value
-#define TIME_DURATION_NAME "time_duration"
-class time_duration_t
+///@ ExportValueType timespan timespan HardStrong Layout = int64-value
+#define TIMESPAN_NAME "timespan"
+class timespan
 {
 public:
     using underlying_type = int64;
     static constexpr bool is_strong_type = true;
-    static constexpr string_view type_name = TIME_DURATION_NAME;
+    static constexpr string_view type_name = TIMESPAN_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
 
-    constexpr time_duration_t() noexcept = default;
-    time_duration_t(const time_duration_t& other) noexcept = default;
-    time_duration_t(time_duration_t&& other) noexcept = default;
-    auto operator=(const time_duration_t& other) noexcept -> time_duration_t& = default;
-    auto operator=(time_duration_t&& other) noexcept -> time_duration_t& = default;
-    ~time_duration_t() = default;
+    constexpr timespan() noexcept = default;
+    timespan(const timespan& other) noexcept = default;
+    timespan(timespan&& other) noexcept = default;
+    auto operator=(const timespan& other) noexcept -> timespan& = default;
+    auto operator=(timespan&& other) noexcept -> timespan& = default;
+    ~timespan() = default;
 
     template<typename T, typename U>
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    constexpr time_duration_t(const std::chrono::duration<T, U>& other) noexcept :
+    constexpr timespan(const std::chrono::duration<T, U>& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other).count()}
     {
     }
-    constexpr explicit time_duration_t(underlying_type value) noexcept :
+    constexpr explicit timespan(underlying_type value) noexcept :
         _value {value}
     {
     }
-    auto operator+=(const time_duration_t& other) noexcept -> time_duration_t&
+    auto operator+=(const timespan& other) noexcept -> timespan&
     {
         *this = value() + other.value();
         return *this;
     }
-    auto operator-=(const time_duration_t& other) noexcept -> time_duration_t&
+    auto operator-=(const timespan& other) noexcept -> timespan&
     {
         *this = value() - other.value();
         return *this;
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const time_duration_t& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const time_duration_t& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator!=(const time_duration_t& other) const noexcept -> bool { return value() != other.value(); }
-    [[nodiscard]] constexpr auto operator<(const time_duration_t& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const time_duration_t& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const time_duration_t& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const time_duration_t& other) const noexcept -> bool { return value() >= other.value(); }
-    [[nodiscard]] constexpr auto operator+(const time_duration_t& other) const noexcept -> time_duration_t { return value() + other.value(); }
-    [[nodiscard]] constexpr auto operator-(const time_duration_t& other) const noexcept -> time_duration_t { return value() - other.value(); }
+    [[nodiscard]] constexpr auto compare(const timespan& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto operator==(const timespan& other) const noexcept -> bool { return value() == other.value(); }
+    [[nodiscard]] constexpr auto operator!=(const timespan& other) const noexcept -> bool { return value() != other.value(); }
+    [[nodiscard]] constexpr auto operator<(const timespan& other) const noexcept -> bool { return value() < other.value(); }
+    [[nodiscard]] constexpr auto operator<=(const timespan& other) const noexcept -> bool { return value() <= other.value(); }
+    [[nodiscard]] constexpr auto operator>(const timespan& other) const noexcept -> bool { return value() > other.value(); }
+    [[nodiscard]] constexpr auto operator>=(const timespan& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> timespan { return value() + other.value(); }
+    [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value()).count(); }
     [[nodiscard]] constexpr auto microseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::microseconds>(value()).count(); }
     [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value()).count(); }
@@ -897,19 +897,19 @@ public:
         return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
     }
     template<typename T>
-    [[nodiscard]] constexpr auto div(const time_duration_t& other) const noexcept -> T
+    [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T
     {
         return static_cast<T>(static_cast<double>(_value) / static_cast<double>(other._value));
     }
 
-    static const time_duration_t zero;
-    static const time_duration_t step;
+    static const timespan zero;
+    static const timespan step;
 
 private:
     int64 _value {};
 };
-static_assert(sizeof(time_duration_t) == sizeof(int64));
-static_assert(std::is_standard_layout_v<time_duration_t>);
+static_assert(sizeof(timespan) == sizeof(int64));
+static_assert(std::is_standard_layout_v<timespan>);
 
 struct time_desc_t
 {
@@ -924,162 +924,162 @@ struct time_desc_t
     int nanosecond {}; // 0..999
 };
 
-auto make_time_desc(time_duration_t time_offset) -> time_desc_t;
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> time_duration_t;
+auto make_time_desc(timespan time_offset) -> time_desc_t;
+auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> timespan;
 
-///@ ExportValueType time_point time_point_t HardStrong Layout = int64-value
-#define TIME_POINT_NAME "time_point"
-class time_point_t
+///@ ExportValueType nanotime nanotime HardStrong Layout = int64-value
+#define NANOTIME_NAME "nanotime"
+class nanotime
 {
 public:
     using underlying_type = int64;
     static constexpr bool is_strong_type = true;
-    static constexpr string_view type_name = TIME_POINT_NAME;
+    static constexpr string_view type_name = NANOTIME_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
 
-    constexpr time_point_t() noexcept = default;
-    time_point_t(const time_point_t& other) noexcept = default;
-    time_point_t(time_point_t&& other) noexcept = default;
-    auto operator=(const time_point_t& other) noexcept -> time_point_t& = default;
-    auto operator=(time_point_t&& other) noexcept -> time_point_t& = default;
-    ~time_point_t() = default;
+    constexpr nanotime() noexcept = default;
+    nanotime(const nanotime& other) noexcept = default;
+    nanotime(nanotime&& other) noexcept = default;
+    auto operator=(const nanotime& other) noexcept -> nanotime& = default;
+    auto operator=(nanotime&& other) noexcept -> nanotime& = default;
+    ~nanotime() = default;
 
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    constexpr time_point_t(const steady_time_point& other) noexcept :
+    constexpr nanotime(const steady_time_point& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.time_since_epoch()).count()}
     {
     }
-    constexpr explicit time_point_t(const time_duration_t& other) noexcept :
+    constexpr explicit nanotime(const timespan& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.value()).count()}
     {
     }
-    constexpr explicit time_point_t(underlying_type value) noexcept :
+    constexpr explicit nanotime(underlying_type value) noexcept :
         _value {value}
     {
     }
-    auto operator=(const steady_time_point& other) noexcept -> time_point_t&
+    auto operator=(const steady_time_point& other) noexcept -> nanotime&
     {
         _value = std::chrono::duration_cast<resolution>(other.time_since_epoch()).count();
         return *this;
     }
-    auto operator+=(const time_duration_t& other) noexcept -> time_point_t&
+    auto operator+=(const timespan& other) noexcept -> nanotime&
     {
         *this = value() + other.value();
         return *this;
     }
-    auto operator-=(const time_duration_t& other) noexcept -> time_point_t&
+    auto operator-=(const timespan& other) noexcept -> nanotime&
     {
         *this = value() - other.value();
         return *this;
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const time_point_t& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const time_point_t& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator!=(const time_point_t& other) const noexcept -> bool { return value() != other.value(); }
-    [[nodiscard]] constexpr auto operator<(const time_point_t& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const time_point_t& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const time_point_t& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const time_point_t& other) const noexcept -> bool { return value() >= other.value(); }
-    [[nodiscard]] constexpr auto operator-(const time_point_t& other) const noexcept -> time_duration_t { return value() - other.value(); }
-    [[nodiscard]] constexpr auto operator+(const time_duration_t& other) const noexcept -> time_point_t { return value() + other.value(); }
-    [[nodiscard]] constexpr auto operator-(const time_duration_t& other) const noexcept -> time_point_t { return value() - other.value(); }
+    [[nodiscard]] constexpr auto compare(const nanotime& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto operator==(const nanotime& other) const noexcept -> bool { return value() == other.value(); }
+    [[nodiscard]] constexpr auto operator!=(const nanotime& other) const noexcept -> bool { return value() != other.value(); }
+    [[nodiscard]] constexpr auto operator<(const nanotime& other) const noexcept -> bool { return value() < other.value(); }
+    [[nodiscard]] constexpr auto operator<=(const nanotime& other) const noexcept -> bool { return value() <= other.value(); }
+    [[nodiscard]] constexpr auto operator>(const nanotime& other) const noexcept -> bool { return value() > other.value(); }
+    [[nodiscard]] constexpr auto operator>=(const nanotime& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator-(const nanotime& other) const noexcept -> timespan { return value() - other.value(); }
+    [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> nanotime { return value() + other.value(); }
+    [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> nanotime { return value() - other.value(); }
     [[nodiscard]] constexpr auto operator==(const steady_time_point& other) const noexcept -> bool { return value() == other; }
     [[nodiscard]] constexpr auto operator!=(const steady_time_point& other) const noexcept -> bool { return value() != other; }
     [[nodiscard]] constexpr auto operator<(const steady_time_point& other) const noexcept -> bool { return value() < other; }
     [[nodiscard]] constexpr auto operator<=(const steady_time_point& other) const noexcept -> bool { return value() <= other; }
     [[nodiscard]] constexpr auto operator>(const steady_time_point& other) const noexcept -> bool { return value() > other; }
     [[nodiscard]] constexpr auto operator>=(const steady_time_point& other) const noexcept -> bool { return value() >= other; }
-    [[nodiscard]] constexpr auto operator-(const steady_time_point& other) const noexcept -> time_duration_t { return value() - other; }
+    [[nodiscard]] constexpr auto operator-(const steady_time_point& other) const noexcept -> timespan { return value() - other; }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto microseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::microseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
-    [[nodiscard]] constexpr auto duration_value() const noexcept -> time_duration_t { return resolution(_value); }
+    [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc() const -> time_desc_t { return make_time_desc(value() - now().value()); }
 
-    static auto now() -> time_point_t { return time_point_t(steady_time_point::clock::now()); }
-    static auto make(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> time_point_t
+    static auto now() -> nanotime { return nanotime(steady_time_point::clock::now()); }
+    static auto make(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> nanotime
     { //
         return now() + make_time_offset(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
     }
 
-    static const time_point_t zero;
+    static const nanotime zero;
 
 private:
     int64 _value {};
 };
-static_assert(sizeof(time_point_t) == sizeof(int64));
-static_assert(std::is_standard_layout_v<time_point_t>);
+static_assert(sizeof(nanotime) == sizeof(int64));
+static_assert(std::is_standard_layout_v<nanotime>);
 
-///@ ExportValueType server_time server_time_t HardStrong Layout = int64-value
-#define SERVER_TIME_NAME "server_time"
-class server_time_t
+///@ ExportValueType synctime synctime HardStrong Layout = int64-value
+#define SYNCTIME_NAME "synctime"
+class synctime
 {
 public:
     using underlying_type = int64;
     static constexpr bool is_strong_type = true;
-    static constexpr string_view type_name = SERVER_TIME_NAME;
+    static constexpr string_view type_name = SYNCTIME_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::milliseconds;
 
-    constexpr server_time_t() noexcept = default;
-    server_time_t(const server_time_t& other) noexcept = default;
-    server_time_t(server_time_t&& other) noexcept = default;
-    auto operator=(const server_time_t& other) noexcept -> server_time_t& = default;
-    auto operator=(server_time_t&& other) noexcept -> server_time_t& = default;
-    ~server_time_t() = default;
+    constexpr synctime() noexcept = default;
+    synctime(const synctime& other) noexcept = default;
+    synctime(synctime&& other) noexcept = default;
+    auto operator=(const synctime& other) noexcept -> synctime& = default;
+    auto operator=(synctime&& other) noexcept -> synctime& = default;
+    ~synctime() = default;
 
-    constexpr explicit server_time_t(const steady_time_point& other) noexcept :
+    constexpr explicit synctime(const steady_time_point& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.time_since_epoch()).count()}
     {
     }
-    constexpr explicit server_time_t(const time_duration_t& other) noexcept :
+    constexpr explicit synctime(const timespan& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.value()).count()}
     {
     }
-    constexpr explicit server_time_t(underlying_type value) noexcept :
+    constexpr explicit synctime(underlying_type value) noexcept :
         _value {value}
     {
     }
-    auto operator+=(const time_duration_t& other) noexcept -> server_time_t&
+    auto operator+=(const timespan& other) noexcept -> synctime&
     {
-        *this = server_time_t(value() + other.value());
+        *this = synctime(value() + other.value());
         return *this;
     }
-    auto operator-=(const time_duration_t& other) noexcept -> server_time_t&
+    auto operator-=(const timespan& other) noexcept -> synctime&
     {
-        *this = server_time_t(value() - other.value());
+        *this = synctime(value() - other.value());
         return *this;
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const server_time_t& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const server_time_t& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator!=(const server_time_t& other) const noexcept -> bool { return value() != other.value(); }
-    [[nodiscard]] constexpr auto operator<(const server_time_t& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const server_time_t& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const server_time_t& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const server_time_t& other) const noexcept -> bool { return value() >= other.value(); }
-    [[nodiscard]] constexpr auto operator+(const time_duration_t& other) const noexcept -> server_time_t { return server_time_t(value() + other.value()); }
-    [[nodiscard]] constexpr auto operator-(const time_duration_t& other) const noexcept -> server_time_t { return server_time_t(value() - other.value()); }
-    [[nodiscard]] constexpr auto operator-(const server_time_t& other) const noexcept -> time_duration_t { return value() - other.value(); }
+    [[nodiscard]] constexpr auto compare(const synctime& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto operator==(const synctime& other) const noexcept -> bool { return value() == other.value(); }
+    [[nodiscard]] constexpr auto operator!=(const synctime& other) const noexcept -> bool { return value() != other.value(); }
+    [[nodiscard]] constexpr auto operator<(const synctime& other) const noexcept -> bool { return value() < other.value(); }
+    [[nodiscard]] constexpr auto operator<=(const synctime& other) const noexcept -> bool { return value() <= other.value(); }
+    [[nodiscard]] constexpr auto operator>(const synctime& other) const noexcept -> bool { return value() > other.value(); }
+    [[nodiscard]] constexpr auto operator>=(const synctime& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> synctime { return synctime(value() + other.value()); }
+    [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> synctime { return synctime(value() - other.value()); }
+    [[nodiscard]] constexpr auto operator-(const synctime& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto microseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::microseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
-    [[nodiscard]] constexpr auto duration_value() const noexcept -> time_duration_t { return resolution(_value); }
+    [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
 
-    static const server_time_t zero;
+    static const synctime zero;
 
 private:
     int64 _value {};
 };
-static_assert(sizeof(server_time_t) == sizeof(int64));
-static_assert(std::is_standard_layout_v<server_time_t>);
+static_assert(sizeof(synctime) == sizeof(int64));
+static_assert(std::is_standard_layout_v<synctime>);
 
 template<>
 struct FMTNS::formatter<steady_time_point::duration> : formatter<string_view>
@@ -1130,7 +1130,7 @@ struct FMTNS::formatter<steady_time_point> : formatter<string_view>
     {
         string buf;
 
-        const auto td = time_point_t(value).desc();
+        const auto td = nanotime(value).desc();
         FMTNS::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<string_view>::format(buf, ctx);
@@ -1138,32 +1138,32 @@ struct FMTNS::formatter<steady_time_point> : formatter<string_view>
 };
 
 template<>
-struct FMTNS::formatter<time_duration_t> : formatter<steady_time_point::duration>
+struct FMTNS::formatter<timespan> : formatter<steady_time_point::duration>
 {
     template<typename FormatContext>
-    auto format(const time_duration_t& value, FormatContext& ctx) const
+    auto format(const timespan& value, FormatContext& ctx) const
     {
         return formatter<steady_time_point::duration>::format(value.value(), ctx);
     }
 };
 
 template<>
-struct FMTNS::formatter<time_point_t> : formatter<steady_time_point>
+struct FMTNS::formatter<nanotime> : formatter<steady_time_point>
 {
     template<typename FormatContext>
-    auto format(const time_point_t& value, FormatContext& ctx) const
+    auto format(const nanotime& value, FormatContext& ctx) const
     {
         return formatter<steady_time_point>::format(value.value(), ctx);
     }
 };
 
 template<>
-struct FMTNS::formatter<server_time_t> : formatter<time_duration_t>
+struct FMTNS::formatter<synctime> : formatter<timespan>
 {
     template<typename FormatContext>
-    auto format(const server_time_t& value, FormatContext& ctx) const
+    auto format(const synctime& value, FormatContext& ctx) const
     {
-        return formatter<time_duration_t>::format(value.duration_value(), ctx);
+        return formatter<timespan>::format(value.duration_value(), ctx);
     }
 };
 
@@ -3199,7 +3199,7 @@ public:
     FrameBalancer() = default;
     FrameBalancer(bool enabled, int sleep, int fixed_fps);
 
-    [[nodiscard]] auto GetLoopDuration() const -> time_duration_t { return _loopDuration; }
+    [[nodiscard]] auto GetLoopDuration() const -> timespan { return _loopDuration; }
 
     void StartLoop();
     void EndLoop();
@@ -3208,23 +3208,23 @@ private:
     bool _enabled {};
     int _sleep {};
     int _fixedFps {};
-    time_point_t _loopStart {};
-    time_duration_t _loopDuration {};
-    time_duration_t _idleTimeBalance {};
+    nanotime _loopStart {};
+    timespan _loopDuration {};
+    timespan _idleTimeBalance {};
 };
 
 class [[nodiscard]] TimeMeter
 {
 public:
     TimeMeter() noexcept :
-        _startTime {time_point_t::now()}
+        _startTime {nanotime::now()}
     {
     }
 
-    [[nodiscard]] auto GetDuration() const noexcept -> time_duration_t { return time_point_t::now() - _startTime; }
+    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return nanotime::now() - _startTime; }
 
 private:
-    time_point_t _startTime;
+    nanotime _startTime;
 };
 
 DECLARE_EXCEPTION(InfinityLoopException);
@@ -3254,7 +3254,7 @@ private:
 class WorkThread
 {
 public:
-    using Job = std::function<optional<time_duration_t>()>;
+    using Job = std::function<optional<timespan>()>;
     using ExceptionHandler = std::function<bool(const std::exception&)>; // Return true to clear jobs
 
     explicit WorkThread(string_view name);
@@ -3269,18 +3269,18 @@ public:
 
     void SetExceptionHandler(ExceptionHandler handler);
     void AddJob(Job job);
-    void AddJob(time_duration_t delay, Job job);
+    void AddJob(timespan delay, Job job);
     void Clear();
     void Wait() const;
 
 private:
-    void AddJobInternal(time_duration_t delay, Job job, bool no_notify);
+    void AddJobInternal(timespan delay, Job job, bool no_notify);
     void ThreadEntry() noexcept;
 
     string _name {};
     ExceptionHandler _exceptionHandler {};
     std::thread _thread {};
-    vector<pair<time_point_t, Job>> _jobs {};
+    vector<pair<nanotime, Job>> _jobs {};
     bool _jobActive {};
     mutable std::mutex _dataLocker {};
     std::condition_variable _workSignal {};

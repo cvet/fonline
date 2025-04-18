@@ -37,12 +37,11 @@
 
 #include "Settings.h"
 
-DECLARE_EXCEPTION(ServerTimeNotSetException);
+DECLARE_EXCEPTION(TimeNotSyncException);
 
 class GameTimer final
 {
 public:
-    GameTimer() = delete;
     explicit GameTimer(TimerSettings& settings);
     GameTimer(const GameTimer&) = delete;
     GameTimer(GameTimer&&) noexcept = default;
@@ -50,25 +49,26 @@ public:
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
-    [[nodiscard]] auto GetFrameTime() const noexcept -> time_point_t { return _frameTime; }
-    [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> time_duration_t { return _frameDeltaTime; }
-    [[nodiscard]] auto GetServerTime() const -> server_time_t;
+    [[nodiscard]] auto GetFrameTime() const noexcept -> nanotime { return _frameTime; }
+    [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime; }
+    [[nodiscard]] auto IsTimeSynchronized() const noexcept -> bool { return !!_syncTimeBase; }
+    [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int { return _fps; }
 
-    void SetServerTime(server_time_t time);
+    void SetSynchronizedTime(synctime time) noexcept;
     void FrameAdvance();
 
 private:
     TimerSettings& _settings;
 
-    time_point_t _frameTime {};
-    time_duration_t _frameDeltaTime {};
-    time_duration_t _debuggingOffset {};
+    nanotime _frameTime {};
+    timespan _frameDeltaTime {};
+    timespan _debuggingOffset {};
 
-    server_time_t _serverTime {};
-    time_point_t _serverTimeSet {};
+    synctime _syncTimeBase {};
+    nanotime _syncTimeSet {};
 
     int _fps {};
-    time_point_t _fpsMeasureTime {};
+    nanotime _fpsMeasureTime {};
     int _fpsMeasureCounter {};
 };

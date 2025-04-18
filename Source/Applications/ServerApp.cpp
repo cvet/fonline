@@ -161,7 +161,7 @@ int main(int argc, char** argv) // Handled by SDL
                             }
                         }
 
-                        const auto time = time_point_t::now().desc();
+                        const auto time = nanotime::now().desc();
                         const string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
                         DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
                     }

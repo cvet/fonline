@@ -65,7 +65,7 @@ struct Session
     int RefCount {};
     SOCKET Sock {};
     sockaddr_in From {};
-    time_point_t StartWork {};
+    nanotime StartWork {};
     bool Authorized {};
 };
 
@@ -157,7 +157,7 @@ static void AdminManager(FOServer* server, uint16 port)
                     s->RefCount = 2;
                     s->Sock = sock;
                     s->From = from;
-                    s->StartWork = time_point_t::now();
+                    s->StartWork = nanotime::now();
                     s->Authorized = false;
                     sessions.push_back(s);
                     std::thread(AdminWork, server, s).detach();
@@ -167,7 +167,7 @@ static void AdminManager(FOServer* server, uint16 port)
 
         // Manage sessions
         if (!sessions.empty()) {
-            const auto cur_time = time_point_t::now();
+            const auto cur_time = nanotime::now();
 
             for (auto it = sessions.begin(); it != sessions.end();) {
                 auto* s = *it;

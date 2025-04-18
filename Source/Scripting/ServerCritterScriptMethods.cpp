@@ -889,7 +889,7 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API time_duration_t Server_Critter_GetPlayerOfflineTime(Critter* self)
+FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(Critter* self)
 {
     return self->GetOfflineTime();
 }

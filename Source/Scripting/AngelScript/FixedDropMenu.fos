@@ -19,7 +19,7 @@ class FixedDropMenu : Gui::IDropMenu
 {
     MouseButton MouseBtn;
     CursorType Cursor;
-    time_duration ShowTime;
+    timespan ShowTime;
     int ButtonHeight;
     string ArtDir;
     string OpenSound;
@@ -27,10 +27,10 @@ class FixedDropMenu : Gui::IDropMenu
     DropButton[] ShowButtons;
     bool Pressed;
     int PressedOffsetY;
-    time_point MouseStayTick;
+    nanotime MouseStayTick;
     Entity SelectedEntity;
 
-    FixedDropMenu(MouseButton mouseButton, CursorType cursor, time_duration showTime, uint buttonHeight, string artDir, string openSound)
+    FixedDropMenu(MouseButton mouseButton, CursorType cursor, timespan showTime, uint buttonHeight, string artDir, string openSound)
     {
         MouseBtn = mouseButton;
         Cursor = cursor;
@@ -42,7 +42,7 @@ class FixedDropMenu : Gui::IDropMenu
         ShowButtons = array<DropButton>();
         Pressed = false;
         PressedOffsetY = 0;
-        MouseStayTick = ZERO_TIME_POINT;
+        MouseStayTick = ZERO_NANOTIME;
         SelectedEntity = null;
     }
 
@@ -173,8 +173,8 @@ class FixedDropMenu : Gui::IDropMenu
                 SelectedEntity = null;
                 ShowButtons.clear();
             }
-            else if (MouseStayTick != ZERO_TIME_POINT && Game.FrameTime - ShowTime >= MouseStayTick) {
-                MouseStayTick = ZERO_TIME_POINT;
+            else if (MouseStayTick != ZERO_NANOTIME && Game.FrameTime - ShowTime >= MouseStayTick) {
+                MouseStayTick = ZERO_NANOTIME;
 
                 CollectShowButtons(!Pressed);
 
