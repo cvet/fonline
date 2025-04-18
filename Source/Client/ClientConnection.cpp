@@ -32,7 +32,6 @@
 //
 
 #include "ClientConnection.h"
-#include "ClientScripting.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "NetCommand.h"

@@ -327,7 +327,7 @@ public:
     {
         uint Id {};
         hstring FuncName {};
-        synctime FireTime {};
+        nanotime FireTime {};
         timespan RepeatDuration {};
         vector<any_t> Data {};
     };

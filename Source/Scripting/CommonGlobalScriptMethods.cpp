@@ -734,163 +734,163 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(FOEngineBase* engine, sync
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void> func)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, {});
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, {}, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, vector<any_t> {std::move(data)});
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, data);
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, {}, data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, {});
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, vector<any_t> {std::move(data)});
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_StartTimeEvent(FOEngineBase* engine, timespan delay, timespan repeat, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, data);
+    return engine->TimeEventMngr->StartTimeEvent(engine, false, func, delay, repeat, data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_CountTimeEvent(FOEngineBase* engine, ScriptFuncName<void> func)
 {
-    return numeric_cast<uint>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<uint>(engine->TimeEventMngr->CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_CountTimeEvent(FOEngineBase* engine, ScriptFuncName<void, any_t> func)
 {
-    return numeric_cast<uint>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<uint>(engine->TimeEventMngr->CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_CountTimeEvent(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func)
 {
-    return numeric_cast<uint>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<uint>(engine->TimeEventMngr->CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_CountTimeEvent(FOEngineBase* engine, uint id)
 {
-    return numeric_cast<uint>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
+    return numeric_cast<uint>(engine->TimeEventMngr->CountTimeEvent(engine, {}, id));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(FOEngineBase* engine, ScriptFuncName<void> func)
 {
-    engine->TimeEventMngr.StopTimeEvent(engine, func, {});
+    engine->TimeEventMngr->StopTimeEvent(engine, func, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(FOEngineBase* engine, ScriptFuncName<void, any_t> func)
 {
-    engine->TimeEventMngr.StopTimeEvent(engine, func, {});
+    engine->TimeEventMngr->StopTimeEvent(engine, func, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func)
 {
-    engine->TimeEventMngr.StopTimeEvent(engine, func, {});
+    engine->TimeEventMngr->StopTimeEvent(engine, func, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(FOEngineBase* engine, uint id)
 {
-    engine->TimeEventMngr.StopTimeEvent(engine, {}, id);
+    engine->TimeEventMngr->StopTimeEvent(engine, {}, id);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void> func, timespan repeat)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, any_t> func, timespan repeat)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func, timespan repeat)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, func, {}, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(FOEngineBase* engine, uint id, timespan repeat)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(FOEngineBase* engine, ScriptFuncName<void> func, any_t data)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, {}, vector<any_t> {std::move(data)});
+    engine->TimeEventMngr->ModifyTimeEvent(engine, func, {}, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(FOEngineBase* engine, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, func, {}, {}, data);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, func, {}, {}, data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(FOEngineBase* engine, uint id, any_t data)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, vector<any_t> {std::move(data)});
+    engine->TimeEventMngr->ModifyTimeEvent(engine, {}, id, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(FOEngineBase* engine, uint id, const vector<any_t>& data)
 {
-    engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, data);
+    engine->TimeEventMngr->ModifyTimeEvent(engine, {}, id, {}, data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopCurrentTimeEvent(FOEngineBase* engine)
 {
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.StopTimeEvent(entity, {}, te->Id);
+    if (auto&& [entity, te] = engine->TimeEventMngr->GetCurTimeEvent(); entity != nullptr) {
+        engine->TimeEventMngr->StopTimeEvent(entity, {}, te->Id);
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(FOEngineBase* engine, timespan repeat)
 {
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, repeat, std::nullopt);
+    if (auto&& [entity, te] = engine->TimeEventMngr->GetCurTimeEvent(); entity != nullptr) {
+        engine->TimeEventMngr->ModifyTimeEvent(engine, {}, te->Id, repeat, std::nullopt);
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(FOEngineBase* engine, any_t data)
 {
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
+    if (auto&& [entity, te] = engine->TimeEventMngr->GetCurTimeEvent(); entity != nullptr) {
+        engine->TimeEventMngr->ModifyTimeEvent(engine, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(FOEngineBase* engine, const vector<any_t>& data)
 {
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, std::nullopt, data);
+    if (auto&& [entity, te] = engine->TimeEventMngr->GetCurTimeEvent(); entity != nullptr) {
+        engine->TimeEventMngr->ModifyTimeEvent(engine, {}, te->Id, std::nullopt, data);
     }
 }

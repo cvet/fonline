@@ -39,14 +39,6 @@
 #endif
 
 #if FO_SERVER_SCRIPTING
-#include "ServerScripting.h"
-#elif FO_CLIENT_SCRIPTING
-#include "ClientScripting.h"
-#elif FO_MAPPER_SCRIPTING
-#include "MapperScripting.h"
-#endif
-
-#if FO_SERVER_SCRIPTING
 #include "Server.h"
 #define FO_API_COMMON_IMPL 1
 #define FO_API_SERVER_IMPL 1

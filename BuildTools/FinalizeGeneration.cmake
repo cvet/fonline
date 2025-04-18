@@ -819,8 +819,6 @@ list(APPEND FO_CLIENT_BASE_SOURCE
 
 list(APPEND FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
-    "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
@@ -828,8 +826,6 @@ list(APPEND FO_SERVER_SOURCE
 
 list(APPEND FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
-    "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
@@ -857,8 +853,6 @@ list(APPEND FO_EDITOR_SOURCE
 list(APPEND FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
@@ -878,21 +872,15 @@ list(APPEND FO_BAKER_SOURCE
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp")
 
     list(APPEND FO_ASCOMPILER_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
 
     list(APPEND FO_ASCOMPILER_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.cpp"
-        "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
 endif()

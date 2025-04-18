@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "ClientScripting.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"

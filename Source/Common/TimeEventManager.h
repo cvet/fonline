@@ -36,22 +36,24 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "ScriptSystem.h"
+#include "Timer.h"
 
 DECLARE_EXCEPTION(TimeEventException);
-
-class FOEngineBase;
 
 class TimeEventManager
 {
 public:
-    explicit TimeEventManager(FOEngineBase* engine);
+    static const timespan MIN_REPEAT_TIME;
+
+    explicit TimeEventManager(GameTimer* game_time, ScriptSystem* script_sys);
     TimeEventManager(const TimeEventManager&) = delete;
     TimeEventManager(TimeEventManager&&) noexcept = delete;
     auto operator=(const TimeEventManager&) = delete;
     auto operator=(TimeEventManager&&) noexcept = delete;
     ~TimeEventManager() = default;
 
-    [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity, _curTimeEvent}; }
+    [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity.get(), _curTimeEvent.get()}; }
     [[nodiscard]] auto CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t;
 
     void InitPersistentTimeEvents(Entity* entity);
@@ -63,13 +65,14 @@ public:
 private:
     void AddEntityTimeEventPolling(Entity* entity);
     void RemoveEntityTimeEventPolling(Entity* entity);
-    void ProcessEntityTimeEvents(Entity* entity, synctime time);
+    void ProcessEntityTimeEvents(Entity* entity);
     void FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te);
 
-    FOEngineBase* _engine;
-    unordered_set<Entity*> _timeEventEntities {};
-    Entity* _curTimeEventEntity {};
-    const Entity::TimeEventData* _curTimeEvent {};
+    raw_ptr<GameTimer> _gameTime;
+    raw_ptr<ScriptSystem> _scriptSys;
+    unordered_set<raw_ptr<Entity>> _timeEventEntities {};
+    raw_ptr<Entity> _curTimeEventEntity {};
+    raw_ptr<const Entity::TimeEventData> _curTimeEvent {};
     uint _timeEventCounter {};
     const any_t _emptyAnyValue {};
     bool _nonConstHelper {};

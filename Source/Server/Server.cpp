@@ -39,7 +39,6 @@
 #include "ImGuiStuff.h"
 #include "Platform.h"
 #include "PropertiesSerializator.h"
-#include "ServerScripting.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 
@@ -143,8 +142,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         extern void Server_RegisterData(FOEngineBase*);
         Server_RegisterData(this);
 
-        ScriptSys = SafeAlloc::MakeUnique<ServerScriptSystem>(this);
-        ScriptSys->InitSubsystems();
+        extern void Init_AngelScript_ServerScriptSystem(FOEngineBase*);
+        Init_AngelScript_ServerScriptSystem(this);
 
         return std::nullopt;
     });
@@ -423,7 +422,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             GameTime.SetSynchronizedTime(GetSynchronizedTime());
             FrameAdvance();
-            TimeEventMngr.InitPersistentTimeEvents(this);
+            TimeEventMngr->InitPersistentTimeEvents(this);
 
             // Scripting
             WriteLog("Init script modules");
@@ -627,7 +626,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
 
-            TimeEventMngr.ProcessTimeEvents();
+            TimeEventMngr->ProcessTimeEvents();
 
             return std::chrono::milliseconds {0};
         });
@@ -732,9 +731,6 @@ FOServer::~FOServer()
             _healthFile->Write("\nSTOPPED\n");
             _healthFile.reset();
         }
-
-        // Shutdown script system
-        ScriptSys.reset();
 
         // Shutdown servers
         for (auto& conn_server : _connectionServers) {
@@ -910,7 +906,7 @@ void FOServer::DrawGui(string_view server_name)
 
             // Profiler
             if (ImGui::TreeNode("Profiler")) {
-                buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+                buf = "WIP..........................."; // ScriptSys->GetProfilerStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -926,7 +922,7 @@ auto FOServer::GetHealthInfo() const -> string
     buf.reserve(2048);
 
     buf += strex("System time: {}\n", nanotime::now());
-    buf += strex("Sync time: {}\n", GetSynchronizedTime());
+    buf += strex("Synchronized time: {}\n", GetSynchronizedTime());
     buf += strex("Server uptime: {}\n", _stats.Uptime);
     buf += strex("Connections: {}\n", _stats.CurOnline);
     buf += strex("Players: {}\n", EntityMngr.GetPlayersCount());
@@ -1375,7 +1371,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             result = MapMngr.GetLocationAndMapsStatistics();
             break;
         case 3:
-            // result = ScriptSys.GetDeferredCallsStatistics();
+            // result = ScriptSys->GetDeferredCallsStatistics();
             break;
         case 4:
             result = "WIP";

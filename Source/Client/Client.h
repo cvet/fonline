@@ -138,6 +138,9 @@ public:
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> const vector<CritterView*>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
+    [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { NON_CONST_METHOD_HINT_ONELINE() return _curPlayer; }
+    [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { NON_CONST_METHOD_HINT_ONELINE() return _curLocation; }
+    [[nodiscard]] auto GetCurMap() noexcept -> MapView* { NON_CONST_METHOD_HINT_ONELINE() return _curMap; }
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -262,7 +265,6 @@ public:
     Keyboard Keyb;
     CacheStorage Cache;
 
-    MapView* CurMap {};
     bool CanDrawInScripts {};
 
     vector<RenderEffect*> OffscreenEffects {};
@@ -393,6 +395,7 @@ protected:
     vector<CritterView*> _globalMapCritters {};
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
+    MapView* _curMap {};
     CritterView* _chosen {};
 
     hstring _curMapLocPid {};

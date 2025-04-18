@@ -53,6 +53,16 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
+#if !COMPILER_MODE
+#if SERVER_REGISTRATION
+#include "Server.h"
+#elif CLIENT_REGISTRATION
+#include "Client.h"
+#elif MAPPER_REGISTRATION
+#include "Mapper.h"
+#endif
+#endif
+
 ///@ CodeGen Global
 
 #if !COMPILER_MODE
@@ -63,6 +73,12 @@ void Server_RegisterData(FOEngineBase* engine)
     STACK_TRACE_ENTRY();
 
     ///@ CodeGen ServerRegister
+
+    engine->ScriptSys->MapEngineEntityType<Player>(Player::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<Item>(Item::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<Critter>(Critter::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<Map>(Map::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
 
     engine->FinalizeDataRegistration();
 }
@@ -147,6 +163,12 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
         prop_registrator->RegisterProperty(flags);
     }
 
+    engine->ScriptSys->MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
+
     engine->FinalizeDataRegistration();
 }
 
@@ -157,6 +179,12 @@ void Mapper_RegisterData(FOEngineBase* engine)
     STACK_TRACE_ENTRY();
 
     ///@ CodeGen MapperRegister
+
+    engine->ScriptSys->MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
+    engine->ScriptSys->MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
     engine->FinalizeDataRegistration();
 }

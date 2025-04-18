@@ -59,7 +59,6 @@
 static bool ExceptionMessageBox = false;
 
 const timespan timespan::zero;
-const timespan timespan::step = resolution(1);
 const nanotime nanotime::zero;
 const synctime synctime::zero;
 

@@ -44,25 +44,25 @@
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
@@ -980,7 +980,7 @@ FO_SCRIPT_API void Server_Game_AddTextListener(FOServer* server, int sayType, st
 
     throw NotImplementedException(LINE_STR);
 
-    /*uint func_id = server->ScriptSys.BindByFunc(func, false);
+    /*uint func_id = server->ScriptSys->BindByFunc(func, false);
     if (!func_id)
         throw ScriptException("Unable to bind script function");
 

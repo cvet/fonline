@@ -271,7 +271,6 @@ public:
     void SetRotation(float rx, float ry, float rz);
     void SetScale(float sx, float sy, float sz);
     void SetSpeed(float speed);
-    void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(ipos offset);
@@ -346,7 +345,6 @@ private:
     float _moveDirAngle {};
     float _targetMoveDirAngle {};
     vec3 _groundPos {};
-    bool _useGameplayTimer {};
     float _animPosProc {};
     float _animPosTime {};
     float _animPosPeriod {};

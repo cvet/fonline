@@ -35,10 +35,16 @@
 #include "EngineBase.h"
 #include "ScriptSystem.h"
 
-TimeEventManager::TimeEventManager(FOEngineBase* engine) :
-    _engine(engine)
+const timespan TimeEventManager::MIN_REPEAT_TIME = timespan(std::chrono::milliseconds {1});
+
+TimeEventManager::TimeEventManager(GameTimer* game_time, ScriptSystem* script_sys) :
+    _gameTime {game_time},
+    _scriptSys {script_sys}
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_gameTime);
+    RUNTIME_ASSERT(_scriptSys);
 }
 
 void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
@@ -63,8 +69,9 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
             make_if_not_exists(persistentTimeEvents);
 
             for (size_t i = 0; i < te_func_name.size(); i++) {
+                const auto fire_time = _gameTime->GetFrameTime() + (te_fire_time[i] - _gameTime->GetSynchronizedTime());
                 auto data = vector<any_t> {std::move(te_data[i])};
-                auto te = Entity::TimeEventData {++_timeEventCounter, te_func_name[i], te_fire_time[i], te_repeat_duration[i], std::move(data)};
+                auto te = Entity::TimeEventData {++_timeEventCounter, te_func_name[i], fire_time, te_repeat_duration[i], std::move(data)};
                 persistentTimeEvents->emplace_back(SafeAlloc::MakeShared<Entity::TimeEventData>(std::move(te)));
             }
         }
@@ -80,7 +87,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
 {
     STACK_TRACE_ENTRY();
 
-    const auto fire_time = _engine->GameTime.GetSynchronizedTime() + std::max(delay, timespan::step);
+    const auto fire_time = _gameTime->GetFrameTime() + std::max(delay, MIN_REPEAT_TIME);
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>(Entity::TimeEventData {++_timeEventCounter, func_name, fire_time, repeat, std::move(data)});
 
     if (persistent) {
@@ -96,7 +103,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
         RUNTIME_ASSERT(te_func_name.size() == te_data.size());
 
         te_func_name.emplace_back(te->FuncName);
-        te_fire_time.emplace_back(te->FireTime);
+        te_fire_time.emplace_back(_gameTime->GetSynchronizedTime() + (te->FireTime - _gameTime->GetFrameTime()));
         te_repeat_duration.emplace_back(te->RepeatDuration);
         te_data.emplace_back(!te->Data.empty() ? te->Data.front() : any_t {});
 
@@ -177,7 +184,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
 
     NON_CONST_METHOD_HINT();
 
-    const auto fire_time = repeat.has_value() ? _engine->GameTime.GetSynchronizedTime() + std::max(repeat.value(), timespan::step) : synctime::zero;
+    const auto fire_time = repeat.has_value() ? _gameTime->GetFrameTime() + std::max(repeat.value(), MIN_REPEAT_TIME) : nanotime::zero;
 
     if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         for (size_t i = 0; i < timeEvents->size(); i++) {
@@ -245,7 +252,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
             }
 
             RUNTIME_ASSERT(i < te_fire_time.size());
-            te_fire_time[i] = te->FireTime;
+            te_fire_time[i] = _gameTime->GetSynchronizedTime() + (te->FireTime - _gameTime->GetFrameTime());
             te_repeat_duration[i] = te->RepeatDuration;
             te_data[i] = !te->Data.empty() ? te->Data.front() : any_t {};
 
@@ -374,15 +381,13 @@ void TimeEventManager::ProcessTimeEvents()
 {
     STACK_TRACE_ENTRY();
 
-    const auto time = _engine->GameTime.GetSynchronizedTime();
-
     for (auto* entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
             RemoveEntityTimeEventPolling(entity);
             continue;
         }
 
-        ProcessEntityTimeEvents(entity, time);
+        ProcessEntityTimeEvents(entity);
 
         if (entity->IsDestroyed() || !entity->HasTimeEvents()) {
             RemoveEntityTimeEventPolling(entity);
@@ -390,11 +395,13 @@ void TimeEventManager::ProcessTimeEvents()
     }
 }
 
-void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, synctime time)
+void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 {
     STACK_TRACE_ENTRY();
 
     if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
+        const auto time = _gameTime->GetFrameTime();
+
         for (size_t i = 0; i < timeEvents->size(); i++) {
             auto te = (*timeEvents)[i];
             const auto id = te->Id;
@@ -421,7 +428,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, synctime time)
 
             if (te->RepeatDuration) {
                 // Prolong event
-                const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + timespan::step);
+                const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
 
                 te->FireTime = next_fire_time;
             }
@@ -438,6 +445,8 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, synctime time)
     }
 
     if (auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents(); persistentTimeEvents && !persistentTimeEvents->empty()) {
+        const auto time = _gameTime->GetFrameTime();
+
         for (size_t i = 0; i < persistentTimeEvents->size(); i++) {
             auto te = (*persistentTimeEvents)[i];
             const auto id = te->Id;
@@ -468,13 +477,13 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity, synctime time)
 
             if (te->RepeatDuration) {
                 // Prolong event
-                const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + timespan::step);
+                const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
 
                 auto props = EntityProperties(entity->GetPropertiesForEdit());
                 auto te_fire_time = props.GetTE_FireTime();
                 RUNTIME_ASSERT(te_fire_time.size() == persistentTimeEvents->size());
 
-                te_fire_time[actual_index] = next_fire_time;
+                te_fire_time[actual_index] = _gameTime->GetSynchronizedTime() + (next_fire_time - time);
 
                 props.SetTE_FireTime(te_fire_time);
 
@@ -519,13 +528,13 @@ void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     auto revert_cur_event = ScopeCallback([this]() noexcept { _curTimeEvent = nullptr; });
 
     if (entity->IsGlobal()) {
-        if (auto func = _engine->ScriptSys->FindFunc<void>(te->FuncName)) {
+        if (auto func = _scriptSys->FindFunc<void>(te->FuncName)) {
             func();
         }
-        else if (auto func2 = _engine->ScriptSys->FindFunc<void, any_t>(te->FuncName)) {
+        else if (auto func2 = _scriptSys->FindFunc<void, any_t>(te->FuncName)) {
             func2(te->Data.empty() ? _emptyAnyValue : te->Data.front());
         }
-        else if (auto func3 = _engine->ScriptSys->FindFunc<void, vector<any_t>>(te->FuncName)) {
+        else if (auto func3 = _scriptSys->FindFunc<void, vector<any_t>>(te->FuncName)) {
             func3(te->Data);
         }
         else {
@@ -535,13 +544,13 @@ void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     else {
         const auto cast_to_void = [](auto* ptr) -> void* { return const_cast<void*>(static_cast<const void*>(ptr)); };
 
-        if (const auto* func = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity))})) {
+        if (const auto* func = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity))})) {
             func->Call(initializer_list<void*> {cast_to_void(&entity)}, nullptr);
         }
-        else if (const auto* func2 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(any_t))})) {
+        else if (const auto* func2 = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(any_t))})) {
             func2->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(!te->Data.empty() ? &te->Data.front() : &_emptyAnyValue)}, nullptr);
         }
-        else if (const auto* func3 = _engine->ScriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(vector<any_t>))})) {
+        else if (const auto* func3 = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(vector<any_t>))})) {
             func3->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(&te->Data)}, nullptr);
         }
         else {

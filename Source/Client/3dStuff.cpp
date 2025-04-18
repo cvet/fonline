@@ -400,7 +400,6 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
     _forceDraw = true;
     _lastDrawTime = GetTime();
@@ -1079,9 +1078,6 @@ auto ModelInstance::GetTime() const -> nanotime
 {
     STACK_TRACE_ENTRY();
 
-    if (_useGameplayTimer) {
-        return _modelMngr._gameTime.GetFrameTime();
-    }
     return _modelMngr._gameTime.GetFrameTime();
 }
 
@@ -1304,13 +1300,6 @@ void ModelInstance::SetSpeed(float speed)
     STACK_TRACE_ENTRY();
 
     _speedAdjustBase = speed;
-}
-
-void ModelInstance::SetTimer(bool use_game_timer)
-{
-    STACK_TRACE_ENTRY();
-
-    _useGameplayTimer = use_game_timer;
 }
 
 void ModelInstance::GenerateCombinedMeshes()

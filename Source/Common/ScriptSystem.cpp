@@ -73,7 +73,17 @@ ScriptSystem::ScriptSystem()
     MapEngineEntityType<Entity>("Entity");
 }
 
-auto ScriptSystem::ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
+void ScriptSystem::RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend)
+{
+    STACK_TRACE_ENTRY();
+
+    _backends.resize(index + 1);
+    RUNTIME_ASSERT(!_backends[index]);
+
+    _backends[index] = std::move(backend);
+}
+
+auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
 {
     STACK_TRACE_ENTRY();
 

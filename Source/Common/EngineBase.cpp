@@ -43,7 +43,8 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     Geometry(settings),
     GameTime(settings),
     ProtoMngr(this),
-    TimeEventMngr(this),
+    ScriptSys(SafeAlloc::MakeUnique<ScriptSystem>()),
+    TimeEventMngr(SafeAlloc::MakeUnique<TimeEventManager>(&GameTime, ScriptSys.get())),
     _propsRelation {props_relation}
 {
     STACK_TRACE_ENTRY();

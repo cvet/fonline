@@ -228,7 +228,7 @@ using std::variant;
 template<typename T>
 class raw_ptr
 {
-    static_assert(std::is_class_v<T>);
+    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
 
     template<typename U>
     friend class raw_ptr;
@@ -248,7 +248,8 @@ public:
         _ptr = nullptr;
         return *this;
     }
-    FORCE_INLINE explicit constexpr raw_ptr(T* p) noexcept :
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr raw_ptr(T* p) noexcept :
         _ptr(p)
     {
     }
@@ -326,23 +327,43 @@ public:
     [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_ptr; }
     [[nodiscard]] FORCE_INLINE auto operator==(const raw_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FORCE_INLINE auto operator!=(const raw_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const raw_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
     [[nodiscard]] FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
     [[nodiscard]] FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
 
 private:
     T* _ptr;
 };
+static_assert(sizeof(raw_ptr<int>) == sizeof(int*));
+
+inline auto ptr_hash(const void* p) noexcept -> size_t
+{
+    if constexpr (sizeof(p) <= sizeof(uint64_t)) {
+        return HASHNS::detail::wyhash::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p)));
+    }
+    else {
+        return HASHNS::detail::wyhash::hash(static_cast<const void*>(&p), sizeof(p));
+    }
+}
+
+template<typename T>
+struct HASHNS::hash<raw_ptr<T>>
+{
+    using is_avalanching = void;
+    auto operator()(const raw_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
+};
 
 template<typename T>
 class propagate_const
 {
-    static_assert(std::is_class_v<T>);
+    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
 
     template<typename U>
     friend class propagate_const;
@@ -449,6 +470,7 @@ public:
     [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_smartPtr; }
     [[nodiscard]] FORCE_INLINE auto operator==(const propagate_const& other) const noexcept -> bool { return _smartPtr == other._smartPtr; }
     [[nodiscard]] FORCE_INLINE auto operator!=(const propagate_const& other) const noexcept -> bool { return _smartPtr != other._smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const propagate_const& other) const noexcept -> bool { return _smartPtr < other._smartPtr; }
     [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> element_type* { return _smartPtr.get(); }
     [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const element_type* { return _smartPtr.get(); }
     [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> element_type& { return *_smartPtr.get(); }
@@ -492,6 +514,13 @@ struct release_delete
 
 template<typename T>
 using unique_release_ptr = propagate_const<std::unique_ptr<T, release_delete<T>>>;
+
+template<typename T>
+struct HASHNS::hash<propagate_const<T>>
+{
+    using is_avalanching = void;
+    auto operator()(const propagate_const<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
+};
 
 // Safe memory allocation
 extern void InitBackupMemoryChunks();
@@ -903,7 +932,6 @@ public:
     }
 
     static const timespan zero;
-    static const timespan step;
 
 private:
     int64 _value {};
@@ -2853,7 +2881,7 @@ public:
     auto operator=(ref_hold_vector&&) noexcept -> ref_hold_vector& = delete;
     ~ref_hold_vector()
     {
-        for (auto* ref : *this) {
+        for (auto&& ref : *this) {
             ref->Release();
         }
     }
@@ -2864,7 +2892,7 @@ constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
 {
     ref_hold_vector<T> ref_vec;
     ref_vec.reserve(value.size());
-    for (auto* ref : value) {
+    for (auto&& ref : value) {
         RUNTIME_ASSERT(ref);
         ref->AddRef();
         ref_vec.emplace_back(ref);
@@ -2894,6 +2922,20 @@ constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T
         RUNTIME_ASSERT(ref);
         ref->AddRef();
         ref_vec.emplace_back(ref);
+    }
+    return ref_vec;
+}
+
+template<typename T>
+constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+{
+    static_assert(!std::is_const_v<T>);
+    ref_hold_vector<T*> ref_vec;
+    ref_vec.reserve(value.size());
+    for (auto&& ref : value) {
+        RUNTIME_ASSERT(ref);
+        ref->AddRef();
+        ref_vec.emplace_back(ref.get_no_const());
     }
     return ref_vec;
 }
