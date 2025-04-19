@@ -141,6 +141,7 @@ public:
     ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);
+    ///@ MigrationRule Property Item IsScrollBlock ScrollBlock
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, ScrollBlock);
     ///@ MigrationRule Property Item IsHidden Hidden
@@ -199,6 +200,7 @@ public:
     ENTITY_PROPERTY(PrivateCommon, bool, IsRoofTile);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
+    ///@ MigrationRule Property Item IsFlat DrawFlatten
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DrawFlatten);
     ///@ ExportProperty ReadOnly
@@ -235,6 +237,7 @@ public:
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastSend);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastRecv);
+    ///@ MigrationRule Property Item IsCanOpen CanOpen
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, CanOpen);
     ///@ ExportProperty
@@ -342,6 +345,7 @@ public:
     ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, InSneakMode);
+    ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, DeadDrawNoFlatten);
     ///@ ExportProperty
