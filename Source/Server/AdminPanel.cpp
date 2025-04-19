@@ -230,7 +230,7 @@ static void AdminWork(FOServer* server, Session* session)
     while (server != nullptr) {
         // Get command
         char cmd_raw[1024] = {};
-        auto len = ::recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
+        int len = ::recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
 
         if (len <= 0 || len == 1024) {
             if (len == 0) {
@@ -250,7 +250,7 @@ static void AdminWork(FOServer* server, Session* session)
 
         // Authorization
         if (!session->Authorized) {
-            auto pos = -1;
+            int pos = -1;
 
             for (size_t i = 0, j = server->Settings.AccessAdmin.size(); i < j; i++) {
                 if (server->Settings.AccessAdmin[i] == cmd) {

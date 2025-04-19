@@ -3887,43 +3887,43 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
     // Register timespan
     REGISTER_HARD_STRONG_TYPE(TIMESPAN_NAME, timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD(timespan, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const noexcept, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator-, (const timespan&) const noexcept, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", SCRIPT_METHOD(timespan, nanoseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", SCRIPT_METHOD(timespan, microseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", SCRIPT_METHOD(timespan, milliseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD(timespan, seconds), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator-, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(timespan, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", SCRIPT_METHOD_PR(timespan, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(timespan, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_PR(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
 
     // Register nanotime
     REGISTER_HARD_STRONG_TYPE(NANOTIME_NAME, nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD(nanotime, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const noexcept, nanotime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const timespan&) const noexcept, nanotime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const nanotime&) const noexcept, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", SCRIPT_METHOD(nanotime, nanoseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD(nanotime, microseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD(nanotime, milliseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD(nanotime, seconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD(nanotime, duration_value), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const nanotime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(nanotime, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD_PR(nanotime, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(nanotime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD_PR(nanotime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register synctime
     REGISTER_HARD_STRONG_TYPE(SYNCTIME_NAME, synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD(synctime, compare), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const noexcept, synctime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const timespan&) const noexcept, synctime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const synctime&) const noexcept, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD(synctime, milliseconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD(synctime, seconds), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD(synctime, duration_value), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const synctime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(synctime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD_PR(synctime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
     REGISTER_HARD_STRONG_TYPE("ipos", ipos);

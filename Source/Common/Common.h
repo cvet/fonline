@@ -185,7 +185,9 @@ using const_span = span<const T>;
 #if CPLUSPLUS_20
 using date = std::chrono;
 #else
+DISABLE_WARNINGS_PUSH()
 #include "date/date.h"
+DISABLE_WARNINGS_POP()
 #endif
 
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
@@ -985,11 +987,6 @@ public:
     constexpr explicit nanotime(underlying_type value) noexcept :
         _value {value}
     {
-    }
-    auto operator=(const steady_time_point& other) noexcept -> nanotime&
-    {
-        _value = std::chrono::duration_cast<resolution>(other.time_since_epoch()).count();
-        return *this;
     }
     auto operator+=(const timespan& other) noexcept -> nanotime&
     {
