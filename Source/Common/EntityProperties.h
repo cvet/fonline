@@ -48,25 +48,21 @@ public:
     }
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Year);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Month);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Day);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Hour);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Minute);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, Second);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, TimeMultiplier);
+    ENTITY_PROPERTY(PrivateCommon, synctime, SynchronizedTime);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ident_t, HistoryRecordsId);
     ///@ ExportProperty ReadOnly Temporary
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapTripId);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateCommon, nanotime, FrameTime);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateCommon, timespan, FrameDeltaTime);
+    ///@ ExportProperty ReadOnly Temporary
+    ENTITY_PROPERTY(PrivateCommon, int, FramesPerSecond);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, int, GlobalDayTime);
 };
 
 class PlayerProperties : public EntityProperties
@@ -385,10 +381,12 @@ public:
     // Todo: exclude map properties from engine:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
+    ///@ MigrationRule Property Map CurDayTime FixedDayTime
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateCommon, int, CurDayTime);
+    ENTITY_PROPERTY(Public, int, FixedDayTime);
+    ///@ MigrationRule Property Map DayTime DayColorTime
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateCommon, vector<int>, DayTime);
+    ENTITY_PROPERTY(PrivateCommon, vector<int>, DayColorTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, DayColor);
 };

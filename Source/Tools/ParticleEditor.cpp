@@ -36,7 +36,6 @@
 #include "ImGuiStuff.h"
 #include "SparkExtension.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "VisualParticles.h"
 
 #include "SPARK.h"

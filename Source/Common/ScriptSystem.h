@@ -217,6 +217,12 @@ private:
     ScriptFuncDesc* _func {};
 };
 
+class ScriptSystemBackend
+{
+public:
+    virtual ~ScriptSystemBackend() = default;
+};
+
 class ScriptSystem
 {
 public:
@@ -227,10 +233,18 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    virtual void InitSubsystems() { }
     void InitModules();
     void HandleRemoteCall(uint rpc_num, Entity* entity);
     void Process();
+
+    void RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend);
+
+    template<typename T>
+    [[nodiscard]] FORCE_INLINE auto GetBackend(size_t index) noexcept -> T*
+    {
+        static_assert(std::is_base_of_v<ScriptSystemBackend, T>);
+        return static_cast<T*>(_backends[index].get());
+    }
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
@@ -306,10 +320,10 @@ public:
         return false;
     }
 
-    [[nodiscard]] auto ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>;
-
-protected:
     [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool;
+
+    [[nodiscard]] auto ResolveEngineType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>;
+    [[nodiscard]] auto GetEngineTypeMap() const -> const unordered_map<string, shared_ptr<ScriptTypeInfo>>& { return _engineToScriptType; }
 
     template<typename T>
     void MapEnginePlainType(string_view type_name)
@@ -346,6 +360,18 @@ protected:
         _engineToScriptType.emplace(typeid(vector<T*>).name(), arr_type);
     }
 
+    void AddLoopCallback(std::function<void()> callback) { _loopCallbacks.emplace_back(std::move(callback)); }
+    auto AddScriptFunc(hstring name) -> ScriptFuncDesc* { return &_funcMap.emplace(name, ScriptFuncDesc())->second; }
+    void AddInitFunc(ScriptFuncDesc* func) { vec_add_unique_value(_initFunc, func); }
+
+    void BindRemoteCallReceiver(uint hash, std::function<void(Entity*)> func)
+    {
+        RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
+        _rpcReceivers.emplace(hash, std::move(func));
+    }
+
+private:
+    vector<shared_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<string, shared_ptr<ScriptTypeInfo>> _engineToScriptType {};
     vector<std::function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};

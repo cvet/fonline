@@ -400,7 +400,6 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
     _forceDraw = true;
     _lastDrawTime = GetTime();
@@ -812,7 +811,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
         }
         else {
-            _endTime = time_point {};
+            _endTime = nanotime::zero;
         }
 
         // Force redraw
@@ -1075,14 +1074,11 @@ auto ModelInstance::GetSpeed() const -> float
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto ModelInstance::GetTime() const -> time_point
+auto ModelInstance::GetTime() const -> nanotime
 {
     STACK_TRACE_ENTRY();
 
-    if (_useGameplayTimer) {
-        return _modelMngr._gameTime.GameplayTime();
-    }
-    return _modelMngr._gameTime.FrameTime();
+    return _modelMngr._gameTime.GetFrameTime();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -1304,13 +1300,6 @@ void ModelInstance::SetSpeed(float speed)
     STACK_TRACE_ENTRY();
 
     _speedAdjustBase = speed;
-}
-
-void ModelInstance::SetTimer(bool use_game_timer)
-{
-    STACK_TRACE_ENTRY();
-
-    _useGameplayTimer = use_game_timer;
 }
 
 void ModelInstance::GenerateCombinedMeshes()
@@ -1832,7 +1821,7 @@ void ModelInstance::Draw()
     STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * time_duration_to_ms<float>(time - _lastDrawTime);
+    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float>();
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -2102,7 +2091,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
     return ipos {x, y};
 }
 
-auto ModelInstance::GetAnimDuration() const -> time_duration
+auto ModelInstance::GetAnimDuration() const -> timespan
 {
     STACK_TRACE_ENTRY();
 

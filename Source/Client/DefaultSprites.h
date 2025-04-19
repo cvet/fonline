@@ -110,7 +110,7 @@ private:
     bool _playing {};
     bool _looped {};
     bool _reversed {};
-    time_point _startTick {};
+    nanotime _startTick {};
 };
 
 class DefaultSpriteFactory : public SpriteFactory

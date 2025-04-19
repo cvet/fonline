@@ -57,7 +57,9 @@ struct SDictCache
     int StringTypeId {};
     int HStringTypeId {};
     int IdentTypeId {};
-    int TickTypeId {};
+    int TimespanTypeId {};
+    int NanotimeTypeId {};
+    int SynctimeTypeId {};
 
     // This is called from RegisterScriptDictionary
     static SDictCache* GetOrCreate(asIScriptEngine* engine)
@@ -72,10 +74,14 @@ struct SDictCache
             RUNTIME_ASSERT(cache->StringTypeId > 0);
             cache->HStringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
             RUNTIME_ASSERT(cache->HStringTypeId > 0);
-            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(IDENT_T_NAME);
+            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(IDENT_NAME);
             RUNTIME_ASSERT(cache->IdentTypeId > 0);
-            cache->TickTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TICK_T_NAME);
-            RUNTIME_ASSERT(cache->TickTypeId > 0);
+            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TIMESPAN_NAME);
+            RUNTIME_ASSERT(cache->TimespanTypeId > 0);
+            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(NANOTIME_NAME);
+            RUNTIME_ASSERT(cache->NanotimeTypeId > 0);
+            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(SYNCTIME_NAME);
+            RUNTIME_ASSERT(cache->SynctimeTypeId > 0);
         }
         return cache;
     }
@@ -858,10 +864,20 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
         return aStrong.underlying_value() < bStrong.underlying_value();
     }
-    if (typeId == cache->TickTypeId) {
-        const tick_t& aStrong = *static_cast<const tick_t*>(a);
-        const tick_t& bStrong = *static_cast<const tick_t*>(b);
-        return aStrong.underlying_value() < bStrong.underlying_value();
+    if (typeId == cache->TimespanTypeId) {
+        const timespan& aStrong = *static_cast<const timespan*>(a);
+        const timespan& bStrong = *static_cast<const timespan*>(b);
+        return aStrong < bStrong;
+    }
+    if (typeId == cache->NanotimeTypeId) {
+        const nanotime& aStrong = *static_cast<const nanotime*>(a);
+        const nanotime& bStrong = *static_cast<const nanotime*>(b);
+        return aStrong < bStrong;
+    }
+    if (typeId == cache->SynctimeTypeId) {
+        const synctime& aStrong = *static_cast<const synctime*>(a);
+        const synctime& bStrong = *static_cast<const synctime*>(b);
+        return aStrong < bStrong;
     }
 
     if (!(typeId & asTYPEID_MASK_OBJECT)) {
@@ -920,10 +936,20 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
         return aStrong.underlying_value() == bStrong.underlying_value();
     }
-    if (typeId == cache->TickTypeId) {
-        const tick_t& aStrong = *static_cast<const tick_t*>(a);
-        const tick_t& bStrong = *static_cast<const tick_t*>(b);
-        return aStrong.underlying_value() == bStrong.underlying_value();
+    if (typeId == cache->TimespanTypeId) {
+        const timespan& aStrong = *static_cast<const timespan*>(a);
+        const timespan& bStrong = *static_cast<const timespan*>(b);
+        return aStrong == bStrong;
+    }
+    if (typeId == cache->NanotimeTypeId) {
+        const nanotime& aStrong = *static_cast<const nanotime*>(a);
+        const nanotime& bStrong = *static_cast<const nanotime*>(b);
+        return aStrong == bStrong;
+    }
+    if (typeId == cache->SynctimeTypeId) {
+        const synctime& aStrong = *static_cast<const synctime*>(a);
+        const synctime& bStrong = *static_cast<const synctime*>(b);
+        return aStrong == bStrong;
     }
 
     if (!(typeId & asTYPEID_MASK_OBJECT)) {

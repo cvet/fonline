@@ -117,6 +117,7 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
 * [Asio](https://think-async.com/Asio/) - networking library
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
+* [date](https://github.com/HowardHinnant/date) - additional chrono features
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end

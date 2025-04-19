@@ -67,8 +67,8 @@ public:
     auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*;
     auto InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*;
     void Finish();
-    auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
-    void RestoreFading(const tuple<bool, bool, time_point>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
+    auto StoreFading() -> tuple<bool, bool, nanotime> { return {_fading, _fadeUp, _fadingTime}; }
+    void RestoreFading(const tuple<bool, bool, nanotime>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
     void FadeUp();
     void SetTargetAlpha(uint8 alpha);
     void SetDefaultAlpha(uint8 alpha);
@@ -102,8 +102,8 @@ private:
 
     bool _fading {};
     bool _fadeUp {};
-    time_point _fadingTime {};
+    nanotime _fadingTime {};
 
     bool _finishing {};
-    time_point _finishingTime {};
+    nanotime _finishingTime {};
 };

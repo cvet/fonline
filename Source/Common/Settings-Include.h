@@ -175,7 +175,6 @@ VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, Fullscreen, false);
 VARIABLE_SETTING(int, Brightness, 0);
-VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, Sleep, -1); // -1 to disable, Sleep has priority over FixedFPS if both enabled
 VARIABLE_SETTING(int, FixedFPS, 100); // 0 to disable, Sleep has priority over FixedFPS if both enabled
 FIXED_SETTING(int, FogExtraLength, 0);
@@ -198,7 +197,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual DummySettings);
-FIXED_SETTING(int, StartYear, 2000);
 FIXED_SETTING(uint, DebuggingDeltaTimeCap, 100);
 SETTING_GROUP_END();
 

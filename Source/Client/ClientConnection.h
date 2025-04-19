@@ -96,9 +96,9 @@ private:
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};
     unordered_map<NetMessage, MessageCallback> _handlers {};
-    optional<time_point> _artificalLagTime {};
-    time_point _pingTime {};
-    time_point _pingCallTime {};
+    optional<nanotime> _artificalLagTime {};
+    nanotime _pingTime {};
+    nanotime _pingCallTime {};
     size_t _msgCount {};
 #if FO_DEBUG
     vector<NetMessage> _msgHistory {};

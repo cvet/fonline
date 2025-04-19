@@ -40,7 +40,6 @@
 #include "ResourceManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Timer.h"
 
 CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
     CritterView(map->GetEngine(), id, proto, props),
@@ -60,7 +59,7 @@ void CritterHexView::Init()
     AnimateStay();
     RefreshOffs();
 
-    _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
+    _fidgetTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
 
     DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
@@ -183,7 +182,7 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
 
 #if FO_ENABLE_3D
         if (_model != nullptr) {
-            _resetTime = _engine->GameTime.GameplayTime() + _model->GetAnimDuration();
+            _resetTime = _engine->GameTime.GetFrameTime() + _model->GetAnimDuration();
             _needReset = true;
         }
         else
@@ -191,7 +190,7 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         {
             const auto* anim = GetCurAnim();
             const auto duration = std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr && anim->AnimFrames->WholeTicks != 0 ? anim->AnimFrames->WholeTicks : 1000};
-            _resetTime = _engine->GameTime.GameplayTime() + duration;
+            _resetTime = _engine->GameTime.GetFrameTime() + duration;
             _needReset = true;
         }
     } break;
@@ -199,7 +198,7 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         SetCondition(CritterCondition::Alive);
         FadeUp();
         AnimateStay();
-        _resetTime = _engine->GameTime.GameplayTime(); // Fast
+        _resetTime = _engine->GameTime.GetFrameTime(); // Fast
         _needReset = true;
         break;
     case CritterAction::Connect:
@@ -238,7 +237,7 @@ void CritterHexView::NextAnim(bool erase_front)
         return;
     }
 
-    _animStartTime = _engine->GameTime.GameplayTime();
+    _animStartTime = _engine->GameTime.GetFrameTime();
 
     const auto& cr_anim = _animSequence.front();
 
@@ -283,7 +282,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(state_anim, action_anim)) {
-            _animSequence.push_back(CritterAnim {nullptr, time_duration {}, 0, 0, state_anim, action_anim, fixed_context_item});
+            _animSequence.push_back(CritterAnim {nullptr, timespan::zero, 0, 0, state_anim, action_anim, fixed_context_item});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);
@@ -322,7 +321,7 @@ void CritterHexView::AnimateStay()
 
     ClearAnim();
 
-    _animStartTime = _engine->GameTime.GameplayTime();
+    _animStartTime = _engine->GameTime.GetFrameTime();
 
     auto state_anim = GetStateAnim();
     auto action_anim = GetActionAnim();
@@ -407,7 +406,7 @@ auto CritterHexView::IsNeedReset() const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _needReset && _engine->GameTime.GameplayTime() >= _resetTime;
+    return _needReset && _engine->GameTime.GetFrameTime() >= _resetTime;
 }
 
 void CritterHexView::ResetOk()
@@ -507,7 +506,6 @@ void CritterHexView::RefreshModel()
         _modelSpr = dynamic_ptr_cast<ModelSprite>(_engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites));
 
         if (_modelSpr) {
-            _modelSpr->UseGameplayTimer();
             _modelSpr->PlayDefault();
 
             Spr = _modelSpr.get();
@@ -602,8 +600,8 @@ void CritterHexView::Process()
     }
 
     // Extra offsets
-    if (_offsExtNextTime != time_point {} && _engine->GameTime.GameplayTime() >= _offsExtNextTime) {
-        _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
+    if (_offsExtNextTime && _engine->GameTime.GetFrameTime() >= _offsExtNextTime) {
+        _offsExtNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 
         const auto dist = GenericUtils::DistSqrt({0, 0}, {iround(_offsExt.x), iround(_offsExt.y)});
         const auto dist_div = dist / 10;
@@ -627,7 +625,7 @@ void CritterHexView::Process()
 
     // Animation
     const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
-    const auto anim_proc = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _animStartTime) * 100 / (cur_anim.AnimDuration != time_duration {} ? time_duration_to_ms<uint>(cur_anim.AnimDuration) : 100);
+    const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<uint>() * 100 / (cur_anim.AnimDuration ? cur_anim.AnimDuration.to_ms<uint>() : 100);
 
     // Change frames
 #if FO_ENABLE_3D
@@ -662,7 +660,7 @@ void CritterHexView::Process()
 
     // Fidget animation
     // Todo: fidget animation to scripts
-    if (_engine->GameTime.GameplayTime() >= _fidgetTime) {
+    if (_engine->GameTime.GetFrameTime() >= _fidgetTime) {
 #if FO_ENABLE_3D
         const auto is_combat_mode = _model != nullptr && _model->IsCombatMode();
 #else
@@ -673,7 +671,7 @@ void CritterHexView::Process()
             Action(CritterAction::Fidget, 0, nullptr, false);
         }
 
-        _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};
+        _fidgetTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};
     }
 
     // Combat mode
@@ -710,7 +708,7 @@ void CritterHexView::ProcessMoving()
         return;
     }
 
-    auto normalized_time = time_duration_to_ms<float>(_engine->GameTime.FrameTime() - Moving.StartTime + Moving.OffsetTime) / Moving.WholeTime;
+    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).to_ms<float>() / Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = Moving.WholeDist * normalized_time;
@@ -890,7 +888,7 @@ void CritterHexView::AddExtraOffs(ipos offset)
     _offsExtSpeed.x = -_offsExtSpeed.x;
     _offsExtSpeed.y = -_offsExtSpeed.y;
 
-    _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
+    _offsExtNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 
     RefreshOffs();
 }

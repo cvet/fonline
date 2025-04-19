@@ -138,14 +138,17 @@ public:
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> const vector<CritterView*>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
+    [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { NON_CONST_METHOD_HINT_ONELINE() return _curPlayer; }
+    [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { NON_CONST_METHOD_HINT_ONELINE() return _curLocation; }
+    [[nodiscard]] auto GetCurMap() noexcept -> MapView* { NON_CONST_METHOD_HINT_ONELINE() return _curMap; }
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back);
-    void ScreenQuake(int noise, time_duration time);
+    void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
+    void ScreenQuake(int noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
@@ -251,7 +254,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
     ///@ ExportEvent
-    ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, tick_t /*dialogTime*/);
+    ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint /*dialogTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
@@ -262,7 +265,6 @@ public:
     Keyboard Keyb;
     CacheStorage Cache;
 
-    MapView* CurMap {};
     bool CanDrawInScripts {};
 
     vector<RenderEffect*> OffscreenEffects {};
@@ -288,8 +290,8 @@ protected:
 
     struct ScreenFadingData
     {
-        time_point BeginTime {};
-        time_duration Duration {};
+        nanotime BeginTime {};
+        timespan Duration {};
         ucolor StartColor {};
         ucolor EndColor {};
     };
@@ -318,7 +320,7 @@ protected:
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
-    void Net_OnUpdateFilesResponse();
+    void Net_OnHandshakeAnswer();
     void Net_OnWrongNetProto();
     void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
@@ -382,12 +384,7 @@ protected:
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
     ClientConnection _conn;
-
     EventUnsubscriber _eventUnsubscriber {};
-
-    time_point _fpsTime {};
-    uint _fpsCounter {};
-
     LanguagePack _curLang {};
 
     string _loginName {};
@@ -398,6 +395,7 @@ protected:
     vector<CritterView*> _globalMapCritters {};
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
+    MapView* _curMap {};
     CritterView* _chosen {};
 
     hstring _curMapLocPid {};
@@ -424,13 +422,13 @@ protected:
     float _quakeScreenOffsX {};
     float _quakeScreenOffsY {};
     float _quakeScreenOffsStep {};
-    time_point _quakeScreenOffsNextTime {};
+    nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
-    time_point _lmapPrepareNextTime {};
+    nanotime _lmapPrepareNextTime {};
 
     unique_ptr<VideoClip> _video {};
     unique_ptr<RenderTexture> _videoTex {};

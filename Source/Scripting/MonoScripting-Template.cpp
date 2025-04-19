@@ -39,17 +39,14 @@
 
 #if SERVER_SCRIPTING
 #include "Server.h"
-#include "ServerScripting.h"
 #define FOEngine FOServer
 #define SCRIPTING_CLASS ServerScriptSystem
 #elif CLIENT_SCRIPTING
 #include "Client.h"
-#include "ClientScripting.h"
 #define FOEngine FOClient
 #define SCRIPTING_CLASS ClientScriptSystem
 #elif MAPPER_SCRIPTING
 #include "Mapper.h"
-#include "MapperScripting.h"
 #define FOEngine FOMapper
 #define SCRIPTING_CLASS MapperScriptSystem
 #endif

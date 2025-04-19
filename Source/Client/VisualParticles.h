@@ -113,7 +113,7 @@ public:
 private:
     explicit ParticleSystem(ParticleManager& particle_mngr);
 
-    [[nodiscard]] auto GetTime() const -> time_point;
+    [[nodiscard]] auto GetTime() const -> nanotime;
 
     struct Impl;
     unique_ptr<Impl> _impl;
@@ -122,5 +122,5 @@ private:
     vec3 _viewOffset {};
     double _elapsedTime {};
     bool _forceDraw {};
-    time_point _lastDrawTime {};
+    nanotime _lastDrawTime {};
 };

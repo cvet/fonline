@@ -103,7 +103,7 @@ public:
         ipos LastOffset {};
         vector<tuple<mpos, uint8, bool>> FanHexes {}; // Hex, Alpha, UseOffsets
         vector<mpos> MarkedHexes {};
-        time_point Time {};
+        nanotime Time {};
         bool Finishing {};
     };
 
@@ -167,8 +167,6 @@ public:
     [[nodiscard]] auto IsHexToDraw(mpos pos) const noexcept -> bool { return _hexField->GetCellForReading(pos).IsView; }
     [[nodiscard]] auto GetHexTrack(mpos pos) noexcept -> char& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
-    [[nodiscard]] auto GetGlobalDayTime() const noexcept -> int;
-    [[nodiscard]] auto GetMapDayTime() const noexcept -> int;
     [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
 
@@ -180,7 +178,7 @@ public:
     void DrawMap();
     void DrawMapTexts();
 
-    void AddMapText(string_view str, mpos hex, ucolor color, time_duration show_time, bool fade, ipos offset);
+    void AddMapText(string_view str, mpos hex, ucolor color, timespan show_time, bool fade, ipos offset);
     auto GetRectForText(mpos hex) -> IRect;
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
@@ -282,8 +280,8 @@ private:
     struct MapText
     {
         mpos Hex {};
-        time_point StartTime {};
-        time_duration Duration {};
+        nanotime StartTime {};
+        timespan Duration {};
         string Text {};
         ucolor Color {};
         bool Fade {};
@@ -355,7 +353,7 @@ private:
 
     MapSpriteList _mapSprites;
 
-    time_point _scrollLastTime {};
+    nanotime _scrollLastTime {};
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
@@ -396,7 +394,7 @@ private:
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
-    time_point _hexLightTime {};
+    nanotime _hexLightTime {};
 
     int _prevMapDayTime {-1};
     int _prevGlobalDayTime {-1};

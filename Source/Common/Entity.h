@@ -261,9 +261,9 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
+    ENTITY_PROPERTY(PrivateServer, vector<synctime>, TE_FireTime);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_RepeatDuration);
+    ENTITY_PROPERTY(PrivateServer, vector<timespan>, TE_RepeatDuration);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
 
@@ -327,8 +327,8 @@ public:
     {
         uint Id {};
         hstring FuncName {};
-        tick_t FireTime {};
-        tick_t RepeatDuration {};
+        nanotime FireTime {};
+        timespan RepeatDuration {};
         vector<any_t> Data {};
     };
 

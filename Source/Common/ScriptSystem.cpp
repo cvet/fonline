@@ -51,8 +51,10 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<uint64>("uint64");
     MapEnginePlainType<float>("float");
     MapEnginePlainType<double>("double");
-    MapEnginePlainType<ident_t>(IDENT_T_NAME);
-    MapEnginePlainType<tick_t>(TICK_T_NAME);
+    MapEnginePlainType<ident_t>(IDENT_NAME);
+    MapEnginePlainType<timespan>(TIMESPAN_NAME);
+    MapEnginePlainType<nanotime>(NANOTIME_NAME);
+    MapEnginePlainType<synctime>(SYNCTIME_NAME);
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize>("isize");
     MapEnginePlainType<ipos>("ipos");
@@ -71,7 +73,17 @@ ScriptSystem::ScriptSystem()
     MapEngineEntityType<Entity>("Entity");
 }
 
-auto ScriptSystem::ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
+void ScriptSystem::RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend)
+{
+    STACK_TRACE_ENTRY();
+
+    _backends.resize(index + 1);
+    RUNTIME_ASSERT(!_backends[index]);
+
+    _backends[index] = std::move(backend);
+}
+
+auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
 {
     STACK_TRACE_ENTRY();
 

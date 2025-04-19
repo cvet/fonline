@@ -45,7 +45,6 @@
 #include "RenderTarget.h"
 #include "Settings.h"
 #include "TextureAtlas.h"
-#include "Timer.h"
 #include "VisualParticles.h"
 
 // Font flags
@@ -109,7 +108,6 @@ public:
     virtual void Play(hstring anim_name, bool looped, bool reversed) { UNUSED_VARIABLE(anim_name, looped, reversed); }
     virtual void Stop() { }
     virtual auto Update() -> bool { return false; }
-    virtual void UseGameplayTimer() { _useGameplayTimer = true; }
 
     // Todo: incapsulate sprite data
     isize Size {};
@@ -120,7 +118,6 @@ protected:
     void StartUpdate();
 
     SpriteManager& _sprMngr;
-    bool _useGameplayTimer {};
 };
 
 class SpriteFactory

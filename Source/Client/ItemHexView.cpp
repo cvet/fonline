@@ -37,7 +37,6 @@
 #include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
-#include "Timer.h"
 
 ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
     ItemView(map->GetEngine(), id, proto, props),
@@ -96,9 +95,11 @@ void ItemHexView::Process()
     }
 
     if (_isDynamicEffect && !IsFinishing()) {
-        const auto dt = time_duration_to_ms<float>(_engine->GameTime.GameplayTime() - _effUpdateLastTime);
+        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float>();
+
         if (dt > 0.0f) {
             auto speed = GetFlyEffectSpeed();
+
             if (speed == 0.0f) {
                 speed = 1.0f;
             }
@@ -108,7 +109,7 @@ void ItemHexView::Process()
 
             RefreshOffs();
 
-            _effUpdateLastTime = _engine->GameTime.GameplayTime();
+            _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 
             if (GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
                 Finish();
@@ -157,7 +158,7 @@ void ItemHexView::SetEffect(mpos to_hex)
     _effStartOffset = SprOffset;
     _effCurOffset = {static_cast<float>(SprOffset.x), static_cast<float>(SprOffset.y)};
     _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
-    _effUpdateLastTime = _engine->GameTime.GameplayTime();
+    _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
 void ItemHexView::RefreshAlpha()
@@ -187,8 +188,6 @@ void ItemHexView::RefreshAnim()
     if (_isEffect) {
         _anim->SetDir(_effDir);
     }
-
-    _anim->UseGameplayTimer();
 
     if (GetCanOpen()) {
         _anim->Stop();

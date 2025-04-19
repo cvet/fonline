@@ -275,7 +275,7 @@ void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
     _playing = true;
     _looped = looped;
     _reversed = reversed;
-    _startTick = _sprMngr.GetTimer().GetTime(_useGameplayTimer);
+    _startTick = _sprMngr.GetTimer().GetFrameTime();
 
     StartUpdate();
 }
@@ -292,8 +292,8 @@ auto SpriteSheet::Update() -> bool
     STACK_TRACE_ENTRY();
 
     if (_playing) {
-        const auto cur_tick = _sprMngr.GetTimer().GetTime(_useGameplayTimer);
-        const auto dt = time_duration_to_ms<int>(cur_tick - _startTick);
+        const auto cur_tick = _sprMngr.GetTimer().GetFrameTime();
+        const auto dt = (cur_tick - _startTick).to_ms<int>();
         const auto frm_count = static_cast<int>(CntFrm);
         const auto ticks_per_frame = static_cast<int>(WholeTicks) / frm_count;
         const auto frames_passed = dt / ticks_per_frame;

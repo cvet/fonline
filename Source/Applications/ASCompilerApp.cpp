@@ -39,19 +39,6 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 
-struct AngelScriptCompiler_ServerScriptSystem final : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-struct AngelScriptCompiler_ClientScriptSystem final : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-struct AngelScriptCompiler_MapperScriptSystem final : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-
 unordered_set<string> CompilerPassedMessages;
 
 #if !FO_TESTING_APP
@@ -78,7 +65,8 @@ int main(int argc, char** argv)
         WriteLog("Compile server scripts");
 
         try {
-            AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(resources);
+            extern void Init_AngelScriptCompiler_ServerScriptSystem(const FileSystem*);
+            Init_AngelScriptCompiler_ServerScriptSystem(&resources);
         }
         catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -91,7 +79,8 @@ int main(int argc, char** argv)
         WriteLog("Compile client scripts");
 
         try {
-            AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(resources);
+            extern void Init_AngelScriptCompiler_ClientScriptSystem(const FileSystem*);
+            Init_AngelScriptCompiler_ClientScriptSystem(&resources);
         }
         catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -104,7 +93,8 @@ int main(int argc, char** argv)
         WriteLog("Compile mapper scripts");
 
         try {
-            AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(resources);
+            extern void Init_AngelScriptCompiler_MapperScriptSystem(const FileSystem*);
+            Init_AngelScriptCompiler_MapperScriptSystem(&resources);
         }
         catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {

@@ -60,7 +60,6 @@ static constexpr CmdDef CMD_LIST[] = {
     {"runscript", CMD_RUNSCRIPT},
     {"run", CMD_RUNSCRIPT},
     {"regenmap", CMD_REGENMAP},
-    {"settime", CMD_SETTIME},
     {"log", CMD_LOG},
 };
 
@@ -283,30 +282,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_REGENMAP: {
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.EndMsg();
-    } break;
-    case CMD_SETTIME: {
-        auto multiplier = 0;
-        auto year = 0;
-        auto month = 0;
-        auto day = 0;
-        auto hour = 0;
-        auto minute = 0;
-        auto second = 0;
-        if (!(args_str >> multiplier >> year >> month >> day >> hour >> minute >> second)) {
-            logcb("Invalid arguments. Example: settime tmul year month day hour minute second");
-            break;
-        }
-
-        buf.StartMsg(msg);
-        buf.Write(cmd);
-        buf.Write(multiplier);
-        buf.Write(year);
-        buf.Write(month);
-        buf.Write(day);
-        buf.Write(hour);
-        buf.Write(minute);
-        buf.Write(second);
         buf.EndMsg();
     } break;
     case CMD_LOG: {
