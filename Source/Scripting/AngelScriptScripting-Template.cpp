@@ -174,6 +174,7 @@ public:
 #endif
 
 #if !COMPILER_MODE
+#define GET_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<FOEngineBase*>(as_engine->GetUserData())
 #define GET_AS_ENGINE_FROM_SELF() GET_AS_ENGINE_FROM_ENTITY(self)
 #define GET_AS_ENGINE_FROM_ENTITY(entity) GET_AS_ENGINE_FROM_ENGINE(entity->GetEngine())
 #define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys->GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine
@@ -814,29 +815,29 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     switch (type_id) {
     case asTYPEID_VOID:
-        return "";
+        return "void";
     case asTYPEID_BOOL:
-        return strex("{}", *static_cast<const bool*>(ptr) ? "true" : "false");
+        return strex("bool: {}", *static_cast<const bool*>(ptr) ? "true" : "false");
     case asTYPEID_INT8:
-        return strex("{}", *static_cast<const int8*>(ptr));
+        return strex("int8: {}", *static_cast<const int8*>(ptr));
     case asTYPEID_INT16:
-        return strex("{}", *static_cast<const int16*>(ptr));
+        return strex("int16: {}", *static_cast<const int16*>(ptr));
     case asTYPEID_INT32:
-        return strex("{}", *static_cast<const int*>(ptr));
+        return strex("int32: {}", *static_cast<const int*>(ptr));
     case asTYPEID_INT64:
-        return strex("{}", *static_cast<const int64*>(ptr));
+        return strex("int64: {}", *static_cast<const int64*>(ptr));
     case asTYPEID_UINT8:
-        return strex("{}", *static_cast<const uint8*>(ptr));
+        return strex("uint8: {}", *static_cast<const uint8*>(ptr));
     case asTYPEID_UINT16:
-        return strex("{}", *static_cast<const uint16*>(ptr));
+        return strex("uint16: {}", *static_cast<const uint16*>(ptr));
     case asTYPEID_UINT32:
-        return strex("{}", *static_cast<const uint*>(ptr));
+        return strex("uint32: {}", *static_cast<const uint*>(ptr));
     case asTYPEID_UINT64:
-        return strex("{}", *static_cast<const uint64*>(ptr));
+        return strex("uint64: {}", *static_cast<const uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return strex("{}", *static_cast<const float*>(ptr));
+        return strex("float: {}", *static_cast<const float*>(ptr));
     case asTYPEID_DOUBLE:
-        return strex("{}", *static_cast<const double*>(ptr));
+        return strex("double: {}", *static_cast<const double*>(ptr));
     default:
         break;
     }
@@ -848,27 +849,53 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
     RUNTIME_ASSERT(as_type_info);
     const string type_name = as_type_info->GetName();
+    auto* engine = GET_ENGINE_FROM_AS_ENGINE(as_engine);
 
     if (type_name == "string") {
-        return strex("{}", *static_cast<const string*>(ptr));
+        return strex("string: {}", *static_cast<const string*>(ptr));
     }
     if (type_name == "hstring") {
-        return strex("{}", *static_cast<const hstring*>(ptr));
+        return strex("hstring: {}", *static_cast<const hstring*>(ptr));
     }
     if (type_name == "any") {
-        return strex("{}", *static_cast<const any_t*>(ptr));
+        return strex("any: {}", *static_cast<const any_t*>(ptr));
     }
     if (type_name == IDENT_NAME) {
-        return strex("{}", *static_cast<const ident_t*>(ptr));
+        return strex(IDENT_NAME ": {}", *static_cast<const ident_t*>(ptr));
     }
     if (type_name == TIMESPAN_NAME) {
-        return strex("{}", *static_cast<const timespan*>(ptr));
+        return strex(TIMESPAN_NAME ": {}", *static_cast<const timespan*>(ptr));
     }
     if (type_name == NANOTIME_NAME) {
-        return strex("{}", *static_cast<const nanotime*>(ptr));
+        return strex(NANOTIME_NAME ": {}", *static_cast<const nanotime*>(ptr));
     }
     if (type_name == SYNCTIME_NAME) {
-        return strex("{}", *static_cast<const synctime*>(ptr));
+        return strex(SYNCTIME_NAME ": {}", *static_cast<const synctime*>(ptr));
+    }
+
+    if (asUINT enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
+        const int enum_value = *static_cast<const int*>(ptr);
+
+        if (engine->GetEnumInfo(type_name, nullptr)) {
+            bool failed = false;
+
+            const string& enum_value_name = engine->ResolveEnumValueName(type_name, enum_value, &failed);
+
+            if (!failed) {
+                return strex("{}: {}", type_name, enum_value_name);
+            }
+        }
+
+        for (asUINT i = 0; i < enum_value_count; i++) {
+            int check_enum_value = 0;
+            const char* enum_value_name = as_type_info->GetEnumValueByIndex(i, &check_enum_value);
+
+            if (check_enum_value == enum_value) {
+                return strex("{}: {}", type_name, enum_value_name);
+            }
+        }
+
+        return strex("{}: {}", type_name, enum_value);
     }
 
     return strex("{}", type_name);
@@ -2165,7 +2192,7 @@ static void Global_Yield(uint time)
 #if !COMPILER_MODE
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
-    auto* engine = static_cast<FOEngineBase*>(ctx->GetEngine()->GetUserData());
+    auto* engine = GET_ENGINE_FROM_AS_ENGINE(ctx->GetEngine());
     auto& ctx_ext = GET_CONTEXT_EXT(ctx);
     ctx_ext.SuspendEndTime = engine->GameTime.GetFrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
