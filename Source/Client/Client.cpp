@@ -388,7 +388,7 @@ void FOClient::MainLoop()
     FrameAdvance();
 
 #if FO_TRACY
-    TracyPlot("Client FPS", static_cast<int64>(Settings.FPS));
+    TracyPlot("Client FPS", static_cast<int64>(GameTime.GetFramesPerSecond()));
 #endif
 
     // Network
