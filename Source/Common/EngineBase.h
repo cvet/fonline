@@ -82,12 +82,14 @@ public:
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
+    void FrameAdvance();
+
     GlobalSettings& Settings;
     GeometryHelper Geometry;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
-    TimeEventManager TimeEventMngr;
-    unique_ptr<ScriptSystem> ScriptSys {};
+    unique_ptr<ScriptSystem> ScriptSys;
+    unique_ptr<TimeEventManager> TimeEventMngr;
     FileSystem Resources {};
     unique_del_ptr<uint8> UserData {};
 

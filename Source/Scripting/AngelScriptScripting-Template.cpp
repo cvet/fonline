@@ -51,13 +51,10 @@
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
 #include "Server.h"
-#include "ServerScripting.h"
 #elif CLIENT_SCRIPTING
 #include "Client.h"
-#include "ClientScripting.h"
 #elif MAPPER_SCRIPTING
 #include "Mapper.h"
-#include "MapperScripting.h"
 #endif
 #endif
 
@@ -95,6 +92,8 @@
 // Reset garbage from WinApi
 #include "WinApiUndef-Include.h"
 
+static constexpr size_t SCRIPT_BACKEND_INDEX = 1;
+
 #if SERVER_SCRIPTING
 #define BaseEntity ServerEntity
 #elif CLIENT_SCRIPTING
@@ -105,62 +104,38 @@
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
-#define FOEngine FOServer
-#define SCRIPTING_CLASS ServerScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScript_ServerScriptSystem
 #elif CLIENT_SCRIPTING
-#define FOEngine FOClient
-#define SCRIPTING_CLASS ClientScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScript_ClientScriptSystem
 #elif MAPPER_SCRIPTING
-#define FOEngine FOMapper
-#define SCRIPTING_CLASS MapperScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScript_MapperScriptSystem
 #endif
 #else
 #if !COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
-#define FOEngine AngelScriptServerCompiler
-#define SCRIPTING_CLASS AngelScriptCompiler_ServerScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_ServerScriptSystem
 #elif CLIENT_SCRIPTING
-#define FOEngine AngelScriptClientCompiler
-#define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_ClientScriptSystem
 #elif MAPPER_SCRIPTING
-#define FOEngine AngelScriptMapperCompiler
-#define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_MapperScriptSystem
 #endif
 #else
 #if SERVER_SCRIPTING
-#define FOEngine AngelScriptServerCompilerValidation
-#define SCRIPTING_CLASS AngelScriptCompiler_ServerScriptSystem_Validation
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_ServerScriptSystem_Validation
 #elif CLIENT_SCRIPTING
-#define FOEngine AngelScriptClientCompilerValidation
-#define SCRIPTING_CLASS AngelScriptCompiler_ClientScriptSystem_Validation
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_ClientScriptSystem_Validation
 #elif MAPPER_SCRIPTING
-#define FOEngine AngelScriptMapperCompilerValidation
-#define SCRIPTING_CLASS AngelScriptCompiler_MapperScriptSystem_Validation
+#define SCRIPT_BACKEND_CLASS AngelScriptCompiler_MapperScriptSystem_Validation
 #endif
 #endif
 #endif
 
 #if COMPILER_MODE
-class FOServer;
-class FOClient;
-class FOMapper;
-
 class BaseEntity;
 class CustomEntity;
 class CustomEntityWithProto;
 class CustomEntityView;
 class CustomEntityWithProtoView;
-
-#if COMPILER_VALIDATION_MODE
-#define INIT_ARGS const FileSystem &resources, FOEngineBase **out_engine
-#else
-#define INIT_ARGS const FileSystem& resources
-#endif
-
-struct SCRIPTING_CLASS : public ScriptSystem
-{
-    void InitAngelScriptScripting(INIT_ARGS);
-};
 
 #define ENTITY_VERIFY_NULL(e)
 #define ENTITY_VERIFY(e)
@@ -168,33 +143,29 @@ struct SCRIPTING_CLASS : public ScriptSystem
 
 static GlobalSettings DummySettings {};
 
-class FOEngine : public FOEngineBase
+#define COMPILER_ENGINE_CLASS CONCAT(FOCompilerEngine_, SCRIPT_BACKEND_CLASS)
+
+class COMPILER_ENGINE_CLASS : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    FOEngine() :
+    COMPILER_ENGINE_CLASS() :
         FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
     {
-        STACK_TRACE_ENTRY();
-
         extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
         AngelScript_ServerCompiler_RegisterData(this);
     }
 #elif CLIENT_SCRIPTING
-    FOEngine() :
+    COMPILER_ENGINE_CLASS() :
         FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
     {
-        STACK_TRACE_ENTRY();
-
         extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
         AngelScript_ClientCompiler_RegisterData(this);
     }
 #elif MAPPER_SCRIPTING
-    FOEngine() :
+    COMPILER_ENGINE_CLASS() :
         FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
     {
-        STACK_TRACE_ENTRY();
-
         extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
         AngelScript_MapperCompiler_RegisterData(this);
     }
@@ -203,12 +174,12 @@ public:
 #endif
 
 #if !COMPILER_MODE
-#define INIT_ARGS
-
-#define GET_AS_ENGINE_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys.get())->AngelScriptData->Engine
-#define GET_AS_ENGINE_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys.get())->AngelScriptData->Engine
-#define GET_SCRIPT_SYS_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys.get())->AngelScriptData.get()
-#define GET_SCRIPT_SYS_FROM_ENTITY(entity) static_cast<SCRIPTING_CLASS*>(entity->GetEngine()->ScriptSys.get())->AngelScriptData.get()
+#define GET_AS_ENGINE_FROM_SELF() GET_AS_ENGINE_FROM_ENTITY(self)
+#define GET_AS_ENGINE_FROM_ENTITY(entity) GET_AS_ENGINE_FROM_ENGINE(entity->GetEngine())
+#define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys->GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine
+#define GET_SCRIPT_BACKEND_FROM_SELF() GET_SCRIPT_BACKEND_FROM_ENTITY(self)
+#define GET_SCRIPT_BACKEND_FROM_ENTITY(entity) GET_SCRIPT_BACKEND_FROM_ENGINE(entity->GetEngine())
+#define GET_SCRIPT_BACKEND_FROM_ENGINE(engine) engine->ScriptSys->GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)
 
 #define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
@@ -238,6 +209,7 @@ public:
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
+#define SCRIPT_METHOD_PR(type, name, params, ret) WRAP_MFN_PR(type, name, params, ret)
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
 #else
 #define SCRIPT_GENERIC(name) asFUNCTION(name)
@@ -247,6 +219,7 @@ public:
 #define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD(type, name) asMETHOD(type, name)
+#define SCRIPT_METHOD_PR(type, name, params, ret) asMETHODPR(type, name, params, ret)
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
 #endif
 
@@ -303,7 +276,7 @@ struct ASContextExtendedData
     unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
     std::string Info {};
     asIScriptContext* Parent {};
-    time_point SuspendEndTime {};
+    nanotime SuspendEndTime {};
     Entity* ValidCheck {};
 #if FO_TRACY
     vector<TracyCZoneCtx> TracyExecutionCalls {};
@@ -314,19 +287,29 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 static void AngelScriptEndCall(asIScriptContext* ctx);
 static void AngelScriptException(asIScriptContext* ctx, void* param);
 
-struct SCRIPTING_CLASS::AngelScriptImpl
+class SCRIPT_BACKEND_CLASS : public ScriptSystemBackend
 {
+public:
     struct EnumInfo
     {
         string EnumName {};
-        FOEngine* GameEngine {};
+        FOEngineBase* Engine {};
     };
+
+    void Init(FOEngineBase* engine, const FileSystem* resources);
+
+    ~SCRIPT_BACKEND_CLASS() override
+    {
+        if (ASEngine != nullptr) {
+            ASEngine->ShutDownAndRelease();
+        }
+    }
 
     void CreateContext()
     {
         STACK_TRACE_ENTRY();
 
-        auto* ctx = Engine->CreateContext();
+        auto* ctx = ASEngine->CreateContext();
         RUNTIME_ASSERT(ctx);
 
         static_cast<asCContext*>(ctx)->Ext = SafeAlloc::MakeRaw<ASContextExtendedData>();
@@ -442,7 +425,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
             const auto execution_duration = execution_time.GetDuration();
 
-            if (execution_duration >= std::chrono::milliseconds {GameEngine->Settings.ScriptOverrunReportTime} && !IsRunInDebugger()) {
+            if (execution_duration >= std::chrono::milliseconds {Engine->Settings.ScriptOverrunReportTime} && !IsRunInDebugger()) {
 #if !FO_DEBUG
                 WriteLog("Script execution overrun: {} ({}{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended at start" : "");
 #else
@@ -504,7 +487,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
         vector<asIScriptContext*> resume_contexts;
         vector<asIScriptContext*> finish_contexts;
-        const auto time = GameEngine->GameTime.FrameTime();
+        const auto time = Engine->GameTime.GetFrameTime();
 
         for (auto* ctx : BusyContexts) {
             const auto& ctx_ext = GET_CONTEXT_EXT(ctx);
@@ -535,8 +518,8 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
     }
 
-    FOEngine* GameEngine {};
-    asIScriptEngine* Engine {};
+    FOEngineBase* Engine {};
+    asIScriptEngine* ASEngine {};
     set<CScriptArray*> EnumArrays {};
     map<string, EnumInfo> EnumInfos {};
     set<hstring> ContentData {};
@@ -547,6 +530,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
     unordered_set<hstring> HashedStrings {};
     unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
+    list<std::function<void*()>> Getters {};
 };
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
@@ -647,6 +631,13 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
         *static_cast<string*>(param) = GetStackTrace();
     }
 }
+
+#else
+class SCRIPT_BACKEND_CLASS : public ScriptSystemBackend
+{
+public:
+    void Init(FOEngineBase* engine, const FileSystem* resources);
+};
 #endif
 
 template<typename T>
@@ -853,8 +844,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     // Todo: GetASObjectInfo add detailed info about object
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
-    auto* engine = ctx->GetEngine();
-    auto* as_type_info = engine->GetTypeInfoById(type_id);
+    auto* as_engine = ctx->GetEngine();
+    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
     RUNTIME_ASSERT(as_type_info);
     const string type_name = as_type_info->GetName();
 
@@ -867,11 +858,17 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     if (type_name == "any") {
         return strex("{}", *static_cast<const any_t*>(ptr));
     }
-    if (type_name == IDENT_T_NAME) {
+    if (type_name == IDENT_NAME) {
         return strex("{}", *static_cast<const ident_t*>(ptr));
     }
-    if (type_name == TICK_T_NAME) {
-        return strex("{}", *static_cast<const tick_t*>(ptr));
+    if (type_name == TIMESPAN_NAME) {
+        return strex("{}", *static_cast<const timespan*>(ptr));
+    }
+    if (type_name == NANOTIME_NAME) {
+        return strex("{}", *static_cast<const nanotime*>(ptr));
+    }
+    if (type_name == SYNCTIME_NAME) {
+        return strex("{}", *static_cast<const synctime*>(ptr));
     }
 
     return strex("{}", type_name);
@@ -901,7 +898,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 
 #if !COMPILER_MODE
-static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) noexcept -> bool
+static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -921,7 +918,7 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
             RUNTIME_ASSERT(!func_desc->RetType->Accessor);
         }
 
-        auto* ctx = script_sys->PrepareContext(func);
+        auto* ctx = script_backend->PrepareContext(func);
 
         if (args.size() != 0) {
             auto it = args.begin();
@@ -956,13 +953,13 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
             }
         }
 
-        if (script_sys->RunContext(ctx, ret == nullptr)) {
+        if (script_backend->RunContext(ctx, ret == nullptr)) {
             if (ret != nullptr) {
                 RUNTIME_ASSERT(func_desc->RetType->Accessor->IsPlainData());
                 MemCopy(ret, ctx->GetAddressOfReturnValue(), func_desc->RetType->Accessor->GetDataSize());
             }
 
-            script_sys->ReturnContext(ctx);
+            script_backend->ReturnContext(ctx);
         }
 
         return true;
@@ -978,24 +975,24 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 }
 
 template<typename TRet, typename... Args>
-[[maybe_unused]] static auto GetASScriptFunc(asIScriptFunction* func, SCRIPTING_CLASS::AngelScriptImpl* script_sys) -> ScriptFunc<TRet, Args...>
+[[maybe_unused]] static auto GetASScriptFunc(asIScriptFunction* func, SCRIPT_BACKEND_CLASS* script_backend) -> ScriptFunc<TRet, Args...>
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = script_sys->FuncMap.find(func);
+    const auto it = script_backend->FuncMap.find(func);
 
-    if (it == script_sys->FuncMap.end()) {
-        const auto [it_inserted, inserted] = script_sys->FuncMap.emplace(func, ScriptFuncDesc());
+    if (it == script_backend->FuncMap.end()) {
+        const auto [it_inserted, inserted] = script_backend->FuncMap.emplace(func, ScriptFuncDesc());
         RUNTIME_ASSERT(inserted);
 
         auto& func_desc = it_inserted->second;
-        func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
+        func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_backend->Engine) : hstring();
         func_desc.CallSupported = true;
-        func_desc.RetType = script_sys->GameEngine->ScriptSys->ResolveScriptType(typeid(TRet));
-        func_desc.ArgsType = {script_sys->GameEngine->ScriptSys->ResolveScriptType(typeid(Args))...};
+        func_desc.RetType = script_backend->Engine->ScriptSys->ResolveEngineType(typeid(TRet));
+        func_desc.ArgsType = {script_backend->Engine->ScriptSys->ResolveEngineType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
-        func_desc.Call = [script_sys, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
-            return AngelScriptFuncCall(script_sys, &func_desc, as_func.get(), args, ret);
+        func_desc.Call = [script_backend, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
+            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get(), args, ret);
         };
 
         return ScriptFunc<TRet, Args...>(&func_desc);
@@ -1006,7 +1003,7 @@ template<typename TRet, typename... Args>
 }
 
 template<typename TRet, typename... Args>
-[[maybe_unused]] static auto GetASScriptFuncName(asIScriptFunction* func, SCRIPTING_CLASS::AngelScriptImpl* script_sys) -> ScriptFuncName<TRet, Args...>
+[[maybe_unused]] static auto GetASScriptFuncName(asIScriptFunction* func, SCRIPT_BACKEND_CLASS* script_backend) -> ScriptFuncName<TRet, Args...>
 {
     STACK_TRACE_ENTRY();
 
@@ -1014,7 +1011,7 @@ template<typename TRet, typename... Args>
         throw ScriptException("Function must be global (not delegate)");
     }
 
-    return GetASFuncName(func, *script_sys->GameEngine);
+    return GetASFuncName(func, *script_backend->Engine);
 }
 #endif
 
@@ -2168,9 +2165,9 @@ static void Global_Yield(uint time)
 #if !COMPILER_MODE
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
-    auto* game_engine = static_cast<FOEngine*>(ctx->GetEngine()->GetUserData());
+    auto* engine = static_cast<FOEngineBase*>(ctx->GetEngine()->GetUserData());
     auto& ctx_ext = GET_CONTEXT_EXT(ctx);
-    ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
+    ctx_ext.SuspendEndTime = engine->GameTime.GetFrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 
 #else
@@ -2185,12 +2182,12 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
+    auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -2228,11 +2225,11 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         }
     }
 
-    prop->SetGetter([prop, func, script_sys](Entity* entity, const Property*) -> PropertyRawData {
+    prop->SetGetter([prop, func, script_backend](Entity* entity, const Property*) -> PropertyRawData {
         ENTITY_VERIFY_NULL(entity);
         ENTITY_VERIFY(entity);
 
-        auto* ctx = script_sys->PrepareContext(func);
+        auto* ctx = script_backend->PrepareContext(func);
 
         if constexpr (std::is_standard_layout_v<T>) {
             auto* actual_entity = dynamic_cast<BaseEntity*>(entity);
@@ -2248,12 +2245,12 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
             ctx->SetArgDWord(1, prop->GetRegIndex());
         }
 
-        const auto run_ok = script_sys->RunContext(ctx, false);
+        const auto run_ok = script_backend->RunContext(ctx, false);
         RUNTIME_ASSERT(run_ok);
 
         auto prop_data = ASToProps(prop, ctx->GetAddressOfReturnValue());
         prop_data.StoreIfPassed();
-        script_sys->ReturnContext(ctx);
+        script_backend->ReturnContext(ctx);
         return prop_data;
     });
 
@@ -2269,12 +2266,12 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = GET_SCRIPT_SYS_FROM_ENTITY(engine);
+    auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -2335,11 +2332,11 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         }
     }
 
-    prop->AddSetter([prop, func, script_sys, has_proto_enum, has_value_ref](Entity* entity, const Property*, PropertyRawData& prop_data) -> void {
+    prop->AddSetter([prop, func, script_backend, has_proto_enum, has_value_ref](Entity* entity, const Property*, PropertyRawData& prop_data) -> void {
         ENTITY_VERIFY_NULL(entity);
         ENTITY_VERIFY(entity);
 
-        auto* ctx = script_sys->PrepareContext(func);
+        auto* ctx = script_backend->PrepareContext(func);
         auto& ctx_ext = GET_CONTEXT_EXT(ctx);
 
         ctx_ext.ValidCheck = entity;
@@ -2363,21 +2360,21 @@ static void ASPropertySetter(asIScriptGeneric* gen)
             if (has_value_ref) {
                 PropertyRawData value_ref_space;
                 auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
-                PropsToAS(prop, prop_data, construct_addr, script_sys->Engine);
+                PropsToAS(prop, prop_data, construct_addr, script_backend->ASEngine);
                 ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
 
-                const auto run_ok = script_sys->RunContext(ctx, false);
+                const auto run_ok = script_backend->RunContext(ctx, false);
                 RUNTIME_ASSERT(run_ok);
 
                 prop_data = ASToProps(prop, construct_addr);
                 prop_data.StoreIfPassed();
                 FreeConstructAddrSpace(prop, construct_addr);
 
-                script_sys->ReturnContext(ctx);
+                script_backend->ReturnContext(ctx);
             }
             else {
-                if (script_sys->RunContext(ctx, true)) {
-                    script_sys->ReturnContext(ctx);
+                if (script_backend->RunContext(ctx, true)) {
+                    script_backend->ReturnContext(ctx);
                 }
             }
         }
@@ -2401,6 +2398,22 @@ static void Global_Get(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto& value = *static_cast<T*>(gen->GetAuxiliary());
+    *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
+
+#else
+    UNUSED_VARIABLE(gen);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static void Global_GetExt(asIScriptGeneric* gen)
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    const auto& getter = *static_cast<std::function<void*()>*>(gen->GetAuxiliary());
+    auto value = static_cast<T>(getter());
     *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
 
 #else
@@ -2726,7 +2739,7 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
     auto hstr = engine->ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
 
@@ -2742,7 +2755,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
     bool failed = false;
     auto hstr = engine->ResolveHash(hash, &failed);
     UNUSED_VARIABLE(hstr);
@@ -2760,7 +2773,7 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
     auto hstr = engine->ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 
@@ -3013,7 +3026,7 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
         auto* self = static_cast<any_t*>(gen->GetObject());
-        auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+        auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
         auto hstr = engine->ToHashedString(*self);
         new (gen->GetAddressOfReturnLocation()) hstring(hstr);
     }
@@ -3168,6 +3181,35 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 #else
     UNUSED_VARIABLE(self);
     UNUSED_VARIABLE(r, g, b, a);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static void Time_ConstructWithPlace(T* self, int64 value, int place)
+{
+    NO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    if (place == 0) {
+        new (self) T {std::chrono::nanoseconds {value}};
+    }
+    else if (place == 1) {
+        new (self) T {std::chrono::microseconds {value}};
+    }
+    else if (place == 2) {
+        new (self) T {std::chrono::milliseconds {value}};
+    }
+    else if (place == 3) {
+        new (self) T {std::chrono::seconds {value}};
+    }
+    else {
+        throw ScriptException("Invalid time place", place);
+    }
+
+#else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(value, place);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3350,7 +3392,7 @@ static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 }
 
 template<typename T>
-static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const ProtoCustomEntity*
+static auto Game_GetProtoCustomEntity(FOEngineBase* engine, hstring pid) -> const ProtoCustomEntity*
 {
     STACK_TRACE_ENTRY();
 
@@ -3371,7 +3413,7 @@ static auto Game_GetProtoCustomEntity(FOEngine* engine, hstring pid) -> const Pr
 }
 
 template<typename T>
-static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
+static auto Game_GetProtoCustomEntities(FOEngineBase* engine) -> CScriptArray*
 {
     STACK_TRACE_ENTRY();
 
@@ -3388,7 +3430,7 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
         result.emplace_back(casted_proto);
     }
 
-    auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
+    auto* as_engine = GET_AS_ENGINE_FROM_ENGINE(engine);
     CScriptArray* result_arr = MarshalBackArray(as_engine, strex("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
     return result_arr;
 
@@ -3399,14 +3441,14 @@ static auto Game_GetProtoCustomEntities(FOEngine* engine) -> CScriptArray*
 }
 
 template<typename T>
-static void Game_DestroyOne(FOEngine* engine, T* entity)
+static void Game_DestroyOne(FOEngineBase* engine, T* entity)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
     if (entity != nullptr) {
-        engine->EntityMngr.DestroyEntity(entity);
+        static_cast<FOServer*>(engine)->EntityMngr.DestroyEntity(entity);
     }
 #else
     UNUSED_VARIABLE(engine, entity);
@@ -3420,17 +3462,17 @@ static void Game_DestroyOne(FOEngine* engine, T* entity)
 }
 
 template<typename T>
-static void Game_DestroyAll(FOEngine* engine, CScriptArray* as_entities)
+static void Game_DestroyAll(FOEngineBase* engine, CScriptArray* as_entities)
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
-    auto* as_engine = GET_AS_ENGINE_FROM_ENTITY(engine);
+    auto* as_engine = GET_AS_ENGINE_FROM_ENGINE(engine);
     const auto entities = MarshalArray<T*>(as_engine, as_entities);
     for (auto* entity : entities) {
         if (entity != nullptr) {
-            engine->EntityMngr.DestroyEntity(entity);
+            static_cast<FOServer*>(engine)->EntityMngr.DestroyEntity(entity);
         }
     }
 #else
@@ -3454,7 +3496,7 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
     hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
     H* holder = static_cast<H*>(gen->GetObject());
     const hstring pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
-    CustomEntity* entity = holder->GetEngine()->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
+    CustomEntity* entity = static_cast<FOServer*>(holder->GetEngine())->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
     RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
     new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
 #else
@@ -3544,11 +3586,11 @@ static void Enum_Parse(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
     const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
     bool failed = false;
-    int enum_value = enum_info->GameEngine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
+    int enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
 
     if (failed) {
         if (gen->GetArgCount() == 2) {
@@ -3572,12 +3614,12 @@ static void Enum_ToString(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
     int enum_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     bool full_spec = *static_cast<bool*>(gen->GetAddressOfArg(1));
 
     bool failed = false;
-    string enum_value_name = enum_info->GameEngine->ResolveEnumValueName(enum_info->EnumName, enum_index, &failed);
+    string enum_value_name = enum_info->Engine->ResolveEnumValueName(enum_info->EnumName, enum_index, &failed);
 
     if (failed) {
         throw ScriptException("Invalid enum index", enum_info->EnumName, enum_index);
@@ -3625,327 +3667,352 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resources);
+static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* resources);
 #else
-static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_bin);
+static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin);
 #endif
 
-void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
+void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resources)
 {
     STACK_TRACE_ENTRY();
-
-#if COMPILER_VALIDATION_MODE
-    UNUSED_VARIABLE(resources);
-#endif
-
-#if !COMPILER_MODE
-    FOEngine* game_engine = _engine;
-    game_engine->AddRef();
-#else
-    FOEngine* game_engine = SafeAlloc::MakeRaw<FOEngine>();
-    game_engine->ScriptSys.reset(this);
-#endif
-
-    auto game_engine_releaser = ScopeCallback([game_engine]() noexcept {
-#if COMPILER_MODE
-        (void)game_engine->ScriptSys.release();
-#endif
-        game_engine->Release();
-    });
 
 #if COMPILER_MODE
     static int dummy = 0;
 #endif
 
+#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
+    UNUSED_VARIABLE(resources);
+#endif
+
 #if COMPILER_MODE
 #if SERVER_SCRIPTING
-    MapEngineEntityType<Player>("Player");
-    MapEngineEntityType<Item>("Item");
-    MapEngineEntityType<Critter>("Critter");
-    MapEngineEntityType<Map>("Map");
-    MapEngineEntityType<Location>("Location");
+    engine->ScriptSys->MapEngineEntityType<Player>("Player");
+    engine->ScriptSys->MapEngineEntityType<Item>("Item");
+    engine->ScriptSys->MapEngineEntityType<Critter>("Critter");
+    engine->ScriptSys->MapEngineEntityType<Map>("Map");
+    engine->ScriptSys->MapEngineEntityType<Location>("Location");
 #else
-    MapEngineEntityType<PlayerView>("Player");
-    MapEngineEntityType<ItemView>("Item");
-    MapEngineEntityType<CritterView>("Critter");
-    MapEngineEntityType<MapView>("Map");
-    MapEngineEntityType<LocationView>("Location");
+    engine->ScriptSys->MapEngineEntityType<PlayerView>("Player");
+    engine->ScriptSys->MapEngineEntityType<ItemView>("Item");
+    engine->ScriptSys->MapEngineEntityType<CritterView>("Critter");
+    engine->ScriptSys->MapEngineEntityType<MapView>("Map");
+    engine->ScriptSys->MapEngineEntityType<LocationView>("Location");
 #endif
 #endif
 
-    asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    RUNTIME_ASSERT(engine);
+    asIScriptEngine* as_engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    RUNTIME_ASSERT(as_engine);
 
-    engine->SetUserData(game_engine);
+    as_engine->SetUserData(engine);
 
 #if !COMPILER_MODE
-    AngelScriptData = SafeAlloc::MakeUnique<AngelScriptImpl>();
-    AngelScriptData->GameEngine = game_engine;
-    AngelScriptData->Engine = engine;
+    Engine = engine;
+    ASEngine = as_engine;
 #endif
 
 #if !COMPILER_MODE
-    [[maybe_unused]] unordered_set<hstring>& hashed_strings = AngelScriptData->HashedStrings;
+    [[maybe_unused]] unordered_set<hstring>& hashed_strings = HashedStrings;
 #else
     [[maybe_unused]] unordered_set<hstring> hashed_strings;
 #endif
 
     int as_result;
-    AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
+    AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
 
-    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
-    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
 #if COMPILER_MODE
-    AS_VERIFY(engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false));
+    AS_VERIFY(as_engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false));
 #endif
 
-    RegisterScriptArray(engine, true);
-    ScriptExtensions::RegisterScriptArrayExtensions(engine);
-    RegisterStdString(engine);
-    ScriptExtensions::RegisterScriptStdStringExtensions(engine);
-    RegisterScriptDictionary(engine);
-    RegisterScriptDict(engine);
-    ScriptExtensions::RegisterScriptDictExtensions(engine);
-    RegisterScriptFile(engine);
-    RegisterScriptFileSystem(engine);
-    RegisterScriptDateTime(engine);
-    AS_VERIFY(engine->SetDefaultNamespace("math"));
-    RegisterScriptMath(engine);
-    AS_VERIFY(engine->SetDefaultNamespace(""));
-    RegisterScriptWeakRef(engine);
-    RegisterScriptReflection(engine);
+    RegisterScriptArray(as_engine, true);
+    ScriptExtensions::RegisterScriptArrayExtensions(as_engine);
+    RegisterStdString(as_engine);
+    ScriptExtensions::RegisterScriptStdStringExtensions(as_engine);
+    RegisterScriptDictionary(as_engine);
+    RegisterScriptDict(as_engine);
+    ScriptExtensions::RegisterScriptDictExtensions(as_engine);
+    RegisterScriptFile(as_engine);
+    RegisterScriptFileSystem(as_engine);
+    RegisterScriptDateTime(as_engine);
+    AS_VERIFY(as_engine->SetDefaultNamespace("math"));
+    RegisterScriptMath(as_engine);
+    AS_VERIFY(as_engine->SetDefaultNamespace(""));
+    RegisterScriptWeakRef(as_engine);
+    RegisterScriptReflection(as_engine);
 
     // Register enums
-    for (auto&& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
-        AS_VERIFY(engine->RegisterEnum(enum_name.c_str()));
+    for (auto&& [enum_name, enum_pairs] : engine->GetAllEnums()) {
+        AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str()));
         for (auto&& [key, value] : enum_pairs) {
-            AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
+            AS_VERIFY(as_engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
         }
 
 #if !COMPILER_MODE
-        auto* enum_info = &AngelScriptData->EnumInfos[enum_name];
+        auto* enum_info = &EnumInfos[enum_name];
         enum_info->EnumName = enum_name;
-        enum_info->GameEngine = game_engine;
+        enum_info->Engine = engine;
 #else
         void* enum_info = &dummy;
 #endif
 
-        AS_VERIFY(engine->SetDefaultNamespace("Enum"));
-        AS_VERIFY(engine->RegisterGlobalFunction(strex("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->RegisterGlobalFunction(strex("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->RegisterGlobalFunction(strex("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->SetDefaultNamespace(""));
+        AS_VERIFY(as_engine->SetDefaultNamespace("Enum"));
+        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->SetDefaultNamespace(""));
     }
 
     // Register hstring
-    AS_VERIFY(engine->RegisterObjectType("hstring", sizeof(hstring), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<hstring>()));
-    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_GENERIC(HashedString_ConstructFromString), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", SCRIPT_GENERIC(HashedString_IsValidHash), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring& opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string opImplConv() const", SCRIPT_FUNC_THIS(HashedString_StringConv), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectType("hstring", sizeof(hstring), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<hstring>()));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_GENERIC(HashedString_ConstructFromString), SCRIPT_GENERIC_CONV, engine));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", SCRIPT_GENERIC(HashedString_IsValidHash), SCRIPT_GENERIC_CONV, engine));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, engine));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "hstring& opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string opImplConv() const", SCRIPT_FUNC_THIS(HashedString_StringConv), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
     static hstring EMPTY_hstring;
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", SCRIPT_GENERIC((Global_Get<hstring>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(EMPTY_hstring)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", SCRIPT_GENERIC((Global_Get<hstring>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(EMPTY_hstring)));
 
     // Register any
-    AS_VERIFY(engine->RegisterObjectType("any", sizeof(any_t), asOBJ_VALUE | asGetTypeTraits<string>()));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Construct), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const any &in)", SCRIPT_FUNC_THIS(Any_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const bool &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int8>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
-    ScriptExtensions::RegisterScriptStdStringAnyExtensions(engine);
+    AS_VERIFY(as_engine->RegisterObjectType("any", sizeof(any_t), asOBJ_VALUE | asGetTypeTraits<string>()));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Construct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const any &in)", SCRIPT_FUNC_THIS(Any_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const bool &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, engine));
+    AS_VERIFY(as_engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
+    ScriptExtensions::RegisterScriptStdStringAnyExtensions(as_engine);
 
     // Global functions
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_GENERIC(Global_Assert<0>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", SCRIPT_GENERIC(Global_Assert<1>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_Assert<2>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_Assert<3>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_Assert<4>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_Assert<5>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_Assert<6>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_Assert<7>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_Assert<8>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_Assert<9>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_Assert<10>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message)", SCRIPT_GENERIC(Global_ThrowException<0>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1)", SCRIPT_GENERIC(Global_ThrowException<1>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_ThrowException<2>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_ThrowException<3>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_ThrowException<4>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_ThrowException<5>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_ThrowException<6>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_ThrowException<7>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_ThrowException<8>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_ThrowException<9>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_ThrowException<10>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_GENERIC(Global_Assert<0>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", SCRIPT_GENERIC(Global_Assert<1>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_Assert<2>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_Assert<3>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_Assert<4>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_Assert<5>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_Assert<6>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_Assert<7>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_Assert<8>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_Assert<9>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_Assert<10>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message)", SCRIPT_GENERIC(Global_ThrowException<0>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1)", SCRIPT_GENERIC(Global_ThrowException<1>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2)", SCRIPT_GENERIC(Global_ThrowException<2>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3)", SCRIPT_GENERIC(Global_ThrowException<3>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", SCRIPT_GENERIC(Global_ThrowException<4>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", SCRIPT_GENERIC(Global_ThrowException<5>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", SCRIPT_GENERIC(Global_ThrowException<6>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", SCRIPT_GENERIC(Global_ThrowException<7>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_ThrowException<8>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_ThrowException<9>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_ThrowException<10>), SCRIPT_GENERIC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
 #define REGISTER_HARD_STRONG_TYPE(name, type) \
     if (strong_type_registered.count(name) == 0) { \
         strong_type_registered.emplace(name); \
-        AS_VERIFY(engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
-        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
+        AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
         static type ZERO_##type; \
-        AS_VERIFY(engine->RegisterGlobalFunction(strex(name " get_ZERO_{}()", strex(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
+        AS_VERIFY(as_engine->RegisterGlobalFunction(strex(name " get_ZERO_{}()", strex(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
     }
 
 #define REGISTER_RELAXED_STRONG_TYPE(name, type) \
     static_assert(is_strong_type_v<type>); \
     if (strong_type_registered.count(name) == 0) { \
         REGISTER_HARD_STRONG_TYPE(name, type); \
-        AS_VERIFY(engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, strex("void f(const {} &in)", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod(name, strex("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, strex("void f(const {} &in)", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
     }
 
-#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) AS_VERIFY(engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0));
+#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) AS_VERIFY(as_engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0));
 
     unordered_set<string> strong_type_registered;
 
     // Register ucolor
     REGISTER_HARD_STRONG_TYPE("ucolor", ucolor);
-    AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(uint rgba)", SCRIPT_FUNC_THIS(Ucolor_ConstructRawRgba), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(int r, int g, int b, int a = 255)", SCRIPT_FUNC_THIS(Ucolor_ConstructRgba), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 red", offsetof(ucolor, comp.r)));
-    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 green", offsetof(ucolor, comp.g)));
-    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
-    AS_VERIFY(engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(uint rgba)", SCRIPT_FUNC_THIS(Ucolor_ConstructRawRgba), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(int r, int g, int b, int a = 255)", SCRIPT_FUNC_THIS(Ucolor_ConstructRgba), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 red", offsetof(ucolor, comp.r)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 green", offsetof(ucolor, comp.g)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
+
+    // Register timespan
+    REGISTER_HARD_STRONG_TYPE(TIMESPAN_NAME, timespan);
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator-, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(timespan, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", SCRIPT_METHOD_PR(timespan, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(timespan, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_PR(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
+
+    // Register nanotime
+    REGISTER_HARD_STRONG_TYPE(NANOTIME_NAME, nanotime);
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const nanotime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(nanotime, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD_PR(nanotime, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(nanotime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD_PR(nanotime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
+
+    // Register synctime
+    REGISTER_HARD_STRONG_TYPE(SYNCTIME_NAME, synctime);
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const synctime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(synctime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD_PR(synctime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
     REGISTER_HARD_STRONG_TYPE("ipos", ipos);
-    AS_VERIFY(engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos, x)));
-    AS_VERIFY(engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos, y)));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opAdd(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_AddIpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opSub(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_SubIpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opNeg() const", SCRIPT_FUNC_THIS(Ipos_NegIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos, y)));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opAdd(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_AddIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opSub(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_SubIpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opNeg() const", SCRIPT_FUNC_THIS(Ipos_NegIpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
     REGISTER_HARD_STRONG_TYPE("isize", isize);
-    AS_VERIFY(engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("isize", "int width", offsetof(isize, width)));
-    AS_VERIFY(engine->RegisterObjectProperty("isize", "int height", offsetof(isize, height)));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIsize), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIsize), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opAdd(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_AddIsize), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "ipos opSub(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_SubIsize), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "bool fitTo(isize size) const", SCRIPT_FUNC_THIS(Ipos_FitToSize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int width", offsetof(isize, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int height", offsetof(isize, height)));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opAdd(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_AddIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opSub(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_SubIsize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(isize size) const", SCRIPT_FUNC_THIS(Ipos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Register irect
     REGISTER_HARD_STRONG_TYPE("irect", irect);
-    AS_VERIFY(engine->RegisterObjectBehaviour("irect", asBEHAVE_CONSTRUCT, "void f(int x, int y, int width, int height)", SCRIPT_FUNC_THIS(Irect_ConstructXandYandWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("irect", "int x", offsetof(irect, x)));
-    AS_VERIFY(engine->RegisterObjectProperty("irect", "int y", offsetof(irect, y)));
-    AS_VERIFY(engine->RegisterObjectProperty("irect", "int width", offsetof(irect, width)));
-    AS_VERIFY(engine->RegisterObjectProperty("irect", "int height", offsetof(irect, height)));
-    AS_VERIFY(engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("irect", asBEHAVE_CONSTRUCT, "void f(int x, int y, int width, int height)", SCRIPT_FUNC_THIS(Irect_ConstructXandYandWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int x", offsetof(irect, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int y", offsetof(irect, y)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int width", offsetof(irect, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int height", offsetof(irect, height)));
+    AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
 
     // Register fpos
     REGISTER_HARD_STRONG_TYPE("fpos", fpos);
-    AS_VERIFY(engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos, x)));
-    AS_VERIFY(engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos, y)));
-    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos& opAddAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_AddAssignFpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos& opSubAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_SubAssignFpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opAdd(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_AddFpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opSub(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_SubFpos), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("fpos", "fpos opNeg() const", SCRIPT_FUNC_THIS(Fpos_NegFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos, y)));
+    AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos& opAddAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_AddAssignFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos& opSubAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_SubAssignFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opAdd(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_AddFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opSub(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_SubFpos), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opNeg() const", SCRIPT_FUNC_THIS(Fpos_NegFpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
     REGISTER_HARD_STRONG_TYPE("fsize", fsize);
-    AS_VERIFY(engine->RegisterObjectBehaviour("fsize", asBEHAVE_CONSTRUCT, "void f(float width, float height)", SCRIPT_FUNC_THIS(Fsize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize, width)));
-    AS_VERIFY(engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize, height)));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("fsize", asBEHAVE_CONSTRUCT, "void f(float width, float height)", SCRIPT_FUNC_THIS(Fsize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize, height)));
 
     // Register mpos
     REGISTER_HARD_STRONG_TYPE("mpos", mpos);
-    AS_VERIFY(engine->RegisterObjectBehaviour("mpos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Mpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("mpos", "uint16 x", offsetof(mpos, x)));
-    AS_VERIFY(engine->RegisterObjectProperty("mpos", "uint16 y", offsetof(mpos, y)));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("mpos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Mpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 x", offsetof(mpos, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 y", offsetof(mpos, y)));
 
     // Register msize
     REGISTER_HARD_STRONG_TYPE("msize", msize);
-    AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
-    AS_VERIFY(engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
-    AS_VERIFY(engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", SCRIPT_FUNC_THIS(Mpos_FitToSize), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
+    AS_VERIFY(as_engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", SCRIPT_FUNC_THIS(Mpos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name, real_class) \
-    AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_FUNC_THIS((Entity_AddRef<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_FUNC_THIS((Entity_Release<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS((Entity_IsDestroyed<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS((Entity_IsDestroying<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "string get_Name() const", SCRIPT_FUNC_THIS((Entity_Name<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterFuncdef("bool " class_name "Predicate(" class_name "@+)")); \
-    AS_VERIFY(engine->RegisterFuncdef("void " class_name "Callback(" class_name "@+)")); \
-    AS_VERIFY(engine->RegisterFuncdef("void " class_name "InitFunc(" class_name "@+, bool)"))
+    AS_VERIFY(as_engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
+    AS_VERIFY(as_engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_FUNC_THIS((Entity_AddRef<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_FUNC_THIS((Entity_Release<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS((Entity_IsDestroyed<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS((Entity_IsDestroying<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "string get_Name() const", SCRIPT_FUNC_THIS((Entity_Name<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterFuncdef("bool " class_name "Predicate(" class_name "@+)")); \
+    AS_VERIFY(as_engine->RegisterFuncdef("void " class_name "Callback(" class_name "@+)")); \
+    AS_VERIFY(as_engine->RegisterFuncdef("void " class_name "InitFunc(" class_name "@+, bool)"))
 
 #define REGISTER_ENTITY_CAST(class_name, real_class, base_class_name) \
-    AS_VERIFY(engine->RegisterObjectMethod(base_class_name, class_name "@+ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(base_class_name, "const " class_name "@+ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, base_class_name "@+ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "const " base_class_name "@+ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod(base_class_name, class_name "@+ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(base_class_name, "const " class_name "@+ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, base_class_name "@+ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "const " base_class_name "@+ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GETSET_ENTITY(class_name, prop_class_name, real_class) \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property prop, int value)", SCRIPT_FUNC_THIS((Property_SetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "any GetAsAny(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsAny(" prop_class_name "Property prop, any value)", SCRIPT_FUNC_THIS((Property_SetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property prop, int value)", SCRIPT_FUNC_THIS((Property_SetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "any GetAsAny(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "void SetAsAny(" prop_class_name "Property prop, any value)", SCRIPT_FUNC_THIS((Property_SetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_PROPS(class_name, real_class) \
-    AS_VERIFY(engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV, game_engine))
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, engine)); \
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV, engine)); \
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV, engine))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
@@ -3961,7 +4028,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3971,9 +4038,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, IDENT_T_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>))); \
@@ -3983,7 +4050,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
     REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
-    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetComponent<Entity>))); \
     entity_get_value_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetValue<Entity>))); \
     entity_has_abstract.emplace(class_name)
@@ -3995,12 +4062,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Abstract" class_name); \
     } \
-    AS_VERIFY(engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_is_custom.count(class_name) != 0) { \
-        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@+ GetProto" class_name "(hstring pid)", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntity<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@[]@ GetProto" class_name "s()", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntities<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@+ GetProto" class_name "(hstring pid)", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntity<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "Proto" class_name "@[]@ GetProto" class_name "s()", SCRIPT_FUNC_THIS((Game_GetProtoCustomEntities<entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
     entity_get_component_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetComponent<proto_real_class>))); \
     entity_get_value_func_ptr.emplace("Proto" class_name, SCRIPT_GENERIC((Property_GetValue<proto_real_class>))); \
@@ -4010,32 +4077,32 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, IDENT_T_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, IDENT_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \
     if (entity_has_protos.count(class_name) != 0) { \
-        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
     entity_get_component_func_ptr.emplace("Static" class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace("Static" class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_has_statics.emplace(class_name)
 
-#define REGISTER_ENTITY_METHOD(class_name, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(class_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_ENTITY_METHOD(class_name, method_decl, func) AS_VERIFY(as_engine->RegisterObjectMethod(class_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_HOLDER(holder_class_name, class_name, holder_real_class, real_class, entity_info, entry_name) \
     { \
-        const hstring& entry_name_hash = *hashed_strings.emplace(game_engine->ToHashedString(entry_name)).first; \
+        const hstring& entry_name_hash = *hashed_strings.emplace(engine->ToHashedString(entry_name)).first; \
         if constexpr (SERVER_SCRIPTING) { \
             if (entity_has_protos.count(class_name) != 0) { \
-                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+                AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
             else { \
-                AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+                AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
         } \
-        AS_VERIFY(engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
     }
 
     REGISTER_BASE_ENTITY("Entity", Entity);
@@ -4051,35 +4118,35 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     // Events
 #define REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) \
-    AS_VERIFY(engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
-    AS_VERIFY(engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
-    AS_VERIFY(engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOCOUNT)); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFunc@+, EventPriority priority = EventPriority::Normal)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFuncBool@+, EventPriority priority = EventPriority::Normal)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, entity_name event_name "Event@ get_" event_name "()", SCRIPT_FUNC_THIS((Entity_GetSelfForEvent<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
+    AS_VERIFY(as_engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
+    AS_VERIFY(as_engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOCOUNT)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFunc@+, EventPriority priority = EventPriority::Normal)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFuncBool@+, EventPriority priority = EventPriority::Normal)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, entity_name event_name "Event@ get_" event_name "()", SCRIPT_FUNC_THIS((Entity_GetSelfForEvent<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry)
 
 #define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) \
     REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry); \
-    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
 
     // Settings
-    AS_VERIFY(engine->RegisterObjectType("GlobalSettings", 0, asOBJ_REF | asOBJ_NOHANDLE));
-    AS_VERIFY(engine->RegisterGlobalProperty("GlobalSettings Settings", game_engine));
+    AS_VERIFY(as_engine->RegisterObjectType("GlobalSettings", 0, asOBJ_REF | asOBJ_NOHANDLE));
+    AS_VERIFY(as_engine->RegisterGlobalProperty("GlobalSettings Settings", engine));
 
-#define REGISTER_GET_SETTING(setting_entry, get_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", get_decl, SCRIPT_FUNC_THIS(ASSetting_Get_##setting_entry), SCRIPT_FUNC_THIS_CONV))
-#define REGISTER_SET_SETTING(setting_entry, set_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", set_decl, SCRIPT_FUNC_THIS(ASSetting_Set_##setting_entry), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_GET_SETTING(setting_entry, get_decl) AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", get_decl, SCRIPT_FUNC_THIS(ASSetting_Get_##setting_entry), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_SET_SETTING(setting_entry, set_decl) AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", set_decl, SCRIPT_FUNC_THIS(ASSetting_Set_##setting_entry), SCRIPT_FUNC_THIS_CONV))
 
     // Remote calls
 #if SERVER_SCRIPTING || CLIENT_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectType("RemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
+    AS_VERIFY(as_engine->RegisterObjectType("RemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
 
 #if SERVER_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectType("CritterRemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
+    AS_VERIFY(as_engine->RegisterObjectType("CritterRemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
 #endif
 
 #if !COMPILER_MODE
@@ -4093,9 +4160,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
-    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
-    if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        _rpcReceivers.emplace(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
+    if (auto* func = as_engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
+        engine->ScriptSys->BindRemoteCallReceiver(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4105,7 +4171,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ///@ CodeGen Register
 
     // Register properties
-    for (auto&& [type_name, entity_info] : game_engine->GetEntityTypesInfo()) {
+    for (auto&& [type_name, entity_info] : engine->GetEntityTypesInfo()) {
         const auto* registrator = entity_info.PropRegistrator;
         const auto& type_name_str = type_name.as_str();
         const auto is_global = entity_is_global.count(type_name_str) != 0;
@@ -4129,23 +4195,23 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         for (const auto& component : registrator->GetComponents()) {
             {
                 const auto component_type = strex("{}{}Component", type_name_str, component).str();
-                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
+                AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_abstract) {
                 const auto component_type = strex("Abstract{}{}Component", type_name_str, component).str();
-                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
+                AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(as_engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_protos) {
                 const auto component_type = strex("Proto{}{}Component", type_name_str, component).str();
-                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
+                AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(as_engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
             if (is_has_statics) {
                 const auto component_type = strex("Static{}{}Component", type_name_str, component).str();
-                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
+                AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(as_engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&component)));
             }
         }
 
@@ -4156,24 +4222,24 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (!prop->IsDisabled()) {
                 const auto decl_get = strex("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
+                AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
                     if (is_has_abstract) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
+                        AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                     if (is_has_protos) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
+                        AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                     if (is_has_statics) {
-                        AS_VERIFY(engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
+                        AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
                     }
                 }
             }
 
             if (!prop->IsDisabled() && !prop->IsReadOnly()) {
                 const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
+                AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
             }
         }
 
@@ -4184,68 +4250,69 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(prop->GetRegIndex());
             }
 
-            AS_VERIFY(engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
+            AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray<int>(engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
+            const auto it_enum = EnumArrays.emplace(MarshalBackArray<int>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
-            AS_VERIFY(engine->SetDefaultNamespace(""));
+            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }
 
-    AS_VERIFY(engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<FOEngine*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<FOEngineBase*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Engine)));
 
 #if SERVER_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
-    AS_VERIFY(engine->RegisterObjectProperty("Critter", "CritterRemoteCaller PlayerClientCall", 0));
+    AS_VERIFY(as_engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
+    AS_VERIFY(as_engine->RegisterObjectProperty("Critter", "CritterRemoteCaller PlayerClientCall", 0));
 #elif CLIENT_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ServerCall", 0));
+    AS_VERIFY(as_engine->RegisterObjectProperty("Player", "RemoteCaller ServerCall", 0));
 #endif
 
 #if CLIENT_SCRIPTING || MAPPER_SCRIPTING
-    AS_VERIFY(engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_Get<MapView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->CurMap)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_GetExt<MapView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurMap(); }))));
 #endif
 #if CLIENT_SCRIPTING
-    AS_VERIFY(engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_Get<LocationView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curLocation)));
-    AS_VERIFY(engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_Get<PlayerView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curPlayer)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_GetExt<LocationView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurLocation(); }))));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_GetExt<PlayerView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurPlayer(); }))));
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-    CompileRootModule(engine, resources);
-    engine->ShutDownAndRelease();
+    CompileRootModule(as_engine, resources);
+    as_engine->ShutDownAndRelease();
 #else
 #if COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
-    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
+    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
 #elif CLIENT_SCRIPTING
-    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
+    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
 #elif MAPPER_SCRIPTING
-    game_engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
+    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
 #endif
 #endif
 #if SERVER_SCRIPTING
-    File script_file = game_engine->Resources.ReadFile("ServerRootModule.fosb");
+    File script_file = engine->Resources.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    File script_file = game_engine->Resources.ReadFile("ClientRootModule.fosb");
+    File script_file = engine->Resources.ReadFile("ClientRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    File script_file = game_engine->Resources.ReadFile("MapperRootModule.fosb");
+    File script_file = engine->Resources.ReadFile("MapperRootModule.fosb");
 #endif
     RUNTIME_ASSERT(script_file);
-    RestoreRootModule(engine, {script_file.GetBuf(), script_file.GetSize()});
+    RestoreRootModule(as_engine, {script_file.GetBuf(), script_file.GetSize()});
 #endif
 
 #if !COMPILER_MODE || COMPILER_VALIDATION_MODE
     // Index all functions
     {
-        RUNTIME_ASSERT(engine->GetModuleCount() == 1);
-        auto* mod = engine->GetModuleByIndex(0);
+        RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
+        auto* mod = as_engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [this, engine](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
-            auto* as_type_info = engine->GetTypeInfoById(type_id);
+        const auto as_type_to_type_info = [this, engine, as_engine](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
+            const auto& engine_type_map = engine->ScriptSys->GetEngineTypeMap();
+            auto* as_type_info = as_engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
-            const auto get_type_name = [engine](int tid) -> string_view {
+            const auto get_type_name = [as_engine](int tid) -> string_view {
                 switch (tid) {
                 case asTYPEID_VOID:
                     return "void";
@@ -4275,7 +4342,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                     break;
                 }
 
-                auto* ti = engine->GetTypeInfoById(tid);
+                auto* ti = as_engine->GetTypeInfoById(tid);
                 RUNTIME_ASSERT(ti);
                 string_view name = ti->GetName();
 
@@ -4298,11 +4365,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 }
 
                 const auto name = get_type_name(type_id);
-                const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                     return entry.second->Name == name && entry.second->Accessor->IsPlainData();
                 });
 
-                if (it != _engineToScriptType.end()) {
+                if (it != engine_type_map.end()) {
                     return it->second;
                 }
 
@@ -4311,16 +4378,16 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (type_id == asTYPEID_VOID) {
                 RUNTIME_ASSERT(is_ret);
-                return _engineToScriptType[typeid(void).name()];
+                return engine_type_map.at(typeid(void).name());
             }
 
             if (is_array) {
                 const auto name = get_type_name(as_type_info->GetSubTypeId());
-                const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                     return entry.second->Name == name && entry.second->Accessor->IsArray();
                 });
 
-                if (it != _engineToScriptType.end()) {
+                if (it != engine_type_map.end()) {
                     return it->second;
                 }
 
@@ -4328,11 +4395,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             }
 
             const auto name = get_type_name(type_id);
-            const auto it = std::find_if(_engineToScriptType.begin(), _engineToScriptType.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+            const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                 return entry.second->Name == name && !entry.second->Accessor->IsArray();
             });
 
-            if (it != _engineToScriptType.end()) {
+            if (it != engine_type_map.end()) {
                 return it->second;
             }
 
@@ -4343,16 +4410,15 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             auto* func = mod->GetFunctionByIndex(i);
 
             // Bind
-            const auto func_name = GetASFuncName(func, *game_engine);
-            const auto it = _funcMap.emplace(func_name, ScriptFuncDesc());
-            auto& func_desc = it->second;
+            const auto func_name = GetASFuncName(func, *engine);
+            auto* func_desc = engine->ScriptSys->AddScriptFunc(func_name);
 
-            func_desc.Name = func_name;
-            func_desc.Declaration = func->GetDeclaration(true, true, true);
+            func_desc->Name = func_name;
+            func_desc->Declaration = func->GetDeclaration(true, true, true);
 
 #if !COMPILER_VALIDATION_MODE
-            func_desc.Call = [script_sys = AngelScriptData.get(), gen = &func_desc, func](initializer_list<void*> args, void* ret) noexcept { //
-                return AngelScriptFuncCall(script_sys, gen, func, args, ret);
+            func_desc->Call = [this, func_desc, func](initializer_list<void*> args, void* ret) noexcept { //
+                return AngelScriptFuncCall(this, func_desc, func, args, ret);
             };
 #endif
 
@@ -4361,22 +4427,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 asDWORD param_flags;
                 AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
 
-                func_desc.ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags, false));
+                func_desc->ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags, false));
             }
 
             asDWORD ret_flags = 0;
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
-            func_desc.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
+            func_desc->RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
-            func_desc.CallSupported = func_desc.RetType && std::find(func_desc.ArgsType.begin(), func_desc.ArgsType.end(), nullptr) == func_desc.ArgsType.end();
+            func_desc->CallSupported = func_desc->RetType && std::find(func_desc->ArgsType.begin(), func_desc->ArgsType.end(), nullptr) == func_desc->ArgsType.end();
 
             // Check for special module init function
-            if (func_desc.ArgsType.empty() && func_desc.RetType && func_desc.RetType->Name == "void") {
-                RUNTIME_ASSERT(func_desc.CallSupported);
+            if (func_desc->ArgsType.empty() && func_desc->RetType && func_desc->RetType->Name == "void") {
+                RUNTIME_ASSERT(func_desc->CallSupported);
                 const auto func_name_ex = strex(func->GetName());
 
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
-                    _initFunc.push_back(&func_desc);
+                    engine->ScriptSys->AddInitFunc(func_desc);
                 }
             }
         }
@@ -4387,14 +4453,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     }
 #endif
 
-#if COMPILER_MODE && COMPILER_VALIDATION_MODE
-    RUNTIME_ASSERT(out_engine);
-    *out_engine = game_engine;
-    game_engine->AddRef();
-#endif
-
 #if !COMPILER_MODE
-    _loopCallbacks.emplace_back([this] { AngelScriptData->ResumeSuspendedContexts(); });
+    engine->ScriptSys->AddLoopCallback([this] { ResumeSuspendedContexts(); });
 #endif
 }
 
@@ -4436,11 +4496,11 @@ private:
 };
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resources)
+static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* resources)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
 
     // File loader
     class ScriptLoader : public Preprocessor::FileLoader
@@ -4497,7 +4557,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
         int _includeDeep {};
     };
 
-    auto script_files = resources.FilterFiles("fos");
+    auto script_files = resources->FilterFiles("fos");
 
     map<string, string> final_script_files;
     vector<tuple<int, string, string>> final_script_files_order;
@@ -4567,7 +4627,7 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
         WriteLog("Preprocessor message: {}", errors.String);
     }
 
-    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    asIScriptModule* mod = as_engine->GetModule("Root", asGM_ALWAYS_CREATE);
 
     if (mod == nullptr) {
         throw ScriptCompilerException("Create root module failed");
@@ -4623,11 +4683,11 @@ static void CompileRootModule(asIScriptEngine* engine, const FileSystem& resourc
 }
 
 #else
-static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_bin)
+static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
     RUNTIME_ASSERT(!script_bin.empty());
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
@@ -4639,13 +4699,13 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 
-    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    asIScriptModule* mod = as_engine->GetModule("Root", asGM_ALWAYS_CREATE);
     if (mod == nullptr) {
         throw ScriptException("Create root module fail");
     }
 
     auto* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
-    engine->SetUserData(lnt, 5);
+    as_engine->SetUserData(lnt, 5);
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);
@@ -4654,3 +4714,23 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_
     }
 }
 #endif
+
+#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
+void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(FOEngineBase* engine)
+#else
+void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const FileSystem* resources)
+#endif
+{
+    STACK_TRACE_ENTRY();
+
+    auto script_backend = SafeAlloc::MakeShared<SCRIPT_BACKEND_CLASS>();
+
+#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
+    engine->ScriptSys->RegisterBackend(SCRIPT_BACKEND_INDEX, script_backend);
+    script_backend->Init(engine, nullptr);
+
+#else
+    auto engine = SafeAlloc::MakeUniqueReleasable<COMPILER_ENGINE_CLASS>();
+    script_backend->Init(engine.get(), resources);
+#endif
+}

@@ -1791,12 +1791,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
     
     # Make stub for disabled script system
     if (lang == 'AngelScript' and not args.angelscript) or (lang == 'Mono' and not args.csharp) or (lang == 'Native' and not args.native):
+        writeFile('class FOEngineBase;')
         if isASCompiler:
-            writeFile('struct ' + target + 'ScriptSystem { void InitAngelScriptScripting(string_view); };')
-            writeFile('void ' + target + 'ScriptSystem::InitAngelScriptScripting(string_view) { }')
+            if isASCompilerValidation:
+                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem_Validation(FOEngineBase*) { }')
+            else:
+                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem(FOEngineBase*) { }')
         else:
-            writeFile('#include "' + target + 'Scripting.h"')
-            writeFile('void ' + target + 'ScriptSystem::Init' + lang + 'Scripting() { }')
+            writeFile('void Init_' + lang + '_' + target + 'ScriptSystem(FOEngineBase*) { }')
         
         return
     
@@ -1899,7 +1901,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] in ['init', 'predicate', 'callback']:
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
             elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
-                r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity='Entity') for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
+                r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity='Entity') for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_BACKEND_FROM_SELF())'
                 return 'GetASScriptFuncName' + r if tt[0] == 'ScriptFuncName' else 'GetASScriptFunc' + r
             elif tt[0] in engineEnums:
                 return 'static_cast<' + tt[0] + '>(' + v + ')'
@@ -1993,6 +1995,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Scriptable objects and entity stubs
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
+            if target == 'Mapper':
+                globalLines.append('class FOMapper : public Entity {};')
             for entity in gameEntities:
                 engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
                 if engineEntityType is None:
@@ -2148,19 +2152,19 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             argIndex += 1
                         for p in evArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
-                        globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                        globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
+                        globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
+                        globalLines.append('    auto* ctx = script_backend->PrepareContext(func);')
                         if not isGlobal:
                             globalLines.append('    ctx->SetArgObject(0, self);')
                         ctxSetArgs(evArgs, 0 if isGlobal else 1)
                         globalLines.append('    auto event_result = true;')
-                        globalLines.append('    if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
+                        globalLines.append('    if (script_backend->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
                         globalLines.append('        event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
                         for p in evArgs:
                             mbr = marshalBackRef2(p[0], 'as_' + p[1], 'arg_' + p[1])
                             if mbr:
                                 globalLines.append('        ' + mbr + ';')
-                        globalLines.append('        script_sys->ReturnContext(ctx);')
+                        globalLines.append('        script_backend->ReturnContext(ctx);')
                         globalLines.append('    }')
                         for p in evArgs:
                             mbr = marshalBackRelease(p[0], 'as_' + p[1])
@@ -2281,8 +2285,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('{')
             if not isASCompiler:
                 globalLines.append('    STACK_TRACE_ENTRY();')
-                globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
+                globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
+                globalLines.append('    auto&& value = script_backend->Engine->Settings.Custom["' + name + '"];')
                 if type == 'string':
                     globalLines.append('    return value;')
                 elif type == 'any':
@@ -2301,8 +2305,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('{')
             if not isASCompiler:
                 globalLines.append('    STACK_TRACE_ENTRY();')
-                globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                globalLines.append('    script_sys->GameEngine->Settings.Custom["' + name + '"] = strex("{' + '}", ' + marshalIn(type, 'value') + ');')
+                globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
+                globalLines.append('    script_backend->Engine->Settings.Custom["' + name + '"] = strex("{' + '}", ' + marshalIn(type, 'value') + ');')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    UNUSED_VARIABLE(value);')
@@ -2391,8 +2395,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 globalLines.append('    ReadNetBuf(connection.InBuf, arg_' + p[1] + ', *self->GetEngine());')
                         for p in rcArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
-                        globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                        globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
+                        globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
+                        globalLines.append('    auto* ctx = script_backend->PrepareContext(func);')
                         if target == 'Server':
                             globalLines.append('    ctx->SetArgObject(0, self);')
                             ctxSetArgs(rcArgs, 1)
@@ -2402,8 +2406,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             mbr = marshalBackRelease(p[0], 'as_' + p[1])
                             if mbr:
                                 globalLines.append('    ' + mbr + ';')
-                        globalLines.append('    if (script_sys->RunContext(ctx, true)) {')
-                        globalLines.append('        script_sys->ReturnContext(ctx);')
+                        globalLines.append('    if (script_backend->RunContext(ctx, true)) {')
+                        globalLines.append('        script_backend->ReturnContext(ctx);')
                         globalLines.append('    }')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
@@ -2430,16 +2434,16 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         for eo in codeGenTags['ExportRefType']:
             targ, refTypeName, fields, methods, flags, _ = eo
             if targ in allowedTargets:
-                registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + refTypeName + '", sizeof(' + refTypeName + '), asOBJ_REF));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + refTypeName + ', AddRef), SCRIPT_METHOD_CONV));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + refTypeName + ', Release), SCRIPT_METHOD_CONV));')
+                registerLines.append('AS_VERIFY(as_engine->RegisterObjectType("' + refTypeName + '", sizeof(' + refTypeName + '), asOBJ_REF));')
+                registerLines.append('AS_VERIFY(as_engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + refTypeName + ', AddRef), SCRIPT_METHOD_CONV));')
+                registerLines.append('AS_VERIFY(as_engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + refTypeName + ', Release), SCRIPT_METHOD_CONV));')
                 if 'HasFactory' in flags:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_FACTORY, "' + refTypeName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + refTypeName + '>)), SCRIPT_FUNC_CONV));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + refTypeName + '", "const int RefCounter", offsetof(' + refTypeName + ', RefCounter)));')
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectBehaviour("' + refTypeName + '", asBEHAVE_FACTORY, "' + refTypeName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + refTypeName + '>)), SCRIPT_FUNC_CONV));')
+                registerLines.append('AS_VERIFY(as_engine->RegisterObjectProperty("' + refTypeName + '", "const int RefCounter", offsetof(' + refTypeName + ', RefCounter)));')
                 for f in fields:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
                 for m in methods:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
@@ -2491,10 +2495,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if gameEntitiesInfo[entity]['Server' if target == 'Server' else 'Client']:
                         entityClass = entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity
                         funcdefName = ('Generic_' + '.'.join(fdParams).replace('.', '_') + '_Func').replace('SELF_ENTITY', entityClass)
-                        registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' ' + funcdefName +
+                        registerLines.append('AS_VERIFY(as_engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' ' + funcdefName +
                             '(' + ', '.join([metaTypeToASType(p, forceNoConst=True, selfEntity=entityClass) for p in fdParams[1:]]) + ')"));')
             else:
-                registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
+                registerLines.append('AS_VERIFY(as_engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
                         '_Func(' + ', '.join([metaTypeToASType(p, forceNoConst=True) for p in fdParams[1:]]) + ')"));')
         registerLines.append('')
         
@@ -2563,12 +2567,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
                             '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_Send_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if target == 'Server' and targ == 'Client' and subsystem == 'AngelScript':
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("CritterRemoteCaller", "void ' + rcName +
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("CritterRemoteCaller", "void ' + rcName +
                             '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_CritterSend_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag

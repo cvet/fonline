@@ -34,11 +34,9 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "ClientScripting.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"
-#include "Timer.h"
 #include "Version-Include.h"
 
 #if !FO_TESTING_APP

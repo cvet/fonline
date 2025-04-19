@@ -419,7 +419,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
         uint map_index = 0;
 
         for (const auto* map : loc->GetMaps()) {
-            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetInitScript());
+            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
             map_index++;
         }
     }

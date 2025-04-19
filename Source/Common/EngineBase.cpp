@@ -43,7 +43,8 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     Geometry(settings),
     GameTime(settings),
     ProtoMngr(this),
-    TimeEventMngr(this),
+    ScriptSys(SafeAlloc::MakeUnique<ScriptSystem>()),
+    TimeEventMngr(SafeAlloc::MakeUnique<TimeEventManager>(&GameTime, ScriptSys.get())),
     _propsRelation {props_relation}
 {
     STACK_TRACE_ENTRY();
@@ -516,4 +517,19 @@ auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hst
     }
 
     return result;
+}
+
+void FOEngineBase::FrameAdvance()
+{
+    STACK_TRACE_ENTRY();
+
+    GameTime.FrameAdvance();
+
+    SetFrameTime(GameTime.GetFrameTime());
+    SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
+    SetFramesPerSecond(GameTime.GetFramesPerSecond());
+
+    if (GameTime.IsTimeSynchronized()) {
+        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+    }
 }

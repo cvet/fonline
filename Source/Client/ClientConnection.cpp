@@ -32,12 +32,10 @@
 //
 
 #include "ClientConnection.h"
-#include "ClientScripting.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "Version-Include.h"
 
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
@@ -173,11 +171,11 @@ void ClientConnection::ProcessConnection()
 
     // Lags emulation
     if (_settings.ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        _artificalLagTime = Timer::CurTime() + std::chrono::milliseconds {GenericUtils::Random(_settings.ArtificalLags / 2, _settings.ArtificalLags)};
+        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {GenericUtils::Random(_settings.ArtificalLags / 2, _settings.ArtificalLags)};
     }
 
     if (_artificalLagTime.has_value()) {
-        if (Timer::CurTime() >= _artificalLagTime.value()) {
+        if (nanotime::now() >= _artificalLagTime.value()) {
             _artificalLagTime.reset();
         }
         else {
@@ -217,11 +215,11 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    if (_netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
+    if (_netOut.IsEmpty() && !_pingTime && _settings.PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
         _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(false);
         _netOut.EndMsg();
-        _pingTime = Timer::CurTime();
+        _pingTime = nanotime::now();
     }
 
     SendData();
@@ -335,9 +333,9 @@ void ClientConnection::Net_OnPing()
     const auto answer = _netIn.Read<bool>();
 
     if (answer) {
-        const auto time = Timer::CurTime();
-        _settings.Ping = time_duration_to_ms<uint>(time - _pingTime);
-        _pingTime = time_point {};
+        const auto time = nanotime::now();
+        _settings.Ping = (time - _pingTime).to_ms<uint>();
+        _pingTime = nanotime::zero;
         _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
     }
     else {

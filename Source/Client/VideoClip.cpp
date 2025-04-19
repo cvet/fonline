@@ -33,7 +33,6 @@
 
 #include "VideoClip.h"
 #include "Log.h"
-#include "Timer.h"
 
 #include "theora/theoradec.h"
 
@@ -63,10 +62,10 @@ struct VideoClip::Impl
     StreamStates Streams {};
     vector<ucolor> RenderedTextureData {};
     int CurFrame {};
-    time_duration AverageRenderTime {};
-    time_point StartTime {};
-    time_point RenderTime {};
-    time_point PauseTime {};
+    timespan AverageRenderTime {};
+    nanotime StartTime {};
+    nanotime RenderTime {};
+    nanotime PauseTime {};
 };
 
 VideoClip::VideoClip(vector<uint8> video_data) :
@@ -117,7 +116,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
     _impl->RenderedTextureData.resize(static_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
 
-    _impl->StartTime = Timer::CurTime();
+    _impl->StartTime = nanotime::now();
 }
 
 VideoClip::~VideoClip()
@@ -161,7 +160,7 @@ auto VideoClip::IsLooped() const noexcept -> bool
     return _impl->Looped;
 }
 
-auto VideoClip::GetTime() const -> time_duration
+auto VideoClip::GetTime() const -> timespan
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -195,7 +194,7 @@ void VideoClip::Pause()
     STACK_TRACE_ENTRY();
 
     _impl->Paused = true;
-    _impl->PauseTime = Timer::CurTime();
+    _impl->PauseTime = nanotime::now();
 }
 
 void VideoClip::Resume()
@@ -203,10 +202,10 @@ void VideoClip::Resume()
     STACK_TRACE_ENTRY();
 
     if (_impl->Stopped) {
-        _impl->StartTime = Timer::CurTime();
+        _impl->StartTime = nanotime::now();
     }
     else if (_impl->Paused) {
-        _impl->StartTime = Timer::CurTime() - GetTime();
+        _impl->StartTime = nanotime::now() - GetTime();
     }
 
     _impl->Stopped = false;
@@ -220,11 +219,11 @@ void VideoClip::SetLooped(bool enabled)
     _impl->Looped = enabled;
 }
 
-void VideoClip::SetTime(time_duration time)
+void VideoClip::SetTime(timespan time)
 {
     STACK_TRACE_ENTRY();
 
-    _impl->StartTime = Timer::CurTime() - time;
+    _impl->StartTime = nanotime::now() - time;
 }
 
 auto VideoClip::RenderFrame() -> const vector<ucolor>&
@@ -235,7 +234,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         return _impl->RenderedTextureData;
     }
 
-    const auto start_frame_render = Timer::CurTime();
+    const auto start_frame_render = nanotime::now();
 
     if (_impl->Paused) {
         _impl->RenderTime = _impl->PauseTime;
@@ -245,7 +244,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Calculate next frame
-    const double cur_second = time_duration_to_ms<double>(_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime) / 1000.0;
+    const double cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<double>() / 1000.0;
     const int new_frame = iround(cur_second * static_cast<double>(_impl->VideoInfo.fps_numerator) / static_cast<double>(_impl->VideoInfo.fps_denominator));
     const int next_frame_diff = new_frame - _impl->CurFrame;
 
@@ -338,10 +337,10 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Store render time
-    const auto frame_render_duration = Timer::CurTime() - start_frame_render;
+    const auto frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds {0}) {
-        _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>(time_duration_to_ms<double>(_impl->AverageRenderTime + frame_render_duration) / 2.0)};
+        _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<double>() / 2.0)};
     }
     else {
         _impl->AverageRenderTime = frame_render_duration;

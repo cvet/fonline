@@ -285,13 +285,13 @@ FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
     }
 
     // On map
-    if (client->CurMap != nullptr) {
+    if (client->GetCurMap() != nullptr) {
         if (item == nullptr) {
-            item = client->CurMap->GetItem(itemId);
+            item = client->GetCurMap()->GetItem(itemId);
         }
 
         if (item == nullptr) {
-            for (auto* cr : client->CurMap->GetCritters()) {
+            for (auto* cr : client->GetCurMap()->GetCritters()) {
                 if (!cr->GetIsChosen()) {
                     item = cr->GetInvItem(itemId);
 
@@ -326,8 +326,8 @@ FO_SCRIPT_API CritterView* Client_Game_GetCritter(FOClient* client, ident_t crId
         return nullptr;
     }
 
-    if (client->CurMap != nullptr) {
-        auto* cr = client->CurMap->GetCritter(crId);
+    if (client->GetCurMap() != nullptr) {
+        auto* cr = client->GetCurMap()->GetCritter(crId);
         if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
             return nullptr;
         }
@@ -344,8 +344,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, Cri
 {
     vector<CritterView*> critters;
 
-    if (client->CurMap != nullptr) {
-        const auto& map_critters = client->CurMap->GetCritters();
+    if (client->GetCurMap() != nullptr) {
+        const auto& map_critters = client->GetCurMap()->GetCritters();
         critters.reserve(map_critters.size());
 
         for (auto* cr : map_critters) {
@@ -366,16 +366,16 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hst
 {
     vector<CritterView*> critters;
 
-    if (client->CurMap != nullptr) {
+    if (client->GetCurMap() != nullptr) {
         if (!pid) {
-            for (auto* cr : client->CurMap->GetCritters()) {
+            for (auto* cr : client->GetCurMap()->GetCritters()) {
                 if (cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
             }
         }
         else {
-            for (auto* cr : client->CurMap->GetCritters()) {
+            for (auto* cr : client->GetCurMap()->GetCritters()) {
                 if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                     critters.push_back(cr);
                 }
@@ -435,21 +435,21 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, timespan duration)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, false);
+    client->ScreenFade(duration, fromColor, toColor, false);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration, bool appendEffect)
+FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, ucolor toColor, timespan duration, bool appendEffect)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, appendEffect);
+    client->ScreenFade(duration, fromColor, toColor, appendEffect);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
+FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, timespan duration)
 {
-    client->ScreenQuake(noise, std::chrono::milliseconds {duration.underlying_value()});
+    client->ScreenQuake(noise, duration);
 }
 
 ///@ ExportMethod
@@ -459,14 +459,14 @@ FO_SCRIPT_API bool Client_Game_PlaySound(FOClient* client, string_view soundName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
+FO_SCRIPT_API bool Client_Game_PlayMusic(FOClient* client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, std::chrono::milliseconds {repeatTime.underlying_value()});
+    return client->SndMngr.PlayMusic(musicName, repeatTime);
 }
 
 ///@ ExportMethod
@@ -675,13 +675,13 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
     const auto eff_type = static_cast<uint>(effectType);
 
     if (((eff_type & static_cast<uint>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
-        auto* item = client->CurMap->GetItem(ident_t {static_cast<uint>(effectSubtype)});
+        auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint>(effectSubtype)});
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if (((eff_type & static_cast<uint>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
-        auto* cr = client->CurMap->GetCritter(ident_t {static_cast<uint>(effectSubtype)});
+        auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint>(effectSubtype)});
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
@@ -1199,7 +1199,6 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
         auto* model = model_spr->GetModel();
 
         model->EnableShadow(false);
-        model->SetTimer(false);
         model->StartMeshGeneration();
     }
 

@@ -58,11 +58,11 @@ Critter::~Critter()
     }
 }
 
-auto Critter::GetOfflineTime() const -> time_duration
+auto Critter::GetOfflineTime() const -> timespan
 {
     STACK_TRACE_ENTRY();
 
-    return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
+    return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
 
 auto Critter::IsAlive() const noexcept -> bool
@@ -116,7 +116,7 @@ void Critter::MarkIsForPlayer()
     RUNTIME_ASSERT(!GetControlledByPlayer());
 
     SetControlledByPlayer(true);
-    _playerDetachTime = _engine->GameTime.FrameTime();
+    _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
 void Critter::AttachPlayer(Player* player)
@@ -150,7 +150,7 @@ void Critter::DetachPlayer()
     _player->Release();
     _player = nullptr;
 
-    _playerDetachTime = _engine->GameTime.FrameTime();
+    _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
 void Critter::ClearMove()

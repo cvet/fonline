@@ -65,23 +65,16 @@ public:
     }
 };
 
-// Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
-struct AngelScriptCompiler_ServerScriptSystem : public ScriptSystem
+class BakerServerCompilerValidation : public FOEngineBase
 {
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-struct AngelScriptCompiler_ServerScriptSystem_Validation : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources, FOEngineBase** out_engine);
-};
-struct AngelScriptCompiler_ClientScriptSystem : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
-};
-struct AngelScriptCompiler_MapperScriptSystem : public ScriptSystem
-{
-    void InitAngelScriptScripting(const FileSystem& resources);
+public:
+    explicit BakerServerCompilerValidation(PropertiesRelationType props_relation) :
+        FOEngineBase(App->Settings, props_relation)
+    {
+        extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
+        AngelScript_ServerCompiler_RegisterData(this);
+    }
 };
 
 // External variable for compiler messages
@@ -387,18 +380,21 @@ void Baker::BakeAll()
 
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile server scripts");
-                AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                extern void Init_AngelScriptCompiler_ServerScriptSystem(const FileSystem*);
+                Init_AngelScriptCompiler_ServerScriptSystem(&baker_engine.Resources);
                 as_server_recompiled = true;
             }
 
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile client scripts");
-                AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                extern void Init_AngelScriptCompiler_ClientScriptSystem(const FileSystem*);
+                Init_AngelScriptCompiler_ClientScriptSystem(&baker_engine.Resources);
             }
 
             if (!all_scripts_up_to_date) {
                 WriteLog("Compile mapper scripts");
-                AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(baker_engine.Resources);
+                extern void Init_AngelScriptCompiler_MapperScriptSystem(const FileSystem*);
+                Init_AngelScriptCompiler_MapperScriptSystem(&baker_engine.Resources);
             }
 
             WriteLog("Compile AngelScript scripts complete");
@@ -413,22 +409,15 @@ void Baker::BakeAll()
 #endif
 
         // Validation engine
-        FOEngineBase* validation_engine = nullptr;
-#if FO_ANGELSCRIPT_SCRIPTING
-        AngelScriptCompiler_ServerScriptSystem_Validation compiler_script_sys;
-#endif
-        auto validation_engine_destroyer = ScopeCallback([&validation_engine]() noexcept {
-            if (validation_engine != nullptr) {
-                (void)validation_engine->ScriptSys.release();
-                validation_engine->Release();
-            }
-        });
+        auto validation_engine = SafeAlloc::MakeUnique<BakerServerCompilerValidation>(PropertiesRelationType::ServerRelative);
+        const ScriptSystem& script_sys = *validation_engine->ScriptSys;
 
         try {
             WriteLog("Compile AngelScript scripts");
 
 #if FO_ANGELSCRIPT_SCRIPTING
-            compiler_script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
+            extern void Init_AngelScriptCompiler_ServerScriptSystem_Validation(FOEngineBase*);
+            Init_AngelScriptCompiler_ServerScriptSystem_Validation(validation_engine.get());
 #endif
         }
         catch (const std::exception& ex) {
@@ -438,9 +427,6 @@ void Baker::BakeAll()
         catch (...) {
             UNKNOWN_EXCEPTION();
         }
-
-        RUNTIME_ASSERT(validation_engine);
-        const ScriptSystem& script_sys = compiler_script_sys;
 
         // Configs
         try {
@@ -702,7 +688,7 @@ void Baker::BakeAll()
                     &server_proto_mngr_ = std::as_const(server_proto_mngr),
                     &client_proto_mngr_ = std::as_const(client_proto_mngr),
                     &hash_resolver = static_cast<HashResolver&>(server_engine),
-                    &script_sys_ = std::as_const(compiler_script_sys),
+                    &script_sys_ = std::as_const(script_sys),
                     &resource_hashes_ = std::as_const(resource_hashes) // clang-format on
                 ](const ProtoMap* proto_map) {
                     const auto fomap_files = baker_engine_.Resources.FilterFiles("fomap");

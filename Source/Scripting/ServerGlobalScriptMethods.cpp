@@ -42,27 +42,27 @@
 #include "StringUtils.h"
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, ScriptFuncName<void> func)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, tick_t repeat, ScriptFuncName<void> func)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, tick_t delay, tick_t repeat, ScriptFuncName<void, any_t> func, any_t data)
+FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
+    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
@@ -980,7 +980,7 @@ FO_SCRIPT_API void Server_Game_AddTextListener(FOServer* server, int sayType, st
 
     throw NotImplementedException(LINE_STR);
 
-    /*uint func_id = server->ScriptSys.BindByFunc(func, false);
+    /*uint func_id = server->ScriptSys->BindByFunc(func, false);
     if (!func_id)
         throw ScriptException("Unable to bind script function");
 
@@ -1075,9 +1075,10 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SetServerTime(FOServer* server, uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+FO_SCRIPT_API void Server_Game_SetSynchronizedTime(FOServer* server, synctime time)
 {
-    server->SetServerTime(multiplier, year, month, day, hour, minute, second);
+    server->GameTime.SetSynchronizedTime(time);
+    server->SetSynchronizedTime(time);
 }
 
 ///@ ExportMethod

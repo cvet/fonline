@@ -36,7 +36,6 @@
 #include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "StringUtils.h"
-#include "Timer.h"
 
 static constexpr int ATLAS_SPRITES_PADDING = 1;
 
@@ -245,9 +244,9 @@ void TextureAtlasManager::DumpAtlases() const
         atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
     }
 
-    const auto date = Timer::GetCurrentDateTime();
+    const auto time = nanotime::now().desc();
     const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
-        date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
+        time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
     size_t count = 1;

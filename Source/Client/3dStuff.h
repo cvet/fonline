@@ -43,7 +43,6 @@
 #include "FileSystem.h"
 #include "GeometryHelper.h"
 #include "Settings.h"
-#include "Timer.h"
 #include "VisualParticles.h"
 
 // Todo: remove unnecessary allocations from 3d
@@ -259,7 +258,7 @@ public:
     [[nodiscard]] auto GetViewSize() const noexcept -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
-    [[nodiscard]] auto GetAnimDuration() const -> time_duration;
+    [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
     void SetupFrame(isize draw_size);
@@ -272,7 +271,6 @@ public:
     void SetRotation(float rx, float ry, float rz);
     void SetScale(float sx, float sy, float sz);
     void SetSpeed(float speed);
-    void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(ipos offset);
@@ -301,7 +299,7 @@ private:
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
-    [[nodiscard]] auto GetTime() const -> time_point;
+    [[nodiscard]] auto GetTime() const -> nanotime;
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(const ModelInstance* cur);
@@ -332,8 +330,8 @@ private:
     unique_ptr<ModelAnimationController> _moveAnimController {};
     int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
-    time_point _lastDrawTime {};
-    time_point _endTime {};
+    nanotime _lastDrawTime {};
+    nanotime _endTime {};
     mat44 _matRot {};
     mat44 _matScale {};
     mat44 _matScaleBase {};
@@ -347,7 +345,6 @@ private:
     float _moveDirAngle {};
     float _targetMoveDirAngle {};
     vec3 _groundPos {};
-    bool _useGameplayTimer {};
     float _animPosProc {};
     float _animPosTime {};
     float _animPosPeriod {};

@@ -384,14 +384,14 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
         return;
     }
 
-    if (!force && _engine->GameTime.GameplayTime() < cr->_talkNextTime) {
+    if (!force && _engine->GameTime.GetFrameTime() < cr->_talkNextTime) {
         return;
     }
 
-    cr->_talkNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME};
+    cr->_talkNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {PROCESS_TALK_TIME};
 
     // Check time of talk
-    if (cr->Talk.TalkTime != time_duration {} && _engine->GameTime.GameplayTime() - cr->Talk.StartTime >= cr->Talk.TalkTime) {
+    if (cr->Talk.TalkTime && _engine->GameTime.GetFrameTime() - cr->Talk.StartTime >= cr->Talk.TalkTime) {
         CloseTalk(cr);
         return;
     }

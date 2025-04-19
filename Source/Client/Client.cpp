@@ -32,7 +32,6 @@
 //
 
 #include "Client.h"
-#include "ClientScripting.h"
 #include "DefaultSprites.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -91,11 +90,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 #endif
 
     SprMngr.InitializeEgg(FOEngineBase::ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
-
     ResMngr.IndexFiles();
 
-    GameTime.FrameAdvance();
-    _fpsTime = GameTime.FrameTime();
     Settings.MousePos = App->Input.GetMousePosition();
 
     if (mapper_mode) {
@@ -110,8 +106,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         throw EngineDataNotFoundException(LINE_STR);
     }
 
-    ScriptSys = SafeAlloc::MakeUnique<ClientScriptSystem>(this);
-    ScriptSys->InitSubsystems();
+    extern void Init_AngelScript_ClientScriptSystem(FOEngineBase*);
+    Init_AngelScript_ClientScriptSystem(this);
 
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadTexts(Resources);
@@ -166,7 +162,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NetMessage::Effect, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NetMessage::FlyEffect, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
-    _conn.AddMessageHandler(NetMessage::UpdateFilesList, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this] { Net_OnRemoveCustomEntity(); });
 
@@ -250,9 +246,9 @@ FOClient::~FOClient()
         _chosen = nullptr;
     }
 
-    if (CurMap != nullptr) {
-        safe_call([this] { CurMap->DestroySelf(); });
-        CurMap = nullptr;
+    if (_curMap != nullptr) {
+        safe_call([this] { _curMap->DestroySelf(); });
+        _curMap = nullptr;
     }
 
     if (_curPlayer != nullptr) {
@@ -389,20 +385,10 @@ void FOClient::MainLoop()
 {
     STACK_TRACE_ENTRY();
 
-    const auto time_changed = GameTime.FrameAdvance();
-
-    // FPS counter
-    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
-        Settings.FPS = _fpsCounter;
-        _fpsCounter = 0;
-        _fpsTime = GameTime.FrameTime();
-    }
-    else {
-        _fpsCounter++;
-    }
+    FrameAdvance();
 
 #if FO_TRACY
-    TracyPlot("Client FPS", static_cast<int64>(Settings.FPS));
+    TracyPlot("Client FPS", static_cast<int64>(GameTime.GetFramesPerSecond()));
 #endif
 
     // Network
@@ -412,34 +398,16 @@ void FOClient::MainLoop()
     }
 
     _conn.Process();
-
-    // Input
     ProcessInputEvents();
-
-    // Game time
-    if (time_changed) {
-        const auto st = GameTime.ServerToDateTime(GameTime.GetServerTime());
-
-        SetYear(st.Year);
-        SetMonth(st.Month);
-        SetDay(st.Day);
-        SetHour(st.Hour);
-        SetMinute(st.Minute);
-        SetSecond(st.Second);
-    }
-
-    // Logic
     ScriptSys->Process();
-
-    TimeEventMngr.ProcessTimeEvents();
-
+    TimeEventMngr->ProcessTimeEvents();
     OnLoop.Fire();
 
-    if (CurMap != nullptr) {
-        CurMap->Process();
+    if (_curMap != nullptr) {
+        _curMap->Process();
     }
 
-    App->MainWindow.GrabInput(CurMap != nullptr && CurMap->IsScrollEnabled());
+    App->MainWindow.GrabInput(_curMap != nullptr && _curMap->IsScrollEnabled());
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
@@ -467,20 +435,22 @@ void FOClient::MainLoop()
     }
 }
 
-void FOClient::ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back)
+void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
 {
     STACK_TRACE_ENTRY();
 
     if (!push_back || _screenFadingEffects.empty()) {
-        _screenFadingEffects.push_back({GameTime.FrameTime(), time, from_color, to_color});
+        _screenFadingEffects.push_back({GameTime.GetFrameTime(), time, from_color, to_color});
     }
     else {
-        time_point last_tick;
+        nanotime last_tick;
+
         for (const auto& e : _screenFadingEffects) {
             if (e.BeginTime + e.Duration > last_tick) {
                 last_tick = e.BeginTime + e.Duration;
             }
         }
+
         _screenFadingEffects.push_back({last_tick, time, from_color, to_color});
     }
 }
@@ -497,13 +467,13 @@ void FOClient::ProcessScreenEffectFading()
     for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
         auto& screen_effect = *it;
 
-        if (GameTime.FrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
+        if (GameTime.GetFrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
             it = _screenFadingEffects.erase(it);
             continue;
         }
 
-        if (GameTime.FrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(time_duration_to_ms<uint>(screen_effect.Duration), time_duration_to_ms<uint>(GameTime.FrameTime() - screen_effect.BeginTime)) + 1;
+        if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
+            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<uint>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<uint>()) + 1;
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -514,6 +484,7 @@ void FOClient::ProcessScreenEffectFading()
             }
 
             const auto color = ucolor {static_cast<uint8>(res[0]), static_cast<uint8>(res[1]), static_cast<uint8>(res[2]), static_cast<uint8>(res[3])};
+
             for (auto i = 0; i < 6; i++) {
                 full_screen_quad[i].PointColor = color;
             }
@@ -525,7 +496,7 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
-void FOClient::ScreenQuake(int noise, time_duration time)
+void FOClient::ScreenQuake(int noise, timespan time)
 {
     STACK_TRACE_ENTRY();
 
@@ -534,19 +505,19 @@ void FOClient::ScreenQuake(int noise, time_duration time)
 
     _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time_duration_to_ms<float>(time) / 30.0f);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float>() / 30.0f);
 
     Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
     Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
-    _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+    _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 }
 
 void FOClient::ProcessScreenEffectQuake()
 {
     STACK_TRACE_ENTRY();
 
-    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GameplayTime() >= _quakeScreenOffsNextTime) {
+    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
         Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
         Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
 
@@ -570,7 +541,7 @@ void FOClient::ProcessScreenEffectQuake()
         Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
         Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
 
-        _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+        _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -754,7 +725,7 @@ void FOClient::Net_SendDir(CritterHexView* cr)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NetMessage::SendCritterDir);
-    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(_curMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->GetDirAngle());
     _conn.OutBuf.EndMsg();
@@ -775,7 +746,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     }
 
     _conn.OutBuf.StartMsg(NetMessage::SendCritterMove);
-    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(_curMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->Moving.Speed);
     _conn.OutBuf.Write(cr->Moving.StartHex);
@@ -798,7 +769,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NetMessage::SendStopCritterMove);
-    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(_curMap->GetId());
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->GetHex());
     _conn.OutBuf.Write(cr->GetHexOffset());
@@ -865,7 +836,7 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_OnUpdateFilesResponse()
+void FOClient::Net_OnHandshakeAnswer()
 {
     STACK_TRACE_ENTRY();
 
@@ -881,9 +852,11 @@ void FOClient::Net_OnUpdateFilesResponse()
     }
 
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
+    const auto time = _conn.InBuf.Read<synctime>();
 
     RestoreData(_globalsPropertiesData);
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+    GameTime.SetSynchronizedTime(time);
+    SetSynchronizedTime(time);
 
     if (!data.empty()) {
         FileSystem resources;
@@ -948,7 +921,6 @@ void FOClient::Net_OnLoginSuccess()
     _conn.InBuf.ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
 
     RUNTIME_ASSERT(_curPlayer);
     RUNTIME_ASSERT(!_curPlayer->GetId());
@@ -985,8 +957,8 @@ void FOClient::Net_OnAddCritter()
     CritterView* cr;
     CritterHexView* hex_cr;
 
-    if (CurMap != nullptr) {
-        hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
+    if (_curMap != nullptr) {
+        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
         RUNTIME_ASSERT(hex_cr);
 
         if (_mapLoaded) {
@@ -1055,9 +1027,9 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsAttached(is_attached);
     cr->AttachedCritters = std::move(attached_critters);
 
-    if (CurMap != nullptr) {
+    if (_curMap != nullptr) {
         if (is_attached) {
-            for (auto* map_cr : CurMap->GetCritters()) {
+            for (auto* map_cr : _curMap->GetCritters()) {
                 if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
                     map_cr->MoveAttachedCritters();
                     break;
@@ -1097,11 +1069,11 @@ void FOClient::Net_OnAddCritter()
 #endif
 
         if (items_count != 0) {
-            CurMap->UpdateCritterLightSource(hex_cr);
+            _curMap->UpdateCritterLightSource(hex_cr);
         }
 
         if (is_chosen) {
-            CurMap->RebuildFog();
+            _curMap->RebuildFog();
         }
 
         if (!hex_cr->IsAnim()) {
@@ -1116,8 +1088,8 @@ void FOClient::Net_OnRemoveCritter()
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
 
-    if (CurMap != nullptr) {
-        auto* cr = CurMap->GetCritter(cr_id);
+    if (_curMap != nullptr) {
+        auto* cr = _curMap->GetCritter(cr_id);
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -1195,7 +1167,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
     if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
         string str = copy(msg.GetStr(str_num));
-        FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
+        FormatTags(str, GetChosen(), _curMap != nullptr ? _curMap->GetCritter(cr_id) : nullptr, lexems);
 
         if (!str.empty()) {
             OnInMessage.Fire(str, how_say, cr_id);
@@ -1207,12 +1179,12 @@ void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    if (!CurMap->GetSize().IsValidPos(hex)) {
+    if (!_curMap->GetSize().IsValidPos(hex)) {
         BreakIntoDebugger();
         return;
     }
@@ -1222,7 +1194,7 @@ void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
 
     OnMapMessage.Fire(processed_str, hex, color, show_time);
 
-    CurMap->AddMapText(processed_str, hex, color, std::chrono::milliseconds {show_time}, false, {0, 0});
+    _curMap->AddMapText(processed_str, hex, color, std::chrono::milliseconds {show_time}, false, {0, 0});
 
     FlashGameWindow();
 }
@@ -1285,12 +1257,12 @@ void FOClient::Net_OnCritterDir()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
 
     if (cr != nullptr) {
         cr->ChangeLookDirAngle(dir_angle);
@@ -1304,7 +1276,7 @@ void FOClient::Net_OnCritterMove()
     NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
 
     ReceiveCritterMoving(cr);
 
@@ -1322,12 +1294,12 @@ void FOClient::Net_OnCritterMoveSpeed()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto speed = _conn.InBuf.Read<uint16>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
 
     if (cr == nullptr) {
         return;
@@ -1340,10 +1312,10 @@ void FOClient::Net_OnCritterMoveSpeed()
     }
 
     const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
-    const auto elapsed_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime);
+    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>();
 
     cr->Moving.WholeTime /= diff;
-    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
     cr->Moving.Speed = speed;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
@@ -1380,12 +1352,12 @@ void FOClient::Net_OnCritterAction()
         ReceiveCustomEntities(context_item);
     }
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
 
     if (cr == nullptr) {
         BreakIntoDebugger();
@@ -1427,8 +1399,8 @@ void FOClient::Net_OnCritterMoveItem()
 
     CritterView* cr;
 
-    if (CurMap != nullptr) {
-        cr = CurMap->GetCritter(cr_id);
+    if (_curMap != nullptr) {
+        cr = _curMap->GetCritter(cr_id);
     }
     else {
         cr = GetGlobalMapCritter(cr_id);
@@ -1486,7 +1458,7 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (const auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        CurMap->UpdateCritterLightSource(hex_cr);
+        _curMap->UpdateCritterLightSource(hex_cr);
     }
 }
 
@@ -1521,12 +1493,12 @@ void FOClient::Net_OnCritterAnimate()
         ReceiveCustomEntities(context_item);
     }
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -1551,8 +1523,8 @@ void FOClient::Net_OnCritterSetAnims()
     CritterView* cr;
     CritterHexView* hex_cr;
 
-    if (CurMap != nullptr) {
-        hex_cr = CurMap->GetCritter(cr_id);
+    if (_curMap != nullptr) {
+        hex_cr = _curMap->GetCritter(cr_id);
         cr = hex_cr;
     }
     else {
@@ -1589,24 +1561,24 @@ void FOClient::Net_OnCritterTeleport()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto to_hex = _conn.InBuf.Read<mpos>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
 
-    CurMap->MoveCritter(cr, to_hex, false);
+    _curMap->MoveCritter(cr, to_hex, false);
 
     if (cr->GetIsChosen()) {
-        if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
-            CurMap->AutoScroll.CritterLastHex = cr->GetHex();
+        if (_curMap->AutoScroll.HardLockedCritter == cr->GetId() || _curMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
+            _curMap->AutoScroll.CritterLastHex = cr->GetHex();
         }
 
-        CurMap->ScrollToHex(cr->GetHex(), 0.1f, false);
+        _curMap->ScrollToHex(cr->GetHex(), 0.1f, false);
     }
 }
 
@@ -1621,14 +1593,14 @@ void FOClient::Net_OnCritterPos()
     const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    RUNTIME_ASSERT(CurMap->GetSize().IsValidPos(hex));
+    RUNTIME_ASSERT(_curMap->GetSize().IsValidPos(hex));
 
-    auto* cr = CurMap->GetCritter(cr_id);
+    auto* cr = _curMap->GetCritter(cr_id);
 
     if (cr == nullptr) {
         return;
@@ -1640,10 +1612,10 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHex() != hex) {
-        CurMap->MoveCritter(cr, hex, true);
+        _curMap->MoveCritter(cr, hex, true);
 
         if (cr->GetIsChosen()) {
-            CurMap->RebuildFog();
+            _curMap->RebuildFog();
         }
     }
 
@@ -1671,8 +1643,8 @@ void FOClient::Net_OnCritterAttachments()
         attached_critters[i] = _conn.InBuf.Read<ident_t>();
     }
 
-    if (CurMap != nullptr) {
-        auto* cr = CurMap->GetCritter(cr_id);
+    if (_curMap != nullptr) {
+        auto* cr = _curMap->GetCritter(cr_id);
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -1684,7 +1656,7 @@ void FOClient::Net_OnCritterAttachments()
             cr->SetIsAttached(is_attached);
 
             if (is_attached) {
-                for (auto* map_cr : CurMap->GetCritters()) {
+                for (auto* map_cr : _curMap->GetCritters()) {
                     if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
                         map_cr->MoveAttachedCritters();
                         break;
@@ -1742,11 +1714,11 @@ void FOClient::Net_OnChosenAddItem()
 
     ReceiveCustomEntities(item);
 
-    if (CurMap != nullptr) {
-        CurMap->RebuildFog();
+    if (_curMap != nullptr) {
+        _curMap->RebuildFog();
 
         if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
-            CurMap->UpdateCritterLightSource(hex_chosen);
+            _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
 
@@ -1781,9 +1753,9 @@ void FOClient::Net_OnChosenRemoveItem()
 
     OnItemInvOut.Fire(item_clone);
 
-    if (CurMap != nullptr) {
+    if (_curMap != nullptr) {
         if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
-            CurMap->UpdateCritterLightSource(hex_chosen);
+            _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
 }
@@ -1797,7 +1769,7 @@ void FOClient::Net_OnAddItemOnMap()
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
 
         // Skip rest data
@@ -1806,7 +1778,7 @@ void FOClient::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = CurMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
+    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
     RUNTIME_ASSERT(item);
 
     ReceiveCustomEntities(item);
@@ -1824,18 +1796,18 @@ void FOClient::Net_OnRemoveItemFromMap()
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* item = CurMap->GetItem(item_id);
+    auto* item = _curMap->GetItem(item_id);
     if (item != nullptr) {
         OnItemMapOut.Fire(item);
 
         // Refresh borders
         if (!item->GetShootThru()) {
-            CurMap->RebuildFog();
+            _curMap->RebuildFog();
         }
 
         item->Finish();
@@ -1853,12 +1825,12 @@ void FOClient::Net_OnAnimateItem()
     const auto looped = _conn.InBuf.Read<bool>();
     const auto reversed = _conn.InBuf.Read<bool>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    auto* item = CurMap->GetItem(item_id);
+    auto* item = _curMap->GetItem(item_id);
 
     if (item != nullptr) {
         item->GetAnim()->Play(anim_name, looped, reversed);
@@ -1876,12 +1848,12 @@ void FOClient::Net_OnEffect()
     const auto radius = _conn.InBuf.Read<uint16>();
     RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    CurMap->RunEffectItem(eff_pid, hex, hex);
+    _curMap->RunEffectItem(eff_pid, hex, hex);
 
     const auto [sx, sy] = Geometry.GetHexOffsets(hex);
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
@@ -1890,8 +1862,8 @@ void FOClient::Net_OnEffect()
         const auto ex = static_cast<int16>(hex.x) + sx[i];
         const auto ey = static_cast<int16>(hex.y) + sy[i];
 
-        if (CurMap->GetSize().IsValidPos(ipos {ex, ey})) {
-            CurMap->RunEffectItem(eff_pid, {static_cast<uint16>(ex), static_cast<uint16>(ey)}, {static_cast<uint16>(ex), static_cast<uint16>(ey)});
+        if (_curMap->GetSize().IsValidPos(ipos {ex, ey})) {
+            _curMap->RunEffectItem(eff_pid, {static_cast<uint16>(ex), static_cast<uint16>(ey)}, {static_cast<uint16>(ex), static_cast<uint16>(ey)});
         }
     }
 }
@@ -1909,22 +1881,22 @@ void FOClient::Net_OnFlyEffect()
     auto eff_cr1_hex = _conn.InBuf.Read<mpos>();
     auto eff_cr2_hex = _conn.InBuf.Read<mpos>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
-    const auto* cr1 = CurMap->GetCritter(eff_cr1_id);
+    const auto* cr1 = _curMap->GetCritter(eff_cr1_id);
     if (cr1 != nullptr) {
         eff_cr1_hex = cr1->GetHex();
     }
 
-    const auto* cr2 = CurMap->GetCritter(eff_cr2_id);
+    const auto* cr2 = _curMap->GetCritter(eff_cr2_id);
     if (cr2 != nullptr) {
         eff_cr2_hex = cr2->GetHex();
     }
 
-    CurMap->RunEffectItem(eff_pid, eff_cr1_hex, eff_cr2_hex);
+    _curMap->RunEffectItem(eff_pid, eff_cr1_hex, eff_cr2_hex);
 }
 
 void FOClient::Net_OnPlaySound()
@@ -1946,12 +1918,12 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
 
-    if (CurMap != nullptr && chosen != nullptr) {
-        CurMap->FindSetCenter(chosen->GetHex());
+    if (_curMap != nullptr && chosen != nullptr) {
+        _curMap->FindSetCenter(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->AnimateStay();
-            CurMap->UpdateCritterLightSource(hex_chosen);
+            _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
 
@@ -2007,17 +1979,17 @@ void FOClient::Net_OnProperty()
         entity = _curPlayer;
         break;
     case NetProperty::Critter:
-        entity = CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr;
+        entity = _curMap != nullptr ? _curMap->GetCritter(cr_id) : nullptr;
         break;
     case NetProperty::Chosen:
         entity = GetChosen();
         break;
     case NetProperty::MapItem:
-        entity = CurMap->GetItem(item_id);
+        entity = _curMap->GetItem(item_id);
         break;
     case NetProperty::CritterItem:
-        if (CurMap != nullptr) {
-            if (auto* cr = CurMap->GetCritter(cr_id); cr != nullptr) {
+        if (_curMap != nullptr) {
+            if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
                 entity = cr->GetInvItem(item_id);
             }
         }
@@ -2028,7 +2000,7 @@ void FOClient::Net_OnProperty()
         }
         break;
     case NetProperty::Map:
-        entity = CurMap;
+        entity = _curMap;
         break;
     case NetProperty::Location:
         entity = _curLocation;
@@ -2095,7 +2067,7 @@ void FOClient::Net_OnChosenTalk()
     }
 
     const auto lexems = _conn.InBuf.Read<string>();
-    auto* npc = is_npc ? CurMap->GetCritter(talk_cr_id) : nullptr;
+    auto* npc = is_npc ? _curMap->GetCritter(talk_cr_id) : nullptr;
     const auto text_id = _conn.InBuf.Read<uint>();
 
     vector<uint> answer_ids;
@@ -2116,7 +2088,7 @@ void FOClient::Net_OnChosenTalk()
         answers.emplace_back(std::move(str));
     }
 
-    const auto talk_time = _conn.InBuf.Read<tick_t>();
+    const auto talk_time = _conn.InBuf.Read<uint>();
 
     OnDialogData.Fire(talk_cr_id, talk_dlg_id, text, answers, talk_time);
 }
@@ -2125,23 +2097,10 @@ void FOClient::Net_OnTimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    const auto year = _conn.InBuf.Read<uint16>();
-    const auto month = _conn.InBuf.Read<uint16>();
-    const auto day = _conn.InBuf.Read<uint16>();
-    const auto hour = _conn.InBuf.Read<uint16>();
-    const auto minute = _conn.InBuf.Read<uint16>();
-    const auto second = _conn.InBuf.Read<uint16>();
-    const auto multiplier = _conn.InBuf.Read<uint16>();
+    const auto time = _conn.InBuf.Read<synctime>();
 
-    SetYear(year);
-    SetMonth(month);
-    SetDay(day);
-    SetHour(hour);
-    SetMinute(minute);
-    SetSecond(second);
-    SetTimeMultiplier(multiplier);
-
-    GameTime.SetServerTime(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+    GameTime.SetSynchronizedTime(time);
+    SetSynchronizedTime(time);
 }
 
 void FOClient::Net_OnLoadMap()
@@ -2172,12 +2131,12 @@ void FOClient::Net_OnLoadMap()
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
         const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
-        CurMap = SafeAlloc::MakeRaw<MapView>(this, map_id, map_proto);
-        CurMap->RestoreData(_tempPropertiesData);
-        CurMap->LoadStaticData();
+        _curMap = SafeAlloc::MakeRaw<MapView>(this, map_id, map_proto);
+        _curMap->RestoreData(_tempPropertiesData);
+        _curMap->LoadStaticData();
 
         ReceiveCustomEntities(_curLocation);
-        ReceiveCustomEntities(CurMap);
+        ReceiveCustomEntities(_curMap);
 
         WriteLog("Start load map");
     }
@@ -2226,7 +2185,7 @@ void FOClient::Net_OnViewMap()
 
     const auto hex = _conn.InBuf.Read<mpos>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
@@ -2420,7 +2379,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 
     const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
@@ -2433,7 +2392,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->ClearMove();
 
     cr->Moving.Speed = speed;
-    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
     cr->Moving.WholeTime = static_cast<float>(whole_time);
     cr->Moving.Steps = steps;
@@ -2458,7 +2417,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], CurMap->GetSize());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], _curMap->GetSize());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -2663,7 +2622,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-            const auto* cr = CurMap->GetCritter(item->GetCritterId());
+            const auto* cr = _curMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
@@ -2692,14 +2651,14 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == CurMap);
+    RUNTIME_ASSERT(entity == _curMap);
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
     }
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Map, prop, CurMap);
+        Net_SendProperty(NetProperty::Map, prop, _curMap);
     }
     else {
         throw GenericException("Unable to send map modifiable property", prop->GetName());
@@ -2804,7 +2763,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             item->RefreshSprite();
         }
         else if (prop == item->GetPropertyShootThru()) {
-            CurMap->RebuildFog();
+            _curMap->RebuildFog();
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyLightThru()) {
@@ -3074,9 +3033,9 @@ void FOClient::UnloadMap()
 
     OnMapUnload.Fire();
 
-    if (CurMap != nullptr) {
-        CurMap->DestroySelf();
-        CurMap = nullptr;
+    if (_curMap != nullptr) {
+        _curMap->DestroySelf();
+        _curMap = nullptr;
 
         CleanupSpriteCache();
     }
@@ -3103,7 +3062,7 @@ void FOClient::LmapPrepareMap()
 
     _lmapPrepPix.clear();
 
-    if (CurMap == nullptr) {
+    if (_curMap == nullptr) {
         BreakIntoDebugger();
         return;
     }
@@ -3129,7 +3088,7 @@ void FOClient::LmapPrepareMap()
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
-            if (i1 < 0 || i2 < 0 || i1 >= CurMap->GetSize().width || i2 >= CurMap->GetSize().height) {
+            if (i1 < 0 || i2 < 0 || i1 >= _curMap->GetSize().width || i2 >= _curMap->GetSize().height) {
                 continue;
             }
 
@@ -3139,10 +3098,10 @@ void FOClient::LmapPrepareMap()
                 is_far = true;
             }
 
-            const auto& field = CurMap->GetField({static_cast<uint16>(i1), static_cast<uint16>(i2)});
+            const auto& field = _curMap->GetField({static_cast<uint16>(i1), static_cast<uint16>(i2)});
             ucolor cur_color;
 
-            if (const auto* cr = CurMap->GetNonDeadCritter({static_cast<uint16>(i1), static_cast<uint16>(i2)}); cr != nullptr) {
+            if (const auto* cr = _curMap->GetNonDeadCritter({static_cast<uint16>(i1), static_cast<uint16>(i2)}); cr != nullptr) {
                 cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y}, cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
@@ -3172,7 +3131,7 @@ void FOClient::LmapPrepareMap()
         pix_y = 0;
     }
 
-    _lmapPrepareNextTime = GameTime.FrameTime() + std::chrono::milliseconds {1000};
+    _lmapPrepareNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {1000};
 }
 
 void FOClient::CleanupSpriteCache()
@@ -3233,13 +3192,13 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.GetAtlasMngr().DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
-        if (CurMap != nullptr) {
-            CurMap->SwitchShowTrack();
+        if (_curMap != nullptr) {
+            _curMap->SwitchShowTrack();
         }
     }
     else if (cmd == "SwitchShowHex") {
-        if (CurMap != nullptr) {
-            CurMap->SwitchShowHex();
+        if (_curMap != nullptr) {
+            _curMap->SwitchShowHex();
         }
     }
     else if (cmd == "SwitchLookBorders") {
@@ -3257,7 +3216,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         // auto set = (args[1] == "true");
         // if (_drawShootBorders != set) {
         //    _drawShootBorders = set;
-        //    CurMap->RebuildFog();
+        //    _curMap->RebuildFog();
         // }
     }
     else if (cmd == "BytesSend") {
@@ -3275,29 +3234,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "SaveLog" && args.size() == 3) {
-        //              if( file_name == "" )
-        //              {
-        //                      DateTime dt;
-        //                      Timer::GetCurrentDateTime(dt);
-        //                      char     log_path[TEMP_BUF_SIZE];
-        //                      X_str(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-        //                              dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-        //              }
-
-        //              for (uint i = 0; i < MessBox.size(); ++i)
-        //              {
-        //                      MessBoxMessage& m = MessBox[i];
-        //                      // Skip
-        //                      if (IsMainScreen(SCREEN_GAME) && std::find(MessBoxFilters.begin(), MessBoxFilters.end(),
-        //                      m.Type) != MessBoxFilters.end())
-        //                              continue;
-        //                      // Concat
-        //                      Str::Copy(cur_mess, m.Mess);
-        //                      Str::EraseWords(cur_mess, '|', ' ');
-        //                      fmt_log += MessBox[i].Time + string(cur_mess);
-        //              }
     }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
         const auto is_cr = strex(args[1]).toBool();
@@ -3322,17 +3258,17 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             _lmapWMap[3] = y2;
             LmapPrepareMap();
         }
-        else if (GameTime.FrameTime() >= _lmapPrepareNextTime) {
+        else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
             LmapPrepareMap();
         }
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
-        if (CurMap != nullptr) {
+        if (_curMap != nullptr) {
             const auto hx = strex(args[1]).toUInt();
             const auto hy = strex(args[2]).toUInt();
-            CurMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
+            _curMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
         }
     }
     else {
@@ -3421,7 +3357,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
     if (try_move) {
         cr->Moving.Steps = steps;
         cr->Moving.ControlSteps = control_steps;
-        cr->Moving.StartTime = GameTime.FrameTime();
+        cr->Moving.StartTime = GameTime.GetFrameTime();
         cr->Moving.Speed = static_cast<uint16>(speed);
         cr->Moving.StartHex = cr->GetHex();
         cr->Moving.EndHex = hex;
@@ -3542,7 +3478,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
         SndMngr.StopMusic();
 
         if (!names[1].empty()) {
-            SndMngr.PlayMusic(names[1], std::chrono::milliseconds {0});
+            SndMngr.PlayMusic(names[1], timespan::zero);
         }
     }
 }

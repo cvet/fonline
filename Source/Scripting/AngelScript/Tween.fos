@@ -32,7 +32,7 @@ class Tween
         x3 = CurX;
         y3 = CurY;
         end = toEnd;
-        startTick = Game.GetTick();
+        startTick = Game.FrameTime;
     }
 
     void ForceMove(bool toEnd)
@@ -60,7 +60,7 @@ class Tween
     int get_Percent()
     {
         int dist = Dist;
-        return dist > 0 ? Math::Min((Game.GetTick() - startTick) * pps / 1000 * 100 / Dist, 100) : 100;
+        return dist > 0 ? Math::Min((Game.FrameTime - startTick).milliseconds * pps / 1000 * 100 / Dist, 100) : 100;
     }
 
     private
@@ -80,7 +80,7 @@ class Tween
     private
     uint pps;
     private
-    uint startTick;
+    nanotime startTick;
 };
 
 }

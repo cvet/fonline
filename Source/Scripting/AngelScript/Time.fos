@@ -1,142 +1,39 @@
 namespace Time
 {
 
-// Some stuff for work with time
+const int NanosecondsPlace = 0;
+const int MicrosecondsPlace = 1;
+const int MillisecondsPlace = 2;
+const int SecondsPlace = 3;
 
-tick_t Asap()
+timespan Asap()
 {
-    return 0;
+    return timespan(0, NanosecondsPlace);
 }
-tick_t RealMs(uint value)
+timespan Milliseconds(int value)
 {
-    return value * Game.TimeMultiplier / 1000;
+    return timespan(value, MillisecondsPlace);
 }
-tick_t RealSecond(uint value)
+timespan Seconds(int value)
 {
-    return value * Game.TimeMultiplier;
+    return timespan(value, SecondsPlace);
 }
-tick_t RealMinute(uint value)
+timespan Minutes(int value)
 {
-    return value * Game.TimeMultiplier * 60;
+    return timespan(value * 60, SecondsPlace);
 }
-tick_t RealHour(uint value)
+timespan Hours(int value)
 {
-    return value * Game.TimeMultiplier * 3600;
+    return timespan(value * 3600, SecondsPlace);
 }
-tick_t RealDay(uint value)
+timespan Days(int value)
 {
-    return value * Game.TimeMultiplier * 86400;
-}
-tick_t RealMonth(uint value)
-{
-    return value * Game.TimeMultiplier * 2592000;
-}
-tick_t RealYear(uint value)
-{
-    return value * Game.TimeMultiplier * 31536000;
+    return timespan(value * 86400, SecondsPlace);
 }
 
-tick_t Sum(tick_t a, tick_t b)
+bool IsTimeoutActive(synctime timeout)
 {
-    tick_t r;
-    r.value = a.value + b.value;
-    return r;
-}
-
-tick_t GetServerTime()
-{
-    return Game.GetServerTime();
-}
-
-tick_t GetServerTime(tick_t diff)
-{
-    return Sum(Game.GetServerTime(), diff);
-}
-
-uint SecondTicks(uint sec)
-{
-    return sec * 1000;
-}
-uint MinuteTicks(uint min)
-{
-    return min * 60000;
-}
-uint HourTicks(uint hours)
-{
-    return hours * 3600000;
-}
-uint DayTicks(uint days)
-{
-    return days * 86400000;
-}
-
-uint GameSecondToTick(uint value)
-{
-    return value * 1000 / Game.TimeMultiplier;
-}
-uint GameMinuteToTick(uint value)
-{
-    return value * 60 * 1000 / Game.TimeMultiplier;
-}
-uint GameHourToTick(uint value)
-{
-    return value * 3600 / Game.TimeMultiplier * 1000;
-}
-uint GameDayToTick(uint value)
-{
-    return value * 86400 / Game.TimeMultiplier * 1000;
-}
-uint GameMonthToTick(uint value)
-{
-    return value * 2592000 / Game.TimeMultiplier * 1000;
-}
-uint GameYearToTick(uint value)
-{
-    return value * 31536000 / Game.TimeMultiplier * 1000;
-}
-
-uint GetDaysInMonth(uint16 year, uint16 month)
-{
-    switch (month) {
-    case 1:
-    case 3:
-    case 5:
-    case 7:
-    case 8:
-    case 10:
-    case 12: // 31
-        return 31;
-    case 2: // 28-29
-        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
-            return 29;
-        }
-        return 28;
-    default: // 30
-        return 30;
-    }
-
-    return 0;
-}
-
-// Возвращает представление времени в виде строки в формате dd.mm.yy hh:mm. rifleman17
-string DateTimeToString(uint gameTime)
-{
-    uint16 year = 0;
-    uint16 month = 0;
-    uint16 dayOfWeek = 0;
-    uint16 day = 0;
-    uint16 hour = 0;
-    uint16 minute = 0;
-    uint16 second = 0;
-    Game.ServerToDateTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
-
-    return "" + (day > 9 ? ("" + day) : ("0" + day)) + "." + (month > 9 ? ("" + month) : ("0" + month)) + "." + year + " " +
-           (hour > 9 ? ("" + hour) : ("0" + hour)) + ":" + (minute > 9 ? ("" + minute) : ("0" + minute));
-}
-
-bool IsTimeoutActive(uint timeout)
-{
-    return timeout > Game.GetServerTime();
+    return timeout > Game.SynchronizedTime;
 }
 
 }

@@ -37,7 +37,6 @@
 #include "Client.h"
 #include "Log.h"
 #include "Settings.h"
-#include "Timer.h"
 #include "Updater.h"
 #include "Version-Include.h"
 

@@ -51,13 +51,13 @@ FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint count)
 
 static void ItemGetMapPos(ItemView* self, mpos& hex)
 {
-    if (self->GetEngine()->CurMap == nullptr) {
+    if (self->GetEngine()->GetCurMap() == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritterId());
+        const auto* cr = self->GetEngine()->GetCurMap()->GetCritter(self->GetCritterId());
         if (cr == nullptr) {
             throw ScriptException("Invalid critter ownership, critter not found");
         }
@@ -72,7 +72,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
             throw ScriptException("Invalid container ownership, crosslinks");
         }
 
-        auto* cont = self->GetEngine()->CurMap->GetItem(self->GetContainerId());
+        auto* cont = self->GetEngine()->GetCurMap()->GetItem(self->GetContainerId());
         if (cont == nullptr) {
             throw ScriptException("Invalid container ownership, container not found");
         }
@@ -88,7 +88,7 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 {
-    if (self->GetEngine()->CurMap == nullptr) {
+    if (self->GetEngine()->GetCurMap() == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 

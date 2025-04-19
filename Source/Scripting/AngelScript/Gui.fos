@@ -1573,7 +1573,7 @@ class Text : Object
     }
 };
 
-const int PasswordShowTime = 1000;
+const timespan PasswordShowTime = Time::Milliseconds(1000);
 class TextInput : Text
 {
     uint get_InputLength() final
@@ -1592,7 +1592,7 @@ class TextInput : Text
     uint _InputLength;
     bool _IsTextPassword;
     string _PasswordChar;
-    uint _PasswordTime;
+    nanotime _PasswordTime;
     int _CarriagePos;
 
     void _Construct() override
@@ -1633,7 +1633,7 @@ class TextInput : Text
             for (uint i = 0; i < rawText.length(); i++) {
                 text += _PasswordChar;
             }
-            if (Game.GetTick() - _PasswordTime <= PasswordShowTime) {
+            if (Game.FrameTime - _PasswordTime <= PasswordShowTime) {
                 text[text.length() - 1] = rawText[text.length() - 1];
             }
         }
@@ -1644,7 +1644,7 @@ class TextInput : Text
             if (_CarriagePos > int(text.length())) {
                 _CarriagePos = text.length();
             }
-            text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
+            text = text.substr(0, _CarriagePos) + (Game.FrameTime.milliseconds % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         }
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
@@ -1666,7 +1666,7 @@ class TextInput : Text
             _Text = _Text.substr(0, _Text.length() - 1);
         }
         if (_IsTextPassword) {
-            _PasswordTime = (_Text.length() > oldLen ? Game.GetTick() : 0);
+            _PasswordTime = (_Text.length() > oldLen ? Game.FrameTime : ZERO_NANOTIME);
         }
 
         Text::Input(key, text);
@@ -1760,7 +1760,7 @@ class TextInput : Text
     {
         _IsTextPassword = (passwordChar.length() == 1);
         _PasswordChar = passwordChar;
-        _PasswordTime = 0;
+        _PasswordTime = ZERO_NANOTIME;
     }
 
     void SetCarriage(bool enable)
@@ -2614,15 +2614,18 @@ class MessageBox : Text
         _MessageTypes.insertLast(messageType);
 
         // Set time
-        uint16 year = 0;
-        uint16 month = 0;
-        uint16 day = 0;
-        uint16 dayOfWeek = 0;
-        uint16 hour = 0;
-        uint16 minute = 0;
-        uint16 second = 0;
-        uint16 milliseconds;
-        Game.GetCurDateTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+        int millisecond = 0;
+        int microsecond = 0;
+        int nanosecond = 0;
+        nanotime time = Game.GetPrecisionTime();
+        Game.UnpackTime(time, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+
         string messageTime = (hour <= 9 ? "0" : "") + hour + ":" + (minute <= 9 ? "0" : "") + minute + ":" + (second <= 9 ? "0" : "") + second + " ";
         _MessageTimes.insertLast(messageTime);
 
@@ -2975,7 +2978,7 @@ class Console : TextInput
             _CarriagePos = text.length();
         }
 
-        text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
+        text = text.substr(0, _CarriagePos) + (Game.FrameTime.milliseconds % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         Game.DrawText(text, _AbsolutePos, _Size, _TextColor, _TextFont, _TextFlags);
 
         Object::_Draw(false);
@@ -3160,7 +3163,7 @@ Screen CursorScreen;
 
 Object FocusedObject;
 Object PressedObject;
-uint PressedObjectRepeatTime;
+nanotime PressedObjectRepeatTime;
 Object LastPressedObject;
 Object HoveredObject;
 
@@ -3615,7 +3618,7 @@ void EngineCallback_MouseDown(MouseButton button)
     if (hitObj != null) {
         // Handle pressed object
         PressedObject = hitObj;
-        PressedObjectRepeatTime = Game.GetTick() + 500;
+        PressedObjectRepeatTime = Game.FrameTime + Time::Milliseconds(500);
         LastPressedObject = hitObj;
         PressedObject._MouseDown(button);
 
@@ -3795,10 +3798,12 @@ void EngineCallback_Loop()
     }
 
     GetPressedObject(); // Refresh state
+
     if (PressedObject != null) {
-        uint tick = Game.GetTick();
+        nanotime tick = Game.FrameTime;
+
         if (tick >= PressedObjectRepeatTime && PressedObject.IsMouseHit()) {
-            PressedObjectRepeatTime = tick + 40;
+            PressedObjectRepeatTime = tick + Time::Milliseconds(40);
             Screen screen = GetActiveScreen();
             if (screen != null) {
                 screen._GlobalMousePressed(PressedObject._PressedButton);
