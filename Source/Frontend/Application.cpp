@@ -718,7 +718,7 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
     if (!_isTablet) {
         SDL_SetWindowFullscreenMode(sdl_window, nullptr);
 
-        if (Settings.Fullscreen) {
+        if (Settings.ClientMode && Settings.Fullscreen) {
             SDL_SetWindowFullscreen(sdl_window, true);
         }
     }
