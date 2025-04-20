@@ -71,7 +71,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
         }
     }
 
-    _sprMngr.BeginScene({0, 0, 0});
+    _sprMngr.BeginScene();
     if (_splashPic) {
         _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
     }
@@ -167,7 +167,7 @@ auto Updater::Process() -> bool
     }
 
     {
-        _sprMngr.BeginScene({0, 0, 0});
+        _sprMngr.BeginScene();
 
         if (_splashPic) {
             _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
