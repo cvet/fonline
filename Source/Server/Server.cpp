@@ -2162,31 +2162,34 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     in_buf.Unlock();
 
-    vector<const uint8*>* global_vars_data = nullptr;
-    vector<uint>* global_vars_data_sizes = nullptr;
-
-    if (!outdated) {
-        StoreData(false, &global_vars_data, &global_vars_data_sizes);
-    }
-
     const auto out_encrypt_key = NetBuffer::GenerateEncryptKey();
 
     {
         auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
 
         out_buf->Write(outdated);
-        out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
-        out_buf->Push(_updateFilesDesc);
-
-        if (!outdated) {
-            out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
-            out_buf->Write(GameTime.GetSynchronizedTime());
-        }
-
         out_buf->Write(out_encrypt_key);
     }
 
-    connection->WriteBuf()->SetEncryptKey(out_encrypt_key);
+    {
+        auto out_buf = connection->WriteBuf();
+
+        out_buf->SetEncryptKey(out_encrypt_key);
+    }
+
+    if (!outdated) {
+        vector<const uint8*>* global_vars_data = nullptr;
+        vector<uint>* global_vars_data_sizes = nullptr;
+        StoreData(false, &global_vars_data, &global_vars_data_sizes);
+
+        auto out_buf = connection->WriteMsg(NetMessage::InitData);
+
+        out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
+        out_buf->Push(_updateFilesDesc);
+        out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+        out_buf->Write(GameTime.GetSynchronizedTime());
+    }
+
     connection->WasHandshake = true;
 }
 

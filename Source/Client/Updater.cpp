@@ -81,9 +81,9 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
-    _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
+    _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
 
     // Connect
@@ -94,13 +94,16 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _resources.CleanDataSources();
 }
 
-void Updater::Net_OnConnect(bool success)
+void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     STACK_TRACE_ENTRY();
 
-    if (success) {
+    if (result == ClientConnection::ConnectResult::Success) {
         AddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
         AddText(STR_CHECK_UPDATES, "Check updates...");
+    }
+    else if (result == ClientConnection::ConnectResult::Outdated) {
+        Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
     }
     else {
         Abort(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
@@ -223,27 +226,18 @@ void Updater::Abort(uint str_num, string_view num_str_str)
     }
 }
 
-void Updater::Net_OnHandshakeAnswer()
+void Updater::Net_OnInitData()
 {
     STACK_TRACE_ENTRY();
 
-    const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
     vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
-    if (outdated) {
-        Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
-        return;
-    }
-
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     const auto time = _conn.InBuf.Read<synctime>();
-
-    const auto encrypt_key = _conn.InBuf.Read<uint>();
-    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     _gameTime.SetSynchronizedTime(time);
 
