@@ -47,7 +47,7 @@ public:
     NetworkClientConnection(NetworkClientConnection&&) noexcept = delete;
     auto operator=(const NetworkClientConnection&) = delete;
     auto operator=(NetworkClientConnection&&) noexcept = delete;
-    virtual ~NetworkClientConnection();
+    virtual ~NetworkClientConnection() = default;
 
     [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _isConnecting; }
     [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }

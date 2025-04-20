@@ -321,7 +321,6 @@ protected:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
-    void Net_OnWrongNetProto();
     void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
