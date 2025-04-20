@@ -2734,7 +2734,6 @@ enum class NetMessage : uint8
     InitData = 4,
     Login = 6,
     LoginSuccess = 7,
-    WrongNetProto = 9,
     Register = 11,
     RegisterSuccess = 13,
     Ping = 15,
