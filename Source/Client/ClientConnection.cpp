@@ -96,6 +96,13 @@ void ClientConnection::Connect()
             _connectCallback(false);
         }
     }
+    catch (const NetworkClientException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        
+        if (_connectCallback) {
+            _connectCallback(false);
+        }
+    }
     catch (const NetBufferException& ex) {
         WriteLog("Connecting error: {}", ex.what());
 
@@ -120,6 +127,10 @@ void ClientConnection::Process()
         ProcessConnection();
     }
     catch (const ClientConnectionException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+        Disconnect();
+    }
+    catch (const NetworkClientException& ex) {
         WriteLog("Connection error: {}", ex.what());
         Disconnect();
     }
@@ -323,7 +334,6 @@ void ClientConnection::Net_SendHandshake()
     _netOut.EndMsg();
 
     _netOut.SetEncryptKey(encrypt_key);
-    _netIn.SetEncryptKey(encrypt_key);
 }
 
 void ClientConnection::Net_OnPing()
