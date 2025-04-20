@@ -309,9 +309,10 @@ void ClientConnection::Net_SendHandshake()
     STACK_TRACE_ENTRY();
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+    constexpr auto comp_version = static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     _netOut.StartMsg(NetMessage::Handshake);
-    _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
+    _netOut.Write(_settings.BypassCompatibilityCheck ? 0 : comp_version);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 

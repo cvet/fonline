@@ -484,6 +484,8 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
 
 void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
 {
+    STACK_TRACE_ENTRY();
+
     if (_netSock != INVALID_SOCKET) {
         ::closesocket(_netSock);
         _netSock = INVALID_SOCKET;

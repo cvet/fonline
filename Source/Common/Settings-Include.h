@@ -113,6 +113,7 @@ VARIABLE_SETTING(string, ProxyUser, "");
 VARIABLE_SETTING(string, ProxyPass, "");
 VARIABLE_SETTING(uint, Ping, 0);
 VARIABLE_SETTING(bool, DebugNet, false);
+FIXED_SETTING(bool, BypassCompatibilityCheck, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

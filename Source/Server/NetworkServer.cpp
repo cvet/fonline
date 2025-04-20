@@ -39,13 +39,15 @@ NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings
     STACK_TRACE_ENTRY();
 }
 
-void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive)
+void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_sendCallbackSet);
+    RUNTIME_ASSERT(!_disconnectCallbackSet);
     RUNTIME_ASSERT(send);
     RUNTIME_ASSERT(receive);
+    RUNTIME_ASSERT(disconnect);
 
     if (_isDisconnected) {
         return;
@@ -53,6 +55,9 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 
     _sendCallback = std::move(send);
     _sendCallbackSet = true;
+
+    _disconnectCallback = std::move(disconnect);
+    _disconnectCallbackSet = true;
 
     {
         std::scoped_lock locker(_receiveLocker);
@@ -86,6 +91,10 @@ void NetworkServerConnection::Disconnect()
 
     if (_isDisconnected.compare_exchange_strong(expected, true)) {
         DisconnectImpl();
+
+        if (_disconnectCallbackSet) {
+            _disconnectCallback();
+        }
     }
 }
 
