@@ -3175,7 +3175,7 @@ void FOMapper::AddMess(string_view message_text)
     STACK_TRACE_ENTRY();
 
     const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
-    const auto time = nanotime::now().desc();
+    const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
     MessBox.push_back({0, str, mess_time});

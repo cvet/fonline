@@ -576,7 +576,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     STACK_TRACE_ENTRY();
 
     const auto traceback = GetStackTrace();
-    const auto time = nanotime::now().desc();
+    const auto time = nanotime::now().desc(true);
     const string fname = strex("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, time.year, time.month, time.day, time.hour, time.minute, time.second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
@@ -594,13 +594,34 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-auto make_time_desc(timespan time_offset) -> time_desc_t
+#if !CPLUSPLUS_20
+static auto ToLocalTime(std::chrono::time_point<std::chrono::system_clock> now) -> std::chrono::time_point<std::chrono::system_clock>
+{
+    const auto t = std::chrono::system_clock::to_time_t(now);
+    const std::tm& tm = fmt::localtime(t);
+    std::tm gtm = tm;
+    const std::time_t gt = std::mktime(&gtm);
+    std::tm ltm = fmt::gmtime(gt);
+    const std::time_t lt = std::mktime(&ltm);
+    const int64 offset = gt - lt;
+    return now + std::chrono::seconds(offset);
+}
+
+#else
+static auto ToLocalTime(std::chrono::time_point<std::chrono::system_clock> now) -> std::chrono::time_point<std::chrono::system_clock>
+{
+    const auto zoned = date::zoned_time(date::current_zone(), now);
+    return zoned.get_local_time();
+}
+#endif
+
+auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 {
     STACK_TRACE_ENTRY();
 
     time_desc_t result;
 
-    const auto now_sys = std::chrono::system_clock::now();
+    const auto now_sys = local ? ToLocalTime(std::chrono::system_clock::now()) : std::chrono::system_clock::now();
     const auto time_sys = now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value());
 
     const auto ymd_days = date::floor<date::days>(time_sys);
@@ -637,7 +658,7 @@ auto make_time_desc(timespan time_offset) -> time_desc_t
     return result;
 }
 
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> timespan
+auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, bool local) -> timespan
 {
     STACK_TRACE_ENTRY();
 
@@ -650,7 +671,7 @@ auto make_time_offset(int year, int month, int day, int hour, int minute, int se
     const auto days_sys = date::sys_days {ymd};
     const auto time_of_day = std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond};
     const auto target_sys = date::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day};
-    const auto now_sys = std::chrono::system_clock::now();
+    const auto now_sys = local ? ToLocalTime(std::chrono::system_clock::now()) : std::chrono::system_clock::now();
     const auto delta = target_sys - now_sys;
 
     return std::chrono::duration_cast<steady_time_point::duration>(delta);

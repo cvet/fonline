@@ -232,7 +232,7 @@ void RenderTargetManager::DumpTextures() const
         atlases_memory_size += rt->MainTex->Size.width * rt->MainTex->Size.height * 4;
     }
 
-    const auto time = nanotime::now().desc();
+    const auto time = nanotime::now().desc(true);
     const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
