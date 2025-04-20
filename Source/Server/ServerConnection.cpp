@@ -120,7 +120,10 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 
     auto send = [this]() -> const_span<uint8> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8> buf) { AsyncReceiveData(buf); };
-    _netConnection->SetAsyncCallbacks(send, receive);
+    auto disconnect = [this]() { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
+    _netConnection->SetAsyncCallbacks(send, receive, disconnect);
+
+    WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 }
 
 ServerConnection::~ServerConnection()

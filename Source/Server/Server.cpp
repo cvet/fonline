@@ -2152,8 +2152,8 @@ void FOServer::Process_Handshake(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
-    const auto proto_ver = in_buf->Read<uint>();
-    const auto outdated = proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION);
+    const auto comp_version = in_buf->Read<uint>();
+    const auto outdated = comp_version != 0 && comp_version != static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint>();

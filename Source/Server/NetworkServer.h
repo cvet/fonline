@@ -46,8 +46,8 @@ class NetworkServerConnection : public std::enable_shared_from_this<NetworkServe
 public:
     using AsyncSendCallback = std::function<const_span<uint8>()>;
     using AsyncReceiveCallback = std::function<void(const_span<uint8>)>;
+    using DisconnectCallback = std::function<void()>;
 
-    NetworkServerConnection() = delete;
     NetworkServerConnection(const NetworkServerConnection&) = delete;
     NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
     auto operator=(const NetworkServerConnection&) = delete;
@@ -59,7 +59,7 @@ public:
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
-    void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive);
+    void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);
     void Dispatch();
     void Disconnect();
 
@@ -83,6 +83,8 @@ private:
     AsyncReceiveCallback _receiveCallback {};
     vector<uint8> _initReceiveBuf {};
     std::mutex _receiveLocker {};
+    DisconnectCallback _disconnectCallback {};
+    std::atomic_bool _disconnectCallbackSet {};
     std::atomic_bool _isDisconnected {};
 };
 
