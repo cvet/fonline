@@ -954,8 +954,8 @@ struct time_desc_t
     int nanosecond {}; // 0..999
 };
 
-auto make_time_desc(timespan time_offset) -> time_desc_t;
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> timespan;
+auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
+auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, bool local) -> timespan;
 
 ///@ ExportValueType nanotime nanotime HardStrong Layout = int64-value
 #define NANOTIME_NAME "nanotime"
@@ -1023,13 +1023,9 @@ public:
     [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
-    [[nodiscard]] auto desc() const -> time_desc_t { return make_time_desc(value() - now().value()); }
+    [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
     static auto now() -> nanotime { return nanotime(steady_time_point::clock::now()); }
-    static auto make(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) -> nanotime
-    { //
-        return now() + make_time_offset(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
-    }
 
     static const nanotime zero;
 
@@ -1155,7 +1151,7 @@ struct FMTNS::formatter<steady_time_point> : formatter<string_view>
     {
         string buf;
 
-        const auto td = nanotime(value).desc();
+        const auto td = nanotime(value).desc(true);
         FMTNS::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<string_view>::format(buf, ctx);

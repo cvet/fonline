@@ -143,7 +143,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         result.reserve(message.length() + 64);
 
         if (!Data->TagsDisabled) {
-            const auto time = nanotime::now().desc();
+            const auto time = nanotime::now().desc(true);
             result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
             result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 

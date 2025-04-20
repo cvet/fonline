@@ -688,7 +688,7 @@ FO_SCRIPT_API nanotime Common_Game_PackTime(FOEngineBase* engine, int year, int 
 {
     UNUSED_VARIABLE(engine);
 
-    return nanotime::make(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+    return nanotime::now() + make_time_offset(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, true);
 }
 
 ///@ ExportMethod
@@ -696,7 +696,7 @@ FO_SCRIPT_API void Common_Game_UnpackTime(FOEngineBase* engine, nanotime time, i
 {
     UNUSED_VARIABLE(engine);
 
-    const auto time_desc = time.desc();
+    const auto time_desc = time.desc(true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -713,7 +713,7 @@ FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(FOEngineBase* engine, in
 {
     UNUSED_VARIABLE(engine);
 
-    return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0);
+    return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0, true);
 }
 
 ///@ ExportMethod
@@ -721,7 +721,7 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(FOEngineBase* engine, sync
 {
     UNUSED_VARIABLE(engine);
 
-    const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime());
+    const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;

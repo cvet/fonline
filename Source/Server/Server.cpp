@@ -3000,10 +3000,10 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
         SetHistoryRecordsId(history_id);
 
-        const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+        const auto time = GameTime.GetSynchronizedTime();
 
         AnyData::Document doc;
-        doc.Emplace("Time", static_cast<int64>(time.count()));
+        doc.Emplace("Time", static_cast<int64>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
         doc.Emplace("EntityId", static_cast<int64>(entry_id.underlying_value()));
         doc.Emplace("Property", prop->GetName());
