@@ -43,13 +43,6 @@ NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings
     _isConnecting = true;
 }
 
-NetworkClientConnection::~NetworkClientConnection()
-{
-    STACK_TRACE_ENTRY();
-
-    Disconnect();
-}
-
 auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
 {
     STACK_TRACE_ENTRY();

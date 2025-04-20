@@ -889,13 +889,6 @@ void FOClient::Net_OnInitData()
     }
 }
 
-void FOClient::Net_OnWrongNetProto()
-{
-    STACK_TRACE_ENTRY();
-
-    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_CLIENT_OUTDATED));
-}
-
 void FOClient::Net_OnRegisterSuccess()
 {
     STACK_TRACE_ENTRY();
