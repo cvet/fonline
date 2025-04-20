@@ -45,22 +45,26 @@ ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
+    _connectCallback = [](auto&&) {};
+    _disconnectCallback = [] {};
+
     AddMessageHandler(NetMessage::Disconnect, [this] { Disconnect(); });
     AddMessageHandler(NetMessage::Ping, [this] { Net_OnPing(); });
+    AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
 }
 
 void ClientConnection::SetConnectHandler(ConnectCallback handler)
 {
     STACK_TRACE_ENTRY();
 
-    _connectCallback = std::move(handler);
+    _connectCallback = handler ? std::move(handler) : [](auto&&) {};
 }
 
 void ClientConnection::SetDisconnectHandler(DisconnectCallback handler)
 {
     STACK_TRACE_ENTRY();
 
-    _disconnectCallback = std::move(handler);
+    _disconnectCallback = handler ? std::move(handler) : [] {};
 }
 
 void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler)
@@ -91,30 +95,18 @@ void ClientConnection::Connect()
     }
     catch (const ClientConnectionException& ex) {
         WriteLog("Connecting error: {}", ex.what());
-
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+        _connectCallback(ConnectResult::Failed);
     }
     catch (const NetworkClientException& ex) {
         WriteLog("Connection error: {}", ex.what());
-
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+        _connectCallback(ConnectResult::Failed);
     }
     catch (const NetBufferException& ex) {
         WriteLog("Connecting error: {}", ex.what());
-
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+        _connectCallback(ConnectResult::Failed);
     }
     catch (...) {
-        if (_connectCallback) {
-            safe_call([this] { _connectCallback(false); });
-        }
-
+        safe_call([this] { _connectCallback(ConnectResult::Failed); });
         throw;
     }
 }
@@ -169,12 +161,7 @@ void ClientConnection::ProcessConnection()
         if (_netConnection->IsConnected()) {
             Net_SendHandshake();
         }
-
-        if (_connectCallback) {
-            _connectCallback(_netConnection->IsConnected());
-        }
-
-        if (!_netConnection || !_netConnection->IsConnected()) {
+        else {
             Disconnect();
             return;
         }
@@ -249,8 +236,6 @@ void ClientConnection::Disconnect()
         return;
     }
 
-    const auto was_connecting = _netConnection->IsConnecting();
-
     _netConnection->Disconnect();
     _netConnection.reset();
 
@@ -262,15 +247,12 @@ void ClientConnection::Disconnect()
     _netIn.SetEncryptKey(0);
     _netOut.SetEncryptKey(0);
 
-    if (was_connecting) {
-        if (_connectCallback) {
-            _connectCallback(false);
-        }
+    if (!_wasHandshake) {
+        _connectCallback(ConnectResult::Failed);
     }
     else {
-        if (_disconnectCallback) {
-            _disconnectCallback();
-        }
+        _wasHandshake = false;
+        _disconnectCallback();
     }
 }
 
@@ -334,6 +316,19 @@ void ClientConnection::Net_SendHandshake()
     _netOut.EndMsg();
 
     _netOut.SetEncryptKey(encrypt_key);
+}
+
+void ClientConnection::Net_OnHandshakeAnswer()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto outdated = _netIn.Read<bool>();
+    const auto encrypt_key = _netIn.Read<uint>();
+
+    _netIn.SetEncryptKey(encrypt_key);
+
+    _wasHandshake = true;
+    _connectCallback(outdated ? ConnectResult::Outdated : ConnectResult::Success);
 }
 
 void ClientConnection::Net_OnPing()

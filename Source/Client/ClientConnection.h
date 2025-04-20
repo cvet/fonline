@@ -47,7 +47,14 @@ DECLARE_EXCEPTION(ClientConnectionException);
 class ClientConnection final
 {
 public:
-    using ConnectCallback = std::function<void(bool success)>;
+    enum class ConnectResult : uint8
+    {
+        Success,
+        Outdated,
+        Failed,
+    };
+
+    using ConnectCallback = std::function<void(ConnectResult result)>;
     using DisconnectCallback = std::function<void()>;
     using MessageCallback = std::function<void()>;
 
@@ -59,8 +66,8 @@ public:
     auto operator=(ClientConnection&&) noexcept = delete;
     ~ClientConnection() = default;
 
-    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _netConnection && _netConnection->IsConnecting(); }
-    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _netConnection && _netConnection->IsConnected(); }
+    [[nodiscard]] auto IsConnecting() const noexcept -> bool { return _netConnection && !_wasHandshake; }
+    [[nodiscard]] auto IsConnected() const noexcept -> bool { return _netConnection && _wasHandshake; }
     [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
     [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
@@ -81,11 +88,13 @@ private:
     void SendData();
 
     void Net_SendHandshake();
+    void Net_OnHandshakeAnswer();
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;
     unique_ptr<NetworkClientConnection> _netConnection {};
     bool _connectingHandled {};
+    bool _wasHandshake {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     NetInBuffer _netIn;

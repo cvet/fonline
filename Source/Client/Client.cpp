@@ -123,7 +123,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     OnStart.Fire();
 
     // Connection handlers
-    _conn.SetConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::WrongNetProto, [this] { Net_OnWrongNetProto(); });
     _conn.AddMessageHandler(NetMessage::LoginSuccess, [this] { Net_OnLoginSuccess(); });
@@ -162,7 +162,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NetMessage::Effect, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NetMessage::FlyEffect, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
-    _conn.AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
+    _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this] { Net_OnRemoveCustomEntity(); });
 
@@ -627,11 +627,11 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     }
 }
 
-void FOClient::Net_OnConnect(bool success)
+void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     STACK_TRACE_ENTRY();
 
-    if (success) {
+    if (result == ClientConnection::ConnectResult::Success) {
         // After connect things
         if (_initNetReason == INIT_NET_REASON_LOGIN) {
             Net_SendLogIn();
@@ -650,6 +650,9 @@ void FOClient::Net_OnConnect(bool success)
         _curPlayer = SafeAlloc::MakeRaw<PlayerView>(this, ident_t {});
 
         OnConnected.Fire();
+    }
+    else if (result == ClientConnection::ConnectResult::Outdated) {
+        throw ResourcesOutdatedException("Binary outdated");
     }
     else {
         AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_FAIL));
@@ -836,26 +839,18 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_OnHandshakeAnswer()
+void FOClient::Net_OnInitData()
 {
     STACK_TRACE_ENTRY();
 
-    const auto outdated = _conn.InBuf.Read<bool>();
     const auto data_size = _conn.InBuf.Read<uint>();
 
     vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
-    if (outdated) {
-        throw ResourcesOutdatedException("Binary outdated");
-    }
-
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     const auto time = _conn.InBuf.Read<synctime>();
-
-    const auto encrypt_key = _conn.InBuf.Read<uint>();
-    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     RestoreData(_globalsPropertiesData);
     GameTime.SetSynchronizedTime(time);

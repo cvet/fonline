@@ -72,9 +72,9 @@ private:
     void Abort(uint str_num, string_view num_str_str);
     void GetNextFile();
 
-    void Net_OnConnect(bool success);
+    void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
-    void Net_OnHandshakeAnswer();
+    void Net_OnInitData();
     void Net_OnUpdateFileData();
 
     ClientSettings& _settings;

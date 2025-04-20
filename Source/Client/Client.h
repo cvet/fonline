@@ -318,9 +318,9 @@ protected:
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
 
-    void Net_OnConnect(bool success);
+    void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
-    void Net_OnHandshakeAnswer();
+    void Net_OnInitData();
     void Net_OnWrongNetProto();
     void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
