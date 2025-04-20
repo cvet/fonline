@@ -413,7 +413,7 @@ void FOClient::MainLoop()
     EffectMngr.UpdateEffects(GameTime);
 
     {
-        SprMngr.BeginScene({0, 0, 0});
+        SprMngr.BeginScene();
 
         // Quake effect
         ProcessScreenEffectQuake();

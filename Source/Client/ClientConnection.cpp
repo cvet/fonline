@@ -98,7 +98,7 @@ void ClientConnection::Connect()
     }
     catch (const NetworkClientException& ex) {
         WriteLog("Connection error: {}", ex.what());
-        
+
         if (_connectCallback) {
             _connectCallback(false);
         }

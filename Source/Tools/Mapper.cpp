@@ -87,7 +87,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     RUNTIME_ASSERT(load_fonts_ok);
     SprMngr.SetDefaultFont(FONT_DEFAULT);
 
-    SprMngr.BeginScene({100, 100, 100});
+    SprMngr.BeginScene();
     SprMngr.EndScene();
 
     InitIface();
@@ -716,7 +716,7 @@ void FOMapper::MapperMainLoop()
     }
 
     {
-        SprMngr.BeginScene({100, 100, 100});
+        SprMngr.BeginScene();
 
         DrawIfaceLayer(0);
 

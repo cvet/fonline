@@ -242,7 +242,7 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> SpriteFactory*
     return nullptr;
 }
 
-void SpriteManager::BeginScene(ucolor clear_color)
+void SpriteManager::BeginScene()
 {
     STACK_TRACE_ENTRY();
 
@@ -251,7 +251,7 @@ void SpriteManager::BeginScene(ucolor clear_color)
 
     if (_rtMain != nullptr) {
         _rtMngr.PushRenderTarget(_rtMain);
-        _rtMngr.ClearCurrentRenderTarget(clear_color);
+        _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
     for (auto& spr_factory : _spriteFactories) {

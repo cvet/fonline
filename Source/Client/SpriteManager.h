@@ -200,7 +200,7 @@ public:
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
     void PrepareSquare(vector<PrimitivePoint>& points, fpos lt, fpos rt, fpos lb, fpos rb, ucolor color) const;
 
-    void BeginScene(ucolor clear_color);
+    void BeginScene();
     void EndScene();
 
     void SetSpritesZoom(float zoom);
