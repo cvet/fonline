@@ -2156,9 +2156,9 @@ void FOServer::Process_Handshake(ServerConnection* connection)
     const auto outdated = proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     // Begin data encrypting
-    const auto encrypt_key = in_buf->Read<uint>();
-    RUNTIME_ASSERT(encrypt_key != 0);
-    in_buf->SetEncryptKey(encrypt_key);
+    const auto in_encrypt_key = in_buf->Read<uint>();
+    RUNTIME_ASSERT(in_encrypt_key != 0);
+    in_buf->SetEncryptKey(in_encrypt_key);
 
     in_buf.Unlock();
 
@@ -2169,19 +2169,24 @@ void FOServer::Process_Handshake(ServerConnection* connection)
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
-    connection->WriteBuf()->SetEncryptKey(encrypt_key);
+    const auto out_encrypt_key = NetBuffer::GenerateEncryptKey();
 
-    auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
+    {
+        auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
 
-    out_buf->Write(outdated);
-    out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
-    out_buf->Push(_updateFilesDesc);
+        out_buf->Write(outdated);
+        out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
+        out_buf->Push(_updateFilesDesc);
 
-    if (!outdated) {
-        out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
-        out_buf->Write(GameTime.GetSynchronizedTime());
+        if (!outdated) {
+            out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+            out_buf->Write(GameTime.GetSynchronizedTime());
+        }
+
+        out_buf->Write(out_encrypt_key);
     }
 
+    connection->WriteBuf()->SetEncryptKey(out_encrypt_key);
     connection->WasHandshake = true;
 }
 

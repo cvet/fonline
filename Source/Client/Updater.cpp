@@ -242,6 +242,9 @@ void Updater::Net_OnHandshakeAnswer()
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
     const auto time = _conn.InBuf.Read<synctime>();
 
+    const auto encrypt_key = _conn.InBuf.Read<uint>();
+    _conn.InBuf.SetEncryptKey(encrypt_key);
+
     _gameTime.SetSynchronizedTime(time);
 
     RUNTIME_ASSERT(!_fileListReceived);
