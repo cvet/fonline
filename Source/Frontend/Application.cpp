@@ -736,7 +736,7 @@ void Application::BeginFrame()
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
-    ActiveRenderer->ClearRenderTarget(ucolor {150, 150, 150});
+    ActiveRenderer->ClearRenderTarget(Settings.ClientMode ? ucolor {0, 0, 0} : ucolor {150, 150, 150});
 
     ImGuiIO& io = ImGui::GetIO();
 
