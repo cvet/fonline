@@ -125,7 +125,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     // Connection handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::WrongNetProto, [this] { Net_OnWrongNetProto(); });
     _conn.AddMessageHandler(NetMessage::LoginSuccess, [this] { Net_OnLoginSuccess(); });
     _conn.AddMessageHandler(NetMessage::RegisterSuccess, [this] { Net_OnRegisterSuccess(); });
     _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this] { Net_OnPlaceToGameComplete(); });
