@@ -59,7 +59,7 @@ struct LogData
     map<string, LogFunc> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
-    bool TagsDisabled {};
+    bool BriefOutput {};
 };
 GLOBAL_DATA(LogData, Data);
 
@@ -117,13 +117,13 @@ void SetLogCallback(string_view key, LogFunc callback)
     }
 }
 
-void LogDisableTags()
+void LogBriefOutput()
 {
     STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(Data->LogLocker);
 
-    Data->TagsDisabled = true;
+    Data->BriefOutput = true;
 }
 
 void WriteLogMessage(LogType type, string_view message) noexcept
@@ -139,25 +139,29 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         std::scoped_lock locker(Data->LogLocker);
 
         // Make message
-        string result;
-        result.reserve(message.length() + 64);
+        string out_message;
+        out_message.reserve(message.length() + 128);
 
-        if (!Data->TagsDisabled) {
-            const auto time = nanotime::now().desc(true);
-            result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
-            result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
+        const auto time = nanotime::now();
+
+        if (!Data->BriefOutput) {
+            const auto time_desc = time.desc(true);
+            out_message += strex("[{:02}/{:02}/{:02}] ", time_desc.day, time_desc.month, time_desc.year % 100);
+            out_message += strex("[{:02}:{:02}:{:02}] ", time_desc.hour, time_desc.minute, time_desc.second);
 
             if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
-                result += strex("[{}] ", GetThisThreadName());
+                out_message += strex("[{}] ", GetThisThreadName());
             }
         }
 
-        result += message;
-        result += '\n';
+        out_message += message;
+        out_message += '\n';
+
+        auto log_entry = LogEntry {type, string(message), time, GetStackTraceEntries(1)};
 
         // Write logs
         if (Data->LogFileHandle) {
-            Data->LogFileHandle->Write(result);
+            Data->LogFileHandle->Write(out_message);
         }
 
         if (!Data->LogFunctions.empty()) {
@@ -165,14 +169,14 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             auto reset_in_process = ScopeCallback([]() noexcept { Data->LogFunctionsInProcess = false; });
 
             for (auto&& [func_name, func] : Data->LogFunctions) {
-                func(result);
+                func(out_message);
             }
         }
 
-        Platform::InfoLog(result);
+        Platform::InfoLog(out_message);
 
 #if FO_TRACY
-        TracyMessage(result.c_str(), result.length());
+        TracyMessage(out_message.c_str(), out_message.length());
 #endif
 
         // Todo: colorize log texts
@@ -192,11 +196,11 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         }
 
         if (color != nullptr) {
-            // std::cout << color << result << "\033[39m";
-            std::cout << result;
+            // std::cout << color << out_message << "\033[39m";
+            std::cout << out_message;
         }
         else {
-            std::cout << result;
+            std::cout << out_message;
         }
 
         std::cout.flush();

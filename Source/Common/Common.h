@@ -1327,6 +1327,7 @@ extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
 extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*;
+extern auto GetStackTraceEntries(size_t deep) noexcept -> vector<const SourceLocationData*>; // Most recent call first
 
 struct StackTraceScopeEntry
 {

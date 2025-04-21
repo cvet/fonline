@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 
     try {
         InitApp(argc, argv);
-        LogDisableTags();
+        LogBriefOutput();
 
         auto server_failed = false;
         auto client_failed = false;

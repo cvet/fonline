@@ -77,8 +77,8 @@ static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
 
 struct StackTraceData
 {
-    size_t CallsCount = {};
-    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> CallTree = {};
+    size_t CallsCount {};
+    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> CallTree {};
 };
 
 static thread_local StackTraceData StackTrace;
@@ -441,6 +441,27 @@ extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData
 
     return nullptr;
 #endif
+}
+
+auto GetStackTraceEntries(size_t deep) noexcept -> vector<const SourceLocationData*>
+{
+    NO_STACK_TRACE_ENTRY();
+
+    vector<const SourceLocationData*> result;
+
+#if !FO_NO_MANUAL_STACK_TRACE
+    result.reserve(StackTrace.CallsCount);
+
+    const auto& st = StackTrace;
+
+    if (deep < st.CallsCount) {
+        for (int i = static_cast<int>(st.CallsCount - 1 - deep); i >= 0; i--) {
+            result.emplace_back(st.CallTree[i]);
+        }
+    }
+#endif
+
+    return result;
 }
 
 extern auto GetRealStackTrace() -> string

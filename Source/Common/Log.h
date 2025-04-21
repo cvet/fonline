@@ -37,15 +37,23 @@
 
 #include "StringUtils.h"
 
-using LogFunc = std::function<void(string_view)>;
-
-enum class LogType
+enum class LogType : uint8
 {
     Info,
     InfoSection,
     Warning,
     Error,
 };
+
+struct LogEntry
+{
+    LogType Type {};
+    string Message {};
+    nanotime Timestamp {};
+    vector<const SourceLocationData*> StackTrace {};
+};
+
+using LogFunc = std::function<void(string_view)>;
 
 // Write formatted text
 extern void WriteLogMessage(LogType type, string_view message) noexcept;
@@ -66,4 +74,4 @@ void WriteLog(LogType type, FMTNS::format_string<Args...>&& format, Args&&... ar
 // Control
 extern void LogToFile(string_view fname);
 extern void SetLogCallback(string_view key, LogFunc callback);
-extern void LogDisableTags();
+extern void LogBriefOutput();
