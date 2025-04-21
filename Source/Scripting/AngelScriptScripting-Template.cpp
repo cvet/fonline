@@ -257,24 +257,10 @@ struct AngelscriptAllocator
 #define GET_CONTEXT_EXT(ctx) *static_cast<asCContext*>(ctx)->Ext
 #define GET_CONTEXT_EXT2(ctx) static_cast<asCContext*>(ctx)->Ext2
 
-struct StackTraceEntryStorage
-{
-    static constexpr size_t STACK_TRACE_FUNC_BUF_SIZE = 64;
-    static constexpr size_t STACK_TRACE_FILE_BUF_SIZE = 128;
-
-    std::array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
-    size_t FuncBufLen {};
-    std::array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
-    size_t FileBufLen {};
-
-    SourceLocationData SrcLoc {};
-};
-
 struct ASContextExtendedData
 {
     bool ExecutionActive {};
     size_t ExecutionCalls {};
-    unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
     std::string Info {};
     asIScriptContext* Parent {};
     nanotime SuspendEndTime {};
@@ -314,9 +300,8 @@ public:
         RUNTIME_ASSERT(ctx);
 
         static_cast<asCContext*>(ctx)->Ext = SafeAlloc::MakeRaw<ASContextExtendedData>();
-        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
-        ctx_ext.ScriptCallCacheEntries = &ScriptCallCacheEntries;
 #if FO_TRACY
+        auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.TracyExecutionCalls.reserve(64);
 #endif
 
@@ -528,11 +513,32 @@ public:
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
     string ExceptionStackTrace {};
-    unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
     unordered_set<hstring> HashedStrings {};
     unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
     list<std::function<void*()>> Getters {};
 };
+
+struct StackTraceEntryStorage
+{
+    static constexpr size_t STACK_TRACE_FUNC_BUF_SIZE = 64;
+    static constexpr size_t STACK_TRACE_FILE_BUF_SIZE = 128;
+
+    std::array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
+    size_t FuncBufLen {};
+    std::array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
+    size_t FileBufLen {};
+
+    SourceLocationData SrcLoc {};
+};
+
+struct AngelScriptStackTraceData
+{
+    unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
+#if SERVER_SCRIPTING
+    std::mutex ScriptCallCacheEntriesLocker {};
+#endif
+};
+GLOBAL_DATA(AngelScriptStackTraceData, StackTraceData);
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {
@@ -542,9 +548,21 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
         return;
     }
 
-    const auto it = ctx_ext.ScriptCallCacheEntries->find(program_pos);
+    StackTraceEntryStorage* storage = nullptr;
 
-    if (it == ctx_ext.ScriptCallCacheEntries->end()) {
+    {
+#if SERVER_SCRIPTING
+        std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+#endif
+
+        const auto it = StackTraceData->ScriptCallCacheEntries.find(program_pos);
+
+        if (it != StackTraceData->ScriptCallCacheEntries.end()) {
+            storage = &it->second;
+        }
+    }
+
+    if (storage == nullptr) {
         int ctx_line = ctx->GetLineNumber();
 
         auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
@@ -559,31 +577,35 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
             to[len] = 0;
         };
 
-        auto& storage = ctx_ext.ScriptCallCacheEntries->emplace(program_pos, StackTraceEntryStorage {}).first->second;
+        {
+#if SERVER_SCRIPTING
+            std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+#endif
 
-        safe_copy(storage.FuncBuf, storage.FuncBufLen, func_decl);
-        safe_copy(storage.FileBuf, storage.FileBufLen, orig_file);
+            storage = &StackTraceData->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
 
-        storage.SrcLoc.name = nullptr;
-        storage.SrcLoc.function = storage.FuncBuf.data();
-        storage.SrcLoc.file = storage.FileBuf.data();
-        storage.SrcLoc.line = static_cast<uint32_t>(orig_line);
+            safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
+            safe_copy(storage->FileBuf, storage->FileBufLen, orig_file);
 
-        PushStackTrace(storage.SrcLoc);
+            storage->SrcLoc.name = nullptr;
+            storage->SrcLoc.function = storage->FuncBuf.data();
+            storage->SrcLoc.file = storage->FileBuf.data();
+            storage->SrcLoc.line = static_cast<uint32_t>(orig_line);
+        }
+
+        PushStackTrace(storage->SrcLoc);
 
 #if FO_TRACY
-        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen, 0);
+        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage->SrcLoc.line, storage->FileBuf.data(), storage->FileBufLen, storage->FuncBuf.data(), storage->FuncBufLen, 0);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
     }
     else {
-        const auto& storage = it->second;
-
-        PushStackTrace(storage.SrcLoc);
+        PushStackTrace(storage->SrcLoc);
 
 #if FO_TRACY
-        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen, 0);
+        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage->SrcLoc.line, storage->FileBuf.data(), storage->FileBufLen, storage->FuncBuf.data(), storage->FuncBufLen, 0);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
