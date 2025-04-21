@@ -673,9 +673,8 @@ void FOClient::Net_OnDisconnect()
 
     DestroyInnerEntities();
 
-    OnDisconnected.Fire();
-
     _initNetReason = INIT_NET_REASON_NONE;
+    OnDisconnected.Fire();
 
     TryAutoLogin();
 }
@@ -3296,6 +3295,7 @@ void FOClient::Disconnect()
 {
     STACK_TRACE_ENTRY();
 
+    _initNetReason = INIT_NET_REASON_NONE;
     _conn.Disconnect();
 }
 
