@@ -531,14 +531,14 @@ struct StackTraceEntryStorage
     SourceLocationData SrcLoc {};
 };
 
-struct AngelScriptStackTraceData
+struct CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
 {
     unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
 #if SERVER_SCRIPTING
     std::mutex ScriptCallCacheEntriesLocker {};
 #endif
 };
-GLOBAL_DATA(AngelScriptStackTraceData, StackTraceData);
+GLOBAL_DATA(CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), StackTraceData);
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {

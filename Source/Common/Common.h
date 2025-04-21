@@ -3333,29 +3333,29 @@ extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \
-    static void Create_##class_name() \
+    static void CONCAT(Create_, class_name)() \
     { \
         assert(!(instance_name)); \
         (instance_name) = new class_name(); \
     } \
-    static void Delete_##class_name() \
+    static void CONCAT(Delete_, class_name)() \
     { \
         delete (instance_name); \
         (instance_name) = nullptr; \
     } \
-    struct Register_##class_name \
+    struct CONCAT(Register_, class_name) \
     { \
-        Register_##class_name() \
+        CONCAT(Register_, class_name)() \
         { \
             assert(GlobalDataCallbacksCount < MAX_GLOBAL_DATA_CALLBACKS); \
-            CreateGlobalDataCallbacks[GlobalDataCallbacksCount] = Create_##class_name; \
-            DeleteGlobalDataCallbacks[GlobalDataCallbacksCount] = Delete_##class_name; \
+            CreateGlobalDataCallbacks[GlobalDataCallbacksCount] = CONCAT(Create_, class_name); \
+            DeleteGlobalDataCallbacks[GlobalDataCallbacksCount] = CONCAT(Delete_, class_name); \
             GlobalDataCallbacksCount++; \
         } \
     }; \
-    static Register_##class_name Register_##class_name##_Instance
+    static CONCAT(Register_, class_name) CONCAT(Register_Instance_, class_name)
 
-constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 20;
+constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 40;
 using GlobalDataCallback = void (*)();
 extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
