@@ -297,7 +297,6 @@ protected:
     };
 
     void TryAutoLogin();
-    void FlashGameWindow();
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
