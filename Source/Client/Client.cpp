@@ -1123,11 +1123,6 @@ void FOClient::Net_OnText()
     const auto text = _conn.InBuf.Read<string>();
     const auto unsafe_text = _conn.InBuf.Read<bool>();
 
-    if (how_say == SAY_FLASH_WINDOW) {
-        FlashGameWindow();
-        return;
-    }
-
     string str = text;
 
     if (unsafe_text) {
@@ -1148,11 +1143,6 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     const auto text_pack = _conn.InBuf.Read<TextPackName>();
     const auto str_num = _conn.InBuf.Read<TextPackKey>();
     const auto lexems = with_lexems ? _conn.InBuf.Read<string>() : string();
-
-    if (how_say == SAY_FLASH_WINDOW) {
-        FlashGameWindow();
-        return;
-    }
 
     if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
         string str = copy(msg.GetStr(str_num));
@@ -1184,8 +1174,6 @@ void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
     OnMapMessage.Fire(processed_str, hex, color, show_time);
 
     _curMap->AddMapText(processed_str, hex, color, std::chrono::milliseconds {show_time}, false, {0, 0});
-
-    FlashGameWindow();
 }
 
 void FOClient::Net_OnMapText()
@@ -2468,19 +2456,6 @@ void FOClient::UnregisterEntity(ClientEntity* entity)
     RUNTIME_ASSERT(entity->GetId());
 
     _allEntities.erase(entity->GetId());
-}
-
-void FOClient::FlashGameWindow()
-{
-    STACK_TRACE_ENTRY();
-
-    if (SprMngr.IsWindowFocused()) {
-        return;
-    }
-
-    if (Settings.WinNotify) {
-        SprMngr.BlinkWindow();
-    }
 }
 
 auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
