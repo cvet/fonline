@@ -39,6 +39,14 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 
+static auto* StrCheckUpdates = "Check updates";
+static auto* StrConnectToServer = "Connect to the server";
+static auto* StrCantConnectToServer = "Can't connect to the server!";
+static auto* StrConnectionEstablished = "Connection established";
+static auto* StrConnectionFailure = "Connection failure!";
+static auto* StrFilesystemError = "File system error!";
+static auto* StrClientOutdated = "Client binary outdated";
+
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {settings},
     _conn(_settings),
@@ -87,7 +95,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
 
     // Connect
-    AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
+    AddText(StrConnectToServer);
     _conn.Connect();
 
     // Unlock all resources to prevent collision with new files
@@ -99,14 +107,14 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     STACK_TRACE_ENTRY();
 
     if (result == ClientConnection::ConnectResult::Success) {
-        AddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
-        AddText(STR_CHECK_UPDATES, "Check updates...");
+        AddText(StrConnectionEstablished);
+        AddText(StrCheckUpdates);
     }
     else if (result == ClientConnection::ConnectResult::Outdated) {
-        Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
+        Abort(StrClientOutdated);
     }
     else {
-        Abort(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
+        Abort(StrCantConnectToServer);
     }
 }
 
@@ -115,7 +123,7 @@ void Updater::Net_OnDisconnect()
     STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(STR_CONNECTION_FAILURE, "Connection failure!");
+        Abort(StrConnectionFailure);
     }
 }
 
@@ -203,22 +211,20 @@ auto Updater::MakeWritePath(string_view fname) const -> string
     return strex(_settings.ResourcesDir).combinePath(fname);
 }
 
-void Updater::AddText(uint str_num, string_view num_str_str)
+void Updater::AddText(string_view text)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(str_num);
-
-    _messages.emplace_back(num_str_str);
+    _messages.emplace_back(text);
 }
 
-void Updater::Abort(uint str_num, string_view num_str_str)
+void Updater::Abort(string_view text)
 {
     STACK_TRACE_ENTRY();
 
     _aborted = true;
 
-    AddText(str_num, num_str_str);
+    AddText(text);
     _conn.Disconnect();
 
     if (_tempFile) {
@@ -309,7 +315,7 @@ void Updater::Net_OnUpdateFileData()
 
     // Write data to temp file
     if (!_tempFile->Write(_updateFileBuf.data(), std::min(update_file.RemaningSize, _updateFileBuf.size()))) {
-        Abort(STR_FILESYSTEM_ERROR, "Can't write temp file!");
+        Abort(StrFilesystemError);
         return;
     }
 
@@ -337,11 +343,11 @@ void Updater::GetNextFile()
         const auto& prev_update_file = _filesToUpdate.front();
 
         if (!DiskFileSystem::DeleteFile(MakeWritePath(prev_update_file.Name))) {
-            Abort(STR_FILESYSTEM_ERROR, "File system error!");
+            Abort(StrFilesystemError);
             return;
         }
         if (!DiskFileSystem::RenameFile(MakeWritePath(strex("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
-            Abort(STR_FILESYSTEM_ERROR, "File system error!");
+            Abort(StrFilesystemError);
             return;
         }
 
@@ -359,7 +365,7 @@ void Updater::GetNextFile()
         _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(strex("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
-            Abort(STR_FILESYSTEM_ERROR, "File system error!");
+            Abort(StrFilesystemError);
         }
     }
 

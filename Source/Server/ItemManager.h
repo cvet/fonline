@@ -67,18 +67,12 @@ public:
     auto MoveItem(Item* item, uint count, Critter* to_cr) -> NON_NULL Item*;
     auto MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> NON_NULL Item*;
     auto MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> NON_NULL Item*;
-    void RegisterRadio(Item* radio);
-    void UnregisterRadio(Item* radio);
-    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
-    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems);
 
 private:
     [[nodiscard]] auto GetItemHolder(Item* item) -> NON_NULL Entity*;
 
     void RemoveItemHolder(Item* item, Entity* holder);
 
-    FOServer* _engine;
-    unordered_set<Item*> _radioItems {};
-    uint _radioSendCounter {};
+    raw_ptr<FOServer> _engine;
     bool _nonConstHelper {};
 };

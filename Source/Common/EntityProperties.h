@@ -227,16 +227,6 @@ public:
     ENTITY_PROPERTY(Public, bool, IsTrap);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int16, TrapValue);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsRadio);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, RadioChannel);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint16, RadioFlags);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint8, RadioBroadcastSend);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint8, RadioBroadcastRecv);
     ///@ MigrationRule Property Item IsCanOpen CanOpen
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, CanOpen);

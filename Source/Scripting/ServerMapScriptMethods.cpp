@@ -866,36 +866,6 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_SetText(Map* self, mpos hex, ucolor color, string_view text)
-{
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    self->SetText(hex, color, text, false);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Map_SetTextMsg(Map* self, mpos hex, ucolor color, TextPackName textPack, uint strNum)
-{
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    self->SetTextMsg(hex, color, textPack, strNum);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Map_SetTextMsg(Map* self, mpos hex, ucolor color, TextPackName textPack, uint strNum, string_view lexems)
-{
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    self->SetTextMsgLex(hex, color, textPack, strNum, lexems);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Map_RunEffect(Map* self, hstring effPid, mpos hex, uint radius)
 {
     if (!effPid) {

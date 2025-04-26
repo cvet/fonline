@@ -1,13 +1,6 @@
 namespace ClientCore // Sort -9
 {
 
-// Messages types in message boxes
-#define FOMB_GAME          (0)
-#define FOMB_TALK          (1)
-#define FOMB_COMBAT_RESULT (2)
-#define FOMB_VIEW          (3)
-#define FOMB_ALL           (10)
-
 // Fonts
 #define FONT_DEFAULT (0)
 

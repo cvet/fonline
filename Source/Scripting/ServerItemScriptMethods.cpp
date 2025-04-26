@@ -96,21 +96,24 @@ FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+
         if (cr == nullptr) {
             throw ScriptException("Critter ownership, critter not found");
         }
 
-        if (cr->GetMapId() == ident_t {}) {
+        if (!cr->GetMapId()) {
             return nullptr;
         }
 
         map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+
         if (map == nullptr) {
             throw ScriptException("Critter ownership, map not found");
         }
     } break;
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+
         if (map == nullptr) {
             throw ScriptException("Hex ownership, map not found");
         }
@@ -121,6 +124,7 @@ FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
         }
 
         auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+
         if (cont == nullptr) {
             throw ScriptException("Container ownership, container not found");
         }
@@ -128,7 +132,7 @@ FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
         map = Server_Item_GetMap(cont);
     } break;
     default:
-        throw ScriptException("Unknown ownership");
+        throw ScriptException("Invalid ownership");
     }
 
     return map;
@@ -142,6 +146,7 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+
         if (cr == nullptr) {
             throw ScriptException("Critter ownership, critter not found");
         }
@@ -152,6 +157,7 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
         }
 
         map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+
         if (map == nullptr) {
             throw ScriptException("Critter ownership, map not found");
         }
@@ -160,6 +166,7 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
     } break;
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+
         if (map == nullptr) {
             throw ScriptException("Hex ownership, map not found");
         }
@@ -172,6 +179,7 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
         }
 
         auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+
         if (cont == nullptr) {
             throw ScriptException("Container ownership, container not found");
         }
@@ -179,10 +187,46 @@ FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
         map = Server_Item_GetMapPosition(cont, hex);
     } break;
     default:
-        throw ScriptException("Unknown ownership");
+        throw ScriptException("Invalid ownership");
     }
 
     return map;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
+{
+    Critter* cr;
+
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
+        cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+
+        if (cr == nullptr) {
+            throw ScriptException("Critter ownership, critter not found");
+        }
+    } break;
+    case ItemOwnership::MapHex: {
+        cr = nullptr;
+    } break;
+    case ItemOwnership::ItemContainer: {
+        if (self->GetId() == self->GetContainerId()) {
+            throw ScriptException("Container ownership, crosslink");
+        }
+
+        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+
+        if (cont == nullptr) {
+            throw ScriptException("Container ownership, container not found");
+        }
+
+        cr = Server_Item_GetCritter(cont);
+    } break;
+    default:
+        throw ScriptException("Invalid ownership");
+    }
+
+    return cr;
 }
 
 ///@ ExportMethod

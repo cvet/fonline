@@ -53,7 +53,7 @@ Critter::~Critter()
 {
     STACK_TRACE_ENTRY();
 
-    if (_player != nullptr) {
+    if (_player) {
         _player->Release();
     }
 }
@@ -722,111 +722,6 @@ void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim 
     }
 }
 
-void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        return;
-    }
-
-    const auto from_id = GetId();
-
-    Send_TextEx(from_id, text, how_say, unsafe_text);
-
-    if (to_cr.empty()) {
-        return;
-    }
-
-    auto dist = static_cast<uint>(-1);
-
-    if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _engine->Settings.ShoutDist + GetMultihex();
-    }
-    else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _engine->Settings.WhisperDist + GetMultihex();
-    }
-
-    for (auto* cr : to_cr) {
-        if (cr == this) {
-            continue;
-        }
-
-        if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextEx(from_id, text, how_say, unsafe_text);
-        }
-        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
-            cr->Send_TextEx(from_id, text, how_say, unsafe_text);
-        }
-    }
-}
-
-void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    Send_TextMsg(this, how_say, text_pack, str_num);
-
-    if (to_cr.empty()) {
-        return;
-    }
-
-    auto dist = static_cast<uint>(-1);
-
-    if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _engine->Settings.ShoutDist + GetMultihex();
-    }
-    else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _engine->Settings.WhisperDist + GetMultihex();
-    }
-
-    for (auto* cr : to_cr) {
-        if (cr == this) {
-            continue;
-        }
-
-        if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsg(this, how_say, text_pack, str_num);
-        }
-        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsg(this, how_say, text_pack, str_num);
-        }
-    }
-}
-
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
-
-    if (to_cr.empty()) {
-        return;
-    }
-
-    auto dist = static_cast<uint>(-1);
-
-    if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _engine->Settings.ShoutDist + GetMultihex();
-    }
-    else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _engine->Settings.WhisperDist + GetMultihex();
-    }
-
-    for (auto* cr : to_cr) {
-        if (cr == this) {
-            continue;
-        }
-
-        if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
-        }
-        else if (GeometryHelper::CheckDist(GetHex(), cr->GetHex(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsgLex(this, how_say, text_pack, str_num, lexems);
-        }
-    }
-}
-
 void Critter::SendAndBroadcast_Attachments()
 {
     STACK_TRACE_ENTRY();
@@ -892,9 +787,7 @@ void Critter::Send_Property(NetProperty type, const Property* prop, const Server
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Property(type, prop, entity);
     }
 }
@@ -903,9 +796,7 @@ void Critter::Send_Moving(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Moving(from_cr);
     }
 }
@@ -914,9 +805,7 @@ void Critter::Send_MovingSpeed(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_MovingSpeed(from_cr);
     }
 }
@@ -925,9 +814,7 @@ void Critter::Send_Dir(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Dir(from_cr);
     }
 }
@@ -936,9 +823,7 @@ void Critter::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_AddCritter(cr);
     }
 }
@@ -947,9 +832,7 @@ void Critter::Send_RemoveCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_RemoveCritter(cr);
     }
 }
@@ -958,9 +841,7 @@ void Critter::Send_LoadMap(const Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_LoadMap(map);
     }
 }
@@ -969,9 +850,7 @@ void Critter::Send_AddItemOnMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_AddItemOnMap(item);
     }
 }
@@ -980,9 +859,7 @@ void Critter::Send_RemoveItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_RemoveItemFromMap(item);
     }
 }
@@ -991,9 +868,7 @@ void Critter::Send_AnimateItem(const Item* item, hstring anim_name, bool looped,
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_AnimateItem(item, anim_name, looped, reversed);
     }
 }
@@ -1002,9 +877,7 @@ void Critter::Send_ChosenAddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_ChosenAddItem(item);
     }
 }
@@ -1013,9 +886,7 @@ void Critter::Send_ChosenRemoveItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_ChosenRemoveItem(item);
     }
 }
@@ -1024,9 +895,7 @@ void Critter::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Teleport(cr, to_hex);
     }
 }
@@ -1035,9 +904,7 @@ void Critter::Send_Talk()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Talk();
     }
 }
@@ -1046,76 +913,17 @@ void Critter::Send_TimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_TimeSync();
     }
 }
 
-void Critter::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)
+void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_Text(from_cr, text, how_say);
-    }
-}
-
-void Critter::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_TextEx(from_id, text, how_say, unsafe_text);
-    }
-}
-
-void Critter::Send_TextMsg(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_TextMsg(from_cr, how_say, text_pack, str_num);
-    }
-}
-
-void Critter::Send_TextMsg(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_TextMsg(from_id, how_say, text_pack, str_num);
-    }
-}
-
-void Critter::Send_TextMsgLex(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_cr, how_say, text_pack, str_num, lexems);
-    }
-}
-
-void Critter::Send_TextMsgLex(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_id, how_say, text_pack, str_num, lexems);
+    if (_player) {
+        _player->Send_InfoMessage(info_message, extra_text);
     }
 }
 
@@ -1123,9 +931,7 @@ void Critter::Send_Action(const Critter* from_cr, CritterAction action, int acti
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Action(from_cr, action, action_data, context_item);
     }
 }
@@ -1134,9 +940,7 @@ void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAct
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_MoveItem(from_cr, item, action, prev_slot);
     }
 }
@@ -1145,9 +949,7 @@ void Critter::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, 
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Animate(from_cr, state_anim, action_anim, context_item, clear_sequence, delay_play);
     }
 }
@@ -1156,9 +958,7 @@ void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critt
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_SetAnims(from_cr, cond, state_anim, action_anim);
     }
 }
@@ -1167,9 +967,7 @@ void Critter::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Effect(eff_pid, hex, radius);
     }
 }
@@ -1178,9 +976,7 @@ void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
     }
 }
@@ -1189,43 +985,8 @@ void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_PlaySound(cr_id_synchronize, sound_name);
-    }
-}
-
-void Critter::Send_MapText(mpos hex, ucolor color, string_view text, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_MapText(hex, color, text, unsafe_text);
-    }
-}
-
-void Critter::Send_MapTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_MapTextMsg(hex, color, text_pack, str_num);
-    }
-}
-
-void Critter::Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hex, color, text_pack, str_num, lexems);
     }
 }
 
@@ -1233,9 +994,7 @@ void Critter::Send_ViewMap()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_ViewMap();
     }
 }
@@ -1244,9 +1003,7 @@ void Critter::Send_PlaceToGameComplete()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_PlaceToGameComplete();
     }
 }
@@ -1255,9 +1012,7 @@ void Critter::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_i
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_SomeItems(items, owned, with_inner_entities, context_param);
     }
 }
@@ -1266,9 +1021,7 @@ void Critter::Send_Attachments(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
+    if (_player) {
         _player->Send_Attachments(from_cr);
     }
 }

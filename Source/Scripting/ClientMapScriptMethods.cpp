@@ -47,26 +47,6 @@ FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_DrawMapTexts(MapView* self)
-{
-    if (!self->GetEngine()->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    self->DrawMapTexts();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_Message(MapView* self, string_view text, mpos hex, timespan showTime, ucolor color, bool fade, ipos endOffset)
-{
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Hex is out of map bounds");
-    }
-
-    self->AddMapText(text, hex, color, showTime, fade, endOffset);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr)
 {
     if (mapSpr == nullptr) {
@@ -643,17 +623,17 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float targetZoom)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& hexOffset)
+FO_SCRIPT_API bool Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& screenPos)
 {
-    hexOffset.x = 0;
-    hexOffset.y = 0;
+    screenPos.x = 0;
+    screenPos.y = 0;
 
     if (self->GetSize().IsValidPos(hex)) {
-        hexOffset = self->GetHexCurrentPosition(hex);
-        hexOffset.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
-        hexOffset.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
-        hexOffset.x = static_cast<int>(static_cast<float>(hexOffset.x) / self->GetSpritesZoom());
-        hexOffset.y = static_cast<int>(static_cast<float>(hexOffset.y) / self->GetSpritesZoom());
+        screenPos = self->GetHexCurrentPosition(hex);
+        screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
+        screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
+        screenPos.x = static_cast<int>(static_cast<float>(screenPos.x) / self->GetSpritesZoom());
+        screenPos.y = static_cast<int>(static_cast<float>(screenPos.y) / self->GetSpritesZoom());
 
         return true;
     }
@@ -761,4 +741,10 @@ FO_SCRIPT_API void Client_Map_SetCrittersContour(MapView* self, ContourType cont
 FO_SCRIPT_API void Client_Map_ResetCritterContour(MapView* self)
 {
     self->SetCritterContour(ident_t {}, ContourType::None);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API isize Client_Map_GetHexContentSize(MapView* self, mpos hex)
+{
+    return self->GetHexContentSize(hex);
 }

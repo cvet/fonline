@@ -893,45 +893,6 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, m
     }
 }
 
-void Map::SetText(mpos hex, ucolor color, string_view text, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
-            cr->Send_MapText(hex, color, text, unsafe_text);
-        }
-    }
-}
-
-void Map::SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
-            cr->Send_MapTextMsg(hex, color, text_pack, str_num);
-        }
-    }
-}
-
-void Map::SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hex, cr->GetHex())) {
-            cr->Send_MapTextMsgLex(hex, color, text_pack, str_num, lexems);
-        }
-    }
-}
-
 auto Map::IsStaticItemTrigger(mpos hex) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();

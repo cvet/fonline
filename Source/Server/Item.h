@@ -58,8 +58,6 @@ public:
     ~Item() override = default;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto RadioIsSendActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
-    [[nodiscard]] auto RadioIsRecvActive() const noexcept -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*;

@@ -467,11 +467,6 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
 
     try {
         item->SetStatic(false);
-
-        if (item->GetIsRadio()) {
-            _engine->ItemMngr.RegisterRadio(item);
-        }
-
         RegisterItem(item);
     }
     catch (const std::exception& ex) {

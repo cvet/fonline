@@ -450,3 +450,9 @@ FO_SCRIPT_API string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view ke
 {
     return mapper->IfaceIni->GetStr("", key, "");
 }
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_AddMessage(FOMapper* mapper, string_view message)
+{
+    mapper->AddMess(message);
+}

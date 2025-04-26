@@ -7,6 +7,10 @@ namespace Gui
 
 ///@ Enum CursorType Default = 0
 
+///@ Enum MessageBoxType None = 0
+///@ Enum MessageBoxType Default
+///@ Enum MessageBoxType All
+
 ///@ Setting Client CursorType Cursor
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
@@ -27,6 +31,7 @@ namespace Gui
 ///@ Enum DockStyle Fill = 5
 
 ///@ Event Client Game OnScreenChange(bool show, GuiScreen screenNum, string=>any params)
+///@ Event Client Game OnConsoleMessage(string message)
 
 interface IDropMenu
 {
@@ -233,11 +238,11 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   string[] MessageTexts
 //   int[] MessageTypes
 //   string[] MessageTimes
-//   bool[] DisplayedMessages
+//   MessageBoxType[] DisplayedMessages
 //   bool InvertMessages
-//   void AddMessage(string text, int type = FOMB_GAME)
-//   void SetDisplayedMessages(int[] messageTypes)
-//   void ChangeDisplayedMessage(int messageType, bool enable)
+//   void AddMessage(string text, MessageBoxType type = MessageBoxType::Default)
+//   void SetDisplayedMessages(MessageBoxType[] messageTypes)
+//   void ChangeDisplayedMessage(MessageBoxType messageType, bool enable)
 //   void SetInvertMessages(bool invert)
 //   void ClearMessages()
 // Console : TextInput : Text : Object
@@ -2448,7 +2453,7 @@ class MessageBox : Text
     {
         return _MessageTexts;
     }
-    int[] get_MessageTypes() final
+    MessageBoxType[] get_MessageTypes() final
     {
         return _MessageTypes;
     }
@@ -2456,7 +2461,7 @@ class MessageBox : Text
     {
         return _MessageTimes;
     }
-    bool[] get_DisplayedMessages() final
+    MessageBoxType[] get_DisplayedMessages() final
     {
         return _DisplayedMessages;
     }
@@ -2466,9 +2471,9 @@ class MessageBox : Text
     }
 
     string[] _MessageTexts;
-    int[] _MessageTypes;
+    MessageBoxType[] _MessageTypes;
     string[] _MessageTimes;
-    bool[] _DisplayedMessages;
+    MessageBoxType[] _DisplayedMessages;
     bool _InvertMessages;
     int _Scroll;
     int _MaxScroll;
@@ -2482,9 +2487,9 @@ class MessageBox : Text
         Text::_Construct();
 
         _MessageTexts = array<string>();
-        _MessageTypes = array<int>();
+        _MessageTypes = array<MessageBoxType>();
         _MessageTimes = array<string>();
-        _DisplayedMessages = array<bool>(FOMB_ALL, true);
+        _DisplayedMessages = array<MessageBoxType>();
 
         _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
         _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
@@ -2493,9 +2498,9 @@ class MessageBox : Text
     void _FixClone() override
     {
         _MessageTexts = array<string>(_MessageTexts);
-        _MessageTypes = array<int>(_MessageTypes);
+        _MessageTypes = array<MessageBoxType>(_MessageTypes);
         _MessageTimes = array<string>(_MessageTimes);
-        _DisplayedMessages = array<bool>(_DisplayedMessages);
+        _DisplayedMessages = array<MessageBoxType>(_DisplayedMessages);
 
         Text::_FixClone();
     }
@@ -2596,22 +2601,11 @@ class MessageBox : Text
         Text::_MousePressed(button);
     }
 
-    void AddMessage(string text, int type = FOMB_GAME)
+    void AddMessage(string text, MessageBoxType type = MessageBoxType::Default)
     {
         // Set text
-        string messageText;
-        if (type >= FOMB_GAME && type <= FOMB_VIEW) {
-            ucolor[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
-            messageText = "|" + sayColors[type] + " " + Game.EncodeUtf8(0x2022) + " |" + COLOR_TEXT + " " + text;
-        }
-        else {
-            messageText = text;
-        }
-        _MessageTexts.insertLast(messageText);
-
-        // Set type
-        int messageType = type;
-        _MessageTypes.insertLast(messageType);
+        _MessageTexts.insertLast(text);
+        _MessageTypes.insertLast(type);
 
         // Set time
         int year = 0;
@@ -2630,7 +2624,7 @@ class MessageBox : Text
         _MessageTimes.insertLast(messageTime);
 
         // Generate mess box
-        if (_DisplayedMessages[type]) {
+        if (_DisplayedMessages.find(type) != -1) {
             if (_Scroll > 0 && _IsHovered) {
                 _Scroll++;
             }
@@ -2663,11 +2657,11 @@ class MessageBox : Text
         int lines = 0;
         for (int i = _MessageTexts.length() - 1; i >= 0; i--) {
             string messageText = _MessageTexts[i];
-            int messageType = _MessageTypes[i];
+            MessageBoxType messageType = _MessageTypes[i];
             string messageTime = _MessageTimes[i];
 
             // Skip if not need to display
-            if (!_DisplayedMessages[messageType]) {
+            if (_DisplayedMessages.find(messageType) == -1) {
                 continue;
             }
 
@@ -2704,45 +2698,27 @@ class MessageBox : Text
         }
     }
 
-    bool _SetDisplayedMessage(int messageType, bool enable)
+    void SetDisplayedMessages(MessageBoxType[] messageTypes)
     {
-        bool generateText = false;
-
-        if (messageType != FOMB_ALL) {
-            if (_DisplayedMessages[messageType] != enable) {
-                _DisplayedMessages[messageType] = enable;
-                generateText = true;
-            }
-        }
-        else {
-            for (uint i = 0; i < FOMB_ALL; i++) {
-                if (_DisplayedMessages[messageType] != enable) {
-                    _DisplayedMessages[messageType] = enable;
-                    generateText = true;
-                }
-            }
-        }
-
-        return generateText;
+        _DisplayedMessages = array<MessageBoxType>(messageTypes);
+        _GenerateText();
     }
 
-    void SetDisplayedMessages(int[] messageTypes)
+    void ChangeDisplayedMessage(MessageBoxType messageType, bool enable)
     {
         bool generateText = false;
-        bool displayAll = (messageTypes.find(FOMB_ALL) != -1);
-        for (uint i = 0; i < _DisplayedMessages.length(); i++) {
-            if (_SetDisplayedMessage(i, displayAll || messageTypes.find(i) != -1)) {
-                generateText = true;
-            }
+        int curIndex = _DisplayedMessages.find(messageType);
+
+        if (enable && curIndex == -1) {
+            _DisplayedMessages.insertLast(messageType);
+            generateText = true;
         }
+        else if (!enable && curIndex != -1) {
+            _DisplayedMessages.removeAt(curIndex);
+            generateText = true;
+        }
+
         if (generateText) {
-            _GenerateText();
-        }
-    }
-
-    void ChangeDisplayedMessage(int messageType, bool enable)
-    {
-        if (_SetDisplayedMessage(messageType, enable)) {
             _GenerateText();
         }
     }
@@ -2909,19 +2885,7 @@ class Console : TextInput
         }
 
         // Send
-        bool[] keyPressed = Screen._InputKeyPressed;
-        if (keyPressed[KeyCode::Lcontrol] || keyPressed[KeyCode::Rcontrol]) {
-            Game.ConsoleMessage("/s" + _Text);
-        }
-        else if (keyPressed[KeyCode::Lmenu] || keyPressed[KeyCode::Rmenu]) {
-            Game.ConsoleMessage("/w" + _Text);
-        }
-        else if (keyPressed[KeyCode::Lshift] || keyPressed[KeyCode::Rshift]) {
-            Game.ConsoleMessage("/r" + _Text);
-        }
-        else {
-            Game.ConsoleMessage(_Text);
-        }
+        Game.OnConsoleMessage.Fire(_Text);
 
         // Clear text
         _Text = "";

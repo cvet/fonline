@@ -260,54 +260,6 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, uint look, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Say(Critter* self, uint8 howSay, string_view text)
-{
-    if (howSay != SAY_FLASH_WINDOW && text.empty()) {
-        return;
-    }
-    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
-        return;
-    }
-
-    if (howSay >= SAY_NETMSG) {
-        self->Send_Text(self, howSay != SAY_FLASH_WINDOW ? text : " ", howSay);
-    }
-    else if (self->GetMapId()) {
-        self->SendAndBroadcast_Text(self->VisCr, text, howSay, false);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr)
-{
-    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
-        return;
-    }
-
-    if (howSay >= SAY_NETMSG) {
-        self->Send_TextMsg(self, howSay, textPack, numStr);
-    }
-    else if (self->GetMapId()) {
-        self->SendAndBroadcast_Msg(self->VisCr, howSay, textPack, numStr);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SayMsg(Critter* self, uint8 howSay, TextPackName textPack, uint numStr, string_view lexems)
-{
-    if (!self->GetControlledByPlayer() && !self->IsAlive()) {
-        return;
-    }
-
-    if (howSay >= SAY_NETMSG) {
-        self->Send_TextMsgLex(self, howSay, textPack, numStr, lexems);
-    }
-    else if (self->GetMapId()) {
-        self->SendAndBroadcast_MsgLex(self->VisCr, howSay, textPack, numStr, lexems);
-    }
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, uint8 dir)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
@@ -394,7 +346,7 @@ FO_SCRIPT_API uint Server_Critter_GetTalkingCrittersCount(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self)
+FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self, CritterFindType findType)
 {
     if (self->GetMapId()) {
         throw ScriptException("Critter is not on global map");
@@ -402,7 +354,16 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter*
 
     RUNTIME_ASSERT(self->GlobalMapGroup);
 
-    return *self->GlobalMapGroup;
+    vector<Critter*> critters;
+    critters.reserve(self->GlobalMapGroup->size());
+
+    for (auto* cr : *self->GlobalMapGroup) {
+        if (cr->CheckFind(findType)) {
+            critters.emplace_back(cr);
+        }
+    }
+
+    return critters;
 }
 
 ///@ ExportMethod
