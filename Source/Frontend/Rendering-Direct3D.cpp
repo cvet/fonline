@@ -366,7 +366,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         }
 
         // Disable Alt+Enter
-        if (IDXGIFactory* factory2; SUCCEEDED(SwapChain->GetParent(IID_IDXGIFactory, reinterpret_cast<void**>(&factory2)))) {
+        if (IDXGIFactory* factory2 = nullptr; SUCCEEDED(SwapChain->GetParent(IID_IDXGIFactory, reinterpret_cast<void**>(&factory2)))) {
             factory2->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
         }
     }
