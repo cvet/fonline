@@ -2543,26 +2543,6 @@ constexpr auto SQRT3_FLOAT = 1.732050807f;
 constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
 constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
-// Message box types
-static constexpr int FOMB_GAME = 0;
-static constexpr int FOMB_TALK = 1;
-
-// Say types
-static constexpr uint8 SAY_NORM = 1;
-static constexpr uint8 SAY_NORM_ON_HEAD = 2;
-static constexpr uint8 SAY_SHOUT = 3;
-static constexpr uint8 SAY_SHOUT_ON_HEAD = 4;
-static constexpr uint8 SAY_EMOTE = 5;
-static constexpr uint8 SAY_EMOTE_ON_HEAD = 6;
-static constexpr uint8 SAY_WHISP = 7;
-static constexpr uint8 SAY_WHISP_ON_HEAD = 8;
-static constexpr uint8 SAY_SOCIAL = 9;
-static constexpr uint8 SAY_RADIO = 10;
-static constexpr uint8 SAY_NETMSG = 11;
-static constexpr uint8 SAY_DIALOG = 12;
-static constexpr uint8 SAY_APPEND = 13;
-static constexpr uint8 SAY_FLASH_WINDOW = 41;
-
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;
 static constexpr uint16 MAXHEX_MIN = 10;
@@ -2613,14 +2593,6 @@ struct GameSettings
 #endif
 };
 
-// Radio
-static constexpr uint16 RADIO_DISABLE_SEND = 0x01;
-static constexpr uint16 RADIO_DISABLE_RECV = 0x02;
-static constexpr uint8 RADIO_BROADCAST_WORLD = 0;
-static constexpr uint8 RADIO_BROADCAST_MAP = 20;
-static constexpr uint8 RADIO_BROADCAST_LOCATION = 40;
-static constexpr uint8 RADIO_BROADCAST_FORCE_ALL = 250;
-
 // Light
 static constexpr auto LIGHT_DISABLE_DIR(int dir) -> uint8
 {
@@ -2653,73 +2625,69 @@ static constexpr auto CMD_RUNSCRIPT = 20;
 static constexpr auto CMD_REGENMAP = 25;
 static constexpr auto CMD_LOG = 37;
 
-#define STR_RADIO_CANT_SEND (479)
-#define STR_BARTER_NO_BARTER_NOW (486)
-#define STR_DIALOG_NPC_NOT_LIFE (801)
-#define STR_DIALOG_DIST_TOO_LONG (803)
-#define STR_DIALOG_FROM_LINK_NOT_FOUND (807)
-#define STR_DIALOG_COMPILE_FAIL (808)
-#define STR_DIALOG_NPC_NOT_FOUND (809)
-#define STR_DIALOG_MANY_TALKERS (805)
+///@ ExportEnum
+enum class EngineInfoMessage : uint16
+{
+    None = 0,
 
-#define STR_CHECK_UPDATES (5)
-#define STR_CONNECT_TO_SERVER (6)
-#define STR_CANT_CONNECT_TO_SERVER (7)
-#define STR_CONNECTION_ESTABLISHED (8)
-#define STR_DATA_SYNCHRONIZATION (9)
-#define STR_CONNECTION_FAILURE (10)
-#define STR_FILESYSTEM_ERROR (11)
-#define STR_CLIENT_OUTDATED (12)
-#define STR_CLIENT_OUTDATED_APP_STORE (13)
-#define STR_CLIENT_OUTDATED_GOOGLE_PLAY (14)
-#define STR_CLIENT_UPDATED (15)
+    BarterNoBarterNow = 486,
+    DialogNpcNotLife = 801,
+    DialogDistTooLong = 803,
+    DialogFromLinkNotFound = 807,
+    DialogCompileFail = 808,
+    DialogNpcNotFound = 809,
+    DialogManyTalkers = 805,
 
-#define STR_NET_WRONG_LOGIN (1001)
-#define STR_NET_WRONG_PASS (1002)
-#define STR_NET_PLAYER_ALREADY (1003)
-#define STR_NET_PLAYER_IN_GAME (1004)
-#define STR_NET_WRONG_SPECIAL (1005)
-#define STR_NET_REG_SUCCESS (1006)
-#define STR_NET_CONNECTION (1007)
-#define STR_NET_CONN_ERROR (1008)
-#define STR_NET_LOGINPASS_WRONG (1009)
-#define STR_NET_CONN_SUCCESS (1010)
-#define STR_NET_HEXES_BUSY (1012)
-#define STR_NET_DISCONN_BY_DEMAND (1013)
-#define STR_NET_WRONG_NAME (1014)
-#define STR_NET_WRONG_CASES (1015)
-#define STR_NET_WRONG_GENDER (1016)
-#define STR_NET_WRONG_AGE (1017)
-#define STR_NET_CONN_FAIL (1018)
-#define STR_NET_WRONG_DATA (1019)
-#define STR_NET_STARTLOC_FAIL (1020)
-#define STR_NET_STARTMAP_FAIL (1021)
-#define STR_NET_STARTCOORD_FAIL (1022)
-#define STR_NET_BD_ERROR (1023)
-#define STR_NET_WRONG_NETPROTO (1024)
-#define STR_NET_DATATRANS_ERR (1025)
-#define STR_NET_NETMSG_ERR (1026)
-#define STR_NET_SETPROTO_ERR (1027)
-#define STR_NET_LOGINOK (1028)
-#define STR_NET_WRONG_TAGSKILL (1029)
-#define STR_NET_DIFFERENT_LANG (1030)
-#define STR_NET_MANY_SYMBOLS (1031)
-#define STR_NET_BEGIN_END_SPACES (1032)
-#define STR_NET_TWO_SPACE (1033)
-#define STR_NET_BANNED (1034)
-#define STR_NET_NAME_WRONG_CHARS (1035)
-#define STR_NET_PASS_WRONG_CHARS (1036)
-#define STR_NET_FAIL_TO_LOAD_IFACE (1037)
-#define STR_NET_FAIL_RUN_START_SCRIPT (1038)
-#define STR_NET_LANGUAGE_NOT_SUPPORTED (1039)
-#define STR_NET_KNOCK_KNOCK (1041)
-#define STR_NET_REGISTRATION_IP_WAIT (1042)
-#define STR_NET_BANNED_IP (1043)
-#define STR_NET_TIME_LEFT (1045)
-#define STR_NET_BAN (1046)
-#define STR_NET_BAN_REASON (1047)
-#define STR_NET_LOGIN_SCRIPT_FAIL (1048)
-#define STR_NET_PERMANENT_DEATH (1049)
+    NetWrongLogin = 1001,
+    NetWrongPass = 1002,
+    NetPlayerAlready = 1003,
+    NetPlayerInGame = 1004,
+    NetWrongSpecial = 1005,
+    NetRegSuccess = 1006,
+    NetConnection = 1007,
+    NetConnError = 1008,
+    NetLoginPassWrong = 1009,
+    NetConnSuccess = 1010,
+    NetHexesBusy = 1012,
+    NetDisconnByDemand = 1013,
+    NetWrongName = 1014,
+    NetWrongCases = 1015,
+    NetWrongGender = 1016,
+    NetWrongAge = 1017,
+    NetConnFail = 1018,
+    NetWrongData = 1019,
+    NetStartLocFail = 1020,
+    NetStartMapFail = 1021,
+    NetStartCoordFail = 1022,
+    NetBdError = 1023,
+    NetWrongNetProto = 1024,
+    NetDataTransErr = 1025,
+    NetNetMsgErr = 1026,
+    NetSetProtoErr = 1027,
+    NetLoginOk = 1028,
+    NetWrongTagSkill = 1029,
+    NetDifferentLang = 1030,
+    NetManySymbols = 1031,
+    NetBeginEndSpaces = 1032,
+    NetTwoSpace = 1033,
+    NetBanned = 1034,
+    NetNameWrongChars = 1035,
+    NetPassWrongChars = 1036,
+    NetFailToLoadIface = 1037,
+    NetFailRunStartScript = 1038,
+    NetLanguageNotSupported = 1039,
+    NetKnockKnock = 1041,
+    NetRegistrationIpWait = 1042,
+    NetBannedIp = 1043,
+    NetTimeLeft = 1045,
+    NetBan = 1046,
+    NetBanReason = 1047,
+    NetLoginScriptFail = 1048,
+    NetPermanentDeath = 1049,
+
+    KickedFromGame = 5000,
+    ServerLog = 5001,
+};
 
 // Network messages
 enum class NetMessage : uint8
@@ -2740,13 +2708,7 @@ enum class NetMessage : uint8
     AddCritter = 25,
     RemoveCritter = 27,
     SendCommand = 28,
-    SendText = 31,
-    Text = 32,
-    TextMsg = 33,
-    TextMsgLex = 34,
-    MapText = 35,
-    MapTextMsg = 36,
-    MapTextMsgLex = 37,
+    InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,
     SendCritterMove = 45,

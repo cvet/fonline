@@ -120,9 +120,6 @@ public:
     [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
 
     void SetLocation(Location* loc) noexcept;
-    void SetText(mpos hex, ucolor color, string_view text, bool unsafe_text);
-    void SetTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num);
-    void SetTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void RemoveCritter(Critter* cr);
     void AddItem(Item* item, mpos hex, Critter* dropper);

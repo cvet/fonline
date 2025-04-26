@@ -219,7 +219,7 @@ public:
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>;
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnConsoleMessage, string& /*text*/);
+    ENTITY_EVENT(OnMapperMessage, string& /*text*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
     ///@ ExportEvent

@@ -296,7 +296,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
         }
 
         return std::nullopt;
@@ -1089,12 +1088,9 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Ping(connection);
             break;
 
-        case NetMessage::SendText:
-            Process_Text(player);
-            break;
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](auto s) { player->Send_Text(nullptr, strex(s).trim(), SAY_NETMSG); }, player, "");
+            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strex(s).trim()); }, player, "");
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:
@@ -1158,131 +1154,6 @@ void FOServer::ProcessConnection(ServerConnection* connection)
 
         connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
         connection->PingOk = false;
-    }
-}
-
-void FOServer::Process_Text(Player* player)
-{
-    STACK_TRACE_ENTRY();
-
-    Critter* cr = player->GetControlledCritter();
-    auto* connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
-
-    auto how_say = in_buf->Read<uint8>();
-    const auto str = in_buf->Read<string>();
-
-    in_buf.Unlock();
-
-    if (!cr->IsAlive() && how_say >= SAY_NORM && how_say <= SAY_RADIO) {
-        how_say = SAY_WHISP;
-    }
-
-    if (player->LastSay == str) {
-        player->LastSayEqualCount++;
-
-        if (player->LastSayEqualCount >= 10) {
-            WriteLog("Flood detected, client '{}'. Disconnect", cr->GetName());
-            connection->HardDisconnect();
-            return;
-        }
-
-        if (player->LastSayEqualCount >= 3) {
-            return;
-        }
-    }
-    else {
-        player->LastSay = str;
-        player->LastSayEqualCount = 0;
-    }
-
-    vector<uint16> channels;
-
-    switch (how_say) {
-    case SAY_NORM: {
-        if (cr->GetMapId()) {
-            cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_NORM, true);
-        }
-        else {
-            cr->SendAndBroadcast_Text(*cr->GlobalMapGroup, str, SAY_NORM, true);
-        }
-    } break;
-    case SAY_SHOUT: {
-        if (cr->GetMapId()) {
-            auto* map = EntityMngr.GetMap(cr->GetMapId());
-            if (map == nullptr) {
-                return;
-            }
-
-            cr->SendAndBroadcast_Text(map->GetCritters(), str, SAY_SHOUT, true);
-        }
-        else {
-            cr->SendAndBroadcast_Text(*cr->GlobalMapGroup, str, SAY_SHOUT, true);
-        }
-    } break;
-    case SAY_EMOTE: {
-        if (cr->GetMapId()) {
-            cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_EMOTE, true);
-        }
-        else {
-            cr->SendAndBroadcast_Text(*cr->GlobalMapGroup, str, SAY_EMOTE, true);
-        }
-    } break;
-    case SAY_WHISP: {
-        if (cr->GetMapId()) {
-            cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_WHISP, true);
-        }
-        else {
-            cr->Send_TextEx(cr->GetId(), str, SAY_WHISP, true);
-        }
-    } break;
-    case SAY_SOCIAL: {
-        return;
-    }
-    case SAY_RADIO: {
-        if (cr->GetMapId()) {
-            cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_WHISP, true);
-        }
-        else {
-            cr->Send_TextEx(cr->GetId(), str, SAY_WHISP, true);
-        }
-
-        ItemMngr.RadioSendText(cr, str, true, TextPackName::None, 0, channels);
-        if (channels.empty()) {
-            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_RADIO_CANT_SEND);
-            return;
-        }
-    } break;
-    default:
-        return;
-    }
-
-    // Text listen
-    vector<pair<ScriptFunc<void, Critter*, string>, string>> listen_callbacks;
-    listen_callbacks.reserve(100);
-
-    if (how_say == SAY_RADIO) {
-        for (auto& tl : _textListeners) {
-            if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && strex(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                listen_callbacks.emplace_back(tl.Func, str);
-            }
-        }
-    }
-    else {
-        const auto* map = EntityMngr.GetMap(cr->GetMapId());
-        const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
-
-        for (auto& tl : _textListeners) {
-            if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && strex(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                listen_callbacks.emplace_back(tl.Func, str);
-            }
-        }
-    }
-
-    for (auto& cb : listen_callbacks) {
-        if (!cb.first(cr, cb.second)) {
-            // Nop
-        }
     }
 }
 
@@ -1450,7 +1321,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (auto* player_ = cr->GetPlayer()) {
-            player_->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
+            player_->Send_InfoMessage(EngineInfoMessage::KickedFromGame);
             player_->GetConnection()->GracefulDisconnect();
             logcb("Player disconnected");
         }
@@ -1721,7 +1592,7 @@ void FOServer::DispatchLogToClients()
     for (const auto& str : _logLines) {
         for (auto it = _logClients.begin(); it < _logClients.end();) {
             if (auto* player = *it; !player->IsDestroyed()) {
-                player->Send_TextEx(ident_t {}, str, SAY_NETMSG, false);
+                player->Send_InfoMessage(EngineInfoMessage::ServerLog, str);
                 ++it;
             }
             else {
@@ -1920,10 +1791,6 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 
         if (item->HasInnerEntities()) {
             unload_inner_entities(item);
-        }
-
-        if (item->GetIsRadio()) {
-            ItemMngr.UnregisterRadio(item);
         }
 
         EntityMngr.UnregisterItem(item, false);
@@ -2284,7 +2151,7 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check data
     if (!strex(name).isValidUtf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
         connection->GracefulDisconnect();
         return;
     }
@@ -2293,7 +2160,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     const auto name_len_utf8 = strex(name).lengthUtf8();
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
         connection->GracefulDisconnect();
         return;
     }
@@ -2302,7 +2169,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     const auto player_id = MakePlayerId(name);
 
     if (DbStorage.Valid(PlayersCollectionName, player_id)) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_ALREADY);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetPlayerAlready);
         connection->GracefulDisconnect();
         return;
     }
@@ -2317,8 +2184,7 @@ void FOServer::Process_Register(Player* unlogined_player)
             const auto tick = GameTime.GetFrameTime();
 
             if (tick - last_reg < reg_tick) {
-                unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REGISTRATION_IP_WAIT);
-                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_TIME_LEFT, strex("$time{}", (timespan(reg_tick) - (tick - last_reg)).to_ms<uint>() / 60000 + 1));
+                unlogined_player->Send_InfoMessage(EngineInfoMessage::NetRegistrationIpWait);
                 connection->GracefulDisconnect();
                 return;
             }
@@ -2330,19 +2196,9 @@ void FOServer::Process_Register(Player* unlogined_player)
         }
     }
 
-    auto disallow_text_pack = TextPackName::None;
-    uint disallow_str_num = 0;
-    string lexems;
-    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_text_pack, disallow_str_num, lexems);
+    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name);
 
     if (!allow) {
-        if (disallow_text_pack != TextPackName::None && disallow_str_num != 0) {
-            unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, TextPackName::Game, disallow_str_num, lexems);
-        }
-        else {
-            unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
-        }
-
         connection->GracefulDisconnect();
         return;
     }
@@ -2364,7 +2220,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     WriteLog("Registered player {} with id {}", name, player_id);
 
     // Notify
-    unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_REG_SUCCESS);
+    unlogined_player->Send_InfoMessage(EngineInfoMessage::NetRegSuccess);
 
     connection->WriteMsg(NetMessage::RegisterSuccess);
 }
@@ -2391,14 +2247,14 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check for null in login/password
     if (name.find('\0') != string::npos || password.find('\0') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
         connection->GracefulDisconnect();
         return;
     }
 
     // Check valid symbols in name
     if (!strex(name).isValidUtf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
         connection->GracefulDisconnect();
         return;
     }
@@ -2407,7 +2263,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     const auto name_len_utf8 = strex(name).lengthUtf8();
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_LOGIN);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
         connection->GracefulDisconnect();
         return;
     }
@@ -2417,25 +2273,16 @@ void FOServer::Process_Login(Player* unlogined_player)
     const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
     if (!player_doc.Contains("Password") || player_doc["Password"].Type() != AnyData::ValueType::String || player_doc["Password"].AsString().length() != password.length() || player_doc["Password"].AsString() != password) {
-        unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGINPASS_WRONG);
+        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
         connection->GracefulDisconnect();
         return;
     }
 
     // Request script
     {
-        auto disallow_msg_num = TextPackName::None;
-        TextPackKey disallow_str_num = 0;
-        string lexems;
+        const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id);
 
-        if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
-            if (disallow_msg_num != TextPackName::None && disallow_str_num != 0) {
-                unlogined_player->Send_TextMsgLex(nullptr, SAY_NETMSG, disallow_msg_num, disallow_str_num, lexems);
-            }
-            else {
-                unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_LOGIN_SCRIPT_FAIL);
-            }
-
+        if (!allow) {
             connection->GracefulDisconnect();
             return;
         }
@@ -2449,7 +2296,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = false;
 
         if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this, *this)) {
-            unlogined_player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
+            unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
             connection->GracefulDisconnect();
             return;
         }
@@ -2536,7 +2383,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
                 // Already attached to another player
                 if (cr->GetPlayer() != nullptr) {
-                    player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_PLAYER_IN_GAME);
+                    player->Send_InfoMessage(EngineInfoMessage::NetPlayerInGame);
                     connection->GracefulDisconnect();
                     return;
                 }
@@ -2555,8 +2402,11 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
     }
 
-    if (!OnPlayerEnter.Fire(player)) {
-        player->Send_TextMsg(nullptr, SAY_NETMSG, TextPackName::Game, STR_NET_WRONG_DATA);
+    if (OnPlayerEnter.Fire(player)) {
+        player->Send_InfoMessage(EngineInfoMessage::NetLoginOk);
+    }
+    else {
+        player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
         connection->GracefulDisconnect();
     }
 }
@@ -3248,22 +3098,6 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
         }
-    }
-}
-
-void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
-{
-    STACK_TRACE_ENTRY();
-
-    UNUSED_VARIABLE(prop);
-
-    auto* item = dynamic_cast<Item*>(entity);
-
-    if (item->GetIsRadio()) {
-        ItemMngr.RegisterRadio(item);
-    }
-    else {
-        ItemMngr.UnregisterRadio(item);
     }
 }
 
@@ -4099,7 +3933,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
             if (!GeometryHelper::CheckDist(cl->GetHex(), npc->GetHex(), talk_distance)) {
                 cl->Send_Moving(cl);
                 cl->Send_Moving(npc);
-                cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
+                cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
                 WriteLog("Wrong distance to npc '{}', client '{}'", npc->GetName(), cl->GetName());
                 return;
             }
@@ -4118,19 +3952,19 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
             MapMngr.TraceBullet(trace);
 
             if (!trace.IsCritterFound) {
-                cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
+                cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
                 return;
             }
         }
 
         if (!npc->IsAlive()) {
-            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_LIFE);
+            cl->Send_InfoMessage(EngineInfoMessage::DialogNpcNotLife);
             WriteLog("Npc '{}' bad condition, client '{}'", npc->GetName(), cl->GetName());
             return;
         }
 
         if (!npc->IsFreeToTalk()) {
-            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_MANY_TALKERS);
+            cl->Send_InfoMessage(EngineInfoMessage::DialogManyTalkers);
             return;
         }
 
@@ -4161,7 +3995,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     else {
         if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHex(), dlg_hex, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Moving(cl);
-            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
+            cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
             WriteLog("Wrong distance to hexes, hex {}, client '{}'", dlg_hex, cl->GetName());
             return;
         }
@@ -4207,14 +4041,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
 
     if (it_d == dialogs->end()) {
-        cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
+        cl->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
         WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", go_dialog, cl->GetName(), dialog_pack->PackId);
         return;
     }
 
     // Compile
     if (!DialogCompile(npc, cl, *it_d, cl->Talk.CurDialog)) {
-        cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
+        cl->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4253,7 +4087,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
         if (failed) {
             CrMngr.CloseTalk(cl);
-            cl->Send_TextMsg(cl, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
+            cl->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
             WriteLog("Dialog generation failed, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
             return;
         }
@@ -4261,15 +4095,16 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
     // On head text
     if (cl->Talk.CurDialog.Answers.empty()) {
-        if (npc != nullptr) {
+        /*if (npc != nullptr) {
             npc->SendAndBroadcast_MsgLex(npc->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cl->Talk.CurDialog.TextId, cl->Talk.Lexems);
         }
         else {
             auto* map = EntityMngr.GetMap(cl->GetMapId());
+
             if (map != nullptr) {
                 map->SetTextMsg(dlg_hex, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
             }
-        }
+        }*/
 
         CrMngr.CloseTalk(cl);
         return;
@@ -4322,7 +4157,7 @@ void FOServer::Process_Dialog(Player* player)
         if (talker == nullptr) {
             WriteLog("Critter with id {} not found, client '{}'", cr_id, cr->GetName());
             BreakIntoDebugger();
-            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_FOUND);
+            cr->Send_InfoMessage(EngineInfoMessage::DialogNpcNotFound);
             CrMngr.CloseTalk(cr);
             return;
         }
@@ -4348,7 +4183,7 @@ void FOServer::Process_Dialog(Player* player)
         // Barter
         const auto do_barter = [&] {
             if (cur_dialog->DlgScriptFuncName) {
-                cr->Send_TextMsg(talker, SAY_DIALOG, TextPackName::Game, STR_BARTER_NO_BARTER_NOW);
+                cr->Send_InfoMessage(EngineInfoMessage::BarterNoBarterNow);
                 return;
             }
 
@@ -4439,7 +4274,7 @@ void FOServer::Process_Dialog(Player* player)
 
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
-        cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_FROM_LINK_NOT_FOUND);
+        cr->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
         WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", next_dlg_id, cr->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4447,7 +4282,7 @@ void FOServer::Process_Dialog(Player* player)
     // Compile
     if (!DialogCompile(talker, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
-        cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
+        cr->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
         return;
     }
@@ -4473,7 +4308,7 @@ void FOServer::Process_Dialog(Player* player)
 
         if (failed) {
             CrMngr.CloseTalk(cr);
-            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_COMPILE_FAIL);
+            cr->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
             WriteLog("Dialog generation failed, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
             return;
         }
@@ -4481,7 +4316,7 @@ void FOServer::Process_Dialog(Player* player)
 
     // On head text
     if (cr->Talk.CurDialog.Answers.empty()) {
-        if (talker != nullptr) {
+        /*if (talker != nullptr) {
             talker->SendAndBroadcast_MsgLex(talker->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cr->Talk.CurDialog.TextId, cr->Talk.Lexems);
         }
         else {
@@ -4490,7 +4325,7 @@ void FOServer::Process_Dialog(Player* player)
             if (map != nullptr) {
                 map->SetTextMsg(cr->Talk.TalkHex, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
             }
-        }
+        }*/
 
         CrMngr.CloseTalk(cr);
         return;

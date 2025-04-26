@@ -1,33 +1,6 @@
 namespace Core // Sort -10
 {
 
-// Say types
-#define SAY_NORM          (1)
-#define SAY_NORM_ON_HEAD  (2)
-#define SAY_SHOUT         (3)
-#define SAY_SHOUT_ON_HEAD (4)
-#define SAY_EMOTE         (5)
-#define SAY_EMOTE_ON_HEAD (6)
-#define SAY_WHISP         (7)
-#define SAY_WHISP_ON_HEAD (8)
-#define SAY_SOCIAL        (9)
-#define SAY_RADIO         (10)
-#define SAY_NETMSG        (11)
-#define SAY_DIALOG        (12)
-#define SAY_APPEND        (13)
-#define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
-
-// Combat modes
-#define COMBAT_MODE_ANY        (0)
-#define COMBAT_MODE_REAL_TIME  (1)
-#define COMBAT_MODE_TURN_BASED (2)
-
-// Global map fog
-#define FOG_FULL    (0)
-#define FOG_HALF    (1)
-#define FOG_HALF_EX (2)
-#define FOG_NONE    (3)
-
 // Dialog links
 #define DIALOG_END    uint(-1)
 #define DIALOG_BACK   uint(-2)
@@ -48,23 +21,6 @@ namespace Core // Sort -10
 #define LOOK_CHECK_SCRIPT       (0x10) // Allow bool check_look(...) in main.fos, all other defines ignored
 #define LOOK_CHECK_ITEM_SCRIPT  (0x20) // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
 #define LOOK_CHECK_TRACE_CLIENT (0x40) // Tracing for wall aviablility (client side)
-
-// Radio
-// Flags, Item::RadioFlags
-#define RADIO_DISABLE_SEND          (0x0001) // Hardcoded
-#define RADIO_DISABLE_RECV          (0x0002) // Hardcoded
-#define RADIO_DISABLE_SHIFT_SEND    (0x0100)
-#define RADIO_DISABLE_SHIFT_RECV    (0x0200)
-#define RADIO_DISABLE_SHIFT_BC_SEND (0x0400)
-#define RADIO_DISABLE_SHIFT_BC_RECV (0x0800)
-#define RADIO_DISABLE_SHIFT_CHANNEL (0x1000)
-// Broadcast, Item::RadioBroadcastSend/RadioBroadcastRecv, Hardcoded
-#define RADIO_BROADCAST_WORLD    (0)  // Send/recv in all world
-#define RADIO_BROADCAST_MAP      (20) // Send/recv only on one map
-#define RADIO_BROADCAST_LOCATION (40) // Send/recv only on one location
-#define RADIO_BROADCAST_ZONE \
-    #(x)(RADIO_BROADCAST_WORLD) // Send/recv only in x (1..100) zones radius on global map // Todo: move radio to scripts and restore RADIO_BROADCAST_ZONE
-#define RADIO_BROADCAST_FORCE_ALL (250) // Force send/recv in any place
 
 // Internal server commands
 #define COMMAND_EXIT                  (1)

@@ -529,36 +529,6 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_ConsoleMessage(FOClient* client, string_view msg)
-{
-    client->ConsoleMessage(msg);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Message(FOClient* client, string_view msg)
-{
-    client->AddMessage(FOMB_GAME, msg);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Message(FOClient* client, int type, string_view msg)
-{
-    client->AddMessage(type, msg);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Message(FOClient* client, TextPackName textPack, uint strNum)
-{
-    client->AddMessage(FOMB_GAME, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Message(FOClient* client, int type, TextPackName textPack, uint strNum)
-{
-    client->AddMessage(type, client->GetCurLang().GetTextPack(textPack).GetStr(strNum));
-}
-
-///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);

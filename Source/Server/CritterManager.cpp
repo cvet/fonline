@@ -107,10 +107,6 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
 
-    if (item->GetIsRadio()) {
-        _engine->ItemMngr.UnregisterRadio(item);
-    }
-
     cr->RemoveItem(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -408,7 +404,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
         }
 
         if (!talker->IsAlive()) {
-            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_NPC_NOT_LIFE);
+            cr->Send_InfoMessage(EngineInfoMessage::DialogNpcNotLife);
             CloseTalk(cr);
             return;
         }
@@ -435,7 +431,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
         }
 
         if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHex(), hex, talk_distance)) {
-            cr->Send_TextMsg(cr, SAY_NETMSG, TextPackName::Game, STR_DIALOG_DIST_TOO_LONG);
+            cr->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
             CloseTalk(cr);
         }
     }

@@ -141,12 +141,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NetMessage::CritterPos, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NetMessage::CritterAttachments, [this] { Net_OnCritterAttachments(); });
     _conn.AddMessageHandler(NetMessage::Property, [this] { Net_OnProperty(); });
-    _conn.AddMessageHandler(NetMessage::Text, [this] { Net_OnText(); });
-    _conn.AddMessageHandler(NetMessage::TextMsg, [this] { Net_OnTextMsg(false); });
-    _conn.AddMessageHandler(NetMessage::TextMsgLex, [this] { Net_OnTextMsg(true); });
-    _conn.AddMessageHandler(NetMessage::MapText, [this] { Net_OnMapText(); });
-    _conn.AddMessageHandler(NetMessage::MapTextMsg, [this] { Net_OnMapTextMsg(); });
-    _conn.AddMessageHandler(NetMessage::MapTextMsgLex, [this] { Net_OnMapTextMsgLex(); });
+    _conn.AddMessageHandler(NetMessage::InfoMessage, [this] { Net_OnInfoMessage(); });
     _conn.AddMessageHandler(NetMessage::ChosenAddItem, [this] { Net_OnChosenAddItem(); });
     _conn.AddMessageHandler(NetMessage::ChosenRemoveItem, [this] { Net_OnChosenRemoveItem(); });
     _conn.AddMessageHandler(NetMessage::TalkNpc, [this] { Net_OnChosenTalk(); });
@@ -654,8 +649,6 @@ void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
         throw ResourcesOutdatedException("Binary outdated");
     }
     else {
-        AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_FAIL));
-
         OnConnectingFailed.Fire();
     }
 }
@@ -683,14 +676,14 @@ void FOClient::Net_SendLogIn()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     WriteLog("Player login");
 
     _conn.OutBuf.StartMsg(NetMessage::Login);
     _conn.OutBuf.Write(_loginName);
     _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
-
-    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -704,18 +697,6 @@ void FOClient::Net_SendCreatePlayer()
     _conn.OutBuf.StartMsg(NetMessage::Register);
     _conn.OutBuf.Write(_loginName);
     _conn.OutBuf.Write(_loginPassword);
-    _conn.OutBuf.EndMsg();
-}
-
-void FOClient::Net_SendText(string_view send_str, uint8 how_say)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NetMessage::SendText);
-    _conn.OutBuf.Write(how_say);
-    _conn.OutBuf.Write(send_str);
     _conn.OutBuf.EndMsg();
 }
 
@@ -902,8 +883,6 @@ void FOClient::Net_OnLoginSuccess()
     STACK_TRACE_ENTRY();
 
     WriteLog("Authentication success");
-
-    AddMessage(FOMB_GAME, _curLang.GetTextPack(TextPackName::Game).GetStr(STR_NET_LOGINOK));
 
     const auto player_id = _conn.InBuf.Read<ident_t>();
     _conn.InBuf.ReadPropsData(_globalsPropertiesData);
@@ -1114,115 +1093,14 @@ void FOClient::Net_OnRemoveCritter()
     }
 }
 
-void FOClient::Net_OnText()
+void FOClient::Net_OnInfoMessage()
 {
     STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto how_say = _conn.InBuf.Read<uint8>();
-    const auto text = _conn.InBuf.Read<string>();
-    const auto unsafe_text = _conn.InBuf.Read<bool>();
+    const auto info_message = _conn.InBuf.Read<EngineInfoMessage>();
+    const auto extra_text = _conn.InBuf.Read<string>();
 
-    string str = text;
-
-    if (unsafe_text) {
-        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
-    }
-
-    if (!str.empty()) {
-        OnInMessage.Fire(string(str), how_say, cr_id);
-    }
-}
-
-void FOClient::Net_OnTextMsg(bool with_lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto how_say = _conn.InBuf.Read<uint8>();
-    const auto text_pack = _conn.InBuf.Read<TextPackName>();
-    const auto str_num = _conn.InBuf.Read<TextPackKey>();
-    const auto lexems = with_lexems ? _conn.InBuf.Read<string>() : string();
-
-    if (const auto& msg = _curLang.GetTextPack(text_pack); msg.GetStrCount(str_num) != 0) {
-        string str = copy(msg.GetStr(str_num));
-        FormatTags(str, GetChosen(), _curMap != nullptr ? _curMap->GetCritter(cr_id) : nullptr, lexems);
-
-        if (!str.empty()) {
-            OnInMessage.Fire(str, how_say, cr_id);
-        }
-    }
-}
-
-void FOClient::OnMapText(string_view str, mpos hex, ucolor color)
-{
-    STACK_TRACE_ENTRY();
-
-    if (_curMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    if (!_curMap->GetSize().IsValidPos(hex)) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    uint show_time = 0;
-    auto processed_str = strex(str).str();
-
-    OnMapMessage.Fire(processed_str, hex, color, show_time);
-
-    _curMap->AddMapText(processed_str, hex, color, std::chrono::milliseconds {show_time}, false, {0, 0});
-}
-
-void FOClient::Net_OnMapText()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto color = _conn.InBuf.Read<ucolor>();
-    const auto text = _conn.InBuf.Read<string>();
-    const auto unsafe_text = _conn.InBuf.Read<bool>();
-
-    string str = text;
-
-    if (unsafe_text) {
-        Keyb.RemoveInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
-    }
-
-    OnMapText(str, hex, color);
-}
-
-void FOClient::Net_OnMapTextMsg()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto color = _conn.InBuf.Read<ucolor>();
-    const auto text_pack = _conn.InBuf.Read<TextPackName>();
-    const auto str_num = _conn.InBuf.Read<TextPackKey>();
-
-    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
-    FormatTags(str, GetChosen(), nullptr, "");
-
-    OnMapText(str, hex, color);
-}
-
-void FOClient::Net_OnMapTextMsgLex()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto color = _conn.InBuf.Read<ucolor>();
-    const auto text_pack = _conn.InBuf.Read<TextPackName>();
-    const auto str_num = _conn.InBuf.Read<TextPackKey>();
-    const auto lexems = _conn.InBuf.Read<string>();
-
-    auto str = copy(_curLang.GetTextPack(text_pack).GetStr(str_num));
-    FormatTags(str, GetChosen(), nullptr, lexems);
-
-    OnMapText(str, hex, color);
+    OnInfoMessage.Fire(info_message, extra_text);
 }
 
 void FOClient::Net_OnCritterDir()
@@ -2829,26 +2707,6 @@ void FOClient::ChangeLanguage(string_view lang_name)
 
     _curLang = std::move(lang_pack);
     Settings.Language = lang_name;
-}
-
-void FOClient::ConsoleMessage(string_view msg)
-{
-    STACK_TRACE_ENTRY();
-
-    auto str = string(msg);
-    int how_say = SAY_NORM;
-    const auto result = OnOutMessage.Fire(str, how_say);
-
-    if (result && !str.empty()) {
-        Net_SendText(str, static_cast<uint8>(how_say));
-    }
-}
-
-void FOClient::AddMessage(int mess_type, string_view msg)
-{
-    STACK_TRACE_ENTRY();
-
-    OnMessageBox.Fire(mess_type, string(msg));
 }
 
 // Todo: move targs formatting to scripts

@@ -626,26 +626,6 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(FOServer* server, const vector<id
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
-{
-    if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, text, false, TextPackName::None, 0, "");
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr)
-{
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, "", false, textPack, numStr, "");
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, TextPackName textPack, uint numStr, string_view lexems)
-{
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, "", false, textPack, numStr, lexems);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId, nullptr);
@@ -970,51 +950,6 @@ FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFunc<void, Critter*, string> func)
-{
-    UNUSED_VARIABLE(server);
-    UNUSED_VARIABLE(sayType);
-    UNUSED_VARIABLE(firstStr);
-    UNUSED_VARIABLE(parameter);
-    UNUSED_VARIABLE(func);
-
-    throw NotImplementedException(LINE_STR);
-
-    /*uint func_id = server->ScriptSys->BindByFunc(func, false);
-    if (!func_id)
-        throw ScriptException("Unable to bind script function");
-
-    TextListener tl;
-    tl.FuncId = func_id;
-    tl.SayType = sayType;
-    tl.FirstStr = firstStr;
-    tl.Parameter = parameter;
-
-    server->TextListeners.emplace_back(tl);*/
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_RemoveTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
-{
-    UNUSED_VARIABLE(server);
-    UNUSED_VARIABLE(sayType);
-    UNUSED_VARIABLE(firstStr);
-    UNUSED_VARIABLE(parameter);
-
-    throw NotImplementedException(LINE_STR);
-
-    /*for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
-    {
-        TextListener& tl = *it;
-        if (sayType == tl.SayType && strex(firstStr).compareIgnoreCaseUtf8(tl.FirstStr) && tl.Parameter == parameter)
-        {
-            server->TextListeners.erase(it);
-            return;
-        }
-    }*/
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
@@ -1025,6 +960,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
 
     for (auto&& [id, item] : server->EntityMngr.GetItems()) {
         RUNTIME_ASSERT(!item->IsDestroyed());
+
         if (!pid || pid == item->GetProtoId()) {
             items.emplace_back(item);
         }
@@ -1063,15 +999,15 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring pid)
 {
-    vector<Critter*> npcs;
+    vector<Critter*> result;
 
-    for (auto* npc_ : server->CrMngr.GetNonPlayerCritters()) {
-        if (!npc_->IsDestroyed() && (!pid || pid == npc_->GetProtoId())) {
-            npcs.emplace_back(npc_);
+    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
+        if (!cr->IsDestroyed() && (!pid || pid == cr->GetProtoId())) {
+            result.emplace_back(cr);
         }
     }
 
-    return npcs;
+    return result;
 }
 
 ///@ ExportMethod

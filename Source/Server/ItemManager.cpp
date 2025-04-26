@@ -112,7 +112,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<Item>(_engine, ident_t {}, proto, props);
+    auto* item = SafeAlloc::MakeRaw<Item>(_engine.get(), ident_t {}, proto, props);
     auto self_destroy_fuse = RefCountHolder(item);
 
     item->SetStatic(false);
@@ -136,10 +136,6 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     }
     else {
         item->SetCount(1);
-    }
-
-    if (item->GetIsRadio()) {
-        RegisterRadio(item);
     }
 
     _engine->EntityMngr.CallInit(item, true);
@@ -180,11 +176,6 @@ void ItemManager::DestroyItem(Item* item)
         if (item->HasInnerEntities()) {
             _engine->EntityMngr.DestroyInnerEntities(item);
         }
-    }
-
-    // Erase from radio collection
-    if (item->GetIsRadio()) {
-        UnregisterRadio(item);
     }
 
     // Erase from main collection
@@ -399,168 +390,5 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
     }
     if (cur_count < count) {
         AddItemCritter(cr, pid, count - cur_count);
-    }
-}
-
-void ItemManager::RegisterRadio(Item* radio)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it = _radioItems.find(radio);
-
-    if (it == _radioItems.end()) {
-        _radioItems.emplace(radio);
-        radio->AddRef();
-    }
-}
-
-void ItemManager::UnregisterRadio(Item* radio)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it = _radioItems.find(radio);
-
-    if (it != _radioItems.end()) {
-        _radioItems.erase(it);
-        radio->Release();
-    }
-}
-
-void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels)
-{
-    STACK_TRACE_ENTRY();
-
-    vector<Item*> radios;
-
-    for (auto* item : cr->GetInvItems()) {
-        if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
-            channels.push_back(item->GetRadioChannel());
-            radios.push_back(item);
-        }
-    }
-
-    for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), text, unsafe_text, text_pack, str_num, "");
-    }
-}
-
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION) {
-        return;
-    }
-    if ((broadcast_type == RADIO_BROADCAST_MAP || broadcast_type == RADIO_BROADCAST_LOCATION) && !from_map_id) {
-        return;
-    }
-
-    uint8 broadcast;
-    auto broadcast_map_id = ident_t {};
-    auto broadcast_loc_id = ident_t {};
-
-    const auto cur_send = ++_radioSendCounter;
-
-    for (const auto* radio : _radioItems) {
-        if (!radio->IsDestroyed() && radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
-            if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->GetRadioBroadcastRecv() != RADIO_BROADCAST_FORCE_ALL) {
-                if (broadcast_type == RADIO_BROADCAST_WORLD) {
-                    broadcast = radio->GetRadioBroadcastRecv();
-                }
-                else if (radio->GetRadioBroadcastRecv() == RADIO_BROADCAST_WORLD) {
-                    broadcast = broadcast_type;
-                }
-                else {
-                    broadcast = std::min(broadcast_type, radio->GetRadioBroadcastRecv());
-                }
-
-                if (broadcast == RADIO_BROADCAST_WORLD) {
-                    broadcast = RADIO_BROADCAST_FORCE_ALL;
-                }
-                else if (broadcast == RADIO_BROADCAST_MAP || broadcast == RADIO_BROADCAST_LOCATION) {
-                    if (!broadcast_map_id) {
-                        auto* map = _engine->EntityMngr.GetMap(from_map_id);
-
-                        if (map == nullptr) {
-                            continue;
-                        }
-
-                        broadcast_map_id = map->GetId();
-                        broadcast_loc_id = map->GetLocation()->GetId();
-                    }
-                }
-            }
-            else {
-                broadcast = RADIO_BROADCAST_FORCE_ALL;
-            }
-
-            if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
-                auto* cr = _engine->EntityMngr.GetCritter(radio->GetCritterId());
-
-                if (cr != nullptr && cr->RadioMessageSended != cur_send) {
-                    if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
-                        if (broadcast == RADIO_BROADCAST_MAP) {
-                            if (broadcast_map_id != cr->GetMapId()) {
-                                continue;
-                            }
-                        }
-                        else if (broadcast == RADIO_BROADCAST_LOCATION) {
-                            auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
-
-                            if (map == nullptr || broadcast_loc_id != map->GetLocation()->GetId()) {
-                                continue;
-                            }
-                        }
-                        else {
-                            continue;
-                        }
-                    }
-
-                    if (!text.empty()) {
-                        cr->Send_TextEx(radio->GetId(), text, SAY_RADIO, unsafe_text);
-                    }
-                    else if (!lexems.empty()) {
-                        cr->Send_TextMsgLex(radio->GetId(), SAY_RADIO, text_pack, str_num, lexems);
-                    }
-                    else {
-                        cr->Send_TextMsg(radio->GetId(), SAY_RADIO, text_pack, str_num);
-                    }
-
-                    cr->RadioMessageSended = cur_send;
-                }
-            }
-            else if (radio->GetOwnership() == ItemOwnership::MapHex) {
-                if (broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->GetMapId()) {
-                    continue;
-                }
-
-                auto* map = _engine->EntityMngr.GetMap(radio->GetMapId());
-
-                if (map != nullptr) {
-                    if (broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP) {
-                        if (broadcast == RADIO_BROADCAST_LOCATION) {
-                            const auto* loc = map->GetLocation();
-
-                            if (broadcast_loc_id != loc->GetId()) {
-                                continue;
-                            }
-                        }
-                        else {
-                            continue;
-                        }
-                    }
-
-                    if (!text.empty()) {
-                        map->SetText(radio->GetHex(), ucolor {255, 255, 254, 255}, text, unsafe_text);
-                    }
-                    else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num, lexems);
-                    }
-                    else {
-                        map->SetTextMsg(radio->GetHex(), ucolor {255, 255, 254, 255}, text_pack, str_num);
-                    }
-                }
-            }
-        }
     }
 }

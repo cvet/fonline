@@ -434,28 +434,6 @@ void MapView::Process()
     }
 }
 
-void MapView::AddMapText(string_view str, mpos hex, ucolor color, timespan show_time, bool fade, ipos offset)
-{
-    STACK_TRACE_ENTRY();
-
-    MapText map_text;
-    map_text.Hex = hex;
-    map_text.Color = color != ucolor::clear ? color : COLOR_TEXT;
-    map_text.Fade = fade;
-    map_text.StartTime = _engine->GameTime.GetFrameTime();
-    map_text.Duration = show_time ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
-    map_text.Text = str;
-    map_text.Pos = GetRectForText(hex);
-    map_text.EndPos = IRect(map_text.Pos, offset.x, offset.y);
-
-    const auto it = std::find_if(_mapTexts.begin(), _mapTexts.end(), [&map_text](const MapText& t) { return map_text.Hex == t.Hex; });
-    if (it != _mapTexts.end()) {
-        _mapTexts.erase(it);
-    }
-
-    _mapTexts.emplace_back(std::move(map_text));
-}
-
 auto MapView::GetViewSize() const -> isize
 {
     STACK_TRACE_ENTRY();
@@ -819,7 +797,7 @@ auto MapView::GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&
     return field_tiles;
 }
 
-auto MapView::GetRectForText(mpos hex) -> IRect
+auto MapView::GetHexContentSize(mpos hex) -> isize
 {
     STACK_TRACE_ENTRY();
 
@@ -830,6 +808,7 @@ auto MapView::GetRectForText(mpos hex) -> IRect
             for (const auto* cr : field.Critters) {
                 if (cr->IsSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
+
                     if (result.IsZero()) {
                         result = rect;
                     }
@@ -847,11 +826,13 @@ auto MapView::GetRectForText(mpos hex) -> IRect
             for (const auto* item : field.Items) {
                 if (item->IsSpriteVisible()) {
                     const auto* spr = item->Spr;
+
                     if (spr != nullptr) {
                         const auto l = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->Offset.x;
                         const auto t = field.Offset.y + _engine->Settings.MapHexHeight / 2 - spr->Offset.y;
                         const auto r = l + spr->Size.width;
                         const auto b = t + spr->Size.height;
+
                         if (result.IsZero()) {
                             result = IRect {l, t, r, b};
                         }
@@ -867,7 +848,7 @@ auto MapView::GetRectForText(mpos hex) -> IRect
         }
     }
 
-    return {-result.Width() / 2, -result.Height(), result.Width() / 2, 0};
+    return isize {result.Width(), result.Height()};
 }
 
 void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
@@ -2833,57 +2814,6 @@ void MapView::DrawMap()
     if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
         _engine->SprMngr.GetRtMngr().PopRenderTarget();
         _engine->SprMngr.DrawRenderTarget(_rtMap, false);
-    }
-}
-
-void MapView::DrawMapTexts()
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto* cr : _critters) {
-        cr->DrawName();
-    }
-
-    const auto time = _engine->GameTime.GetFrameTime();
-
-    for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
-        const auto& map_text = *it;
-
-        if (time < map_text.StartTime + map_text.Duration) {
-            const auto& field = _hexField->GetCellForReading(map_text.Hex);
-
-            if (field.IsView) {
-                const auto dt = (time - map_text.StartTime).to_ms<uint>();
-                const auto percent = GenericUtils::Percent(map_text.Duration.to_ms<uint>(), dt);
-                const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, static_cast<int>(percent));
-                const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
-                const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
-                const auto x = iround(static_cast<float>(field.Offset.x + half_hex_width + _engine->Settings.ScreenOffset.x) / GetSpritesZoom() - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-                const auto y = iround(static_cast<float>(field.Offset.y + half_hex_height - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScreenOffset.y) / GetSpritesZoom() - 70.0f);
-
-                auto color = map_text.Color;
-
-                if (map_text.Fade) {
-                    const auto alpha = 255 * (100 - percent) / 100;
-                    color.comp.a = static_cast<uint8>(alpha);
-                }
-                else if (map_text.Duration > std::chrono::milliseconds(500)) {
-                    const auto hide = (map_text.Duration - std::chrono::milliseconds(200)).to_ms<uint>();
-
-                    if (dt >= hide) {
-                        const auto alpha = 255 * (100 - GenericUtils::Percent(map_text.Duration.to_ms<uint>() - hide, dt - hide)) / 100;
-                        color.comp.a = static_cast<uint8>(alpha);
-                    }
-                }
-
-                _engine->SprMngr.DrawText(irect {x, y, 200, 70}, map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
-            }
-
-            ++it;
-        }
-        else {
-            it = _mapTexts.erase(it);
-        }
     }
 }
 

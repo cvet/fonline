@@ -144,8 +144,6 @@ public:
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
-    void ConsoleMessage(string_view msg);
-    void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int noise, timespan time);
@@ -185,6 +183,8 @@ public:
     ENTITY_EVENT(OnRegistrationSuccess);
     ///@ ExportEvent
     ENTITY_EVENT(OnLoginSuccess);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
@@ -233,14 +233,6 @@ public:
     ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, mpos& /*hex*/, ucolor& /*color*/, uint& /*delay*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnInMessage, string /*text*/, int /*sayType*/, ident_t /*crId*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnMessageBox, int /*type*/, string /*text*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
@@ -312,7 +304,6 @@ protected:
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer);
-    void Net_SendText(string_view send_str, uint8 how_say);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
@@ -324,11 +315,7 @@ protected:
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
-    void Net_OnText();
-    void Net_OnTextMsg(bool with_lexems);
-    void Net_OnMapText();
-    void Net_OnMapTextMsg();
-    void Net_OnMapTextMsgLex();
+    void Net_OnInfoMessage();
     void Net_OnAddItemOnMap();
     void Net_OnRemoveItemFromMap();
     void Net_OnAnimateItem();
@@ -358,7 +345,6 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void OnMapText(string_view str, mpos hex, ucolor color);
     void ReceiveCustomEntities(Entity* holder);
     auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*;
     void ReceiveCritterMoving(CritterHexView* cr);

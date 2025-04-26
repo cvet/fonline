@@ -106,9 +106,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/, TextPackName& /*disallowTextPack*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
@@ -213,14 +213,6 @@ private:
         size_t LoopsPerSecond {};
     };
 
-    struct TextListener
-    {
-        ScriptFunc<void, Critter*, string> Func {};
-        int SayType {};
-        string FirstStr {};
-        uint64 Parameter {};
-    };
-
     void SyncPoint();
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
@@ -238,7 +230,6 @@ private:
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
-    void Process_Text(Player* player);
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
@@ -260,7 +251,6 @@ private:
     void OnSetItemChangeView(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemBlockLines(Entity* entity, const Property* prop);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop);
 
     void ProcessCritter(Critter* cr);
     void ProcessCritterMoving(Critter* cr);
@@ -294,7 +284,6 @@ private:
     map<uint, nanotime> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
-    vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};

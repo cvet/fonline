@@ -1219,6 +1219,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     }
 
     const auto is_fullscreen = IsFullscreen();
+
     if (!is_fullscreen && enable) {
         if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), true)) {
             RUNTIME_ASSERT(IsFullscreen());

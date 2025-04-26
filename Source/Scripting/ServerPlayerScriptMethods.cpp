@@ -36,6 +36,12 @@
 #include "Server.h"
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
+{
+    self->GetConnection()->GracefulDisconnect();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
@@ -71,22 +77,4 @@ FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int access)
     }
 
     return allow;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Player_Message(Player* self, string_view text)
-{
-    self->Send_Text(nullptr, text, SAY_NETMSG);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, uint numStr)
-{
-    self->Send_TextMsg(nullptr, SAY_NETMSG, textPack, numStr);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Player_Message(Player* self, TextPackName textPack, uint numStr, string_view lexems)
-{
-    self->Send_TextMsgLex(nullptr, SAY_NETMSG, textPack, numStr, lexems);
 }

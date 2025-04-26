@@ -83,8 +83,6 @@ void Player::Send_LoginSuccess()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
@@ -170,8 +168,6 @@ void Player::Send_RemoveCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCritter);
 
     out_buf->Write(cr->GetId());
@@ -180,8 +176,6 @@ void Player::Send_RemoveCritter(const Critter* cr)
 void Player::Send_LoadMap(const Map* map)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const Location* loc = nullptr;
     hstring pid_map;
@@ -224,8 +218,6 @@ void Player::Send_LoadMap(const Map* map)
 void Player::Send_Property(NetProperty type, const Property* prop, const Entity* entity)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity);
     RUNTIME_ASSERT(prop);
@@ -272,8 +264,6 @@ void Player::Send_Moving(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!from_cr->Moving.Steps.empty()) {
         auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
 
@@ -294,8 +284,6 @@ void Player::Send_MovingSpeed(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
 
     out_buf->Write(from_cr->GetId());
@@ -306,8 +294,6 @@ void Player::Send_Dir(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::CritterDir);
 
     out_buf->Write(from_cr->GetId());
@@ -317,8 +303,6 @@ void Player::Send_Dir(const Critter* from_cr)
 void Player::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto is_chosen = from_cr == GetControlledCritter();
 
@@ -376,8 +360,6 @@ void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, C
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto is_chosen = from_cr == GetControlledCritter();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAnimate);
@@ -398,8 +380,6 @@ void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critte
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::CritterSetAnims);
 
     out_buf->Write(from_cr->GetId());
@@ -412,8 +392,6 @@ void Player::Send_AddItemOnMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::AddItemOnMap);
 
     out_buf->Write(item->GetHex());
@@ -424,8 +402,6 @@ void Player::Send_RemoveItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveItemFromMap);
 
     out_buf->Write(item->GetId());
@@ -434,8 +410,6 @@ void Player::Send_RemoveItemFromMap(const Item* item)
 void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::AnimateItem);
 
@@ -449,8 +423,6 @@ void Player::Send_ChosenAddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenAddItem);
 
     SendItem(*out_buf, item, true, true, true);
@@ -459,8 +431,6 @@ void Player::Send_ChosenAddItem(const Item* item)
 void Player::Send_ChosenRemoveItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenRemoveItem);
 
@@ -471,8 +441,6 @@ void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::CritterTeleport);
 
     out_buf->Write(cr->GetId());
@@ -482,8 +450,6 @@ void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 void Player::Send_Talk()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_controlledCr);
 
@@ -528,171 +494,24 @@ void Player::Send_TimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
 
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
 
-void Player::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)
+void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text)
 {
     STACK_TRACE_ENTRY();
 
-    if (text.empty()) {
-        return;
-    }
+    auto out_buf = _connection->WriteMsg(NetMessage::InfoMessage);
 
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
-
-    auto out_buf = _connection->WriteMsg(NetMessage::Text);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text);
-    out_buf->Write(false);
-}
-
-void Player::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::Text);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text);
-    out_buf->Write(unsafe_text);
-}
-
-void Player::Send_TextMsg(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (str_num == 0) {
-        return;
-    }
-
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
-
-    auto out_buf = _connection->WriteMsg(NetMessage::TextMsg);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-}
-
-void Player::Send_TextMsg(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (str_num == 0) {
-        return;
-    }
-
-    auto out_buf = _connection->WriteMsg(NetMessage::TextMsg);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-}
-
-void Player::Send_TextMsgLex(const Critter* from_cr, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (str_num == 0) {
-        return;
-    }
-
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
-
-    auto out_buf = _connection->WriteMsg(NetMessage::TextMsgLex);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-    out_buf->Write(lexems);
-}
-
-void Player::Send_TextMsgLex(ident_t from_id, uint8 how_say, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (str_num == 0) {
-        return;
-    }
-
-    auto out_buf = _connection->WriteMsg(NetMessage::TextMsgLex);
-
-    out_buf->Write(from_id);
-    out_buf->Write(how_say);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-    out_buf->Write(lexems);
-}
-
-void Player::Send_MapText(mpos hex, ucolor color, string_view text, bool unsafe_text)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::MapText);
-
-    out_buf->Write(hex);
-    out_buf->Write(color);
-    out_buf->Write(text);
-    out_buf->Write(unsafe_text);
-}
-
-void Player::Send_MapTextMsg(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::MapTextMsg);
-
-    out_buf->Write(hex);
-    out_buf->Write(color);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-}
-
-void Player::Send_MapTextMsgLex(mpos hex, ucolor color, TextPackName text_pack, TextPackKey str_num, string_view lexems)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::MapTextMsgLex);
-
-    out_buf->Write(hex);
-    out_buf->Write(color);
-    out_buf->Write(text_pack);
-    out_buf->Write(str_num);
-    out_buf->Write(lexems);
+    out_buf->Write(info_message);
+    out_buf->Write(extra_text);
 }
 
 void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::Effect);
 
@@ -704,8 +523,6 @@ void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::FlyEffect);
 
@@ -720,8 +537,6 @@ void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     auto out_buf = _connection->WriteMsg(NetMessage::PlaySound);
 
     out_buf->Write(cr_id_synchronize);
@@ -731,8 +546,6 @@ void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 void Player::Send_ViewMap()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_controlledCr);
 
@@ -747,16 +560,12 @@ void Player::Send_PlaceToGameComplete()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _connection->WriteMsg(NetMessage::PlaceToGameComplete);
 }
 
 void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
 
@@ -771,8 +580,6 @@ void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_in
 void Player::Send_Attachments(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
 
@@ -789,8 +596,6 @@ void Player::Send_Attachments(const Critter* from_cr)
 void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
@@ -818,8 +623,6 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
 void Player::Send_RemoveCustomEntity(ident_t id)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCustomEntity);
 

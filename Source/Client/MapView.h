@@ -169,6 +169,7 @@ public:
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
+    [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize;
 
     void EnableMapperMode();
     void LoadFromFile(string_view map_name, const string& str);
@@ -176,10 +177,6 @@ public:
     void Process();
 
     void DrawMap();
-    void DrawMapTexts();
-
-    void AddMapText(string_view str, mpos hex, ucolor color, timespan show_time, bool fade, ipos offset);
-    auto GetRectForText(mpos hex) -> IRect;
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> bool;
@@ -277,18 +274,6 @@ public:
     AutoScrollInfo AutoScroll {};
 
 private:
-    struct MapText
-    {
-        mpos Hex {};
-        nanotime StartTime {};
-        timespan Duration {};
-        string Text {};
-        ucolor Color {};
-        bool Fade {};
-        IRect Pos {};
-        IRect EndPos {};
-    };
-
     [[nodiscard]] auto IsVisible(const Sprite* spr, ipos offset) const -> bool;
     [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto ScrollCheckPos(int (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
@@ -345,8 +330,6 @@ private:
     vector<ItemHexView*> _nonTileItems {};
     vector<ItemHexView*> _processingItems {};
     unordered_map<ident_t, ItemHexView*> _itemsMap {};
-
-    vector<MapText> _mapTexts {};
 
     unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<int16> _findPathGrid {};

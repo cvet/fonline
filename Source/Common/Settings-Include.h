@@ -78,8 +78,6 @@ FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
 FIXED_SETTING(uint, DlgTalkMaxTime, 0);
 FIXED_SETTING(uint, DlgBarterMaxTime, 0);
-FIXED_SETTING(uint, WhisperDist, 2);
-FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
 SETTING_GROUP_END();
@@ -300,7 +298,6 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
-FIXED_SETTING(uint, TextDelay, 3000);
 FIXED_SETTING(uint, UpdaterInfoDelay, 1000);
 FIXED_SETTING(int, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
 FIXED_SETTING(string, DefaultSplash, "");
