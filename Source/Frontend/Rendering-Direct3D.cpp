@@ -256,6 +256,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         constexpr auto feature_levels_count = static_cast<UINT>(std::size(feature_levels));
 
         UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
+
         if (RenderDebug) {
             device_flags |= D3D11_CREATE_DEVICE_DEBUG;
         }
@@ -292,6 +293,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         if (FAILED(d3d_create_factory)) {
             throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
         }
+
+        auto factory_release = ScopeCallback([&factory]() noexcept { factory->Release(); });
 
         DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
         swap_chain_desc.BufferCount = 2;
@@ -360,6 +363,11 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
                     WriteLog("Direct3D swap chain created with one buffer count");
                 }
             }
+        }
+
+        // Disable Alt+Enter
+        if (IDXGIFactory* factory2; SUCCEEDED(SwapChain->GetParent(IID_IDXGIFactory, reinterpret_cast<void**>(&factory2)))) {
+            factory2->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
         }
     }
 
