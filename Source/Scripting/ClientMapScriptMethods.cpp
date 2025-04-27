@@ -623,22 +623,17 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float targetZoom)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& screenPos)
+FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& screenPos)
 {
-    screenPos.x = 0;
-    screenPos.y = 0;
-
-    if (self->GetSize().IsValidPos(hex)) {
-        screenPos = self->GetHexCurrentPosition(hex);
-        screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
-        screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
-        screenPos.x = static_cast<int>(static_cast<float>(screenPos.x) / self->GetSpritesZoom());
-        screenPos.y = static_cast<int>(static_cast<float>(screenPos.y) / self->GetSpritesZoom());
-
-        return true;
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex provided");
     }
 
-    return false;
+    screenPos = self->GetHexCurrentPosition(hex);
+    screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
+    screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
+    screenPos.x = static_cast<int>(static_cast<float>(screenPos.x) / self->GetSpritesZoom());
+    screenPos.y = static_cast<int>(static_cast<float>(screenPos.y) / self->GetSpritesZoom());
 }
 
 ///@ ExportMethod
