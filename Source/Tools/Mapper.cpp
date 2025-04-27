@@ -2580,6 +2580,7 @@ void FOMapper::CurDraw()
             }
 
             const auto* spr = GetIfaceSpr(proto_item->GetPicMap());
+
             if (spr != nullptr) {
                 auto x = _curMap->GetField(hex).Offset.x - (spr->Size.width / 2) + spr->Offset.x + (Settings.MapHexWidth / 2) + Settings.ScreenOffset.x + proto_item->GetOffset().x;
                 auto y = _curMap->GetField(hex).Offset.y - spr->Size.height + spr->Offset.y + (Settings.MapHexHeight / 2) + Settings.ScreenOffset.y + proto_item->GetOffset().y;
