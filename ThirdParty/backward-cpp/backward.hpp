@@ -4204,6 +4204,9 @@ public:
   bool loaded() const { return _loaded; }
 
   static void handleSignal(int, siginfo_t *info, void *_ctx) {
+    extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
+    SetCrashStackTrace(); // (FOnline Patch)
+
     ucontext_t *uctx = static_cast<ucontext_t *>(_ctx);
 
     StackTrace st;
