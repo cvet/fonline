@@ -46,7 +46,7 @@
 
 struct ClientAppData
 {
-    unique_ptr<FOClient> Client {};
+    unique_release_ptr<FOClient> Client {};
     bool ResourcesSynced {};
     unique_ptr<Updater> ResourceUpdater {};
 };
@@ -91,7 +91,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = SafeAlloc::MakeUnique<FOClient>(App->Settings, &App->MainWindow, false);
+                Data->Client = SafeAlloc::MakeUniqueReleasable<FOClient>(App->Settings, &App->MainWindow, false);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

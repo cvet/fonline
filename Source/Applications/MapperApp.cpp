@@ -45,7 +45,7 @@
 
 struct MapperAppData
 {
-    unique_ptr<FOMapper> Mapper {};
+    unique_release_ptr<FOMapper> Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
 
@@ -65,7 +65,7 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                Data->Mapper = SafeAlloc::MakeUnique<FOMapper>(App->Settings, &App->MainWindow);
+                Data->Mapper = SafeAlloc::MakeUniqueReleasable<FOMapper>(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

@@ -213,13 +213,19 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& 
     index = -1;
 
     for (auto i = 0, j = static_cast<int>(mapper->LoadedMaps.size()); i < j; i++) {
-        const auto* map = mapper->LoadedMaps[i];
-        if (map == mapper->GetCurMap()) {
+        const auto& map = mapper->LoadedMaps[i];
+        if (map.get() == mapper->GetCurMap()) {
             index = i;
         }
     }
 
-    return mapper->LoadedMaps;
+    vector<MapView*> result;
+
+    for (auto& map : mapper->LoadedMaps) {
+        result.emplace_back(map.get());
+    }
+
+    return result;
 }
 
 ///@ ExportMethod

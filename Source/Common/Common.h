@@ -365,13 +365,12 @@ struct HASHNS::hash<raw_ptr<T>>
 template<typename T>
 class propagate_const
 {
-    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
-
     template<typename U>
     friend class propagate_const;
 
 public:
     using element_type = typename T::element_type;
+    static_assert(std::is_class_v<element_type> || std::is_arithmetic_v<element_type>);
 
     FORCE_INLINE constexpr propagate_const() noexcept :
         _smartPtr(nullptr)
@@ -473,6 +472,9 @@ public:
     [[nodiscard]] FORCE_INLINE auto operator==(const propagate_const& other) const noexcept -> bool { return _smartPtr == other._smartPtr; }
     [[nodiscard]] FORCE_INLINE auto operator!=(const propagate_const& other) const noexcept -> bool { return _smartPtr != other._smartPtr; }
     [[nodiscard]] FORCE_INLINE auto operator<(const propagate_const& other) const noexcept -> bool { return _smartPtr < other._smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const element_type* other) const noexcept -> bool { return _smartPtr.get() == other; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const element_type* other) const noexcept -> bool { return _smartPtr.get() != other; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const element_type* other) const noexcept -> bool { return _smartPtr.get() < other; }
     [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> element_type* { return _smartPtr.get(); }
     [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const element_type* { return _smartPtr.get(); }
     [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> element_type& { return *_smartPtr.get(); }
@@ -523,6 +525,52 @@ struct HASHNS::hash<propagate_const<T>>
     using is_avalanching = void;
     auto operator()(const propagate_const<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
+
+// Template helpers
+#define TEMPLATE_HAS_MEMBER(name, member) \
+    template<typename T> \
+    class name \
+    { \
+        using one = char; \
+        struct two \
+        { \
+            char x[2]; \
+        }; \
+        template<typename C> \
+        static auto test(decltype(&C::member)) -> one; \
+        template<typename C> \
+        static auto test(...) -> two; \
+\
+    public: \
+        enum \
+        { \
+            value = sizeof(test<T>(0)) == sizeof(char) \
+        }; \
+    };
+
+TEMPLATE_HAS_MEMBER(has_size, size);
+TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
+TEMPLATE_HAS_MEMBER(has_add_ref, AddRef);
+TEMPLATE_HAS_MEMBER(has_release, Release);
+
+#undef TEMPLATE_HAS_MEMBER
+
+template<typename Test, template<typename...> typename Ref>
+struct is_specialization : std::false_type
+{
+};
+
+template<template<typename...> typename Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+
+template<typename T>
+static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value /*small_vector test*/;
+template<typename T>
+static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
+template<typename T>
+static constexpr bool is_releasable = has_add_ref<T>::value && has_release<T>::value;
 
 // Safe memory allocation
 extern void InitBackupMemoryChunks();
@@ -621,18 +669,22 @@ public:
     template<typename T, typename... Args>
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
+        static_assert(!is_releasable<T>);
         return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
     static auto MakeUniqueReleasable(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_release_ptr<T>
     {
+        static_assert(is_releasable<T>);
         return unique_release_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
+        static_assert(!is_releasable<T>);
+
         try {
             return std::make_shared<T>(std::forward<Args>(args)...);
         }
@@ -1215,48 +1267,6 @@ using quaternion = aiQuaterniont<float>;
 using dquaternion = aiQuaterniont<double>;
 using color4 = aiColor4t<float>;
 using dcolor4 = aiColor4t<double>;
-
-// Template helpers
-#define TEMPLATE_HAS_MEMBER(name, member) \
-    template<typename T> \
-    class name \
-    { \
-        using one = char; \
-        struct two \
-        { \
-            char x[2]; \
-        }; \
-        template<typename C> \
-        static auto test(decltype(&C::member)) -> one; \
-        template<typename C> \
-        static auto test(...) -> two; \
-\
-    public: \
-        enum \
-        { \
-            value = sizeof(test<T>(0)) == sizeof(char) \
-        }; \
-    };
-
-TEMPLATE_HAS_MEMBER(has_size, size);
-TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
-
-#undef TEMPLATE_HAS_MEMBER
-
-template<typename Test, template<typename...> typename Ref>
-struct is_specialization : std::false_type
-{
-};
-
-template<template<typename...> typename Ref, typename... Args>
-struct is_specialization<Ref<Args...>, Ref> : std::true_type
-{
-};
-
-template<typename T>
-static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value /*small_vector test*/;
-template<typename T>
-static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
 
 // Atomic formatter
 template<typename T>
