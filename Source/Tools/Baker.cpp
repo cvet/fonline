@@ -409,7 +409,7 @@ void Baker::BakeAll()
 #endif
 
         // Validation engine
-        auto validation_engine = SafeAlloc::MakeUnique<BakerServerCompilerValidation>(PropertiesRelationType::ServerRelative);
+        auto validation_engine = SafeAlloc::MakeUniqueReleasable<BakerServerCompilerValidation>(PropertiesRelationType::ServerRelative);
         const ScriptSystem& script_sys = *validation_engine->ScriptSys;
 
         try {

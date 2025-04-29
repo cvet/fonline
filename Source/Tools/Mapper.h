@@ -228,7 +228,7 @@ public:
     ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     FileSystem ContentFileSys {};
-    vector<MapView*> LoadedMaps {};
+    vector<unique_release_ptr<MapView>> LoadedMaps {};
     unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
     bool PressedKeys[0x100] {};

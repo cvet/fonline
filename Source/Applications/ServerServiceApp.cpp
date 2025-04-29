@@ -44,7 +44,7 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    unique_ptr<FOServer> Server {};
+    unique_release_ptr<FOServer> Server {};
     std::thread ServerThread {};
     uint LastState {};
     uint CheckPoint {};
@@ -65,7 +65,7 @@ static void ServerEntry()
     STACK_TRACE_ENTRY();
 
     try {
-        Data->Server = SafeAlloc::MakeUnique<FOServer>(App->Settings);
+        Data->Server = SafeAlloc::MakeUniqueReleasable<FOServer>(App->Settings);
 
         App->WaitForRequestedQuit();
 

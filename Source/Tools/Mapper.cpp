@@ -874,12 +874,14 @@ void FOMapper::IntDraw()
         for (; i < j; i++, x += w) {
             const auto* proto_item = (*CurItemProtos)[i];
             auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
+
             if (const auto* spr = GetIfaceSpr(proto_item->GetPicMap()); spr != nullptr) {
                 SprMngr.DrawSpriteSize(spr, {x, y}, {w, h / 2}, false, true, col);
             }
 
             if (proto_item->GetPicInv()) {
                 const auto* spr = GetIfaceSpr(proto_item->GetPicInv());
+
                 if (spr != nullptr) {
                     SprMngr.DrawSpriteSize(spr, {x, y + h / 2}, {w, h / 2}, false, true, col);
                 }
@@ -897,6 +899,7 @@ void FOMapper::IntDraw()
     else if (IsCritMode()) {
         uint i = *CurProtoScroll;
         auto j = i + ProtosOnScreen;
+
         if (j > CurNpcProtos->size()) {
             j = static_cast<uint>(CurNpcProtos->size());
         }
@@ -912,6 +915,7 @@ void FOMapper::IntDraw()
             }
 
             auto col = COLOR_SPRITE;
+
             if (i == GetTabIndex()) {
                 col = COLOR_SPRITE_RED;
             }
@@ -931,6 +935,7 @@ void FOMapper::IntDraw()
 
         uint i = InContScroll;
         auto j = i + ProtosOnScreen;
+
         if (j > inner_items.size()) {
             j = static_cast<uint>(inner_items.size());
         }
@@ -940,11 +945,13 @@ void FOMapper::IntDraw()
             RUNTIME_ASSERT(inner_item);
 
             auto* spr = GetIfaceSpr(inner_item->GetPicInv());
+
             if (spr == nullptr) {
                 continue;
             }
 
             auto col = COLOR_SPRITE;
+
             if (inner_item == InContItem) {
                 col = COLOR_SPRITE_RED;
             }
@@ -963,7 +970,7 @@ void FOMapper::IntDraw()
         auto j = static_cast<int>(LoadedMaps.size());
 
         for (; i < j; i++, x += w) {
-            auto* map = LoadedMaps[i];
+            auto* map = LoadedMaps[i].get();
             SprMngr.DrawText(irect(x, y, w, h), strex(" '{}'", map->GetName()), 0, map == _curMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
@@ -981,8 +988,10 @@ void FOMapper::IntDraw()
         auto posy = SubTabsRect.Height() - line_height - 2;
         auto i = 0;
         auto& stabs = Tabs[SubTabsActiveTab];
+
         for (auto&& [fst, snd] : stabs) {
             i++;
+
             if (i - 1 < TabsScroll[SubTabsActiveTab]) {
                 continue;
             }
@@ -992,18 +1001,22 @@ void FOMapper::IntDraw()
 
             auto color = (TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT);
             auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + Settings.ScreenWidth, SubTabsRect.Top + SubTabsY + posy + line_height - 1);
+
             if (IsCurInRect(r)) {
                 color = COLOR_TEXT_DWHITE;
             }
 
             auto count = static_cast<uint>(stab.NpcProtos.size());
-            if (count == 0u) {
+
+            if (count == 0) {
                 count = static_cast<uint>(stab.ItemProtos.size());
             }
+
             name += strex(" ({})", count);
             DrawStr(r, name, 0, color, FONT_DEFAULT);
 
             posy -= line_height;
+
             if (posy < 0) {
                 break;
             }
@@ -1497,8 +1510,8 @@ void FOMapper::IntLMouseDown()
         else if (IntMode == INT_MODE_LIST) {
             ind += ListScroll;
 
-            if (ind < static_cast<int>(LoadedMaps.size()) && _curMap != LoadedMaps[ind]) {
-                ShowMap(LoadedMaps[ind]);
+            if (ind < static_cast<int>(LoadedMaps.size()) && _curMap != LoadedMaps[ind].get()) {
+                ShowMap(LoadedMaps[ind].get());
             }
         }
     }
@@ -2002,6 +2015,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
     STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
     }
@@ -2023,6 +2037,7 @@ void FOMapper::SelectClear()
         if (const auto* tile = dynamic_cast<ItemHexView*>(entity); tile != nullptr && tile->GetIsTile()) {
             for (auto* sibling_tile : copy(_curMap->GetTiles(tile->GetHex(), tile->GetIsRoofTile()))) {
                 const auto is_sibling_selected = std::find(SelectedEntities.begin(), SelectedEntities.end(), sibling_tile) != SelectedEntities.end();
+
                 if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
                     _curMap->DestroyItem(sibling_tile);
                 }
@@ -2073,6 +2088,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
     STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+
     if (it == SelectedEntities.end()) {
         SelectedEntities.push_back(entity);
 
@@ -2087,6 +2103,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
     STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
 
@@ -2969,14 +2986,14 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayColorTime(arr);
             pmap->SetDayColor(arr2);
 
-            auto* map = SafeAlloc::MakeRaw<MapView>(this, ident_t {}, pmap);
+            auto map = SafeAlloc::MakeUniqueReleasable<MapView>(this, ident_t {}, pmap);
 
             map->EnableMapperMode();
             map->FindSetCenter({MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2});
 
-            LoadedMaps.push_back(map);
+            LoadedMaps.emplace_back(std::move(map));
 
-            ShowMap(map);
+            ShowMap(LoadedMaps.back().get());
 
             AddMess("Create map success");
         }
@@ -2991,7 +3008,7 @@ void FOMapper::ParseCommand(string_view command)
             UnloadMap(_curMap);
 
             if (!LoadedMaps.empty()) {
-                ShowMap(LoadedMaps.front());
+                ShowMap(LoadedMaps.front().get());
             }
         }
         else if (command_ext == "size" && (_curMap != nullptr)) {
@@ -3004,6 +3021,7 @@ void FOMapper::ParseCommand(string_view command)
 
             int maxhx = 0;
             int maxhy = 0;
+
             if (!(icommand >> maxhx >> maxhy)) {
                 AddMess("Invalid args");
                 return;
@@ -3038,8 +3056,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
-    auto new_map_holder = SafeAlloc::MakeUnique<MapView>(this, ident_t {}, pmap);
-    auto* new_map = new_map_holder.get();
+    auto new_map = SafeAlloc::MakeUniqueReleasable<MapView>(this, ident_t {}, pmap);
 
     new_map->EnableMapperMode();
 
@@ -3053,11 +3070,11 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
     new_map->FindSetCenter(new_map->GetWorkHex());
 
-    OnEditMapLoad.Fire(new_map);
+    OnEditMapLoad.Fire(new_map.get());
 
-    LoadedMaps.push_back(new_map);
+    LoadedMaps.emplace_back(std::move(new_map));
 
-    return new_map_holder.release();
+    return LoadedMaps.back().get();
 }
 
 void FOMapper::ShowMap(MapView* map)
@@ -3090,6 +3107,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     RUNTIME_ASSERT(it != LoadedMaps.end());
 
     const auto map_errors = map->ValidateForSave();
+
     if (!map_errors.empty()) {
         for (const auto& error : map_errors) {
             AddMess(error);
@@ -3142,10 +3160,9 @@ void FOMapper::UnloadMap(MapView* map)
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     RUNTIME_ASSERT(it != LoadedMaps.end());
-    LoadedMaps.erase(it);
 
     map->MarkAsDestroyed();
-    map->Release();
+    LoadedMaps.erase(it);
 }
 
 void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
