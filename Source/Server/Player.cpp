@@ -662,7 +662,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
         return;
     }
 
-    const auto& entries_entities = holder->GetRawInnerEntities();
+    const auto& entries_entities = holder->GetInnerEntities();
 
     out_buf.Write(static_cast<uint16>(entries_entities.size()));
 
@@ -678,8 +678,8 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 
         out_buf.Write(static_cast<uint>(entities.size()));
 
-        for (const auto* entity : entities) {
-            const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity);
+        for (const auto& entity : entities) {
+            const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity.get());
             RUNTIME_ASSERT(custom_entity);
 
             vector<const uint8*>* data = nullptr;
@@ -698,7 +698,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 
             out_buf.WritePropsData(data, data_sizes);
 
-            SendInnerEntities(out_buf, entity, owned);
+            SendInnerEntities(out_buf, entity.get(), owned);
         }
     }
 }

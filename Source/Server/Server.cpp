@@ -536,17 +536,17 @@ FOServer::FOServer(GlobalSettings& settings) :
                     while (!_newConnections.empty()) {
                         auto conn = std::move(_newConnections.back());
                         _newConnections.pop_back();
-                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn)));
+                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn)));
                     }
                 }
             }
 
-            for (auto* player : copy_hold_ref(_unloginedPlayers)) {
+            for (auto& player : copy_hold_ref(_unloginedPlayers)) {
                 auto* connection = player->GetConnection();
 
                 try {
                     ProcessConnection(connection);
-                    ProcessUnloginedPlayer(player);
+                    ProcessUnloginedPlayer(player.get());
                 }
                 catch (const UnknownMessageException&) {
                     WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -739,9 +739,6 @@ FOServer::~FOServer()
 
         // Logging clients
         SetLogCallback("LogToClients", nullptr);
-        for (const auto* cl : _logClients) {
-            cl->Release();
-        }
         _logClients.clear();
 
         // Logined players
@@ -750,10 +747,9 @@ FOServer::~FOServer()
         }
 
         // Unlogined players
-        for (auto* player : _unloginedPlayers) {
+        for (auto& player : _unloginedPlayers) {
             player->GetConnection()->HardDisconnect();
             player->MarkAsDestroyed();
-            player->Release();
         }
         _unloginedPlayers.clear();
 
@@ -986,7 +982,6 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
         unlogined_player->MarkAsDestroyed();
-        unlogined_player->Release();
         return;
     }
 
@@ -1059,9 +1054,8 @@ void FOServer::ProcessPlayer(Player* player)
             cr->DetachPlayer();
         }
 
+        player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
-
-        player->Release();
         return;
     }
 
@@ -1538,21 +1532,16 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
             logcb("Detached");
-            player->Release();
             _logClients.erase(it);
         }
         else if (flags[0] == '+' && flags[1] == '\0' && it == _logClients.end()) // Attach current
         {
             logcb("Attached");
-            player->AddRef();
-            _logClients.push_back(player);
+            _logClients.emplace_back(player);
         }
         else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
         {
             logcb("Detached all");
-            for (auto* acc : _logClients) {
-                acc->Release();
-            }
             _logClients.clear();
         }
 
@@ -1591,12 +1580,11 @@ void FOServer::DispatchLogToClients()
 
     for (const auto& str : _logLines) {
         for (auto it = _logClients.begin(); it < _logClients.end();) {
-            if (auto* player = *it; !player->IsDestroyed()) {
+            if (auto& player = *it; !player->IsDestroyed()) {
                 player->Send_InfoMessage(EngineInfoMessage::ServerLog, str);
                 ++it;
             }
             else {
-                player->Release();
                 it = _logClients.erase(it);
             }
         }
@@ -1631,25 +1619,25 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
     WriteLog(LogType::Info, "Create critter {}", pid);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
-    auto* cr = SafeAlloc::MakeRaw<Critter>(this, ident_t {}, proto);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto);
 
-    EntityMngr.RegisterCritter(cr);
+    EntityMngr.RegisterCritter(cr.get());
 
     if (for_player) {
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
+    MapMngr.AddCritterToMap(cr.get(), nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
-        EntityMngr.CallInit(cr, true);
+        EntityMngr.CallInit(cr.get(), true);
     }
 
     if (cr->IsDestroyed()) {
         throw GenericException("Critter destroyed during init");
     }
 
-    return cr;
+    return cr.get();
 }
 
 auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
@@ -1671,9 +1659,8 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         if (cr != nullptr) {
             cr->MarkAsDestroying();
             UnloadCritterInnerEntities(cr);
-            EntityMngr.UnregisterCritter(cr);
             cr->MarkAsDestroyed();
-            cr->Release();
+            EntityMngr.UnregisterCritter(cr);
         }
 
         throw GenericException("Critter data base loading error");
@@ -1742,9 +1729,8 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     UnloadCritterInnerEntities(cr);
-    EntityMngr.UnregisterCritter(cr);
     cr->MarkAsDestroyed();
-    cr->Release();
+    EntityMngr.UnregisterCritter(cr);
 }
 
 void FOServer::UnloadCritterInnerEntities(Critter* cr)
@@ -1754,18 +1740,17 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
     std::function<void(Entity*)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](Entity* holder) {
-        for (auto&& [entry, entities] : holder->GetRawInnerEntities()) {
-            for (auto* entity : entities) {
+        for (auto&& [entry, entities] : holder->GetInnerEntities()) {
+            for (auto& entity : entities) {
                 if (entity->HasInnerEntities()) {
-                    unload_inner_entities(entity);
+                    unload_inner_entities(entity.get());
                 }
 
-                auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
+                auto* custom_entity = dynamic_cast<CustomEntity*>(entity.get());
                 RUNTIME_ASSERT(custom_entity);
 
                 EntityMngr.UnregisterCustomEntity(custom_entity, false);
                 custom_entity->MarkAsDestroyed();
-                custom_entity->Release();
             }
         }
 
@@ -1795,7 +1780,6 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 
         EntityMngr.UnregisterItem(item, false);
         item->MarkAsDestroyed();
-        item->Release();
     };
 
     auto& inv_items = cr->GetRawInvItems();
@@ -2325,7 +2309,6 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         unlogined_player->GetConnection()->HardDisconnect();
         unlogined_player->MarkAsDestroyed();
-        unlogined_player->Release();
 
         WriteLog("Reconnected player {}", name);
     }
@@ -2977,7 +2960,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
 
-        for (auto* map : loc->GetMaps()) {
+        for (auto& map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
         }
     }

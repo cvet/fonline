@@ -284,13 +284,13 @@ private:
     map<uint, nanotime> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
-    vector<Player*> _logClients {};
+    vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<shared_ptr<NetworkServerConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
-    vector<Player*> _unloginedPlayers {};
+    vector<refcount_ptr<Player>> _unloginedPlayers {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

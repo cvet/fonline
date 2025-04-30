@@ -52,10 +52,6 @@ Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const 
 Critter::~Critter()
 {
     STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Release();
-    }
 }
 
 auto Critter::GetOfflineTime() const -> timespan
@@ -129,7 +125,6 @@ void Critter::AttachPlayer(Player* player)
     RUNTIME_ASSERT(!_player);
 
     _player = player;
-    _player->AddRef();
 
     _player->SetControlledCritterId(GetId());
     _player->SetLastControlledCritterId(GetId());
@@ -147,9 +142,7 @@ void Critter::DetachPlayer()
     _player->SetControlledCritterId({});
     _player->SetControlledCritter(nullptr);
 
-    _player->Release();
     _player = nullptr;
-
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 

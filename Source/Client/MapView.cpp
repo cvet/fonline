@@ -139,10 +139,10 @@ void MapView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* cr : _critters) {
+    for (auto& cr : _critters) {
         cr->DestroySelf();
     }
-    for (auto* item : _allItems) {
+    for (auto& item : _allItems) {
         item->DestroySelf();
     }
 
@@ -199,13 +199,13 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
 
-            auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, id, proto, &props);
+            auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto, &props);
 
             if (const auto hex = cr->GetHex(); !_mapSize.IsValidPos(hex)) {
                 cr->SetHex(_mapSize.ClampPos(hex));
             }
 
-            AddCritterInternal(cr);
+            AddCritterInternal(cr.get());
         },
         [this, &max_id](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
@@ -216,14 +216,14 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
 
-            auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, id, proto, &props);
+            auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto, &props);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
                 if (const auto hex = item->GetHex(); !_mapSize.IsValidPos(hex)) {
                     item->SetHex(_mapSize.ClampPos(hex));
                 }
 
-                AddItemInternal(item);
+                AddItemInternal(item.get());
             }
             else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
                 auto* cr = GetCritter(item->GetCritterId());
@@ -232,7 +232,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     throw GenericException("Critter {} not found", item->GetCritterId());
                 }
 
-                cr->AddRawInvItem(item);
+                cr->AddRawInvItem(item.get());
             }
             else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
                 auto* cont = GetItem(item->GetContainerId());
@@ -241,7 +241,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     throw GenericException("Container {} not found", item->GetContainerId());
                 }
 
-                cont->AddRawInnerItem(item);
+                cont->AddRawInnerItem(item.get());
             }
             else {
                 UNREACHABLE_PLACE();
@@ -307,11 +307,11 @@ void MapView::LoadStaticData()
             reader.ReadPtr<uint8>(props_data.data(), props_data_size);
             item_props.RestoreAllData(props_data);
 
-            auto* static_item = SafeAlloc::MakeRaw<ItemHexView>(this, static_id, item_proto, &item_props);
+            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto, &item_props);
 
             static_item->SetStatic(true);
 
-            AddItemInternal(static_item);
+            AddItemInternal(static_item.get());
         }
     }
 
@@ -390,17 +390,17 @@ void MapView::Process()
     {
         vector<CritterHexView*> critter_to_delete;
 
-        for (auto* cr : _critters) {
+        for (auto& cr : _critters) {
             cr->Process();
 
             if (cr->IsNeedReset()) {
-                RemoveCritterFromField(cr);
-                AddCritterToField(cr);
+                RemoveCritterFromField(cr.get());
+                AddCritterToField(cr.get());
                 cr->ResetOk();
             }
 
             if (cr->IsFinishing() && cr->IsFinished()) {
-                critter_to_delete.emplace_back(cr);
+                critter_to_delete.emplace_back(cr.get());
             }
         }
 
@@ -536,7 +536,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, id, proto);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
     item->SetHex(hex);
@@ -545,7 +545,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
         RebuildFog();
     }
 
-    return AddItemInternal(item);
+    return AddItemInternal(item.get());
 }
 
 auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> ItemHexView*
@@ -556,11 +556,11 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GenTempEntityId(), proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
-    return AddItemInternal(item);
+    return AddItemInternal(item.get());
 }
 
 auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) -> ItemHexView*
@@ -571,14 +571,14 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<ItemHexView>(this, GenTempEntityId(), proto);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
     item->SetIsRoofTile(is_roof);
     item->SetTileLayer(layer);
 
-    return AddItemInternal(item);
+    return AddItemInternal(item.get());
 }
 
 auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
@@ -755,13 +755,6 @@ auto MapView::GetItem(ident_t id) -> ItemHexView*
     return nullptr;
 }
 
-auto MapView::GetItems() -> const vector<ItemHexView*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allItems;
-}
-
 auto MapView::GetItems(mpos hex) -> const vector<ItemHexView*>&
 {
     STACK_TRACE_ENTRY();
@@ -859,12 +852,12 @@ void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
     RUNTIME_ASSERT(_mapSize.IsValidPos(to_hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
-    auto* effect_item = SafeAlloc::MakeRaw<ItemHexView>(this, ident_t {}, proto);
+    auto effect_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
 
     effect_item->SetHex(from_hex);
     effect_item->SetEffect(to_hex);
 
-    AddItemInternal(effect_item);
+    AddItemInternal(effect_item.get());
 }
 
 auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
@@ -880,7 +873,7 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     spr->Prewarm();
     spr->PlayDefault();
 
-    auto pattern = SafeAlloc::MakeUniqueReleasable<SpritePattern>();
+    auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
 
     pattern->SprName = name;
     pattern->SprCount = count;
@@ -962,8 +955,6 @@ void MapView::DrawCursor(const Sprite* spr)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (_engine->Settings.HideCursor || !_engine->Settings.ShowMoveCursor) {
         return;
     }
@@ -980,8 +971,6 @@ void MapView::DrawCursor(const Sprite* spr)
 void MapView::DrawCursor(string_view text)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (_engine->Settings.HideCursor || !_engine->Settings.ShowMoveCursor) {
         return;
@@ -1519,7 +1508,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
     }
 
     // Critters text rect
-    for (auto* cr : _critters) {
+    for (auto& cr : _critters) {
         cr->RefreshOffs();
     }
 
@@ -1646,7 +1635,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     bool light_added = false;
 
-    for (const auto* item : cr->GetConstInvItems()) {
+    for (const auto& item : cr->GetInvItems()) {
         if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
             UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOffset);
             light_added = true;
@@ -2327,8 +2316,6 @@ void MapView::RecacheHexFlags(Field& field)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     field.Flags.HasWall = false;
     field.Flags.HasTransparentWall = false;
     field.Flags.HasScenery = false;
@@ -2833,8 +2820,8 @@ void MapView::PrepareFogToDraw()
 
         CritterHexView* chosen;
 
-        if (const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
-            chosen = *it;
+        if (const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto&& cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
+            chosen = it->get();
         }
         else {
             chosen = nullptr;
@@ -3398,8 +3385,6 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (!field.Critters.empty()) {
@@ -3429,13 +3414,13 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, id, proto);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
     cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
 
-    return AddCritterInternal(cr);
+    return AddCritterInternal(cr.get());
 }
 
 auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props) -> CritterHexView*
@@ -3446,12 +3431,12 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto* cr = SafeAlloc::MakeRaw<CritterHexView>(this, GenTempEntityId(), proto, props);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);
 
-    return AddCritterInternal(cr);
+    return AddCritterInternal(cr.get());
 }
 
 auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
@@ -3496,13 +3481,6 @@ void MapView::DestroyCritter(CritterHexView* cr)
     CleanLightSourceOffsets(cr->GetId());
 
     cr->DestroySelf();
-}
-
-auto MapView::GetCritters() -> const vector<CritterHexView*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _critters;
 }
 
 auto MapView::GetCritters(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>
@@ -3572,7 +3550,7 @@ void MapView::SetCrittersContour(ContourType contour)
 
     _crittersContour = contour;
 
-    for (auto* cr : _critters) {
+    for (auto& cr : _critters) {
         if (!cr->GetIsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
             cr->GetSprite()->SetContour(contour);
         }
@@ -3770,15 +3748,13 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int e
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!_engine->Settings.ShowCrit) {
         return nullptr;
     }
 
     vector<CritterHexView*> critters;
 
-    for (auto* cr : _critters) {
+    for (auto& cr : _critters) {
         if (!cr->IsSpriteVisible() || cr->IsFinishing()) {
             continue;
         }
@@ -3799,11 +3775,11 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int e
                 const auto t_draw = iround(static_cast<float>(rect_draw.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom());
 
                 if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - l_draw, pos.y - t_draw}, true)) {
-                    critters.emplace_back(cr);
+                    critters.emplace_back(cr.get());
                 }
             }
             else {
-                critters.emplace_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
@@ -3815,7 +3791,7 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int e
     if (critters.size() > 1) {
         std::sort(critters.begin(), critters.end(), [](auto* cr1, auto* cr2) { return cr1->GetSprite()->TreeIndex > cr2->GetSprite()->TreeIndex; });
     }
-    return critters[0];
+    return critters.front();
 }
 
 auto MapView::GetEntityAtScreenPos(ipos pos, int extra_range, bool check_transparent) -> ClientEntity*
@@ -4640,12 +4616,12 @@ auto MapView::ValidateForSave() const -> vector<string>
 
     unordered_set<const CritterHexView*> cr_reported;
 
-    for (const auto* cr : _critters) {
-        for (const auto* cr2 : _critters) {
-            if (cr != cr2 && cr->GetHex() == cr2->GetHex() && cr_reported.count(cr) == 0 && cr_reported.count(cr2) == 0) {
+    for (const auto& cr : _critters) {
+        for (const auto& cr2 : _critters) {
+            if (cr != cr2 && cr->GetHex() == cr2->GetHex() && cr_reported.count(cr.get()) == 0 && cr_reported.count(cr2.get()) == 0) {
                 errors.emplace_back(strex("Critters have same hex coords at {}", cr->GetHex()));
-                cr_reported.emplace(cr);
-                cr_reported.emplace(cr2);
+                cr_reported.emplace(cr.get());
+                cr_reported.emplace(cr2.get());
             }
         }
     }
@@ -4686,20 +4662,20 @@ auto MapView::SaveToText() const -> string
     fill_section("ProtoMap", GetProperties().SaveToText(nullptr));
 
     // Critters
-    for (const auto* cr : _critters) {
-        fill_critter(cr);
+    for (const auto& cr : _critters) {
+        fill_critter(cr.get());
 
-        for (const auto* inv_item : cr->GetConstInvItems()) {
-            fill_item(inv_item);
+        for (const auto& inv_item : cr->GetInvItems()) {
+            fill_item(inv_item.get());
         }
     }
 
     // Items
-    for (const auto* item : _allItems) {
-        fill_item(item);
+    for (const auto& item : _allItems) {
+        fill_item(item.get());
 
-        for (const auto* inner_item : item->GetConstInnerItems()) {
-            fill_item(inner_item);
+        for (const auto& inner_item : item->GetInnerItems()) {
+            fill_item(inner_item.get());
         }
     }
 

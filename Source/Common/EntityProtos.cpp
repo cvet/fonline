@@ -84,15 +84,11 @@ EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
     STACK_TRACE_ENTRY();
 
     STRONG_ASSERT(_proto);
-
-    _proto->AddRef();
 }
 
 EntityWithProto::~EntityWithProto()
 {
     STACK_TRACE_ENTRY();
-
-    _proto->Release();
 }
 
 auto EntityWithProto::GetProtoId() const noexcept -> hstring
@@ -106,7 +102,7 @@ auto EntityWithProto::GetProto() const noexcept -> const ProtoEntity*
 {
     NO_STACK_TRACE_ENTRY();
 
-    return _proto;
+    return _proto.get();
 }
 
 ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :

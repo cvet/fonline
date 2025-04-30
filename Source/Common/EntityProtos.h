@@ -76,7 +76,7 @@ protected:
     explicit EntityWithProto(const ProtoEntity* proto) noexcept;
     virtual ~EntityWithProto();
 
-    const ProtoEntity* _proto;
+    refcount_ptr<const ProtoEntity> _proto;
 };
 
 class ProtoItem final : public ProtoEntity, public ItemProperties

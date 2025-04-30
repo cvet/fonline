@@ -50,9 +50,9 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto GetInnerItems() noexcept -> const vector<ItemView*>&;
-    [[nodiscard]] auto GetConstInnerItems() const -> vector<const ItemView*>;
-    [[nodiscard]] auto CreateRefClone() const -> ItemView*;
+    [[nodiscard]] auto GetInnerItems() const noexcept -> const vector<refcount_ptr<ItemView>>& { return _innerItems; }
+    [[nodiscard]] auto GetInnerItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _innerItems; }
+    [[nodiscard]] auto CreateRefClone() -> refcount_ptr<ItemView>;
 
     auto AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const Properties* props) -> ItemView*;
     auto AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
@@ -62,5 +62,5 @@ public:
 protected:
     void OnDestroySelf() override;
 
-    vector<ItemView*> _innerItems {};
+    vector<refcount_ptr<ItemView>> _innerItems {};
 };

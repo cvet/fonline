@@ -87,11 +87,7 @@ void MapSprite::Invalidate()
     ChainLast = nullptr;
     ChainParent = nullptr;
     ChainChild = nullptr;
-
-    if (MapSpr != nullptr) {
-        MapSpr->Release();
-        MapSpr = nullptr;
-    }
+    MapSpr = nullptr;
 
     Root->_invalidatedSprites.push_back(this);
 

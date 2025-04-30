@@ -102,7 +102,7 @@ FO_SCRIPT_API bool Client_Critter_IsModel(CritterView* self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
@@ -170,7 +170,7 @@ FO_SCRIPT_API uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
     uint result = 0;
 
-    for (const auto* item : self->GetInvItems()) {
+    for (const auto& item : self->GetInvItems()) {
         if (!protoId || item->GetProtoId() == protoId) {
             result += item->GetCount();
         }
@@ -191,22 +191,22 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
 
     if (proto->GetStackable()) {
-        for (auto* item : self->GetInvItems()) {
+        for (auto& item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
-                return item;
+                return item.get();
             }
         }
     }
     else {
         ItemView* another_slot = nullptr;
 
-        for (auto* item : self->GetInvItems()) {
+        for (auto& item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
+                    return item.get();
                 }
 
-                another_slot = item;
+                another_slot = item.get();
             }
         }
 
@@ -219,9 +219,9 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
 {
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item;
+            return item.get();
         }
     }
 
@@ -233,9 +233,9 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty p
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item;
+            return item.get();
         }
     }
 
@@ -245,18 +245,29 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty p
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
-    return self->GetInvItems();
+    auto& inv_items = self->GetInvItems();
+
+    vector<ItemView*> items;
+    items.reserve(inv_items.size());
+
+    for (auto& item : inv_items) {
+        items.emplace_back(item.get());
+    }
+
+    return items;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
 {
-    vector<ItemView*> items;
-    items.reserve(self->GetInvItems().size());
+    auto& inv_items = self->GetInvItems();
 
-    for (auto* item : self->GetInvItems()) {
+    vector<ItemView*> items;
+    items.reserve(inv_items.size());
+
+    for (auto& item : inv_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.push_back(item);
+            items.emplace_back(item.get());
         }
     }
 
@@ -267,13 +278,14 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemC
 FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    auto& inv_items = self->GetInvItems();
 
     vector<ItemView*> items;
-    items.reserve(self->GetInvItems().size());
+    items.reserve(inv_items.size());
 
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : inv_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.push_back(item);
+            items.emplace_back(item.get());
         }
     }
 
@@ -487,7 +499,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         throw ScriptException("Swap item not found");
     }
 
-    auto* old_item = item->CreateRefClone();
+    auto old_item = item->CreateRefClone();
     const auto from_slot = item->GetCritterSlot();
     auto* map_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -527,7 +539,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
     }
 
     // Notify scripts about item changing
-    self->GetEngine()->OnItemInvChanged.Fire(item, old_item);
+    self->GetEngine()->OnItemInvChanged.Fire(item, old_item.get());
 
-    old_item->Release();
+    old_item->MarkAsDestroyed();
 }

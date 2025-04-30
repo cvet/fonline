@@ -68,11 +68,11 @@ public:
     [[nodiscard]] auto GetProtoLocationSafe(hstring proto_id) const noexcept -> const ProtoLocation*;
     [[nodiscard]] auto GetProtoEntitySafe(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*;
 
-    [[nodiscard]] auto GetProtoItems() const noexcept -> const unordered_map<hstring, const ProtoItem*>& { return _itemProtos; }
-    [[nodiscard]] auto GetProtoCritters() const noexcept -> const unordered_map<hstring, const ProtoCritter*>& { return _crProtos; }
-    [[nodiscard]] auto GetProtoMaps() const noexcept -> const unordered_map<hstring, const ProtoMap*>& { return _mapProtos; }
-    [[nodiscard]] auto GetProtoLocations() const noexcept -> const unordered_map<hstring, const ProtoLocation*>& { return _locProtos; }
-    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, unique_release_ptr<const ProtoEntity>>&;
+    [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _itemProtos; }
+    [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _crProtos; }
+    [[nodiscard]] auto GetProtoMaps() const noexcept -> const auto& { return _mapProtos; }
+    [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _locProtos; }
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
     void ParseProtos(const FileSystem& resources);
     void LoadFromResources();
@@ -90,7 +90,7 @@ private:
     unordered_map<hstring, const ProtoCritter*> _crProtos {};
     unordered_map<hstring, const ProtoMap*> _mapProtos {};
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
-    unordered_map<hstring, unordered_map<hstring, unique_release_ptr<const ProtoEntity>>> _protos {};
-    const unordered_map<hstring, unique_release_ptr<const ProtoEntity>> _emptyProtos {};
+    unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> _protos {};
+    const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
     unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };

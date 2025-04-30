@@ -46,8 +46,8 @@
 
 struct ServerAppData
 {
-    unique_release_ptr<FOServer> Server {};
-    vector<unique_release_ptr<FOClient>> Clients {};
+    refcount_ptr<FOServer> Server {};
+    vector<refcount_ptr<FOClient>> Clients {};
     bool AutoStartTriggered {};
     bool HideControls {};
 };
@@ -76,7 +76,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         const auto start_server = [] {
             // Server actually started in separate thread
-            Data->Server = SafeAlloc::MakeUniqueReleasable<FOServer>(App->Settings);
+            Data->Server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
         };
 
         const auto stop_server = [] { Data->Server.reset(); };
@@ -132,7 +132,7 @@ int main(int argc, char** argv) // Handled by SDL
                         auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                         try {
-                            auto client = SafeAlloc::MakeUniqueReleasable<FOClient>(App->Settings, &App->MainWindow, false);
+                            auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }

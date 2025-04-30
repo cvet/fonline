@@ -361,36 +361,32 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
 
 void TimeEventManager::AddEntityTimeEventPolling(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
-    if (_timeEventEntities.emplace(entity).second) {
-        entity->AddRef();
-    }
+    _timeEventEntities.emplace(entity);
 }
 
 void TimeEventManager::RemoveEntityTimeEventPolling(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
-    if (_timeEventEntities.erase(entity) != 0) {
-        entity->Release();
-    }
+    _timeEventEntities.erase(entity);
 }
 
 void TimeEventManager::ProcessTimeEvents()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* entity : copy_hold_ref(_timeEventEntities)) {
+    for (auto& entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
-            RemoveEntityTimeEventPolling(entity);
+            RemoveEntityTimeEventPolling(entity.get());
             continue;
         }
 
-        ProcessEntityTimeEvents(entity);
+        ProcessEntityTimeEvents(entity.get());
 
         if (entity->IsDestroyed() || !entity->HasTimeEvents()) {
-            RemoveEntityTimeEventPolling(entity);
+            RemoveEntityTimeEventPolling(entity.get());
         }
     }
 }

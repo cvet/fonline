@@ -291,41 +291,41 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
 {
     STACK_TRACE_ENTRY();
 
-    const auto create_proto = [&]() -> ProtoEntity* {
+    const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
         const auto* registrator = _engine->GetPropertyRegistrator(type_name);
         RUNTIME_ASSERT(registrator);
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            auto* proto = SafeAlloc::MakeRaw<ProtoLocation>(pid, registrator, props);
-            _locProtos.emplace(pid, proto);
+            auto proto = SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
+            _locProtos.emplace(pid, proto.get());
             return proto;
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            auto* proto = SafeAlloc::MakeRaw<ProtoMap>(pid, registrator, props);
-            _mapProtos.emplace(pid, proto);
+            auto proto = SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
+            _mapProtos.emplace(pid, proto.get());
             return proto;
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            auto* proto = SafeAlloc::MakeRaw<ProtoCritter>(pid, registrator, props);
-            _crProtos.emplace(pid, proto);
+            auto proto = SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
+            _crProtos.emplace(pid, proto.get());
             return proto;
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            auto* proto = SafeAlloc::MakeRaw<ProtoItem>(pid, registrator, props);
-            _itemProtos.emplace(pid, proto);
+            auto proto = SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
+            _itemProtos.emplace(pid, proto.get());
             return proto;
         }
         else {
-            return SafeAlloc::MakeRaw<ProtoCustomEntity>(pid, registrator, props);
+            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);
         }
     };
 
-    ProtoEntity* proto = create_proto();
+    auto proto = create_proto();
 
-    const auto inserted = _protos[type_name].emplace(pid, unique_release_ptr<const ProtoEntity>(proto)).second;
+    const auto inserted = _protos[type_name].emplace(pid, proto).second;
     RUNTIME_ASSERT(inserted);
 
-    return proto;
+    return proto.get();
 }
 
 void ProtoManager::LoadFromResources()
@@ -613,7 +613,7 @@ auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) const
     return nullptr;
 }
 
-auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, unique_release_ptr<const ProtoEntity>>&
+auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&
 {
     STACK_TRACE_ENTRY();
 

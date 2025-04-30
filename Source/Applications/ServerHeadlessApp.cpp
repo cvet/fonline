@@ -49,7 +49,7 @@ int main(int argc, char** argv)
         InitApp(argc, argv);
 
         {
-            auto server = SafeAlloc::MakeUniqueReleasable<FOServer>(App->Settings);
+            auto server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
 
             App->WaitForRequestedQuit();
         }

@@ -132,7 +132,7 @@ void MapManager::LoadFromResources()
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         cr_props.RestoreAllData(props_data);
 
-                        auto* cr = SafeAlloc::MakeRaw<Critter>(_engine, ident_t {}, cr_proto, &cr_props);
+                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, cr_proto, &cr_props);
 
                         static_map->CritterBillets.emplace_back(cr_id, cr);
 
@@ -168,7 +168,7 @@ void MapManager::LoadFromResources()
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
 
-                        auto* item = SafeAlloc::MakeRaw<Item>(_engine, ident_t {}, item_proto, &item_props);
+                        auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, item_proto, &item_props);
 
                         static_map->ItemBillets.emplace_back(item_id, item);
 
@@ -203,23 +203,23 @@ void MapManager::LoadFromResources()
                             const auto hex = item->GetHex();
 
                             if (!item->GetHiddenInStatic()) {
-                                static_map->StaticItems.emplace_back(item);
-                                static_map->StaticItemsById.emplace(item_id, item);
-                                static_map->HexField->GetCellForWriting(hex).StaticItems.emplace_back(item);
+                                static_map->StaticItems.emplace_back(item.get());
+                                static_map->StaticItemsById.emplace(item_id, item.get());
+                                static_map->HexField->GetCellForWriting(hex).StaticItems.emplace_back(item.get());
                             }
 
                             if (item->GetIsTrigger() || item->GetIsTrap()) {
                                 auto& static_field = static_map->HexField->GetCellForWriting(hex);
-                                static_field.TriggerItems.emplace_back(item);
+                                static_field.TriggerItems.emplace_back(item.get());
                             }
                         }
                         else {
                             if (item->GetOwnership() == ItemOwnership::MapHex) {
-                                static_map->HexItemBillets.emplace_back(item_id, item);
+                                static_map->HexItemBillets.emplace_back(item_id, item.get());
                             }
                             else {
                                 RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer);
-                                static_map->ChildItemBillets.emplace_back(item_id, item);
+                                static_map->ChildItemBillets.emplace_back(item_id, item.get());
                             }
                         }
                     }
@@ -418,7 +418,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
 
         uint map_index = 0;
 
-        for (const auto* map : loc->GetMaps()) {
+        for (const auto& map : loc->GetMaps()) {
             result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
             map_index++;
         }
@@ -432,21 +432,14 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
-    auto* loc = SafeAlloc::MakeRaw<Location>(_engine, ident_t {}, proto, props);
-    auto loc_holder = RefCountHolder(loc);
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto, props);
 
     vector<ident_t> map_ids;
 
     for (const auto map_pid : loc->GetMapProtos()) {
-        const auto* map = CreateMap(map_pid, loc);
+        const auto* map = CreateMap(map_pid, loc.get());
 
         if (map == nullptr) {
-            for (const auto* map2 : loc->GetMapsRaw()) {
-                map2->Release();
-            }
-
-            loc->Release();
-
             throw MapManagerException("Create map for location failed", proto_id, map_pid);
         }
 
@@ -455,17 +448,16 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
 
     loc->SetMapIds(map_ids);
 
-    _engine->EntityMngr.RegisterLocation(loc);
+    _engine->EntityMngr.RegisterLocation(loc.get());
 
-    for (auto* map : copy_hold_ref(loc->GetMaps())) {
-        map->SetLocId(loc->GetId());
-        GenerateMapContent(map);
+    for (auto& map : copy_hold_ref(loc->GetMaps())) {
+        GenerateMapContent(map.get());
     }
 
-    _engine->EntityMngr.CallInit(loc, true);
+    _engine->EntityMngr.CallInit(loc.get(), true);
 
     if (!loc->IsDestroyed()) {
-        for (auto* map : copy_hold_ref(loc->GetMaps())) {
+        for (auto& map : copy_hold_ref(loc->GetMaps())) {
             if (!map->IsDestroyed()) {
                 for (auto* cr : copy_hold_ref(map->GetCritters())) {
                     if (!cr->IsDestroyed()) {
@@ -479,7 +471,11 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
         }
     }
 
-    return loc;
+    if (loc->IsDestroyed()) {
+        throw GenericException("Location destroyed during init");
+    }
+
+    return loc.get();
 }
 
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
@@ -489,16 +485,13 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
     const auto* static_map = GetStaticMap(proto);
 
-    auto* map = SafeAlloc::MakeRaw<Map>(_engine, ident_t {}, proto, loc, static_map);
-    map->SetLocId(loc->GetId());
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, proto, loc, static_map);
 
-    auto& maps = loc->GetMapsRaw();
-    map->SetLocMapIndex(static_cast<uint>(maps.size()));
-    maps.emplace_back(map);
+    loc->AddMap(map.get());
 
-    _engine->EntityMngr.RegisterMap(map);
+    _engine->EntityMngr.RegisterMap(map.get());
 
-    return map;
+    return map.get();
 }
 
 void MapManager::RegenerateMap(Map* map)
@@ -596,7 +589,7 @@ void MapManager::DestroyLocation(Location* loc)
 
     // Start deleting
     auto loc_holder = RefCountHolder(loc);
-    auto&& maps = copy_hold_ref(loc->GetMaps());
+    auto maps = copy_hold_ref(loc->GetMaps());
 
     // Redundant calls
     if (loc->IsDestroying() || loc->IsDestroyed()) {
@@ -605,15 +598,15 @@ void MapManager::DestroyLocation(Location* loc)
 
     loc->MarkAsDestroying();
 
-    for (auto* map : maps) {
+    for (auto& map : maps) {
         map->MarkAsDestroying();
     }
 
     // Finish events
     _engine->OnLocationFinish.Fire(loc);
 
-    for (auto* map : maps) {
-        _engine->OnMapFinish.Fire(map);
+    for (auto& map : maps) {
+        _engine->OnMapFinish.Fire(map.get());
     }
 
     // Inner entites
@@ -625,9 +618,9 @@ void MapManager::DestroyLocation(Location* loc)
             has_entities = true;
         }
 
-        for (auto* map : maps) {
+        for (auto& map : maps) {
             if (map->HasInnerEntities()) {
-                _engine->EntityMngr.DestroyInnerEntities(map);
+                _engine->EntityMngr.DestroyInnerEntities(map.get());
                 has_entities = true;
             }
         }
@@ -638,32 +631,23 @@ void MapManager::DestroyLocation(Location* loc)
     }
 
     // Destroy maps
-    for (auto* map : maps) {
-        DestroyMapContent(map);
-    }
-
-    loc->GetMapsRaw().clear();
-
-    // Erase from main collections
-    _engine->EntityMngr.UnregisterLocation(loc);
-
-    for (auto* map : maps) {
-        _engine->EntityMngr.UnregisterMap(map);
+    for (auto& map : maps) {
+        DestroyMapContent(map.get());
     }
 
     // Invalidate
-    for (auto* map : maps) {
+    for (auto& map : maps) {
         map->MarkAsDestroyed();
     }
 
     loc->MarkAsDestroyed();
 
-    // Release
-    for (const auto* map : maps) {
-        map->Release();
-    }
+    // Erase from main collections
+    _engine->EntityMngr.UnregisterLocation(loc);
 
-    loc->Release();
+    for (auto& map : maps) {
+        _engine->EntityMngr.UnregisterMap(map.get());
+    }
 }
 
 void MapManager::TraceBullet(TraceData& trace)

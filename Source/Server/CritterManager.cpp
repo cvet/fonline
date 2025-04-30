@@ -194,19 +194,23 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     }
 
     // Create critter
-    auto* cr = SafeAlloc::MakeRaw<Critter>(_engine, ident_t {}, proto, props);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto, props);
 
-    _engine->EntityMngr.RegisterCritter(cr);
+    _engine->EntityMngr.RegisterCritter(cr.get());
 
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    _engine->MapMngr.AddCritterToMap(cr, map, final_hex, final_dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, final_dir, ident_t {});
 
-    _engine->EntityMngr.CallInit(cr, true);
-    _engine->MapMngr.ProcessVisibleItems(cr);
+    _engine->EntityMngr.CallInit(cr.get(), true);
+    _engine->MapMngr.ProcessVisibleItems(cr.get());
 
-    return cr;
+    if (cr->IsDestroyed()) {
+        throw GenericException("Critter destroyed during init");
+    }
+
+    return cr.get();
 }
 
 void CritterManager::DestroyCritter(Critter* cr)
@@ -259,12 +263,11 @@ void CritterManager::DestroyCritter(Critter* cr)
         }
     }
 
-    // Erase from main collection
-    _engine->EntityMngr.UnregisterCritter(cr);
-
     // Invalidate for use
     cr->MarkAsDestroyed();
-    cr->Release();
+
+    // Erase from main collection
+    _engine->EntityMngr.UnregisterCritter(cr);
 }
 
 void CritterManager::DestroyInventory(Critter* cr)

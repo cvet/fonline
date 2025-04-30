@@ -170,7 +170,7 @@ public:
     RenderEffect** DrawEffect {};
     bool* ValidCallback {};
     bool Valid {};
-    MapSpriteData* MapSpr {};
+    refcount_ptr<MapSpriteData> MapSpr {};
 
     MapSprite** ExtraChainRoot {};
     MapSprite* ExtraChainParent {};

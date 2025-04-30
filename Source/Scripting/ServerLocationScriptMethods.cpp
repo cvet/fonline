@@ -58,42 +58,45 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Location_GetMapCount(Location* self)
 {
-    return self->GetMapsCount();
+    return numeric_cast<uint>(self->GetMapsCount());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_GetMap(Location* self, hstring mapPid)
 {
-    for (auto* map : self->GetMaps()) {
+    for (auto& map : self->GetMaps()) {
         if (map->GetProtoId() == mapPid) {
-            return map;
+            return map.get();
         }
     }
-    return static_cast<Map*>(nullptr);
+
+    return nullptr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, uint index)
 {
-    const auto maps = self->GetMaps();
+    auto& maps = self->GetMaps();
 
     if (index >= maps.size()) {
         throw ScriptException("Invalid index arg");
     }
 
-    return maps[index];
+    return maps[index].get();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
 {
-    return self->GetMaps();
+    auto& maps = self->GetMaps();
+    vector<Map*> result = vec_transform(maps, [](auto&& map) -> Map* { return map.get(); });
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
 {
-    for (auto* map : self->GetMaps()) {
-        self->GetEngine()->MapMngr.RegenerateMap(map);
+    for (auto& map : self->GetMaps()) {
+        self->GetEngine()->MapMngr.RegenerateMap(map.get());
     }
 }

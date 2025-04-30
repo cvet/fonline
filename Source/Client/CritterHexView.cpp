@@ -227,9 +227,6 @@ void CritterHexView::NextAnim(bool erase_front)
     }
 
     if (erase_front) {
-        if (_animSequence.begin()->ContextItem != nullptr) {
-            _animSequence.begin()->ContextItem->Release();
-        }
         _animSequence.erase(_animSequence.begin());
     }
 
@@ -239,9 +236,9 @@ void CritterHexView::NextAnim(bool erase_front)
 
     _animStartTime = _engine->GameTime.GetFrameTime();
 
-    const auto& cr_anim = _animSequence.front();
+    auto& cr_anim = _animSequence.front();
 
-    _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.StateAnim, cr_anim.ActionAnim, cr_anim.ContextItem);
+    _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.StateAnim, cr_anim.ActionAnim, cr_anim.ContextItem.get());
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
@@ -264,15 +261,14 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
         state_anim = GetStateAnim();
     }
 
-    Entity* fixed_context_item = nullptr;
+    refcount_ptr<Entity> resolved_context_item;
 
     if (context_item != nullptr) {
-        if (const auto* item = dynamic_cast<ItemView*>(context_item); item != nullptr) {
-            fixed_context_item = item->CreateRefClone();
+        if (auto* item = dynamic_cast<ItemView*>(context_item); item != nullptr) {
+            resolved_context_item = item->CreateRefClone();
         }
         else if (auto* proto = dynamic_cast<ProtoItem*>(context_item); proto != nullptr) {
-            fixed_context_item = proto;
-            proto->AddRef();
+            resolved_context_item = proto;
         }
         else {
             UNREACHABLE_PLACE();
@@ -282,7 +278,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(state_anim, action_anim)) {
-            _animSequence.push_back(CritterAnim {nullptr, timespan::zero, 0, 0, state_anim, action_anim, fixed_context_item});
+            _animSequence.push_back(CritterAnim {nullptr, timespan::zero, 0, 0, state_anim, action_anim, resolved_context_item.get()});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);
@@ -301,7 +297,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
 
         if (frames != nullptr) {
             const auto duration = std::chrono::milliseconds {frames->WholeTicks != 0 ? frames->WholeTicks : 100};
-            _animSequence.push_back(CritterAnim {frames, duration, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, fixed_context_item});
+            _animSequence.push_back(CritterAnim {frames, duration, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, resolved_context_item.get()});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);
@@ -394,11 +390,6 @@ void CritterHexView::ClearAnim()
 {
     STACK_TRACE_ENTRY();
 
-    for (const auto& anim : _animSequence) {
-        if (anim.ContextItem != nullptr) {
-            anim.ContextItem->Release();
-        }
-    }
     _animSequence.clear();
 }
 
@@ -461,7 +452,7 @@ auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
     return CritterActionAnim::Idle;
 }
 
-auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool
+auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool
 {
     STACK_TRACE_ENTRY();
 

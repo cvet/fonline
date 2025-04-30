@@ -95,8 +95,8 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     // Initialize tabs
     const auto& cr_protos = ProtoMngr.GetProtoCritters();
     for (auto&& [pid, proto] : cr_protos) {
-        Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.push_back(proto);
-        Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.push_back(proto);
+        Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.emplace_back(proto);
+        Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_CRIT]) {
         std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) -> bool { return a->GetName() < b->GetName(); });
@@ -104,8 +104,8 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
     for (auto&& [pid, proto] : item_protos) {
-        Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(proto);
-        Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.push_back(proto);
+        Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.emplace_back(proto);
+        Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.emplace_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_ITEM]) {
         std::sort(proto.ItemProtos.begin(), proto.ItemProtos.end(), [](const ProtoItem* a, const ProtoItem* b) -> bool { return a->GetName() < b->GetName(); });
@@ -157,7 +157,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     while ((pos = history_str.find('\n', prev)) != std::string::npos) {
         string history_part;
         history_part.assign(&history_str.c_str()[prev], pos - prev);
-        ConsoleHistory.push_back(history_part);
+        ConsoleHistory.emplace_back(history_part);
         prev = pos + 1;
     }
     ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
@@ -386,37 +386,37 @@ void FOMapper::ProcessMapperInput()
                 switch (dikdw) {
                 case KeyCode::F1:
                     Settings.ShowItem = !Settings.ShowItem;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
                 case KeyCode::F2:
                     Settings.ShowScen = !Settings.ShowScen;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
                 case KeyCode::F3:
                     Settings.ShowWall = !Settings.ShowWall;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
                 case KeyCode::F4:
                     Settings.ShowCrit = !Settings.ShowCrit;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
                 case KeyCode::F5:
                     Settings.ShowTile = !Settings.ShowTile;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
                 case KeyCode::F6:
                     Settings.ShowFast = !Settings.ShowFast;
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->RefreshMap();
                     }
                     break;
@@ -435,7 +435,7 @@ void FOMapper::ProcessMapperInput()
                     ObjVisible = !ObjVisible;
                     break;
                 case KeyCode::F10:
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->SwitchShowHex();
                     }
                     break;
@@ -453,7 +453,7 @@ void FOMapper::ProcessMapperInput()
                     SelectDelete();
                     break;
                 case KeyCode::Add:
-                    if (_curMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
+                    if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = GetGlobalDayTime();
                         day_time += 60;
                         while (day_time > 2880) {
@@ -463,7 +463,7 @@ void FOMapper::ProcessMapperInput()
                     }
                     break;
                 case KeyCode::Subtract:
-                    if (_curMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
+                    if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = GetGlobalDayTime();
                         day_time -= 60;
                         while (day_time < 0) {
@@ -531,15 +531,15 @@ void FOMapper::ProcessMapperInput()
                     SelectAll();
                     break;
                 case KeyCode::S:
-                    if (_curMap != nullptr) {
-                        SaveMap(_curMap, "");
+                    if (_curMap) {
+                        SaveMap(_curMap.get(), "");
                     }
                     break;
                 case KeyCode::D:
                     Settings.ScrollCheck = !Settings.ScrollCheck;
                     break;
                 case KeyCode::B:
-                    if (_curMap != nullptr) {
+                    if (_curMap) {
                         _curMap->MarkBlockedHexes();
                     }
                     break;
@@ -674,7 +674,7 @@ void FOMapper::ProcessMapperInput()
                 }
             }
             else {
-                if (ev.MouseWheel.Delta != 0 && _curMap != nullptr) {
+                if (ev.MouseWheel.Delta != 0 && _curMap) {
                     _curMap->ChangeZoom(ev.MouseWheel.Delta > 0 ? -1 : 1);
                 }
             }
@@ -711,7 +711,7 @@ void FOMapper::MapperMainLoop()
     ConsoleProcess();
     ProcessMapperInput();
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         _curMap->Process();
     }
 
@@ -720,7 +720,7 @@ void FOMapper::MapperMainLoop()
 
         DrawIfaceLayer(0);
 
-        if (_curMap != nullptr) {
+        if (_curMap) {
             _curMap->DrawMap();
         }
 
@@ -931,7 +931,7 @@ void FOMapper::IntDraw()
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
         auto* entity = SelectedEntities[0];
-        vector<ItemView*> inner_items = GetEntityInnerItems(entity);
+        auto inner_items = GetEntityInnerItems(entity);
 
         uint i = InContScroll;
         auto j = i + ProtosOnScreen;
@@ -941,7 +941,7 @@ void FOMapper::IntDraw()
         }
 
         for (; i < j; i++, x += w) {
-            auto* inner_item = inner_items[i];
+            auto& inner_item = inner_items[i];
             RUNTIME_ASSERT(inner_item);
 
             auto* spr = GetIfaceSpr(inner_item->GetPicInv());
@@ -971,7 +971,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i].get();
-            SprMngr.DrawText(irect(x, y, w, h), strex(" '{}'", map->GetName()), 0, map == _curMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawText(irect(x, y, w, h), strex(" '{}'", map->GetName()), 0, _curMap == map ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 
@@ -1024,7 +1024,7 @@ void FOMapper::IntDraw()
     }
 
     // Map info
-    if (_curMap != nullptr) {
+    if (_curMap) {
         auto hex_thru = false;
         mpos hex;
 
@@ -1246,7 +1246,8 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 {
     STACK_TRACE_ENTRY();
 
-    auto* entity = (IntMode == INT_MODE_INCONT && (InContItem != nullptr) ? InContItem : (!SelectedEntities.empty() ? SelectedEntities[0] : nullptr));
+    auto* entity = IntMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities[0] : nullptr);
+
     if (entity == InspectorEntity) {
         return entity;
     }
@@ -1257,8 +1258,9 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
     if (entity != nullptr) {
         vector<int> prop_indices;
         OnInspectorProperties.Fire(entity, prop_indices);
+
         for (const auto prop_index : prop_indices) {
-            ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
+            ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
         }
     }
 
@@ -1313,7 +1315,7 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
-        if (_curMap == nullptr) {
+        if (!_curMap) {
             return;
         }
 
@@ -1415,7 +1417,7 @@ void FOMapper::IntLMouseDown()
                     }
                 }
                 if (!founded) {
-                    stab.ItemProtos.push_back((*CurItemProtos)[ind]);
+                    stab.ItemProtos.emplace_back((*CurItemProtos)[ind]);
                 }
 
                 _curMap->SwitchIgnorePid(pid);
@@ -1427,7 +1429,7 @@ void FOMapper::IntLMouseDown()
                 const auto* proto_item = (*CurItemProtos)[ind];
 
                 if (proto_item->GetStackable()) {
-                    for (const auto* child : GetEntityInnerItems(SelectedEntities[0])) {
+                    for (const auto& child : GetEntityInnerItems(SelectedEntities[0])) {
                         if (proto_item->GetProtoId() == child->GetProtoId()) {
                             add = false;
                             break;
@@ -1451,7 +1453,8 @@ void FOMapper::IntLMouseDown()
             InContItem = nullptr;
             ind += InContScroll;
 
-            vector<ItemView*> inner_items;
+            vector<refcount_ptr<ItemView>> inner_items;
+
             if (!SelectedEntities.empty()) {
                 inner_items = GetEntityInnerItems(SelectedEntities[0]);
             }
@@ -1466,16 +1469,17 @@ void FOMapper::IntLMouseDown()
                     if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
                         auto* owner = _curMap->GetCritter(InContItem->GetCritterId());
                         RUNTIME_ASSERT(owner);
-                        owner->DeleteInvItem(InContItem, true);
+                        owner->DeleteInvItem(InContItem.get(), true);
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = _curMap->GetItem(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
-                        owner->DestroyInnerItem(InContItem);
+                        owner->DestroyInnerItem(InContItem.get());
                     }
                     else {
                         UNREACHABLE_PLACE();
                     }
+
                     InContItem = nullptr;
 
                     // Reselect
@@ -1494,7 +1498,7 @@ void FOMapper::IntLMouseDown()
 
                         to_slot %= 256;
 
-                        for (auto* item : cr->GetInvItems()) {
+                        for (auto& item : cr->GetInvItems()) {
                             if (item->GetCritterSlot() == static_cast<CritterItemSlot>(to_slot)) {
                                 item->SetCritterSlot(CritterItemSlot::Inventory);
                             }
@@ -1903,7 +1907,7 @@ void FOMapper::RefreshCurProtos()
         InContScroll = 0;
     }
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         // Update fast pids
         _curMap->ClearFastPids();
         for (const auto* fast_proto : TabsActive[INT_MODE_FAST]->ItemProtos) {
@@ -2090,7 +2094,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
 
     if (it == SelectedEntities.end()) {
-        SelectedEntities.push_back(entity);
+        SelectedEntities.emplace_back(entity);
 
         if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
             hex_view->SetTargetAlpha(SelectAlpha);
@@ -2119,31 +2123,31 @@ void FOMapper::SelectAll()
 
     SelectClear();
 
-    for (auto* item : _curMap->GetItems()) {
+    for (auto& item : _curMap->GetItems()) {
         if (_curMap->IsIgnorePid(item->GetProtoId())) {
             continue;
         }
 
         if (!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
-            SelectAddItem(item);
+            SelectAddItem(item.get());
         }
         else if (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
-            SelectAddItem(item);
+            SelectAddItem(item.get());
         }
         else if (item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
-            SelectAddItem(item);
+            SelectAddItem(item.get());
         }
         else if (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) {
-            SelectAddItem(item);
+            SelectAddItem(item.get());
         }
         else if (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof) {
-            SelectAddItem(item);
+            SelectAddItem(item.get());
         }
     }
 
     if (IsSelectCrit && Settings.ShowCrit) {
-        for (auto* cr : _curMap->GetCritters()) {
-            SelectAddCrit(cr);
+        for (auto& cr : _curMap->GetCritters()) {
+            SelectAddCrit(cr.get());
         }
     }
 
@@ -2309,7 +2313,7 @@ void FOMapper::SelectDelete()
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         return;
     }
 
@@ -2412,9 +2416,9 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
 
-        for (const auto* inv_item : cr->GetConstInvItems()) {
+        for (const auto& inv_item : cr->GetInvItems()) {
             auto* inv_item_clone = cr_clone->AddMapperInvItem(_curMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
-            CloneInnerItems(inv_item_clone, inv_item);
+            CloneInnerItems(inv_item_clone, inv_item.get());
         }
 
         SelectAdd(cr_clone);
@@ -2435,10 +2439,10 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
-    for (const auto* inner_item : from_item->GetConstInnerItems()) {
+    for (const auto& inner_item : from_item->GetInnerItems()) {
         const auto stack_id = any_t {string(inner_item->GetContainerStack())};
         auto* inner_item_clone = to_item->AddMapperInnerItem(_curMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inner_item->GetProto()), stack_id, &from_item->GetProperties());
-        CloneInnerItems(inner_item_clone, inner_item);
+        CloneInnerItems(inner_item_clone, inner_item.get());
     }
 }
 
@@ -2446,7 +2450,7 @@ void FOMapper::BufferCopy()
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         return;
     }
 
@@ -2483,12 +2487,13 @@ void FOMapper::BufferCopy()
         entity_buf->Proto = dynamic_cast<EntityWithProto*>(entity)->GetProto();
         entity_buf->Props = SafeAlloc::MakeRaw<Properties>(entity->GetProperties().Copy());
 
-        for (auto* child : GetEntityInnerItems(entity)) {
+        for (auto& child : GetEntityInnerItems(entity)) {
             auto* child_buf = SafeAlloc::MakeRaw<EntityBuf>();
-            add_entity(child_buf, child);
-            entity_buf->Children.push_back(child_buf);
+            add_entity(child_buf, child.get());
+            entity_buf->Children.emplace_back(child_buf);
         }
     };
+
     for (auto* entity : SelectedEntities) {
         EntitiesBuffer.emplace_back();
         add_entity(&EntitiesBuffer.back(), entity);
@@ -2499,7 +2504,7 @@ void FOMapper::BufferCut()
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         return;
     }
 
@@ -2511,7 +2516,7 @@ void FOMapper::BufferPaste()
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         return;
     }
 
@@ -2773,7 +2778,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             }
             else {
                 // Modify console history
-                ConsoleHistory.push_back(ConsoleStr);
+                ConsoleHistory.emplace_back(ConsoleStr);
                 for (int i = 0; i < static_cast<int>(ConsoleHistory.size()) - 1; i++) {
                     if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
                         ConsoleHistory.erase(ConsoleHistory.begin() + i);
@@ -2897,12 +2902,12 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        if (_curMap == nullptr) {
+        if (!_curMap) {
             AddMess("Map not loaded");
             return;
         }
 
-        SaveMap(_curMap, map_name);
+        SaveMap(_curMap.get(), map_name);
 
         AddMess("Save map success");
     }
@@ -2934,7 +2939,7 @@ void FOMapper::ParseCommand(string_view command)
     else if (command[0] == '@') {
         AddMess("Playing critter animations");
 
-        if (_curMap == nullptr) {
+        if (!_curMap) {
             AddMess("Map not loaded");
             return;
         }
@@ -2955,8 +2960,9 @@ void FOMapper::ParseCommand(string_view command)
             }
         }
         else {
-            for (auto* cr : _curMap->GetCritters()) {
+            for (auto& cr : _curMap->GetCritters()) {
                 cr->ClearAnim();
+
                 for (uint j = 0; j < anims.size() / 2; j++) {
                     cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                 }
@@ -2968,12 +2974,14 @@ void FOMapper::ParseCommand(string_view command)
         const auto icommand_str = string(command.substr(1));
         istringstream icommand(icommand_str);
         string command_ext;
+
         if (!(icommand >> command_ext)) {
             return;
         }
 
         if (command_ext == "new") {
-            auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+            pmap->AddRef(); // Todo: fix memleak
 
             pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
 
@@ -2986,7 +2994,7 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayColorTime(arr);
             pmap->SetDayColor(arr2);
 
-            auto map = SafeAlloc::MakeUniqueReleasable<MapView>(this, ident_t {}, pmap);
+            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
 
             map->EnableMapperMode();
             map->FindSetCenter({MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2});
@@ -3000,21 +3008,21 @@ void FOMapper::ParseCommand(string_view command)
         else if (command_ext == "unload") {
             AddMess("Unload map");
 
-            if (_curMap == nullptr) {
+            if (!_curMap) {
                 AddMess("Map not loaded");
                 return;
             }
 
-            UnloadMap(_curMap);
+            UnloadMap(_curMap.get());
 
             if (!LoadedMaps.empty()) {
                 ShowMap(LoadedMaps.front().get());
             }
         }
-        else if (command_ext == "size" && (_curMap != nullptr)) {
+        else if (command_ext == "size" && (_curMap)) {
             AddMess("Resize map");
 
-            if (_curMap == nullptr) {
+            if (!_curMap) {
                 AddMess("Map not loaded");
                 return;
             }
@@ -3027,7 +3035,7 @@ void FOMapper::ParseCommand(string_view command)
                 return;
             }
 
-            ResizeMap(_curMap, static_cast<uint16>(maxhx), static_cast<uint16>(maxhy));
+            ResizeMap(_curMap.get(), static_cast<uint16>(maxhx), static_cast<uint16>(maxhy));
         }
     }
     else {
@@ -3053,10 +3061,12 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto* pmap = SafeAlloc::MakeRaw<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    pmap->AddRef(); // Todo: fix memleak
+
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
-    auto new_map = SafeAlloc::MakeUniqueReleasable<MapView>(this, ident_t {}, pmap);
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
 
     new_map->EnableMapperMode();
 
@@ -3086,15 +3096,11 @@ void FOMapper::ShowMap(MapView* map)
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     RUNTIME_ASSERT(it != LoadedMaps.end());
 
-    if (map == _curMap) {
-        return;
+    if (_curMap != map) {
+        SelectClear();
+        _curMap = map;
+        RefreshCurProtos();
     }
-
-    SelectClear();
-
-    _curMap = map;
-
-    RefreshCurProtos();
 }
 
 void FOMapper::SaveMap(MapView* map, string_view custom_name)
@@ -3153,7 +3159,7 @@ void FOMapper::UnloadMap(MapView* map)
 
     RUNTIME_ASSERT(!map->IsDestroyed());
 
-    if (map == _curMap) {
+    if (_curMap == map) {
         SelectClear();
         _curMap = nullptr;
     }
@@ -3183,7 +3189,7 @@ void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
 
     map->FindSetCenter(work_pos);
 
-    if (map == _curMap) {
+    if (_curMap == map) {
         SelectClear();
     }
 }
@@ -3196,13 +3202,13 @@ void FOMapper::AddMess(string_view message_text)
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
-    MessBox.push_back({0, str, mess_time});
+    MessBox.emplace_back(MessBoxMessage {0, str, mess_time});
     MessBoxScroll = 0;
-
     MessBoxCurText = "";
 
     const IRect ir(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY);
     int max_lines = ir.Height() / 10;
+
     if (ir.IsZero()) {
         max_lines = 20;
     }
@@ -3210,15 +3216,16 @@ void FOMapper::AddMess(string_view message_text)
     int cur_mess = static_cast<int>(MessBox.size()) - 1;
     for (int i = 0, j = 0; cur_mess >= 0; cur_mess--) {
         MessBoxMessage& m = MessBox[cur_mess];
+
         // Scroll
-        j++;
-        if (j <= MessBoxScroll) {
+        if (++j <= MessBoxScroll) {
             continue;
         }
+
         // Add to message box
         MessBoxCurText = m.Mess + MessBoxCurText;
-        i++;
-        if (i >= max_lines) {
+
+        if (++i >= max_lines) {
             break;
         }
     }
@@ -3249,7 +3256,7 @@ void FOMapper::DrawIfaceLayer(uint layer)
     SpritesCanDraw = false;
 }
 
-auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>
+auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>
 {
     STACK_TRACE_ENTRY();
 

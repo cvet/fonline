@@ -59,8 +59,8 @@ public:
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> ItemView*;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> ItemView*;
-    [[nodiscard]] auto GetInvItems() noexcept -> const vector<ItemView*>& { return _invItems; }
-    [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
+    [[nodiscard]] auto GetInvItems() const noexcept -> const vector<refcount_ptr<ItemView>>& { return _invItems; }
+    [[nodiscard]] auto GetInvItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _invItems; }
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
 
     auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
@@ -75,5 +75,5 @@ public:
 protected:
     void OnDestroySelf() override;
 
-    vector<ItemView*> _invItems {};
+    vector<refcount_ptr<ItemView>> _invItems {};
 };
