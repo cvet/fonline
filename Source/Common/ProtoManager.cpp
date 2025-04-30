@@ -100,7 +100,6 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
 
                 const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetName();
                 auto pid = _engine->ToHashedString(name);
-
                 pid = _engine->CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
                 auto& file_protos = all_file_protos[type_name];
@@ -115,72 +114,32 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
     }
 
     // Processing
-    const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite) {
+    const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
             RUNTIME_ASSERT(!key.empty());
 
-            if (key[0] != '$' || strex(key).startsWith("$Text")) {
-                if (overwrite) {
-                    to_kv[key] = value;
-                }
-                else {
-                    to_kv.emplace(key, value);
-                }
+            if (key.front() != '$' || strex(key).startsWith("$Text")) {
+                to_kv[key] = value;
             }
         }
     };
 
-    for (auto&& file_protos : all_file_protos) {
-        const auto& type_name = file_protos.first;
-        auto& file_proto_pids = file_protos.second;
-
-        // Injection
-        auto injection = [&](const string& key_name, bool overwrite) {
-            for (auto&& [pid, kv] : file_proto_pids) {
-                if (kv.count(key_name) != 0) {
-                    for (const auto& inject_name : strex(kv[key_name]).split(' ')) {
-                        if (inject_name == "All") {
-                            for (auto&& [other_pid, other_kv] : file_proto_pids) {
-                                if (other_pid != pid) {
-                                    insert_map_values(kv, other_kv, overwrite);
-                                }
-                            }
-                        }
-                        else {
-                            auto inject_pid = _engine->ToHashedString(inject_name);
-
-                            inject_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, inject_pid).value_or(inject_pid);
-
-                            if (file_proto_pids.count(inject_pid) == 0) {
-                                throw ProtoManagerException("Proto not found for injection from another proto", inject_name, pid);
-                            }
-
-                            insert_map_values(kv, file_proto_pids[inject_pid], overwrite);
-                        }
-                    }
-                }
-            }
-        };
-
-        injection("$Inject", false);
-
-        // Protos
+    for (auto&& [type_name, file_proto_pids] : all_file_protos) {
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
             RUNTIME_ASSERT(_protos[type_name].count(pid) == 0);
 
             // Fill content from parents
-            map<string, string> final_kv;
+            map<string, string> proto_kv;
 
-            std::function<void(string_view, map<string, string>&)> fill_parent = [&](string_view name, map<string, string>& cur_kv) {
-                const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv["$Parent"] : string();
+            std::function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
+                const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
                     auto parent_pid = _engine->ToHashedString(parent_name);
-
                     parent_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
 
-                    auto it_parent = file_proto_pids.find(parent_pid);
+                    const auto it_parent = file_proto_pids.find(parent_pid);
 
                     if (it_parent == file_proto_pids.end()) {
                         if (base_name == name) {
@@ -190,28 +149,25 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
                         throw ProtoManagerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                     }
 
-                    fill_parent(parent_name, it_parent->second);
-                    insert_map_values(it_parent->second, final_kv, true);
+                    fill_parent_recursive(parent_name, it_parent->second);
+                    insert_map_values(it_parent->second, proto_kv);
                 }
             };
 
-            fill_parent(base_name, file_kv);
+            fill_parent_recursive(base_name, file_kv);
 
             // Actual content
-            insert_map_values(file_kv, final_kv, true);
-
-            // Final injection
-            injection("$InjectOverride", true);
+            insert_map_values(file_kv, proto_kv);
 
             // Create proto
             const auto* property_registrator = _engine->GetPropertyRegistrator(type_name);
             auto props = Properties(property_registrator);
-            props.ApplyFromText(final_kv);
+            props.ApplyFromText(proto_kv);
 
             auto* proto = CreateProto(type_name, pid, &props);
 
             // Components
-            for (auto&& [key, value] : final_kv) {
+            for (auto&& [key, value] : proto_kv) {
                 if (key.front() == '$') {
                     continue;
                 }
@@ -246,9 +202,9 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
 
             _parsedTexts[type_name][pid] = {};
 
-            for (auto& kv : final_kv) {
-                if (strex(kv.first).startsWith("$Text")) {
-                    const auto key_tok = strex(kv.first).split(' ');
+            for (auto&& [key, value] : proto_kv) {
+                if (strex(key).startsWith("$Text")) {
+                    const auto key_tok = strex(key).split(' ');
                     const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
                     TextPackKey text_key = pid.as_uint();
@@ -266,7 +222,7 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
                         }
                     }
 
-                    _parsedTexts[type_name][pid][lang].AddStr(text_key, kv.second);
+                    _parsedTexts[type_name][pid][lang].AddStr(text_key, value);
                 }
             }
         }
