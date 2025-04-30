@@ -478,10 +478,7 @@ void Player::Send_Talk()
         out_buf->Write(_controlledCr->Talk.CritterId);
         out_buf->Write(_controlledCr->Talk.DialogPackId);
         out_buf->Write(all_answers);
-        out_buf->Write(static_cast<uint16>(_controlledCr->Talk.Lexems.length()));
-        if (!_controlledCr->Talk.Lexems.empty()) {
-            out_buf->Push(_controlledCr->Talk.Lexems.c_str(), _controlledCr->Talk.Lexems.length());
-        }
+        out_buf->Write(_controlledCr->Talk.Lexems);
         out_buf->Write(_controlledCr->Talk.CurDialog.TextId);
         for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
             out_buf->Write(answer.TextId);
