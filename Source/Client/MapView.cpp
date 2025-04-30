@@ -364,8 +364,13 @@ void MapView::Process()
             _prevMapDayTime = map_day_time;
             _prevGlobalDayTime = global_day_time;
 
-            const auto day_color_time = GetDayColorTime();
-            const auto day_color = GetDayColor();
+            // Default values:
+            // Morning	 5.00 -  9.59	 300 - 599
+            // Day		10.00 - 18.59	 600 - 1139
+            // Evening	19.00 - 22.59	1140 - 1379
+            // Nigh		23.00 -  4.59	1380
+            const auto day_color_time = IsNonEmptyDayColorTime() ? GetDayColorTime() : vector<int> {300, 600, 1140, 1380};
+            const auto day_color = IsNonEmptyDayColor() ? GetDayColor() : vector<uint8> {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
 
             _mapDayColor = GenericUtils::GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
             _globalDayColor = GenericUtils::GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
