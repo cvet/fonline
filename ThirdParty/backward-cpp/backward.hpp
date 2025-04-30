@@ -29,6 +29,7 @@
 #endif
 
 extern std::ostream BackwardOStream; // (FOnline Patch)
+extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
 
 #if defined(BACKWARD_CXX11)
 #elif defined(BACKWARD_CXX98)
@@ -4204,7 +4205,6 @@ public:
   bool loaded() const { return _loaded; }
 
   static void handleSignal(int, siginfo_t *info, void *_ctx) {
-    extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
     SetCrashStackTrace(); // (FOnline Patch)
 
     ucontext_t *uctx = static_cast<ucontext_t *>(_ctx);
@@ -4408,7 +4408,6 @@ private:
   }
 
   NOINLINE static void crash_handler(int skip, CONTEXT *ct = nullptr) {
-    extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
     SetCrashStackTrace(); // (FOnline Patch)
 
     if (ct == nullptr) {
