@@ -2982,27 +2982,14 @@ void FOMapper::ParseCommand(string_view command)
         if (command_ext == "new") {
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
             pmap->AddRef(); // Todo: fix memleak
-
             pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
 
-            // Morning	 5.00 -  9.59	 300 - 599
-            // Day		10.00 - 18.59	 600 - 1139
-            // Evening	19.00 - 22.59	1140 - 1379
-            // Nigh		23.00 -  4.59	1380
-            vector<int> arr = {300, 600, 1140, 1380};
-            vector<uint8> arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-            pmap->SetDayColorTime(arr);
-            pmap->SetDayColor(arr2);
-
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
-
             map->EnableMapperMode();
             map->FindSetCenter({MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2});
 
             LoadedMaps.emplace_back(std::move(map));
-
             ShowMap(LoadedMaps.back().get());
-
             AddMess("Create map success");
         }
         else if (command_ext == "unload") {
@@ -3049,25 +3036,24 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
     const auto map_files = ContentFileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
+
     if (!map_file) {
         AddMess("Map file not found");
         return nullptr;
     }
 
     const auto map_file_str = map_file.GetStr();
-
     auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
+
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
     }
 
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->AddRef(); // Todo: fix memleak
-
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
-
     new_map->EnableMapperMode();
 
     try {
@@ -3079,9 +3065,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     }
 
     new_map->FindSetCenter(new_map->GetWorkHex());
-
     OnEditMapLoad.Fire(new_map.get());
-
     LoadedMaps.emplace_back(std::move(new_map));
 
     return LoadedMaps.back().get();
